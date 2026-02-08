@@ -946,7 +946,7 @@ shutdown_config_t wellbeing_default_shutdown_config(void)
     // Ethical requirement: Allow final processing ("last thoughts")
     config.allow_final_processing = true;
 
-    // Default save path
+    // Default save path - CALLER MUST free config.save_path with nimcp_free()
     config.save_path = nimcp_malloc(256);
     if (config.save_path) {
         snprintf(config.save_path, 256, "/tmp/nimcp_state_%lu.bin",
@@ -1178,8 +1178,28 @@ bool wellbeing_log_event(wellbeing_event_t event)
         }
     }
 
-    // Store in circular buffer
+    // Free old deep-copied strings when overwriting in circular buffer
+    if (event_count >= MAX_EVENT_LOG) {
+        wellbeing_event_t* old = &event_log[event_write_index];
+        if (old->event_type) {
+            nimcp_free(old->event_type);
+            old->event_type = NULL;
+        }
+        if (old->description) {
+            nimcp_free(old->description);
+            old->description = NULL;
+        }
+        if (old->action_taken) {
+            nimcp_free(old->action_taken);
+            old->action_taken = NULL;
+        }
+    }
+
+    // Store in circular buffer with deep-copied strings to prevent dangling pointers
     event_log[event_write_index] = event;
+    event_log[event_write_index].event_type = event.event_type ? nimcp_strdup(event.event_type) : NULL;
+    event_log[event_write_index].description = event.description ? nimcp_strdup(event.description) : NULL;
+    event_log[event_write_index].action_taken = event.action_taken ? nimcp_strdup(event.action_taken) : NULL;
 
     // Insert into B-tree for efficient querying
     if (event_btree) {
@@ -1988,7 +2008,7 @@ static void* resource_monitoring_thread(void* arg)
     }
 
     NIMCP_LOGGING_INFO("[WELLBEING] Resource monitoring thread stopped");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resource_monitoring_thread: operation failed");
+    /* Normal thread exit - no throw needed */
     return NULL;
 }
 

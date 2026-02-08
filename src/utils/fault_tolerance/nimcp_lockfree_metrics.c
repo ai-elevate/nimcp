@@ -301,9 +301,12 @@ metric_result_t lockfree_metrics_record_timestamped(
     uint32_t retries = 0;
 
     while (retries < LOCKFREE_METRICS_CAS_MAX_RETRIES) {
-        // Load current head and tail
-        head = atomic_load_explicit(&buffer->head, memory_order_acquire);
+        // Load tail BEFORE head to prevent unsigned underflow race:
+        // If head is loaded first, readers may advance tail past the stale head,
+        // causing (head - tail) to wrap around to UINT64_MAX.
+        // Loading tail first, then head, guarantees head >= tail.
         tail = atomic_load_explicit(&buffer->tail, memory_order_acquire);
+        head = atomic_load_explicit(&buffer->head, memory_order_acquire);
 
         // Calculate current size
         size = head - tail;
@@ -311,7 +314,15 @@ metric_result_t lockfree_metrics_record_timestamped(
         // Check if buffer is full
         if (size >= buffer->capacity) {
             if (buffer->drop_on_full) {
-                // Drop metric
+                // Re-verify: tail may have advanced since our stale read
+                // (readers consuming entries between our tail/head loads)
+                uint64_t fresh_tail = atomic_load_explicit(&buffer->tail, memory_order_acquire);
+                if (head - fresh_tail < buffer->capacity) {
+                    // Buffer isn't actually full - retry with fresh values
+                    retries++;
+                    continue;
+                }
+                // Confirmed full - drop metric
                 atomic_fetch_add_explicit(&buffer->stats.total_dropped, 1,
                                         memory_order_relaxed);
                 return METRIC_RESULT_DROPPED;
@@ -328,9 +339,9 @@ metric_result_t lockfree_metrics_record_timestamped(
             }
         }
 
-        // Try to claim slot with CAS
+        // Try to claim slot with CAS (strong to avoid spurious failures wasting retries)
         uint64_t new_head = head + 1;
-        if (atomic_compare_exchange_weak_explicit(
+        if (atomic_compare_exchange_strong_explicit(
                 &buffer->head, &head, new_head,
                 memory_order_acq_rel, memory_order_acquire)) {
             // Successfully claimed slot at 'head'
@@ -444,8 +455,8 @@ int32_t lockfree_metrics_read_batch(
         uint32_t to_read = (uint32_t)size < max_count ? (uint32_t)size : max_count;
         uint64_t new_tail = tail + to_read;
 
-        // Try to claim entries with CAS
-        if (atomic_compare_exchange_weak_explicit(
+        // Try to claim entries with CAS (strong to avoid spurious failures wasting retries)
+        if (atomic_compare_exchange_strong_explicit(
                 &buffer->tail, &tail, new_tail,
                 memory_order_acq_rel, memory_order_acquire)) {
             // Successfully claimed entries from tail to new_tail

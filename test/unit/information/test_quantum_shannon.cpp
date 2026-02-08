@@ -640,8 +640,10 @@ TEST_F(QuantumShannonTest, Bottleneck_GetBottlenecksAPI) {
     quantum_shannon_evolve(qsd, 10);
     quantum_shannon_optimize(qsd);
 
-    quantum_shannon_bottleneck_t bottlenecks[10];
-    uint32_t count = quantum_shannon_get_bottlenecks(qsd, bottlenecks, 10);
+    // Buffer large enough for all possible bottlenecks (internal max 100)
+    // so returned count equals qsd->num_bottlenecks regardless of MC seed
+    quantum_shannon_bottleneck_t bottlenecks[100];
+    uint32_t count = quantum_shannon_get_bottlenecks(qsd, bottlenecks, 100);
 
     EXPECT_EQ(count, qsd->num_bottlenecks);
 }

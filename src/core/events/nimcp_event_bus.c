@@ -34,7 +34,6 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <signal.h>
-#include <setjmp.h>
 
 // === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
 #include "async/nimcp_bio_async.h"

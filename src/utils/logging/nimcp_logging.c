@@ -49,10 +49,14 @@
 #include <time.h>
 #include <unistd.h>
 
+/* P1-42: nimcp_memory.h MUST be at file scope, NOT inside #ifdef blocks.
+ * Including inside #ifdef causes implicit declaration -> pointer truncation -> SEGFAULT
+ * on non-Linux platforms. */
+#include "utils/memory/nimcp_memory.h"
+
 #ifdef __linux__
 #include <sys/syscall.h>
 #include <syslog.h>
-#include "utils/memory/nimcp_memory.h"
 #endif
 
 //=============================================================================

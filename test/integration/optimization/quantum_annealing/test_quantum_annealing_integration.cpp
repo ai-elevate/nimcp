@@ -178,7 +178,7 @@ TEST_F(QuantumAnnealingIntegrationTest, CoolingSchedules) {
     for (auto schedule : schedules) {
         quantum_annealing_config_t config = quantum_annealing_default_config();
         config.cooling_schedule = schedule;
-        config.num_iterations = 500;
+        config.num_iterations = 2000;
 
         annealer = quantum_annealer_create(&config);
         ASSERT_NE(annealer, nullptr) << "Schedule " << schedule << " should work";

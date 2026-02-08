@@ -141,3 +141,16 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator_regression.cpp
     regression
 )
+
+# ============================================================================
+# Walkthrough Fix Verification Tests
+# ============================================================================
+# WHAT: Verify P1, P2, P3 fixes across mesh module files
+# WHY:  Ensure walkthrough-identified issues are properly fixed and don't regress
+
+# Test 15: Walkthrough Fixes - Thread safety, false positive removal, dead code fixes
+add_test_binary(
+    test_mesh_walkthrough_fixes
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_walkthrough_fixes.cpp
+    regression
+)

@@ -49,6 +49,7 @@ typedef struct {
     uint32_t timeout_ms;
     bool received;
     nimcp_platform_mutex_t mutex;
+    _Atomic int refcount;  // P1-28 fix: reference count to prevent use-after-free
 } request_response_ctx_t;
 
 //=============================================================================
@@ -114,7 +115,7 @@ static void* async_publish_worker(void* arg)
     event_free(&ctx->event);
     nimcp_free(ctx);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_publish_worker: operation failed");
+    // P1-20 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE on success path
     return NULL;
 }
 
@@ -148,6 +149,8 @@ nimcp_future_t event_bus_publish_async(event_bus_t bus, const event_t* event)
     // Allocate context
     async_publish_ctx_t* ctx = (async_publish_ctx_t*)nimcp_malloc(sizeof(async_publish_ctx_t));
     if (!ctx) {
+        // P1-29 fix: Destroy future before promise to prevent leak
+        nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish: failed to allocate context");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_publish_async: ctx is NULL");
@@ -195,6 +198,12 @@ static void request_response_callback(const event_t* event, void* user_data)
 
     if (ctx->received) {
         nimcp_platform_mutex_unlock(&ctx->mutex);
+        // P1-28 fix: Decrement refcount even on early return
+        int old_ref = __atomic_fetch_sub(&ctx->refcount, 1, __ATOMIC_ACQ_REL);
+        if (old_ref == 1) {
+            nimcp_platform_mutex_destroy(&ctx->mutex);
+            nimcp_free(ctx);
+        }
         return;  // Already received response
     }
 
@@ -207,7 +216,17 @@ static void request_response_callback(const event_t* event, void* user_data)
     event_t response_copy = *event;
     nimcp_promise_complete(ctx->promise, &response_copy);
 
+    // Unsubscribe since we got our response
+    event_bus_unsubscribe(ctx->bus, ctx->subscription);
+
     nimcp_platform_mutex_unlock(&ctx->mutex);
+
+    // P1-28 fix: Decrement refcount; only free when last reference
+    int old_ref = __atomic_fetch_sub(&ctx->refcount, 1, __ATOMIC_ACQ_REL);
+    if (old_ref == 1) {
+        nimcp_platform_mutex_destroy(&ctx->mutex);
+        nimcp_free(ctx);
+    }
 }
 
 /**
@@ -238,10 +257,17 @@ static void* request_timeout_worker(void* arg)
     }
 
     nimcp_platform_mutex_unlock(&ctx->mutex);
-    nimcp_platform_mutex_destroy(&ctx->mutex);
-    nimcp_free(ctx);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "request_timeout_worker: operation failed");
+    // P1-28 fix: Use refcount to prevent use-after-free.
+    // Decrement refcount; only free when last reference is done.
+    int old_ref = __atomic_fetch_sub(&ctx->refcount, 1, __ATOMIC_ACQ_REL);
+    if (old_ref == 1) {
+        // Last reference - safe to destroy
+        nimcp_platform_mutex_destroy(&ctx->mutex);
+        nimcp_free(ctx);
+    }
+
+    // P1-21 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE on normal timeout path
     return NULL;
 }
 
@@ -278,6 +304,8 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
     // Allocate context
     request_response_ctx_t* ctx = (request_response_ctx_t*)nimcp_calloc(1, sizeof(request_response_ctx_t));
     if (!ctx) {
+        // P1-29 fix: Destroy future before promise to prevent leak
+        nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to allocate context");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_request_async: ctx is NULL");
@@ -290,9 +318,13 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
     ctx->start_time = nimcp_time_get_us();
     ctx->timeout_ms = timeout_ms;
     ctx->received = false;
+    // P1-28 fix: Initialize refcount. Start at 1 for the callback path.
+    // If timeout worker is started, increment to 2.
+    __atomic_store_n(&ctx->refcount, 1, __ATOMIC_RELEASE);
 
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx);
+        nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "event_bus_request_async: validation failed");
@@ -314,6 +346,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
     if (sub == SUBSCRIPTION_HANDLE_INVALID) {
         nimcp_platform_mutex_destroy(&ctx->mutex);
         nimcp_free(ctx);
+        nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to subscribe");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: validation failed");
@@ -327,6 +360,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
         event_bus_unsubscribe(bus, sub);
         nimcp_platform_mutex_destroy(&ctx->mutex);
         nimcp_free(ctx);
+        nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to publish request");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: event_bus_publish is NULL");
@@ -338,10 +372,14 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
 
     // Start timeout worker if timeout specified
     if (timeout_ms > 0) {
+        // P1-28 fix: Increment refcount for timeout worker thread
+        __atomic_fetch_add(&ctx->refcount, 1, __ATOMIC_ACQ_REL);
         nimcp_thread_t timeout_thread;
         if (nimcp_thread_create(&timeout_thread, request_timeout_worker, ctx, NULL) == NIMCP_SUCCESS) {
             nimcp_thread_detach(timeout_thread);
         } else {
+            // Failed to create thread - decrement refcount back
+            __atomic_fetch_sub(&ctx->refcount, 1, __ATOMIC_ACQ_REL);
             LOG_MODULE_WARN(MODULE_NAME, "Request-response: failed to create timeout worker");
         }
     }

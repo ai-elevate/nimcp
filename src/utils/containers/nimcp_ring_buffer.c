@@ -6,6 +6,10 @@
  * WHY:  Efficient bounded history storage
  * HOW:  Fixed-size array with head/tail indices, modular arithmetic
  *
+ * NOTE: This ring buffer is NOT thread-safe. External synchronization required.
+ *       Callers must use a mutex (e.g., nimcp_mutex_t) around ALL ring buffer
+ *       operations when accessed from multiple threads.
+ *
  * @author NIMCP Development Team
  * @date 2026-01-02
  * @version 1.0.0

@@ -277,8 +277,13 @@ static bio_handle_tracker_t g_handle_tracker = {0};
 
 /**
  * @brief Initialize handle tracker
+ *
+ * P1-23 fix: Uses double-checked locking to prevent TOCTOU race.
+ * First check is fast (no lock), second check after acquiring mutex
+ * ensures only one thread performs initialization.
  */
 static nimcp_error_t handle_tracker_init(void) {
+    // Fast path: already initialized (no lock needed)
     if (g_handle_tracker.initialized) {
         LOG_DEBUG("Handle tracker already initialized");
         return NIMCP_SUCCESS;
@@ -292,9 +297,20 @@ static nimcp_error_t handle_tracker_init(void) {
         return err;
     }
 
+    // P1-23 fix: Double-checked locking - re-check after acquiring mutex
+    nimcp_mutex_lock(&g_handle_tracker.mutex);
+    if (g_handle_tracker.initialized) {
+        // Another thread initialized while we were waiting for the mutex
+        nimcp_mutex_unlock(&g_handle_tracker.mutex);
+        LOG_DEBUG("Handle tracker initialized by another thread");
+        return NIMCP_SUCCESS;
+    }
+
     nimcp_atomic_init_u32(&g_handle_tracker.count, 0);
     memset(g_handle_tracker.entries, 0, sizeof(g_handle_tracker.entries));
     g_handle_tracker.initialized = true;
+
+    nimcp_mutex_unlock(&g_handle_tracker.mutex);
 
     LOG_INFO("Handle tracker initialized successfully");
     return NIMCP_SUCCESS;
@@ -332,9 +348,12 @@ static void handle_tracker_shutdown(void) {
     memset(g_handle_tracker.entries, 0, sizeof(g_handle_tracker.entries));
     nimcp_atomic_init_u32(&g_handle_tracker.count, 0);
 
+    // P2 fix: Set initialized=false BEFORE destroying mutex
+    // This prevents other threads from trying to use the mutex after destruction
+    g_handle_tracker.initialized = false;
+
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
     nimcp_mutex_destroy(&g_handle_tracker.mutex);
-    g_handle_tracker.initialized = false;
 
     LOG_INFO("Handle tracker shutdown complete");
 }
@@ -768,9 +787,9 @@ static float shared_state_update_concentration(nimcp_bio_shared_state_t* shared)
 
 /**
  * @brief Invoke all registered callbacks
- * NOTE: This function assumes the caller already holds shared->mutex.
- *       It copies the callback list under lock, releases the lock, then invokes callbacks.
- *       This prevents deadlock if callbacks try to acquire locks.
+ * NOTE: P1-24 fix: This function MUST be called WITHOUT holding shared->mutex.
+ *       Callers must unlock the mutex before calling this function.
+ *       This prevents deadlock if callbacks try to acquire other locks.
  */
 static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);

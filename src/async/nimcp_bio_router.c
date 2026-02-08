@@ -724,8 +724,11 @@ void bio_router_shutdown(void) {
     }
     nimcp_platform_mutex_unlock(&g_router->modules_mutex);
 
-    // Brief yield to allow blocked threads to wake and exit
-    // This is a best-effort approach; proper shutdown would use a barrier
+    // P2 note: Brief yield to allow blocked threads to wake and exit.
+    // This is a best-effort drain approach. Proper shutdown would use a
+    // thread barrier or condition variable, but the shutdown_requested flag
+    // + cond_broadcast above ensures all blocked threads will eventually wake
+    // and check the flag. The 1ms sleep is a pragmatic tradeoff.
     nimcp_platform_sleep_ms(1);  // 1ms
 
     // DEADLOCK FIX: Clear immune context reference BEFORE unregistering.
@@ -852,6 +855,10 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
         if (g_router->modules[i].magic == BIO_MODULE_MAGIC &&
             g_router->modules[i].module_id == info->module_id) {
             bio_module_entry_t* existing = &g_router->modules[i];
+            /* P1-25 fix: Update user_data INSIDE the lock to prevent race condition.
+             * Previously this was done after unlocking, allowing concurrent access
+             * to see a partially-updated entry. */
+            existing->user_data = info->user_data;
             nimcp_platform_mutex_unlock(&g_router->modules_mutex);
             /* P1 fix: Warn about potential memory leak on re-registration.
              * Each call allocates a new context. Callers MUST free the
@@ -860,9 +867,6 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
             LOG_WARN("Module ID %u (%s) already registered - caller must free "
                      "previous context to avoid memory leak",
                      info->module_id, existing->module_name);
-            // Update user_data on the existing entry so re-registration
-            // picks up new context without requiring unregister/register cycle
-            existing->user_data = info->user_data;
             // CRITICAL FIX: Must allocate a proper context struct, NOT cast entry!
             // The old code returned (bio_module_context_t)existing which was wrong because
             // bio_module_entry_t and bio_module_context_struct are different structs.

@@ -130,6 +130,13 @@ static void update_stats_remove(sliding_window_t* window, float old_value) {
  * WHY:  Correct numerical drift, update min/max after removals
  * HOW:  Scan buffer, apply Welford's algorithm
  */
+/**
+ * P3 note: Thread-safety concern - this function pops all samples then pushes
+ * them back. During the pop-push window, another thread could observe an empty
+ * or partially-empty buffer. If thread safety is required, the caller must
+ * hold an external lock. A future improvement would be to use a peek/iterate
+ * API on the circular buffer that doesn't modify the buffer state.
+ */
 static void recalculate_stats(sliding_window_t* window) {
     if (!window) return;
 

@@ -221,9 +221,14 @@ static float* extract_segment(
  * HOW:  Store first-order differences
  */
 static float* compute_deltas(const float* signal, size_t len, size_t* out_delta_count) {
-    if (!signal || len < 2) {
+    if (!signal) {
         if (out_delta_count) *out_delta_count = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_deltas: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_deltas: signal is NULL");
+        return NULL;
+    }
+    // P2 fix: len < 2 is normal (first sample has no delta). Not an error.
+    if (len < 2) {
+        if (out_delta_count) *out_delta_count = 0;
         return NULL;
     }
 

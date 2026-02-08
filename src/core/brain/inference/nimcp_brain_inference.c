@@ -506,7 +506,15 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
         }
 
         memcpy(&decisions[i], decision, sizeof(brain_decision_t));
-        nimcp_free(decision);
+        // P1-45 FIX: brain_decision_t has internal allocations (output_vector,
+        // active_neuron_ids). Must use brain_free_decision() which handles these,
+        // not nimcp_free() which only frees the struct itself.
+        // Note: Since we memcpy'd the decision contents first, we need to NULL out
+        // the internal pointers before freeing, so brain_free_decision doesn't
+        // free data that decisions[i] now owns.
+        decision->output_vector = NULL;
+        decision->active_neuron_ids = NULL;
+        brain_free_decision(decision);
     }
 
     brain_clear_error();

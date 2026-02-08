@@ -188,6 +188,13 @@ bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
             start_time = nimcp_time_get_us();
         }
 
+        // P2 fix: NULL-check the execute function pointer to prevent crash
+        if (!pipeline->stages[i].execute) {
+            LOG_WARN(LOG_MODULE, "Skipping stage %u (%s): NULL execute function", i,
+                     pipeline->stages[i].name ? pipeline->stages[i].name : "unnamed");
+            continue;
+        }
+
         LOG_DEBUG(LOG_MODULE, "Executing stage %u (%s)", i,
                  pipeline->stages[i].name ? pipeline->stages[i].name : "unnamed");
 
@@ -239,7 +246,13 @@ bool middleware_pipeline_execute_stage(middleware_pipeline_t pipeline,
 
     pipeline_stage_config_t* stage = &pipeline->stages[stage_id];
     if (!stage->enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: stage->enabled is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_execute_stage: stage is disabled");
+        return false;
+    }
+
+    // P2 fix: NULL-check the execute function pointer
+    if (!stage->execute) {
+        LOG_WARN(LOG_MODULE, "Stage %u has NULL execute function", stage_id);
         return false;
     }
 
@@ -393,15 +406,18 @@ static bool encoding_stage_execute(middleware_context_t* ctx, void* data) {
     // For now, we use a normalized rate based on active neuron density
     float base_rate = (float)ctx->num_active_neurons / (float)(ctx->num_active_neurons + 100);
 
+    // Update feature count BEFORE the loop so the bound is current
+    // (avoids stale num_cached_features=0 from a previous empty-neuron call)
+    ctx->num_cached_features = ctx->num_active_neurons;
+
     // Encode each active neuron's contribution with slight variation
-    for (uint32_t i = 0; i < ctx->num_active_neurons && i < ctx->num_cached_features; i++) {
+    for (uint32_t i = 0; i < ctx->num_active_neurons; i++) {
         // Add slight variation per neuron index for testing normalization
         // Real implementation would query actual neuron firing rates from brain
         float neuron_factor = 0.8F + (0.4F * (float)i / (float)(ctx->num_active_neurons + 1));
         ctx->cached_features[i] = base_rate * neuron_factor;
     }
 
-    ctx->num_cached_features = ctx->num_active_neurons;
     ctx->features_valid = true;
 
     return true;
@@ -673,9 +689,9 @@ middleware_pipeline_t middleware_pipeline_create_default(brain_t brain,
     pipeline_stage_config_t stages[PIPELINE_STAGE_COUNT] = {
         {PIPELINE_STAGE_ENCODING, "Encoding", encoding_stage_execute, NULL, true, 10000},
         {PIPELINE_STAGE_EXTRACTION, "Extraction", extraction_stage_execute, NULL, true, 10000},
+        {PIPELINE_STAGE_NORMALIZATION, "Normalization", normalization_stage_execute, NULL, true, 10000},
         {PIPELINE_STAGE_DETECTION, "Detection", detection_stage_execute, NULL, true, 10000},
         {PIPELINE_STAGE_ROUTING, "Routing", routing_stage_execute, NULL, true, 10000},
-        {PIPELINE_STAGE_NORMALIZATION, "Normalization", normalization_stage_execute, NULL, true, 10000},
         {PIPELINE_STAGE_BUFFERING, "Buffering", buffering_stage_execute, NULL, true, 10000},
         {PIPELINE_STAGE_EVENTS, "Events", events_stage_execute, NULL, true, 10000}
     };

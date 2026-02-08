@@ -772,6 +772,7 @@ uint64_t hyperthymesia_encode_flashbulb(
         if (entry) {
             strncpy(entry->memory.narrative_tag, narrative_tag,
                     sizeof(entry->memory.narrative_tag) - 1);
+            entry->memory.narrative_tag[sizeof(entry->memory.narrative_tag) - 1] = '\0';
         }
     }
 
@@ -846,8 +847,10 @@ bool hyperthymesia_link_memories(
     if (narrative_tag) {
         strncpy(entry1->memory.narrative_tag, narrative_tag,
                 sizeof(entry1->memory.narrative_tag) - 1);
+        entry1->memory.narrative_tag[sizeof(entry1->memory.narrative_tag) - 1] = '\0';
         strncpy(entry2->memory.narrative_tag, narrative_tag,
                 sizeof(entry2->memory.narrative_tag) - 1);
+        entry2->memory.narrative_tag[sizeof(entry2->memory.narrative_tag) - 1] = '\0';
     }
 
     LOG_DEBUG("[%s] Memories linked (%lu <-> %lu)", HYPERTHYMESIA_LOG_MODULE,

@@ -116,7 +116,8 @@ static quantum_bio_subscription_t* quantum_find_subscription(
             return &b->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_find_subscription: validation failed");
+    /* P2 fix: Remove false positive NIMCP_THROW_TO_IMMUNE. "Not found" is normal
+     * behavior for a search function - the caller handles NULL return. */
     return NULL;
 }
 

@@ -54,3 +54,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/genius/CMakeLists.txt)
     message(STATUS "Adding Genius Profiles Regression tests...")
     add_subdirectory(genius)
 endif()
+
+# =============================================================================
+# Cross-Module Walkthrough Fixes Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cross_module/CMakeLists.txt)
+    message(STATUS "Adding Cross-Module Walkthrough Fixes Regression tests...")
+    add_subdirectory(cross_module)
+endif()

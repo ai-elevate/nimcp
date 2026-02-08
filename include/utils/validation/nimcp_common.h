@@ -385,10 +385,10 @@ typedef struct nimcp_message {
 #define NIMCP_VERSION_MINOR 6
 #endif
 #ifndef NIMCP_VERSION_PATCH
-#define NIMCP_VERSION_PATCH 1
+#define NIMCP_VERSION_PATCH 3
 #endif
 #ifndef NIMCP_VERSION_STRING
-#define NIMCP_VERSION_STRING "2.6.1"
+#define NIMCP_VERSION_STRING "2.6.3"
 #endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

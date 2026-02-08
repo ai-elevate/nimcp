@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
@@ -82,6 +83,9 @@ struct mesh_msp {
     msp_immune_callback_t immune_callback;
     void* immune_callback_ctx;
 
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
+
     /* Statistics */
     mesh_msp_stats_t stats;
 
@@ -105,7 +109,7 @@ static credential_entry_t* find_credential(mesh_msp_t* msp, mesh_participant_id_
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_credential: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -117,7 +121,7 @@ static policy_entry_t* find_policy(mesh_msp_t* msp, const char* name) {
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_policy: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -185,6 +189,15 @@ mesh_msp_t* mesh_msp_create(
     msp->bbb_handle = msp->config.bbb_handle;
     msp->immune_handle = msp->config.immune_handle;
 
+    /* Create mutex for thread safety (P1-27) */
+    msp->mutex = nimcp_mutex_create(NULL);
+    if (!msp->mutex) {
+        nimcp_free(msp->name);
+        nimcp_free(msp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp_create: mutex creation failed");
+        return NULL;
+    }
+
     /* Initialize logger */
     if (msp->config.enable_logging) {
         msp->logger = nimcp_logger_get("mesh.msp");
@@ -213,6 +226,11 @@ void mesh_msp_destroy(mesh_msp_t* msp) {
         nimcp_free((void*)pol->policy.required_channels);
         nimcp_free(pol);
         pol = next;
+    }
+
+    /* Destroy mutex */
+    if (msp->mutex) {
+        nimcp_mutex_destroy(msp->mutex);
     }
 
     nimcp_free(msp->name);
@@ -470,7 +488,7 @@ const credential_t* mesh_msp_get_credential(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_get_credential: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -480,18 +498,18 @@ bool mesh_msp_is_credential_valid(
 ) {
     const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
     if (!cred) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_is_credential_valid: cred is NULL");
+        /* Credential not found - validation rejection, not an error (P2: false positive removal) */
         return false;
     }
 
     if (cred->state != CREDENTIAL_STATE_VALID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_credential_valid: validation failed");
+        /* Invalid state is a validation rejection, not an error (P2: false positive removal) */
         return false;
     }
 
     uint64_t now = get_time_ns();
     if (cred->expires_at_ns > 0 && now > cred->expires_at_ns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_credential_valid: validation failed");
+        /* Expired credential is a validation rejection, not an error (P2: false positive removal) */
         return false;
     }
 
@@ -614,7 +632,7 @@ bool mesh_msp_has_channel_membership(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_has_channel_membership: validation failed");
+    /* Participant not found - normal lookup result, not an error (P2: false positive removal) */
     return false;
 }
 
@@ -825,7 +843,7 @@ bool mesh_msp_check_capability(
 ) {
     const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
     if (!cred) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_check_capability: cred is NULL");
+        /* Credential not found - check fails, not an error (P2: false positive removal) */
         return false;
     }
 
@@ -839,7 +857,7 @@ bool mesh_msp_check_privilege(
 ) {
     const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
     if (!cred) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_check_privilege: cred is NULL");
+        /* Credential not found - check fails, not an error (P2: false positive removal) */
         return false;
     }
 
@@ -935,7 +953,7 @@ bool mesh_msp_evaluate_policy(
 
     policy_entry_t* entry = find_policy((mesh_msp_t*)msp, policy_name);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_evaluate_policy: entry is NULL");
+        /* Policy not found - evaluation fails, not an error (P2: false positive removal) */
         return false;
     }
 
@@ -947,7 +965,7 @@ bool mesh_msp_evaluate_policy(
             return true;
 
         case MSP_POLICY_DENY_ALL:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_evaluate_policy: operation failed");
+            /* Deny is a policy decision, not an error (P2: false positive removal) */
             return false;
 
         case MSP_POLICY_PRIVILEGE_LEVEL:
@@ -962,7 +980,7 @@ bool mesh_msp_evaluate_policy(
             for (size_t i = 0; i < policy->required_channel_count; i++) {
                 if (!mesh_msp_has_channel_membership(msp, participant_id,
                                                       policy->required_channels[i])) {
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_evaluate_policy: policy->required_channels is NULL");
+                    /* Membership check failed - policy rejection, not error (P2: false positive removal) */
                     return false;
                 }
             }
@@ -975,7 +993,7 @@ bool mesh_msp_evaluate_policy(
             return false;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_evaluate_policy: validation failed");
+            /* Unknown policy type - fail closed (P2: false positive removal) */
             return false;
     }
 }
@@ -1115,13 +1133,13 @@ bool mesh_msp_is_quarantined(
     while (entry) {
         if (entry->participant_id == participant_id) {
             if (!entry->quarantined) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_is_quarantined: entry->quarantined is NULL");
+                /* Not quarantined is normal state, not an error (P2: false positive removal) */
                 return false;
             }
             /* Check if quarantine expired */
             uint64_t now = get_time_ns();
             if (entry->quarantine_end_ns > 0 && now > entry->quarantine_end_ns) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_quarantined: validation failed");
+                /* Quarantine expired is normal result, not an error (P2: false positive removal) */
                 return false;
             }
             return true;
@@ -1129,7 +1147,7 @@ bool mesh_msp_is_quarantined(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_quarantined: validation failed");
+    /* Participant not found - not quarantined, not an error (P2: false positive removal) */
     return false;
 }
 

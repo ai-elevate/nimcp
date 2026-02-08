@@ -184,14 +184,13 @@ static uint64_t calculate_hash(const void* data, size_t size) {
 static bool matches_pattern(const char* content, size_t content_size,
                             const char* pattern) {
     /* Simple substring match for now - could be extended to regex */
+    /* P2: NULL/empty inputs and pattern size mismatches are normal "no match" results */
     if (content == NULL || pattern == NULL || content_size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_hash: content_size is zero");
         return false;
     }
 
     size_t pattern_len = strlen(pattern);
     if (pattern_len == 0 || pattern_len > content_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_hash: pattern_len is zero");
         return false;
     }
 
@@ -209,7 +208,7 @@ static bool matches_pattern(const char* content, size_t content_size,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_hash: validation failed");
+    /* P2: Pattern not found is a normal result, not an error */
     return false;
 }
 
@@ -222,7 +221,7 @@ static int find_empty_slot(const working_memory_guard_t* guard) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: guard->slots is NULL");
+    /* P2: All slots occupied is a capacity condition, not an error */
     return -1;
 }
 
@@ -236,7 +235,7 @@ static slot_entry_t* find_slot(working_memory_guard_t* guard, uint32_t slot_id) 
             return &guard->slots[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_slot: operation failed");
+    /* P2: Slot not found is a normal lookup result, not an error */
     return NULL;
 }
 
@@ -269,7 +268,7 @@ static source_tracking_t* get_source_tracking(working_memory_guard_t* guard,
         return entry;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_slot: operation failed");
+    /* P2: Source tracking table full is a capacity condition, not an error */
     return NULL;
 }
 

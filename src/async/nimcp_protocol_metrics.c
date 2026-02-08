@@ -64,6 +64,9 @@ struct protocol_metrics_struct {
     uint64_t last_cleanup_ms;
     metrics_summary_t cached_summary;
     bool summary_valid;
+    // P3 note: Using platform mutex (nimcp_platform_mutex_t) instead of nimcp_mutex_t.
+    // This is acceptable because protocol_metrics operates at the middleware layer
+    // and doesn't need recursive locking or advanced mutex attributes.
     nimcp_platform_mutex_t mutex;  /**< Thread safety for all public operations */
 };
 
@@ -120,7 +123,8 @@ static metric_entry_t* find_metric(protocol_metrics_t metrics, const char* key) 
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_metric: validation failed");
+    // P2 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+    // Not finding a metric is normal (first recording of this metric name).
     return NULL;
 }
 
@@ -440,7 +444,8 @@ bool protocol_metrics_get(protocol_metrics_t metrics, const char* name,
     metric_entry_t* entry = find_metric(metrics, name);
     if (!entry) {
         nimcp_platform_mutex_unlock(&metrics->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: entry is NULL");
+        // P2 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+        // Querying a non-existent metric is a normal "not found" case.
         return false;
     }
 

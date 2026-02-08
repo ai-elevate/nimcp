@@ -240,7 +240,7 @@ static private_data_collection_t* find_collection(
             return &channel->collections[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_collection: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -281,7 +281,7 @@ static private_data_entry_t* find_entry(
             return &collection->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -584,12 +584,15 @@ bool mesh_channel_has_participant(
         return false;
     }
 
-    /* Safe to read without lock for simple contains check */
+    /* P1-33: Must lock mutex - concurrent add/remove can modify array during iteration */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
     for (size_t i = 0; i < channel->participant_count; i++) {
         if (channel->participants[i] == participant_id) {
+            nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
             return true;
         }
     }
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
     return false;
 }
 
@@ -712,8 +715,12 @@ size_t mesh_channel_prune_world_state(
  * ============================================================================ */
 
 kg_module_wiring_t* mesh_channel_get_knowledge_graph(mesh_channel_t* channel) {
-    if (!channel || channel->wiring_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_channel_get_knowledge_graph: channel is NULL");
+    if (!channel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_get_knowledge_graph: channel is NULL");
+        return NULL;
+    }
+    if (channel->wiring_count == 0) {
+        /* Empty wiring is valid state, not an error (P2: false positive removal) */
         return NULL;
     }
     /* Return first wiring as representative */
@@ -1363,7 +1370,7 @@ mesh_channel_t* mesh_channel_manager_get_channel(
             return manager->channels[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_manager_get_channel: validate_manager is NULL");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -1384,7 +1391,7 @@ mesh_channel_t* mesh_channel_manager_get_channel_by_name(
             }
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_channel_manager_get_channel_by_name: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 

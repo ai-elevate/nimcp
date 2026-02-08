@@ -179,13 +179,12 @@ static void compute_strides(
  */
 static bool shapes_equal(const nimcp_tensor_shape_t* a, const nimcp_tensor_shape_t* b)
 {
+    /* P1-44: shapes_equal is a query function - mismatches are normal, not errors */
     if (a->rank != b->rank) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shapes_equal: validation failed");
         return false;
     }
     for (uint32_t i = 0; i < a->rank; i++) {
         if (a->dims[i] != b->dims[i]) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shapes_equal: validation failed");
             return false;
         }
     }
@@ -219,7 +218,7 @@ static bool can_broadcast(
         } else if (db == 1) {
             result->dims[ri] = da;
         } else {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "can_broadcast: validation failed");
+            /* P1-44: can_broadcast is a query function - incompatible shapes are normal */
             return false;  /* Cannot broadcast */
         }
     }
@@ -287,6 +286,9 @@ void nimcp_tensor_shutdown(void)
              g_stats.tensors_created, g_stats.tensors_destroyed, g_stats.memory_current);
 
     nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
+
+    /* P2: Reset platform_once so tensor can be re-initialized after shutdown */
+    g_tensor_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 }
 
 //=============================================================================
@@ -302,7 +304,8 @@ nimcp_tensor_t* nimcp_tensor_create(
     /* Validate inputs */
     if (rank > NIMCP_TENSOR_MAX_RANK) {
         LOG_ERROR(LOG_MODULE, "Rank %u exceeds max %d", rank, NIMCP_TENSOR_MAX_RANK);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_create: validation failed");
+        /* P2: Use NIMCP_ERROR_INVALID_PARAM (rank exceeds max), not NULL_POINTER */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_create: rank exceeds max");
         return NULL;
     }
 
@@ -841,7 +844,7 @@ bool nimcp_tensor_is_contiguous(const nimcp_tensor_t* t)
 
     for (int i = (int)t->shape.rank - 1; i >= 0; i--) {
         if (t->shape.strides[i] != expected_stride) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_is_contiguous: validation failed");
+            /* P1-44: Non-contiguous is a normal query result, not an error */
             return false;
         }
         expected_stride *= t->shape.dims[i];
@@ -996,7 +999,8 @@ nimcp_tensor_t* nimcp_tensor_reshape(
 )
 {
     if (!tensor_is_valid(t) || !new_dims) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_reshape: required parameter is NULL (tensor_is_valid, new_dims)");
+        /* P2: Use NIMCP_ERROR_INVALID_PARAM for NULL parameters, not NO_MEMORY */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_reshape: required parameter is NULL (tensor_is_valid, new_dims)");
         return NULL;
     }
 
@@ -1004,7 +1008,8 @@ nimcp_tensor_t* nimcp_tensor_reshape(
     size_t new_numel = compute_numel(new_dims, new_rank);
     if (new_numel != t->shape.numel) {
         LOG_ERROR(LOG_MODULE, "Reshape: numel mismatch %zu vs %zu", new_numel, t->shape.numel);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_reshape: validation failed");
+        /* P2: Use NIMCP_ERROR_INVALID_PARAM for shape mismatch, not NO_MEMORY */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_reshape: numel mismatch");
         return NULL;
     }
 
@@ -1060,7 +1065,8 @@ nimcp_tensor_t* nimcp_tensor_permute(
         return NULL;
     }
     if (rank != t->shape.rank) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_permute: validation failed");
+        /* P2: Use NIMCP_ERROR_INVALID_PARAM for rank mismatch, not NULL_POINTER */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_permute: rank mismatch");
         return NULL;
     }
 
@@ -1068,7 +1074,8 @@ nimcp_tensor_t* nimcp_tensor_permute(
     uint32_t new_dims[NIMCP_TENSOR_MAX_RANK];
     for (uint32_t i = 0; i < rank; i++) {
         if (perm[i] >= rank) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_permute: capacity exceeded");
+            /* P2: Use NIMCP_ERROR_OUT_OF_RANGE for perm index OOB, not NO_MEMORY */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_tensor_permute: perm index out of bounds");
             return NULL;
         }
         new_dims[i] = t->shape.dims[perm[i]];
@@ -1782,7 +1789,8 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
     /* Ensure 2D minimum */
     if (a->shape.rank < 2 || b->shape.rank < 2) {
         LOG_ERROR(LOG_MODULE, "matmul requires at least 2D tensors");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_matmul: validation failed");
+        /* P2: Use NIMCP_ERROR_INVALID_PARAM for dimension requirements, not NULL_POINTER */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_matmul: requires at least 2D tensors");
         return NULL;
     }
 
@@ -1794,7 +1802,8 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
 
     if (K != K2) {
         LOG_ERROR(LOG_MODULE, "matmul: inner dimensions don't match (%u vs %u)", K, K2);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_matmul: validation failed");
+        /* P2: Use NIMCP_ERROR_INVALID_PARAM for dimension mismatch, not NULL_POINTER */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_matmul: inner dimensions mismatch");
         return NULL;
     }
 

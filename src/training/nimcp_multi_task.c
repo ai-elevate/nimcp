@@ -481,6 +481,7 @@ int mtl_compute_loss(
 
         /* Uncertainty weighting: loss / (2 * exp(log_var)) + 0.5 * log_var */
         if (ctx->config.weighting == MTL_WEIGHT_UNCERTAINTY) {
+            if (task_id >= MTL_MAX_TASKS) continue;
             float log_var = ctx->uncertainty.log_vars[task_id];
             float precision = expf(-log_var);
             weight = precision;
@@ -504,7 +505,9 @@ int mtl_compute_loss(
         }
 
         /* Update stats */
-        ctx->stats.task_losses[task_id] = task_loss;
+        if (task_id < MTL_MAX_TASKS) {
+            ctx->stats.task_losses[task_id] = task_loss;
+        }
     }
 
     *total_loss = weighted_sum;
@@ -557,9 +560,28 @@ int mtl_process_gradients(
         case MTL_GRAD_PCGRAD: {
             /* PCGrad: Project conflicting gradients */
             float** projected = nimcp_calloc(num_tasks, sizeof(float*));
+            if (!projected) {
+                nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_process_gradients: projected allocation failed");
+                return -1;
+            }
+            bool pcgrad_alloc_failed = false;
             for (uint32_t t = 0; t < num_tasks; t++) {
                 projected[t] = nimcp_calloc(num_params, sizeof(float));
+                if (!projected[t]) {
+                    pcgrad_alloc_failed = true;
+                    break;
+                }
                 memcpy(projected[t], gradients[t], num_params * sizeof(float));
+            }
+            if (pcgrad_alloc_failed) {
+                for (uint32_t t = 0; t < num_tasks; t++) {
+                    if (projected[t]) nimcp_free(projected[t]);
+                }
+                nimcp_free(projected);
+                nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_process_gradients: projected[t] allocation failed");
+                return -1;
             }
 
             /* Project each gradient against others */

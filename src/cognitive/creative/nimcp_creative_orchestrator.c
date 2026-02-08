@@ -172,7 +172,7 @@ creative_orchestrator_state_t creative_orchestrator_get_state(
 int creative_orchestrator_get_stats(const creative_orchestrator_t* orch,
                                      creative_orchestrator_stats_t* out) {
     if (!orch || !out) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_update: required parameter is NULL (orch, out)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_get_stats: required parameter is NULL (orch, out)");
         return -1;
     }
     *out = orch->stats;

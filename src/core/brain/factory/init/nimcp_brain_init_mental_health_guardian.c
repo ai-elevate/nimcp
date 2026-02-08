@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -88,14 +89,14 @@ static void connect_guardian_to_immune(
     brain_t brain)
 {
     if (!brain->immune_system || !brain->immune_enabled) {
-        fprintf(stderr, LOG_TAG " Immune system not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Immune system not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_immune(guardian, brain->immune_system)) {
-        fprintf(stderr, LOG_TAG " Connected to immune system\n");
+        LOG_DEBUG(LOG_TAG " Connected to immune system");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to immune system\n");
+        LOG_WARN(LOG_TAG " Failed to connect to immune system");
     }
 }
 
@@ -107,7 +108,7 @@ static void connect_guardian_to_kg(
     brain_t brain)
 {
     if (!brain->internal_kg || !brain->internal_kg_enabled) {
-        fprintf(stderr, LOG_TAG " Internal KG not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Internal KG not available - skipping connection");
         return;
     }
 
@@ -115,9 +116,9 @@ static void connect_guardian_to_kg(
             guardian,
             brain->internal_kg,
             brain->internal_kg_admin_token)) {
-        fprintf(stderr, LOG_TAG " Connected to internal knowledge graph\n");
+        LOG_DEBUG(LOG_TAG " Connected to internal knowledge graph");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to internal KG\n");
+        LOG_WARN(LOG_TAG " Failed to connect to internal KG");
     }
 }
 
@@ -129,14 +130,14 @@ static void connect_guardian_to_bio_async(
     brain_t brain)
 {
     if (!brain->bio_async_ctx || !brain->bio_async_enabled) {
-        fprintf(stderr, LOG_TAG " Bio-async not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Bio-async not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_bio_async(guardian, brain->bio_async_ctx)) {
-        fprintf(stderr, LOG_TAG " Connected to bio-async orchestrator\n");
+        LOG_DEBUG(LOG_TAG " Connected to bio-async orchestrator");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to bio-async\n");
+        LOG_WARN(LOG_TAG " Failed to connect to bio-async");
     }
 }
 
@@ -148,14 +149,14 @@ static void connect_guardian_to_fep(
     brain_t brain)
 {
     if (!brain->fep_orchestrator) {
-        fprintf(stderr, LOG_TAG " FEP orchestrator not available - skipping registration\n");
+        LOG_DEBUG(LOG_TAG " FEP orchestrator not available - skipping registration");
         return;
     }
 
     if (mental_health_guardian_register_fep(guardian, brain->fep_orchestrator)) {
-        fprintf(stderr, LOG_TAG " Registered with FEP orchestrator\n");
+        LOG_DEBUG(LOG_TAG " Registered with FEP orchestrator");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to register with FEP orchestrator\n");
+        LOG_WARN(LOG_TAG " Failed to register with FEP orchestrator");
     }
 }
 
@@ -167,14 +168,14 @@ static void connect_guardian_to_medulla(
     brain_t brain)
 {
     if (!brain->medulla) {
-        fprintf(stderr, LOG_TAG " Medulla not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Medulla not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_brainstem(guardian, brain->medulla)) {
-        fprintf(stderr, LOG_TAG " Connected to brainstem/medulla\n");
+        LOG_DEBUG(LOG_TAG " Connected to brainstem/medulla");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to medulla\n");
+        LOG_WARN(LOG_TAG " Failed to connect to medulla");
     }
 }
 
@@ -186,14 +187,14 @@ static void connect_guardian_to_sleep(
     brain_t brain)
 {
     if (!brain->sleep_system) {
-        fprintf(stderr, LOG_TAG " Sleep system not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Sleep system not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_sleep(guardian, brain->sleep_system)) {
-        fprintf(stderr, LOG_TAG " Connected to sleep system\n");
+        LOG_DEBUG(LOG_TAG " Connected to sleep system");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to sleep system\n");
+        LOG_WARN(LOG_TAG " Failed to connect to sleep system");
     }
 }
 
@@ -205,14 +206,14 @@ static void connect_guardian_to_plasticity(
     brain_t brain)
 {
     if (!brain->plasticity_coordinator || !brain->plasticity_coordinator_enabled) {
-        fprintf(stderr, LOG_TAG " Plasticity coordinator not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Plasticity coordinator not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_plasticity(guardian, brain->plasticity_coordinator)) {
-        fprintf(stderr, LOG_TAG " Connected to plasticity coordinator\n");
+        LOG_DEBUG(LOG_TAG " Connected to plasticity coordinator");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to plasticity coordinator\n");
+        LOG_WARN(LOG_TAG " Failed to connect to plasticity coordinator");
     }
 }
 
@@ -224,14 +225,14 @@ static void connect_guardian_to_working_memory(
     brain_t brain)
 {
     if (!brain->working_memory) {
-        fprintf(stderr, LOG_TAG " Working memory not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Working memory not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_working_memory(guardian, brain->working_memory)) {
-        fprintf(stderr, LOG_TAG " Connected to working memory\n");
+        LOG_DEBUG(LOG_TAG " Connected to working memory");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to working memory\n");
+        LOG_WARN(LOG_TAG " Failed to connect to working memory");
     }
 }
 
@@ -243,14 +244,14 @@ static void connect_guardian_to_executive(
     brain_t brain)
 {
     if (!brain->executive) {
-        fprintf(stderr, LOG_TAG " Executive controller not available - skipping connection\n");
+        LOG_DEBUG(LOG_TAG " Executive controller not available - skipping connection");
         return;
     }
 
     if (mental_health_guardian_connect_executive(guardian, brain->executive)) {
-        fprintf(stderr, LOG_TAG " Connected to executive controller\n");
+        LOG_DEBUG(LOG_TAG " Connected to executive controller");
     } else {
-        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to executive controller\n");
+        LOG_WARN(LOG_TAG " Failed to connect to executive controller");
     }
 }
 
@@ -284,19 +285,19 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     /* Check if guardian is disabled in config */
     if (!brain->config.enable_mental_health_guardian) {
         brain->mental_health_guardian = NULL;
-        fprintf(stderr, LOG_TAG " Mental Health Guardian disabled by config\n");
+        LOG_INFO(LOG_TAG " Mental Health Guardian disabled by config");
         return true;  /* Success - disabled by config */
     }
 
     /* Verify mental health monitor exists */
     if (!brain->mental_health_monitor) {
-        fprintf(stderr, LOG_TAG " ERROR: Mental health monitor not initialized\n");
+        LOG_ERROR(LOG_TAG " Mental health monitor not initialized");
         brain->mental_health_guardian = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mental_health_guardian_subsystem: brain->mental_health_monitor is NULL");
         return false;
     }
 
-    fprintf(stderr, LOG_TAG " Initializing Mental Health Guardian...\n");
+    LOG_INFO(LOG_TAG " Initializing Mental Health Guardian...");
 
     /* ====================================================================== */
     /* CREATE GUARDIAN WITH DEFAULT CONFIG                                    */
@@ -310,7 +311,7 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
 
     mental_health_guardian_t* guardian = mental_health_guardian_create(brain, &config);
     if (!guardian) {
-        fprintf(stderr, LOG_TAG " ERROR: Failed to create guardian\n");
+        LOG_ERROR(LOG_TAG " Failed to create guardian");
         brain->mental_health_guardian = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mental_health_guardian_subsystem: guardian is NULL");
         return false;
@@ -319,7 +320,7 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     /* Store in brain */
     brain->mental_health_guardian = guardian;
 
-    fprintf(stderr, LOG_TAG " Guardian created (interval=%ums)\n",
+    LOG_INFO(LOG_TAG " Guardian created (interval=%ums)",
             config.monitoring_interval_ms);
 
     /* ====================================================================== */
@@ -366,8 +367,8 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     /* Note: Brain state check would go here if we had a running state */
     /* For now, we don't auto-start - caller should start explicitly */
 
-    fprintf(stderr, LOG_TAG " Mental Health Guardian initialization complete\n");
-    fprintf(stderr, LOG_TAG "   Call mental_health_guardian_start() to begin monitoring\n");
+    LOG_INFO(LOG_TAG " Mental Health Guardian initialization complete");
+    LOG_DEBUG(LOG_TAG "   Call mental_health_guardian_start() to begin monitoring");
 
     return true;
 }

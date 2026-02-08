@@ -161,9 +161,7 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
 
     config.input_size = num_inputs;
     config.output_size = num_outputs;
-    // BUGFIX: num_neurons should be TOTAL neurons, not just hidden layer
-    // For a 3-layer network: inputs + hidden + outputs
-    config.num_neurons = num_inputs + num_neurons + num_outputs;
+    config.num_neurons = num_neurons;
     config.num_layers = 3;
     config.integration_method = integration_method;
 

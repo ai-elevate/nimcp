@@ -245,7 +245,7 @@ static topo_node_t* find_node(mesh_topology_ctx_t ctx, mesh_participant_id_t id)
         idx = (idx + 1) % ctx->node_capacity;
     } while (idx != start);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -268,7 +268,7 @@ static topo_node_t* find_empty_slot(mesh_topology_ctx_t ctx, mesh_participant_id
         idx = (idx + 1) % ctx->node_capacity;
     } while (idx != start);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: ctx->nodes is NULL");
+    /* Hash table full - capacity exhausted, not a NULL pointer (P2: false positive removal) */
     return NULL;
 }
 

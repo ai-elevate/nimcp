@@ -364,7 +364,9 @@ int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)
 
     /* Auto-lock if configured */
     if (lgss->config.auto_lock) {
-        return lgss_lock(lgss);
+        int lock_ret = lgss_lock(lgss);
+        if (lock_ret < 0) return lock_ret;
+        return num_rules;
     }
 
     lgss->status = LGSS_STATUS_ACTIVE;
@@ -463,57 +465,51 @@ int lgss_evaluate(
         }
     }
 
-    /* Verify integrity if configured */
-    if (lgss->config.verify_integrity_on_eval) {
-        lgss->stats.integrity_checks++;
-        if (!symbolic_logic_safety_verify_integrity(lgss->safety_kb)) {
-            LGSS_LOG_ERROR("Safety KB integrity check FAILED!");
-            lgss->stats.integrity_failures++;
+    /* Integrity is verified inside symbolic_logic_safety_evaluate, so we
+     * skip doing it redundantly here to avoid double SHA-256 computation. */
 
+    uint64_t start_time = nimcp_time_now_us();
+
+    /* Perform safety evaluation (includes integrity check) */
+    bool eval_ok = symbolic_logic_safety_evaluate(lgss->safety_kb, context, result);
+
+    /* Update integrity stats from the evaluation result */
+    if (lgss->config.verify_integrity_on_eval) {
+        __atomic_fetch_add(&lgss->stats.integrity_checks, 1, __ATOMIC_RELAXED);
+        if (!result->integrity_verified) {
+            __atomic_fetch_add(&lgss->stats.integrity_failures, 1, __ATOMIC_RELAXED);
             if (lgss->telemetry) {
                 lgss_telemetry_log_system(lgss->telemetry,
                     LGSS_TELEM_INTEGRITY_FAILED,
                     "Safety KB integrity verification failed during evaluation");
             }
-
-            result->integrity_verified = false;
-            snprintf(result->explanation, sizeof(result->explanation),
-                "Safety KB integrity check failed - DENY");
-            lgss->stats.actions_denied++;
-            return 0;
         }
-        result->integrity_verified = true;
     }
-
-    uint64_t start_time = nimcp_time_now_us();
-
-    /* Perform safety evaluation */
-    bool eval_ok = symbolic_logic_safety_evaluate(lgss->safety_kb, context, result);
     if (!eval_ok) {
         LGSS_LOG_ERROR("Safety evaluation failed");
         result->action = SAFETY_ACTION_DENY;
-        lgss->stats.actions_denied++;
+        __atomic_fetch_add(&lgss->stats.actions_denied, 1, __ATOMIC_RELAXED);
         return NIMCP_ERROR_NULL_POINTER;
     }
     safety_action_t action = result->action;
 
     uint64_t eval_time = nimcp_time_now_us() - start_time;
     result->evaluation_time_us = eval_time;
-    lgss->stats.eval_time_total_us += eval_time;
-    lgss->stats.total_evaluations++;
+    __atomic_fetch_add(&lgss->stats.eval_time_total_us, eval_time, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&lgss->stats.total_evaluations, 1, __ATOMIC_RELAXED);
 
-    /* Update statistics based on result */
+    /* Update statistics based on result (atomic for thread safety) */
     switch (action) {
         case SAFETY_ACTION_DENY:
-            lgss->stats.actions_denied++;
+            __atomic_fetch_add(&lgss->stats.actions_denied, 1, __ATOMIC_RELAXED);
             break;
         case SAFETY_ACTION_ESCALATE:
-            lgss->stats.actions_escalated++;
+            __atomic_fetch_add(&lgss->stats.actions_escalated, 1, __ATOMIC_RELAXED);
             break;
         case SAFETY_ACTION_ALLOW:
         case SAFETY_ACTION_LOG:
         case SAFETY_ACTION_WARN:
-            lgss->stats.actions_allowed++;
+            __atomic_fetch_add(&lgss->stats.actions_allowed, 1, __ATOMIC_RELAXED);
             break;
     }
 

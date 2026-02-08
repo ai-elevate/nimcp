@@ -208,7 +208,6 @@ static semantic_concept_t* find_concept_by_id(
     uint64_t id)
 {
     if (!system || id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_concept_by_id: system is NULL");
         return NULL;
     }
 
@@ -224,7 +223,7 @@ static semantic_concept_t* find_concept_by_id(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_concept_by_id: validation failed");
+    /* Normal "not found" path - no throw needed */
     return NULL;
 }
 
@@ -707,7 +706,7 @@ uint64_t semantic_memory_create_concept(
 
     // Copy label if provided
     if (label) {
-        concept->label = strdup(label);
+        concept->label = nimcp_strdup(label);
     }
 
     // Initialize metadata
@@ -737,7 +736,6 @@ const semantic_concept_t* semantic_memory_get_concept(
     uint64_t concept_id)
 {
     if (!system || concept_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_memory_get_concept: system is NULL");
         return NULL;
     }
 
@@ -753,12 +751,15 @@ const semantic_concept_t* semantic_memory_get_concept(
         }
 
         if (system->concepts[i] && system->concepts[i]->id == concept_id) {
+            /* NOTE: access_count is treated as mutable (like a cache hit counter)
+             * despite the const qualifier on the system pointer. This is intentional -
+             * access_count tracks usage statistics and does not affect semantic state. */
             system->concepts[i]->access_count++;
             return system->concepts[i];
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_get_concept: validation failed");
+    /* Normal "not found" path - no throw needed */
     return NULL;
 }
 

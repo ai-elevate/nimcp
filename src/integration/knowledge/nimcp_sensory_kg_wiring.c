@@ -93,8 +93,7 @@ static sensory_kg_node_t* find_node(sensory_kg_wiring_t* wiring, uint32_t node_i
             return &wiring->nodes[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -140,8 +139,10 @@ static int create_node(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t type,
     node->node_id = wiring->next_node_id++;
     node->type = type;
     strncpy(node->name, name, sizeof(node->name) - 1);
+    node->name[sizeof(node->name) - 1] = '\0';
     if (description) {
         strncpy(node->description, description, sizeof(node->description) - 1);
+        node->description[sizeof(node->description) - 1] = '\0';
     }
     node->module_id = module_id;
     node->importance = 0.5f;

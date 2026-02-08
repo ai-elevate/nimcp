@@ -735,17 +735,21 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
     NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
                       "Promise fail failed: invalid shared state");
 
+    // P1-22 fix: Store error code BEFORE the CAS state transition.
+    // This ensures that any thread that sees FAILED state will also see
+    // the correct error code, preventing stale reads.
+    shared->error = error;
+    __atomic_thread_fence(__ATOMIC_RELEASE);  // Ensure error is visible before state change
+
     // Try to transition from PENDING to FAILED (CAS operation)
     uint32_t expected = NIMCP_FUTURE_PENDING;
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, NIMCP_FUTURE_FAILED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
-        // Already completed/failed/cancelled
+        // Already completed/failed/cancelled - restore error to avoid confusion
+        shared->error = NIMCP_SUCCESS;
         NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
                           "nimcp_promise_fail: promise already completed/failed/cancelled");
     }
-
-    // Store error code
-    shared->error = error;
 
     // Record completion time
     shared->complete_time_ns = nimcp_platform_time_monotonic_ms() * 1000000ULL;

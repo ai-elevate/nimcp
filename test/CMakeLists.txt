@@ -1528,6 +1528,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/security")
     add_subdirectory(regression/security)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/security_utils")
+    message(STATUS "Adding security & utils walkthrough P1/P2/P3 regression tests...")
+    add_subdirectory(regression/security_utils)
+endif()
+
 # ============================================================================
 # Language Layer Tests (Phase L: Language Processing)
 # ============================================================================
@@ -2595,6 +2600,11 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/thread_safety/CMakeLists.txt")
     message(STATUS "Adding thread safety regression tests...")
     add_subdirectory(regression/thread_safety)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cross_module/CMakeLists.txt")
+    message(STATUS "Adding cross-module walkthrough fixes regression tests...")
+    add_subdirectory(regression/cross_module)
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/thread_safety/CMakeLists.txt")

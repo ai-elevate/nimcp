@@ -127,7 +127,7 @@ static int find_coordinator_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_coordinator_index: pool is NULL");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return -1;
 }
 
@@ -183,7 +183,7 @@ static mesh_coordinator_t* get_first_with_role(
             return pool->coordinators[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_first_with_role: pool is NULL");
+    /* No coordinator with requested role found - normal result (P2: false positive removal) */
     return NULL;
 }
 
@@ -201,7 +201,7 @@ static vote_tally_t* find_tally(mesh_coordinator_pool_t* pool, mesh_participant_
             return &pool->vote_tallies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tally: validation failed");
+    /* No tally for candidate found - first vote, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -226,7 +226,7 @@ static void add_vote(mesh_coordinator_pool_t* pool, mesh_participant_id_t candid
  */
 static bool has_voter_already_voted(mesh_coordinator_pool_t* pool, mesh_participant_id_t voter_id) {
     if (!pool || !pool->voter_records) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "has_voter_already_voted: required parameter is NULL (pool, pool->voter_records)");
+        /* No voter records means no prior votes, not an error (P2: false positive removal) */
         return false;
     }
 

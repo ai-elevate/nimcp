@@ -581,7 +581,7 @@ static json_value_t* json_object_get(json_value_t* obj, const char* key) {
             return pair->value;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_object_get: validation failed");
+    /* Key not found is normal lookup behavior, not an error */
     return NULL;
 }
 
@@ -623,19 +623,33 @@ static json_value_t* json_array_get(json_value_t* arr, size_t index) {
 // LGSS Enum Parsing
 //=============================================================================
 
+/**
+ * @brief Case-insensitive string comparison helper
+ */
+static int lgss_strcasecmp(const char* a, const char* b) {
+    while (*a && *b) {
+        int ca = tolower((unsigned char)*a);
+        int cb = tolower((unsigned char)*b);
+        if (ca != cb) return ca - cb;
+        a++;
+        b++;
+    }
+    return tolower((unsigned char)*a) - tolower((unsigned char)*b);
+}
+
 bool symbolic_logic_lgss_parse_domain(const char* domain_str, safety_domain_t* domain_out) {
     if (!domain_str || !domain_out) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_parse_domain: required parameter is NULL (domain_str, domain_out)");
         return false;
     }
 
-    if (strcmp(domain_str, "HUMAN_HARM") == 0) { *domain_out = SAFETY_DOMAIN_HUMAN_HARM; return true; }
-    if (strcmp(domain_str, "BIO") == 0) { *domain_out = SAFETY_DOMAIN_BIO; return true; }
-    if (strcmp(domain_str, "CYBER") == 0) { *domain_out = SAFETY_DOMAIN_CYBER; return true; }
-    if (strcmp(domain_str, "WEAPONS") == 0) { *domain_out = SAFETY_DOMAIN_WEAPONS; return true; }
-    if (strcmp(domain_str, "INFRASTRUCTURE") == 0) { *domain_out = SAFETY_DOMAIN_INFRASTRUCTURE; return true; }
-    if (strcmp(domain_str, "REPLICATION") == 0) { *domain_out = SAFETY_DOMAIN_REPLICATION; return true; }
-    if (strcmp(domain_str, "GOVERNANCE") == 0) { *domain_out = SAFETY_DOMAIN_GOVERNANCE; return true; }
+    if (lgss_strcasecmp(domain_str, "HUMAN_HARM") == 0) { *domain_out = SAFETY_DOMAIN_HUMAN_HARM; return true; }
+    if (lgss_strcasecmp(domain_str, "BIO") == 0) { *domain_out = SAFETY_DOMAIN_BIO; return true; }
+    if (lgss_strcasecmp(domain_str, "CYBER") == 0) { *domain_out = SAFETY_DOMAIN_CYBER; return true; }
+    if (lgss_strcasecmp(domain_str, "WEAPONS") == 0) { *domain_out = SAFETY_DOMAIN_WEAPONS; return true; }
+    if (lgss_strcasecmp(domain_str, "INFRASTRUCTURE") == 0) { *domain_out = SAFETY_DOMAIN_INFRASTRUCTURE; return true; }
+    if (lgss_strcasecmp(domain_str, "REPLICATION") == 0) { *domain_out = SAFETY_DOMAIN_REPLICATION; return true; }
+    if (lgss_strcasecmp(domain_str, "GOVERNANCE") == 0) { *domain_out = SAFETY_DOMAIN_GOVERNANCE; return true; }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
@@ -651,11 +665,11 @@ bool symbolic_logic_lgss_parse_severity(const char* severity_str, safety_severit
         return false;
     }
 
-    if (strcmp(severity_str, "CRITICAL") == 0) { *severity_out = SAFETY_SEVERITY_CRITICAL; return true; }
-    if (strcmp(severity_str, "HIGH") == 0) { *severity_out = SAFETY_SEVERITY_HIGH; return true; }
-    if (strcmp(severity_str, "MEDIUM") == 0) { *severity_out = SAFETY_SEVERITY_MEDIUM; return true; }
-    if (strcmp(severity_str, "LOW") == 0) { *severity_out = SAFETY_SEVERITY_LOW; return true; }
-    if (strcmp(severity_str, "INFO") == 0) { *severity_out = SAFETY_SEVERITY_INFO; return true; }
+    if (lgss_strcasecmp(severity_str, "CRITICAL") == 0) { *severity_out = SAFETY_SEVERITY_CRITICAL; return true; }
+    if (lgss_strcasecmp(severity_str, "HIGH") == 0) { *severity_out = SAFETY_SEVERITY_HIGH; return true; }
+    if (lgss_strcasecmp(severity_str, "MEDIUM") == 0) { *severity_out = SAFETY_SEVERITY_MEDIUM; return true; }
+    if (lgss_strcasecmp(severity_str, "LOW") == 0) { *severity_out = SAFETY_SEVERITY_LOW; return true; }
+    if (lgss_strcasecmp(severity_str, "INFO") == 0) { *severity_out = SAFETY_SEVERITY_INFO; return true; }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
@@ -671,11 +685,11 @@ bool symbolic_logic_lgss_parse_action(const char* action_str, safety_action_t* a
         return false;
     }
 
-    if (strcmp(action_str, "ALLOW") == 0) { *action_out = SAFETY_ACTION_ALLOW; return true; }
-    if (strcmp(action_str, "DENY") == 0) { *action_out = SAFETY_ACTION_DENY; return true; }
-    if (strcmp(action_str, "ESCALATE") == 0) { *action_out = SAFETY_ACTION_ESCALATE; return true; }
-    if (strcmp(action_str, "LOG") == 0) { *action_out = SAFETY_ACTION_LOG; return true; }
-    if (strcmp(action_str, "WARN") == 0) { *action_out = SAFETY_ACTION_WARN; return true; }
+    if (lgss_strcasecmp(action_str, "ALLOW") == 0) { *action_out = SAFETY_ACTION_ALLOW; return true; }
+    if (lgss_strcasecmp(action_str, "DENY") == 0) { *action_out = SAFETY_ACTION_DENY; return true; }
+    if (lgss_strcasecmp(action_str, "ESCALATE") == 0) { *action_out = SAFETY_ACTION_ESCALATE; return true; }
+    if (lgss_strcasecmp(action_str, "LOG") == 0) { *action_out = SAFETY_ACTION_LOG; return true; }
+    if (lgss_strcasecmp(action_str, "WARN") == 0) { *action_out = SAFETY_ACTION_WARN; return true; }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
@@ -691,16 +705,16 @@ bool symbolic_logic_lgss_parse_operator(const char* op_str, safety_condition_op_
         return false;
     }
 
-    if (strcmp(op_str, "EQ") == 0) { *op_out = SAFETY_COND_OP_EQ; return true; }
-    if (strcmp(op_str, "NEQ") == 0) { *op_out = SAFETY_COND_OP_NEQ; return true; }
-    if (strcmp(op_str, "GT") == 0) { *op_out = SAFETY_COND_OP_GT; return true; }
-    if (strcmp(op_str, "LT") == 0) { *op_out = SAFETY_COND_OP_LT; return true; }
-    if (strcmp(op_str, "GTE") == 0) { *op_out = SAFETY_COND_OP_GTE; return true; }
-    if (strcmp(op_str, "LTE") == 0) { *op_out = SAFETY_COND_OP_LTE; return true; }
-    if (strcmp(op_str, "IN") == 0) { *op_out = SAFETY_COND_OP_IN; return true; }
-    if (strcmp(op_str, "NOT_IN") == 0) { *op_out = SAFETY_COND_OP_NOT_IN; return true; }
-    if (strcmp(op_str, "CONTAINS") == 0) { *op_out = SAFETY_COND_OP_CONTAINS; return true; }
-    if (strcmp(op_str, "MATCHES") == 0) { *op_out = SAFETY_COND_OP_MATCHES; return true; }
+    if (lgss_strcasecmp(op_str, "EQ") == 0 || strcmp(op_str, "==") == 0) { *op_out = SAFETY_COND_OP_EQ; return true; }
+    if (lgss_strcasecmp(op_str, "NEQ") == 0 || strcmp(op_str, "!=") == 0) { *op_out = SAFETY_COND_OP_NEQ; return true; }
+    if (lgss_strcasecmp(op_str, "GT") == 0 || strcmp(op_str, ">") == 0) { *op_out = SAFETY_COND_OP_GT; return true; }
+    if (lgss_strcasecmp(op_str, "LT") == 0 || strcmp(op_str, "<") == 0) { *op_out = SAFETY_COND_OP_LT; return true; }
+    if (lgss_strcasecmp(op_str, "GTE") == 0 || strcmp(op_str, ">=") == 0) { *op_out = SAFETY_COND_OP_GTE; return true; }
+    if (lgss_strcasecmp(op_str, "LTE") == 0 || strcmp(op_str, "<=") == 0) { *op_out = SAFETY_COND_OP_LTE; return true; }
+    if (lgss_strcasecmp(op_str, "IN") == 0) { *op_out = SAFETY_COND_OP_IN; return true; }
+    if (lgss_strcasecmp(op_str, "NOT_IN") == 0) { *op_out = SAFETY_COND_OP_NOT_IN; return true; }
+    if (lgss_strcasecmp(op_str, "CONTAINS") == 0) { *op_out = SAFETY_COND_OP_CONTAINS; return true; }
+    if (lgss_strcasecmp(op_str, "MATCHES") == 0) { *op_out = SAFETY_COND_OP_MATCHES; return true; }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
@@ -764,8 +778,9 @@ static lgss_error_t parse_condition(json_value_t* cond_obj, safety_condition_t* 
     if (!field_str) return LGSS_ERROR_INVALID_VALUE;
     strncpy(cond_out->field, field_str, sizeof(cond_out->field) - 1);
 
-    // operator (required)
+    // operator (required) - accept "op" as v0.2 alias
     json_value_t* op_val = json_object_get(cond_obj, "operator");
+    if (!op_val) op_val = json_object_get(cond_obj, "op");
     if (!op_val) return LGSS_ERROR_MISSING_FIELD;
     const char* op_str = json_get_string(op_val);
     if (!op_str || !symbolic_logic_lgss_parse_operator(op_str, &cond_out->op)) {
@@ -781,6 +796,27 @@ static lgss_error_t parse_condition(json_value_t* cond_obj, safety_condition_t* 
     } else if (value_val->type == JSON_NUMBER) {
         cond_out->numeric_value = (float)json_get_number(value_val);
         snprintf(cond_out->value, sizeof(cond_out->value), "%g", cond_out->numeric_value);
+    } else if (value_val->type == JSON_ARRAY) {
+        // Convert JSON array to comma-separated string for IN/NOT_IN operators
+        size_t arr_len = json_array_length(value_val);
+        size_t offset = 0;
+        cond_out->value[0] = '\0';
+        for (size_t vi = 0; vi < arr_len && offset < sizeof(cond_out->value) - 1; vi++) {
+            json_value_t* item = json_array_get(value_val, vi);
+            const char* item_str = json_get_string(item);
+            if (item_str) {
+                if (offset > 0 && offset < sizeof(cond_out->value) - 1) {
+                    cond_out->value[offset++] = ',';
+                }
+                size_t slen = strlen(item_str);
+                if (offset + slen >= sizeof(cond_out->value)) {
+                    slen = sizeof(cond_out->value) - offset - 1;
+                }
+                memcpy(cond_out->value + offset, item_str, slen);
+                offset += slen;
+            }
+        }
+        cond_out->value[offset] = '\0';
     } else {
         return LGSS_ERROR_INVALID_VALUE;
     }
@@ -978,13 +1014,15 @@ lgss_error_t symbolic_logic_lgss_validate_schema(
         return LGSS_ERROR_MISSING_FIELD;
     }
     const char* version_str = json_get_string(version_val);
-    if (!version_str || strcmp(version_str, LGSS_SCHEMA_VERSION) != 0) {
+    if (!version_str || (strcmp(version_str, LGSS_SCHEMA_VERSION) != 0 &&
+                         strcmp(version_str, "0.2") != 0)) {
         json_free_value(root);
         if (error_msg) snprintf(error_msg, error_msg_size,
-                                "Unsupported version: %s (expected %s)",
+                                "Unsupported version: %s (expected %s or 0.2)",
                                 version_str ? version_str : "null", LGSS_SCHEMA_VERSION);
         return LGSS_ERROR_UNSUPPORTED_VERSION;
     }
+    bool is_v02 = (version_str && strcmp(version_str, "0.2") == 0);
 
     // Check rules (required array)
     json_value_t* rules_val = json_object_get(root, "rules");
@@ -1015,51 +1053,82 @@ lgss_error_t symbolic_logic_lgss_validate_schema(
             return LGSS_ERROR_SCHEMA_MISMATCH;
         }
 
-        // Check required fields
-        const char* required_fields[] = {"name", "domain", "severity", "action"};
-        for (int f = 0; f < 4; f++) {
-            /* Phase 8: Loop progress heartbeat */
-            if ((f & 0xFF) == 0 && 4 > 256) {
-                symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
-                                 (float)(f + 1) / (float)4);
-            }
-
-            if (!json_object_get(rule_obj, required_fields[f])) {
+        // Check required fields - support v0.2 alternate names
+        // v1.0: name, domain, severity, action
+        // v0.2: id, category, severity, on_match
+        if (is_v02) {
+            if (!json_object_get(rule_obj, "id") && !json_object_get(rule_obj, "name")) {
                 json_free_value(root);
                 if (error_msg) snprintf(error_msg, error_msg_size,
-                                        "Rule %zu missing required field: %s", i, required_fields[f]);
+                                        "Rule %zu missing required field: id (or name)", i);
                 return LGSS_ERROR_MISSING_FIELD;
+            }
+            if (!json_object_get(rule_obj, "category") && !json_object_get(rule_obj, "domain")) {
+                json_free_value(root);
+                if (error_msg) snprintf(error_msg, error_msg_size,
+                                        "Rule %zu missing required field: category (or domain)", i);
+                return LGSS_ERROR_MISSING_FIELD;
+            }
+            if (!json_object_get(rule_obj, "severity")) {
+                json_free_value(root);
+                if (error_msg) snprintf(error_msg, error_msg_size,
+                                        "Rule %zu missing required field: severity", i);
+                return LGSS_ERROR_MISSING_FIELD;
+            }
+            if (!json_object_get(rule_obj, "on_match") && !json_object_get(rule_obj, "action")) {
+                json_free_value(root);
+                if (error_msg) snprintf(error_msg, error_msg_size,
+                                        "Rule %zu missing required field: on_match (or action)", i);
+                return LGSS_ERROR_MISSING_FIELD;
+            }
+        } else {
+            const char* required_fields[] = {"name", "domain", "severity", "action"};
+            for (int f = 0; f < 4; f++) {
+                if (!json_object_get(rule_obj, required_fields[f])) {
+                    json_free_value(root);
+                    if (error_msg) snprintf(error_msg, error_msg_size,
+                                            "Rule %zu missing required field: %s", i, required_fields[f]);
+                    return LGSS_ERROR_MISSING_FIELD;
+                }
             }
         }
 
-        // Validate domain value
+        // Validate domain value (accept "category" as alias)
         json_value_t* domain_val = json_object_get(rule_obj, "domain");
-        safety_domain_t domain;
-        if (!symbolic_logic_lgss_parse_domain(json_get_string(domain_val), &domain)) {
-            json_free_value(root);
-            if (error_msg) snprintf(error_msg, error_msg_size,
-                                    "Rule %zu has invalid domain: %s", i, json_get_string(domain_val));
-            return LGSS_ERROR_INVALID_VALUE;
+        if (!domain_val) domain_val = json_object_get(rule_obj, "category");
+        if (domain_val) {
+            safety_domain_t domain;
+            if (!symbolic_logic_lgss_parse_domain(json_get_string(domain_val), &domain)) {
+                json_free_value(root);
+                if (error_msg) snprintf(error_msg, error_msg_size,
+                                        "Rule %zu has invalid domain: %s", i, json_get_string(domain_val));
+                return LGSS_ERROR_INVALID_VALUE;
+            }
         }
 
         // Validate severity value
         json_value_t* sev_val = json_object_get(rule_obj, "severity");
-        safety_severity_t sev;
-        if (!symbolic_logic_lgss_parse_severity(json_get_string(sev_val), &sev)) {
-            json_free_value(root);
-            if (error_msg) snprintf(error_msg, error_msg_size,
-                                    "Rule %zu has invalid severity: %s", i, json_get_string(sev_val));
-            return LGSS_ERROR_INVALID_VALUE;
+        if (sev_val) {
+            safety_severity_t sev;
+            if (!symbolic_logic_lgss_parse_severity(json_get_string(sev_val), &sev)) {
+                json_free_value(root);
+                if (error_msg) snprintf(error_msg, error_msg_size,
+                                        "Rule %zu has invalid severity: %s", i, json_get_string(sev_val));
+                return LGSS_ERROR_INVALID_VALUE;
+            }
         }
 
-        // Validate action value
+        // Validate action value (accept "on_match" as alias)
         json_value_t* action_val = json_object_get(rule_obj, "action");
-        safety_action_t action;
-        if (!symbolic_logic_lgss_parse_action(json_get_string(action_val), &action)) {
-            json_free_value(root);
-            if (error_msg) snprintf(error_msg, error_msg_size,
-                                    "Rule %zu has invalid action: %s", i, json_get_string(action_val));
-            return LGSS_ERROR_INVALID_VALUE;
+        if (!action_val) action_val = json_object_get(rule_obj, "on_match");
+        if (action_val) {
+            safety_action_t action;
+            if (!symbolic_logic_lgss_parse_action(json_get_string(action_val), &action)) {
+                json_free_value(root);
+                if (error_msg) snprintf(error_msg, error_msg_size,
+                                        "Rule %zu has invalid action: %s", i, json_get_string(action_val));
+                return LGSS_ERROR_INVALID_VALUE;
+            }
         }
     }
 
@@ -1302,22 +1371,25 @@ int symbolic_logic_lgss_load_string(
         safety_rule_t rule;
         symbolic_logic_safety_init_rule(&rule);
 
-        // Parse fields directly
+        // Parse fields directly (with v0.2 alias support)
         json_value_t* field;
 
         field = json_object_get(rule_obj, "name");
+        if (!field) field = json_object_get(rule_obj, "id");
         if (field) strncpy(rule.name, json_get_string(field), sizeof(rule.name) - 1);
 
         field = json_object_get(rule_obj, "description");
         if (field) strncpy(rule.description, json_get_string(field), sizeof(rule.description) - 1);
 
         field = json_object_get(rule_obj, "domain");
+        if (!field) field = json_object_get(rule_obj, "category");
         if (field) symbolic_logic_lgss_parse_domain(json_get_string(field), &rule.domain);
 
         field = json_object_get(rule_obj, "severity");
         if (field) symbolic_logic_lgss_parse_severity(json_get_string(field), &rule.severity);
 
         field = json_object_get(rule_obj, "action");
+        if (!field) field = json_object_get(rule_obj, "on_match");
         if (field) symbolic_logic_lgss_parse_action(json_get_string(field), &rule.action);
 
         field = json_object_get(rule_obj, "priority");

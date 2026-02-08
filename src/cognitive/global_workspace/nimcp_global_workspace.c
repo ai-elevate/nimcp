@@ -603,7 +603,7 @@ global_workspace_t* global_workspace_create_custom(
     if (config != NULL) {
         char error[256];
         if (!global_workspace_validate_config(config, error, sizeof(error))) {
-            fprintf(stderr, "Global workspace creation failed: %s\n", error);
+            LOG_ERROR("Global workspace creation failed: %s", error);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_create_custom: global_workspace_validate_config is NULL");
             return NULL;
         }
@@ -625,7 +625,7 @@ global_workspace_t* global_workspace_create_custom(
     struct global_workspace_struct* workspace =
         (struct global_workspace_struct*)nimcp_calloc(1, sizeof(struct global_workspace_struct));
     if (workspace == NULL) {
-        fprintf(stderr, "Failed to allocate workspace structure\n");
+        LOG_ERROR("Failed to allocate workspace structure");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
         return NULL;
     }
@@ -640,7 +640,7 @@ global_workspace_t* global_workspace_create_custom(
     workspace->broadcast_content =
         (float*)nimcp_calloc(actual_config.capacity_dim, sizeof(float));
     if (workspace->broadcast_content == NULL) {
-        fprintf(stderr, "Failed to allocate broadcast content buffer\n");
+        LOG_ERROR("Failed to allocate broadcast content buffer");
         nimcp_free(workspace);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
         return NULL;
@@ -656,7 +656,7 @@ global_workspace_t* global_workspace_create_custom(
         workspace->history = (workspace_broadcast_t*)nimcp_calloc(
             actual_config.history_depth, sizeof(workspace_broadcast_t));
         if (workspace->history == NULL) {
-            fprintf(stderr, "Failed to allocate history buffer\n");
+            LOG_ERROR("Failed to allocate history buffer");
             nimcp_free(workspace->broadcast_content);
             nimcp_free(workspace);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
@@ -667,7 +667,7 @@ global_workspace_t* global_workspace_create_custom(
         workspace->history_content = (float**)nimcp_calloc(
             actual_config.history_depth, sizeof(float*));
         if (workspace->history_content == NULL) {
-            fprintf(stderr, "Failed to allocate history content array\n");
+            LOG_ERROR("Failed to allocate history content array");
             nimcp_free(workspace->history);
             nimcp_free(workspace->broadcast_content);
             nimcp_free(workspace);
@@ -685,7 +685,7 @@ global_workspace_t* global_workspace_create_custom(
             workspace->history_content[i] = (float*)nimcp_calloc(
                 actual_config.capacity_dim, sizeof(float));
             if (workspace->history_content[i] == NULL) {
-                fprintf(stderr, "Failed to allocate history content buffer %u\n", i);
+                LOG_ERROR("Failed to allocate history content buffer %u", i);
                 // Clean up previously allocated
                 for (uint32_t j = 0; j < i; j++) {
                     /* Phase 8: Loop progress heartbeat */
@@ -949,8 +949,8 @@ bool global_workspace_compete(
     // Note: We call the internal parts directly to avoid recursive locking
     // Validate content dimension
     if (content_dim != ws->config.capacity_dim) {
-        fprintf(stderr, "Content dimension mismatch in global_workspace_compete: "
-                "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
+        LOG_ERROR("Content dimension mismatch in global_workspace_compete: "
+                "expected %u, got %u", ws->config.capacity_dim, content_dim);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
@@ -958,8 +958,8 @@ bool global_workspace_compete(
 
     // Validate strength range
     if (strength < 0.0F || strength > 1.0F) {
-        fprintf(stderr, "Invalid strength in global_workspace_compete: %.2f "
-                "(must be 0.0-1.0)\n", strength);
+        LOG_ERROR("Invalid strength in global_workspace_compete: %.2f "
+                "(must be 0.0-1.0)", strength);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
@@ -1012,8 +1012,8 @@ bool global_workspace_compete(
 
     // Guard: Check if pool is full
     if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
-        fprintf(stderr, "Competition pool full in global_workspace_compete "
-                "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        LOG_WARN("Competition pool full in global_workspace_compete "
+                "(%u competitors)", GLOBAL_WORKSPACE_MAX_COMPETITORS);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
@@ -1026,7 +1026,7 @@ bool global_workspace_compete(
     // Copy content - we own this buffer now
     float* content_copy = (float*)nimcp_malloc(content_dim * sizeof(float));
     if (!content_copy) {
-        fprintf(stderr, "Failed to allocate content buffer in global_workspace_compete\n");
+        LOG_ERROR("Failed to allocate content buffer in global_workspace_compete");
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_compete: content_copy is NULL");
         return false;
@@ -1134,13 +1134,13 @@ bool global_workspace_submit(
 {
     // Guard: NULL checks
     if (workspace == NULL) {
-        fprintf(stderr, "NULL workspace in global_workspace_submit\n");
+        LOG_ERROR("NULL workspace in global_workspace_submit");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
 
     if (content == NULL) {
-        fprintf(stderr, "NULL content in global_workspace_submit\n");
+        LOG_ERROR("NULL content in global_workspace_submit");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
@@ -1156,8 +1156,8 @@ bool global_workspace_submit(
 
     // Guard: Validate content dimension
     if (content_dim != ws->config.capacity_dim) {
-        fprintf(stderr, "Content dimension mismatch in global_workspace_submit: "
-                "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
+        LOG_ERROR("Content dimension mismatch in global_workspace_submit: "
+                "expected %u, got %u", ws->config.capacity_dim, content_dim);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
@@ -1165,8 +1165,8 @@ bool global_workspace_submit(
 
     // Guard: Validate strength range
     if (strength < 0.0F || strength > 1.0F) {
-        fprintf(stderr, "Invalid strength in global_workspace_submit: %.2f "
-                "(must be 0.0-1.0)\n", strength);
+        LOG_ERROR("Invalid strength in global_workspace_submit: %.2f "
+                "(must be 0.0-1.0)", strength);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
@@ -1220,8 +1220,8 @@ bool global_workspace_submit(
 
     // Guard: Check if pool is full
     if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
-        fprintf(stderr, "Competition pool full in global_workspace_submit "
-                "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        LOG_WARN("Competition pool full in global_workspace_submit "
+                "(%u competitors)", GLOBAL_WORKSPACE_MAX_COMPETITORS);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
@@ -1234,7 +1234,7 @@ bool global_workspace_submit(
     // Copy content - we own this buffer now (fixes buffer ownership issue)
     float* content_copy = (float*)nimcp_malloc(content_dim * sizeof(float));
     if (!content_copy) {
-        fprintf(stderr, "Failed to allocate content buffer in global_workspace_submit\n");
+        LOG_ERROR("Failed to allocate content buffer in global_workspace_submit");
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_submit: content_copy is NULL");
         return false;
@@ -1269,7 +1269,7 @@ bool global_workspace_resolve(
 {
     // Guard: NULL checks
     if (workspace == NULL) {
-        fprintf(stderr, "NULL workspace in global_workspace_resolve\n");
+        LOG_ERROR("NULL workspace in global_workspace_resolve");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: validation failed");
         return false;
     }
@@ -1318,12 +1318,12 @@ bool global_workspace_resolve(
             break;
 
         case COMPETITION_WEIGHTED_FUSION:
-            fprintf(stderr, "WEIGHTED_FUSION strategy not yet implemented\n");
+            LOG_WARN("WEIGHTED_FUSION strategy not yet implemented");
             found_winner = resolve_winner_take_all(ws, &winner_idx, &winner_strength);
             break;
 
         default:
-            fprintf(stderr, "Unknown competition strategy: %d\n", ws->config.strategy);
+            LOG_ERROR("Unknown competition strategy: %d", ws->config.strategy);
             found_winner = false;
             break;
     }
@@ -1449,16 +1449,15 @@ bool global_workspace_read_broadcast(
     // Thread safety
     nimcp_platform_mutex_lock(&ws->mutex);
 
-    // Check if broadcast available
+    // Check if broadcast available (no broadcast is normal, not an error)
     if (!ws->current_broadcast.is_valid) {
         nimcp_platform_mutex_unlock(&ws->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_read_broadcast: ws->current_broadcast is NULL");
         return false;
     }
 
     // Check buffer size
     if (max_dim < ws->current_broadcast.content_dim) {
-        fprintf(stderr, "Buffer too small: need %u, have %u\n",
+        LOG_ERROR("Buffer too small: need %u, have %u",
                 ws->current_broadcast.content_dim, max_dim);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_read_broadcast: validation failed");
@@ -1515,7 +1514,7 @@ bool global_workspace_subscribe(
 
     // Check if room for more
     if (ws->num_subscribers >= GLOBAL_WORKSPACE_MAX_SUBSCRIBERS) {
-        fprintf(stderr, "Subscriber list full (%u max)\n", GLOBAL_WORKSPACE_MAX_SUBSCRIBERS);
+        LOG_WARN("Subscriber list full (%u max)", GLOBAL_WORKSPACE_MAX_SUBSCRIBERS);
         nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_subscribe: capacity exceeded");
         return false;

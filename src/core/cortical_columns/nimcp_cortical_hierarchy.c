@@ -138,6 +138,12 @@ static void set_canonical_layers(
             *source_layer = 1;  // Layer II/III
             *target_layer = 1;  // Layer II/III
             break;
+
+        default:
+            // P2 FIX: Unknown connection type - use safe defaults
+            *source_layer = 0;
+            *target_layer = 0;
+            break;
     }
 }
 
@@ -180,7 +186,8 @@ static cortical_area_t* find_area_by_id(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_area_by_id: validation failed");
+    // P2 FIX: Not finding an area is a normal "not found" result, not an error.
+    // Removed false-positive NIMCP_THROW_TO_IMMUNE that treated lookup misses as errors.
     return NULL;
 }
 
@@ -207,7 +214,8 @@ static inter_area_connection_t* find_connection_by_id(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_connection_by_id: operation failed");
+    // P2 FIX: Not finding a connection is a normal "not found" result, not an error.
+    // Removed false-positive NIMCP_THROW_TO_IMMUNE that treated lookup misses as errors.
     return NULL;
 }
 
@@ -427,8 +435,21 @@ int cortical_hierarchy_add_area(
     // Add to hierarchy
     nimcp_mutex_lock(&hierarchy->mutex);
 
-    hierarchy->areas[hierarchy->num_areas] = area;
-    hierarchy->num_areas++;
+    // P2 FIX: Scan for NULL slots left by remove_area before appending.
+    // This prevents wasting array capacity after areas are removed.
+    // num_areas is a high-water mark (iteration bound), not the live count.
+    uint32_t slot = hierarchy->num_areas;  // Default: append at end
+    for (uint32_t i = 0; i < hierarchy->num_areas; i++) {
+        if (hierarchy->areas[i] == NULL) {
+            slot = i;
+            break;
+        }
+    }
+
+    hierarchy->areas[slot] = area;
+    if (slot == hierarchy->num_areas) {
+        hierarchy->num_areas++;  // Only bump high-water mark when appending
+    }
     *area_id_out = area->id;
 
     nimcp_mutex_unlock(&hierarchy->mutex);
@@ -526,19 +547,23 @@ const cortical_area_config_t* cortical_hierarchy_get_area_config(
     // Guard: Validate hierarchy
     if (!hierarchy) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hierarchy is NULL");
-
         return NULL;
     }
+
+    // P2 FIX: Protect against data race with concurrent add_area/remove_area.
+    // Cast away const for mutex (common C pattern for logically-const operations).
+    nimcp_mutex_lock(&((cortical_hierarchy_t*)hierarchy)->mutex);
 
     // Find area
     cortical_area_t* area = find_area_by_id(hierarchy, area_id);
     if (!area) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "area is NULL");
-
+        nimcp_mutex_unlock(&((cortical_hierarchy_t*)hierarchy)->mutex);
         return NULL;
     }
 
-    return &area->config;
+    const cortical_area_config_t* config = &area->config;
+    nimcp_mutex_unlock(&((cortical_hierarchy_t*)hierarchy)->mutex);
+    return config;
 }
 
 //=============================================================================

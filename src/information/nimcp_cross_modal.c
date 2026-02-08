@@ -35,9 +35,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cross_modal)
 #include <math.h>
 #include <float.h>
 
-// Simple logging macros (Phase C4.7 doesn't depend on logging system)
-#define nimcp_log_error(...)   fprintf(stderr, "[ERROR] " __VA_ARGS__); fprintf(stderr, "\n")
-#define nimcp_log_warning(...) fprintf(stderr, "[WARN]  " __VA_ARGS__); fprintf(stderr, "\n")
+/* Use project's standard logging macros (nimcp_logging.h included above) */
 
 //=============================================================================
 // HELPER FUNCTIONS
@@ -182,7 +180,7 @@ cross_modal_channel_t cross_modal_analyze_channel(
 
     // Guard: Validate inputs
     if (!source_modality || !dest_modality || !source_features || !dest_features || !config) {
-        nimcp_log_error("cross_modal_analyze_channel: NULL parameters");
+        LOG_ERROR("cross_modal_analyze_channel: NULL parameters");
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
                     "cross_modal_analyze_channel: NULL parameters");
         return channel;
@@ -190,7 +188,7 @@ cross_modal_channel_t cross_modal_analyze_channel(
 
     // Guard: Validate dimensions
     if (source_dim == 0 || dest_dim == 0 || num_samples == 0) {
-        nimcp_log_error("cross_modal_analyze_channel: Invalid dimensions");
+        LOG_ERROR("cross_modal_analyze_channel: Invalid dimensions");
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                     "cross_modal_analyze_channel: Invalid dimensions");
         return channel;
@@ -198,7 +196,7 @@ cross_modal_channel_t cross_modal_analyze_channel(
 
     // Guard: Check sample limit
     if (num_samples > CROSS_MODAL_MAX_SAMPLES) {
-        nimcp_log_warning("cross_modal_analyze_channel: Truncating to %u samples",
+        LOG_WARN("cross_modal_analyze_channel: Truncating to %u samples",
                          CROSS_MODAL_MAX_SAMPLES);
         num_samples = CROSS_MODAL_MAX_SAMPLES;
     }
@@ -258,14 +256,14 @@ bool cross_modal_is_bottleneck(
 
     // Guard: Validate channel
     if (!channel) {
-        nimcp_log_error("cross_modal_is_bottleneck: NULL channel");
+        LOG_ERROR("cross_modal_is_bottleneck: NULL channel");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_is_bottleneck: channel is NULL");
         return false;
     }
 
     // Guard: Validate threshold
     if (efficiency_threshold < 0.0F || efficiency_threshold > 1.0F) {
-        nimcp_log_warning("cross_modal_is_bottleneck: Invalid threshold %.2f, using 0.5",
+        LOG_WARN("cross_modal_is_bottleneck: Invalid threshold %.2f, using 0.5",
                          efficiency_threshold);
         efficiency_threshold = CROSS_MODAL_DEFAULT_BOTTLENECK_THRESHOLD;
     }
@@ -309,7 +307,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
 
     // Guard: Validate inputs
     if (!features || !dims || !modality_names || !config) {
-        nimcp_log_error("cross_modal_analyze_integration: NULL parameters");
+        LOG_ERROR("cross_modal_analyze_integration: NULL parameters");
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
                     "cross_modal_analyze_integration: NULL parameters");
         return integration;
@@ -317,7 +315,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
 
     // Guard: Validate modality count
     if (num_modalities < 2 || num_modalities > 4) {
-        nimcp_log_error("cross_modal_analyze_integration: Invalid num_modalities %u (must be 2-4)",
+        LOG_ERROR("cross_modal_analyze_integration: Invalid num_modalities %u (must be 2-4)",
                        num_modalities);
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                     "cross_modal_analyze_integration: Invalid num_modalities (must be 2-4)");
@@ -326,7 +324,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
 
     // Guard: Validate samples
     if (num_samples == 0) {
-        nimcp_log_error("cross_modal_analyze_integration: num_samples is 0");
+        LOG_ERROR("cross_modal_analyze_integration: num_samples is 0");
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                     "cross_modal_analyze_integration: num_samples is 0");
         return integration;
@@ -357,7 +355,7 @@ multi_modal_integration_t cross_modal_analyze_integration(
 
     float* joint_features = (float*)nimcp_malloc(num_samples * total_dim * sizeof(float));
     if (!joint_features) {
-        nimcp_log_error("cross_modal_analyze_integration: malloc failed");
+        LOG_ERROR("cross_modal_analyze_integration: malloc failed");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * total_dim * sizeof(float),
                           "cross_modal_analyze_integration: Failed to allocate joint features");
         return integration;
@@ -421,13 +419,13 @@ float cross_modal_compute_synergy(const multi_modal_integration_t* integration)
 
     // Guard: Validate integration
     if (!integration) {
-        nimcp_log_error("cross_modal_compute_synergy: NULL integration");
+        LOG_ERROR("cross_modal_compute_synergy: NULL integration");
         return 0.0F;
     }
 
     // Guard: Validate modalities
     if (integration->num_modalities < 2) {
-        nimcp_log_error("cross_modal_compute_synergy: Need at least 2 modalities");
+        LOG_ERROR("cross_modal_compute_synergy: Need at least 2 modalities");
         return 0.0F;
     }
 
@@ -453,7 +451,7 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
 
     // Guard: Validate inputs
     if (!modality_names) {
-        nimcp_log_error("cross_modal_create_routing_graph: NULL modality_names");
+        LOG_ERROR("cross_modal_create_routing_graph: NULL modality_names");
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
                     "cross_modal_create_routing_graph: NULL modality_names");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "modality_names is NULL");
@@ -463,7 +461,7 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
 
     // Guard: Validate modality count
     if (num_modalities == 0 || num_modalities > CROSS_MODAL_MAX_MODALITIES) {
-        nimcp_log_error("cross_modal_create_routing_graph: Invalid num_modalities %u",
+        LOG_ERROR("cross_modal_create_routing_graph: Invalid num_modalities %u",
                        num_modalities);
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
                     "cross_modal_create_routing_graph: Invalid num_modalities");
@@ -474,7 +472,7 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
     cross_modal_routing_graph_t* graph = (cross_modal_routing_graph_t*)
         nimcp_calloc(1, sizeof(cross_modal_routing_graph_t));
     if (!graph) {
-        nimcp_log_error("cross_modal_create_routing_graph: malloc failed");
+        LOG_ERROR("cross_modal_create_routing_graph: malloc failed");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cross_modal_routing_graph_t),
                           "cross_modal_create_routing_graph: Failed to allocate graph");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
@@ -512,21 +510,21 @@ bool cross_modal_update_routing_graph(
 
     // Guard: Validate graph
     if (!graph) {
-        nimcp_log_error("cross_modal_update_routing_graph: NULL graph");
+        LOG_ERROR("cross_modal_update_routing_graph: NULL graph");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_update_routing_graph: graph is NULL");
         return false;
     }
 
     // Guard: Validate channel
     if (!channel) {
-        nimcp_log_error("cross_modal_update_routing_graph: NULL channel");
+        LOG_ERROR("cross_modal_update_routing_graph: NULL channel");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_update_routing_graph: channel is NULL");
         return false;
     }
 
     // Guard: Validate indices
     if (source_id >= graph->num_modalities || dest_id >= graph->num_modalities) {
-        nimcp_log_error("cross_modal_update_routing_graph: Invalid indices %u, %u",
+        LOG_ERROR("cross_modal_update_routing_graph: Invalid indices %u, %u",
                        source_id, dest_id);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cross_modal_update_routing_graph: capacity exceeded");
         return false;
@@ -537,7 +535,7 @@ bool cross_modal_update_routing_graph(
         graph->channels[source_id][dest_id] = (cross_modal_channel_t*)
             nimcp_malloc(sizeof(cross_modal_channel_t));
         if (!graph->channels[source_id][dest_id]) {
-            nimcp_log_error("cross_modal_update_routing_graph: malloc failed");
+            LOG_ERROR("cross_modal_update_routing_graph: malloc failed");
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cross_modal_channel_t),
                               "cross_modal_update_routing_graph: Failed to allocate channel");
             return false;
@@ -563,7 +561,7 @@ bool cross_modal_detect_bottlenecks(
 
     // Guard: Validate inputs
     if (!graph || !bottlenecks || !num_bottlenecks) {
-        nimcp_log_error("cross_modal_detect_bottlenecks: NULL parameters");
+        LOG_ERROR("cross_modal_detect_bottlenecks: NULL parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_detect_bottlenecks: required parameter is NULL (graph, bottlenecks, num_bottlenecks)");
         return false;
     }
@@ -610,19 +608,19 @@ float cross_modal_find_optimal_route(
 
     // Guard: Validate inputs
     if (!graph || !path || !path_length) {
-        nimcp_log_error("cross_modal_find_optimal_route: NULL parameters");
+        LOG_ERROR("cross_modal_find_optimal_route: NULL parameters");
         return 0.0F;
     }
 
     // Guard: Validate indices
     if (source_id >= graph->num_modalities || dest_id >= graph->num_modalities) {
-        nimcp_log_error("cross_modal_find_optimal_route: Invalid indices");
+        LOG_ERROR("cross_modal_find_optimal_route: Invalid indices");
         return 0.0F;
     }
 
     // Guard: Validate path length
     if (max_path_length < 2) {
-        nimcp_log_error("cross_modal_find_optimal_route: max_path_length too small");
+        LOG_ERROR("cross_modal_find_optimal_route: max_path_length too small");
         return 0.0F;
     }
 

@@ -1495,6 +1495,12 @@ void* nimcp_calloc(size_t count, size_t size)
 {
     init_if_needed();
 
+    /* P1-41: Check for integer overflow before multiplication */
+    if (size != 0 && count > SIZE_MAX / size) {
+        MEMORY_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "nimcp_calloc: integer overflow in count * size");
+        return NULL;
+    }
+
     size_t user_size = count * size;
 
     // Use unified memory manager for all allocations

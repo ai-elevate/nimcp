@@ -526,6 +526,10 @@ static float get_mirror_ach_modulation(mirror_neurons_t mirror)
     // Map ACh range [0.3, 0.7] to modulation [0.6, 1.4]
     float modulation = 0.6F + (ach - 0.3F) * 2.0F;
 
+    // Clamp to safe range [0.0, 2.0]
+    if (modulation < 0.0f) modulation = 0.0f;
+    if (modulation > 2.0f) modulation = 2.0f;
+
     return modulation;
 }
 

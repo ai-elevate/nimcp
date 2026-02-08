@@ -28,6 +28,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <float.h>
+#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/platform/nimcp_platform_once.h"
 
 #define LOG_MODULE "curriculum"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -184,7 +186,12 @@ typedef struct {
     bool ascending;
 } sort_context_t;
 
-static sort_context_t g_sort_ctx;  /* Global for qsort (thread-unsafe, but simple) */
+static sort_context_t g_sort_ctx;  /* Global for qsort - protected by g_sort_mutex */
+static nimcp_platform_mutex_t g_sort_mutex;
+static nimcp_platform_once_t g_sort_mutex_once = NIMCP_PLATFORM_ONCE_INIT;
+static void init_sort_mutex(void) {
+    nimcp_platform_mutex_init(&g_sort_mutex, false);
+}
 
 /**
  * @brief Comparison function for sorting indices by difficulty
@@ -195,17 +202,13 @@ static int compare_by_difficulty(const void* a, const void* b) {
     float diff_a = g_sort_ctx.difficulties[idx_a];
     float diff_b = g_sort_ctx.difficulties[idx_b];
 
+    /* NOTE: qsort comparators must be fast and side-effect-free.
+     * No NIMCP_THROW_TO_IMMUNE calls allowed here. */
     if (g_sort_ctx.ascending) {
-        if (diff_a < diff_b) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_difficulty: validation failed");
-            return -1;
-        }
+        if (diff_a < diff_b) return -1;
         if (diff_a > diff_b) return 1;
     } else {
-        if (diff_a > diff_b) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_difficulty: validation failed");
-            return -1;
-        }
+        if (diff_a > diff_b) return -1;
         if (diff_a < diff_b) return 1;
     }
     return 0;
@@ -222,6 +225,10 @@ static void sort_indices(curriculum_ctx_t* ctx, bool ascending) {
         ctx->sorted_indices[i] = i;
     }
 
+    /* Thread-safe: lock mutex around g_sort_ctx access */
+    nimcp_platform_once(&g_sort_mutex_once, init_sort_mutex);
+    nimcp_platform_mutex_lock(&g_sort_mutex);
+
     /* Set up comparison context */
     g_sort_ctx.difficulties = ctx->difficulties;
     g_sort_ctx.ascending = ascending;
@@ -229,6 +236,8 @@ static void sort_indices(curriculum_ctx_t* ctx, bool ascending) {
     /* Sort */
     qsort(ctx->sorted_indices, ctx->num_samples, sizeof(uint32_t),
           compare_by_difficulty);
+
+    nimcp_platform_mutex_unlock(&g_sort_mutex);
 
     ctx->sorted_valid = true;
 }
@@ -866,11 +875,17 @@ int curriculum_get_stats(
 void curriculum_reset_stats(curriculum_ctx_t* ctx) {
     if (!ctx) return;
 
-    memset(&ctx->stats, 0, sizeof(curriculum_stats_t));
-    ctx->stats.num_bins = ctx->config.num_difficulty_bins;
+    /* Save bin_counts pointer before memset zeroes it */
+    float* saved_bins = ctx->stats.bin_counts;
+    uint32_t num_bins = ctx->config.num_difficulty_bins;
 
-    if (ctx->stats.bin_counts) {
-        memset(ctx->stats.bin_counts, 0, ctx->config.num_difficulty_bins * sizeof(float));
+    memset(&ctx->stats, 0, sizeof(curriculum_stats_t));
+    ctx->stats.num_bins = num_bins;
+
+    /* Restore bin_counts pointer and zero the bins */
+    ctx->stats.bin_counts = saved_bins;
+    if (saved_bins) {
+        memset(saved_bins, 0, num_bins * sizeof(float));
     }
 }
 

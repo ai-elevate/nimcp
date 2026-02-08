@@ -217,12 +217,12 @@ void nimcp_exception_throw(
  * @brief Try/catch context for setjmp/longjmp
  */
 typedef struct {
-    jmp_buf jmp_buffer;                /**< setjmp buffer */
-    nimcp_exception_t* exception;      /**< Caught exception */
-    bool exception_caught;             /**< Exception was caught */
-    const char* file;                  /**< Try block file */
-    int line;                          /**< Try block line */
-    const char* function;              /**< Try block function */
+    jmp_buf jmp_buffer;                       /**< setjmp buffer */
+    nimcp_exception_t* volatile exception;    /**< Caught exception (volatile: modified between setjmp/longjmp) */
+    volatile bool exception_caught;           /**< Exception was caught (volatile: modified between setjmp/longjmp) */
+    const char* file;                         /**< Try block file */
+    int line;                                 /**< Try block line */
+    const char* function;                     /**< Try block function */
 } nimcp_try_context_t;
 
 /**

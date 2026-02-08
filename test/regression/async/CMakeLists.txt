@@ -219,3 +219,34 @@ gtest_discover_tests(regression_async_test_self_assembly
         LABELS "regression;async;orchestrator;self-assembly"
         TIMEOUT 120
 )
+
+# =============================================================================
+# Async & Events Walkthrough Fix Regression Tests (P1/P2/P3 fixes 2026-02-08)
+# =============================================================================
+add_executable(regression_async_test_walkthrough_fixes
+    test_async_events_walkthrough_fixes.cpp
+)
+
+target_link_libraries(regression_async_test_walkthrough_fixes
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_async_test_walkthrough_fixes
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_async_test_walkthrough_fixes PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_async_test_walkthrough_fixes
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;async;events;walkthrough"
+        TIMEOUT 120
+)

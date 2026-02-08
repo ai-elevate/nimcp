@@ -24,14 +24,14 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_context_stub)
 
 nimcp_gpu_context_t* nimcp_gpu_context_create(int device_id) {
     (void)device_id;
-    // No GPU available in non-CUDA build
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_context_create: operation failed");
+    /* P2: Returning NULL on non-CUDA build is normal behavior, not an error.
+     * Removed NIMCP_THROW_TO_IMMUNE to avoid false-positive immune alerts. */
     return NULL;
 }
 
 nimcp_gpu_context_t* nimcp_gpu_context_create_auto(void) {
-    // No GPU available in non-CUDA build
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_context_create_auto: operation failed");
+    /* P2: Returning NULL on non-CUDA build is normal behavior, not an error.
+     * Removed NIMCP_THROW_TO_IMMUNE to avoid false-positive immune alerts. */
     return NULL;
 }
 
@@ -89,14 +89,15 @@ int nimcp_gpu_memcpy(nimcp_gpu_context_t* ctx,
                       size_t size_bytes,
                       nimcp_gpu_memcpy_kind_t kind) {
     (void)ctx;
-    (void)kind;
-    // Fallback: use CPU memcpy for host-to-host
-    if (dst && src) {
-        memcpy(dst, src, size_bytes);
-        return 0;
+    /* P2: Only support HOST_TO_HOST in stub mode; device operations require CUDA */
+    if (kind == GPU_MEMCPY_HOST_TO_HOST) {
+        if (dst && src) {
+            memcpy(dst, src, size_bytes);
+            return 0;
+        }
+        return -1;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_free: validation failed");
-    return -1;
+    return -1;  /* Device operations not supported in stub */
 }
 
 int nimcp_gpu_memcpy_async(nimcp_gpu_context_t* ctx,

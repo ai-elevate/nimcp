@@ -38,7 +38,7 @@ TEST_F(APIVersionTest, VersionStringNotNull) {
 TEST_F(APIVersionTest, VersionStringCorrect) {
     const char* version = nimcp_version();
     EXPECT_STREQ(version, NIMCP_VERSION_STRING);
-    EXPECT_STREQ(version, "2.6.1");
+    EXPECT_STREQ(version, "2.6.3");
 }
 
 /**
@@ -50,7 +50,7 @@ TEST_F(APIVersionTest, VersionIntCorrect) {
                    NIMCP_VERSION_MINOR * 100 +
                    NIMCP_VERSION_PATCH;
     EXPECT_EQ(version, expected);
-    EXPECT_EQ(version, 20601);  // 2.6.1 = 20601
+    EXPECT_EQ(version, 20603);  // 2.6.3 = 20603
 }
 
 /**
@@ -90,7 +90,7 @@ TEST_F(APIVersionTest, VersionConstantsConsistent) {
     // Check that the constants match
     EXPECT_EQ(NIMCP_VERSION_MAJOR, 2);
     EXPECT_EQ(NIMCP_VERSION_MINOR, 6);
-    EXPECT_EQ(NIMCP_VERSION_PATCH, 1);
+    EXPECT_EQ(NIMCP_VERSION_PATCH, 3);
 
     // Check that string constant matches component constants
     char expected[64];

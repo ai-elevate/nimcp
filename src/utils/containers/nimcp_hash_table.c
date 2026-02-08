@@ -49,6 +49,13 @@ typedef struct hash_entry_t {
  * WHAT: Hash table structure
  * WHY: Encapsulate all table state
  * HOW: Bucket array + configuration
+ *
+ * P3 LIMITATION: No dynamic resizing is implemented. The bucket count is fixed
+ * at creation time (default: 256). This means load factor grows linearly with
+ * entry count, degrading lookup from O(1) to O(n) in the worst case.
+ * SUGGESTED FIX: Implement resize when load_factor > 0.75 by allocating a new
+ * bucket array at 2x capacity and rehashing all entries. This is a major change
+ * that requires careful testing.
  */
 struct hash_table_t {
     hash_entry_t** buckets;      // Array of bucket heads
@@ -444,7 +451,8 @@ hash_table_t* hash_table_create(const hash_table_config_t* config)
                       "around ALL hash table operations including create, insert, lookup, "
                       "remove, iterate, and destroy. Failing to do so will cause data races.");
             nimcp_free(table);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hash_table_create: validation failed");
+            /* P2: Use NIMCP_ERROR_NOT_SUPPORTED (thread_safe not implemented), not NO_MEMORY */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_SUPPORTED, "hash_table_create: thread_safe=true not implemented");
             return NULL;
         }
     } else {

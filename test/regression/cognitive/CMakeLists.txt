@@ -306,3 +306,39 @@ gtest_discover_tests(regression_cognitive_creative
         LABELS "regression;cognitive;creative"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Cognitive & Training Walkthrough P1/P2/P3 Regression Tests
+# ============================================================================
+# WHAT: Regression tests for walkthrough P1-P3 fixes across cognitive/training modules
+# WHY:  Lock down buffer overflow, OOB access, memory leak, dangling pointer fixes
+# HOW:  Test capacity limits, boundary conditions, memory safety, false positive removal
+
+add_executable(regression_cognitive_training_walkthrough
+    test_cognitive_training_walkthrough_fixes.cpp
+)
+
+target_link_libraries(regression_cognitive_training_walkthrough
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_training_walkthrough
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_cognitive_training_walkthrough PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_training_walkthrough
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;training;walkthrough"
+        TIMEOUT 120
+)

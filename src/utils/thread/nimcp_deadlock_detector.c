@@ -82,7 +82,7 @@ static lock_dependency_t* find_thread_deps(pthread_t thread_id) {
         g_thread_deps[first_empty].in_use = true;  /* Mark slot as in use */
         return &g_thread_deps[first_empty];
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_thread_deps: capacity exceeded");
+    /* P2: Thread table full is a capacity condition, not an error */
     return NULL; // Table full
 }
 
@@ -102,6 +102,7 @@ static bool check_lock_ordering(lock_dependency_t* deps, tracked_mutex_t* mutex)
     uint32_t max_held_order = get_thread_max_order(deps);
 
     if (mutex->order <= max_held_order) {
+        /* P3: Using raw fprintf intentionally - LOG macros could recurse into lock tracking */
         fprintf(stderr, "\n*** LOCK ORDER VIOLATION DETECTED ***\n");
         fprintf(stderr, "Thread %lu attempting to acquire '%s' (order %u)\n",
                 (unsigned long)pthread_self(), mutex->name, mutex->order);
@@ -136,7 +137,7 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
     // Find what this thread is waiting on
     lock_dependency_t* deps = find_thread_deps(current_thread);
     if (!deps || !deps->waiting_on) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_lock_ordering: required parameter is NULL (deps, deps->waiting_on)");
+        /* P2: Thread not waiting on anything is a normal state, not an error */
         return false;
     }
 
@@ -167,7 +168,7 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
         return detect_cycle_recursive(start_thread, owner, visited, depth + 1);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_lock_ordering: operation failed");
+    /* P2: No cycle found from this thread is a normal result */
     return false;
 }
 
@@ -211,6 +212,8 @@ bool deadlock_detector_init(const deadlock_detector_config_t* config) {
     unlock_detector();
 
     if (g_config.enable_detector) {
+        /* P3: Using raw printf intentionally here. LOG macros could trigger mutex
+         * lock tracking which recurses back into the deadlock detector. */
         printf("Deadlock detector initialized (ordering=%s, timeout=%s, check_interval=%ums)\n",
                g_config.enable_lock_ordering ? "ON" : "OFF",
                g_config.enable_timeout ? "ON" : "OFF",
@@ -234,14 +237,27 @@ void deadlock_detector_shutdown(void) {
     uint64_t deadlocks = g_stats.deadlocks_detected;
     uint64_t cycles = g_stats.cycles_detected;
 
+    /* P2: Print stats BEFORE releasing lock and setting initialized=false
+     * to avoid TOCTOU where print_stats reads stale/zeroed data after
+     * another thread re-initializes the detector. */
+    printf("\n=== Deadlock Detector Shutdown ===\n");
+    /* NOTE: Using raw printf here (not LOG macros) because the deadlock detector
+     * uses its own internal locking. Using LOG macros could trigger lock tracking
+     * which would recurse into the detector while it's shutting down. */
+    printf("Total lock attempts:  %lu\n", (unsigned long)g_stats.total_locks);
+    printf("Total unlocks:        %lu\n", (unsigned long)g_stats.total_unlocks);
+    printf("Active threads:       %u\n", g_stats.active_threads);
+    printf("Active mutexes:       %u\n", g_stats.active_mutexes);
+    printf("  Lock timeouts:      %lu\n", (unsigned long)g_stats.lock_timeouts);
+    printf("  Order violations:   %lu\n", (unsigned long)g_stats.order_violations);
+    printf("  Deadlocks:          %lu\n", (unsigned long)g_stats.deadlocks_detected);
+    printf("  Cycles:             %lu\n", (unsigned long)g_stats.cycles_detected);
+    printf("====================================\n");
+
     // Mark as uninitialized while still holding lock
     g_initialized = false;
 
     unlock_detector();
-
-    // Print stats after releasing lock (these are I/O operations that shouldn't hold lock)
-    printf("\n=== Deadlock Detector Shutdown ===\n");
-    deadlock_detector_print_stats();
 
     if (deadlocks > 0 || cycles > 0) {
         fprintf(stderr, "\n*** WARNING: %lu deadlocks and %lu cycles detected during execution ***\n",
@@ -444,8 +460,9 @@ bool tracked_mutex_trylock(tracked_mutex_t* mutex) {
 
         }
 
+    /* P2: Use NIMCP_SUCCESS instead of raw 0 for consistency */
     int result = nimcp_mutex_trylock(&mutex->mutex);
-    if (result == 0) {
+    if (result == NIMCP_SUCCESS) {
         // Acquired
         lock_detector();
         mutex->is_locked = true;
@@ -455,7 +472,7 @@ bool tracked_mutex_trylock(tracked_mutex_t* mutex) {
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracked_mutex_trylock: operation failed");
+    /* P2: trylock returning EBUSY is normal contention, not an error */
     return false;
 }
 
@@ -495,11 +512,8 @@ void tracked_mutex_unlock(tracked_mutex_t* mutex) {
 
 uint32_t deadlock_detector_check(void) {
     if (!g_initialized || !g_config.enable_detector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "deadlock_detector_check: invalid parameters");
-
-            return 0;
+        /* P2: Not initialized or detector disabled is a normal state */
+        return 0;
     }
 
     lock_detector();
@@ -617,11 +631,8 @@ bool deadlock_detector_is_enabled(void) {
     /* Use atomic load to avoid race condition on g_initialized */
     bool initialized = __atomic_load_n(&g_initialized, __ATOMIC_ACQUIRE);
     if (!initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "deadlock_detector_is_enabled: initialized is NULL");
-
-            return false;
+        /* P2: Not initialized is a normal state - just report disabled */
+        return false;
     }
     lock_detector();
     bool enabled = g_config.enable_detector;

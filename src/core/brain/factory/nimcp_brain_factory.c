@@ -300,6 +300,10 @@ extern void set_error(const char* format, ...);
 // Main Factory Functions
 //=============================================================================
 
+// P3 NOTE: personality_profile_t is assumed to be a flat POD type (no internal allocations).
+// If personality_profile_t ever gains dynamically allocated fields (e.g., char* name),
+// then ALL callers using nimcp_free(brain->personality) MUST change to a dedicated
+// personality_destroy() function. See also: nimcp_brain.c brain_destroy().
 personality_profile_t* create_personality(const brain_config_t* config)
 {
     // Guard: NULL check
@@ -532,6 +536,8 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // ========================================================================
     // PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS
+    // P2 FIX: Check each pool creation for failure. Pools are optional
+    // optimizations - code falls back to heap allocation if pool is NULL.
     // ========================================================================
     memory_pool_config_t decision_pool_config = {
         .block_size = sizeof(brain_decision_t),
@@ -539,6 +545,9 @@ brain_t brain_create_custom(const brain_config_t* config)
         .enable_tracking = false, .enable_guard_pages = false
     };
     brain->decision_struct_pool = memory_pool_create(&decision_pool_config);
+    if (!brain->decision_struct_pool) {
+        LOG_MODULE_WARN("BRAIN_FACTORY", "Decision pool creation failed, using heap fallback");
+    }
 
     memory_pool_config_t output_pool_config = {
         .block_size = config->num_outputs * sizeof(float),
@@ -546,6 +555,9 @@ brain_t brain_create_custom(const brain_config_t* config)
         .enable_tracking = false, .enable_guard_pages = false
     };
     brain->output_vector_pool = memory_pool_create(&output_pool_config);
+    if (!brain->output_vector_pool) {
+        LOG_MODULE_WARN("BRAIN_FACTORY", "Output vector pool creation failed, using heap fallback");
+    }
 
     uint32_t max_active = num_neurons / 10;
     if (max_active < 100) max_active = 100;
@@ -557,6 +569,9 @@ brain_t brain_create_custom(const brain_config_t* config)
         .enable_tracking = false, .enable_guard_pages = false
     };
     brain->active_neuron_ids_pool = memory_pool_create(&active_ids_pool_config);
+    if (!brain->active_neuron_ids_pool) {
+        LOG_MODULE_WARN("BRAIN_FACTORY", "Active neuron IDs pool creation failed, using heap fallback");
+    }
 
     // ========================================================================
     // SUBSYSTEM INITIALIZATION (in dependency order)
@@ -1105,6 +1120,11 @@ brain_t brain_create_custom(const brain_config_t* config)
             brain->config.enable_quantum_annealing = false;
         }
     }
+
+    // P1-9 FIX: Increment bio-async reference counter for this brain.
+    // Only the last brain to be destroyed will unregister the global bio-async context.
+    extern volatile int g_brain_bio_ref_count;
+    __atomic_fetch_add(&g_brain_bio_ref_count, 1, __ATOMIC_ACQ_REL);
 
     brain_clear_error();
     return brain;

@@ -186,8 +186,7 @@ static nimcp_toctou_token_t find_free_token_slot(nimcp_toctou_guard_t guard) {
     for (uint32_t i = 0; i < guard->config.max_concurrent_tokens; i++) {
         nimcp_toctou_token_t token = guard->token_pool[i];
         if (token == NULL) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_token_slot: validation failed");
-            return NULL; // Slot available for new allocation
+            return NULL; // Slot available for new allocation (not an error)
         }
 
         nimcp_platform_mutex_lock(&token->token_lock);
@@ -202,7 +201,7 @@ static nimcp_toctou_token_t find_free_token_slot(nimcp_toctou_guard_t guard) {
         nimcp_platform_mutex_unlock(&token->token_lock);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_token_slot: operation failed");
+    /* P1-43: No free slot found is a normal condition, not an error */
     return NULL;
 }
 

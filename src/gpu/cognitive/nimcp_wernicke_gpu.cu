@@ -706,7 +706,9 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
 
     // Compute similarities
     dim3 grid(num_frames, 1, 1);
-    dim3 block(ctx->num_phonemes, 1, 1);
+    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+    uint32_t phoneme_block = (ctx->num_phonemes > 1024) ? 1024 : ctx->num_phonemes;
+    dim3 block(phoneme_block, 1, 1);
 
     kernel_compute_phoneme_similarity<<<grid, block, 0, ctx->stream>>>(
         d_spectral,
@@ -741,6 +743,16 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     // Copy results back
     uint8_t* h_phoneme_ids = (uint8_t*)malloc(num_frames);
     float* h_confidences = (float*)malloc(num_frames * sizeof(float));
+    /* P1-18: NULL check after malloc to prevent NULL dereference */
+    if (!h_phoneme_ids || !h_confidences) {
+        free(h_phoneme_ids);
+        free(h_confidences);
+        cudaFree(d_spectral);
+        cudaFree(d_phoneme_ids);
+        cudaFree(d_confidences);
+        LOG_ERROR("Failed to allocate host buffers for phoneme results");
+        return false;
+    }
 
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_phoneme_ids, d_phoneme_ids, num_frames,
                                cudaMemcpyDeviceToHost, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
@@ -790,7 +802,9 @@ extern "C" bool wernicke_gpu_compute_posteriors(
 
     // Compute similarities
     dim3 grid(num_frames, 1, 1);
-    dim3 block(ctx->num_phonemes, 1, 1);
+    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+    uint32_t phoneme_block = (ctx->num_phonemes > 1024) ? 1024 : ctx->num_phonemes;
+    dim3 block(phoneme_block, 1, 1);
 
     kernel_compute_phoneme_similarity<<<grid, block, 0, ctx->stream>>>(
         d_spectral,
@@ -1138,6 +1152,12 @@ extern "C" bool wernicke_gpu_spread_activation(
 
             // Set seed activations
             float* h_acts = (float*)calloc(needed, sizeof(float));
+            /* P2: NULL check after calloc */
+            if (!h_acts) {
+                LOG_ERROR("Failed to allocate seed activations buffer");
+                if (num_results) *num_results = 0;
+                return false;
+            }
             for (uint32_t i = 0; i < num_seeds; i++) {
                 if (seed_concepts[i] < needed) {
                     h_acts[seed_concepts[i]] = seed_activations[i];
@@ -1222,6 +1242,15 @@ extern "C" bool wernicke_gpu_spread_activation(
 
     // Copy final activations to host and sort
     float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
+    /* P2: NULL check after malloc */
+    if (!h_activations) {
+        LOG_ERROR("Failed to allocate host activations buffer");
+        cudaFree(d_new_activations);
+        cudaFree(d_seed_acts);
+        cudaFree(d_seeds);
+        if (num_results) *num_results = 0;
+        return false;
+    }
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_activations, current, ctx->num_concepts * sizeof(float),
                                cudaMemcpyDeviceToHost, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
@@ -1230,6 +1259,16 @@ extern "C" bool wernicke_gpu_spread_activation(
         // Find top activated (simple CPU sort for now)
         typedef struct { uint32_t id; float activation; } act_pair_t;
         act_pair_t* pairs = (act_pair_t*)malloc(ctx->num_concepts * sizeof(act_pair_t));
+        /* P2: NULL check after malloc */
+        if (!pairs) {
+            LOG_ERROR("Failed to allocate pairs buffer");
+            free(h_activations);
+            cudaFree(d_new_activations);
+            cudaFree(d_seed_acts);
+            cudaFree(d_seeds);
+            *num_results = 0;
+            return false;
+        }
 
         uint32_t count = 0;
         for (uint32_t i = 0; i < ctx->num_concepts; i++) {
@@ -1240,7 +1279,8 @@ extern "C" bool wernicke_gpu_spread_activation(
             }
         }
 
-        // Simple bubble sort (for demonstration - should use proper sorting)
+        /* P3: TODO: Replace with partial sort or heap-based top-k for O(n log k) */
+        /* Simple selection sort for top results (for demonstration) */
         for (uint32_t i = 0; i < count && i < max_results; i++) {
             for (uint32_t j = i + 1; j < count; j++) {
                 if (pairs[j].activation > pairs[i].activation) {
@@ -1293,6 +1333,12 @@ extern "C" bool wernicke_gpu_get_top_activated(
 
     // Copy activations to host
     float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
+    /* P2: NULL check after malloc */
+    if (!h_activations) {
+        LOG_ERROR("Failed to allocate host activations buffer");
+        *actual_count = 0;
+        return false;
+    }
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_activations, ctx->d_concept_activations,
                                ctx->num_concepts * sizeof(float),
                                cudaMemcpyDeviceToHost, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
@@ -1301,6 +1347,13 @@ extern "C" bool wernicke_gpu_get_top_activated(
     // Find top-k
     typedef struct { uint32_t id; float activation; } act_pair_t;
     act_pair_t* top = (act_pair_t*)calloc(top_k, sizeof(act_pair_t));
+    /* P2: NULL check after calloc */
+    if (!top) {
+        LOG_ERROR("Failed to allocate top-k buffer");
+        free(h_activations);
+        *actual_count = 0;
+        return false;
+    }
 
     for (uint32_t i = 0; i < ctx->num_concepts; i++) {
         float act = h_activations[i];
@@ -1396,6 +1449,11 @@ extern "C" bool wernicke_gpu_wm_push(
 
     // Initialize activations to 1.0
     float* h_ones = (float*)malloc(to_push * sizeof(float));
+    /* P2: NULL check after malloc */
+    if (!h_ones) {
+        LOG_ERROR("Failed to allocate working memory activation buffer");
+        return false;
+    }
     for (uint32_t i = 0; i < to_push; i++) h_ones[i] = 1.0f;
 
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->d_wm_activations + ctx->wm_count,
@@ -1510,6 +1568,11 @@ extern "C" bool wernicke_gpu_comprehend(
     // Step 1: Recognize phonemes
     wernicke_gpu_phoneme_result_t* phonemes =
         (wernicke_gpu_phoneme_result_t*)malloc(num_frames * sizeof(wernicke_gpu_phoneme_result_t));
+    /* P2: NULL check after malloc */
+    if (!phonemes) {
+        LOG_ERROR("Failed to allocate phoneme results buffer");
+        return false;
+    }
 
     if (!wernicke_gpu_recognize_phonemes(ctx, frames, num_frames, phonemes)) {
         free(phonemes);
@@ -1518,6 +1581,12 @@ extern "C" bool wernicke_gpu_comprehend(
 
     // Step 2: Extract phoneme sequence
     uint8_t* phoneme_seq = (uint8_t*)malloc(num_frames);
+    /* P2: NULL check after malloc */
+    if (!phoneme_seq) {
+        LOG_ERROR("Failed to allocate phoneme sequence buffer");
+        free(phonemes);
+        return false;
+    }
     for (uint32_t i = 0; i < num_frames; i++) {
         phoneme_seq[i] = phonemes[i].phoneme_id;
     }
@@ -1596,6 +1665,13 @@ extern "C" bool wernicke_gpu_comprehend(
             // Use recognized word concepts as seeds
             uint32_t* seed_concepts = (uint32_t*)malloc(*num_word_candidates * sizeof(uint32_t));
             float* seed_activations_arr = (float*)malloc(*num_word_candidates * sizeof(float));
+            /* P2: NULL check after malloc */
+            if (!seed_concepts || !seed_activations_arr) {
+                free(seed_concepts);
+                free(seed_activations_arr);
+                LOG_ERROR("Failed to allocate seed buffers for semantic activation");
+                /* Continue without semantic activation rather than failing entirely */
+            } else {
 
             // Map word_id to concept_id (simplified - assumes word_id == concept_id)
             for (uint32_t i = 0; i < *num_word_candidates; i++) {
@@ -1612,6 +1688,7 @@ extern "C" bool wernicke_gpu_comprehend(
 
             free(seed_activations_arr);
             free(seed_concepts);
+            } /* end else (successful malloc) */
         }
     }
 

@@ -116,6 +116,10 @@ int quantum_ternary_anneal(
     if (rng_state == 0) {
         rng_state = (uint64_t)time(NULL) ^ (uint64_t)(size_t)ising;
     }
+    /* P2 fix: xorshift64 with seed 0 produces all-zero sequence */
+    if (rng_state == 0) {
+        rng_state = 1;
+    }
 
     /* Reset all spins to superposition */
     for (uint32_t i = 0; i < ising->n_spins; i++) {
@@ -142,7 +146,10 @@ int quantum_ternary_anneal(
     /* Main annealing loop */
     for (uint32_t sweep = 0; sweep < config->num_sweeps; sweep++) {
         /* Compute temperature and gamma for this sweep */
-        float progress = (float)sweep / (float)(config->num_sweeps - 1);
+        /* P1-16 fix: When num_sweeps==1, (num_sweeps-1)=0 causes div-by-zero */
+        float progress = (config->num_sweeps > 1)
+            ? (float)sweep / (float)(config->num_sweeps - 1)
+            : 1.0f;
 
         /* Exponential cooling */
         float log_ratio = logf(config->initial_temperature / config->final_temperature);

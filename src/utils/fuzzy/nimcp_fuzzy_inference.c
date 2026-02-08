@@ -411,6 +411,8 @@ static int evaluate_mamdani(fuzzy_inference_engine_t* engine,
             if (rule->mamdani.var_index != o) continue;
 
             float strength = compute_rule_strength(engine, rule, inputs);
+            /* P3: Bounds check before writing to rule_firing_strengths */
+            if (r >= FUZZY_MAX_RULES) break;
             result->rule_firing_strengths[r] = strength;
             if (strength <= FUZZY_PRECISION) continue;
 
@@ -458,6 +460,8 @@ static int evaluate_sugeno(fuzzy_inference_engine_t* engine,
             const fuzzy_rule_t* rule = &engine->rules[r];
 
             float strength = compute_rule_strength(engine, rule, inputs);
+            /* P3: Bounds check before writing to rule_firing_strengths */
+            if (r >= FUZZY_MAX_RULES) break;
             result->rule_firing_strengths[r] = strength;
             if (strength <= FUZZY_PRECISION) continue;
 
@@ -530,6 +534,8 @@ static int evaluate_tsukamoto(fuzzy_inference_engine_t* engine,
             if (rule->mamdani.var_index != o) continue;
 
             float strength = compute_rule_strength(engine, rule, inputs);
+            /* P3: Bounds check before writing to rule_firing_strengths */
+            if (r >= FUZZY_MAX_RULES) break;
             result->rule_firing_strengths[r] = strength;
             if (strength <= FUZZY_PRECISION) continue;
 

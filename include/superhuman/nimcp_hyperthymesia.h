@@ -41,6 +41,10 @@ extern "C" {
 
 /**
  * @brief Hyperthymesia module error codes
+ *
+ * NOTE: These are module-local error codes specific to the hyperthymesia
+ * subsystem. They should NOT be compared with nimcp_error_t values.
+ * Use hyperthymesia_error_string() to convert to human-readable form.
  */
 typedef enum {
     HYPERTHYMESIA_ERROR_NONE = 0,

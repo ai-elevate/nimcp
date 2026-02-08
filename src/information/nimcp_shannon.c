@@ -1121,6 +1121,7 @@ float shannon_snr_from_db(float snr_db)
     return powf(10.0F, snr_db / 10.0F);
 }
 
+/* Intentional printf to stdout - these are display/diagnostic functions */
 void shannon_print_synapse_metrics(
     const shannon_synapse_metrics_t* metrics,
     const char* label)

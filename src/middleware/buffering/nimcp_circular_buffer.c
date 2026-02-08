@@ -50,6 +50,10 @@ struct circular_buffer {
     _Alignas(CACHE_LINE_SIZE) atomic_size_t read_pos;   /**< Read position */
 
     // Statistics (non-atomic version for API compatibility)
+    // P2 note: avg_usage and peak_usage in stats are approximate (non-atomic).
+    // This is a deliberate design trade-off: these values are informational
+    // and don't need exact accuracy. The atomic counters below are the
+    // authoritative counters for total_writes/reads/overflows/underflows.
     _Alignas(CACHE_LINE_SIZE) circular_buffer_stats_t stats;
 
     // THREAD SAFETY FIX: Atomic statistics counters for lock-free updates

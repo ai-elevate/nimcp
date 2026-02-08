@@ -34,6 +34,11 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_medulla_bridge)
 
+/**
+ * NOTE: Debug fprintf calls in this module are intentionally gated by
+ * config.enable_logging and bypass the logging framework by design.
+ * This avoids logging overhead in the real-time pursuit path.
+ */
 #define LOG_MODULE "DRAGONFLY_MEDULLA_BRIDGE"
 
 

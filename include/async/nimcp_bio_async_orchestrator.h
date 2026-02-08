@@ -394,6 +394,7 @@ struct bio_async_orchestrator {
 
     /* Thread safety */
     nimcp_mutex_t* mutex;                  /**< Thread-safe operations */
+    uint32_t state_version;                /**< P2 fix: Version counter for TOCTOU detection */
 
     /* Runtime state */
     bool bio_async_connected;              /**< Bio-async is connected */

@@ -86,6 +86,15 @@ add_gpu_regression_test(test_substrate_gpu_regression)
 # HOW:  Test struct layouts, function signatures, edge cases, memory safety
 add_gpu_regression_test(test_visual_processing_regression)
 
+# =============================================================================
+# GPU Walkthrough Fixes Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU P1/P2/P3 walkthrough fixes
+# WHY:  Prevent reintroduction of division-by-zero, OOB, block size,
+#        condition ordering, and stub behavior bugs
+# HOW:  Test specific bug scenarios (P1-12 through P3) and verify fixes
+add_gpu_regression_test(test_gpu_walkthrough_fixes)
+
 # Include broca subdirectory if it exists
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/broca/CMakeLists.txt)
     add_subdirectory(broca)

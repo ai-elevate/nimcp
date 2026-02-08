@@ -560,6 +560,7 @@ music_track_t* music_track_create(uint32_t max_notes) {
     }
 
     track->num_notes = 0;
+    track->max_notes = max_notes;
     track->channel = 0;
     track->instrument = 0;
     strncpy(track->track_name, "Track", sizeof(track->track_name) - 1);
@@ -582,8 +583,11 @@ int music_track_add_note(music_track_t* track, const music_note_t* note) {
         return -1;
     }
 
-    /* Would need to track capacity - simplified for now */
-    /* In full implementation, would realloc if needed */
+    /* Check capacity before adding */
+    if (track->num_notes >= track->max_notes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_track_add_note: track is full");
+        return -1;
+    }
 
     track->notes[track->num_notes] = *note;
     track->num_notes++;

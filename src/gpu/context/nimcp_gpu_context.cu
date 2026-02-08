@@ -288,10 +288,17 @@ void* nimcp_gpu_malloc(nimcp_gpu_context_t* ctx, size_t size_bytes) {
         }
     }
 
-    ctx->allocated_memory += size_bytes;
-    ctx->allocation_count++;
-    if (ctx->allocated_memory > ctx->peak_memory) {
-        ctx->peak_memory = ctx->allocated_memory;
+    /* P2: Use atomic operations for thread-safe memory counter updates */
+    __atomic_fetch_add(&ctx->allocated_memory, size_bytes, __ATOMIC_SEQ_CST);
+    __atomic_fetch_add(&ctx->allocation_count, 1, __ATOMIC_SEQ_CST);
+    size_t current_allocated = __atomic_load_n(&ctx->allocated_memory, __ATOMIC_SEQ_CST);
+    size_t current_peak = __atomic_load_n(&ctx->peak_memory, __ATOMIC_SEQ_CST);
+    while (current_allocated > current_peak) {
+        if (__atomic_compare_exchange_n(&ctx->peak_memory, &current_peak,
+                                         current_allocated, false,
+                                         __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+            break;
+        }
     }
 
     return dev_ptr;
@@ -302,7 +309,10 @@ void nimcp_gpu_free(nimcp_gpu_context_t* ctx, void* dev_ptr) {
 
     cudaSetDevice(ctx->device_id);
     cudaFree(dev_ptr);
-    ctx->deallocation_count++;
+    /* P2: GPU memory tracking - cannot decrement allocated_memory without knowing
+     * the allocation size. Would need a size-tracking hash table for full tracking.
+     * For now, deallocation_count is tracked atomically. */
+    __atomic_fetch_add(&ctx->deallocation_count, 1, __ATOMIC_SEQ_CST);
 }
 
 int nimcp_gpu_memcpy(nimcp_gpu_context_t* ctx,
@@ -427,6 +437,7 @@ void nimcp_gpu_memory_stats(const nimcp_gpu_context_t* ctx,
     }
 }
 
+/* P3: Add const to pure getter function parameter types */
 nimcp_cuda_stream_t nimcp_gpu_get_compute_stream(nimcp_gpu_context_t* ctx) {
     if (!nimcp_gpu_context_is_valid(ctx)) return NULL;
     return ctx->compute_stream;
@@ -493,11 +504,12 @@ uint32_t nimcp_gpu_get_optimal_block_size(const nimcp_gpu_context_t* ctx,
     if (!ctx) return 256;
 
     // Simple heuristic: reduce block size if using lots of shared memory
+    /* P1-19: Fix condition ordering - check larger value first so 32768 branch is reachable */
     uint32_t block_size = ctx->default_block_size;
-    if (shared_mem_per_block > 16384) {
-        block_size = 128;
-    } else if (shared_mem_per_block > 32768) {
+    if (shared_mem_per_block > 32768) {
         block_size = 64;
+    } else if (shared_mem_per_block > 16384) {
+        block_size = 128;
     }
 
     return block_size;

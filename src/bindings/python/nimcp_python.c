@@ -1,7 +1,7 @@
 /**
  * @file nimcp_python.c
- * @brief Comprehensive Python bindings for NIMCP v2.7.0 with all features
- * @version 2.7.0
+ * @brief Comprehensive Python bindings for NIMCP v2.6.3 with all features
+ * @version 2.6.3
  * @date 2025-11-05
  *
  * WHAT: Complete Python interface to NIMCP unified API

@@ -15,15 +15,17 @@
 #include <math.h>
 #include <time.h>
 
-/* GPU acceleration with CPU fallback */
-#ifdef NIMCP_ENABLE_CUDA
-#include "gpu/quantum/nimcp_qmc_gpu.h"
-#include "gpu/context/nimcp_gpu_context.h"
+/* Health agent macros must be at file scope, not inside #ifdef */
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hypothesis_generation)
+
+/* GPU acceleration with CPU fallback */
+#ifdef NIMCP_ENABLE_CUDA
+#include "gpu/quantum/nimcp_qmc_gpu.h"
+#include "gpu/context/nimcp_gpu_context.h"
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

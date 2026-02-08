@@ -282,6 +282,7 @@ typedef struct {
 
     bool is_locked;                              /**< Whether KB is mprotect'd */
     bool is_compiled;                            /**< Whether rules are compiled */
+    bool integrity_verified_while_locked;        /**< Cached: integrity OK after lock */
 
     uint64_t created_timestamp;                  /**< When KB was created */
     uint64_t locked_timestamp;                   /**< When KB was locked */

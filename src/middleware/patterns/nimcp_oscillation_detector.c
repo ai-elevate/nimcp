@@ -904,15 +904,15 @@ bool oscillation_detector_get_band_power(const oscillation_detector_t* detector,
 void oscillation_detector_reset(oscillation_detector_t* detector) {
     if (!detector) return;
 
+    // Clear analysis state: signal buffer and band states
     detector->buffer.count = 0;
     detector->buffer.head = 0;
     memset(detector->band_states, 0, sizeof(detector->band_states));
 
-    // Reset lifetime statistics
-    detector->total_samples = 0;
-    detector->total_bursts = 0;
-    detector->sum_power = 0.0;
-    detector->power_measurements = 0;
+    // Note: Lifetime statistics (total_samples, total_bursts, sum_power,
+    // power_measurements) are intentionally NOT reset here.
+    // reset() clears analysis state for a fresh analysis window,
+    // but statistics persist as lifetime counters.
 }
 
 bool oscillation_detector_get_stats(const oscillation_detector_t* detector,

@@ -25,6 +25,13 @@
 
 #define LOG_MODULE "OPTIMIZATION"
 
+/* Named constants for quantum annealing parameters (P3: replace magic numbers) */
+#define QA_TUNNELING_ALPHA          0.5F   /**< Tunable exponent for quantum tunneling */
+#define QA_TUNNELING_TEMP_MIN       1e-10F /**< Minimum scaled temperature to avoid div-by-zero */
+#define QA_TUNNELING_EXP_CLAMP      -20.0F /**< Clamp exponent to prevent underflow */
+#define QA_NEIGHBOR_STEP_SCALE      0.5F   /**< Neighbor perturbation scale factor */
+#define QA_LOG_COOLING_MIN_DENOM    1e-10F /**< Minimum denominator for logarithmic cooling */
+
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
@@ -118,9 +125,9 @@ static void init_rng(quantum_annealer_t annealer) {
 /**
  * @brief Generate random float in [0, 1)
  *
- * WHAT: Fast random number generation using Monte Carlo utilities
+ * WHAT: Fast random number generation
  * WHY:  Need many random numbers during annealing
- * HOW:  Use thread-safe mc_random_uniform() from MC utilities
+ * HOW:  Numerical Recipes LCG for deterministic per-seed sequences
  *
  * @param annealer Annealer instance
  * @return Random float in [0, 1)
@@ -128,24 +135,19 @@ static void init_rng(quantum_annealer_t annealer) {
  * COMPLEXITY: O(1)
  */
 static float random_float(quantum_annealer_t annealer) {
-    if (!annealer || !annealer->rng_state) {
-        /* Fallback to thread-local seed */
-        if (g_qa_mc_seed == 0) {
-            g_qa_mc_seed = mc_seed_from_time();
-        }
-        return mc_random_uniform(&g_qa_mc_seed);
-    }
+    if (!annealer || !annealer->rng_state) return 0.5F;
 
-    /* Use annealer-specific seed via MC API for reproducibility */
-    return mc_random_uniform(annealer->rng_state);
+    /* Numerical Recipes LCG */
+    *annealer->rng_state = (*annealer->rng_state * 1664525U + 1013904223U);
+    return (*annealer->rng_state) / 4294967296.0F;
 }
 
 /**
  * @brief Generate random Gaussian value
  *
- * WHAT: Gaussian random number using Monte Carlo utilities
+ * WHAT: Box-Muller transform for normal distribution
  * WHY:  Need Gaussian perturbations for state transitions
- * HOW:  Use mc_random_gaussian() from MC utilities
+ * HOW:  Inline Box-Muller using random_float() for deterministic sequences
  *
  * @param annealer Annealer instance
  * @param mean Mean of distribution
@@ -155,18 +157,17 @@ static float random_float(quantum_annealer_t annealer) {
  * COMPLEXITY: O(1)
  */
 static float random_gaussian(quantum_annealer_t annealer, float mean, float stddev) {
-    uint32_t* seed;
-    if (!annealer || !annealer->rng_state) {
-        /* Fallback to thread-local seed */
-        if (g_qa_mc_seed == 0) {
-            g_qa_mc_seed = mc_seed_from_time();
-        }
-        seed = &g_qa_mc_seed;
-    } else {
-        seed = annealer->rng_state;
-    }
+    if (!annealer) return mean;
 
-    return mc_random_normal(seed, mean, stddev);
+    /* Box-Muller transform */
+    float u1 = random_float(annealer);
+    float u2 = random_float(annealer);
+
+    /* Avoid log(0) */
+    u1 = (u1 < 1e-10F) ? 1e-10F : u1;
+
+    float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * (float)M_PI * u2);
+    return mean + stddev * z;
 }
 
 /**
@@ -272,8 +273,16 @@ static float calculate_temperature(quantum_annealer_t annealer, uint32_t iterati
         case COOLING_LINEAR:
             return T_init - (T_init - T_final) * progress;
 
-        case COOLING_LOGARITHMIC:
-            return T_init / logf(1.0F + (float)iteration);
+        case COOLING_LOGARITHMIC: {
+            /* T(t) = T_init / (1 + c * log(1 + t))
+             * where c = (T_init/T_final - 1) / log(N)
+             * This gives T(0) = T_init and T(N-1) ≈ T_final */
+            float log_N = logf((float)N);
+            float c = (log_N > QA_LOG_COOLING_MIN_DENOM)
+                     ? (T_init / T_final - 1.0F) / log_N
+                     : 1.0F;
+            return T_init / (1.0F + c * logf(1.0F + (float)iteration));
+        }
 
         case COOLING_ADAPTIVE: {
             // Simplified adaptive: use exponential as baseline
@@ -340,15 +349,15 @@ static float quantum_tunneling_probability(
     if (temperature <= 0.0F) return 0.0F;
 
     float barrier_height = fabsf(delta_energy);
-    float alpha = 0.5F;  // Tunable exponent
+    float alpha = QA_TUNNELING_ALPHA;
     float temp_scaled = powf(temperature, alpha);
 
     // Avoid division by zero or overflow
-    if (temp_scaled < 1e-10F) return 0.0F;
+    if (temp_scaled < QA_TUNNELING_TEMP_MIN) return 0.0F;
 
     float exponent = -barrier_height / temp_scaled;
     // Clamp to prevent underflow
-    exponent = (exponent < -20.0F) ? -20.0F : exponent;
+    exponent = (exponent < QA_TUNNELING_EXP_CLAMP) ? QA_TUNNELING_EXP_CLAMP : exponent;
 
     return quantum_strength * expf(exponent);
 }
@@ -382,7 +391,7 @@ static void generate_neighbor(
 
     // Larger step size for better exploration: 0.5 * sqrt(T) instead of 0.1 * sqrt(T)
     // This allows faster convergence while still decreasing step size as T decreases
-    float stddev = 0.5F * sqrtf(temperature);
+    float stddev = QA_NEIGHBOR_STEP_SCALE * sqrtf(temperature);
 
     for (uint32_t i = 0; i < dim; ++i) {
         neighbor[i] = current[i] + random_gaussian(annealer, 0.0F, stddev);
@@ -852,24 +861,35 @@ float quantum_annealer_estimate_partition_mc(
         return 0.0f;
     }
 
+    /* P2 fix: Store energies in array to avoid double evaluation of energy_func.
+     * A stochastic energy function evaluated twice returns different results. */
+    float* energies = nimcp_malloc(num_samples * sizeof(float));
+    if (!energies) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * sizeof(float),
+                          "Failed to allocate energy cache for partition estimation (num_samples=%u)", num_samples);
+        if (variance_out) *variance_out = INFINITY;
+        return 0.0f;
+    }
+
     /* Compute Boltzmann factors */
     float sum = 0.0f;
     float sum_sq = 0.0f;
     float max_energy = -INFINITY;
 
-    /* First pass: find max energy for numerical stability */
+    /* First pass: compute and store energies, find max for numerical stability */
     for (uint32_t i = 0; i < num_samples; i++) {
-        float E = energy_func(&sample_states[i * dim], dim, user_data);
-        if (E > max_energy) max_energy = E;
+        energies[i] = energy_func(&sample_states[i * dim], dim, user_data);
+        if (energies[i] > max_energy) max_energy = energies[i];
     }
 
-    /* Second pass: compute shifted Boltzmann factors */
+    /* Second pass: compute shifted Boltzmann factors using stored energies */
     for (uint32_t i = 0; i < num_samples; i++) {
-        float E = energy_func(&sample_states[i * dim], dim, user_data);
-        float w = expf(-(E - max_energy) / temperature);
+        float w = expf(-(energies[i] - max_energy) / temperature);
         sum += w;
         sum_sq += w * w;
     }
+
+    nimcp_free(energies);
 
     /* Estimate and variance */
     float mean = sum / num_samples;

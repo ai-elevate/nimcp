@@ -320,8 +320,9 @@ int qa_immune_disconnect_bio_async(qa_immune_bridge_t* bridge) {
 }
 
 bool qa_immune_is_bio_async_connected(const qa_immune_bridge_t* bridge) {
+    /* P2 fix: Remove false positive NIMCP_THROW_TO_IMMUNE. This is a query function -
+     * NULL bridge simply means "not connected" which is a valid answer, not an error. */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qa_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -499,13 +500,20 @@ qa_problem_type_t qa_immune_check_convergence(
         float mean = 0.0f;
         size_t count = bridge->history_count < 20 ? bridge->history_count : 20;
 
+        /* P2 fix: Use correct circular buffer indexing after wrap.
+         * history_index points to the NEXT write position, so the most recent
+         * 'count' entries are at indices going backwards from history_index. */
         for (size_t i = 0; i < count; i++) {
-            mean += bridge->history[i].energy;
+            size_t idx = (bridge->history_index + bridge->history_capacity - count + i)
+                         % bridge->history_capacity;
+            mean += bridge->history[idx].energy;
         }
         mean /= count;
 
         for (size_t i = 0; i < count; i++) {
-            float diff = bridge->history[i].energy - mean;
+            size_t idx = (bridge->history_index + bridge->history_capacity - count + i)
+                         % bridge->history_capacity;
+            float diff = bridge->history[idx].energy - mean;
             variance += diff * diff;
         }
         variance /= count;
@@ -516,14 +524,15 @@ qa_problem_type_t qa_immune_check_convergence(
         }
     }
 
-    /* Update stats */
+done:
+    /* P2 fix: Stats update was previously BEFORE the done: label, so goto done
+     * would skip the stats update when a problem was detected. Now it's after. */
     if (problem == QA_PROBLEM_NONE) {
         bridge->stats.successful_optimizations++;
     } else {
         bridge->stats.failed_optimizations++;
     }
 
-done:
     bridge->stats.success_rate = bridge->stats.optimizations_run > 0 ?
         (float)bridge->stats.successful_optimizations / bridge->stats.optimizations_run : 0.0f;
 

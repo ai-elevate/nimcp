@@ -70,7 +70,7 @@ static endorsement_collection_t* find_collection(
             return &collector->collections[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_collection: required parameter is NULL (collector, tx_id)");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -373,8 +373,8 @@ nimcp_error_t mesh_endorsement_start_collection(
     coll->pattern = *pattern;
     coll->start_time_ns = nimcp_time_now_ns();
 
-    float timeout_ms = quorum ? collector->config.default_timeout_ms :
-                       collector->config.default_timeout_ms;
+    /* Use collector's default timeout (endorsement_quorum_t has no timeout_ms field) */
+    float timeout_ms = collector->config.default_timeout_ms;
     coll->deadline_ns = coll->start_time_ns + (uint64_t)(timeout_ms * 1000000.0);
 
     /* Allocate received endorsements array */

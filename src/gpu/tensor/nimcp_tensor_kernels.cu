@@ -39,6 +39,10 @@
 #define BLOCK_SIZE 256
 #define WARP_SIZE 32
 
+#ifndef NIMCP_EPS
+#define NIMCP_EPS 1e-7f
+#endif
+
 // Calculate grid size for N elements
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
 
@@ -407,7 +411,8 @@ __global__ void kernel_div(const float* a, const float* b, float* out, size_t n)
 {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
-        out[idx] = a[idx] / b[idx];
+        /* P1-12: Epsilon guard to prevent division-by-zero */
+        out[idx] = a[idx] / (b[idx] + ((b[idx] >= 0.0f) ? NIMCP_EPS : -NIMCP_EPS));
     }
 }
 
@@ -666,6 +671,8 @@ bool nimcp_gpu_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, ni
     size_t dim_size = x->dims[x->ndim - 1];
     size_t batch_size = x->numel / dim_size;
 
+    /* P3: batch_size used as grid dimension. Theoretical limit is 2^31-1, which is
+     * always satisfied in practice since batch_size derives from tensor element count. */
     kernel_softmax_1d<<<batch_size, BLOCK_SIZE>>>((const float*)x->data, (float*)out->data, batch_size, dim_size);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
@@ -748,7 +755,8 @@ __global__ void kernel_log(const float* x, float* out, size_t n)
 {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
-        out[idx] = logf(x[idx]);
+        /* P2: Clamp to positive to prevent log(0) or log(negative) -> NaN/undefined */
+        out[idx] = logf(fmaxf(x[idx], NIMCP_EPS));
     }
 }
 
@@ -756,7 +764,8 @@ __global__ void kernel_sqrt(const float* x, float* out, size_t n)
 {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
-        out[idx] = sqrtf(x[idx]);
+        /* P2: Clamp to non-negative to prevent sqrt(negative) -> NaN */
+        out[idx] = sqrtf(fmaxf(x[idx], 0.0f));
     }
 }
 

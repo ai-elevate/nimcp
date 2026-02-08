@@ -174,7 +174,6 @@ static void compute_softmax(const float* similarities, float* attention,
  */
 static int32_t find_pattern_index(const hopfield_memory_t* memory, uint32_t pattern_id) {
     if (!memory->metadata) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_pattern_index: memory->metadata is NULL");
         return -1;
     }
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
@@ -188,7 +187,7 @@ static int32_t find_pattern_index(const hopfield_memory_t* memory, uint32_t patt
             return (int32_t)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_pattern_index: validation failed");
+    /* Normal "not found" path - no throw needed */
     return -1;
 }
 

@@ -155,6 +155,11 @@ static bool g_brain_bio_initialized = false;
 static nimcp_platform_once_t g_brain_bio_once = NIMCP_PLATFORM_ONCE_INIT;
 static nimcp_error_t g_brain_bio_init_result = NIMCP_SUCCESS;
 
+// P1-9 FIX: Reference counter for bio-async context.
+// Only unregister when last brain is destroyed.
+// NOTE: NOT static - nimcp_brain_factory.c references this via extern declaration.
+volatile int g_brain_bio_ref_count = 0;
+
 //=============================================================================
 // Forward Declarations - Strategy Pattern
 //=============================================================================
@@ -318,6 +323,9 @@ static float strategy_classification_lr(void)
 
 static void strategy_classification_transform(float* output, uint32_t size)
 {
+    // Guard: size=0 would cause OOB read on output[0]
+    if (size == 0) return;
+
     // Softmax normalization for probability distribution
     float max_val = output[0];
     for (uint32_t i = 1; i < size; i++) {
@@ -369,6 +377,9 @@ static void strategy_regression_transform(float* output, uint32_t size)
 
 static float strategy_regression_loss(const float* pred, const float* target, uint32_t size)
 {
+    // Guard: Prevent division by zero when size is 0
+    if (size == 0) return 0.0f;
+
     // Mean squared error
     float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
@@ -400,6 +411,9 @@ static void strategy_pattern_transform(float* output, uint32_t size)
 
 static float strategy_pattern_loss(const float* pred, const float* target, uint32_t size)
 {
+    // Guard: Prevent division by zero when size is 0
+    if (size == 0) return 0.0f;
+
     // Binary cross-entropy
     float loss = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
@@ -972,9 +986,8 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
 
     // Create new decision copy FIRST (before freeing old)
     // This reduces the race window where cached_decision could be NULL
-    // FIX: Use deep copy instead of COW to avoid complex refcount races
-    // The COW pattern was causing heap corruption due to unsafe refcount
-    // increment operations in multi-threaded scenarios.
+    // Deep copy: cache owns its own data independently
+    // Thread safety is ensured by cache_mutex held by caller
     brain_decision_t* new_cached = copy_decision_deep(decision);
     if (!new_cached) {
         set_error("Failed to copy decision for cache");
@@ -2249,6 +2262,9 @@ void brain_destroy(brain_t brain)
     }
 
     // Phase 12: Cleanup personality profile
+    // NOTE: personality_profile_t is assumed to be a flat POD type (no internal allocations).
+    // If personality_profile_t ever gains dynamically allocated fields, this must change
+    // to a dedicated personality_destroy() function to avoid memory leaks.
     if (brain->personality) {
         nimcp_free(brain->personality);
     }
@@ -2428,19 +2444,23 @@ void brain_destroy(brain_t brain)
     nimcp_platform_mutex_destroy(&brain->cache_mutex);
 
 
-    // Bio-Async: Unregister from router (if initialized)
-    // THREAD SAFETY FIX: Use compare-and-swap to ensure only one thread
-    // performs the unregistration. Without this, multiple brain_destroy calls
-    // could race to unregister the same context, causing double-free issues.
-    bio_module_context_t ctx = __atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE);
-    if (ctx && __atomic_compare_exchange_n(&g_brain_bio_ctx, &ctx, NULL,
-                                           false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
-        // We won the race - we're responsible for cleanup
-        LOG_MODULE_INFO("BRAIN", "Unregistering brain from bio-async router");
-        bio_router_unregister_module(ctx);
-        __atomic_store_n(&g_brain_bio_initialized, false, __ATOMIC_RELEASE);
+    // P1-9 FIX: Bio-Async reference-counted cleanup.
+    // Only unregister the GLOBAL bio-async context when the last brain is destroyed.
+    // Without this, the first brain_destroy would break all other brains' bio-async.
+    int prev_ref = __atomic_fetch_sub(&g_brain_bio_ref_count, 1, __ATOMIC_ACQ_REL);
+    if (prev_ref <= 1) {
+        // Last brain - perform global bio-async cleanup
+        bio_module_context_t ctx = __atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE);
+        if (ctx && __atomic_compare_exchange_n(&g_brain_bio_ctx, &ctx, NULL,
+                                               false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+            LOG_MODULE_INFO("BRAIN", "Last brain destroyed - unregistering from bio-async router");
+            bio_router_unregister_module(ctx);
+            __atomic_store_n(&g_brain_bio_initialized, false, __ATOMIC_RELEASE);
+            // Reset platform_once so next brain creation can re-register
+            g_brain_bio_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+        }
     }
-    // If CAS failed, another thread already cleaned up - nothing to do
+    // If ref_count > 0, other brains still need the global bio-async context
 
     // Per-brain bio-async cleanup
     if (brain->bio_async_enabled) {
@@ -3468,10 +3488,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     if (is_cached_input(brain, features, num_features)) {
-        // FIX: Use deep copy instead of COW to avoid complex refcount races
-        // The COW pattern was causing heap corruption due to unsafe refcount
-        // increment operations in multi-threaded scenarios.
-        brain_decision_t* cached_copy = copy_decision_deep(brain->cached_decision);
+        brain_decision_t* cached_copy = copy_decision(brain->cached_decision);
 
         if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
             set_error("Failed to unlock cache mutex after cache hit");

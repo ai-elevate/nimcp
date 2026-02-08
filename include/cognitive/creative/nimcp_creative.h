@@ -382,6 +382,7 @@ typedef struct {
 typedef struct {
     music_note_t* notes;        /**< Array of notes */
     uint32_t num_notes;         /**< Number of notes */
+    uint32_t max_notes;         /**< Maximum capacity of notes array */
     char track_name[64];        /**< Track name */
     uint8_t channel;            /**< Default channel */
     uint8_t instrument;         /**< Default instrument */

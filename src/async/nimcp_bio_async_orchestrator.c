@@ -223,9 +223,11 @@ int bio_orchestrator_start(bio_async_orchestrator_t* orchestrator) {
 
     orchestrator->state = BIO_ORCHESTRATOR_RUNNING;
     orchestrator->start_time = nimcp_time_get_ms();
+    orchestrator->state_version++;  // P2 fix: Increment version on state change
 
     /* Discover wiring from KG if wiring diagram is set */
     if (orchestrator->wiring_diagram) {
+        uint32_t version_before = orchestrator->state_version;
         nimcp_platform_mutex_unlock(orchestrator->mutex);
 
         int discovered = bio_orchestrator_discover_all_wiring(orchestrator);
@@ -240,6 +242,17 @@ int bio_orchestrator_start(bio_async_orchestrator_t* orchestrator) {
         }
 
         nimcp_platform_mutex_lock(orchestrator->mutex);
+
+        // P2 fix: Re-validate state after reacquiring mutex.
+        // If state_version changed, another thread modified state while we were unlocked.
+        if (orchestrator->state_version != version_before) {
+            if (orchestrator->config.enable_logging) {
+                NIMCP_LOGGING_WARN("Orchestrator state changed during wiring discovery "
+                                   "(version %u -> %u), state may be %d",
+                                   version_before, orchestrator->state_version,
+                                   orchestrator->state);
+            }
+        }
     }
 
     if (orchestrator->config.enable_logging) {

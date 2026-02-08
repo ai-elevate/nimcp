@@ -82,7 +82,7 @@ static tx_entry_t* find_tx_entry(
             return &manager->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tx_entry: required parameter is NULL (manager, tx_id)");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
 
@@ -100,7 +100,7 @@ static tx_entry_t* find_free_slot(mesh_tx_manager_t* manager) {
             return &manager->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: manager->entries is NULL");
+    /* No free slot available - capacity exhausted, not a NULL pointer error (P2: false positive removal) */
     return NULL;
 }
 
@@ -642,8 +642,14 @@ nimcp_error_t mesh_tx_commit(
     update_latency_stats(manager, latency_ns);
     manager->stats.transactions_committed++;
 
-    /* Invoke callback */
-    if (tx->callback) {
+    /* P1-34: Copy callback locally before unlocking mutex to prevent use-after-free */
+    mesh_tx_callback_t local_callback = tx->callback;
+    void* local_callback_ctx = tx->callback_ctx;
+
+    nimcp_mutex_unlock(manager->mutex);
+
+    /* Invoke callback outside of lock */
+    if (local_callback) {
         mesh_result_t result = {0};
         result.tx_id = tx->id;
         result.status = MESH_TX_STATUS_COMMITTED;
@@ -651,17 +657,13 @@ nimcp_error_t mesh_tx_commit(
         result.commit_timestamp_ns = tx->commit_timestamp_ns;
         memcpy(result.result_hash, tx->payload_hash, 32);
 
-        nimcp_mutex_unlock(manager->mutex);
-        tx->callback(&result, tx->callback_ctx);
-        nimcp_mutex_lock(manager->mutex);
+        local_callback(&result, local_callback_ctx);
     }
 
     /* Notify all channel participants */
     if (manager->registry) {
         /* TODO: Invoke on_commit for all channel members */
     }
-
-    nimcp_mutex_unlock(manager->mutex);
 
     LOG_INFO("Transaction committed: latency=%.2f ms",
              (float)latency_ns / 1000000.0f);
@@ -691,8 +693,14 @@ nimcp_error_t mesh_tx_fail(
     tx->status = MESH_TX_STATUS_FAILED;
     manager->stats.transactions_failed++;
 
-    /* Invoke callback */
-    if (tx->callback) {
+    /* P1-34: Copy callback locally before unlocking mutex to prevent use-after-free */
+    mesh_tx_callback_t local_callback = tx->callback;
+    void* local_callback_ctx = tx->callback_ctx;
+
+    nimcp_mutex_unlock(manager->mutex);
+
+    /* Invoke callback outside of lock */
+    if (local_callback) {
         mesh_result_t result = {0};
         result.tx_id = tx->id;
         result.status = MESH_TX_STATUS_FAILED;
@@ -701,12 +709,8 @@ nimcp_error_t mesh_tx_fail(
             strncpy(result.error_msg, message, sizeof(result.error_msg) - 1);
         }
 
-        nimcp_mutex_unlock(manager->mutex);
-        tx->callback(&result, tx->callback_ctx);
-        nimcp_mutex_lock(manager->mutex);
+        local_callback(&result, local_callback_ctx);
     }
-
-    nimcp_mutex_unlock(manager->mutex);
 
     LOG_ERROR("Transaction failed: %s", message ? message : "unknown error");
 
@@ -717,6 +721,12 @@ nimcp_error_t mesh_tx_fail(
  * Transaction Query
  * ============================================================================ */
 
+/**
+ * P3: WARNING - Returns internal pointer to transaction data. Caller must not
+ * hold this pointer across concurrent modifications. The returned pointer is
+ * valid only while the transaction entry remains active in the manager.
+ * For thread-safe access, prefer mesh_tx_get_result() which copies data.
+ */
 const mesh_transaction_t* mesh_tx_get(
     mesh_tx_manager_t* manager,
     const mesh_tx_id_t* tx_id
@@ -880,8 +890,11 @@ size_t mesh_tx_cleanup_expired(
             manager->stats.transactions_expired++;
             expired_count++;
 
-            /* Invoke callback */
-            if (tx->callback) {
+            /* P1-34: Copy callback locally before unlocking mutex */
+            mesh_tx_callback_t local_cb = tx->callback;
+            void* local_ctx = tx->callback_ctx;
+
+            if (local_cb) {
                 mesh_result_t result = {0};
                 result.tx_id = tx->id;
                 result.status = MESH_TX_STATUS_EXPIRED;
@@ -890,8 +903,13 @@ size_t mesh_tx_cleanup_expired(
                         sizeof(result.error_msg) - 1);
 
                 nimcp_mutex_unlock(manager->mutex);
-                tx->callback(&result, tx->callback_ctx);
+                local_cb(&result, local_ctx);
                 nimcp_mutex_lock(manager->mutex);
+
+                /* Re-validate entry after reacquiring lock */
+                if (!manager->entries[i].is_active || manager->entries[i].tx != tx) {
+                    continue;
+                }
             }
 
             LOG_WARN("Transaction expired: type=%s",
@@ -999,6 +1017,7 @@ nimcp_error_t mesh_tx_compute_hash(
     return NIMCP_SUCCESS;
 }
 
+/* P3: Diagnostic print functions use printf intentionally for console debug output */
 void mesh_transaction_print(const mesh_transaction_t* tx) {
     if (!tx) {
         printf("Transaction: NULL\n");
@@ -1017,6 +1036,7 @@ void mesh_transaction_print(const mesh_transaction_t* tx) {
     printf("  Sequence:  %lu\n", (unsigned long)tx->sequence_number);
 }
 
+/* P3: Diagnostic print function - printf intentional for console debug output */
 void mesh_tx_manager_print_status(const mesh_tx_manager_t* manager) {
     if (!manager) {
         printf("Transaction Manager: NULL\n");

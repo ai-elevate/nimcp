@@ -676,6 +676,14 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
         return false;
     }
 
+    /* Optimization: If KB is locked (mprotect PROT_READ), memory is immutable.
+     * Once integrity is verified after locking, it cannot change, so we can
+     * skip recomputation on subsequent checks. */
+    if (kb->is_locked && kb->integrity_verified_while_locked) {
+        g_stats.integrity_checks++;
+        return true;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_verify_integrity", 0.0f);
 
@@ -692,6 +700,11 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
         g_stats.integrity_failures++;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_verify_integrity: validation failed");
         return false;
+    }
+
+    /* Cache result for locked KBs */
+    if (kb->is_locked) {
+        ((safety_kb_t*)kb)->integrity_verified_while_locked = true;
     }
 
     LOG_DEBUG("Safety KB integrity verified");
@@ -735,7 +748,7 @@ static const char* find_string_field(const safety_action_context_t* ctx, const c
             return ctx->string_fields[i].value;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_string_field: validation failed");
+    /* Field not found is normal lookup behavior, not an error */
     return NULL;
 }
 
@@ -895,7 +908,6 @@ static bool evaluate_rule_conditions(const safety_rule_t* rule, const safety_act
         }
 
         if (!evaluate_condition(&rule->conditions[i], ctx)) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_rule_conditions: evaluate_condition is NULL");
             return false;  // AND logic - any failure means rule doesn't match
         }
     }

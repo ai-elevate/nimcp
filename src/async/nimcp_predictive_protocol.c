@@ -207,7 +207,8 @@ static pattern_entry_t* find_pattern(predictive_protocol_t proto, const pattern_
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: validation failed");
+    // P2 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+    // Not finding a pattern is normal (new pattern, first occurrence).
     return NULL;
 }
 
@@ -288,7 +289,8 @@ static markov_transition_t* find_transition(predictive_protocol_t proto,
         trans = trans->hash_next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "upsert_pattern: validation failed");
+    // P2 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+    // Not finding a transition is normal (first observation of this state pair).
     return NULL;
 }
 
@@ -430,7 +432,8 @@ static cache_entry_t* find_cache_entry(predictive_protocol_t proto, const patter
         entry = entry->hash_next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cache_entry: validation failed");
+    // P2 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+    // Cache miss is normal and expected (first access or evicted entry).
     return NULL;
 }
 

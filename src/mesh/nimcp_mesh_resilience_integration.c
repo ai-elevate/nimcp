@@ -179,7 +179,7 @@ static int find_agent_by_id(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_agent_by_id: validation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return -1;
 }
 
@@ -218,8 +218,8 @@ static bool dequeue_recovery(
     mesh_recovery_action_t* action
 ) {
     if (res->recovery_queue_head == res->recovery_queue_tail) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_recovery: validation failed");
-        return false;  /* Empty */
+        /* Empty queue is normal state, not an error (P2: false positive removal) */
+        return false;
     }
     *action = res->recovery_queue[res->recovery_queue_head];
     res->recovery_queue_head =

@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 /* ============================================================================
  * Internal Structures
@@ -261,12 +262,13 @@ mesh_coordinator_t* mesh_coordinator_create(
     coord->last_heartbeat_ns = coord->creation_time_ns;
     coord->last_heartbeat_sent_ns = coord->creation_time_ns;
 
-    /* Generate coordinator ID */
-    static uint32_t coord_id_counter = 1000;
+    /* Generate coordinator ID (P1-32: atomic to prevent data race) */
+    static _Atomic uint32_t coord_id_counter = 1000;
+    uint32_t my_id = atomic_fetch_add(&coord_id_counter, 1);
     coord->id = mesh_make_participant_id(
         config->channel,
         MESH_PARTICIPANT_COORDINATOR,
-        coord_id_counter++
+        my_id
     );
 
     /* Register as participant */

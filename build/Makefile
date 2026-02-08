@@ -5645,6 +5645,19 @@ regression_optimization_test_multi_objective_backward_compat/fast:
 .PHONY : regression_optimization_test_multi_objective_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_optimization_test_optimization_walkthrough_fixes
+
+# Build rule for target.
+regression_optimization_test_optimization_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_optimization_test_optimization_walkthrough_fixes
+.PHONY : regression_optimization_test_optimization_walkthrough_fixes
+
+# fast build rule for target.
+regression_optimization_test_optimization_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_optimization_test_optimization_walkthrough_fixes.dir/build.make test/CMakeFiles/regression_optimization_test_optimization_walkthrough_fixes.dir/build
+.PHONY : regression_optimization_test_optimization_walkthrough_fixes/fast
+
+#=============================================================================
 # Target rules for targets named regression_plasticity_adaptive_test_adaptive_backward_compat
 
 # Build rule for target.
@@ -19139,6 +19152,19 @@ regression_core_brain_cycle_coordinator/fast:
 .PHONY : regression_core_brain_cycle_coordinator/fast
 
 #=============================================================================
+# Target rules for targets named regression_core_brain_walkthrough_fixes
+
+# Build rule for target.
+regression_core_brain_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_walkthrough_fixes
+.PHONY : regression_core_brain_walkthrough_fixes
+
+# fast build rule for target.
+regression_core_brain_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/CMakeFiles/regression_core_brain_walkthrough_fixes.dir/build.make test/regression/core/brain/CMakeFiles/regression_core_brain_walkthrough_fixes.dir/build
+.PHONY : regression_core_brain_walkthrough_fixes/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_subcortical_test
 
 # Build rule for target.
@@ -26055,6 +26081,19 @@ regression_cognitive_creative/fast:
 .PHONY : regression_cognitive_creative/fast
 
 #=============================================================================
+# Target rules for targets named regression_cognitive_training_walkthrough
+
+# Build rule for target.
+regression_cognitive_training_walkthrough: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_training_walkthrough
+.PHONY : regression_cognitive_training_walkthrough
+
+# fast build rule for target.
+regression_cognitive_training_walkthrough/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_training_walkthrough.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_training_walkthrough.dir/build
+.PHONY : regression_cognitive_training_walkthrough/fast
+
+#=============================================================================
 # Target rules for targets named test_rcog_regression
 
 # Build rule for target.
@@ -29409,6 +29448,19 @@ regression_security_test_bbb_quarantine/fast:
 .PHONY : regression_security_test_bbb_quarantine/fast
 
 #=============================================================================
+# Target rules for targets named regression_security_utils_walkthrough_fixes
+
+# Build rule for target.
+regression_security_utils_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_utils_walkthrough_fixes
+.PHONY : regression_security_utils_walkthrough_fixes
+
+# fast build rule for target.
+regression_security_utils_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security_utils/CMakeFiles/regression_security_utils_walkthrough_fixes.dir/build.make test/regression/security_utils/CMakeFiles/regression_security_utils_walkthrough_fixes.dir/build
+.PHONY : regression_security_utils_walkthrough_fixes/fast
+
+#=============================================================================
 # Target rules for targets named unit_language_orchestrator
 
 # Build rule for target.
@@ -30122,6 +30174,19 @@ regression_async_test_self_assembly: cmake_check_build_system
 regression_async_test_self_assembly/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_self_assembly.dir/build.make test/regression/async/CMakeFiles/regression_async_test_self_assembly.dir/build
 .PHONY : regression_async_test_self_assembly/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_walkthrough_fixes
+
+# Build rule for target.
+regression_async_test_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_walkthrough_fixes
+.PHONY : regression_async_test_walkthrough_fixes
+
+# fast build rule for target.
+regression_async_test_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_walkthrough_fixes.dir/build.make test/regression/async/CMakeFiles/regression_async_test_walkthrough_fixes.dir/build
+.PHONY : regression_async_test_walkthrough_fixes/fast
 
 #=============================================================================
 # Target rules for targets named regression_bio_async_self_repair
@@ -32776,6 +32841,19 @@ test_mesh_cycle_coordinator_regression/fast:
 .PHONY : test_mesh_cycle_coordinator_regression/fast
 
 #=============================================================================
+# Target rules for targets named test_mesh_walkthrough_fixes
+
+# Build rule for target.
+test_mesh_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_mesh_walkthrough_fixes
+.PHONY : test_mesh_walkthrough_fixes
+
+# fast build rule for target.
+test_mesh_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/mesh/CMakeFiles/test_mesh_walkthrough_fixes.dir/build.make test/regression/mesh/CMakeFiles/test_mesh_walkthrough_fixes.dir/build
+.PHONY : test_mesh_walkthrough_fixes/fast
+
+#=============================================================================
 # Target rules for targets named test_platform_tier
 
 # Build rule for target.
@@ -34193,19 +34271,6 @@ unit_gpu_recovery_test_gpu_recovery_cpu_fallback/fast:
 .PHONY : unit_gpu_recovery_test_gpu_recovery_cpu_fallback/fast
 
 #=============================================================================
-# Target rules for targets named test_perception_gpu_recovery
-
-# Build rule for target.
-test_perception_gpu_recovery: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_perception_gpu_recovery
-.PHONY : test_perception_gpu_recovery
-
-# fast build rule for target.
-test_perception_gpu_recovery/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/gpu/perception/CMakeFiles/test_perception_gpu_recovery.dir/build.make test/unit/gpu/perception/CMakeFiles/test_perception_gpu_recovery.dir/build
-.PHONY : test_perception_gpu_recovery/fast
-
-#=============================================================================
 # Target rules for targets named unit_gpu_neural_test_snn_gpu_recovery
 
 # Build rule for target.
@@ -34908,19 +34973,6 @@ integration_gpu_recovery_test_gpu_recovery_memory_management/fast:
 .PHONY : integration_gpu_recovery_test_gpu_recovery_memory_management/fast
 
 #=============================================================================
-# Target rules for targets named test_perception_gpu_integration
-
-# Build rule for target.
-test_perception_gpu_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_perception_gpu_integration
-.PHONY : test_perception_gpu_integration
-
-# fast build rule for target.
-test_perception_gpu_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/integration/gpu/perception/CMakeFiles/test_perception_gpu_integration.dir/build.make test/integration/gpu/perception/CMakeFiles/test_perception_gpu_integration.dir/build
-.PHONY : test_perception_gpu_integration/fast
-
-#=============================================================================
 # Target rules for targets named integration_gpu_neural_recovery
 
 # Build rule for target.
@@ -35049,6 +35101,19 @@ regression_gpu_test_visual_processing_regression: cmake_check_build_system
 regression_gpu_test_visual_processing_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build
 .PHONY : regression_gpu_test_visual_processing_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_walkthrough_fixes
+
+# Build rule for target.
+regression_gpu_test_gpu_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_walkthrough_fixes
+.PHONY : regression_gpu_test_gpu_walkthrough_fixes
+
+# fast build rule for target.
+regression_gpu_test_gpu_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_walkthrough_fixes.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_walkthrough_fixes.dir/build
+.PHONY : regression_gpu_test_gpu_walkthrough_fixes/fast
 
 #=============================================================================
 # Target rules for targets named regression_gpu_statistics_test_statistics_gpu_regression
@@ -38457,6 +38522,19 @@ regression_thread_safety_test_callback_wrapper_mutex/fast:
 .PHONY : regression_thread_safety_test_callback_wrapper_mutex/fast
 
 #=============================================================================
+# Target rules for targets named regression_cross_module_walkthrough_fixes
+
+# Build rule for target.
+regression_cross_module_walkthrough_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cross_module_walkthrough_fixes
+.PHONY : regression_cross_module_walkthrough_fixes
+
+# fast build rule for target.
+regression_cross_module_walkthrough_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cross_module/CMakeFiles/regression_cross_module_walkthrough_fixes.dir/build.make test/regression/cross_module/CMakeFiles/regression_cross_module_walkthrough_fixes.dir/build
+.PHONY : regression_cross_module_walkthrough_fixes/fast
+
+#=============================================================================
 # Target rules for targets named integration_thread_safety_test_concurrent_module_init
 
 # Build rule for target.
@@ -39790,6 +39868,7 @@ help:
 	@echo "... regression_async_test_bio_router_kg_dispatch"
 	@echo "... regression_async_test_future_regression"
 	@echo "... regression_async_test_self_assembly"
+	@echo "... regression_async_test_walkthrough_fixes"
 	@echo "... regression_async_test_wiring_diagram"
 	@echo "... regression_async_test_wiring_diagram_kg_sync"
 	@echo "... regression_async_test_wiring_diagram_validation"
@@ -39885,6 +39964,7 @@ help:
 	@echo "... regression_cognitive_thalamic_routing"
 	@echo "... regression_cognitive_tom_exception"
 	@echo "... regression_cognitive_tom_snn_plasticity"
+	@echo "... regression_cognitive_training_walkthrough"
 	@echo "... regression_cognitive_wellbeing_enhanced"
 	@echo "... regression_cognitive_wellbeing_snn_plasticity"
 	@echo "... regression_cognitive_working_memory_pe_test"
@@ -39920,6 +40000,7 @@ help:
 	@echo "... regression_core_brain_subcortical_amygdala_test"
 	@echo "... regression_core_brain_subcortical_test"
 	@echo "... regression_core_brain_subcortical_thalamus_test"
+	@echo "... regression_core_brain_walkthrough_fixes"
 	@echo "... regression_core_cortical_columns_substrate_bridge"
 	@echo "... regression_core_dendrite_performance"
 	@echo "... regression_core_directives"
@@ -39942,6 +40023,7 @@ help:
 	@echo "... regression_cortical_columns_performance"
 	@echo "... regression_cortical_features"
 	@echo "... regression_cortical_hierarchy"
+	@echo "... regression_cross_module_walkthrough_fixes"
 	@echo "... regression_dragonfly_numerical"
 	@echo "... regression_dragonfly_parameters"
 	@echo "... regression_dragonfly_performance"
@@ -39983,6 +40065,7 @@ help:
 	@echo "... regression_gpu_test_gpu_neuron_backward_compat"
 	@echo "... regression_gpu_test_gpu_neuron_regression"
 	@echo "... regression_gpu_test_gpu_spike_event_backward_compat"
+	@echo "... regression_gpu_test_gpu_walkthrough_fixes"
 	@echo "... regression_gpu_test_multigpu_regression"
 	@echo "... regression_gpu_test_substrate_gpu_regression"
 	@echo "... regression_gpu_test_visual_processing_regression"
@@ -40082,6 +40165,7 @@ help:
 	@echo "... regression_optimization_test_cross_modal_backward_compat"
 	@echo "... regression_optimization_test_dynamic_adaptation_backward_compat"
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
+	@echo "... regression_optimization_test_optimization_walkthrough_fixes"
 	@echo "... regression_parietal_exception"
 	@echo "... regression_parietal_fep"
 	@echo "... regression_parietal_fep_orchestrator_bridge"
@@ -40187,6 +40271,7 @@ help:
 	@echo "... regression_security_test_shell_detector"
 	@echo "... regression_security_test_supply_chain"
 	@echo "... regression_security_test_validation_performance"
+	@echo "... regression_security_utils_walkthrough_fixes"
 	@echo "... regression_snn_bridge_exception"
 	@echo "... regression_snn_test_bridge_regression"
 	@echo "... regression_snn_test_numerical_regression"
@@ -40375,6 +40460,7 @@ help:
 	@echo "... test_mesh_topology"
 	@echo "... test_mesh_transaction"
 	@echo "... test_mesh_types"
+	@echo "... test_mesh_walkthrough_fixes"
 	@echo "... test_networking_exception_integration"
 	@echo "... test_neural_logic"
 	@echo "... test_neural_logic_brain_integration"
@@ -40390,8 +40476,6 @@ help:
 	@echo "... test_nlp_peer_communication"
 	@echo "... test_omni_bridges_integration"
 	@echo "... test_omni_regression"
-	@echo "... test_perception_gpu_integration"
-	@echo "... test_perception_gpu_recovery"
 	@echo "... test_perception_portia_swarm_integration"
 	@echo "... test_phase3"
 	@echo "... test_phase4"

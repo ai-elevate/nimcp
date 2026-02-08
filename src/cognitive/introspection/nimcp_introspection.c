@@ -1032,6 +1032,13 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
         uint32_t ensemble_size = context->config.uncertainty_ensemble_size;
         uncertainty.ensemble_size = ensemble_size;
 
+        /* Guard: ensemble_size == 0 would cause division by zero and zero-size allocation */
+        if (ensemble_size == 0) {
+            uncertainty.epistemic = 1.0f;
+            uncertainty.aleatoric = 1.0f;
+            return uncertainty;
+        }
+
         /* WHAT: Allocate array for simulated predictions */
         uncertainty.ensemble_predictions = (float*)
             nimcp_malloc(ensemble_size * sizeof(float));
@@ -1295,7 +1302,7 @@ static pattern_entry_t* pattern_registry_lookup(pattern_registry_t* registry, co
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_registry_lookup: validation failed");
+    /* Normal "not found" path - no throw needed */
     return NULL;
 }
 
@@ -1371,7 +1378,7 @@ bool brain_is_pattern_active(introspection_context_t context, const char* patter
     }
 
     if (!context->config.enable_pattern_tracking || context->pattern_registry == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_pattern_active: context->config is NULL");
+        /* Feature disabled or registry not initialized - normal behavior, not an error */
         return false;
     }
 
@@ -1477,7 +1484,7 @@ char** brain_list_patterns(introspection_context_t context, uint32_t* num_patter
 
     if (!context->config.enable_pattern_tracking || context->pattern_registry == NULL) {
         *num_patterns = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_patterns: context->config is NULL");
+        /* Feature disabled or registry not initialized - normal behavior, not an error */
         return NULL;
     }
 
@@ -1486,7 +1493,7 @@ char** brain_list_patterns(introspection_context_t context, uint32_t* num_patter
     *num_patterns = context->pattern_registry->num_patterns;
     if (*num_patterns == 0) {
         nimcp_mutex_unlock(&context->pattern_registry->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_list_patterns: num_patterns is zero");
+        /* Empty registry is normal, not an error */
         return NULL;
     }
 

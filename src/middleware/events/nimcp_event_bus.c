@@ -85,6 +85,9 @@ static void event_bus_security_cleanup(void) {
         bbb_system_destroy(g_bbb_system);
         g_bbb_system = NULL;
     }
+    // P2 fix: Reset once flag so security can be re-initialized after cleanup
+    // (important for tests that shutdown and reinit)
+    g_security_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 }
 
 //=============================================================================
@@ -98,7 +101,7 @@ struct event_bus_struct {
     // Async delivery thread
     bool async_delivery;
     nimcp_thread_t delivery_thread;
-    bool running;
+    _Atomic bool running;  // P2 fix: Make running flag atomic for thread-safe access
     uint32_t delivery_thread_sleep_us;
 
     // Bio-async integration
@@ -120,7 +123,7 @@ struct event_bus_struct {
 static void* delivery_thread_fn(void* arg) {
     event_bus_t bus = (event_bus_t)arg;
 
-    while (bus->running) {
+    while (__atomic_load_n(&bus->running, __ATOMIC_ACQUIRE)) {
         // Process batch of events
         event_t events[NIMCP_EVENT_BATCH_SIZE];
         uint32_t count = event_queue_dequeue_batch(bus->queue, events, NIMCP_EVENT_BATCH_SIZE);
@@ -140,7 +143,8 @@ static void* delivery_thread_fn(void* arg) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "delivery_thread_fn: count is zero");
+    // P2 fix: Removed false-positive NIMCP_THROW_TO_IMMUNE on normal thread exit.
+    // Worker thread exiting because bus->running was set to false is expected behavior.
     return NULL;
 }
 
@@ -223,7 +227,7 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
 
     // Start async delivery thread if enabled
     if (bus->async_delivery) {
-        bus->running = true;
+        __atomic_store_n(&bus->running, true, __ATOMIC_RELEASE);  // P2 fix: atomic store
         if (nimcp_thread_create(&bus->delivery_thread, delivery_thread_fn, bus, NULL) != NIMCP_SUCCESS) {
             if (bus->bio_async_enabled && bus->bio_ctx) {
                 bio_router_unregister_module(bus->bio_ctx);
@@ -251,7 +255,7 @@ void event_bus_destroy(event_bus_t bus) {
 
     // Stop delivery thread
     if (bus->async_delivery) {
-        bus->running = false;
+        __atomic_store_n(&bus->running, false, __ATOMIC_RELEASE);  // P2 fix: atomic store
         nimcp_thread_join(bus->delivery_thread, NULL);
         LOG_DEBUG(LOG_MODULE, "Delivery thread stopped");
     }

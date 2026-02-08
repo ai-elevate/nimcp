@@ -167,7 +167,7 @@ static int find_record_by_id(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_record_by_id: operation failed");
+    /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return -1;
 }
 

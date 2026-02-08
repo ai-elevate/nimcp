@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -41,7 +42,8 @@
 // Global State
 //=============================================================================
 
-static bool g_stats_initialized = false;
+/* P3: Use _Atomic for thread-safe access to initialization flag */
+static _Atomic bool g_stats_initialized = false;
 static nimcp_stats_config_t g_stats_config;
 
 //=============================================================================

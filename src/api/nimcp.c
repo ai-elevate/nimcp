@@ -112,7 +112,10 @@ struct nimcp_brain_snapshot_handle {
 static _Thread_local char g_last_error[256] = "No error";
 static nimcp_atomic_bool_t g_initialized = {0};  // Thread-safe initialized flag
 static nimcp_atomic_bool_t g_init_in_progress = {0};  // Guard against concurrent init
-static nimcp_status_t g_init_result = NIMCP_OK;  // Result of init
+// P2 FIX: g_init_result must be atomic since it's read by spinning threads
+// without synchronization. Without _Atomic, a thread spinning in nimcp_init()
+// could read a torn/stale value.
+static _Atomic nimcp_status_t g_init_result = NIMCP_OK;  // Result of init
 
 //=============================================================================
 // Version Functions
@@ -235,6 +238,9 @@ nimcp_status_t nimcp_init(void) {
     return g_init_result;
 }
 
+// Forward declaration: defined later in this file after static variables
+extern void nimcp_api_reset_brain_probe_ctx(void);
+
 void nimcp_shutdown(void) {
     LOG_INFO("Shutting down NIMCP library");
 
@@ -246,6 +252,9 @@ void nimcp_shutdown(void) {
     // Cleanup cache system
     LOG_DEBUG("Cleaning up COW cache system");
     nimcp_cache_cleanup();
+
+    // P1-8 FIX: Reset brain probe module context before shutting down bio-router
+    nimcp_api_reset_brain_probe_ctx();
 
     // Shutdown bio-async router
     LOG_DEBUG("Shutting down bio-async router");
@@ -711,9 +720,7 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
         default:                probe->size = NIMCP_BRAIN_SMALL; break;
     }
 
-    // Get brain configuration to determine task type
-    brain_config_t internal_config;
-    memset(&internal_config, 0, sizeof(internal_config));
+    // P3 FIX: Removed unused brain_config_t internal_config variable (dead code).
     // Note: We use size as a proxy for task type since internal API doesn't expose it directly
     probe->task = NIMCP_TASK_CLASSIFICATION; // Default
 
@@ -759,24 +766,44 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
  */
 static bio_module_context_t g_brain_probe_module_ctx = NULL;
 
+// P1-8 FIX: Mutex for thread-safe lazy initialization of g_brain_probe_module_ctx
+static nimcp_platform_once_t g_brain_probe_once = NIMCP_PLATFORM_ONCE_INIT;
+static void brain_probe_module_init_once(void) {
+    if (!bio_router_is_initialized()) {
+        return;
+    }
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_BRAIN,
+        .module_name = "brain_probe",
+        .inbox_capacity = 64,
+        .user_data = NULL
+    };
+    g_brain_probe_module_ctx = bio_router_register_module(&info);
+}
+
 /**
  * @brief Get or create brain module context for bio-async broadcasting
+ *
+ * P1-8 FIX: Uses nimcp_platform_once for thread-safe lazy initialization.
+ * Previously had no synchronization, allowing concurrent threads to race
+ * and potentially double-register the module.
  */
 static bio_module_context_t get_brain_probe_module_ctx(void) {
     if (!bio_router_is_initialized()) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_brain_probe_module_ctx: bio_router_is_initialized is NULL");
         return NULL;
     }
-    if (!g_brain_probe_module_ctx) {
-        bio_module_info_t info = {
-            .module_id = BIO_MODULE_BRAIN,
-            .module_name = "brain_probe",
-            .inbox_capacity = 64,
-            .user_data = NULL
-        };
-        g_brain_probe_module_ctx = bio_router_register_module(&info);
-    }
+    nimcp_platform_once(&g_brain_probe_once, brain_probe_module_init_once);
     return g_brain_probe_module_ctx;
+}
+
+/**
+ * @brief Reset brain probe module state for re-initialization after shutdown.
+ * Called from nimcp_shutdown() (forward-declared there).
+ */
+void nimcp_api_reset_brain_probe_ctx(void) {
+    g_brain_probe_module_ctx = NULL;
+    g_brain_probe_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 }
 
 /**

@@ -1,7 +1,7 @@
 /**
  * @file nimcp.h
  * @brief Unified NIMCP Public API - Single entry point for all language bindings
- * @version 2.6.1
+ * @version 2.6.3
  * @date 2025-11-04
  *
  * This is the ONLY header file that language bindings should include.
@@ -30,10 +30,18 @@ extern "C" {
 // Version Information
 //=============================================================================
 
+#ifndef NIMCP_VERSION_MAJOR
 #define NIMCP_VERSION_MAJOR 2
+#endif
+#ifndef NIMCP_VERSION_MINOR
 #define NIMCP_VERSION_MINOR 6
-#define NIMCP_VERSION_PATCH 1
-#define NIMCP_VERSION_STRING "2.6.1"
+#endif
+#ifndef NIMCP_VERSION_PATCH
+#define NIMCP_VERSION_PATCH 3
+#endif
+#ifndef NIMCP_VERSION_STRING
+#define NIMCP_VERSION_STRING "2.6.3"
+#endif
 
 /**
  * @brief Get NIMCP version as string
@@ -400,8 +408,8 @@ nimcp_training_config_t nimcp_training_config_default(void);
  * EXAMPLE:
  * ```c
  * nimcp_training_config_t config = nimcp_training_config_default();
- * config.loss_type = NIMCP_LOSS_CROSS_ENTROPY;
- * config.optimizer_type = NIMCP_OPT_ADAM;
+ * config.loss_type = NIMCP_API_LOSS_CROSS_ENTROPY;
+ * config.optimizer_type = NIMCP_API_OPT_ADAM;
  * config.learning_rate = 0.001f;
  * nimcp_brain_configure_training(brain, &config);
  * ```

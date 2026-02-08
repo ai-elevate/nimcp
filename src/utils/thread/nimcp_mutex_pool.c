@@ -149,6 +149,10 @@ int nimcp_mutex_pool_destroy(void) {
     // No stats_lock to destroy (now using atomics)
 
     g_pool.initialized = false;
+
+    /* P2: Reset platform_once so pool can be re-initialized after destroy */
+    g_pool_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+
     return 0;
 }
 

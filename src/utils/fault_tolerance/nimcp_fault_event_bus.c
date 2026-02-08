@@ -43,7 +43,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fault_event_bus)
 #include <sys/time.h>
 #include <errno.h>
 #include <signal.h>
-#include <setjmp.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 

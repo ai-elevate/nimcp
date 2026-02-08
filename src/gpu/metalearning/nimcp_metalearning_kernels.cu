@@ -538,7 +538,9 @@ bool nimcp_gpu_protonet_compute_prototypes(
         state->n_classes * state->embedding_dim * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     dim3 grid(state->n_classes);
-    dim3 block(state->embedding_dim);
+    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+    uint32_t embed_block = (state->embedding_dim > 1024) ? 1024 : state->embedding_dim;
+    dim3 block(embed_block);
 
     kernel_compute_prototypes<<<grid, block>>>(
         (float*)state->prototypes->data,
@@ -644,7 +646,9 @@ bool nimcp_gpu_protonet_classify(
 
     // Compute distances
     dim3 grid(n_queries);
-    dim3 block(state->n_classes);
+    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+    uint32_t class_block = (state->n_classes > 1024) ? 1024 : (uint32_t)state->n_classes;
+    dim3 block(class_block);
 
     kernel_prototype_distances<<<grid, block>>>(
         (float*)state->distances->data,
@@ -669,7 +673,8 @@ bool nimcp_gpu_protonet_classify(
     // Argmax for predictions: find class with highest logit per query
     {
         // Copy logits to host for argmax (n_queries * n_classes)
-        size_t logit_count = (size_t)n_queries * state->n_classes;
+        /* P2: Cast before multiply to prevent integer overflow */
+        size_t logit_count = (size_t)n_queries * (size_t)state->n_classes;
         float* h_logits = (float*)malloc(logit_count * sizeof(float));
         float* h_preds = (float*)malloc(n_queries * sizeof(float));
         if (!h_logits || !h_preds) {
@@ -721,9 +726,14 @@ __global__ void kernel_cross_entropy_loss(
     float local_loss = 0.0f;
 
     if (idx < n_queries) {
+        /* P1-17: Bounds check on label to prevent OOB array access */
         int label = (int)labels[idx];
-        float prob = logits[idx * n_classes + label];
-        local_loss = -logf(prob + 1e-8f);
+        if (label < 0 || label >= n_classes) {
+            local_loss = 0.0f;  /* Invalid label, skip */
+        } else {
+            float prob = logits[idx * n_classes + label];
+            local_loss = -logf(prob + 1e-8f);
+        }
     }
 
     shared_loss[threadIdx.x] = local_loss;
@@ -837,7 +847,8 @@ __global__ void kernel_memory_read(
     int key_dim,
     int value_dim)
 {
-    __shared__ float weights[256];  // Assume memory_size <= 256
+    /* P1-13: Use dynamic shared memory to handle memory_size > 256 */
+    extern __shared__ float weights[];
 
     int batch_idx = blockIdx.x;
     int mem_idx = threadIdx.x;
@@ -897,9 +908,12 @@ bool nimcp_gpu_meta_memory_read(
     int batch_size = query_key->numel / params->key_dim;
 
     dim3 grid(batch_size);
-    dim3 block(state->memory_size);
+    /* P1-13/P1-14: Clamp block size and pass dynamic shared memory size */
+    uint32_t mem_block = (state->memory_size > 1024) ? 1024 : (uint32_t)state->memory_size;
+    dim3 block(mem_block);
+    size_t shared_mem_size = state->memory_size * sizeof(float);
 
-    kernel_memory_read<<<grid, block>>>(
+    kernel_memory_read<<<grid, block, shared_mem_size>>>(
         (float*)read_output->data,
         (float*)state->read_weights->data,
         (const float*)state->keys->data,
@@ -976,7 +990,9 @@ bool nimcp_gpu_meta_memory_write(
     int batch_size = key->numel / params->key_dim;
 
     dim3 grid(batch_size);
-    dim3 block(state->memory_size);
+    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+    uint32_t mem_block = (state->memory_size > 1024) ? 1024 : (uint32_t)state->memory_size;
+    dim3 block(mem_block);
 
     kernel_memory_write<<<grid, block>>>(
         (float*)state->keys->data,
@@ -1106,7 +1122,9 @@ bool nimcp_gpu_task_embed_film(
     int n_samples = activations->numel / state->embed_dim;
 
     dim3 grid(n_samples);
-    dim3 block(state->embed_dim);
+    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+    uint32_t film_block = (state->embed_dim > 1024) ? 1024 : (uint32_t)state->embed_dim;
+    dim3 block(film_block);
 
     kernel_film_conditioning<<<grid, block>>>(
         (float*)activations->data,
@@ -1209,6 +1227,13 @@ bool nimcp_gpu_few_shot_accuracy(
     // Copy to CPU for argmax and comparison
     float* h_pred = (float*)malloc(predictions->numel * sizeof(float));
     float* h_labels = (float*)malloc(n * sizeof(float));
+    /* P2: NULL check after malloc */
+    if (!h_pred || !h_labels) {
+        free(h_pred);
+        free(h_labels);
+        LOG_ERROR("Failed to allocate host buffers for accuracy");
+        return false;
+    }
 
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_pred, predictions->data, predictions->numel * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_labels, labels->data, n * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
