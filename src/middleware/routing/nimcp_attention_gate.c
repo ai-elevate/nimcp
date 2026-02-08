@@ -96,8 +96,7 @@ static attention_entry_t* find_entry(const attention_gate_t* gate,
             return &gate->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "make_key: operation failed");
-    return NULL;
+    return NULL;  /* Entry not found - normal return, not an error */
 }
 
 static bool add_entry(attention_gate_t* gate, uint32_t source_id, uint32_t target_id) {

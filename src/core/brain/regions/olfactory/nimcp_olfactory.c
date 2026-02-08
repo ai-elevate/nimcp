@@ -94,17 +94,32 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
 
     /* Allocate glomeruli */
     olfact->glomeruli = (olfact_glomerulus_t*)nimcp_calloc(OLFACT_MAX_GLOMERULI, sizeof(olfact_glomerulus_t));
-    if (!olfact->glomeruli) { nimcp_free(olfact); return NULL; }
+    if (!olfact->glomeruli) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfactory_create: glomeruli allocation failed");
+        nimcp_free(olfact);
+        return NULL;
+    }
     olfact->num_glomeruli = OLFACT_MAX_GLOMERULI;
 
     /* Allocate mitral cells */
     olfact->mitral_cells = (olfact_mitral_cell_t*)nimcp_calloc(config->num_mitral_cells, sizeof(olfact_mitral_cell_t));
-    if (!olfact->mitral_cells) { nimcp_free(olfact->glomeruli); nimcp_free(olfact); return NULL; }
+    if (!olfact->mitral_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfactory_create: mitral_cells allocation failed");
+        nimcp_free(olfact->glomeruli);
+        nimcp_free(olfact);
+        return NULL;
+    }
     olfact->num_mitral_cells = config->num_mitral_cells;
 
     /* Allocate piriform cortex */
     olfact->piriform_activation = (float*)nimcp_calloc(config->num_piriform_neurons, sizeof(float));
-    if (!olfact->piriform_activation) { nimcp_free(olfact->mitral_cells); nimcp_free(olfact->glomeruli); nimcp_free(olfact); return NULL; }
+    if (!olfact->piriform_activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfactory_create: piriform_activation allocation failed");
+        nimcp_free(olfact->mitral_cells);
+        nimcp_free(olfact->glomeruli);
+        nimcp_free(olfact);
+        return NULL;
+    }
     olfact->num_piriform = config->num_piriform_neurons;
 
     /* Allocate memories */
@@ -122,6 +137,15 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
 
     /* Allocate known odors */
     olfact->known_odors = (olfact_odor_id_t*)nimcp_calloc(config->max_stored_odors, sizeof(olfact_odor_id_t));
+    if (!olfact->known_odors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfactory_create: known_odors allocation failed");
+        nimcp_free(olfact->odor_memories);
+        nimcp_free(olfact->piriform_activation);
+        nimcp_free(olfact->mitral_cells);
+        nimcp_free(olfact->glomeruli);
+        nimcp_free(olfact);
+        return NULL;
+    }
     olfact->num_known_odors = 0;
 
     /* Initialize sniff state */

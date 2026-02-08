@@ -95,7 +95,11 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
 
     /* Allocate receptors */
     gust->receptors = (taste_receptor_t*)nimcp_calloc(config->max_receptors, sizeof(taste_receptor_t));
-    if (!gust->receptors) { nimcp_free(gust); return NULL; }
+    if (!gust->receptors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gustatory_create: receptors allocation failed");
+        nimcp_free(gust);
+        return NULL;
+    }
     gust->num_receptors = config->max_receptors;
 
     /* Initialize receptors with default sensitivity */
@@ -110,12 +114,23 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
 
     /* Allocate insula neurons */
     gust->insula_activation = (float*)nimcp_calloc(config->num_insula_neurons, sizeof(float));
-    if (!gust->insula_activation) { nimcp_free(gust->receptors); nimcp_free(gust); return NULL; }
+    if (!gust->insula_activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gustatory_create: insula_activation allocation failed");
+        nimcp_free(gust->receptors);
+        nimcp_free(gust);
+        return NULL;
+    }
     gust->num_insula = config->num_insula_neurons;
 
     /* Allocate OFC neurons */
     gust->ofc_activation = (float*)nimcp_calloc(config->num_ofc_neurons, sizeof(float));
-    if (!gust->ofc_activation) { nimcp_free(gust->insula_activation); nimcp_free(gust->receptors); nimcp_free(gust); return NULL; }
+    if (!gust->ofc_activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gustatory_create: ofc_activation allocation failed");
+        nimcp_free(gust->insula_activation);
+        nimcp_free(gust->receptors);
+        nimcp_free(gust);
+        return NULL;
+    }
     gust->num_ofc = config->num_ofc_neurons;
 
     /* Initialize adaptation */

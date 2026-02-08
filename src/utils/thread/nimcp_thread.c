@@ -2399,4 +2399,9 @@ void nimcp_thread_cleanup(void)
 
     // Mark as uninitialized
     resource_table.initialized = false;
+
+    // Reset pthread_once control so nimcp_thread_init() can re-initialize
+    // Without this, pthread_once is a no-op after cleanup, leaving the
+    // resource table in a destroyed-but-unreinitializable state.
+    init_once = (nimcp_once_t)NIMCP_ONCE_INIT;
 }

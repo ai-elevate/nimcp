@@ -430,6 +430,7 @@ void self_other_update_body_part(
     if (!system || !pose || part >= BODY_PART_COUNT) {
         if (!system || !pose) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_update_body_part: required parameter is NULL");
+            return -1;
         }
         return;
     }
@@ -767,6 +768,7 @@ uint32_t self_other_classify_batch(
     if (!system || !observations || !decisions || count == 0) {
         if (!system || !observations || !decisions) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_classify_batch: required parameter is NULL");
+            return -1;
         }
         return 0;
     }

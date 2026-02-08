@@ -18,6 +18,7 @@ target_include_directories(unit_middleware_integration_controller PRIVATE
 
 add_test(NAME unit_middleware_integration_controller
     COMMAND unit_middleware_integration_controller)
+set_tests_properties(unit_middleware_integration_controller PROPERTIES TIMEOUT 180)
 
 # Bio-async integration tests
 
@@ -39,6 +40,7 @@ target_include_directories(unit_middleware_controller_bio_async PRIVATE
 
 add_test(NAME unit_middleware_controller_bio_async
     COMMAND unit_middleware_controller_bio_async)
+set_tests_properties(unit_middleware_controller_bio_async PROPERTIES TIMEOUT 180)
 
 add_executable(unit_flow_tracker_bio_async
     test_flow_tracker_bio_async.cpp

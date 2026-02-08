@@ -425,14 +425,16 @@ int fep_context_get(
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_get", 0.0f);
 
+    nimcp_platform_mutex_lock(((fep_context_system_t*)sys)->mutex);
 
     fep_context_t* ctx = find_context((fep_context_system_t*)sys, context_id);
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_get: ctx is NULL");
+        nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
         return -1;
     }
 
     *context = *ctx;
+    nimcp_platform_mutex_unlock(((fep_context_system_t*)sys)->mutex);
     return 0;
 }
 
@@ -456,11 +458,11 @@ int fep_context_update(
     fep_context_t* ctx = find_context(sys, context_id);
     if (!ctx) {
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_update: ctx is NULL");
+        /* find_context already throws to immune */
         return -1;
     }
 
-    /* Reallocate if dimension changed */
+    /* Reallocate if dimension changed (safe pattern: allocate new before freeing old) */
     if (ctx->belief_dim != belief_dim) {
         float* new_ptr = (float*)nimcp_calloc(belief_dim, sizeof(float));
         if (!new_ptr) {
@@ -468,9 +470,10 @@ int fep_context_update(
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_context_update: new_ptr is NULL");
             return -1;
         }
-        if (ctx->prior_beliefs) nimcp_free(ctx->prior_beliefs);
+        float* old_ptr = ctx->prior_beliefs;
         ctx->prior_beliefs = new_ptr;
         ctx->belief_dim = (uint32_t)belief_dim;
+        if (old_ptr) nimcp_free(old_ptr);
     }
 
     memcpy(ctx->prior_beliefs, new_beliefs, belief_dim * sizeof(float));
@@ -529,7 +532,7 @@ int fep_context_switch(
     fep_context_t* target = find_context(sys, target_context_id);
     if (!target) {
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_switch: target is NULL");
+        /* find_context already throws to immune */
         return -1;
     }
 
@@ -699,7 +702,7 @@ int fep_context_apply(
     fep_context_t* ctx = find_context(sys, context_id);
     if (!ctx) {
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_apply: ctx is NULL");
+        /* find_context already throws to immune */
         return -1;
     }
 
@@ -748,7 +751,7 @@ int fep_context_blend(
 
     if (!ctx1 || !ctx2) {
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_blend: required parameter is NULL (ctx1, ctx2)");
+        /* find_context already throws to immune */
         return -1;
     }
 
@@ -795,7 +798,7 @@ int fep_context_learn_from_experience(
     if (!sys->config.enable_context_learning) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    fep_context_instance_heartbeat("fep_context_learn_from_experienc", 0.0f);
+    fep_context_instance_heartbeat("fep_context_learn_from_experience", 0.0f);
 
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -803,7 +806,7 @@ int fep_context_learn_from_experience(
     fep_context_t* ctx = find_context(sys, context_id);
     if (!ctx) {
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_learn_from_experience: ctx is NULL");
+        /* find_context already throws to immune */
         return -1;
     }
 

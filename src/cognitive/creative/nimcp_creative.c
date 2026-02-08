@@ -379,7 +379,7 @@ const char* literary_style_archetype_name(literary_style_archetype_t archetype) 
         case STYLE_LIT_BORGES:       return "Borges";
         case STYLE_LIT_KAFKA:        return "Kafka";
         case STYLE_LIT_MARQUEZ:      return "Marquez";
-        case STYLE_LIT_DOSTOEVSKY:      return "Dickens";
+        case STYLE_LIT_DOSTOEVSKY:      return "Dostoevsky";
         case STYLE_LIT_WOOLF:        return "Woolf";
         case STYLE_LIT_FAULKNER:     return "Faulkner";
         default:                     return "Unknown";
@@ -415,9 +415,9 @@ const char* visual_style_archetype_name(visual_style_archetype_t archetype) {
         case STYLE_VIS_KLIMT:        return "Klimt";
         case STYLE_VIS_HOKUSAI:      return "Hokusai";
         case STYLE_VIS_KANDINSKY:    return "Kandinsky";
-        case STYLE_VIS_ESCHER:  return "Frida Kahlo";
+        case STYLE_VIS_ESCHER:       return "Escher";
         case STYLE_VIS_BASQUIAT:     return "Basquiat";
-        case STYLE_VIS_CARAVAGGIO:       return "Banksy";
+        case STYLE_VIS_CARAVAGGIO:   return "Caravaggio";
         default:                     return "Unknown";
     }
 }
@@ -430,11 +430,11 @@ const char* cinematic_style_archetype_name(cinematic_style_archetype_t archetype
         case STYLE_CINEMA_NOLAN:       return "Nolan";
         case STYLE_CINEMA_TARKOVSKY:   return "Tarkovsky";
         case STYLE_CINEMA_MIYAZAKI:    return "Miyazaki";
-        case STYLE_CINEMA_WELLES:    return "Scorsese";
+        case STYLE_CINEMA_WELLES:      return "Welles";
         case STYLE_CINEMA_HITCHCOCK:   return "Hitchcock";
         case STYLE_CINEMA_COPPOLA:     return "Coppola";
-        case STYLE_CINEMA_FINCHER:       return "Lynch";
-        case STYLE_CINEMA_KUROSAWA: return "Wes Anderson";
+        case STYLE_CINEMA_FINCHER:     return "Fincher";
+        case STYLE_CINEMA_KUROSAWA:    return "Kurosawa";
         case STYLE_CINEMA_VILLENEUVE: return "Denis Villeneuve";
         default:                       return "Unknown";
     }
@@ -475,21 +475,32 @@ const char* creative_deny_reason_name(creative_deny_reason_t reason) {
 visual_image_t* visual_image_create(uint32_t width, uint32_t height,
                                      uint32_t channels) {
     if (width == 0 || height == 0 || channels == 0 || channels > 4) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_deny_reason_name: width is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_image_create: invalid dimensions or channels");
         return NULL;
     }
+
+    /* Check for overflow: width * height */
+    if (width > 0 && height > SIZE_MAX / width) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_image_create: width*height overflow");
+        return NULL;
+    }
+    size_t pixel_count = (size_t)width * height;
+    if (channels > 0 && pixel_count > SIZE_MAX / channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_image_create: pixel_count*channels overflow");
+        return NULL;
+    }
+    size_t data_size = pixel_count * channels;
 
     visual_image_t* image = nimcp_calloc(1, sizeof(visual_image_t));
     if (!image) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_deny_reason_name: image is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_image_create: image allocation failed");
         return NULL;
     }
 
-    size_t data_size = (size_t)width * height * channels;
     image->pixels = nimcp_calloc(data_size, sizeof(float));
     if (!image->pixels) {
         nimcp_free(image);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_deny_reason_name: image->pixels is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_image_create: pixels allocation failed");
         return NULL;
     }
 

@@ -49,6 +49,9 @@ add_gpu_regression_test(test_gpu_neuron_regression)
 # =============================================================================
 add_gpu_regression_test(test_multigpu_regression)
 
+# P2-13: Device ID bounds overflow regression test
+add_gpu_regression_test(test_gpu_bounds_regression)
+
 # =============================================================================
 # GPU Spike Event Regression Tests
 # =============================================================================

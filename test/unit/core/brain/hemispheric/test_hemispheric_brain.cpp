@@ -32,7 +32,11 @@ class HemisphereTest : public ::testing::Test {
 protected:
     void SetUp() override {
         left_config = hemisphere_default_config(HEMISPHERE_LEFT);
+        left_config.size = BRAIN_SIZE_TINY;
+        left_config.tier = PLATFORM_TIER_CONSTRAINED;
         right_config = hemisphere_default_config(HEMISPHERE_RIGHT);
+        right_config.size = BRAIN_SIZE_TINY;
+        right_config.tier = PLATFORM_TIER_CONSTRAINED;
     }
 
     void TearDown() override {
@@ -47,6 +51,12 @@ class HemisphericBrainTest : public ::testing::Test {
 protected:
     void SetUp() override {
         config = hemispheric_brain_default_config();
+        config.size = BRAIN_SIZE_TINY;
+        config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        config.left_config.size = BRAIN_SIZE_TINY;
+        config.left_config.tier = PLATFORM_TIER_CONSTRAINED;
+        config.right_config.size = BRAIN_SIZE_TINY;
+        config.right_config.tier = PLATFORM_TIER_CONSTRAINED;
     }
 
     void TearDown() override {
@@ -391,7 +401,11 @@ TEST_F(CorpusCallosumTest, CreateWithNullConfig) {
 
 TEST_F(CorpusCallosumTest, ConnectHemispheres) {
     hemisphere_config_t left_cfg = hemisphere_default_config(HEMISPHERE_LEFT);
+    left_cfg.size = BRAIN_SIZE_TINY;
+    left_cfg.tier = PLATFORM_TIER_CONSTRAINED;
     hemisphere_config_t right_cfg = hemisphere_default_config(HEMISPHERE_RIGHT);
+    right_cfg.size = BRAIN_SIZE_TINY;
+    right_cfg.tier = PLATFORM_TIER_CONSTRAINED;
 
     left = hemisphere_create(&left_cfg);
     right = hemisphere_create(&right_cfg);

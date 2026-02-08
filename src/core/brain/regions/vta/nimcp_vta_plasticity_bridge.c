@@ -132,7 +132,11 @@ nimcp_vta_plasticity_bridge_t* nimcp_vta_plasticity_create(const nimcp_vta_plast
     b->config = config ? *config : nimcp_vta_plasticity_config_default();
     b->synapse_capacity = VTA_PLASTICITY_MAX_SYNAPSES;
     b->synapses = nimcp_calloc(b->synapse_capacity, sizeof(nimcp_vta_plasticity_synapse_t));
-    if (!b->synapses) { nimcp_free(b); return NULL; }
+    if (!b->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vta_plasticity_create: synapses allocation failed");
+        nimcp_free(b);
+        return NULL;
+    }
     b->state.state = VTA_PLASTICITY_STATE_IDLE;
     b->current_modulation.lr_multiplier = 1.0f;
     return b;

@@ -364,6 +364,40 @@ sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* 
     detector->pe_cache_hits = 0;
     detector->pe_cache_misses = 0;
 
+    // Auto-create PE encoder if config requests it
+    if (detector->config.enable_positional_encoding) {
+        nimcp_pos_config_t pe_config;
+        memset(&pe_config, 0, sizeof(pe_config));
+        pe_config.type = detector->config.pe_type;
+
+        if (pe_config.type == NIMCP_POS_ROTARY) {
+            nimcp_pos_rope_config_t rope_cfg = nimcp_pos_rope_default_config();
+            rope_cfg.base.embedding_dim = detector->config.pe_embedding_dim;
+            rope_cfg.base.max_seq_length = detector->config.max_sequence_length;
+            rope_cfg.base.cache_enabled = true;
+            rope_cfg.base.thread_safe = true;
+            pe_config.config.rope = rope_cfg;
+        } else if (pe_config.type == NIMCP_POS_RELATIVE) {
+            nimcp_pos_relative_config_t rel_cfg = nimcp_pos_relative_default_config();
+            rel_cfg.base.embedding_dim = detector->config.pe_embedding_dim;
+            rel_cfg.base.max_seq_length = detector->config.max_sequence_length;
+            rel_cfg.base.cache_enabled = true;
+            rel_cfg.base.thread_safe = true;
+            pe_config.config.relative = rel_cfg;
+        }
+
+        if (nimcp_pos_validate_config(&pe_config) == NIMCP_POS_SUCCESS) {
+            detector->pe_encoder = nimcp_pos_encoder_create(&pe_config);
+            if (detector->pe_encoder) {
+                uint32_t cache_length = (detector->config.max_sequence_length < 512) ?
+                                        detector->config.max_sequence_length : 512;
+                nimcp_pos_cache_precompute(detector->pe_encoder, cache_length);
+                NIMCP_LOGGING_INFO("Positional encoding enabled: type=%d, dim=%u",
+                                   (int)pe_config.type, detector->config.pe_embedding_dim);
+            }
+        }
+    }
+
     // Initialize quantum bridge
     detector->quantum_bridge = NULL;
     detector->quantum_matches = 0;
@@ -1092,11 +1126,11 @@ bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
     }
 
     if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
-        // Return zeros if PE not enabled
+        // PE not configured - return false to indicate PE stats are unavailable
         if (pe_match_rate) *pe_match_rate = 0.0F;
         if (avg_pe_similarity) *avg_pe_similarity = 0.0F;
         if (pe_cache_hit_rate) *pe_cache_hit_rate = 0.0F;
-        return true;
+        return false;
     }
 
     // PE match rate

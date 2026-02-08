@@ -1408,6 +1408,10 @@ bool nimcp_gpu_receptor_kinetics(
     float off_rate,
     float dt)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !occupancy || !concentration) {
         LOG_ERROR("Invalid parameters for receptor kinetics");
         return false;

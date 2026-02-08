@@ -325,9 +325,8 @@ bool entorhinal_brain_init_check_dependencies(
     }
 
     if (required_deps & ENTORHINAL_DEP_LOGGING) {
-        if (bridge->config.logger != NULL) {
-            satisfied |= ENTORHINAL_DEP_LOGGING;
-        }
+        /* Global NIMCP logging always available; specific logger is optional */
+        satisfied |= ENTORHINAL_DEP_LOGGING;
     }
 
     if (required_deps & ENTORHINAL_DEP_SECURITY) {
@@ -529,6 +528,10 @@ int entorhinal_brain_init_connect_bridge(
     switch (bridge_order) {
         case BRIDGE_INIT_ORDER_SECURITY:
             result = entorhinal_init_security_bridge(bridge->entorhinal, NULL, NULL);
+            break;
+        case BRIDGE_INIT_ORDER_LOGGING:
+            /* Logging is always available via global NIMCP logging */
+            result = 0;
             break;
         case BRIDGE_INIT_ORDER_SUBSTRATE:
             result = entorhinal_init_substrate_bridge(bridge->entorhinal, NULL);
@@ -871,8 +874,9 @@ int entorhinal_brain_init_test_bridges(
         return -1;
     }
 
-    /* Verify bridges are connected */
-    if (bridge->status.bridges_connected == 0) {
+    /* Verify bridges are connected (skip check if initialization hasn't run) */
+    if (bridge->status.current_phase >= ENTORHINAL_INIT_PHASE_BRIDGE_CONNECT &&
+        bridge->status.bridges_connected == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_test_bridges: bridge->status.bridges_connected is zero");
         return -1;
     }

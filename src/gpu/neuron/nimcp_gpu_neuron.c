@@ -578,6 +578,13 @@ static bool create_gpu_tensors(gpu_neural_network_t network)
     }
 
     // Spike queue tensor: [spike_queue_capacity x 4] (FP32 for mixed data)
+    // NOTE: The spike queue is OPTIONAL. If creation fails, the network operates
+    // without GPU-side spike collection. This is acceptable because:
+    // 1. CPU fallback path collects spikes from host arrays directly
+    // 2. The 3 required tensors (neuron_states, neuron_metadata, synapse_data)
+    //    are properly cleaned up by destroy_gpu_tensors() on all failure paths
+    // 3. gpu_neural_network_destroy() calls destroy_gpu_tensors() which handles
+    //    NULL spike_queue gracefully
     size_t spike_capacity = network->config.spike_queue_capacity;
     if (spike_capacity == 0) {
         spike_capacity = network->neurons_capacity * 10;  // Default

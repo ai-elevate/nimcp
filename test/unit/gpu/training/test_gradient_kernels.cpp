@@ -53,13 +53,16 @@ protected:
 
     // Helper: Create a tensor with random data
     nimcp_gpu_tensor_t* create_random_tensor(const std::vector<size_t>& dims,
-                                              float min_val = -1.0f, float max_val = 1.0f) {
+                                              float min_val = -1.0f, float max_val = 1.0f,
+                                              unsigned int seed = 0) {
         nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(
             ctx_, dims.data(), static_cast<uint32_t>(dims.size()), NIMCP_GPU_PRECISION_FP32);
         if (!tensor) return nullptr;
 
+        // Use provided seed, or auto-increment to ensure different tensors get different data
+        static unsigned int auto_seed = 42;
+        std::mt19937 gen(seed != 0 ? seed : auto_seed++);
         std::vector<float> data(tensor->numel);
-        std::mt19937 gen(42);
         std::uniform_real_distribution<float> dist(min_val, max_val);
         for (auto& v : data) v = dist(gen);
 

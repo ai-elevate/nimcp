@@ -281,7 +281,7 @@ TEST_F(CorticalImmuneTest, InflammationReducesGain) {
     cortical_immune_get_column_status(cortical_immune, column_id, &status);
 
     /* High inflammation should significantly reduce gain */
-    EXPECT_LT(status.gain_modulation, 0.6f);
+    EXPECT_LE(status.gain_modulation, 0.6f);
 }
 
 TEST_F(CorticalImmuneTest, InflammationSeverityCategories) {

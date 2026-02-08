@@ -202,7 +202,9 @@ static inline snn_neuron_t* get_channel_neurons(surprise_snn_bridge_t* bridge,
 static void send_spike_burst_message(surprise_snn_bridge_t* bridge,
                                       uint32_t spike_count,
                                       float spike_rate) {
-    if (!bridge->bio_async_connected || !bridge->router) {
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "send_spike_burst_message: bio_async_connected but router is NULL");
         return;
     }
 
@@ -241,7 +243,9 @@ static void send_spike_burst_message(surprise_snn_bridge_t* bridge,
 static void send_channel_dominant_message(surprise_snn_bridge_t* bridge,
                                            surprise_snn_channel_t prev_channel,
                                            surprise_snn_channel_t new_channel) {
-    if (!bridge->bio_async_connected || !bridge->router) {
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "send_channel_dominant_message: bio_async_connected but router is NULL");
         return;
     }
 

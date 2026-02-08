@@ -270,9 +270,10 @@ TEST_F(CrossModuleErrorPropagationTest, ResourceExhaustion_WorkingMemory) {
         }
     }
 
-    // Should have added some but not unlimited
+    // Should have added some
     EXPECT_GT(items_added, 0u);
-    EXPECT_LE(items_added, capacity);
+    // Working memory uses eviction policy: when full, lowest-salience item
+    // is evicted to make room. So all adds succeed but count stays <= capacity.
 
     // Verify count doesn't exceed capacity
     uint32_t count = working_memory_get_count(wm);

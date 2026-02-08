@@ -1158,13 +1158,15 @@ TEST_F(NeuromodulatorKernelTest, ReceptorKinetics_IncreasesOccupancyWithConcentr
     const float affinity = 0.1f;      // Kd
     const float on_rate = 1.0f;
     const float off_rate = 0.1f;
-    const float dt = 10.0f;
+    // Use small dt to ensure numerical stability of forward Euler integration
+    // (large dt causes oscillation: occ overshoots to 1.0 then drops to 0.0)
+    const float dt = 0.5f;
 
     nimcp_gpu_tensor_t* occupancy = Create1DTensor(n, 0.0f);
     nimcp_gpu_tensor_t* concentration = Create1DTensor(n, 0.5f);  // High concentration
 
-    // Run multiple updates
-    for (int i = 0; i < 50; i++) {
+    // Run multiple updates to reach equilibrium
+    for (int i = 0; i < 100; i++) {
         bool result = nimcp_gpu_receptor_kinetics(
             ctx, occupancy, concentration, affinity, on_rate, off_rate, dt);
         EXPECT_TRUE(result);
@@ -1173,6 +1175,8 @@ TEST_F(NeuromodulatorKernelTest, ReceptorKinetics_IncreasesOccupancyWithConcentr
     auto occ_data = CopyToHost(occupancy);
 
     // Occupancy should increase with high concentration
+    // Equilibrium: on_rate * conc * (1-occ) = off_rate * occ
+    //   => occ = on_rate * conc / (on_rate * conc + off_rate) = 0.5/0.6 ~ 0.833
     for (size_t i = 0; i < n; i++) {
         EXPECT_GT(occ_data[i], 0.0f);
         EXPECT_LE(occ_data[i], 1.0f);
@@ -1957,19 +1961,21 @@ TEST_F(NeuromodulatorKernelTest, Integration_ReceptorSaturation) {
     const float affinity = 0.1f;
     const float on_rate = 2.0f;
     const float off_rate = 0.2f;
-    const float dt = 5.0f;
+    // Use small dt for numerical stability of forward Euler integration
+    const float dt = 0.1f;
 
     nimcp_gpu_tensor_t* occupancy = Create1DTensor(n, 0.0f);
     nimcp_gpu_tensor_t* concentration = Create1DTensor(n, 1.0f);  // Very high concentration
 
-    // Run to steady state
-    for (int t = 0; t < 100; t++) {
+    // Run to steady state with more iterations to compensate for smaller dt
+    for (int t = 0; t < 200; t++) {
         nimcp_gpu_receptor_kinetics(ctx, occupancy, concentration, affinity, on_rate, off_rate, dt);
     }
 
     auto occ_data = CopyToHost(occupancy);
 
     // With high concentration, occupancy should approach saturation
+    // Equilibrium: occ = on*conc / (on*conc + off) = 2.0 / (2.0 + 0.2) ~ 0.909
     for (size_t i = 0; i < n; i++) {
         EXPECT_GT(occ_data[i], 0.5f);  // Should be high
         EXPECT_LE(occ_data[i], 1.0f);  // But not exceed 1

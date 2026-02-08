@@ -993,6 +993,27 @@ mesh_bootstrap_t* mesh_bootstrap_create(const mesh_bootstrap_config_t* config) {
         LOG_WARN("Failed to create module registry - type-safe lookup disabled");
     } else {
         LOG_DEBUG("Module registry created for type-safe module lookup");
+
+        /* Auto-register bootstrap internal modules into the module registry.
+         * These use _bootstrap_ prefix to avoid conflicts with user-registered
+         * modules, and dummy instances with magic=0 to skip magic validation. */
+        struct { const char* name; mesh_adapter_category_t cat; } core_modules[] = {
+            { "_bootstrap_cortex",    MESH_ADAPTER_CATEGORY_MOTOR },
+            { "_bootstrap_cerebel",   MESH_ADAPTER_CATEGORY_MOTOR },
+            { "_bootstrap_basal",     MESH_ADAPTER_CATEGORY_MOTOR },
+            { "_bootstrap_hipp",      MESH_ADAPTER_CATEGORY_MEMORY },
+            { "_bootstrap_prosp",     MESH_ADAPTER_CATEGORY_MEMORY },
+        };
+        size_t num_core = sizeof(core_modules) / sizeof(core_modules[0]);
+        for (size_t cm = 0; cm < num_core; cm++) {
+            mesh_module_descriptor_t desc;
+            memset(&desc, 0, sizeof(desc));
+            desc.module_name = core_modules[cm].name;
+            desc.category = core_modules[cm].cat;
+            desc.module_instance = (void*)(uintptr_t)(0xB000 + cm);
+            desc.module_magic = 0;  /* Skip magic validation */
+            mesh_module_registry_register(bootstrap->module_registry, &desc);
+        }
     }
 
     /* Phase 14: Initialize bio bridge for bio-async integration */

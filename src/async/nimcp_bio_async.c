@@ -390,7 +390,6 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
 static unified_mem_handle_t handle_tracker_remove(void* ptr) {
     if (!g_handle_tracker.initialized) {
         BIO_TRACE("Handle tracker not initialized, ptr %p assumed malloc'd", ptr);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle_tracker_remove: g_handle_tracker is NULL");
         return NULL;
     }
     if (!ptr) {
@@ -415,7 +414,6 @@ static unified_mem_handle_t handle_tracker_remove(void* ptr) {
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
     BIO_TRACE("Pointer %p not in handle tracker, assuming malloc'd", ptr);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_tracker_remove: operation failed");
     return NULL;  /* Not found - allocated via nimcp_malloc */
 }
 

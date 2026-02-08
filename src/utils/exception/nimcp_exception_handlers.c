@@ -34,6 +34,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(exception_handlers)
 static nimcp_handler_registration_t* g_handlers[NIMCP_HANDLER_MAX_REGISTERED];
 static size_t g_handler_count = 0;
 static uint32_t g_next_handler_id = 1;
+static nimcp_platform_mutex_t  g_handler_mutex_storage;
 static nimcp_platform_mutex_t* g_handler_mutex = NULL;
 static bool g_handlers_initialized = false;
 
@@ -54,7 +55,11 @@ static _Thread_local size_t tl_try_depth = 0;
 static void ensure_initialized(void) {
     if (g_handlers_initialized) return;
 
-    g_handler_mutex = nimcp_platform_mutex_create();
+    /* Use a statically-allocated mutex to avoid tracked nimcp_malloc.
+     * This prevents a permanent ~40-byte leak in the memory tracker
+     * since the handler mutex is never freed during normal operation. */
+    nimcp_platform_mutex_init(&g_handler_mutex_storage, false);
+    g_handler_mutex = &g_handler_mutex_storage;
     g_handlers_initialized = true;
 }
 
@@ -127,11 +132,7 @@ nimcp_handler_registration_t* nimcp_handler_register(
 
     nimcp_handler_registration_t* reg = nimcp_calloc(1, sizeof(nimcp_handler_registration_t));
     if (!reg) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
-
         return NULL;
-
     }
 
     reg->id = g_next_handler_id++;
@@ -220,6 +221,11 @@ bool nimcp_exception_dispatch(nimcp_exception_t* ex) {
     if (!handled) {
         nimcp_exception_log(ex);
     }
+
+    /* Clear current exception after dispatch to avoid holding a tracked reference.
+     * Handlers had access to it during dispatch; keeping it afterward leaks memory
+     * because nimcp_exception_set_current takes a ref via nimcp_exception_ref. */
+    nimcp_exception_clear_current();
 
     return handled;
 }
@@ -460,10 +466,9 @@ void nimcp_exception_handlers_shutdown(void) {
     g_default_logging_reg = NULL;
     g_default_immune_reg = NULL;
 
-    /* Free handler mutex */
+    /* Destroy handler mutex (statically allocated, no free needed) */
     if (g_handler_mutex) {
         nimcp_platform_mutex_destroy(g_handler_mutex);
-        nimcp_free(g_handler_mutex);
         g_handler_mutex = NULL;
     }
 

@@ -260,14 +260,18 @@ TEST_F(GridCellTest, EligibilityTraceDecay) {
 
     const nimcp_grid_cell_t* cell = entorhinal_get_grid_cell(ec, 0, 0);
     float initial_trace = cell->eligibility_trace;
+    ASSERT_GT(initial_trace, 0.0f);
 
-    // Move to a position where this cell is less active
+    // Suppress activation to test pure decay behavior
+    // (grid cells are periodic, so any position may have high activation)
+    ec->cognitive_bridge.attention_modulation = 0.0f;
     float position2[3] = {10.0f, 10.0f, 0.0f};
     for (int i = 0; i < 5; i++) {
         entorhinal_update_grid_cells(ec, position2, 3);
     }
+    ec->cognitive_bridge.attention_modulation = 1.0f;
 
-    // Eligibility should have decayed
+    // Eligibility should have decayed (trace = decay^5 * initial_trace)
     cell = entorhinal_get_grid_cell(ec, 0, 0);
     EXPECT_LT(cell->eligibility_trace, initial_trace);
 }

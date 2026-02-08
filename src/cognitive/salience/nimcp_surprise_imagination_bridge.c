@@ -173,7 +173,11 @@ static void imagination_send_trigger_msg(surprise_imagination_bridge_t* bridge,
                                            uint32_t scenario_id, float surprise_level,
                                            uint32_t source_module)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "imagination_send_trigger_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;
@@ -204,7 +208,11 @@ static void imagination_send_result_msg(surprise_imagination_bridge_t* bridge,
                                           uint32_t scenario_id, float divergence,
                                           float expected, float actual)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "imagination_send_result_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;

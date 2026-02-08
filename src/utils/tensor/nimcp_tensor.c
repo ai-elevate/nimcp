@@ -2788,11 +2788,33 @@ nimcp_tensor_t* nimcp_tensor_softmax(const nimcp_tensor_t* t, int dim)
     /* Compute softmax along dimension */
     /* For numerical stability: softmax(x) = softmax(x - max(x)) */
 
-    /* This is a simplified version for the last dimension */
-    if (dim == (int)t->shape.rank - 1 && t->shape.rank == 2) {
+    float* data = (float*)result->data;
+
+    if (t->shape.rank == 1) {
+        /* 1D tensor: softmax over all elements */
+        uint32_t n = t->shape.dims[0];
+
+        /* Find max */
+        float max_val = data[0];
+        for (uint32_t j = 1; j < n; j++) {
+            if (data[j] > max_val) max_val = data[j];
+        }
+
+        /* Compute exp and sum */
+        float sum = 0.0F;
+        for (uint32_t j = 0; j < n; j++) {
+            data[j] = expf(data[j] - max_val);
+            sum += data[j];
+        }
+
+        /* Normalize */
+        for (uint32_t j = 0; j < n; j++) {
+            data[j] /= sum;
+        }
+    } else if (dim == (int)t->shape.rank - 1 && t->shape.rank == 2) {
+        /* 2D tensor: softmax along last dimension (rows) */
         uint32_t rows = t->shape.dims[0];
         uint32_t cols = t->shape.dims[1];
-        float* data = (float*)result->data;
 
         for (uint32_t i = 0; i < rows; i++) {
             float* row = &data[i * cols];
@@ -3156,17 +3178,32 @@ nimcp_tensor_t* nimcp_tensor_layer_norm(const nimcp_tensor_t* t,
 
 nimcp_tensor_t* nimcp_tensor_log_softmax(const nimcp_tensor_t* input, int dim)
 {
-    (void)dim;
     if (!input) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "input is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_log_softmax: input is NULL");
         return NULL;
-
     }
-    // Stub: return log of softmax approximation
-    LOG_WARN("nimcp_tensor_log_softmax is a stub implementation");
-    return nimcp_tensor_clone(input);
+
+    /* Compute softmax first, then take log */
+    nimcp_tensor_t* sm = nimcp_tensor_softmax(input, dim);
+    if (!sm) {
+        return NULL;
+    }
+
+    /* Compute element-wise log */
+    size_t total = 1;
+    for (uint32_t i = 0; i < sm->shape.rank; i++) {
+        total *= sm->shape.dims[i];
+    }
+
+    float* data = (float*)sm->data;
+    for (size_t i = 0; i < total; i++) {
+        /* Clamp to avoid log(0) = -inf */
+        float val = data[i];
+        if (val < 1e-38f) val = 1e-38f;
+        data[i] = logf(val);
+    }
+
+    return sm;
 }
 
 int nimcp_autodiff_backward(nimcp_autodiff_ctx_t* ctx,

@@ -49,11 +49,11 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thermodynamics)
 /** ATP molecules per action potential */
 #define ATP_PER_SPIKE 1.0e9
 
-/** Minimum valid temperature (K) */
-#define MIN_VALID_TEMP_K 250.0
+/** Minimum valid temperature (K) - must be above absolute zero */
+#define MIN_VALID_TEMP_K 0.001
 
-/** Maximum valid temperature (K) */
-#define MAX_VALID_TEMP_K 400.0
+/** Maximum valid temperature (K) - upper bound for numerical stability */
+#define MAX_VALID_TEMP_K 1000000.0
 
 //=============================================================================
 // Internal State

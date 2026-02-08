@@ -54,11 +54,14 @@ struct phase_coded_buffer {
 // ============================================================================
 
 /**
- * @brief Wrap phase to [-π, π]
+ * @brief Wrap phase to [0, 2π)
+ * Using [0, 2π) instead of [-π, π] ensures ascending phase values
+ * sort correctly without sign-flip artifacts at the π boundary.
  */
 static float wrap_phase(float phase) {
-    while (phase > M_PI) phase -= 2.0F * M_PI;
-    while (phase < -M_PI) phase += 2.0F * M_PI;
+    const float TWO_PI = 2.0F * (float)M_PI;
+    while (phase >= TWO_PI) phase -= TWO_PI;
+    while (phase < 0.0F) phase += TWO_PI;
     return phase;
 }
 
@@ -265,11 +268,15 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
         neural_phasor_t item_phasor = phasor_from_polar(
             buffer->items[i].amplitude, buffer->items[i].phase);
 
-        // Compute phase difference from pattern mean
-        float phase_diff = fabsf(wrap_phase(buffer->items[i].phase - pattern_mean_phase));
+        // Compute angular distance from pattern mean (shortest arc in [0, 2π))
+        float raw_diff = wrap_phase(buffer->items[i].phase - pattern_mean_phase);
+        float phase_diff = raw_diff;
+        if (phase_diff > (float)M_PI) {
+            phase_diff = 2.0F * (float)M_PI - phase_diff;
+        }
 
         // Simple coherence: inverse of phase difference
-        float coherence = 1.0F - (phase_diff / M_PI);
+        float coherence = 1.0F - (phase_diff / (float)M_PI);
 
         if (coherence >= min_coherence) {
             temp_indices[match_count] = i;

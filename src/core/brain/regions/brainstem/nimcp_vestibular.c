@@ -423,6 +423,15 @@ bool vestibular_process_canal_input(vestibular_processor_t* p,
 
     p->stats.vor_commands++;
 
+    /* Integrate head position from angular velocity */
+    float dt_s = 0.001f;  /* Default timestep */
+    if (p->current_time_us > 0 && input->timestamp_us > p->current_time_us) {
+        dt_s = (float)(input->timestamp_us - p->current_time_us) / 1000000.0f;
+    }
+    p->vsr.head_position[0] += input->yaw_velocity * dt_s;
+    p->vsr.head_position[1] += input->pitch_velocity * dt_s;
+    p->vsr.head_position[2] += input->roll_velocity * dt_s;
+
     return true;
 }
 

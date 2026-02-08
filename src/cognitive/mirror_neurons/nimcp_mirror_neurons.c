@@ -1850,7 +1850,6 @@ bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror)
 
 
     if (mirror->last_update_time == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_has_recent_observations: mirror->last_update_time is zero");
         return false;
     }
 

@@ -28,8 +28,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(temporal_coding)
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
-// Forward declaration for spike_train_clear
-extern void spike_train_clear(spike_train_t* train);
+// Use rate_coding_spike_train_clear (not GPU spike_train_clear which has different struct layout)
+extern void rate_coding_spike_train_clear(spike_train_t* train);
+#define spike_train_clear rate_coding_spike_train_clear
 
 
 //=============================================================================

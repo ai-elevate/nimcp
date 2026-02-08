@@ -94,14 +94,14 @@ static __global__ void kernel_init_rng_states(
 static __global__ void kernel_generate_uniform(
     curandState* states,
     float* output,
-    uint32_t n)
+    uint32_t n,
+    uint32_t num_states)
 {
     uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
-    // Use state for this thread
-    uint32_t state_idx = idx % gridDim.x * blockDim.x;
-    if (state_idx >= n) state_idx = idx % 1024;
+    // Use state for this thread (wrap around if more outputs than states)
+    uint32_t state_idx = idx % num_states;
 
     output[idx] = curand_uniform(&states[state_idx]);
 }
@@ -112,13 +112,13 @@ static __global__ void kernel_generate_uniform(
 __global__ void kernel_generate_normal(
     curandState* states,
     float* output,
-    uint32_t n)
+    uint32_t n,
+    uint32_t num_states)
 {
     uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
-    uint32_t state_idx = idx % gridDim.x * blockDim.x;
-    if (state_idx >= n) state_idx = idx % 1024;
+    uint32_t state_idx = idx % num_states;
 
     output[idx] = curand_normal(&states[state_idx]);
 }
@@ -298,11 +298,21 @@ bool fin_gpu_rng_uniform(
     uint32_t block_size = 256;
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
+    // Allocate device output (host pointer cannot be used in kernel)
+    float* d_output = NULL;
+    size_t out_size = n * sizeof(float);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_output, out_size), GPU_ERROR_OUT_OF_MEMORY);
+
     kernel_generate_uniform<<<grid_size, block_size, 0, stream>>>(
-        rng->d_states, output, n);
+        rng->d_states, d_output, n, rng->num_states);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+
+    // Copy results back to host
+    NIMCP_CUDA_RECOVER(cudaMemcpy(output, d_output, out_size,
+                                  cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    cudaFree(d_output);
 
     return true;
 }
@@ -327,11 +337,21 @@ bool fin_gpu_rng_normal(
     uint32_t block_size = 256;
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
+    // Allocate device output (host pointer cannot be used in kernel)
+    float* d_output = NULL;
+    size_t out_size = n * sizeof(float);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_output, out_size), GPU_ERROR_OUT_OF_MEMORY);
+
     kernel_generate_normal<<<grid_size, block_size, 0, stream>>>(
-        rng->d_states, output, n);
+        rng->d_states, d_output, n, rng->num_states);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+
+    // Copy results back to host
+    NIMCP_CUDA_RECOVER(cudaMemcpy(output, d_output, out_size,
+                                  cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    cudaFree(d_output);
 
     return true;
 }

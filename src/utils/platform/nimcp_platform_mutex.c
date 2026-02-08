@@ -21,11 +21,12 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/exception/nimcp_exception_macros.h"
+/* P1-6 FIX: Removed nimcp_exception_macros.h and nimcp_api_exception.h includes.
+ * Platform mutex is the lowest layer - must not depend on exception/immune system
+ * to avoid circular dependency (mutex -> immune -> mutex). */
 #include <errno.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
-#include "api/nimcp_api_exception.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(platform_mutex)
@@ -37,8 +38,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(platform_mutex)
 int nimcp_platform_mutex_init(nimcp_platform_mutex_t* mutex, bool recursive)
 {
     if (!mutex) {
+        /* P1-6 FIX: Platform layer must NOT depend on exception/immune system
+         * (circular dependency: mutex -> immune -> mutex). Use LOG_ERROR only. */
         LOG_ERROR("nimcp_platform_mutex_init: mutex pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex init failed: NULL pointer");
         return EINVAL;
     }
 
@@ -69,7 +71,6 @@ int nimcp_platform_mutex_destroy(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
         LOG_ERROR("nimcp_platform_mutex_destroy: mutex pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex destroy failed: NULL pointer");
         return EINVAL;
     }
 
@@ -89,7 +90,6 @@ int nimcp_platform_mutex_lock(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
         LOG_ERROR("nimcp_platform_mutex_lock: mutex pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex lock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -109,7 +109,6 @@ int nimcp_platform_mutex_trylock(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
         LOG_ERROR("nimcp_platform_mutex_trylock: mutex pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex trylock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -129,7 +128,6 @@ int nimcp_platform_mutex_unlock(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
         LOG_ERROR("nimcp_platform_mutex_unlock: mutex pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex unlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -150,11 +148,16 @@ nimcp_platform_mutex_t* nimcp_platform_mutex_create(void)
     nimcp_platform_mutex_t* mutex = (nimcp_platform_mutex_t*)nimcp_malloc(
         sizeof(nimcp_platform_mutex_t)
     );
-    NIMCP_API_CHECK_ALLOC(mutex, "Failed to allocate mutex structure");
+    /* P1-6 FIX: Don't use NIMCP_API_CHECK_ALLOC here - it calls into the
+     * exception/immune system, creating a circular dependency. The platform
+     * mutex layer is the lowest layer and must not depend upward. */
+    if (!mutex) {
+        LOG_ERROR("nimcp_platform_mutex_create: failed to allocate mutex structure");
+        return NULL;
+    }
 
     if (nimcp_platform_mutex_init(mutex, false) != 0) {
         LOG_ERROR("nimcp_platform_mutex_create: failed to initialize mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Mutex create failed: init error");
         nimcp_free(mutex);
         return NULL;
     }

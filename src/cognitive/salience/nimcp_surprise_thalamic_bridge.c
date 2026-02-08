@@ -168,7 +168,11 @@ static void thalamic_send_route_msg(surprise_thalamic_bridge_t* bridge,
                                      uint32_t signal_type, float magnitude,
                                      float weighted_magnitude, float urgency)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_send_route_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;
@@ -202,7 +206,11 @@ static void thalamic_send_gate_msg(surprise_thalamic_bridge_t* bridge,
                                     uint32_t signal_type, float old_weight,
                                     float new_weight)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_send_gate_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;

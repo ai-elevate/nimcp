@@ -555,6 +555,7 @@ void minicolumn_destroy(minicolumn_t* col) {
  * WHAT: Validate hypercolumn configuration
  * WHY:  Catch errors early
  * HOW:  Check all fields and constraints
+ *       Note: minicolumn_configs may be NULL (auto-generated in hypercolumn_create)
  */
 static bool validate_hypercolumn_config(const hypercolumn_config_t* config) {
     if (!config) {
@@ -569,11 +570,7 @@ static bool validate_hypercolumn_config(const hypercolumn_config_t* config) {
         return false;
     }
 
-    if (!config->minicolumn_configs) {
-        COLUMN_LOG_ERROR("validate_hypercolumn_config: NULL minicolumn configs");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_hypercolumn_config: config->minicolumn_configs is NULL");
-        return false;
-    }
+    /* minicolumn_configs == NULL is allowed; hypercolumn_create auto-generates defaults */
 
     if (config->feature_space_min >= config->feature_space_max) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: Invalid feature space range");
@@ -591,9 +588,76 @@ static bool validate_hypercolumn_config(const hypercolumn_config_t* config) {
 }
 
 /**
+ * WHAT: Default number of neurons when auto-generating minicolumn configs
+ * WHY:  Biologically, a cortical minicolumn has ~80-100 neurons
+ */
+#define DEFAULT_NEURONS_PER_MINICOLUMN 80
+#define DEFAULT_LAYER_2_3_COUNT 30
+#define DEFAULT_LAYER_4_COUNT   20
+#define DEFAULT_LAYER_5_6_COUNT 30
+
+/**
+ * WHAT: Generate default minicolumn configurations for a hypercolumn
+ * WHY:  Allow hypercolumn_create with NULL minicolumn_configs (convenience API)
+ * HOW:  Allocate configs and neuron ID arrays, spread tuning across feature space
+ *
+ * @param config Hypercolumn config providing feature space and minicolumn count
+ * @param out_neuron_ids Output: allocated neuron ID arrays (caller must free)
+ * @return Allocated minicolumn_config_t array or NULL on failure
+ *
+ * OWNERSHIP: Caller must free returned array AND out_neuron_ids arrays
+ */
+static minicolumn_config_t* generate_default_minicolumn_configs(
+    const hypercolumn_config_t* config,
+    uint32_t** out_neuron_ids
+) {
+    uint32_t n = config->num_minicolumns;
+    float range = config->feature_space_max - config->feature_space_min;
+    float step = (n > 1) ? range / (float)(n - 1) : 0.0f;
+    float rf_radius = (n > 1) ? step * 1.5f : range * 0.5f;
+
+    minicolumn_config_t* configs = (minicolumn_config_t*)nimcp_calloc(n, sizeof(minicolumn_config_t));
+    if (!configs) {
+        return NULL;
+    }
+
+    /* Allocate a single block of neuron IDs for all minicolumns */
+    uint32_t* all_ids = (uint32_t*)nimcp_calloc(
+        (size_t)n * DEFAULT_NEURONS_PER_MINICOLUMN, sizeof(uint32_t));
+    if (!all_ids) {
+        nimcp_free(configs);
+        return NULL;
+    }
+    *out_neuron_ids = all_ids;
+
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t* ids = all_ids + (size_t)i * DEFAULT_NEURONS_PER_MINICOLUMN;
+        for (uint32_t j = 0; j < DEFAULT_NEURONS_PER_MINICOLUMN; j++) {
+            ids[j] = i * DEFAULT_NEURONS_PER_MINICOLUMN + j;
+        }
+
+        float tuning = config->feature_space_min + step * (float)i;
+
+        configs[i].neuron_ids = ids;
+        configs[i].num_neurons = DEFAULT_NEURONS_PER_MINICOLUMN;
+        configs[i].receptive_field.center_x = config->topographic_x;
+        configs[i].receptive_field.center_y = config->topographic_y;
+        configs[i].receptive_field.center_z = tuning;
+        configs[i].receptive_field.radius = (rf_radius > 0.0f) ? rf_radius : 0.5f;
+        configs[i].tuning_preference = tuning;
+        configs[i].layers.layer_2_3_count = DEFAULT_LAYER_2_3_COUNT;
+        configs[i].layers.layer_4_count   = DEFAULT_LAYER_4_COUNT;
+        configs[i].layers.layer_5_6_count = DEFAULT_LAYER_5_6_COUNT;
+    }
+
+    return configs;
+}
+
+/**
  * WHAT: Create hypercolumn
  * WHY:  Organize minicolumns with competition
  * HOW:  Allocate from pool, create minicolumns, initialize competition
+ *       If config->minicolumn_configs is NULL, auto-generates default configs
  */
 hypercolumn_t* hypercolumn_create(
     cortical_column_pool_t* pool,
@@ -612,14 +676,32 @@ hypercolumn_t* hypercolumn_create(
     }
 
     if (!validate_hypercolumn_config(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: validate_hypercolumn_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: validate_hypercolumn_config failed");
         return NULL;
+    }
+
+    /* Auto-generate default minicolumn configs if not provided */
+    minicolumn_config_t* auto_configs = NULL;
+    uint32_t* auto_neuron_ids = NULL;
+    const minicolumn_config_t* mc_configs = config->minicolumn_configs;
+
+    if (!mc_configs) {
+        auto_configs = generate_default_minicolumn_configs(config, &auto_neuron_ids);
+        if (!auto_configs) {
+            COLUMN_LOG_ERROR("hypercolumn_create: Failed to generate default minicolumn configs");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: auto_configs is NULL");
+            return NULL;
+        }
+        mc_configs = auto_configs;
+        COLUMN_LOG_DEBUG("hypercolumn_create: Auto-generated %u default minicolumn configs",
+            config->num_minicolumns);
     }
 
     // Allocate hypercolumn from pool
     hypercolumn_t* hcol = (hypercolumn_t*)memory_pool_acquire(pool->hypercolumn_pool);
     if (!hcol) {
         COLUMN_LOG_ERROR("hypercolumn_create: Pool exhausted");
+        if (auto_configs) { nimcp_free(auto_configs); nimcp_free(auto_neuron_ids); }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: hcol is NULL");
         return NULL;
     }
@@ -632,6 +714,7 @@ hypercolumn_t* hypercolumn_create(
     if (!hcol->minicolumns) {
         COLUMN_LOG_ERROR("hypercolumn_create: Failed to allocate minicolumn array");
         memory_pool_release(pool->hypercolumn_pool, hcol);
+        if (auto_configs) { nimcp_free(auto_configs); nimcp_free(auto_neuron_ids); }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: hcol->minicolumns is NULL");
         return NULL;
     }
@@ -642,13 +725,14 @@ hypercolumn_t* hypercolumn_create(
         COLUMN_LOG_ERROR("hypercolumn_create: Failed to allocate activation array");
         nimcp_free(hcol->minicolumns);
         memory_pool_release(pool->hypercolumn_pool, hcol);
+        if (auto_configs) { nimcp_free(auto_configs); nimcp_free(auto_neuron_ids); }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: hcol->activations is NULL");
         return NULL;
     }
 
     // Create all minicolumns
     for (uint32_t i = 0; i < config->num_minicolumns; i++) {
-        hcol->minicolumns[i] = minicolumn_create(pool, &config->minicolumn_configs[i]);
+        hcol->minicolumns[i] = minicolumn_create(pool, &mc_configs[i]);
         if (!hcol->minicolumns[i]) {
             COLUMN_LOG_ERROR("hypercolumn_create: Failed to create minicolumn %u", i);
             // Cleanup previously created minicolumns
@@ -658,9 +742,16 @@ hypercolumn_t* hypercolumn_create(
             memory_pool_release(pool->activation_pool, hcol->activations);
             nimcp_free(hcol->minicolumns);
             memory_pool_release(pool->hypercolumn_pool, hcol);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_create: hcol->minicolumns is NULL");
+            if (auto_configs) { nimcp_free(auto_configs); nimcp_free(auto_neuron_ids); }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_create: minicolumn_create failed");
             return NULL;
         }
+    }
+
+    /* Free auto-generated configs (minicolumn_create copies what it needs) */
+    if (auto_configs) {
+        nimcp_free(auto_configs);
+        nimcp_free(auto_neuron_ids);
     }
 
     // Copy configuration

@@ -94,33 +94,41 @@ static std::vector<float> generate_comprehension_pattern(uint32_t size) {
 // Test Fixture
 //=============================================================================
 
-class E2ELanguageLateralizationTest : public NimcpTestBase {
+class E2ELanguageLateralizationTest : public ::testing::Test {
 protected:
+    static hemispheric_brain_t* shared_brain;
     hemispheric_brain_t* brain = nullptr;
 
-    void SetUp() override {
-        NimcpTestBase::SetUp();
+    static void SetUpTestSuite() {
+        // Reset global state once before suite
+        signal_handler_unregister_brain();
+        signal_handler_reset_stats();
+        signal_handler_uninstall();
 
-        // Create hemispheric brain with default (right-handed) lateralization
         hemispheric_brain_config_t config = hemispheric_brain_default_config();
-        config.size = BRAIN_SIZE_SMALL;
+        config.size = BRAIN_SIZE_MICRO;
         config.num_inputs = LANGUAGE_INPUT_SIZE;
         config.num_outputs = LANGUAGE_OUTPUT_SIZE;
         config.default_mode = HEMISPHERIC_MODE_LATERALIZED;
         config.enable_shared_thalamus = true;
 
-        brain = hemispheric_brain_create(&config);
-        ASSERT_NE(brain, nullptr) << "Failed to create hemispheric brain";
+        shared_brain = hemispheric_brain_create(&config);
     }
 
-    void TearDown() override {
-        if (brain) {
-            hemispheric_brain_destroy(brain);
-            brain = nullptr;
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            hemispheric_brain_destroy(shared_brain);
+            shared_brain = nullptr;
         }
-        NimcpTestBase::TearDown();
+    }
+
+    void SetUp() override {
+        brain = shared_brain;
+        ASSERT_NE(brain, nullptr) << "Failed to create hemispheric brain";
     }
 };
+
+hemispheric_brain_t* E2ELanguageLateralizationTest::shared_brain = nullptr;
 
 //=============================================================================
 // Language Domain Routing Tests
@@ -501,11 +509,14 @@ TEST_F(E2ELanguageLateralizationTest, SpeechProductionFullPipeline) {
     E2E_STAGE_END();
 
     // Stage 3: Phonological encoding (left, Broca's)
+    // Note: Feed output padded to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Phonological encoding", 100);
+    std::vector<float> phono_input(LANGUAGE_INPUT_SIZE, 0.0f);
+    std::copy(lexical_output.begin(), lexical_output.end(), phono_input.begin());
     result = hemispheric_brain_process_lateralized(
         brain,
-        lexical_output.data(),
-        LANGUAGE_OUTPUT_SIZE,
+        phono_input.data(),
+        LANGUAGE_INPUT_SIZE,
         COGNITIVE_DOMAIN_LANGUAGE,
         left_output.data(),
         LANGUAGE_OUTPUT_SIZE
@@ -515,11 +526,13 @@ TEST_F(E2ELanguageLateralizationTest, SpeechProductionFullPipeline) {
 
     // Stage 4: Motor execution (contralateral)
     E2E_STAGE_BEGIN("Motor execution", 100);
+    std::vector<float> motor_input(LANGUAGE_INPUT_SIZE, 0.0f);
+    std::copy(left_output.begin(), left_output.end(), motor_input.begin());
     std::vector<float> motor_output(LANGUAGE_OUTPUT_SIZE);
     result = hemispheric_brain_process_lateralized(
         brain,
-        left_output.data(),
-        LANGUAGE_OUTPUT_SIZE,
+        motor_input.data(),
+        LANGUAGE_INPUT_SIZE,
         COGNITIVE_DOMAIN_MOTOR_FINE,
         motor_output.data(),
         LANGUAGE_OUTPUT_SIZE
@@ -632,11 +645,14 @@ TEST_F(E2ELanguageLateralizationTest, ComprehensionFullPipeline) {
     E2E_STAGE_END();
 
     // Stage 2: Phonological analysis (left temporal)
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Phonological analysis", 100);
+    std::vector<float> phono_input(LANGUAGE_INPUT_SIZE, 0.0f);
+    std::copy(output.begin(), output.end(), phono_input.begin());
     result = hemispheric_brain_process_lateralized(
         brain,
-        output.data(),
-        LANGUAGE_OUTPUT_SIZE,
+        phono_input.data(),
+        LANGUAGE_INPUT_SIZE,
         COGNITIVE_DOMAIN_LANGUAGE,
         output.data(),
         LANGUAGE_OUTPUT_SIZE
@@ -647,11 +663,14 @@ TEST_F(E2ELanguageLateralizationTest, ComprehensionFullPipeline) {
     // Stage 3: Semantic integration
     E2E_STAGE_BEGIN("Semantic integration", 100);
     // Use cooperative mode for semantic integration (involves both hemispheres)
+    // Pad output to INPUT_SIZE for cooperative processing
+    std::vector<float> semantic_input(LANGUAGE_INPUT_SIZE, 0.0f);
+    std::copy(output.begin(), output.end(), semantic_input.begin());
     std::vector<float> semantic_output(LANGUAGE_OUTPUT_SIZE);
     result = hemispheric_brain_process_cooperative(
         brain,
-        output.data(),
-        LANGUAGE_OUTPUT_SIZE,
+        semantic_input.data(),
+        LANGUAGE_INPUT_SIZE,
         semantic_output.data(),
         LANGUAGE_OUTPUT_SIZE
     );

@@ -132,6 +132,7 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain to '%s'", filepath);
+        return -1;
     }
 
     return NIMCP_OK;
@@ -624,6 +625,7 @@ bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization
     bool result = brain_get_utilization_metrics(brain->internal_brain, utilization, saturation);
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to get brain utilization metrics");
+        return -1;
     }
     return result;
 }

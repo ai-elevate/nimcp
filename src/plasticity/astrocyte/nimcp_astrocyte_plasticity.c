@@ -126,7 +126,6 @@ static float compute_a1r_inhibition(float adenosine_level) {
 
 int astrocyte_plasticity_default_config(astrocyte_config_t* config) {
     NIMCP_API_CHECK_NULL(config, -1, "Astrocyte config is NULL");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_default_config: config is NULL");
 
     /* Baseline gliotransmitter levels */
     config->baseline_d_serine = ASTROCYTE_D_SERINE_BASELINE;

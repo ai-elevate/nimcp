@@ -55,6 +55,21 @@ static void api_set_error(const char* fmt, ...);
 #include <unistd.h>
 #include <math.h>
 
+/**
+ * @brief API-layer check+throw that also sets the public error string
+ *
+ * NIMCP_CHECK_THROW only throws exceptions but doesn't update g_last_error.
+ * This macro ensures nimcp_get_error() returns the right message for API callers.
+ */
+#define API_CHECK_THROW(cond, code, msg) \
+    do { \
+        if (!(cond)) { \
+            set_error("%s", (msg)); \
+            NIMCP_THROW((code), "%s", (msg)); \
+            return (code); \
+        } \
+    } while (0)
+
 //=============================================================================
 // Internal Handle Structures
 //=============================================================================
@@ -314,6 +329,7 @@ extern void nimcp_api_training_cleanup_brain(nimcp_brain_t brain);
 
 void nimcp_brain_destroy(nimcp_brain_t brain) {
     if (!brain) {
+        set_error("nimcp_brain_destroy: NULL brain handle");
         LOG_DEBUG("nimcp_brain_destroy called with NULL brain, ignoring");
         return;
     }
@@ -391,10 +407,10 @@ nimcp_status_t nimcp_brain_predict(
     char* out_label,
     float* out_confidence)
 {
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
-    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
-    NIMCP_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
-    NIMCP_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
@@ -422,7 +438,7 @@ nimcp_status_t nimcp_brain_predict(
     *out_confidence = decision->confidence;
 
     // Free decision
-    nimcp_free(decision);
+    brain_free_decision(decision);
 
     set_error("No error");
     return NIMCP_OK;
@@ -435,9 +451,17 @@ nimcp_status_t nimcp_brain_infer(
     float* outputs,
     uint32_t num_outputs)
 {
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
-    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
-    NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (num_outputs == 0) {
+        set_error("num_outputs must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
 
     // Call internal brain API to get decision (which includes output vector)
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
@@ -459,15 +483,15 @@ nimcp_status_t nimcp_brain_infer(
     }
 
     // Free decision
-    nimcp_free(decision);
+    brain_free_decision(decision);
 
     set_error("No error");
     return NIMCP_OK;
 }
 
 nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
-    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    API_CHECK_THROW(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
 
     // Call internal brain API
     bool success = brain_save(brain->internal_brain, filepath);
@@ -519,8 +543,8 @@ nimcp_status_t nimcp_brain_snapshot_save(
     const char* name,
     const char* description)
 {
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
-    NIMCP_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    API_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
 
     // Call internal brain snapshot API
     bool success = brain_save_snapshot(
@@ -584,8 +608,8 @@ nimcp_status_t nimcp_brain_snapshot_list(
     uint32_t max_count,
     uint32_t* out_count)
 {
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
-    NIMCP_CHECK_THROW(infos, NIMCP_ERROR_NULL_ARG, "Infos array is NULL");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    API_CHECK_THROW(infos, NIMCP_ERROR_NULL_ARG, "Infos array is NULL");
 
     // Call internal brain list API
     // Note: brain_snapshot_info_t and nimcp_brain_snapshot_info_t have same layout
@@ -609,8 +633,8 @@ nimcp_status_t nimcp_brain_snapshot_delete(
     nimcp_brain_t brain,
     const char* name)
 {
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
-    NIMCP_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    API_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
 
     // Call internal brain delete API
     bool success = brain_delete_snapshot(brain->internal_brain, name);
@@ -992,10 +1016,10 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
  */
 nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot_t snapshot) {
     // Guard: Validate parameters
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to nimcp_brain_restore_cow");
-    NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_NULL_ARG, "NULL snapshot provided to nimcp_brain_restore_cow");
-    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
-    NIMCP_CHECK_THROW(snapshot->internal_brain_snapshot, NIMCP_ERROR_INVALID,
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to nimcp_brain_restore_cow");
+    API_CHECK_THROW(snapshot, NIMCP_ERROR_NULL_ARG, "NULL snapshot provided to nimcp_brain_restore_cow");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+    API_CHECK_THROW(snapshot->internal_brain_snapshot, NIMCP_ERROR_INVALID,
                       "Snapshot has NULL internal_brain_snapshot");
 
     // CRITICAL FIX: Use brain_clone_cow() which properly handles COW refcounting
@@ -1063,20 +1087,20 @@ nimcp_status_t nimcp_brain_working_memory_add(
     float salience)
 {
     // Guard: Validate brain
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to working_memory_add");
-    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to working_memory_add");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // Guard: Validate parameters FIRST (before checking subsystem availability)
-    NIMCP_CHECK_THROW(data, NIMCP_ERROR_NULL_ARG, "NULL data provided to working_memory_add");
-    NIMCP_CHECK_THROW(size != 0, NIMCP_ERROR_INVALID, "Invalid size (0) provided to working_memory_add");
+    API_CHECK_THROW(data, NIMCP_ERROR_NULL_ARG, "NULL data provided to working_memory_add");
+    API_CHECK_THROW(size != 0, NIMCP_ERROR_INVALID, "Invalid size (0) provided to working_memory_add");
 
     // Guard: Check if working memory enabled (after parameter validation)
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
-    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled in brain config");
+    API_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled in brain config");
 
     // Add to working memory
     bool success = working_memory_add(wm, data, size, salience);
-    NIMCP_CHECK_THROW(success, NIMCP_ERROR, "Failed to add item to working memory");
+    API_CHECK_THROW(success, NIMCP_ERROR, "Failed to add item to working memory");
 
     set_error("No error");
     return NIMCP_OK;
@@ -1136,15 +1160,15 @@ nimcp_status_t nimcp_brain_working_memory_stats(
     uint32_t* capacity_out)
 {
     // Guard: Validate brain
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided");
-    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // Guard: Validate output parameters
-    NIMCP_CHECK_THROW(current_size_out && capacity_out, NIMCP_ERROR_NULL_ARG, "NULL output parameters");
+    API_CHECK_THROW(current_size_out && capacity_out, NIMCP_ERROR_NULL_ARG, "NULL output parameters");
 
     // Guard: Check if working memory enabled
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
-    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled");
+    API_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled");
 
     // Get stats
     working_memory_stats_t stats;
@@ -1169,16 +1193,16 @@ nimcp_status_t nimcp_brain_working_memory_refresh(
     uint32_t index)
 {
     // Guard: Validate brain
-    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided");
-    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // Guard: Check if working memory enabled
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
-    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled");
+    API_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled");
 
     // Refresh item
     bool success = working_memory_refresh(wm, index);
-    NIMCP_CHECK_THROW(success, NIMCP_ERROR_INVALID, "Invalid index for refresh");
+    API_CHECK_THROW(success, NIMCP_ERROR_INVALID, "Invalid index for refresh");
 
     set_error("No error");
     return NIMCP_OK;

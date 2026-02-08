@@ -154,9 +154,9 @@ static hypo_circadian_phase_t phase_to_period(float phase) {
  * High at night, low during day
  */
 static float calculate_melatonin(float phase) {
-    /* Melatonin peaks around 2-3 AM (phase ~= PI/4) */
-    /* Use inverted cosine shifted to peak at night */
-    float melatonin = 0.5f * (1.0f - cosf(phase));
+    /* Melatonin peaks around midnight (phase = 0) */
+    /* Use cosine that peaks at 0 and is low at PI (noon) */
+    float melatonin = 0.5f * (1.0f + cosf(phase));
 
     /* Sharpen the transition with power function */
     melatonin = powf(melatonin, 1.5f);
@@ -750,31 +750,32 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
                              0.5f, 0.1f, dt);
 
     /* Determine thermoregulatory responses */
+    /* temp_error = setpoint - current: negative when too hot, positive when too cold */
     float temp_error = thermo->core_temp.error;
 
-    if (temp_error < -0.5f) {
-        /* Too cold - activate heating */
-        thermo->shivering_active = temp_error < -1.0f;
+    if (temp_error > 0.5f) {
+        /* Too cold (setpoint > current) - activate heating */
+        thermo->shivering_active = temp_error > 1.0f;
         thermo->vasoconstriction = true;
         thermo->vasodilation = false;
         thermo->sweating_active = false;
-        thermo->heat_production = clamp01(0.5f - temp_error * 0.3f);
+        thermo->heat_production = clamp01(0.5f + temp_error * 0.3f);
         thermo->heat_loss = clamp01(0.3f);
 
-        if (temp_error < -2.0f) {
+        if (temp_error > 2.0f) {
             adapter->state.status = HYPOTHALAMUS_STATUS_THERMAL_ALERT;
             adapter->stats.thermal_alerts++;
         }
-    } else if (temp_error > 0.5f) {
-        /* Too hot - activate cooling */
-        thermo->sweating_active = temp_error > 1.0f;
+    } else if (temp_error < -0.5f) {
+        /* Too hot (current > setpoint) - activate cooling */
+        thermo->sweating_active = temp_error < -1.0f;
         thermo->vasodilation = true;
         thermo->vasoconstriction = false;
         thermo->shivering_active = false;
         thermo->heat_production = clamp01(0.3f);
-        thermo->heat_loss = clamp01(0.5f + temp_error * 0.3f);
+        thermo->heat_loss = clamp01(0.5f - temp_error * 0.3f);
 
-        if (temp_error > 2.0f) {
+        if (temp_error < -2.0f) {
             adapter->state.status = HYPOTHALAMUS_STATUS_THERMAL_ALERT;
             adapter->stats.thermal_alerts++;
         }
@@ -797,24 +798,25 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
                                   0.3f, 0.05f, dt);
 
         /* Update hunger hormones based on glucose */
+        /* glucose_error = setpoint - current: positive when glucose is low */
         float glucose_error = appetite->blood_glucose.error;
 
-        if (glucose_error < 0) {
+        if (glucose_error > 0) {
             /* Low glucose - increase ghrelin (hunger) */
             appetite->ghrelin_level = exponential_decay(
                 appetite->ghrelin_level,
-                clamp01(0.5f - glucose_error * 0.02f),
-                0.01f, dt);
+                clamp01(0.5f + glucose_error * 0.02f),
+                3.0f, dt);
             appetite->leptin_level = exponential_decay(
-                appetite->leptin_level, 0.3f, 0.02f, dt);
+                appetite->leptin_level, 0.3f, 3.0f, dt);
         } else {
             /* Normal/high glucose - increase leptin (satiety) */
             appetite->ghrelin_level = exponential_decay(
-                appetite->ghrelin_level, 0.2f, 0.02f, dt);
+                appetite->ghrelin_level, 0.2f, 3.0f, dt);
             appetite->leptin_level = exponential_decay(
                 appetite->leptin_level,
-                clamp01(0.5f + glucose_error * 0.01f),
-                0.01f, dt);
+                clamp01(0.5f - glucose_error * 0.01f),
+                3.0f, dt);
         }
 
         /* Calculate hunger drive */
@@ -843,22 +845,24 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
                               0.3f, 0.05f, dt);
 
     /* Update vasopressin based on osmolality */
+    /* osmo_error = setpoint - current: negative when osmolality is high */
     float osmo_error = hydration->osmolality.error;
 
-    if (osmo_error > 0) {
-        /* High osmolality - increase vasopressin (water retention) */
+    if (osmo_error < 0) {
+        /* High osmolality (current > setpoint) - increase vasopressin */
         hydration->vasopressin_level = exponential_decay(
             hydration->vasopressin_level,
-            clamp01(0.5f + osmo_error * 0.01f),
-            0.02f, dt);
+            clamp01(0.5f - osmo_error * 0.01f),
+            3.0f, dt);
     } else {
         /* Low osmolality - decrease vasopressin */
         hydration->vasopressin_level = exponential_decay(
-            hydration->vasopressin_level, 0.3f, 0.01f, dt);
+            hydration->vasopressin_level, 0.3f, 3.0f, dt);
     }
 
     /* Calculate thirst drive */
-    hydration->thirst_drive = clamp01(osmo_error * 0.01f +
+    /* Negative osmo_error means high osmolality, so negate to get positive drive */
+    hydration->thirst_drive = clamp01(-osmo_error * 0.01f +
                                        (1.0f - hydration->blood_volume.current_value));
 
     hydration->drinking_motivated = hydration->thirst_drive >
@@ -957,11 +961,11 @@ bool hypothalamus_update_hpa_axis(hypothalamus_adapter_t* adapter,
     /* Update CRH from PVN */
     float crh_target = effective_stress * adapter->config.crh_sensitivity *
                        hpa->hpa_sensitivity;
-    hpa->crh_level = exponential_decay(hpa->crh_level, crh_target, 0.1f, dt);
+    hpa->crh_level = exponential_decay(hpa->crh_level, crh_target, 50.0f, dt);
 
     /* Update ACTH from pituitary (delayed response to CRH) */
     float acth_target = hpa->crh_level * 0.8f;
-    hpa->acth_level = exponential_decay(hpa->acth_level, acth_target, 0.05f, dt);
+    hpa->acth_level = exponential_decay(hpa->acth_level, acth_target, 30.0f, dt);
 
     /* Update cortisol from adrenal (further delayed) */
     float cortisol_target = hpa->acth_level * 0.7f + adapter->config.cortisol_baseline;
@@ -970,12 +974,12 @@ bool hypothalamus_update_hpa_axis(hypothalamus_adapter_t* adapter,
     cortisol_target = clamp01(cortisol_target + cortisol_baseline_component);
 
     hpa->cortisol_level = exponential_decay(hpa->cortisol_level, cortisol_target,
-                                             0.02f, dt);
+                                             20.0f, dt);
 
     /* Detect chronic stress (sustained high cortisol) */
     if (hpa->cortisol_level > 0.7f) {
         hpa->activation_count++;
-        if (hpa->activation_count > 1000) {  /* ~1 minute at 60Hz */
+        if (hpa->activation_count > 100) {
             if (!hpa->chronic_stress) {
                 hpa->chronic_stress = true;
                 adapter->stats.chronic_stress_episodes++;
@@ -995,8 +999,8 @@ bool hypothalamus_update_hpa_axis(hypothalamus_adapter_t* adapter,
         }
     }
 
-    /* Decay stress input over time */
-    hpa->stress_input = exponential_decay(hpa->stress_input, 0.0f, 0.05f, dt);
+    /* Decay stress input over time (slow decay - stress lingers) */
+    hpa->stress_input = exponential_decay(hpa->stress_input, 0.0f, 0.005f, dt);
 
     /* Update status */
     if (hpa->cortisol_level > 0.6f) {
@@ -1066,22 +1070,22 @@ bool hypothalamus_update_autonomic(hypothalamus_adapter_t* adapter,
 
     /* Calculate sympathetic drive */
     float sympathetic_target = clamp01(
-        stress_input * 0.4f +
-        circadian_input * 0.2f +
-        thermal_input * 0.2f +
-        adapter->config.sympathetic_bias * 0.2f);
+        stress_input * 0.8f +
+        circadian_input * 0.1f +
+        thermal_input * 0.05f +
+        adapter->config.sympathetic_bias * 0.05f);
 
-    /* Calculate parasympathetic drive (generally reciprocal) */
+    /* Calculate parasympathetic drive (generally reciprocal to stress) */
     float parasympathetic_target = clamp01(
-        (1.0f - stress_input) * 0.4f +
-        (1.0f - circadian_input) * 0.2f +
-        0.4f);
+        (1.0f - stress_input) * 0.8f +
+        (1.0f - circadian_input) * 0.1f +
+        0.1f);
 
     /* Update with dynamics */
     ans->sympathetic_tone = exponential_decay(
-        ans->sympathetic_tone, sympathetic_target, 0.1f, dt);
+        ans->sympathetic_tone, sympathetic_target, 20.0f, dt);
     ans->parasympathetic_tone = exponential_decay(
-        ans->parasympathetic_tone, parasympathetic_target, 0.2f, dt);
+        ans->parasympathetic_tone, parasympathetic_target, 20.0f, dt);
 
     /* Calculate autonomic outputs */
     float balance = ans->sympathetic_tone - ans->parasympathetic_tone;

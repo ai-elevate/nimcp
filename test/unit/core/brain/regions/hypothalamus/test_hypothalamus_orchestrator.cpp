@@ -717,6 +717,10 @@ TEST_F(HypothalamusOrchestratorTest, GetStateNullParamsFails) {
 }
 
 TEST_F(HypothalamusOrchestratorTest, GetStatsSuccess) {
+    // Small delay to ensure uptime_us > 0 (create and get_stats may happen
+    // within the same microsecond)
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+
     hypo_orch_stats_t stats;
     EXPECT_EQ(0, hypo_orch_get_stats(orch, &stats));
 

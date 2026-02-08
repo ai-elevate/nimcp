@@ -114,7 +114,7 @@ insula_quantum_config_t insula_quantum_default_config(void) {
         .intero_channels = 16,
         .emotion_superposition_size = 8,
         .max_grover_iterations = 10,
-        .min_confidence_threshold = 0.5f,
+        .min_confidence_threshold = 0.1f,
         .enable_interference = true,
         .use_superposition = true,
         .noise_tolerance = 0.1f,
@@ -312,7 +312,7 @@ int insula_quantum_integrate_interoception(
         integrated_value += signal * amp;
         total_amplitude += amp;
 
-        if (amp > bridge->config.min_confidence_threshold) {
+        if (amp > 0.0f) {
             channels_fused++;
         }
 

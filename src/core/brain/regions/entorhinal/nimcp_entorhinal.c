@@ -482,6 +482,14 @@ nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
     memset(&ec->training_bridge, 0, sizeof(ec->training_bridge));
     memset(&ec->substrate_bridge, 0, sizeof(ec->substrate_bridge));
     memset(&ec->resonance_bridge, 0, sizeof(ec->resonance_bridge));
+
+    /* Set safe defaults for modulation values so grid cells work without bridge init */
+    ec->cognitive_bridge.attention_modulation = 1.0f;
+    ec->substrate_bridge.firing_rate_modifier = 1.0f;
+    ec->substrate_bridge.atp_level = 1.0f;
+    ec->substrate_bridge.oxygen_level = 1.0f;
+    ec->substrate_bridge.glucose_level = 1.0f;
+    ec->substrate_bridge.metabolic_rate = 1.0f;
     memset(&ec->thalamic_bridge, 0, sizeof(ec->thalamic_bridge));
     memset(&ec->hippocampus_bridge, 0, sizeof(ec->hippocampus_bridge));
     memset(&ec->perception_bridge, 0, sizeof(ec->perception_bridge));
@@ -1109,7 +1117,10 @@ int entorhinal_decode_position_from_grid(const nimcp_entorhinal_t* ec,
         position_out[0] = total_x / total_weight;
         position_out[1] = total_y / total_weight;
         if (confidence_out) {
-            *confidence_out = total_weight / ec->num_grid_modules;
+            float conf = total_weight / ec->num_grid_modules;
+            /* Clamp to [0, 1] */
+            if (conf > 1.0f) conf = 1.0f;
+            *confidence_out = conf;
         }
     } else {
         position_out[0] = 0.0f;
@@ -1205,7 +1216,7 @@ int entorhinal_update_border_cells(nimcp_entorhinal_t* ec,
 int entorhinal_detect_boundaries(const nimcp_entorhinal_t* ec,
     float* boundary_directions, float* boundary_distances,
     uint32_t max_boundaries, uint32_t* num_detected) {
-    if (!ec || !boundary_directions || !boundary_distances) {
+    if (!ec || !boundary_directions || !boundary_distances || !num_detected) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, boundary_directions, boundary_distances)");
         return -1;
     }
@@ -1243,9 +1254,7 @@ int entorhinal_detect_boundaries(const nimcp_entorhinal_t* ec,
         }
     }
 
-    if (num_detected) {
-        *num_detected = detected;
-    }
+    *num_detected = detected;
 
     return 0;
 }
@@ -1341,6 +1350,10 @@ int entorhinal_path_integrate(nimcp_entorhinal_t* ec,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, velocity)");
         return -1;
     }
+    if (dt < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_path_integrate: dt is negative");
+        return -1;
+    }
 
     nimcp_path_integration_t* pi = &ec->path_integration;
 
@@ -1386,16 +1399,14 @@ int entorhinal_path_integrate(nimcp_entorhinal_t* ec,
 int entorhinal_get_position_estimate(const nimcp_entorhinal_t* ec,
     float* position_out, float* heading_out,
     float* position_confidence, float* heading_confidence) {
-    if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+    if (!ec || !position_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec or position_out is NULL");
         return -1;
     }
 
     const nimcp_path_integration_t* pi = &ec->path_integration;
 
-    if (position_out) {
-        memcpy(position_out, pi->position, 3 * sizeof(float));
-    }
+    memcpy(position_out, pi->position, 3 * sizeof(float));
 
     if (heading_out) {
         *heading_out = pi->heading;
@@ -1502,8 +1513,8 @@ int entorhinal_set_retrieval_gate(nimcp_entorhinal_t* ec, float gate_value) {
 int entorhinal_encode_to_hippocampus(nimcp_entorhinal_t* ec,
     const float* features, uint32_t feature_dim,
     const float* spatial_context, uint32_t spatial_dim) {
-    if (!ec || !features) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_set_retrieval_gate: required parameter is NULL (ec, features)");
+    if (!ec || !features || !spatial_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_encode_to_hippocampus: required parameter is NULL");
         return -1;
     }
 
@@ -1621,14 +1632,14 @@ int entorhinal_consolidate_to_neocortex(nimcp_entorhinal_t* ec,
 
 int entorhinal_get_gateway_stats(const nimcp_entorhinal_t* ec,
     uint64_t* encoded, uint64_t* retrieved, uint64_t* consolidated) {
-    if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_set_retrieval_gate: ec is NULL");
+    if (!ec || !encoded || !retrieved || !consolidated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_get_gateway_stats: required parameter is NULL");
         return -1;
     }
 
-    if (encoded) *encoded = ec->memory_gateway.items_encoded;
-    if (retrieved) *retrieved = ec->memory_gateway.items_retrieved;
-    if (consolidated) *consolidated = ec->memory_gateway.items_consolidated;
+    *encoded = ec->memory_gateway.items_encoded;
+    *retrieved = ec->memory_gateway.items_retrieved;
+    *consolidated = ec->memory_gateway.items_consolidated;
 
     return 0;
 }

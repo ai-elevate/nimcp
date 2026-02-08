@@ -585,7 +585,13 @@ int fuzzy_discrete_set_union(const fuzzy_discrete_set_t* a, const fuzzy_discrete
                               fuzzy_discrete_set_t* out) {
     if (!a || !b || !out) return FUZZY_ERR_NULL;
     if (a->resolution != b->resolution) return FUZZY_ERR_DIMENSION_MISMATCH;
-    if (!a->values || !b->values || !out->values) return FUZZY_ERR_NULL;
+    if (!a->values || !b->values) return FUZZY_ERR_NULL;
+
+    /* Auto-allocate output if not already allocated */
+    if (!out->values) {
+        int rc = fuzzy_discrete_set_create(out, a->resolution, a->x_min, a->x_max);
+        if (rc != FUZZY_ERR_OK) return rc;
+    }
 
     for (uint32_t i = 0; i < a->resolution; i++) {
         out->values[i] = (a->values[i] > b->values[i]) ? a->values[i] : b->values[i];
@@ -597,7 +603,13 @@ int fuzzy_discrete_set_intersection(const fuzzy_discrete_set_t* a, const fuzzy_d
                                      fuzzy_discrete_set_t* out) {
     if (!a || !b || !out) return FUZZY_ERR_NULL;
     if (a->resolution != b->resolution) return FUZZY_ERR_DIMENSION_MISMATCH;
-    if (!a->values || !b->values || !out->values) return FUZZY_ERR_NULL;
+    if (!a->values || !b->values) return FUZZY_ERR_NULL;
+
+    /* Auto-allocate output if not already allocated */
+    if (!out->values) {
+        int rc = fuzzy_discrete_set_create(out, a->resolution, a->x_min, a->x_max);
+        if (rc != FUZZY_ERR_OK) return rc;
+    }
 
     for (uint32_t i = 0; i < a->resolution; i++) {
         out->values[i] = (a->values[i] < b->values[i]) ? a->values[i] : b->values[i];

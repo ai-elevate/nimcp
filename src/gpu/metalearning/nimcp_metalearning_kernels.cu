@@ -666,10 +666,41 @@ bool nimcp_gpu_protonet_classify(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    // Argmax for predictions
-    // (Simplified: just copy logits)
-    NIMCP_CUDA_RECOVER(cudaMemcpy(predictions->data, state->logits->data,
-        n_queries * state->n_classes * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    // Argmax for predictions: find class with highest logit per query
+    {
+        // Copy logits to host for argmax (n_queries * n_classes)
+        size_t logit_count = (size_t)n_queries * state->n_classes;
+        float* h_logits = (float*)malloc(logit_count * sizeof(float));
+        float* h_preds = (float*)malloc(n_queries * sizeof(float));
+        if (!h_logits || !h_preds) {
+            free(h_logits);
+            free(h_preds);
+            LOG_ERROR("Failed to allocate host buffers for argmax");
+            return false;
+        }
+
+        NIMCP_CUDA_RECOVER(cudaMemcpy(h_logits, state->logits->data,
+            logit_count * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+
+        for (int q = 0; q < n_queries; q++) {
+            float max_val = -FLT_MAX;
+            int max_idx = 0;
+            for (size_t c = 0; c < state->n_classes; c++) {
+                float val = h_logits[q * state->n_classes + c];
+                if (val > max_val) {
+                    max_val = val;
+                    max_idx = (int)c;
+                }
+            }
+            h_preds[q] = (float)max_idx;
+        }
+
+        NIMCP_CUDA_RECOVER(cudaMemcpy(predictions->data, h_preds,
+            n_queries * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+
+        free(h_logits);
+        free(h_preds);
+    }
 
     return true;
 }

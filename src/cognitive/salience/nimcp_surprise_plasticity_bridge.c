@@ -546,19 +546,23 @@ int surprise_plasticity_on_surprise_event(
     }
 
     /* Bio-async message: notify training layer of plasticity modulation */
-    if (bridge->bio_async_connected && bridge->router && bridge->config.enable_bio_async) {
-        plasticity_modulate_msg_t msg;
-        msg.source_id = source_id;
-        msg.effective_surprise = effective;
-        msg.lr_multiplier = bridge->effects.learning_rate_multiplier;
-        msg.stdp_multiplier = bridge->effects.stdp_window_multiplier;
-        msg.eligibility_multiplier = bridge->effects.eligibility_multiplier;
-        msg.bcm_shift = bridge->effects.bcm_shift;
-        (void)msg; /* Bio-async router processes on its own schedule */
+    if (bridge->bio_async_connected && bridge->config.enable_bio_async) {
+        if (!bridge->router) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "surprise_plasticity: bio_async_connected but router is NULL");
+        } else {
+            plasticity_modulate_msg_t msg;
+            msg.source_id = source_id;
+            msg.effective_surprise = effective;
+            msg.lr_multiplier = bridge->effects.learning_rate_multiplier;
+            msg.stdp_multiplier = bridge->effects.stdp_window_multiplier;
+            msg.eligibility_multiplier = bridge->effects.eligibility_multiplier;
+            msg.bcm_shift = bridge->effects.bcm_shift;
+            (void)msg; /* Bio-async router processes on its own schedule */
 
-        NIMCP_LOGGING_DEBUG("Surprise-plasticity: queued BIO_MSG_SURPRISE_PLASTICITY_MODULATE "
-                            "(source=%u, effective=%.3f, lr=%.3f)",
-                            source_id, effective, bridge->effects.learning_rate_multiplier);
+            NIMCP_LOGGING_DEBUG("Surprise-plasticity: queued BIO_MSG_SURPRISE_PLASTICITY_MODULATE "
+                                "(source=%u, effective=%.3f, lr=%.3f)",
+                                source_id, effective, bridge->effects.learning_rate_multiplier);
+        }
     }
 
     /* KG wiring integration: self-knowledge query stub
@@ -606,16 +610,20 @@ int surprise_plasticity_on_learning_outcome(
         }
 
         /* Bio-async message: notify of habituation update */
-        if (bridge->bio_async_connected && bridge->router && bridge->config.enable_bio_async) {
-            habituation_update_msg_t msg;
-            msg.source_id = source_id;
-            msg.habituation_level = entry->habituation;
-            msg.weight_change = weight_change;
-            (void)msg; /* Bio-async router processes on its own schedule */
+        if (bridge->bio_async_connected && bridge->config.enable_bio_async) {
+            if (!bridge->router) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "surprise_plasticity: bio_async_connected but router is NULL");
+            } else {
+                habituation_update_msg_t msg;
+                msg.source_id = source_id;
+                msg.habituation_level = entry->habituation;
+                msg.weight_change = weight_change;
+                (void)msg; /* Bio-async router processes on its own schedule */
 
-            NIMCP_LOGGING_DEBUG("Surprise-plasticity: queued BIO_MSG_SURPRISE_HABITUATION_UPDATE "
-                                "(source=%u, habituation=%.3f, weight_change=%.6f)",
-                                source_id, entry->habituation, weight_change);
+                NIMCP_LOGGING_DEBUG("Surprise-plasticity: queued BIO_MSG_SURPRISE_HABITUATION_UPDATE "
+                                    "(source=%u, habituation=%.3f, weight_change=%.6f)",
+                                    source_id, entry->habituation, weight_change);
+            }
         }
     } else {
         NIMCP_LOGGING_DEBUG("Surprise-plasticity: learning outcome for unknown source=%u, no habituation update",

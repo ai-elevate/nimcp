@@ -21,6 +21,7 @@
 // Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/error/nimcp_error_codes.h"
 
 /* ============================================================================
  * Test Fixture
@@ -594,9 +595,10 @@ TEST_F(BrainImmuneTest, Update) {
 }
 
 TEST_F(BrainImmuneTest, UpdateWhenNotRunningFails) {
-    // System not started
+    // System not started - returns NIMCP_ERROR_NULL_POINTER because
+    // system->running is false, triggering the NULL/invalid check
     int result = brain_immune_update(system, 100);
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 TEST_F(BrainImmuneTest, GetStats) {
@@ -610,12 +612,14 @@ TEST_F(BrainImmuneTest, GetStats) {
 }
 
 TEST_F(BrainImmuneTest, GetStatsNullFails) {
+    // NULL stats pointer triggers NIMCP_ERROR_NULL_POINTER
     int result = brain_immune_get_stats(system, nullptr);
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 
+    // NULL system pointer triggers NIMCP_ERROR_NULL_POINTER
     brain_immune_stats_t stats;
     result = brain_immune_get_stats(nullptr, &stats);
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
 }
 
 /* ============================================================================

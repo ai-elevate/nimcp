@@ -427,6 +427,21 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
 
         // Use specific device ID if provided, otherwise sequential
         int device_id = (config->device_ids) ? config->device_ids[i] : (int)i;
+
+        // P2-13 fix: Validate device_id bounds before array access
+        if (device_id < 0 || (uint32_t)device_id >= available_count) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "multigpu_context_create: device_id %d out of range [0, %u)",
+                device_id, available_count);
+            // Cleanup already-initialized devices
+            for (uint32_t j = 0; j < i; j++) {
+                free_device_context(&ctx->devices[j], ctx->is_mock);
+            }
+            nimcp_free(ctx->devices);
+            nimcp_free(ctx);
+            return NULL;
+        }
+
         dev->device_id = device_id;
         dev->info = available_devices[device_id];
 

@@ -507,7 +507,16 @@ uint32_t cortical_hierarchy_get_num_areas(
         return 0;
     }
 
-    return hierarchy->num_areas;
+    // WHAT: Count only non-NULL (live) areas
+    // WHY:  remove_area sets slots to NULL but keeps num_areas as iteration bound
+    // HOW:  Scan array and count non-NULL entries
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < hierarchy->num_areas; i++) {
+        if (hierarchy->areas[i]) {
+            count++;
+        }
+    }
+    return count;
 }
 
 const cortical_area_config_t* cortical_hierarchy_get_area_config(
@@ -790,9 +799,11 @@ int cortical_hierarchy_propagate_feedforward(
                 continue;
             }
 
-            // Zero out activity for this processing cycle
-            memset(target->activity, 0,
-                   target->config.num_hypercolumns * sizeof(float));
+            // Zero out activity for levels above start (start level has external input)
+            if (level > start_level) {
+                memset(target->activity, 0,
+                       target->config.num_hypercolumns * sizeof(float));
+            }
 
             // Accumulate inputs from all FF connections
             for (uint32_t j = 0; j < hierarchy->num_connections; j++) {
@@ -808,15 +819,30 @@ int cortical_hierarchy_propagate_feedforward(
 
                 // WHAT: Propagate activity through connection
                 // WHY:  Feedforward drives target area activation
-                // HOW:  Weighted sum of source activity
+                // HOW:  Spatial pooling when source > target (larger receptive fields)
 
-                uint32_t size = (source->config.num_hypercolumns <
-                                target->config.num_hypercolumns)
-                    ? source->config.num_hypercolumns
-                    : target->config.num_hypercolumns;
+                uint32_t src_n = source->config.num_hypercolumns;
+                uint32_t tgt_n = target->config.num_hypercolumns;
 
-                for (uint32_t k = 0; k < size; k++) {
-                    target->activity[k] += conn->weight * source->activity[k];
+                if (src_n <= tgt_n) {
+                    // Source fits into target: 1:1 mapping
+                    for (uint32_t k = 0; k < src_n; k++) {
+                        target->activity[k] += conn->weight * source->activity[k];
+                    }
+                } else {
+                    // Source larger than target: pool multiple source columns per target
+                    // Each target column receives average of its receptive field
+                    uint32_t pool_size = src_n / tgt_n;
+                    uint32_t remainder = src_n % tgt_n;
+                    for (uint32_t k = 0; k < tgt_n; k++) {
+                        float sum = 0.0f;
+                        uint32_t start = k * pool_size + (k < remainder ? k : remainder);
+                        uint32_t count = pool_size + (k < remainder ? 1 : 0);
+                        for (uint32_t s = start; s < start + count && s < src_n; s++) {
+                            sum += source->activity[s];
+                        }
+                        target->activity[k] += conn->weight * (sum / (float)count);
+                    }
                 }
             }
 
@@ -1140,7 +1166,8 @@ int cortical_hierarchy_get_stats(
 
     memset(stats_out, 0, sizeof(cortical_hierarchy_stats_t));
 
-    stats_out->num_areas = hierarchy->num_areas;
+    // Count live (non-NULL) areas - remove_area sets slots to NULL
+    stats_out->num_areas = cortical_hierarchy_get_num_areas(hierarchy);
     stats_out->num_connections = hierarchy->num_connections;
     stats_out->total_propagations = hierarchy->propagation_count;
 

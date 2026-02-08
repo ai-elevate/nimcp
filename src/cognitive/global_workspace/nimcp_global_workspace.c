@@ -365,7 +365,6 @@ static bool resolve_winner_take_all(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "resolve_winner_take_all: capacity exceeded");
     return false;  // No winner above threshold
 }
 
@@ -459,7 +458,6 @@ static bool resolve_round_robin(
     float* winner_strength)
 {
     if (workspace->num_active_competitors == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resolve_round_robin: workspace->num_active_competitors is zero");
         return false;
     }
 
@@ -1057,7 +1055,6 @@ bool global_workspace_compete(
     // Check if pool is empty
     if (ws->num_active_competitors == 0) {
         nimcp_platform_mutex_unlock(&ws->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: ws->num_active_competitors is zero");
         return false;
     }
 
@@ -1295,7 +1292,6 @@ bool global_workspace_resolve(
     if (ws->num_active_competitors == 0) {
         // No competitors to resolve
         nimcp_platform_mutex_unlock(&ws->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: ws->num_active_competitors is zero");
         return false;
     }
 

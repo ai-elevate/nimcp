@@ -42,8 +42,7 @@ static bio_module_entry_t* find_module(
             return &orchestrator->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: validation failed");
-    return NULL;
+    return NULL;  /* Module not found - normal return */
 }
 
 /**
@@ -1129,7 +1128,6 @@ int bio_orchestrator_register_handler_callback(
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
         NIMCP_LOGGING_WARN("Cannot register callback: module 0x%04X not found", module_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_register_handler_callback: entry is NULL");
         return -1;
     }
 

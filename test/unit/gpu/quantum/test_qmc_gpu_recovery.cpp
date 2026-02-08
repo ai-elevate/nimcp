@@ -383,7 +383,8 @@ TEST_F(QMCGPURecoveryTest, SATMCTSSolverWithRecovery) {
     ASSERT_NE(rng, nullptr);
 
     qmc_sat_gpu_config_t config = qmc_sat_gpu_default_config(3, 1);
-    config.mcts_iterations = 100;
+    // Must be >= batch_size (256) used internally so the MCTS loop runs at least once
+    config.mcts_iterations = 512;
     sat = qmc_sat_gpu_create(ctx, &config);
     ASSERT_NE(sat, nullptr);
 

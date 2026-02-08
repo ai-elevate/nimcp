@@ -1004,3 +1004,33 @@ set_tests_properties(integration_security_test_immune_error_routing PROPERTIES
     LABELS "integration;security;immune;error-routing"
     TIMEOUT 120
 )
+
+# ============================================================================
+# BBB Ref-Count Integration Tests (P0-P2 Remediation)
+# ============================================================================
+# WHAT: Integration tests for BBB quarantine reference counting
+# WHY:  Verify TOCTOU-safe quarantine checks with reference acquisition
+# HOW:  Test quarantine + safe check + ref acquire/release integration
+
+add_executable(integration_security_test_bbb_refcount
+    test_bbb_refcount_integration.cpp
+)
+target_link_libraries(integration_security_test_bbb_refcount
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_security_test_bbb_refcount
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+)
+target_compile_features(integration_security_test_bbb_refcount PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_bbb_refcount
+         COMMAND integration_security_test_bbb_refcount)
+set_tests_properties(integration_security_test_bbb_refcount PROPERTIES
+    LABELS "integration;security;bbb;refcount;quarantine"
+    TIMEOUT 120
+)

@@ -140,6 +140,7 @@ execution_immune_bridge_t* execution_immune_create(
     bridge->exec_context = exec_context;
     bridge->baseline_mode = config->baseline_mode;
     bridge->allow_mode_switching = config->allow_mode_switching;
+    bridge->cytokine_effects.preferred_mode = config->baseline_mode;
 
     bridge->last_update_time = get_time_ms();
     bridge->error_window_start = bridge->last_update_time;

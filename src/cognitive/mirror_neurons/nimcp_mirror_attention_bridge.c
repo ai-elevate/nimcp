@@ -612,6 +612,7 @@ uint32_t mirror_attention_process_batch(
     if (!bridge || !observations || !cues || count == 0) {
         if (!bridge || !observations || !cues) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_process_batch: required parameter is NULL");
+            return -1;
         }
         return 0;
     }

@@ -831,6 +831,7 @@ int mirror_tom_batch_belief_similarity(const float** belief_states,
     if (!belief_states || !out_similarity || num_agents == 0) {
         if (!belief_states || !out_similarity) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_batch_belief_similarity: required parameter is NULL");
+            return -1;
         }
         return -1;
     }

@@ -1014,3 +1014,33 @@ set_tests_properties(regression_security_test_return_codes PROPERTIES
     LABELS "regression;security;return-codes;p2-7"
     TIMEOUT 60
 )
+
+# ============================================================================
+# BBB Quarantine Regression Tests (P0-1, P0-2, P0-3, P1-2)
+# ============================================================================
+add_executable(regression_security_test_bbb_quarantine
+    test_bbb_quarantine_regression.cpp
+)
+target_link_libraries(regression_security_test_bbb_quarantine
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(regression_security_test_bbb_quarantine
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME regression_security_test_bbb_quarantine
+         COMMAND regression_security_test_bbb_quarantine)
+set_tests_properties(regression_security_test_bbb_quarantine PROPERTIES
+    LABELS "regression;security;bbb;quarantine;p0;p1;p2"
+    TIMEOUT 60
+)

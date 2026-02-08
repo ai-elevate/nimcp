@@ -270,3 +270,39 @@ add_subdirectory(predictive)
 
 # Inner Dialogue Engine Regression Tests
 add_subdirectory(inner_dialogue)
+
+# ============================================================================
+# Creative Cortex Regression Tests (P0-4/P0-5/P0-6)
+# ============================================================================
+# WHAT: Regression tests for archetype name mapping bugs and overflow protection
+# WHY:  Lock down fixes for six wrong archetype names and image overflow
+# HOW:  Assert correct names AND assert old wrong names are NOT returned
+
+add_executable(regression_cognitive_creative
+    test_creative_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_creative
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_creative
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_cognitive_creative PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_creative
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;creative"
+        TIMEOUT 120
+)

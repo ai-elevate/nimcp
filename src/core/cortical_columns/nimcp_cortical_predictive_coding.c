@@ -556,6 +556,7 @@ int cortical_predictive_update_predictions(
     }
 
     pc->stats.prediction_updates++;
+    pc->stats.total_updates++;
 
     nimcp_mutex_unlock(pc->mutex);
 
@@ -602,6 +603,7 @@ int cortical_predictive_update_precisions(
     }
 
     pc->stats.precision_updates++;
+    pc->stats.total_updates++;
 
     nimcp_mutex_unlock(pc->mutex);
 

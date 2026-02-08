@@ -507,6 +507,17 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
             nimcp_free(safe_str);
             return valid;
         }
+        /* P1-2 FIX: If malloc fails, treat as validation failure (return false),
+         * not success. The old code fell through to 'return true' which is a
+         * security hole - untrusted input would be treated as VALID on OOM. */
+        result->valid = false;
+        result->threat = BBB_THREAT_BUFFER_OVERFLOW;
+        result->severity = BBB_SEVERITY_HIGH;
+        snprintf(result->reason, sizeof(result->reason),
+                 "Memory allocation failed during input validation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "bbb_validate_input: failed to allocate safe_str for validation");
+        return false;
     }
 
     return true;

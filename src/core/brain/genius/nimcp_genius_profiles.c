@@ -1780,6 +1780,13 @@ genius_error_t genius_profiles_register_kg_wiring(genius_profiles_bridge_t* brid
         return GENIUS_ERROR_NULL_POINTER;
     }
 
+    /* Check if a profile is active before attempting KG wiring */
+    if (bridge->state != GENIUS_STATE_ACTIVE &&
+        bridge->state != GENIUS_STATE_BLENDED &&
+        bridge->state != GENIUS_STATE_FLOW) {
+        return GENIUS_ERROR_NOT_ACTIVE;
+    }
+
     if (!bridge->config.enable_kg_wiring) {
         return GENIUS_ERROR_SUCCESS;
     }
@@ -2688,6 +2695,11 @@ genius_error_t genius_profiles_mesh_propose(
         return GENIUS_ERROR_INVALID_TYPE;
     }
 
+    /* Validate strength range */
+    if (strength < 0.0f || strength > 1.0f) {
+        return GENIUS_ERROR_MESH_PROPOSAL_FAILED;
+    }
+
     /* If mesh coordination is disabled, activate directly */
     if (!bridge->config.enable_mesh_coordination) {
         return genius_profiles_activate(bridge, type, strength);
@@ -3202,16 +3214,6 @@ hemispheric_brain_t* genius_hemispheric_brain_create_ex(genius_type_t type, bool
     /* Get default hemispheric brain configuration */
     hemispheric_brain_config_t hemi_config = hemispheric_brain_default_config();
 
-    /* TEST MODE: For hemispheric brains, test_mode currently uses a smaller brain size
-     * to reduce initialization time. Full lazy initialization support requires
-     * propagating lazy flags to the underlying hemisphere_config_t structures.
-     * TODO: Add lazy_*_init flags to hemisphere_config_t for full test mode support. */
-    if (test_mode) {
-        hemi_config.size = BRAIN_SIZE_SMALL;  /* Use smaller brain for faster creation */
-        NIMCP_LOGGING_DEBUG("Test mode enabled for hemispheric brain: %s (using smaller size)",
-                           genius_type_name(type));
-    }
-
     /* Set brain name */
     char name[256];
     snprintf(name, sizeof(name), "genius_hemispheric_%s", genius_type_name(type));
@@ -3222,6 +3224,16 @@ hemispheric_brain_t* genius_hemispheric_brain_create_ex(genius_type_t type, bool
     hemi_config.num_outputs = 64;
     hemi_config.size = BRAIN_SIZE_LARGE;
     hemi_config.task = BRAIN_TASK_PATTERN_MATCHING;
+
+    /* TEST MODE: For hemispheric brains, test_mode uses a smaller brain size
+     * to reduce initialization time. Full lazy initialization support requires
+     * propagating lazy flags to the underlying hemisphere_config_t structures.
+     * NOTE: This must come AFTER the default size assignment above. */
+    if (test_mode) {
+        hemi_config.size = BRAIN_SIZE_SMALL;  /* Use smaller brain for faster creation */
+        NIMCP_LOGGING_DEBUG("Test mode enabled for hemispheric brain: %s (using smaller size)",
+                           genius_type_name(type));
+    }
 
     /* Apply lateralization from genius profile */
     apply_genius_lateralization(&hemi_config, profile);

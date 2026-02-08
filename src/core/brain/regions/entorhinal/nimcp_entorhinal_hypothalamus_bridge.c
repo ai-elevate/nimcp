@@ -87,11 +87,11 @@ static float clamp_01(float value) {
 
 static float inverted_u_stress_modulation(float stress_level) {
     /* Yerkes-Dodson law: moderate stress enhances memory, high stress impairs */
-    /* Peak at stress ~0.4, impairment above ~0.7 */
+    /* Baseline ~1.0 at zero stress, peak ~1.2 at moderate stress ~0.4, drops at high stress */
     if (stress_level < 0.4f) {
-        return 0.5f + stress_level * 1.25f;  /* Rising part */
+        return 1.0f + stress_level * 0.5f;  /* Rising part: 1.0 -> 1.2 */
     } else {
-        return 1.0f - (stress_level - 0.4f) * 1.67f;  /* Falling part */
+        return 1.2f - (stress_level - 0.4f) * 2.0f;  /* Falling part: 1.2 -> 0.0 */
     }
 }
 

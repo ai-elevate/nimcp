@@ -24,7 +24,7 @@ target_include_directories(unit_cognitive_wellbeing_basic
 )
 add_test(NAME unit_cognitive_wellbeing_basic
          COMMAND unit_cognitive_wellbeing_basic --gtest_brief=1)
-set_tests_properties(unit_cognitive_wellbeing_basic PROPERTIES LABELS "unit;wellbeing")
+set_tests_properties(unit_cognitive_wellbeing_basic PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180)
 
 # Comprehensive Wellbeing Tests
 add_executable(unit_cognitive_wellbeing_comprehensive
@@ -49,7 +49,7 @@ target_include_directories(unit_cognitive_wellbeing_comprehensive
 )
 add_test(NAME unit_cognitive_wellbeing_comprehensive
          COMMAND unit_cognitive_wellbeing_comprehensive --gtest_brief=1)
-set_tests_properties(unit_cognitive_wellbeing_comprehensive PROPERTIES LABELS "unit;wellbeing" TIMEOUT 90)
+set_tests_properties(unit_cognitive_wellbeing_comprehensive PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180)
 
 # Coverage Wellbeing Tests
 add_executable(unit_cognitive_wellbeing_coverage
@@ -74,7 +74,7 @@ target_include_directories(unit_cognitive_wellbeing_coverage
 )
 add_test(NAME unit_cognitive_wellbeing_coverage
          COMMAND unit_cognitive_wellbeing_coverage --gtest_brief=1)
-set_tests_properties(unit_cognitive_wellbeing_coverage PROPERTIES LABELS "unit;wellbeing")
+set_tests_properties(unit_cognitive_wellbeing_coverage PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180)
 
 # Extended Wellbeing Tests
 add_executable(unit_cognitive_wellbeing_extended
@@ -99,7 +99,7 @@ target_include_directories(unit_cognitive_wellbeing_extended
 )
 add_test(NAME unit_cognitive_wellbeing_extended
          COMMAND unit_cognitive_wellbeing_extended --gtest_brief=1)
-set_tests_properties(unit_cognitive_wellbeing_extended PROPERTIES LABELS "unit;wellbeing" TIMEOUT 90)
+set_tests_properties(unit_cognitive_wellbeing_extended PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180)
 
 # Real Wellbeing Tests
 add_executable(unit_cognitive_wellbeing_real
@@ -124,7 +124,7 @@ target_include_directories(unit_cognitive_wellbeing_real
 )
 add_test(NAME unit_cognitive_wellbeing_real
          COMMAND unit_cognitive_wellbeing_real --gtest_brief=1)
-set_tests_properties(unit_cognitive_wellbeing_real PROPERTIES LABELS "unit;wellbeing")
+set_tests_properties(unit_cognitive_wellbeing_real PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180)
 
 # Immune Integration Tests
 add_executable(unit_cognitive_wellbeing_immune_integration

@@ -3024,6 +3024,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/genius/CMakeLists.txt)
     add_subdirectory(genius)
 endif()
 
+# Include Middleware E2E test subdirectory (Circular Buffer)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/middleware/CMakeLists.txt)
+    message(STATUS "Adding Middleware E2E tests...")
+    add_subdirectory(middleware)
+endif()
+
 # Include Utils E2E test subdirectory (Memory + Health Agent)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     message(STATUS "Adding Utils E2E tests...")

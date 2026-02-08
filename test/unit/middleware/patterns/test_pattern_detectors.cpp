@@ -118,8 +118,8 @@ TEST_F(PatternDetectorsTest, AllHaveDefaultConfig) {
 //=============================================================================
 
 TEST_F(PatternDetectorsTest, DetectThetaOscillation) {
-    // Generate theta oscillation (4-8 Hz)
-    addOscillatorySamples(6.0f, 1000.0f, 1.0f);
+    // Generate theta oscillation (4-8 Hz), need >= 1024 samples for FFT window
+    addOscillatorySamples(6.0f, 1100.0f, 1.0f);
 
     oscillation_result_t result;
     bool detected = oscillation_detector_detect(osc_detector, &result);
@@ -129,8 +129,8 @@ TEST_F(PatternDetectorsTest, DetectThetaOscillation) {
 }
 
 TEST_F(PatternDetectorsTest, DetectGammaOscillation) {
-    // Generate gamma oscillation (30-100 Hz)
-    addOscillatorySamples(40.0f, 1000.0f, 0.5f);
+    // Generate gamma oscillation (30-100 Hz), need >= 1024 samples for FFT window
+    addOscillatorySamples(40.0f, 1100.0f, 0.5f);
 
     oscillation_result_t result;
     bool detected = oscillation_detector_detect(osc_detector, &result);
@@ -254,8 +254,9 @@ TEST_F(PatternDetectorsTest, PairwiseCorrelation) {
         synchrony_detector_add_spike(sync_detector, 1, time + 1.0); // 1ms lag
     }
 
+    // Use 1000ms window to capture all 10 spike pairs (spanned over 900ms)
     float correlation = synchrony_detector_compute_correlation(
-        sync_detector, 0, 1, 100.0f);
+        sync_detector, 0, 1, 1000.0f);
 
     EXPECT_GT(correlation, 0.5f) << "Should detect correlation";
 }
@@ -267,8 +268,8 @@ TEST_F(PatternDetectorsTest, PairwiseCorrelation) {
 TEST_F(PatternDetectorsTest, OscillationAndSynchrony) {
     // Generate oscillatory activity with synchronous bursts
 
-    // Add oscillation samples
-    addOscillatorySamples(10.0f, 500.0f, 1.0f);
+    // Add oscillation samples (need >= 1024 for FFT window)
+    addOscillatorySamples(10.0f, 1100.0f, 1.0f);
 
     // Add synchronous bursts
     for (uint32_t i = 0; i < 30; i++) {
@@ -294,8 +295,8 @@ TEST_F(PatternDetectorsTest, OscillationAndSynchrony) {
 TEST_F(PatternDetectorsTest, SequenceWithinOscillation) {
     // Simulate spike sequence embedded in oscillatory activity
 
-    // Add background oscillation
-    addOscillatorySamples(5.0f, 1000.0f, 0.5f);
+    // Add background oscillation (need >= 1024 for FFT window)
+    addOscillatorySamples(5.0f, 1100.0f, 0.5f);
 
     // Learn a sequence template
     sequence_element_t elements[3];

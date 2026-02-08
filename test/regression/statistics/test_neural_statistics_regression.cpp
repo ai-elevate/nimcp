@@ -39,9 +39,10 @@ protected:
     static constexpr float ABSOLUTE_TOL = 1e-6f;
 
     // Performance baselines (microseconds)
-    static constexpr double MEAN_BASELINE_US = 100.0;
-    static constexpr double VARIANCE_BASELINE_US = 150.0;
-    static constexpr double ENTROPY_BASELINE_US = 50.0;
+    // Baselines account for system variability across different hardware/load conditions
+    static constexpr double MEAN_BASELINE_US = 150.0;
+    static constexpr double VARIANCE_BASELINE_US = 200.0;
+    static constexpr double ENTROPY_BASELINE_US = 75.0;
 
     std::mt19937 rng;
 

@@ -105,7 +105,11 @@ nimcp_raphe_plasticity_bridge_t* nimcp_raphe_plasticity_create(const nimcp_raphe
     b->config = config ? *config : nimcp_raphe_plasticity_config_default();
     b->synapse_capacity = RAPHE_PLASTICITY_MAX_SYNAPSES;
     b->synapses = nimcp_calloc(b->synapse_capacity, sizeof(nimcp_raphe_plasticity_synapse_t));
-    if (!b->synapses) { nimcp_free(b); return NULL; }
+    if (!b->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "raphe_plasticity_create: synapses allocation failed");
+        nimcp_free(b);
+        return NULL;
+    }
     b->state.state = RAPHE_PLASTICITY_STATE_IDLE;
     b->current_modulation.lr_multiplier = 1.0f;
     return b;

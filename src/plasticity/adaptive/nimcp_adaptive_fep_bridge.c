@@ -260,6 +260,7 @@ int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) 
     }
     if (sparsity < 0.0f || sparsity > 1.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_fep_report_sparsity: sparsity out of range [0,1]");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

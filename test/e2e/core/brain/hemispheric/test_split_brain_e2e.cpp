@@ -95,21 +95,35 @@ static std::vector<float> generate_right_visual_field_stimulus(uint32_t size) {
 // Test Fixture
 //=============================================================================
 
-class E2ESplitBrainTest : public NimcpTestBase {
+class E2ESplitBrainTest : public ::testing::Test {
 protected:
+    static hemispheric_brain_t* shared_brain;
     hemispheric_brain_t* brain = nullptr;
     split_brain_session_t* session = nullptr;
 
-    void SetUp() override {
-        NimcpTestBase::SetUp();
+    static void SetUpTestSuite() {
+        signal_handler_unregister_brain();
+        signal_handler_reset_stats();
+        signal_handler_uninstall();
 
         hemispheric_brain_config_t config = hemispheric_brain_default_config();
-        config.size = BRAIN_SIZE_SMALL;
+        config.size = BRAIN_SIZE_MICRO;
         config.num_inputs = INPUT_SIZE;
         config.num_outputs = OUTPUT_SIZE;
         config.default_mode = HEMISPHERIC_MODE_LATERALIZED;
 
-        brain = hemispheric_brain_create(&config);
+        shared_brain = hemispheric_brain_create(&config);
+    }
+
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            hemispheric_brain_destroy(shared_brain);
+            shared_brain = nullptr;
+        }
+    }
+
+    void SetUp() override {
+        brain = shared_brain;
         ASSERT_NE(brain, nullptr) << "Failed to create hemispheric brain";
     }
 
@@ -118,11 +132,6 @@ protected:
             split_brain_session_destroy(session);
             session = nullptr;
         }
-        if (brain) {
-            hemispheric_brain_destroy(brain);
-            brain = nullptr;
-        }
-        NimcpTestBase::TearDown();
     }
 
     void createSession(callosal_condition_t condition = CALLOSAL_STATE_SEVERED) {
@@ -136,6 +145,8 @@ protected:
         ASSERT_NE(session, nullptr) << "Failed to create split-brain session";
     }
 };
+
+hemispheric_brain_t* E2ESplitBrainTest::shared_brain = nullptr;
 
 //=============================================================================
 // Split-Brain Session Lifecycle Tests
@@ -238,10 +249,12 @@ TEST_F(E2ESplitBrainTest, LeftVisualFieldToRightHemisphere) {
 
     createSession();
 
-    // Verify callosum is disconnected
-    E2E_STAGE_BEGIN("Verify disconnection", 20);
+    // Start session to apply callosal condition (severed)
+    E2E_STAGE_BEGIN("Start session and verify disconnection", 50);
+    int start_result = split_brain_session_start(session);
+    EXPECT_EQ(start_result, 0);
     EXPECT_FALSE(hemispheric_brain_is_callosum_intact(brain))
-        << "Callosum should be disconnected in split-brain";
+        << "Callosum should be disconnected after session start";
     E2E_STAGE_END();
 
     // Create left visual field stimulus (goes to right hemisphere)
@@ -387,6 +400,12 @@ TEST_F(E2ESplitBrainTest, CannotVerbalizeRightHemisphereInput) {
 
     createSession();
 
+    // Start session to sever callosum
+    E2E_STAGE_BEGIN("Start session", 50);
+    int start_result = split_brain_session_start(session);
+    EXPECT_EQ(start_result, 0);
+    E2E_STAGE_END();
+
     // In split-brain, left visual field (right hemisphere) input cannot be verbalized
     E2E_STAGE_BEGIN("Process LVF to right hemisphere", MAX_TRIAL_TIME_MS);
     auto lvf_input = generate_left_visual_field_stimulus(INPUT_SIZE);
@@ -409,11 +428,14 @@ TEST_F(E2ESplitBrainTest, CannotVerbalizeRightHemisphereInput) {
     // Since callosum is cut, left hemisphere has no access to right's information
     // We simulate by checking that language processing of right's output
     // does not have access to the original input information
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
+    std::vector<float> verbal_input(INPUT_SIZE, 0.0f);
+    std::copy(right_output.begin(), right_output.end(), verbal_input.begin());
     std::vector<float> verbal_output(OUTPUT_SIZE);
     result = hemispheric_brain_process_lateralized(
         brain,
-        right_output.data(),
-        OUTPUT_SIZE,
+        verbal_input.data(),
+        INPUT_SIZE,
         COGNITIVE_DOMAIN_LANGUAGE,  // Goes to left
         verbal_output.data(),
         OUTPUT_SIZE
@@ -429,6 +451,12 @@ TEST_F(E2ESplitBrainTest, CanVerbalizeLeftHemisphereInput) {
     E2E_PIPELINE_START("Verbal Response Success");
 
     createSession();
+
+    // Start session to apply callosal condition
+    E2E_STAGE_BEGIN("Start session", 50);
+    int start_result = split_brain_session_start(session);
+    EXPECT_EQ(start_result, 0);
+    E2E_STAGE_END();
 
     // Right visual field (left hemisphere) input CAN be verbalized
     E2E_STAGE_BEGIN("Process RVF to left hemisphere", MAX_TRIAL_TIME_MS);
@@ -447,12 +475,15 @@ TEST_F(E2ESplitBrainTest, CanVerbalizeLeftHemisphereInput) {
     E2E_STAGE_END();
 
     // Verbalization succeeds (same hemisphere)
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Verbalization succeeds", MAX_TRIAL_TIME_MS);
+    std::vector<float> verbal_input(INPUT_SIZE, 0.0f);
+    std::copy(left_output.begin(), left_output.end(), verbal_input.begin());
     std::vector<float> verbal_output(OUTPUT_SIZE);
     result = hemispheric_brain_process_lateralized(
         brain,
-        left_output.data(),
-        OUTPUT_SIZE,
+        verbal_input.data(),
+        INPUT_SIZE,
         COGNITIVE_DOMAIN_LANGUAGE,
         verbal_output.data(),
         OUTPUT_SIZE
@@ -676,6 +707,12 @@ TEST_F(E2ESplitBrainTest, CallosumReconnectionBasic) {
     E2E_PIPELINE_START("Callosum Reconnection");
 
     createSession();
+
+    // Start session to apply callosal condition (sever callosum)
+    E2E_STAGE_BEGIN("Start session", 50);
+    int start_result = split_brain_session_start(session);
+    EXPECT_EQ(start_result, 0);
+    E2E_STAGE_END();
 
     // Verify disconnected
     E2E_STAGE_BEGIN("Verify disconnected", 20);

@@ -78,3 +78,17 @@ target_link_libraries(unit_middleware_buffering_buffer_immune_integration
     )
 add_test(NAME unit_middleware_buffering_buffer_immune_integration
          COMMAND unit_middleware_buffering_buffer_immune_integration)
+
+# Test Circular Buffer Batch Operations (P1-10 fix validation)
+add_executable(unit_middleware_buffering_circular_buffer_batch
+    test_circular_buffer_batch.cpp
+)
+target_link_libraries(unit_middleware_buffering_circular_buffer_batch
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_buffering_circular_buffer_batch
+         COMMAND unit_middleware_buffering_circular_buffer_batch)

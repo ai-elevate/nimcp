@@ -879,6 +879,7 @@ NIMCP_API nimcp_error_t energy_consistency_report_to_immune(
     if (violation->severity >= VIOLATION_SEVERITY_CRITICAL) {
         NIMCP_THROW_TO_IMMUNE(error_code,
             "Consistency violation: %s", violation->description);
+        return -1;
     }
 
     return NIMCP_SUCCESS;

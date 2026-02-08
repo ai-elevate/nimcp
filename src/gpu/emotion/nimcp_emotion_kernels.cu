@@ -881,10 +881,12 @@ __global__ void kernel_acc_conflict(
     float* __restrict__ conflict_signal,
     const float* __restrict__ response_activations,
     float conflict_threshold,
-    size_t n_responses)
+    size_t n_responses,
+    size_t n_batches)
 {
     // Each thread handles one sample (assumes batch processing)
     size_t batch_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (batch_idx >= n_batches) return;
 
     // Conflict is the product of top two responses
     // For simplicity, compute pairwise conflicts
@@ -927,7 +929,8 @@ bool nimcp_gpu_acc_conflict_detection(
         (float*)state->conflict_signal->data,
         (const float*)response_activations->data,
         params->conflict_threshold,
-        state->n_responses);
+        state->n_responses,
+        n_batches);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;

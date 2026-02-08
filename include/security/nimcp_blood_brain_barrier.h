@@ -678,12 +678,28 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
 NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* address, size_t size, bool acquire_ref);
 
 /**
- * @brief Release quarantine reference acquired by bbb_is_quarantined_safe
+ * @brief Release quarantine reference for a specific region
  *
- * WHAT: Release reference acquired during TOCTOU-safe check
- * WHY:  Allow quarantine operations to proceed after safe access
+ * WHAT: Release reference acquired during TOCTOU-safe check for a specific region
+ * WHY:  Targeted release that only decrements the matching region's ref_count
+ * HOW:  Finds overlapping quarantine entry and atomically decrements ref_count
  *
  * @param system BBB system handle
+ * @param address Address of the region to release
+ * @param size Size of the region to release
+ */
+NIMCP_EXPORT void bbb_release_quarantine_ref_for_region(bbb_system_t system,
+                                                          const void* address,
+                                                          size_t size);
+
+/**
+ * @brief Release quarantine reference acquired by bbb_is_quarantined_safe (DEPRECATED)
+ *
+ * WHAT: Release reference acquired during TOCTOU-safe check
+ * WHY:  Backward compatibility - prefer bbb_release_quarantine_ref_for_region()
+ *
+ * @param system BBB system handle
+ * @deprecated Use bbb_release_quarantine_ref_for_region() instead
  */
 NIMCP_EXPORT void bbb_release_quarantine_ref(bbb_system_t system);
 

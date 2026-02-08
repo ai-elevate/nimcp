@@ -46,7 +46,10 @@ struct dft_context {
     nimcp_mutex_t lock;                     /**< Context lock */
     nimcp_thread_t heartbeat_thread;        /**< Heartbeat thread */
     volatile bool running;                  /**< Is running (volatile for thread visibility) */
-    bool initialized;                       /**< Is initialized */
+    /* P2-7 FIX: Mark initialized as volatile since it's read across threads
+     * (e.g., dft_start checks initialized while heartbeat thread may be running).
+     * Without volatile, compiler may optimize away the read and cache a stale value. */
+    volatile bool initialized;              /**< Is initialized */
 };
 
 //=============================================================================

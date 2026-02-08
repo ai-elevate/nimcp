@@ -492,14 +492,37 @@ static void init_if_needed(void)
         return;
     }
 
+    /* P2-5 FIX: Protect UMM initialization with the memory state lock to ensure
+     * atomicity across threads. The thread-local g_umm_initializing prevents
+     * recursion within a thread, but without the lock, two threads could both
+     * see g_unified_initialized==false and race to create the UMM. */
     if (!g_unified_initialized && !g_unified_manager) {
-        g_umm_initializing = true;  // Set guard BEFORE creating UMM (critical!)
-        unified_mem_config_t config = unified_mem_default_config();
-        config.enable_cow = true;
-        config.enable_tracking = true;
-        g_unified_manager = unified_mem_create(&config);
-        g_unified_initialized = true;
-        g_umm_initializing = false;  // Clear flag after UMM is created
+        nimcp_mutex_lock(&g_memory_state.lock);
+        /* Double-check under lock to prevent TOCTOU race */
+        if (!g_unified_initialized && !g_unified_manager) {
+            g_umm_initializing = true;  // Set guard BEFORE creating UMM (critical!)
+            nimcp_mutex_unlock(&g_memory_state.lock);  // Unlock during create to avoid deadlock
+
+            unified_mem_config_t config = unified_mem_default_config();
+            config.enable_cow = true;
+            config.enable_tracking = true;
+            unified_mem_manager_t manager = unified_mem_create(&config);
+
+            nimcp_mutex_lock(&g_memory_state.lock);
+            if (!g_unified_initialized) {
+                g_unified_manager = manager;
+                g_unified_initialized = true;
+            } else {
+                /* Another thread completed init while we were creating - destroy ours */
+                if (manager) {
+                    nimcp_mutex_unlock(&g_memory_state.lock);
+                    unified_mem_destroy(manager);
+                    nimcp_mutex_lock(&g_memory_state.lock);
+                }
+            }
+            g_umm_initializing = false;  // Clear flag after UMM is created
+        }
+        nimcp_mutex_unlock(&g_memory_state.lock);
     }
 }
 
@@ -1639,17 +1662,25 @@ char* nimcp_strdup(const char* str)
 {
     if (!str) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_strdup: str is NULL");
 
         return NULL;
 
     }
 
     size_t len = strlen(str) + 1;  // Include null terminator
-    char* new_str = (char*) malloc(len);
+
+    /* P1-3 FIX: Use nimcp_malloc() instead of raw malloc() so the allocation
+     * is properly tracked. nimcp_strdup() is a PUBLIC API function that won't
+     * be called during memory system initialization, so calling nimcp_malloc()
+     * is safe (no recursion risk). This ensures callers can use nimcp_free()
+     * on the result without warnings about untracked pointers. */
+    char* new_str = (char*) nimcp_malloc(len);
     if (!new_str) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_str is NULL");
+        /* P1-3 FIX: Use NIMCP_ERROR_NO_MEMORY instead of NIMCP_ERROR_NULL_POINTER
+         * for allocation failure - the error is out-of-memory, not null input. */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_strdup: allocation failed for %zu bytes", len);
 
         return NULL;
 

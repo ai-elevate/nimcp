@@ -496,8 +496,10 @@ TEST_F(AdaptiveNetworkTest, ForwardPassHighSparsity) {
     for (int i = 0; i < 10; i++) input[i] = 1.0f;
     float output[10] = {0.0f};
 
-    // Run multiple iterations to allow sparsity adaptation
-    for (int i = 0; i < 50; i++) {
+    // Run many iterations to allow sparsity adaptation
+    // Threshold increases by 1% per iteration (SPARSITY_ADAPT_INCREASE=1.01),
+    // so ~230+ iterations needed to raise threshold from 0.1 to ~1.0
+    for (int i = 0; i < 500; i++) {
         adaptive_network_forward(net, input, 10, output, 10, i + 1);
     }
 

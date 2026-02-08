@@ -726,7 +726,11 @@ TEST_F(FuzzyE2ETest, AllDefuzzificationMethods) {
     for (int d = 0; d < FUZZY_DEFUZZ_TYPE_COUNT; d++) {
         float result = fuzzy_defuzzify(&disc, (fuzzy_defuzz_type_t)d);
         EXPECT_GE(result, 0.0f) << "Defuzz type " << d;
-        EXPECT_LE(result, 100.0f) << "Defuzz type " << d;
+        /* FUZZY_DEFUZZ_WEIGHTED_SUM is inherently unnormalized and can
+         * return values outside the universe range - this is expected */
+        if (d != FUZZY_DEFUZZ_WEIGHTED_SUM) {
+            EXPECT_LE(result, 100.0f) << "Defuzz type " << d;
+        }
     }
 
     fuzzy_discrete_set_free(&disc);

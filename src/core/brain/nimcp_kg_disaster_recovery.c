@@ -248,6 +248,11 @@ int kg_dr_default_config(kg_dr_config_t* config) {
 }
 
 kg_dr_context_t* kg_dr_create(brain_kg_t* kg, const kg_dr_config_t* config) {
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_create: kg is NULL");
+        return NULL;
+    }
+
     kg_dr_context_t* dr = nimcp_calloc(1, sizeof(kg_dr_context_t));
     if (!dr) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");

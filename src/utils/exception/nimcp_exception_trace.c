@@ -352,11 +352,7 @@ void nimcp_trace_pop(void) {
 nimcp_propagation_context_t* nimcp_propagation_create(const char* origin_module) {
     nimcp_propagation_context_t* ctx = nimcp_calloc(1, sizeof(nimcp_propagation_context_t));
     if (!ctx) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
         return NULL;
-
     }
 
     ctx->origin_module = origin_module;

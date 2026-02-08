@@ -173,12 +173,16 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
     }
 
     // Release GIL during potentially long-running C operation
+    // P1-13 fix: features and label_copy MUST be freed AFTER Py_END_ALLOW_THREADS
+    // because nimcp_brain_learn_example references them during the C operation.
+    // Freeing before would cause use-after-free.
     nimcp_status_t status;
     Py_BEGIN_ALLOW_THREADS
     status = nimcp_brain_learn_example(
         self->brain, features, (uint32_t)num_features, label_copy, confidence);
     Py_END_ALLOW_THREADS
 
+    // Safe to free now - C operation is complete and GIL is reacquired
     nimcp_free(features);
     nimcp_free(label_copy);
 

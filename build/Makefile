@@ -33946,6 +33946,19 @@ unit_gpu_recovery_test_gpu_recovery_cpu_fallback/fast:
 .PHONY : unit_gpu_recovery_test_gpu_recovery_cpu_fallback/fast
 
 #=============================================================================
+# Target rules for targets named test_perception_gpu_recovery
+
+# Build rule for target.
+test_perception_gpu_recovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_perception_gpu_recovery
+.PHONY : test_perception_gpu_recovery
+
+# fast build rule for target.
+test_perception_gpu_recovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/perception/CMakeFiles/test_perception_gpu_recovery.dir/build.make test/unit/gpu/perception/CMakeFiles/test_perception_gpu_recovery.dir/build
+.PHONY : test_perception_gpu_recovery/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_neural_test_snn_gpu_recovery
 
 # Build rule for target.
@@ -34646,6 +34659,19 @@ integration_gpu_recovery_test_gpu_recovery_memory_management: cmake_check_build_
 integration_gpu_recovery_test_gpu_recovery_memory_management/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/gpu/recovery/CMakeFiles/integration_gpu_recovery_test_gpu_recovery_memory_management.dir/build.make test/integration/gpu/recovery/CMakeFiles/integration_gpu_recovery_test_gpu_recovery_memory_management.dir/build
 .PHONY : integration_gpu_recovery_test_gpu_recovery_memory_management/fast
+
+#=============================================================================
+# Target rules for targets named test_perception_gpu_integration
+
+# Build rule for target.
+test_perception_gpu_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_perception_gpu_integration
+.PHONY : test_perception_gpu_integration
+
+# fast build rule for target.
+test_perception_gpu_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/perception/CMakeFiles/test_perception_gpu_integration.dir/build.make test/integration/gpu/perception/CMakeFiles/test_perception_gpu_integration.dir/build
+.PHONY : test_perception_gpu_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_gpu_neural_recovery
@@ -40092,6 +40118,8 @@ help:
 	@echo "... test_nlp_peer_communication"
 	@echo "... test_omni_bridges_integration"
 	@echo "... test_omni_regression"
+	@echo "... test_perception_gpu_integration"
+	@echo "... test_perception_gpu_recovery"
 	@echo "... test_perception_portia_swarm_integration"
 	@echo "... test_phase3"
 	@echo "... test_phase4"

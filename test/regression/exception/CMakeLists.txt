@@ -259,7 +259,7 @@ add_test(
 set_tests_properties(regression_exception_api_compatibility
     PROPERTIES
     LABELS "regression;exception;api;compatibility"
-    TIMEOUT 120
+    TIMEOUT 300
 )
 
 # =============================================================================

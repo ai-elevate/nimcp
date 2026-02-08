@@ -336,7 +336,9 @@ int prefrontal_quantum_accelerate_decision(
     float quantum_cost = sqrtf((float)num_options);
     result->quantum_speedup = classical_cost / (quantum_cost > 0.0f ? quantum_cost : 1.0f);
 
-    result->coherence_time_used = (float)qresult.grover_iterations * 0.01f;
+    /* Even when Grover iterations are 0 (solution found immediately),
+     * quantum state preparation and measurement still consume coherence */
+    result->coherence_time_used = (float)qresult.grover_iterations * 0.01f + 0.001f;
     result->used_quantum = true;
 
     /* Update statistics */

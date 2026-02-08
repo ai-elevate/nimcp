@@ -214,12 +214,14 @@ TEST_F(QuantumGPURecoveryTest, ErrorCategoryKernelLaunch) {
     nimcp_gpu_recovery_action_t action = nimcp_gpu_select_recovery_strategy(
         GPU_ERROR_KERNEL_LAUNCH, cudaErrorLaunchFailure, 0);
 
-    /* Should suggest retry or CPU fallback */
+    /* Should suggest retry, sync, or CPU fallback */
     EXPECT_TRUE(action == GPU_RECOVERY_RETRY_IMMEDIATE ||
                 action == GPU_RECOVERY_RETRY_BACKOFF ||
                 action == GPU_RECOVERY_CPU_FALLBACK ||
-                action == GPU_RECOVERY_RESET_DEVICE)
-        << "Kernel launch failure should trigger retry or fallback";
+                action == GPU_RECOVERY_RESET_DEVICE ||
+                action == GPU_RECOVERY_STREAM_SYNC ||
+                action == GPU_RECOVERY_REDUCE_BATCH)
+        << "Kernel launch failure should trigger retry, sync, or fallback";
 #else
     GTEST_SKIP() << "CUDA not enabled";
 #endif

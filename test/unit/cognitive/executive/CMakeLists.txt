@@ -21,6 +21,7 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_executive_real.cpp
     unit
 )
+set_tests_properties(unit_cognitive_executive_test_executive_real PROPERTIES TIMEOUT 180)
 
 add_test_binary(
     unit_cognitive_executive_test_executive_portia

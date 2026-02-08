@@ -23,7 +23,7 @@ target_include_directories(unit_cognitive_mental_health_basic
 )
 add_test(NAME unit_cognitive_mental_health_basic
          COMMAND unit_cognitive_mental_health_basic --gtest_brief=1)
-set_tests_properties(unit_cognitive_mental_health_basic PROPERTIES LABELS "unit;mental_health")
+set_tests_properties(unit_cognitive_mental_health_basic PROPERTIES LABELS "unit;mental_health" TIMEOUT 180)
 
 # Coverage Mental Health Tests
 add_executable(unit_cognitive_mental_health_coverage
@@ -48,7 +48,7 @@ target_include_directories(unit_cognitive_mental_health_coverage
 )
 add_test(NAME unit_cognitive_mental_health_coverage
          COMMAND unit_cognitive_mental_health_coverage --gtest_brief=1)
-set_tests_properties(unit_cognitive_mental_health_coverage PROPERTIES LABELS "unit;mental_health")
+set_tests_properties(unit_cognitive_mental_health_coverage PROPERTIES LABELS "unit;mental_health" TIMEOUT 180)
 
 # Real Mental Health Tests
 add_executable(unit_cognitive_mental_health_real
@@ -73,7 +73,7 @@ target_include_directories(unit_cognitive_mental_health_real
 )
 add_test(NAME unit_cognitive_mental_health_real
          COMMAND unit_cognitive_mental_health_real --gtest_brief=1)
-set_tests_properties(unit_cognitive_mental_health_real PROPERTIES LABELS "unit;mental_health")
+set_tests_properties(unit_cognitive_mental_health_real PROPERTIES LABELS "unit;mental_health" TIMEOUT 180)
 
 # Disorder Detectors Tests
 add_executable(unit_cognitive_mental_health_detectors
@@ -98,7 +98,7 @@ target_include_directories(unit_cognitive_mental_health_detectors
 )
 add_test(NAME unit_cognitive_mental_health_detectors
          COMMAND unit_cognitive_mental_health_detectors --gtest_brief=1)
-set_tests_properties(unit_cognitive_mental_health_detectors PROPERTIES LABELS "unit;mental_health")
+set_tests_properties(unit_cognitive_mental_health_detectors PROPERTIES LABELS "unit;mental_health" TIMEOUT 180)
 
 # Interventions Tests
 add_executable(unit_cognitive_mental_health_interventions
@@ -123,7 +123,7 @@ target_include_directories(unit_cognitive_mental_health_interventions
 )
 add_test(NAME unit_cognitive_mental_health_interventions
          COMMAND unit_cognitive_mental_health_interventions --gtest_brief=1)
-set_tests_properties(unit_cognitive_mental_health_interventions PROPERTIES LABELS "unit;mental_health")
+set_tests_properties(unit_cognitive_mental_health_interventions PROPERTIES LABELS "unit;mental_health" TIMEOUT 180)
 
 # Immune Integration Tests
 add_executable(unit_cognitive_mental_health_immune_integration

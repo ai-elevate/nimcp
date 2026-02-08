@@ -631,6 +631,7 @@ uint32_t mirror_emotion_process_batch(
     if (!bridge || !observations || !results || count == 0) {
         if (!bridge || !observations || !results) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_process_batch: required parameter is NULL");
+            return -1;
         }
         return 0;
     }

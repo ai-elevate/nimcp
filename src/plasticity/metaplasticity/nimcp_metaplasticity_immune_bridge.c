@@ -419,6 +419,7 @@ int metaplasticity_immune_restore_metaplasticity(
     /* Clamp recovery factor */
     if (recovery_factor < 0.0f || recovery_factor > 1.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_immune_restore_metaplasticity: recovery_factor out of range");
+        return -1;
     }
     if (recovery_factor < 0.0f) recovery_factor = 0.0f;
     if (recovery_factor > 1.0f) recovery_factor = 1.0f;

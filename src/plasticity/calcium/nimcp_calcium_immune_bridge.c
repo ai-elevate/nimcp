@@ -336,6 +336,7 @@ int calcium_immune_restore_dynamics(
     }
     if (recovery_factor < 0.0f || recovery_factor > 1.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_immune_restore_dynamics: recovery_factor out of range [0,1]");
+        return -1;
     }
 
     recovery_factor = clamp_f(recovery_factor, 0.0f, 1.0f);

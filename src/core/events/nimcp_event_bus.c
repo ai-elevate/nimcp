@@ -874,7 +874,8 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
     uint32_t delivered = 0;
 
     // Max subscribers to snapshot (stack allocation)
-    #define MAX_SNAPSHOT_SUBSCRIBERS 64
+    // Must be >= per-bucket limit (EVENT_BUS_MAX_SUBSCRIBERS / 4 = 128)
+    #define MAX_SNAPSHOT_SUBSCRIBERS 128
     subscriber_snapshot_t snapshots[MAX_SNAPSHOT_SUBSCRIBERS];
     uint32_t snapshot_count = 0;
 

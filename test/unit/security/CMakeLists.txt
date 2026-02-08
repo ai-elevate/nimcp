@@ -1003,3 +1003,32 @@ set_tests_properties(unit_security_test_error_codes PROPERTIES
     LABELS "unit;security;error-codes;p2-7"
     TIMEOUT 60
 )
+
+# ============================================================================
+# BBB Quarantine RefCount Tests (P0-1, P0-2, P0-3, P1-1)
+# ============================================================================
+add_executable(unit_security_test_bbb_quarantine_refcount
+    test_bbb_quarantine_refcount.cpp
+)
+target_link_libraries(unit_security_test_bbb_quarantine_refcount
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_security_test_bbb_quarantine_refcount
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_security_test_bbb_quarantine_refcount
+         COMMAND unit_security_test_bbb_quarantine_refcount)
+set_tests_properties(unit_security_test_bbb_quarantine_refcount PROPERTIES
+    LABELS "unit;security;bbb;quarantine;refcount;p0;p1"
+    TIMEOUT 60
+)

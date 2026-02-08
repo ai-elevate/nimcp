@@ -597,6 +597,7 @@ uint32_t vicarious_reward_process_batch(
     if (!system || !observations || !results || count == 0) {
         if (!system || !observations || !results) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_process_batch: required parameter is NULL");
+            return -1;
         }
         return 0;
     }
@@ -947,6 +948,7 @@ bool vicarious_reward_is_schadenfreude(
     if (!system || !system->config.enable_schadenfreude) {
         if (!system) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_is_schadenfreude: system is NULL");
+            return -1;
         }
         return false;
     }
@@ -987,6 +989,7 @@ bool vicarious_reward_is_envy(
     if (!system || !system->config.enable_envy) {
         if (!system) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_is_envy: system is NULL");
+            return -1;
         }
         return false;
     }

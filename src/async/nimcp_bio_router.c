@@ -853,8 +853,16 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
             g_router->modules[i].module_id == info->module_id) {
             bio_module_entry_t* existing = &g_router->modules[i];
             nimcp_platform_mutex_unlock(&g_router->modules_mutex);
-            LOG_DEBUG("Module ID %u (%s) already registered, creating new context wrapper",
+            /* P1 fix: Warn about potential memory leak on re-registration.
+             * Each call allocates a new context. Callers MUST free the
+             * previously returned context via bio_router_unregister_module()
+             * before re-registering, or they will leak the old context. */
+            LOG_WARN("Module ID %u (%s) already registered - caller must free "
+                     "previous context to avoid memory leak",
                      info->module_id, existing->module_name);
+            // Update user_data on the existing entry so re-registration
+            // picks up new context without requiring unregister/register cycle
+            existing->user_data = info->user_data;
             // CRITICAL FIX: Must allocate a proper context struct, NOT cast entry!
             // The old code returned (bio_module_context_t)existing which was wrong because
             // bio_module_entry_t and bio_module_context_struct are different structs.
@@ -2569,8 +2577,11 @@ nimcp_error_t bio_router_register_wiring_callback(
     void* callback,
     void* user_data
 ) {
-    NIMCP_CHECK_THROW(g_router_orchestrator != NULL, NIMCP_ERROR_NOT_INITIALIZED,
-                      "bio_router_register_wiring_callback: no orchestrator set");
+    /* Silent return when orchestrator not set - this is expected during init
+     * when bio-async is not available. Avoids exception spam during brain creation. */
+    if (!g_router_orchestrator) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
 
     NIMCP_CHECK_THROW(callback != NULL, NIMCP_ERROR_INVALID_PARAMETER,
                       "bio_router_register_wiring_callback: NULL callback");
@@ -2596,8 +2607,7 @@ nimcp_error_t bio_router_register_wiring_callback(
         return NIMCP_SUCCESS;
     }
 
-    NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED,
-                      "bio_router_register_wiring_callback: failed to register callback");
+    return NIMCP_ERROR_OPERATION_FAILED;
 }
 
 /*=============================================================================

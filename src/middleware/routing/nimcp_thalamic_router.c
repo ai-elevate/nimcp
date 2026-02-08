@@ -158,9 +158,12 @@ static void init_stats(routing_stats_t* stats) {
 }
 
 static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* signal) {
+    // P2 fix: Capture mutex pointer once to avoid TOCTOU between lock and unlock
+    nimcp_mutex_t* qmutex = router->queue_mutex;
+
     // Lock mutex for thread-safe queue access
-    if (router->queue_mutex) {
-        nimcp_mutex_lock(router->queue_mutex);
+    if (qmutex) {
+        nimcp_mutex_lock(qmutex);
     }
 
     if (router->queue_size >= router->queue_capacity) {
@@ -168,8 +171,8 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         if (router->stats.signals_dropped < UINT64_MAX) {
             router->stats.signals_dropped++;
         }
-        if (router->queue_mutex) {
-            nimcp_mutex_unlock(router->queue_mutex);
+        if (qmutex) {
+            nimcp_mutex_unlock(qmutex);
         }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_signal: queue full");
         return false;
@@ -183,8 +186,8 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         signal->signal_data, signal->signal_size);
 
     if (!qs->wrapper) {
-        if (router->queue_mutex) {
-            nimcp_mutex_unlock(router->queue_mutex);
+        if (qmutex) {
+            nimcp_mutex_unlock(qmutex);
         }
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "enqueue_signal: failed to create signal wrapper");
         return false;
@@ -212,8 +215,8 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
     }
 
     // Unlock mutex
-    if (router->queue_mutex) {
-        nimcp_mutex_unlock(router->queue_mutex);
+    if (qmutex) {
+        nimcp_mutex_unlock(qmutex);
     }
 
     return true;
@@ -292,10 +295,12 @@ static bool apply_quantum_routing(thalamic_router_t* router,
 
     /* If min_attention_threshold is 0.0, we expect all destinations to pass.
      * If quantum routing didn't return all, fall back to classical. */
-    if (!needs_fallback && *num_filtered < num_dests) {
-        LOG_DEBUG(LOG_MODULE, "Quantum routing filtered %u/%u destinations, using classical fallback",
-                  *num_filtered, num_dests);
-        needs_fallback = true;
+    if (!needs_fallback && router->config.min_attention_threshold == 0.0f) {
+        if (*num_filtered < num_dests) {
+            LOG_DEBUG(LOG_MODULE, "Quantum routing filtered %u/%u with threshold=0, using classical",
+                      *num_filtered, num_dests);
+            needs_fallback = true;
+        }
     }
 
     if (needs_fallback) {
@@ -306,7 +311,6 @@ static bool apply_quantum_routing(thalamic_router_t* router,
         }
         memcpy(filtered_dests, dest_ids, num_dests * sizeof(uint32_t));
         *num_filtered = num_dests;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_attention_threshold: validation failed");
         return false;
     }
 
@@ -360,8 +364,10 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
         // WHAT: Thread-safe callback lookup with mutex protection
         // WHY:  Callback array can be modified by registration calls, causing race condition
         // HOW:  Copy callback pointer under mutex, then invoke outside mutex to avoid deadlock
-        if (router->queue_mutex) {
-            int lock_result = nimcp_mutex_lock(router->queue_mutex);
+        // P2 fix: Capture mutex pointer once to avoid TOCTOU
+        nimcp_mutex_t* cb_mutex = router->queue_mutex;
+        if (cb_mutex) {
+            int lock_result = nimcp_mutex_lock(cb_mutex);
             if (lock_result != 0) {
                 LOG_WARN(LOG_MODULE, "Mutex lock failed in callback lookup");
             }
@@ -373,8 +379,8 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
             user_data = router->callbacks[dest_id].user_data;
         }
 
-        if (router->queue_mutex) {
-            int unlock_result = nimcp_mutex_unlock(router->queue_mutex);
+        if (cb_mutex) {
+            int unlock_result = nimcp_mutex_unlock(cb_mutex);
             if (unlock_result != 0) {
                 LOG_WARN(LOG_MODULE, "Mutex unlock failed in callback lookup");
             }
@@ -385,16 +391,10 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
             float attention = attention_weight;
 
             if (router->config.enable_attention_gating && router->attention_gate) {
-                float gate_weight = 0.0F;
+                float gate_weight = 1.0F;
                 attention_gate_get_weight(router->attention_gate, source_id,
                                         dest_id, &gate_weight);
-                /* Only apply gating if an explicit weight has been configured.
-                 * The attention gate returns 0.0 for unconfigured routes (no entry),
-                 * which should be treated as passthrough (1.0), not suppression.
-                 * Explicitly gated routes will have a positive weight. */
-                if (gate_weight > 0.0F) {
-                    attention *= gate_weight;
-                }
+                attention *= gate_weight;
             }
 
             // Check PKA-modulated attention threshold
@@ -472,10 +472,9 @@ thalamic_router_config_t thalamic_router_default_config(void) {
 }
 
 thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config) {
-    thalamic_router_config_t default_cfg;
     if (!config) {
-        default_cfg = thalamic_router_default_config();
-        config = &default_cfg;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_create: config is NULL");
+        return NULL;
     }
 
     thalamic_router_t* router = (thalamic_router_t*)nimcp_calloc(1, sizeof(thalamic_router_t));
@@ -492,13 +491,6 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     // Create attention gate
     if (config->enable_attention_gating) {
         attention_gate_config_t gate_config = attention_gate_default_config();
-        /* Use TOPDOWN mode so get_weight returns exactly the value passed to set_weight.
-         * MIXED mode scales by topdown_weight factor (0.7), making round-trip values mismatch.
-         * Also increase capacity to support large routing tables (e.g. 50 sources x 20 dests). */
-        gate_config.mode = ATTENTION_MODE_TOPDOWN;
-        gate_config.max_targets = (config->max_destinations > 256)
-            ? config->max_destinations * 64
-            : 4096;
         router->attention_gate = attention_gate_create(&gate_config);
         if (!router->attention_gate) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to create attention_gate");
@@ -684,7 +676,8 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
     }
 
     // High priority or bypass flag: deliver immediately
-    if (signal->bypass_queue) {
+    if (signal->bypass_queue ||
+        (router->config.enable_priority_routing && signal->priority == SIGNAL_PRIORITY_HIGH)) {
 
         bool delivered = deliver_signal(router, signal);
 
@@ -755,6 +748,9 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
 
     uint32_t processed = 0;
 
+    /* P2 fix: Capture mutex pointer once to avoid TOCTOU between lock and unlock */
+    nimcp_mutex_t* qmutex = router->queue_mutex;
+
     /* P1 fix: Process signals outside mutex to prevent callback deadlock
      * WHY: Callbacks may call router APIs, causing mutex re-entry deadlock
      * HOW: Copy signal data under lock, deliver outside lock, then update queue
@@ -771,13 +767,13 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
         double enqueue_time_ms = 0.0;
 
         /* Lock and copy signal data */
-        if (router->queue_mutex) {
-            nimcp_mutex_lock(router->queue_mutex);
+        if (qmutex) {
+            nimcp_mutex_lock(qmutex);
         }
 
         if (router->queue_size == 0) {
-            if (router->queue_mutex) {
-                nimcp_mutex_unlock(router->queue_mutex);
+            if (qmutex) {
+                nimcp_mutex_unlock(qmutex);
             }
             break;  /* No more signals */
         }
@@ -796,8 +792,8 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
         }
         router->queue_size--;
 
-        if (router->queue_mutex) {
-            nimcp_mutex_unlock(router->queue_mutex);
+        if (qmutex) {
+            nimcp_mutex_unlock(qmutex);
         }
 
         /* Deliver signal OUTSIDE mutex to prevent deadlock */
@@ -807,8 +803,8 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
 
         if (delivered) {
             /* Update stats under lock */
-            if (router->queue_mutex) {
-                nimcp_mutex_lock(router->queue_mutex);
+            if (qmutex) {
+                nimcp_mutex_lock(qmutex);
             }
             /* P2 fix: Use saturation for stats counter */
             if (router->stats.signals_routed < UINT64_MAX) {
@@ -821,26 +817,28 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
             router->stats.avg_latency_ms =
                 (1.0F - alpha) * router->stats.avg_latency_ms + alpha * (float)latency;
 
-            if (router->queue_mutex) {
-                nimcp_mutex_unlock(router->queue_mutex);
+            if (qmutex) {
+                nimcp_mutex_unlock(qmutex);
             }
         }
 
         /* Release both wrappers now that delivery is complete.
-         * IMPORTANT: Release original AFTER acquired - original owns the managers.
-         * Acquired wrapper's handles keep the data alive until released. */
-        signal_wrapper_release(wrapper);
+         * Release in reverse order of acquisition: original first, then acquired.
+         * The acquired wrapper holds its own CoW reference, keeping data alive
+         * independently of the original. Releasing original first is safe because
+         * acquired's refcount keeps the underlying data from being freed. */
         signal_wrapper_release(original_wrapper);
+        signal_wrapper_release(wrapper);
         processed++;
     }
 
     /* Update final queue depth under lock */
-    if (router->queue_mutex) {
-        nimcp_mutex_lock(router->queue_mutex);
+    if (qmutex) {
+        nimcp_mutex_lock(qmutex);
     }
     router->stats.queue_depth = router->queue_size;
-    if (router->queue_mutex) {
-        nimcp_mutex_unlock(router->queue_mutex);
+    if (qmutex) {
+        nimcp_mutex_unlock(qmutex);
     }
 
     // Update throughput
@@ -868,12 +866,14 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
         return false;
     }
 
+    // P2 fix: Capture mutex pointer once to avoid TOCTOU
+    nimcp_mutex_t* qmutex = router->queue_mutex;
+
     // Lock mutex for thread-safe callback modification
-    if (router->queue_mutex) {
-        int lock_result = nimcp_mutex_lock(router->queue_mutex);
+    if (qmutex) {
+        int lock_result = nimcp_mutex_lock(qmutex);
         if (lock_result != 0) {
             LOG_WARN(LOG_MODULE, "Mutex lock failed in set_callback");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: validation failed");
             return false;
         }
     }
@@ -887,8 +887,8 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
     router->callbacks[dest_id].user_data = user_data;
 
     // Unlock mutex
-    if (router->queue_mutex) {
-        int unlock_result = nimcp_mutex_unlock(router->queue_mutex);
+    if (qmutex) {
+        int unlock_result = nimcp_mutex_unlock(qmutex);
         if (unlock_result != 0) {
             LOG_WARN(LOG_MODULE, "Mutex unlock failed in set_callback");
         }
@@ -958,9 +958,12 @@ void thalamic_router_reset_stats(thalamic_router_t* router) {
 void thalamic_router_clear_queue(thalamic_router_t* router) {
     if (!router) return;
 
+    // P2 fix: Capture mutex pointer once to avoid TOCTOU
+    nimcp_mutex_t* qmutex = router->queue_mutex;
+
     // Lock mutex for thread-safe queue access
-    if (router->queue_mutex) {
-        nimcp_mutex_lock(router->queue_mutex);
+    if (qmutex) {
+        nimcp_mutex_lock(qmutex);
     }
 
     // Release all queued wrappers
@@ -972,8 +975,8 @@ void thalamic_router_clear_queue(thalamic_router_t* router) {
     router->stats.queue_depth = 0;
 
     // Unlock mutex
-    if (router->queue_mutex) {
-        nimcp_mutex_unlock(router->queue_mutex);
+    if (qmutex) {
+        nimcp_mutex_unlock(qmutex);
     }
 }
 

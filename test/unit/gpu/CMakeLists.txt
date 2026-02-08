@@ -23,6 +23,9 @@ add_gpu_test(test_execution_mode)
 add_gpu_test(test_gpu_neuron)
 add_gpu_test(test_spike_event)
 
+# Multi-GPU bounds validation tests (P2-13 fix)
+add_gpu_test(test_multigpu_bounds)
+
 # CUDA Kernel tests - only built when CUDA toolkit is available
 # These tests require actual CUDA kernel implementations
 if(CUDAToolkit_FOUND)

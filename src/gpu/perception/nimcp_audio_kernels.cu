@@ -198,23 +198,63 @@ int nimcp_audio_batched_matmul(nimcp_audio_matmul_ctx_t* ctx,
     float alpha = 1.0f;
     float beta = 0.0f;
 
-    // cuBLAS uses column-major, so we compute C^T = B^T * A^T
-    // Which gives us C = A * B in row-major
-    cublasOperation_t opA = transA ? CUBLAS_OP_N : CUBLAS_OP_T;
-    cublasOperation_t opB = transB ? CUBLAS_OP_N : CUBLAS_OP_T;
+    // Row-major to column-major transformation:
+    // Row-major A (M x K) is col-major A^T (K x M), leading dim K
+    // Row-major B (K x N) is col-major B^T (N x K), leading dim N
+    // Row-major C (M x N) is col-major C^T (N x M), leading dim N
+    //
+    // To compute C = A * B in row-major: C^T = B^T * A^T in col-major
+    // cublasSgemm(handle, transa, transb, m, n, k, alpha, A_blas, lda, B_blas, ldb, beta, C_blas, ldc)
+    //
+    // A_blas = B^T (col-major N x K), B_blas = A^T (col-major K x M)
+    // C_blas = C^T (col-major N x M)
+    // m = N, n = M, k = K
+    //
+    // For transA (user wants A^T * B): A is stored as M x K row-major.
+    //   A^T is K x M row-major = M x K col-major. We need to use it transposed in cuBLAS.
+    //   B_blas = A^T col-major (M x K), and we need transb=T to get A^T^T=A... no wait.
+    //   Actually we need op(B_blas) = A^T. A^T col-major is M x K. op=N gives M x K.
+    //   But we need K x M from A^T. So transb=T on (M x K) gives K x M. Hmm.
+    //
+    // Simple approach: handle transA/transB by adjusting ops and leading dims.
 
-    // Leading dimensions
-    int lda = transA ? M : K;
-    int ldb = transB ? K : N;
+    // Base case (no transpose): C^T = B^T * A^T
+    // transa=N for B^T (col-major N x K, lda=N)
+    // transb=N for A^T (col-major K x M, ldb=K)
+    cublasOperation_t cublas_transa, cublas_transb;
+    int lda_cublas, ldb_cublas;
+
+    if (!transB) {
+        // B is K x N row-major -> B^T is N x K col-major
+        cublas_transa = CUBLAS_OP_N;
+        lda_cublas = N;
+    } else {
+        // B^T is N x K row-major -> (B^T)^T = B is K x N col-major
+        // We need B^T for the cuBLAS A position, so transpose it
+        cublas_transa = CUBLAS_OP_T;
+        lda_cublas = K;
+    }
+
+    if (!transA) {
+        // A is M x K row-major -> A^T is K x M col-major
+        cublas_transb = CUBLAS_OP_N;
+        ldb_cublas = K;
+    } else {
+        // A^T is K x M row-major -> (A^T)^T = A is M x K col-major
+        // We need A^T for the cuBLAS B position, so transpose it
+        cublas_transb = CUBLAS_OP_T;
+        ldb_cublas = M;
+    }
+
     int ldc = N;
 
     cublasStatus_t status = cublasSgemmBatched(
         ctx->cublas_handle,
-        opB, opA,  // Reversed for row-major
+        cublas_transa, cublas_transb,
         N, M, K,
         &alpha,
-        (const float**)ctx->d_B_array, ldb,
-        (const float**)ctx->d_A_array, lda,
+        (const float**)ctx->d_B_array, lda_cublas,
+        (const float**)ctx->d_A_array, ldb_cublas,
         &beta,
         ctx->d_C_array, ldc,
         batch_size
@@ -242,20 +282,35 @@ int nimcp_audio_single_matmul(nimcp_audio_matmul_ctx_t* ctx,
     float alpha = 1.0f;
     float beta = 0.0f;
 
-    cublasOperation_t opA = transA ? CUBLAS_OP_N : CUBLAS_OP_T;
-    cublasOperation_t opB = transB ? CUBLAS_OP_N : CUBLAS_OP_T;
+    // Same row-major to col-major transformation as batched version
+    cublasOperation_t cublas_transa, cublas_transb;
+    int lda_cublas, ldb_cublas;
 
-    int lda = transA ? M : K;
-    int ldb = transB ? K : N;
+    if (!transB) {
+        cublas_transa = CUBLAS_OP_N;
+        lda_cublas = N;
+    } else {
+        cublas_transa = CUBLAS_OP_T;
+        lda_cublas = K;
+    }
+
+    if (!transA) {
+        cublas_transb = CUBLAS_OP_N;
+        ldb_cublas = K;
+    } else {
+        cublas_transb = CUBLAS_OP_T;
+        ldb_cublas = M;
+    }
+
     int ldc = N;
 
     cublasStatus_t status = cublasSgemm(
         ctx->cublas_handle,
-        opB, opA,
+        cublas_transa, cublas_transb,
         N, M, K,
         &alpha,
-        B, ldb,
-        A, lda,
+        B, lda_cublas,
+        A, ldb_cublas,
         &beta,
         C, ldc
     );
@@ -490,6 +545,20 @@ __global__ void kernel_overlap_add(const float* frames, float* output,
     }
 
     output[idx] = sum;
+}
+
+/**
+ * @brief Scale an array by a constant factor
+ *
+ * @param data Array to scale (in-place)
+ * @param scale Scale factor
+ * @param n Number of elements
+ */
+__global__ void kernel_scale(float* data, float scale, int n)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+    data[idx] *= scale;
 }
 
 /**
@@ -809,11 +878,13 @@ int nimcp_stft_inverse(nimcp_stft_ctx_t* ctx, const nimcp_stft_result_t* stft,
     // Scale by 1/fft_size
     int n_frames_total = num_frames * fft_size;
     blocks = (n_frames_total + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    kernel_scale<<<blocks, BLOCK_SIZE>>>(d_frames, 1.0f / fft_size, n_frames_total);
 
-    // Apply window to frames (synthesis window)
+    // Apply synthesis window to frames
     // For perfect reconstruction with Hann window, we need to apply window again
+    // NOTE: hop=fft_size so each frame reads from frame*fft_size+idx (contiguous IFFT output)
     kernel_apply_window<<<num_frames, fft_size>>>(
-        d_frames, d_frames, ctx->d_window, fft_size, num_frames, 0, num_frames * fft_size);
+        d_frames, d_frames, ctx->d_window, fft_size, num_frames, fft_size, n_frames_total);
 
     // Initialize output to zero
     cudaMemset(audio_out, 0, output_size * sizeof(float));
@@ -826,10 +897,6 @@ int nimcp_stft_inverse(nimcp_stft_ctx_t* ctx, const nimcp_stft_result_t* stft,
     // Normalize by window sum for perfect reconstruction
     kernel_synthesis_normalize<<<blocks, BLOCK_SIZE>>>(
         audio_out, ctx->d_window, fft_size, hop_size, num_frames, output_size);
-
-    // Scale by 1/fft_size for FFT normalization
-    // We can do this with a simple scale kernel or use cuBLAS
-    // For simplicity, we'll fold this into the synthesis normalization
 
     cudaFree(d_complex);
     cudaFree(d_frames);

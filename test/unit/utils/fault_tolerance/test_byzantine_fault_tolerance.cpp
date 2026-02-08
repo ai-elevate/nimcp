@@ -119,6 +119,13 @@ TEST_F(ByzantineFaultToleranceTest, SubmitRequest) {
 TEST_F(ByzantineFaultToleranceTest, ProcessMessage) {
     EXPECT_TRUE(bft_start(ctx));
 
+    // Set up identity for signing
+    bft_identity_t identity;
+    memset(&identity, 0, sizeof(identity));
+    identity.node_id = 2;
+    bft_generate_keys(&identity);
+    bft_set_identity(ctx, &identity);
+
     bft_msg_header_t header;
     memset(&header, 0, sizeof(header));
     header.type = BFT_MSG_PREPARE;
@@ -127,6 +134,10 @@ TEST_F(ByzantineFaultToleranceTest, ProcessMessage) {
     header.sequence_number = 1;
 
     const char* payload = "test_payload";
+
+    // Sign the message before processing
+    bft_sign(ctx, payload, strlen(payload), header.signature);
+
     EXPECT_TRUE(bft_process_message(ctx, &header, payload, strlen(payload)));
 
     EXPECT_TRUE(bft_stop(ctx));
@@ -261,9 +272,16 @@ TEST_F(ByzantineFaultToleranceTest, ProcessAccusation) {
 TEST_F(ByzantineFaultToleranceTest, VoteAccusation) {
     EXPECT_TRUE(bft_start(ctx));
 
+    // First report byzantine behavior to create an accusation in the context
+    bft_evidence_t evidence;
+    memset(&evidence, 0, sizeof(evidence));
+    evidence.type = BFT_EVIDENCE_CONFLICTING_MSG;
+    EXPECT_TRUE(bft_report_byzantine(ctx, 3, BFT_BEHAV_EQUIVOCATION, &evidence, 1));
+
+    // Now vote on the accusation
     bft_accusation_t accusation;
     memset(&accusation, 0, sizeof(accusation));
-    accusation.accuser_id = 2;
+    accusation.accuser_id = config.node_id;
     accusation.accused_id = 3;
     accusation.behavior = BFT_BEHAV_EQUIVOCATION;
 

@@ -26,26 +26,43 @@
 
 class BrainQuantumReasoningTest : public ::testing::Test {
 protected:
-    brain_t brain;
+    static brain_t shared_brain;
 
-    void SetUp() override {
-        brain = brain_create("quantum_test", BRAIN_SIZE_SMALL,
+    // Shared brain created once for all tests in this suite
+    static void SetUpTestSuite() {
+        shared_brain = brain_create("quantum_test", BRAIN_SIZE_MICRO,
                             BRAIN_TASK_CLASSIFICATION, 4, 2);
-        ASSERT_NE(brain, nullptr);
+        ASSERT_NE(shared_brain, nullptr);
 
         // Initialize quantum reasoning
-        bool result = nimcp_brain_factory_init_quantum_reasoning(brain, nullptr);
+        bool result = nimcp_brain_factory_init_quantum_reasoning(shared_brain, nullptr);
         ASSERT_TRUE(result);
     }
 
-    void TearDown() override {
-        if (brain) {
-            nimcp_brain_qreason_destroy(brain);
-            brain_destroy(brain);
-            brain = nullptr;
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            nimcp_brain_qreason_destroy(shared_brain);
+            brain_destroy(shared_brain);
+            shared_brain = nullptr;
         }
     }
+
+    // Per-test accessor
+    brain_t brain = nullptr;
+
+    void SetUp() override {
+        brain = shared_brain;
+        ASSERT_NE(brain, nullptr);
+        // Reset state for each test: re-enable and clear KB
+        nimcp_brain_qreason_set_enabled(brain, true);
+        nimcp_brain_qreason_clear_kb(brain);
+        nimcp_brain_qreason_reset_stats(brain);
+        nimcp_brain_qreason_set_fatigue(brain, 0.0f);
+        nimcp_brain_qreason_set_stress(brain, 0.0f);
+    }
 };
+
+brain_t BrainQuantumReasoningTest::shared_brain = nullptr;
 
 //=============================================================================
 // Lifecycle Tests
@@ -63,7 +80,7 @@ TEST(BrainQuantumReasoningLifecycleTest, DefaultConfig) {
 }
 
 TEST(BrainQuantumReasoningLifecycleTest, InitWithDefaults) {
-    brain_t brain = brain_create("lifecycle_test", BRAIN_SIZE_SMALL,
+    brain_t brain = brain_create("lifecycle_test", BRAIN_SIZE_MICRO,
                                  BRAIN_TASK_CLASSIFICATION, 4, 2);
     ASSERT_NE(brain, nullptr);
 
@@ -77,7 +94,7 @@ TEST(BrainQuantumReasoningLifecycleTest, InitWithDefaults) {
 }
 
 TEST(BrainQuantumReasoningLifecycleTest, InitWithCustomConfig) {
-    brain_t brain = brain_create("custom_config_test", BRAIN_SIZE_SMALL,
+    brain_t brain = brain_create("custom_config_test", BRAIN_SIZE_MICRO,
                                  BRAIN_TASK_CLASSIFICATION, 4, 2);
     ASSERT_NE(brain, nullptr);
 

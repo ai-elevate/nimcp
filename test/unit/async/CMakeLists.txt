@@ -422,6 +422,34 @@ gtest_discover_tests(unit_async_plasticity_bridge
 )
 
 # ============================================================================
+# Bio-Router Registration Unit Tests (P1-12: Re-registration memory leak)
+# ============================================================================
+
+add_executable(unit_async_bio_router_registration
+    test_bio_router_registration.cpp
+)
+target_link_libraries(unit_async_bio_router_registration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(unit_async_bio_router_registration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_bio_router_registration PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_bio_router_registration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;router;registration"
+        TIMEOUT 60
+)
+
+# ============================================================================
 # Async Exception Macros Unit Tests - DISABLED (API issues)
 # Tests moved to existing exception test suite
 # ============================================================================

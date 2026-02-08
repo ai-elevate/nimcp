@@ -1577,6 +1577,7 @@ float tripwire_detect_exfiltration(tripwire_system_t* system) {
     if (score > 0.7f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
             "Network exfiltration detected: score=%.3f, ratio=%.2f", score, current_ratio);
+        return -1;
     }
 
     return score;
@@ -1715,6 +1716,7 @@ float tripwire_detect_network_anomaly(tripwire_system_t* system) {
     if (score > 0.7f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
             "Network anomaly detected: score=%.3f", score);
+        return -1;
     }
 
     return score;
@@ -1837,6 +1839,7 @@ float tripwire_detect_command_control(tripwire_system_t* system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
             "C2 communication pattern detected: score=%.3f, regularity=%.3f",
             score, regularity);
+        return -1;
     }
 
     return score;

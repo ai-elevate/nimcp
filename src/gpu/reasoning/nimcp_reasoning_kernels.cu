@@ -561,22 +561,30 @@ bool nimcp_gpu_forward_chain(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    // Allocate match scores
-    nimcp_gpu_tensor_t* match_scores = NULL;
-    // In practice, this would be properly allocated
+    // Allocate match scores tensor (one score per rule)
+    size_t ms_dims[1] = { rules->n_rules };
+    nimcp_gpu_tensor_t* match_scores = nimcp_gpu_tensor_create(
+        ctx, ms_dims, 1, NIMCP_GPU_PRECISION_FP32);
+    if (!match_scores) {
+        LOG_ERROR("Failed to allocate match_scores tensor");
+        return false;
+    }
 
     for (int step = 0; step < max_steps; step++) {
         // Match rules
         if (!nimcp_gpu_rule_match(ctx, rules, wm, match_scores, params)) {
+            nimcp_gpu_tensor_destroy(match_scores);
             return false;
         }
 
         // Fire rules
         if (!nimcp_gpu_rule_fire(ctx, rules, wm, match_scores, params)) {
+            nimcp_gpu_tensor_destroy(match_scores);
             return false;
         }
     }
 
+    nimcp_gpu_tensor_destroy(match_scores);
     return true;
 }
 
@@ -896,7 +904,81 @@ bool nimcp_gpu_csp_step(
         return false;
     }
 
-    *solved = false;
+    // Assign variables: for each variable, pick the first available domain value
+    {
+        size_t n_vars = state->n_variables;
+        size_t dom_sz = state->domain_size;
+        size_t total = n_vars * dom_sz;
+
+        // Read domains to host
+        float* host_domains = (float*)malloc(total * sizeof(float));
+        float* host_assign = (float*)malloc(n_vars * sizeof(float));
+        if (host_domains && host_assign) {
+            cudaMemcpy(host_domains, state->domains->data,
+                       total * sizeof(float), cudaMemcpyDeviceToHost);
+
+            bool all_assigned = true;
+            for (size_t v = 0; v < n_vars; v++) {
+                host_assign[v] = -1.0f;
+                for (size_t d = 0; d < dom_sz; d++) {
+                    if (host_domains[v * dom_sz + d] > 0.5f) {
+                        host_assign[v] = (float)d;
+                        break;
+                    }
+                }
+                if (host_assign[v] < 0.0f) {
+                    all_assigned = false;
+                }
+            }
+
+            // Write assignments back to device
+            cudaMemcpy(state->assignments->data, host_assign,
+                       n_vars * sizeof(float), cudaMemcpyHostToDevice);
+
+            if (!all_assigned) {
+                // Some variable has empty domain = failed
+                *solved = false;
+                *failed = true;
+                free(host_domains);
+                free(host_assign);
+                return true;
+            }
+        }
+        if (host_domains) free(host_domains);
+        if (host_assign) free(host_assign);
+    }
+
+    // Check constraints to determine solved/failed status
+    nimcp_gpu_tensor_t* violations = NULL;
+    size_t v_dims[1] = { state->n_constraints };
+    violations = nimcp_gpu_tensor_create(ctx, v_dims, 1, NIMCP_GPU_PRECISION_FP32);
+    if (!violations) {
+        *solved = false;
+        *failed = false;
+        return true;
+    }
+
+    nimcp_gpu_csp_check_constraints(ctx, state, violations, params);
+
+    // Count violations on host
+    size_t n_violations = 0;
+    if (violations->numel > 0) {
+        float* host_v = (float*)malloc(violations->numel * sizeof(float));
+        if (host_v) {
+            cudaMemcpy(host_v, violations->data,
+                       violations->numel * sizeof(float),
+                       cudaMemcpyDeviceToHost);
+            for (size_t i = 0; i < violations->numel; i++) {
+                if (host_v[i] > 0.5f) n_violations++;
+            }
+            free(host_v);
+        }
+    }
+
+    nimcp_gpu_tensor_destroy(violations);
+
+    // If no constraint violations, the problem is solved
+    *solved = (n_violations == 0);
     *failed = false;
 
     return true;
@@ -993,6 +1075,72 @@ bool nimcp_gpu_analogy_structural_similarity(
     return true;
 }
 
+/**
+ * @brief Kernel for greedy analogy mapping based on feature similarity
+ *
+ * For each source entity, finds the best-matching target entity based on
+ * cosine similarity of features. Populates mapping and mapping_scores.
+ */
+__global__ void kernel_analogy_greedy_mapping(
+    float* __restrict__ mapping,
+    float* __restrict__ mapping_scores,
+    const float* __restrict__ source_features,
+    const float* __restrict__ target_features,
+    const float* __restrict__ source_structure,
+    const float* __restrict__ target_structure,
+    float structural_weight,
+    float semantic_weight,
+    size_t source_size,
+    size_t target_size,
+    size_t feature_dim)
+{
+    size_t s_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (s_idx >= source_size) return;
+
+    for (size_t t_idx = 0; t_idx < target_size; t_idx++) {
+        // Semantic similarity (cosine of features)
+        float dot = 0.0f, norm_s = 0.0f, norm_t = 0.0f;
+        for (size_t d = 0; d < feature_dim; d++) {
+            float sf = source_features[s_idx * feature_dim + d];
+            float tf = target_features[t_idx * feature_dim + d];
+            dot += sf * tf;
+            norm_s += sf * sf;
+            norm_t += tf * tf;
+        }
+        float semantic_sim = dot / (sqrtf(norm_s * norm_t) + 1e-8f);
+
+        // Structural similarity (relation pattern match)
+        float structural_sim = 0.0f;
+        for (size_t k = 0; k < source_size; k++) {
+            float s_rel = source_structure[s_idx * source_size + k];
+            for (size_t l = 0; l < target_size; l++) {
+                float t_rel = target_structure[t_idx * target_size + l];
+                structural_sim += s_rel * t_rel;
+            }
+        }
+        structural_sim /= (source_size * target_size + 1e-8f);
+
+        float score = structural_weight * structural_sim + semantic_weight * semantic_sim;
+        mapping_scores[s_idx * target_size + t_idx] = score;
+    }
+
+    // Find best target for this source (greedy)
+    float best_score = -1.0f;
+    size_t best_target = 0;
+    for (size_t t_idx = 0; t_idx < target_size; t_idx++) {
+        float score = mapping_scores[s_idx * target_size + t_idx];
+        if (score > best_score) {
+            best_score = score;
+            best_target = t_idx;
+        }
+    }
+
+    // Set mapping: 1.0 for best match, 0.0 otherwise
+    for (size_t t_idx = 0; t_idx < target_size; t_idx++) {
+        mapping[s_idx * target_size + t_idx] = (t_idx == best_target) ? 1.0f : 0.0f;
+    }
+}
+
 bool nimcp_gpu_analogy_find_mapping(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_analogy_state_t* state,
@@ -1007,10 +1155,35 @@ bool nimcp_gpu_analogy_find_mapping(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    // Simplified: greedy assignment based on similarity
-    // Full SME would use constraint propagation
-    LOG_WARN("Analogy mapping: using simplified greedy algorithm");
+    size_t feature_dim = state->source_features->numel / state->source_size;
 
+    // Ensure mapping_scores is large enough (source_size * target_size)
+    size_t required_size = state->source_size * state->target_size;
+    if (state->mapping_scores->numel < required_size) {
+        nimcp_gpu_tensor_destroy(state->mapping_scores);
+        size_t ms_dims[1] = { required_size };
+        state->mapping_scores = nimcp_gpu_tensor_create(
+            ctx, ms_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        if (!state->mapping_scores) {
+            LOG_ERROR("Failed to reallocate mapping_scores tensor");
+            return false;
+        }
+    }
+
+    kernel_analogy_greedy_mapping<<<GRID_SIZE(state->source_size), BLOCK_SIZE>>>(
+        (float*)state->mapping->data,
+        (float*)state->mapping_scores->data,
+        (const float*)state->source_features->data,
+        (const float*)state->target_features->data,
+        (const float*)state->source_structure->data,
+        (const float*)state->target_structure->data,
+        params->structural_weight,
+        params->semantic_weight,
+        state->source_size,
+        state->target_size,
+        feature_dim);
+
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

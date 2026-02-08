@@ -1321,7 +1321,6 @@ static bool process_neuron_output(adaptive_neuron_state_t* state, float* output_
     // Apply sparsity if enabled
     if (enable_sparsity && !is_active) {
         *output_value = 0.0F;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_neuron_output: is_active is NULL");
         return false;
     }
 
@@ -1890,6 +1889,13 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
         return NULL;
     }
+    // Validate num_neurons: max 10M neurons to prevent corrupt data from causing crashes
+    if (config.base_config.num_neurons > 10000000) {
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: num_neurons exceeds maximum (10M)");
+        return NULL;
+    }
     (void)fread(&config.base_config.ei_ratio, sizeof(float), 1, file);
     (void)fread(&config.base_config.learning_rate, sizeof(float), 1, file);
     (void)fread(&config.base_config.hebbian_rate, sizeof(float), 1, file);
@@ -1905,8 +1911,24 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     (void)fread(&config.base_config.output_size, sizeof(uint32_t), 1, file);
     (void)fread(&config.base_config.num_layers, sizeof(uint32_t), 1, file);
 
+    // Validate dimensions: prevent corrupt data from causing crashes
+    if (config.base_config.input_size > 1000000 ||
+        config.base_config.output_size > 1000000) {
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: input/output size exceeds maximum (1M)");
+        return NULL;
+    }
+
     // Read layer_sizes array separately
     uint32_t* layer_sizes = NULL;
+    // Validate num_layers to prevent corrupt data from causing massive allocations
+    if (config.base_config.num_layers > 1024) {
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: num_layers exceeds maximum (1024)");
+        return NULL;
+    }
     if (config.base_config.num_layers > 0) {
         layer_sizes = nimcp_malloc(config.base_config.num_layers * sizeof(uint32_t));
         if (!layer_sizes) {
@@ -1970,6 +1992,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
+    // Validate neuron count against network capacity
+    if (num_neurons > 10000000) {
+        adaptive_network_destroy(network);
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: saved neuron count exceeds maximum (10M)");
+        return NULL;
+    }
+
     // Read neuron states
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (fread(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file) != 1) {
@@ -1989,6 +2020,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
+    // Validate num_labels to prevent corrupt data from causing crashes
+    if (num_labels > 100000) {
+        adaptive_network_destroy(network);
+        fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "adaptive_network_load: num_labels exceeds maximum (100K)");
+        return NULL;
+    }
+
     network->label_map = nimcp_malloc(num_labels * sizeof(char*));
     network->num_labels = num_labels;
 
@@ -1998,6 +2038,15 @@ adaptive_network_t adaptive_network_load(const char* filepath)
             adaptive_network_destroy(network);
             fclose(file);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
+            return NULL;
+        }
+
+        // Validate label length
+        if (label_len > 65536) {
+            adaptive_network_destroy(network);
+            fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "adaptive_network_load: label_len exceeds maximum (64K)");
             return NULL;
         }
 

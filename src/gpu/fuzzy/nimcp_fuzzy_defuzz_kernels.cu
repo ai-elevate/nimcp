@@ -533,42 +533,57 @@ bool nimcp_gpu_fuzzy_defuzzify_batch(
     uint32_t num_blocks = params->num_samples;
     size_t shared_size = 3 * block_size * sizeof(float);  // For MOM which needs 3 arrays
 
+    // Allocate device memory for inputs and outputs (host pointers cannot be used in kernels)
+    size_t agg_size = (size_t)params->num_samples * params->resolution * sizeof(float);
+    size_t out_size = params->num_samples * sizeof(float);
+    float* d_aggregated = NULL;
+    float* d_outputs = NULL;
+
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_aggregated, agg_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_outputs, out_size), GPU_ERROR_OUT_OF_MEMORY);
+
+    // Copy aggregated data to device
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_aggregated, aggregated, agg_size,
+                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+
     switch (params->method) {
         case 0:  // FUZZY_DEFUZZ_CENTROID
             shared_size = 2 * block_size * sizeof(float);
             kernel_defuzz_centroid<<<num_blocks, block_size, shared_size, stream>>>(
-                aggregated, outputs, params->x_min, params->x_max,
+                d_aggregated, d_outputs, params->x_min, params->x_max,
                 params->resolution, params->num_samples);
             break;
 
         case 1:  // FUZZY_DEFUZZ_BISECTOR
             shared_size = block_size * sizeof(float);
             kernel_defuzz_bisector<<<num_blocks, block_size, shared_size, stream>>>(
-                aggregated, outputs, params->x_min, params->x_max,
+                d_aggregated, d_outputs, params->x_min, params->x_max,
                 params->resolution, params->num_samples);
             break;
 
         case 2:  // FUZZY_DEFUZZ_MOM
             kernel_defuzz_mom<<<num_blocks, block_size, shared_size, stream>>>(
-                aggregated, outputs, params->x_min, params->x_max,
+                d_aggregated, d_outputs, params->x_min, params->x_max,
                 params->resolution, params->num_samples);
             break;
 
         case 3:  // FUZZY_DEFUZZ_SOM
             shared_size = block_size * sizeof(float);
             kernel_defuzz_som<<<num_blocks, block_size, shared_size, stream>>>(
-                aggregated, outputs, params->x_min, params->x_max,
+                d_aggregated, d_outputs, params->x_min, params->x_max,
                 params->resolution, params->num_samples);
             break;
 
         case 4:  // FUZZY_DEFUZZ_LOM
             shared_size = block_size * sizeof(float);
             kernel_defuzz_lom<<<num_blocks, block_size, shared_size, stream>>>(
-                aggregated, outputs, params->x_min, params->x_max,
+                d_aggregated, d_outputs, params->x_min, params->x_max,
                 params->resolution, params->num_samples);
             break;
 
         default:
+            cudaFree(d_aggregated);
+            cudaFree(d_outputs);
             set_defuzz_error("Unsupported defuzzification method: %u", params->method);
             NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Unsupported defuzzification method: %u", params->method);
             return false;
@@ -576,6 +591,13 @@ bool nimcp_gpu_fuzzy_defuzzify_batch(
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+
+    // Copy results back to host
+    NIMCP_CUDA_RECOVER(cudaMemcpy(outputs, d_outputs, out_size,
+                                  cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+
+    cudaFree(d_aggregated);
+    cudaFree(d_outputs);
 
     return true;
 }

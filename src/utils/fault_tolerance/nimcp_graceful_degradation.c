@@ -34,6 +34,19 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graceful_degradation)
 
+/* P2-6 FIX: Helper function to check mutex lock return value.
+ * All critical nimcp_mutex_lock() calls must check the return value.
+ * Returns 0 on success, non-zero on failure (after logging and reporting). */
+static inline int gd_lock_checked(nimcp_mutex_t* mutex, const char* caller) {
+    int result = nimcp_mutex_lock(mutex);
+    if (result != 0) {
+        LOG_ERROR("GD", "%s: failed to acquire lock (error %d)", caller, result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_LOCK,
+            "graceful_degradation: %s failed to acquire lock (error %d)", caller, result);
+    }
+    return result;
+}
+
 //=============================================================================
 // Internal Structures
 //=============================================================================
@@ -291,7 +304,11 @@ static void* gd_monitor_thread(void* arg) {
     gd_context_t* ctx = (gd_context_t*)arg;
 
     while (ctx->monitor_running) {
-        nimcp_mutex_lock(&ctx->mutex);
+        /* P2-6 FIX: Check mutex lock return value */
+        if (gd_lock_checked(&ctx->mutex, "gd_monitor_thread") != 0) {
+            /* Lock failed - skip this iteration rather than operating on unprotected data */
+            break;
+        }
 
         if (ctx->config.enable_auto_degradation) {
             gd_evaluate_tier(ctx);
@@ -427,7 +444,10 @@ bool gd_start(gd_context_t* ctx) {
         return false;
     }
 
-    nimcp_mutex_lock(&ctx->mutex);
+    /* P2-6 FIX: Check mutex lock return value */
+    if (gd_lock_checked(&ctx->mutex, "gd_start") != 0) {
+        return false;
+    }
 
     if (ctx->running) {
         nimcp_mutex_unlock(&ctx->mutex);
@@ -462,7 +482,10 @@ bool gd_stop(gd_context_t* ctx) {
         return false;
     }
 
-    nimcp_mutex_lock(&ctx->mutex);
+    /* P2-6 FIX: Check mutex lock return value */
+    if (gd_lock_checked(&ctx->mutex, "gd_stop") != 0) {
+        return false;
+    }
 
     if (!ctx->running) {
         nimcp_mutex_unlock(&ctx->mutex);
@@ -475,7 +498,10 @@ bool gd_stop(gd_context_t* ctx) {
     /* Wait for thread to finish */
     nimcp_thread_join(ctx->monitor_thread, NULL);
 
-    nimcp_mutex_lock(&ctx->mutex);
+    /* P2-6 FIX: Check mutex lock return value */
+    if (gd_lock_checked(&ctx->mutex, "gd_stop_final") != 0) {
+        return false;
+    }
     ctx->running = false;
     nimcp_mutex_unlock(&ctx->mutex);
 
@@ -652,7 +678,10 @@ bool gd_update_resource(gd_context_t* ctx, gd_resource_t resource, float usage) 
         return false;
     }
 
-    nimcp_mutex_lock(&ctx->mutex);
+    /* P2-6 FIX: Check mutex lock return value */
+    if (gd_lock_checked(&ctx->mutex, "gd_update_resource") != 0) {
+        return false;
+    }
 
     ctx->current_usage[resource] = usage;
     ctx->resources[resource].current_usage = usage;
@@ -748,7 +777,10 @@ bool gd_set_tier(gd_context_t* ctx, gd_tier_t tier, const char* reason) {
         return false;
     }
 
-    nimcp_mutex_lock(&ctx->mutex);
+    /* P2-6 FIX: Check mutex lock return value */
+    if (gd_lock_checked(&ctx->mutex, "gd_set_tier") != 0) {
+        return false;
+    }
 
     gd_tier_t old_tier = ctx->current_tier;
 

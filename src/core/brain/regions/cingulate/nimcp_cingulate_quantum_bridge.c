@@ -453,11 +453,22 @@ bool cingulate_quantum_resolve_conflict(
         }
     }
 
+    /* Check if options have sufficient differentiation */
+    float min_activation = max_activation;
+    for (uint32_t i = 0; i < bridge->num_encoded_options; i++) {
+        if (bridge->encoded_options[i].activation < min_activation) {
+            min_activation = bridge->encoded_options[i].activation;
+        }
+    }
+    float activation_range = max_activation - min_activation;
+
     for (uint32_t i = 0; i < bridge->num_encoded_options; i++) {
         /* Mark options that are good resolutions */
         float score = bridge->encoded_options[i].activation /
                       (max_activation + 0.01f);
-        if (score > 0.5f) {
+        /* Require relative score above 0.5 AND sufficient differentiation
+         * among options to identify clear winners */
+        if (score > 0.5f && activation_range > 0.1f) {
             marked[i] = true;
             bridge->encoded_options[i].is_marked = true;
             num_marked++;

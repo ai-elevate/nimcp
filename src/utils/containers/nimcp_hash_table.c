@@ -174,7 +174,6 @@ static bool key_compare_string_sensitive(const void* key1, size_t key1_size, con
                                          size_t key2_size)
 {
     if (key1_size != key2_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_string_sensitive: validation failed");
         return false;
     }
     return memcmp(key1, key2, key1_size) == 0;
@@ -189,7 +188,6 @@ static bool key_compare_string_insensitive(const void* key1, size_t key1_size, c
                                            size_t key2_size)
 {
     if (key1_size != key2_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_string_insensitive: validation failed");
         return false;
     }
 
@@ -198,7 +196,6 @@ static bool key_compare_string_insensitive(const void* key1, size_t key1_size, c
 
     for (size_t i = 0; i < key1_size; i++) {
         if (tolower((unsigned char) s1[i]) != tolower((unsigned char) s2[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_string_insensitive: validation failed");
             return false;
         }
     }
@@ -215,7 +212,6 @@ static bool key_compare_integer(const void* key1, size_t key1_size, const void* 
                                 size_t key2_size)
 {
     if (key1_size != key2_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_integer: validation failed");
         return false;
     }
     return memcmp(key1, key2, key1_size) == 0;
@@ -422,8 +418,7 @@ static hash_entry_t* find_entry(hash_table_t* table, hash_entry_t* head, const v
     if (prev) {
         *prev = previous;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry: validation failed");
-    return NULL;
+    return NULL;  /* Key not found - normal return, not an error */
 }
 
 //=============================================================================
@@ -654,8 +649,7 @@ static bool hash_table_remove_generic(hash_table_t* table, const void* key, size
         find_entry(table, table->buckets[bucket_index], key, key_size, hash, &prev);
 
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_remove_generic: entry is NULL");
-        return false;  // Not found
+        return false;  /* Not found - normal return */
     }
 
     // Unlink from chain

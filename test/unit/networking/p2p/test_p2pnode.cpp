@@ -20,7 +20,7 @@ class P2PNodeTest : public NimcpTestBase {
     void SetUp() override
     {
         NimcpTestBase::SetUp();
-        test_config.listen_port = 8000;
+        test_config.listen_port = 48917;
         test_config.max_peers = 10;
         //        test_config.keepalive_interval = 1000;
         test_node = nullptr;
@@ -200,7 +200,7 @@ TEST_F(P2PNodeIntegrationTest, TwoNodeConnection)
 
     usleep(100000);  // Allow time for nodes to start
 
-    ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 8002));
+    ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 18002));
 
     usleep(100000);  // Allow time for connection
 
@@ -218,13 +218,13 @@ TEST_F(P2PNodeIntegrationTest, NodeReconnection)
 
     usleep(100000);
 
-    ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 8002));
+    ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 18002));
     usleep(100000);
 
-    ASSERT_TRUE(p2p_node_disconnect_peer(node1, "127.0.0.1", 8002));
+    ASSERT_TRUE(p2p_node_disconnect_peer(node1, "127.0.0.1", 18002));
     usleep(100000);
 
-    ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 8002));
+    ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 18002));
     usleep(100000);
 }
 
@@ -237,9 +237,9 @@ TEST_F(P2PNodeIntegrationTest, RapidConnectionDisconnection)
     ASSERT_TRUE(p2p_node_start(node2));
 
     for (int i = 0; i < 10; i++) {
-        ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 8002));
+        ASSERT_TRUE(p2p_node_connect_peer(node1, "127.0.0.1", 18002));
         usleep(10000);
-        ASSERT_TRUE(p2p_node_disconnect_peer(node1, "127.0.0.1", 8002));
+        ASSERT_TRUE(p2p_node_disconnect_peer(node1, "127.0.0.1", 18002));
         usleep(10000);
     }
 }

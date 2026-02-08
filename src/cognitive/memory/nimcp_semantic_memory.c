@@ -785,7 +785,6 @@ semantic_query_result_t* semantic_memory_find_similar(
     }
     if (!features || feature_dim == 0) return NULL;
     if (system->concept_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_memory_find_similar: system->concept_count is zero");
         return NULL;
     }
 
@@ -1240,7 +1239,6 @@ semantic_query_result_t* semantic_memory_query(
 
     if (!similar || similar->count == 0) {
         if (similar) semantic_memory_free_result(similar);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_memory_query: validation failed");
         return NULL;
     }
 

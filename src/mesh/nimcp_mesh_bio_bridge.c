@@ -505,10 +505,12 @@ nimcp_error_t mesh_bio_bridge_translate_to_mesh(
 
     /* Set transaction fields */
     tx->id.channel = channel;
+    tx->id.proposer = (mesh_participant_id_t)header->source_module;
     tx->id.timestamp_ns = nimcp_time_now_ns();
     tx->id.sequence = header->sequence;
     tx->type = MESH_TX_BELIEF_UPDATE;  /* Bio messages update beliefs */
     tx->status = MESH_TX_STATUS_PROPOSED;
+    tx->proposer_id = (mesh_participant_id_t)header->source_module;
 
     /* Copy payload */
     if (header->payload_size > 0 && msg_size > sizeof(bio_msg_header_t)) {
@@ -557,8 +559,8 @@ nimcp_error_t mesh_bio_bridge_route_bio_message(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    /* Check if connected to a router */
-    if (!bridge->connected) {
+    /* Check if connected to a router or has mesh integration context */
+    if (!bridge->connected && !bridge->integration) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_bio_bridge: not connected to router");
         return NIMCP_ERROR_NOT_INITIALIZED;
     }

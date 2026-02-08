@@ -427,14 +427,14 @@ nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    if (!service->current_batch || service->current_batch->count == 0) {
-        return NIMCP_SUCCESS;  /* Nothing to sequence */
-    }
-
-    /* Only leader can sequence */
+    /* Only leader can sequence - check role before batch state */
     if (service->raft.role != RAFT_ROLE_LEADER) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering: error condition");
         return NIMCP_ERROR_NOT_LEADER;
+    }
+
+    if (!service->current_batch || service->current_batch->count == 0) {
+        return NIMCP_SUCCESS;  /* Nothing to sequence */
     }
 
     /* Assign sequence numbers */

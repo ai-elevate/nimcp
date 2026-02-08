@@ -871,6 +871,10 @@ static int log_entry_internal(
     entry->entry_id = internal->next_entry_id++;
     entry->sequence_number = internal->next_sequence++;
 
+    /* Track if buffer will overwrite */
+    bool will_overwrite = (internal->ring_buffer.count >= internal->ring_buffer.capacity)
+                          && bridge->config.overwrite_on_full;
+
     /* Store in ring buffer */
     int result = ring_buffer_push(&internal->ring_buffer, entry,
                                   bridge->config.overwrite_on_full);
@@ -879,11 +883,20 @@ static int log_entry_internal(
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
+    if (will_overwrite) {
+        bridge->stats.buffer_overwrites++;
+    }
+
     /* Update statistics */
     bridge->stats.total_entries++;
     bridge->stats.entries_by_category[entry->category]++;
     bridge->stats.entries_by_severity[entry->severity]++;
     bridge->state.last_entry_time_ns = entry->timestamp_ns;
+
+    /* Track maximum severity in security effects */
+    if (entry->severity > bridge->security_effects.max_severity) {
+        bridge->security_effects.max_severity = entry->severity;
+    }
 
     /* Update buffer utilization */
     bridge->stats.current_buffer_size = internal->ring_buffer.count;

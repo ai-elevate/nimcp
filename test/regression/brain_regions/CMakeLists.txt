@@ -110,3 +110,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_speech_enhancement_backward_compat.cpp
     regression
 )
+
+# Brain Region Allocation Failure Regression Test (P1-9, P2-8)
+add_test_binary(
+    regression_brain_regions_test_brain_region_alloc_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_region_alloc_regression.cpp
+    regression
+)

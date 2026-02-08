@@ -1140,7 +1140,6 @@ static bool is_in_refractory_period(neuron_t* neuron, uint64_t timestamp)
 {
     // If neuron has never spiked (last_spike == 0), not in refractory period
     if (neuron->last_spike == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_in_refractory_period: neuron->last_spike is zero");
         return false;
     }
     return (timestamp - neuron->last_spike) < neuron->refractory_period;
@@ -1291,7 +1290,6 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
 
     // Guard clause: Validate neuron ID
     if (neuron_id >= network->num_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_update_neuron: capacity exceeded");
         return false;
     }
 
@@ -1300,7 +1298,6 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
     // Guard clause: Check refractory period
     if (is_in_refractory_period(neuron, timestamp)) {
         neuron->state = neuron->rest_potential;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_update_neuron: validation failed");
         return false;
     }
 
@@ -1711,7 +1708,6 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
 
     // Skip if too soon since last update
     if (timestamp - neuron->last_update < network->config.update_interval) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_homeostasis: validation failed");
         return false;
     }
 
@@ -1849,7 +1845,6 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, f
                                  uint64_t timestamp)
 {
     if (neuron_id >= network->num_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_record_spike: capacity exceeded");
         return false;
     }
 
@@ -2063,7 +2058,6 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
                                    float weight)
 {
     if (from_id >= network->num_neurons || to_id >= network->num_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_add_connection: capacity exceeded");
         return false;
     }
 
@@ -2072,12 +2066,10 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
 
     // Check if we have room for new synapse (both forward and reverse)
     if (from_neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_network_add_connection: capacity exceeded");
         return false;
     }
 
     if (to_neuron->num_incoming >= MAX_SYNAPSES_PER_NEURON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_network_add_connection: capacity exceeded");
         return false;
     }
 
@@ -3059,7 +3051,6 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
 {
     // 1. Create standard connection (handles all base initialization)
     if (!neural_network_add_connection(network, from_id, to_id, weight)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_add_connection_typed: neural_network_add_connection is NULL");
         return false;
     }
 

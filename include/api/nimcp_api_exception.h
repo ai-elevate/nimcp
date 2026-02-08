@@ -144,6 +144,23 @@ extern "C" {
     } while (0)
 
 /**
+ * @brief Check condition and return NULL (for pointer-returning functions)
+ *
+ * @param cond Condition to check
+ * @param code Error code for exception
+ * @param msg Error message
+ */
+#define NIMCP_API_CHECK_RET_NULL(cond, code, msg) \
+    do { \
+        if (!(cond)) { \
+            LOG_ERROR("%s", (msg)); \
+            NIMCP_THROW_TO_IMMUNE((code), "%s", (msg)); \
+            NIMCP_API_SET_ERROR("%s", (msg)); \
+            return NULL; \
+        } \
+    } while (0)
+
+/**
  * @brief Check condition and return false (for bool-returning functions)
  *
  * @param cond Condition to check

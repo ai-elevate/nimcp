@@ -26,6 +26,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_async_fep_bridge)
 int bio_async_fep_default_config(bio_async_fep_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_default_config: NULL config");
+        return -1;
     }
 
     config->prediction_horizon_ms = 100.0f;
@@ -116,6 +117,7 @@ void bio_async_fep_destroy(bio_async_fep_bridge_t* bridge) {
 int bio_async_fep_update_effects(bio_async_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_update_effects: NULL bridge or fep_system");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -170,6 +172,7 @@ int bio_async_fep_observe_future(
 ) {
     if (!bridge || !future) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_observe_future: NULL bridge or future");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -206,6 +209,7 @@ int bio_async_fep_predict_timing(
 ) {
     if (!bridge || !predicted_ms || !confidence) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_predict_timing: NULL bridge or output parameters");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -271,6 +275,7 @@ nimcp_bio_channel_type_t bio_async_fep_select_channel(
 int bio_async_fep_connect_bio_async(bio_async_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_connect_bio_async: NULL bridge");
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -296,6 +301,7 @@ int bio_async_fep_connect_bio_async(bio_async_fep_bridge_t* bridge) {
 int bio_async_fep_disconnect_bio_async(bio_async_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_disconnect_bio_async: NULL bridge");
+        return -1;
     }
 
     if (!bridge->base.bio_async_enabled) {
@@ -323,6 +329,7 @@ int bio_async_fep_get_effects(
 ) {
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_get_effects: NULL bridge or effects");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -338,6 +345,7 @@ int bio_async_fep_get_bio_async_effects(
 ) {
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_get_bio_async_effects: NULL bridge or effects");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -353,6 +361,7 @@ int bio_async_fep_get_stats(
 ) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_get_stats: NULL bridge or stats");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -365,6 +374,7 @@ int bio_async_fep_get_stats(
 int bio_async_fep_reset_stats(bio_async_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_reset_stats: NULL bridge");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

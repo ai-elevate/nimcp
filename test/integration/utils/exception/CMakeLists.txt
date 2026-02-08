@@ -43,3 +43,13 @@ endmacro()
 # - Recovery callback chain (GC -> Compact -> Rollback fallback)
 
 add_exception_integration_test(test_exception_immune_integration)
+
+# =============================================================================
+# Exception-Memory Integration Tests (P0-P2 Remediation)
+# =============================================================================
+# Tests the interaction between exception handling and memory tracking:
+# - Exception thrown during allocation doesn't corrupt tracking
+# - Recursion guard prevents stack overflow with nested throws
+# - Platform mutex works independently of exception system
+
+add_exception_integration_test(test_exception_memory_integration)

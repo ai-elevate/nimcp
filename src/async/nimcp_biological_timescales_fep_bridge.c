@@ -27,6 +27,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(biological_timescales_fep_bridge)
 int biological_timescales_fep_default_config(biological_timescales_fep_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_default_config: NULL config");
+        return -1;
     }
 
     /* Set precision decay rates per oscillation band (biologically realistic) */
@@ -145,6 +146,7 @@ void biological_timescales_fep_destroy(biological_timescales_fep_bridge_t* bridg
 int biological_timescales_fep_update_effects(biological_timescales_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_update_effects: NULL bridge or fep_system");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -207,6 +209,7 @@ int biological_timescales_fep_observe_timing(
 ) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_observe_timing: NULL bridge");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -270,6 +273,7 @@ int biological_timescales_fep_predict_timing(
 ) {
     if (!bridge || !predicted_interval_ms || !precision) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_predict_timing: NULL bridge or output parameters");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -323,6 +327,7 @@ nimcp_oscillation_band_t biological_timescales_fep_select_band(
 int biological_timescales_fep_connect_bio_async(biological_timescales_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_connect_bio_async: NULL bridge");
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -339,6 +344,7 @@ int biological_timescales_fep_connect_bio_async(biological_timescales_fep_bridge
 int biological_timescales_fep_disconnect_bio_async(biological_timescales_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_disconnect_bio_async: NULL bridge");
+        return -1;
     }
 
     if (!bridge->base.bio_async_enabled) {
@@ -368,6 +374,7 @@ int biological_timescales_fep_get_effects(
 ) {
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_get_effects: NULL bridge or effects");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -383,6 +390,7 @@ int biological_timescales_fep_get_timescales_effects(
 ) {
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_get_timescales_effects: NULL bridge or effects");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -398,6 +406,7 @@ int biological_timescales_fep_get_stats(
 ) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_get_stats: NULL bridge or stats");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -410,6 +419,7 @@ int biological_timescales_fep_get_stats(
 int biological_timescales_fep_reset_stats(biological_timescales_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biological_timescales_fep_reset_stats: NULL bridge");
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

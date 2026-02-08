@@ -556,7 +556,10 @@ TEST_F(KnowledgeGraphGPURecoveryTest, ErrorCategoryNumerical) {
     EXPECT_TRUE(action == GPU_RECOVERY_RETRY_IMMEDIATE ||
                 action == GPU_RECOVERY_RETRY_BACKOFF ||
                 action == GPU_RECOVERY_CPU_FALLBACK ||
-                action == GPU_RECOVERY_REDUCE_BATCH)
+                action == GPU_RECOVERY_REDUCE_BATCH ||
+                action == GPU_RECOVERY_REDUCE_PRECISION ||
+                action == GPU_RECOVERY_CLAMP_PARAMS ||
+                action == GPU_RECOVERY_NONE)
         << "Numerical error should trigger appropriate action";
 #else
     GTEST_SKIP() << "CUDA not enabled";

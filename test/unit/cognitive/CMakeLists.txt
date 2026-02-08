@@ -1956,6 +1956,43 @@ add_subdirectory(predictive)
 add_subdirectory(inner_dialogue)
 
 # ============================================================================
+# Creative Cortex Validation Tests
+# ============================================================================
+# WHAT: Unit tests for Creative Cortex validation (archetype names, image creation)
+# WHY:  Validate P0-4/P0-5/P0-6 fixes: overflow protection, error codes, name mappings
+# HOW:  Test all archetype name functions, image creation edge cases, overflow
+# ============================================================================
+
+add_executable(unit_cognitive_test_creative_validation
+    test_creative_validation.cpp
+)
+
+target_link_libraries(unit_cognitive_test_creative_validation
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_creative_validation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_creative_validation PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_creative_validation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;creative;validation"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Creative Cortex Tests
 # ============================================================================
 # WHAT: Unit tests for Creative Cortex module (art appreciation and generation)

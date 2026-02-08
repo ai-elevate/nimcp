@@ -554,7 +554,7 @@ nimcp_error_t mesh_topology_compute_metrics(
     mesh_topology_metrics_t* metrics
 ) {
     if (!ctx || !metrics) return NIMCP_ERROR_INVALID_PARAM;
-    if (ctx->node_count == 0) return NIMCP_ERROR_NOT_FOUND;
+    if (ctx->node_count == 0) return NIMCP_ERROR_INVALID_STATE;
 
     memset(metrics, 0, sizeof(mesh_topology_metrics_t));
 

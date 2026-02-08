@@ -573,6 +573,15 @@ bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
         return false;
     }
 
+    /* Reject experiments with no fault type configured */
+    if (exp->fault.type == CE_FAULT_NONE) {
+        LOG_WARNING("CE", "Experiment %u has no fault type configured", experiment_id);
+        exp->state = CE_STATE_FAILED;
+        nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_start_experiment: no fault type configured");
+        return false;
+    }
+
     /* Check safety */
     if (!ce_check_guardrails(ctx, exp)) {
         exp->state = CE_STATE_FAILED;
@@ -1332,7 +1341,7 @@ const char* ce_fault_type_to_string(ce_fault_type_t type) {
         case CE_FAULT_PROCESS_PAUSE: return "ProcessPause";
         case CE_FAULT_MEMORY_LEAK: return "MemoryLeak";
         case CE_FAULT_MEMORY_CORRUPT: return "MemoryCorrupt";
-        case CE_FAULT_CPU_STRESS: return "CPUStress";
+        case CE_FAULT_CPU_STRESS: return "CpuStress";
         case CE_FAULT_DISK_FULL: return "DiskFull";
         case CE_FAULT_DISK_SLOW: return "DiskSlow";
         case CE_FAULT_NETWORK_LATENCY: return "NetworkLatency";

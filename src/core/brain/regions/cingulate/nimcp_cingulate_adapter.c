@@ -428,10 +428,15 @@ bool cingulate_begin_monitoring(cingulate_adapter_t* adapter, uint32_t num_optio
         return false;
     }
 
-    if (num_options > adapter->config.response_options) {
-        set_error(adapter, CINGULATE_ERROR_BUFFER_OVERFLOW);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_begin_monitoring: validation failed");
+    if (num_options == 0) {
+        set_error(adapter, CINGULATE_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_begin_monitoring: num_options is 0");
         return false;
+    }
+
+    /* Clamp to maximum allowed options */
+    if (num_options > adapter->config.response_options) {
+        num_options = adapter->config.response_options;
     }
 
     /* Reset response options */

@@ -393,10 +393,11 @@ int cortical_immune_register_laminar_structure(
     laminar_structure_t* layers,
     uint32_t region_id
 ) {
-    if (!system || !layers) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_register_laminar_structure: required parameter is NULL (system, layers)");
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_register_laminar_structure: system is NULL");
         return -1;
     }
+    /* layers may be NULL - register with default layer states */
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -724,7 +725,7 @@ int cortical_immune_apply_inflammation(
 
     nimcp_platform_mutex_lock(system->mutex);
 
-    /* Find column */
+    /* Find column, auto-register if not found */
     cortical_column_immune_t* col = NULL;
     for (size_t i = 0; i < system->num_columns; i++) {
         if (system->column_states[i].column_id == column_id) {
@@ -734,9 +735,28 @@ int cortical_immune_apply_inflammation(
     }
 
     if (!col) {
-        nimcp_platform_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_apply_inflammation: col is NULL");
-        return -1;
+        /* Auto-register column with default immune state */
+        if (system->num_columns < system->column_capacity) {
+            col = &system->column_states[system->num_columns];
+            col->column_id = column_id;
+            col->inflammation_level = 0.0f;
+            col->inflammation_severity = INFLAMMATION_NONE;
+            col->gain_modulation = 1.0f;
+            col->inhibition_modulation = 1.0f;
+            col->connectivity_modulation = 1.0f;
+            col->selectivity_modulation = 1.0f;
+            col->baseline_activation = 0.1f;
+            col->current_activation = 0.0f;
+            col->activation_variance = 0.0f;
+            col->linked_microglial_site = UINT32_MAX;
+            col->immune_activations = 0;
+            col->last_immune_event = 0;
+            system->num_columns++;
+        } else {
+            nimcp_platform_mutex_unlock(system->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_apply_inflammation: column capacity exceeded");
+            return -1;
+        }
     }
 
     /* Apply inflammation effects */
@@ -786,7 +806,7 @@ int cortical_immune_apply_cytokine(
 
     nimcp_platform_mutex_lock(system->mutex);
 
-    /* Find layer state */
+    /* Find layer state, auto-register if not found */
     layer_immune_state_t* state = NULL;
     for (size_t i = 0; i < system->num_layers; i++) {
         if (system->layer_states[i].layer == layer) {
@@ -796,9 +816,27 @@ int cortical_immune_apply_cytokine(
     }
 
     if (!state) {
-        nimcp_platform_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_apply_cytokine: state is NULL");
-        return -1;
+        /* Auto-register layer with default immune state */
+        if (system->num_layers < system->layer_capacity) {
+            state = &system->layer_states[system->num_layers];
+            state->layer = layer;
+            state->il1_concentration = 0.0f;
+            state->il6_concentration = 0.0f;
+            state->tnf_concentration = 0.0f;
+            state->il10_concentration = 0.0f;
+            state->feedforward_gain = 1.0f;
+            state->feedback_gain = 1.0f;
+            state->lateral_gain = 1.0f;
+            state->excitability = 1.0f;
+            state->mean_activation = 0.0f;
+            state->activation_stability = 1.0f;
+            state->is_dysfunctional = false;
+            system->num_layers++;
+        } else {
+            nimcp_platform_mutex_unlock(system->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_apply_cytokine: layer capacity exceeded");
+            return -1;
+        }
     }
 
     /* Apply cytokine-specific effects */

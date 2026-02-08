@@ -157,7 +157,11 @@ struct surprise_pink_noise_bridge {
 static void pink_noise_send_injection_msg(surprise_pink_noise_bridge_t* bridge,
                                             float amplitude)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "pink_noise_send_injection_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;
@@ -185,7 +189,11 @@ static void pink_noise_send_injection_msg(surprise_pink_noise_bridge_t* bridge,
 static void pink_noise_send_adaptation_msg(surprise_pink_noise_bridge_t* bridge,
                                              float old_amplitude, float new_amplitude)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "pink_noise_send_adaptation_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;

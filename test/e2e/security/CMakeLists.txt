@@ -303,3 +303,41 @@ set_tests_properties(e2e_security_test_bbb_e2e PROPERTIES
 
 message(STATUS "Added P1-P3 Remediation Security E2E tests:")
 message(STATUS "  - e2e_security_test_bbb_e2e (BBB Full Workflow)")
+
+# ============================================================================
+# BBB Quarantine E2E Tests (P0-P2 Remediation)
+# ============================================================================
+# WHAT: End-to-end tests for BBB quarantine ref-counting and lifecycle
+# WHY:  Verify TOCTOU-safe checks, ref-count isolation, underflow protection,
+#       concurrent access, malloc failure handling, and immune integration
+
+add_executable(e2e_security_test_bbb_quarantine
+    test_bbb_quarantine_e2e.cpp
+    ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+)
+target_include_directories(e2e_security_test_bbb_quarantine PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/security
+    ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+    ${CMAKE_SOURCE_DIR}/include/utils
+    ${CMAKE_SOURCE_DIR}/include/utils/error
+    ${CMAKE_SOURCE_DIR}/include/utils/exception
+    ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_link_libraries(e2e_security_test_bbb_quarantine
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+target_compile_features(e2e_security_test_bbb_quarantine PRIVATE cxx_std_17)
+add_test(NAME e2e_security_test_bbb_quarantine
+         COMMAND e2e_security_test_bbb_quarantine)
+set_tests_properties(e2e_security_test_bbb_quarantine PROPERTIES
+    LABELS "e2e;security;bbb;quarantine;refcount;toctou"
+    TIMEOUT 600
+)
+
+message(STATUS "  - e2e_security_test_bbb_quarantine (BBB Quarantine Lifecycle)")

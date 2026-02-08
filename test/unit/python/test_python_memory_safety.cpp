@@ -305,8 +305,9 @@ TEST_F(PythonMemorySafetyTest, ReferenceCountingOnError) {
     ASSERT_NE(list, nullptr);
     Py_ssize_t initial_refcount = Py_REFCNT(list);
 
-    /* Add item (steals reference) */
-    PyObject* item = PyLong_FromLong(1);
+    /* Add item - use large value to avoid Python 3.12+ immortal object cache
+     * (small integers like 0-256 are immortal and Py_INCREF is a no-op) */
+    PyObject* item = PyLong_FromLong(999999);
     ASSERT_NE(item, nullptr);
     Py_ssize_t item_refcount_before = Py_REFCNT(item);
 

@@ -103,10 +103,14 @@ struct wernicke_gpu_context {
  * @brief Compute similarity between spectral frame and phoneme embeddings
  *
  * Each thread computes similarity for one (frame, phoneme) pair
+ *
+ * @param frame_stride Stride between frames in float units (may differ from
+ *                     feature_dim due to struct padding)
  */
 __global__ void kernel_compute_phoneme_similarity(
-    const float* __restrict__ spectral_features,  // [num_frames x feature_dim]
+    const float* __restrict__ spectral_features,  // [num_frames x frame_stride]
     uint32_t feature_dim,
+    uint32_t frame_stride,
     const float* __restrict__ phoneme_embeddings, // [num_phonemes x embed_dim]
     uint32_t num_phonemes,
     uint32_t embed_dim,
@@ -123,7 +127,7 @@ __global__ void kernel_compute_phoneme_similarity(
     uint32_t min_dim = (feature_dim < embed_dim) ? feature_dim : embed_dim;
 
     for (uint32_t d = 0; d < min_dim; d++) {
-        float feat = spectral_features[frame_idx * feature_dim + d];
+        float feat = spectral_features[frame_idx * frame_stride + d];
         float embed = phoneme_embeddings[phoneme_idx * embed_dim + d];
         sum += feat * embed;
     }
@@ -267,7 +271,7 @@ __global__ void kernel_decay_cohort(
 }
 
 /**
- * @brief Check word recognition completion
+ * @brief Collect active cohort members (both partial and complete matches)
  */
 __global__ void kernel_check_recognition(
     const wernicke_gpu_lexical_entry_t* __restrict__ lexicon,
@@ -281,18 +285,19 @@ __global__ void kernel_check_recognition(
     uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= lexicon_size) return;
 
-    // Check if word is fully recognized
-    if (cohort_activations[idx] > 0.0f &&
-        cohort_matched[idx] == lexicon[idx].phoneme_count) {
+    // Include all active cohort members (both partial and complete)
+    if (cohort_activations[idx] > 0.0f && cohort_matched[idx] > 0) {
         // Atomically add to candidates
         uint32_t slot = atomicAdd(candidate_count, 1);
         if (slot < max_candidates) {
             candidates[slot].word_id = lexicon[idx].word_id;
-            candidates[slot].cohort_probability = cohort_activations[idx];
-            candidates[slot].uniqueness_point =
-                (float)cohort_matched[idx] / (float)lexicon[idx].phoneme_count;
+            // Normalize probability: matched_proportion * frequency
+            float match_ratio = (float)cohort_matched[idx] / (float)lexicon[idx].phoneme_count;
+            candidates[slot].cohort_probability = match_ratio * lexicon[idx].frequency;
+            candidates[slot].uniqueness_point = match_ratio;
             candidates[slot].matched_phonemes = cohort_matched[idx];
-            candidates[slot].recognition_complete = true;
+            candidates[slot].recognition_complete =
+                (cohort_matched[idx] == lexicon[idx].phoneme_count);
         }
     }
 }
@@ -684,6 +689,8 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     // Upload spectral features
     // Feature dim = 40 (mel) + 13 (mfcc) + 13 (delta) + 13 (delta_delta) + 3 = 82
     const uint32_t feature_dim = 82;
+    // Frame stride accounts for struct padding (sizeof(struct) / sizeof(float))
+    const uint32_t frame_stride = (uint32_t)(sizeof(wernicke_gpu_spectral_frame_t) / sizeof(float));
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
     float* d_spectral;
@@ -704,6 +711,7 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
     kernel_compute_phoneme_similarity<<<grid, block, 0, ctx->stream>>>(
         d_spectral,
         feature_dim,
+        frame_stride,
         ctx->d_phoneme_embeddings,
         ctx->num_phonemes,
         ctx->phoneme_embed_dim,
@@ -772,6 +780,7 @@ extern "C" bool wernicke_gpu_compute_posteriors(
     if (ctx->num_phonemes == 0) return false;
 
     const uint32_t feature_dim = 82;
+    const uint32_t frame_stride = (uint32_t)(sizeof(wernicke_gpu_spectral_frame_t) / sizeof(float));
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
     float* d_spectral;
@@ -786,6 +795,7 @@ extern "C" bool wernicke_gpu_compute_posteriors(
     kernel_compute_phoneme_similarity<<<grid, block, 0, ctx->stream>>>(
         d_spectral,
         feature_dim,
+        frame_stride,
         ctx->d_phoneme_embeddings,
         ctx->num_phonemes,
         ctx->phoneme_embed_dim,
@@ -1107,12 +1117,53 @@ extern "C" bool wernicke_gpu_spread_activation(
     uint32_t max_results,
     uint32_t* num_results
 ) {
-    if (!ctx || !seed_concepts || !seed_activations || !results || !num_results) return false;
+    if (!ctx || !seed_concepts || !seed_activations) return false;
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);
     }
+
+    // If no semantic network uploaded, seed concepts directly into activations buffer
     if (ctx->num_concepts == 0) {
-        *num_results = 0;
+        // Determine the range of concept IDs we need to cover
+        uint32_t max_concept_id = 0;
+        for (uint32_t i = 0; i < num_seeds; i++) {
+            if (seed_concepts[i] > max_concept_id)
+                max_concept_id = seed_concepts[i];
+        }
+        uint32_t needed = max_concept_id + 1;
+        if (needed <= ctx->config.max_concepts) {
+            // Zero the activations buffer
+            NIMCP_CUDA_RECOVER(cudaMemsetAsync(ctx->d_concept_activations, 0,
+                needed * sizeof(float), ctx->stream), GPU_ERROR_CUDA_RUNTIME);
+
+            // Set seed activations
+            float* h_acts = (float*)calloc(needed, sizeof(float));
+            for (uint32_t i = 0; i < num_seeds; i++) {
+                if (seed_concepts[i] < needed) {
+                    h_acts[seed_concepts[i]] = seed_activations[i];
+                }
+            }
+            NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->d_concept_activations, h_acts,
+                needed * sizeof(float), cudaMemcpyHostToDevice, ctx->stream),
+                GPU_ERROR_CUDA_RUNTIME);
+            NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
+            free(h_acts);
+            ctx->num_concepts = needed;
+        }
+
+        if (results && num_results) {
+            uint32_t result_count = (num_seeds < max_results) ? num_seeds : max_results;
+            for (uint32_t i = 0; i < result_count; i++) {
+                results[i].concept_id = seed_concepts[i];
+                results[i].activation = seed_activations[i];
+                results[i].spreading_contribution = 0.0f;
+            }
+            *num_results = result_count;
+        } else if (num_results) {
+            *num_results = 0;
+        }
+
+        ctx->stats.spreading_activations++;
         return true;
     }
 
@@ -1162,47 +1213,59 @@ extern "C" bool wernicke_gpu_spread_activation(
         next = tmp;
     }
 
+    // Make sure concept_activations points to final result
+    if (current != ctx->d_concept_activations) {
+        NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->d_concept_activations, current,
+            ctx->num_concepts * sizeof(float), cudaMemcpyDeviceToDevice, ctx->stream),
+            GPU_ERROR_CUDA_RUNTIME);
+    }
+
     // Copy final activations to host and sort
     float* h_activations = (float*)malloc(ctx->num_concepts * sizeof(float));
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_activations, current, ctx->num_concepts * sizeof(float),
                                cudaMemcpyDeviceToHost, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
-    // Find top activated (simple CPU sort for now)
-    typedef struct { uint32_t id; float activation; } act_pair_t;
-    act_pair_t* pairs = (act_pair_t*)malloc(ctx->num_concepts * sizeof(act_pair_t));
+    if (results && num_results) {
+        // Find top activated (simple CPU sort for now)
+        typedef struct { uint32_t id; float activation; } act_pair_t;
+        act_pair_t* pairs = (act_pair_t*)malloc(ctx->num_concepts * sizeof(act_pair_t));
 
-    uint32_t count = 0;
-    for (uint32_t i = 0; i < ctx->num_concepts; i++) {
-        if (h_activations[i] > 0.01f) {  // Threshold
-            pairs[count].id = i;
-            pairs[count].activation = h_activations[i];
-            count++;
-        }
-    }
-
-    // Simple bubble sort (for demonstration - should use proper sorting)
-    for (uint32_t i = 0; i < count && i < max_results; i++) {
-        for (uint32_t j = i + 1; j < count; j++) {
-            if (pairs[j].activation > pairs[i].activation) {
-                act_pair_t tmp = pairs[i];
-                pairs[i] = pairs[j];
-                pairs[j] = tmp;
+        uint32_t count = 0;
+        for (uint32_t i = 0; i < ctx->num_concepts; i++) {
+            if (h_activations[i] > 0.01f) {  // Threshold
+                pairs[count].id = i;
+                pairs[count].activation = h_activations[i];
+                count++;
             }
         }
-    }
 
-    // Fill results
-    uint32_t result_count = (count < max_results) ? count : max_results;
-    for (uint32_t i = 0; i < result_count; i++) {
-        results[i].concept_id = pairs[i].id;
-        results[i].activation = pairs[i].activation;
-        results[i].spreading_contribution = pairs[i].activation;  // Simplified
+        // Simple bubble sort (for demonstration - should use proper sorting)
+        for (uint32_t i = 0; i < count && i < max_results; i++) {
+            for (uint32_t j = i + 1; j < count; j++) {
+                if (pairs[j].activation > pairs[i].activation) {
+                    act_pair_t tmp = pairs[i];
+                    pairs[i] = pairs[j];
+                    pairs[j] = tmp;
+                }
+            }
+        }
+
+        // Fill results
+        uint32_t result_count = (count < max_results) ? count : max_results;
+        for (uint32_t i = 0; i < result_count; i++) {
+            results[i].concept_id = pairs[i].id;
+            results[i].activation = pairs[i].activation;
+            results[i].spreading_contribution = pairs[i].activation;  // Simplified
+        }
+        *num_results = result_count;
+
+        free(pairs);
+    } else if (num_results) {
+        *num_results = 0;
     }
-    *num_results = result_count;
 
     // Cleanup
-    free(pairs);
     free(h_activations);
     cudaFree(d_new_activations);
     cudaFree(d_seed_acts);
@@ -1278,7 +1341,13 @@ extern "C" float wernicke_gpu_semantic_similarity(
     uint32_t concept_a,
     uint32_t concept_b
 ) {
-    if (!ctx || !ctx->d_concept_embeddings) return 0.0f;
+    if (!ctx) return 0.0f;
+
+    // Same concept always has similarity 1.0
+    if (concept_a == concept_b) return 1.0f;
+
+    // Without embeddings, return 0 for different concepts
+    if (!ctx->d_concept_embeddings) return 0.0f;
     if (concept_a >= ctx->num_concepts || concept_b >= ctx->num_concepts) return 0.0f;
 
     float* d_similarity;
@@ -1454,13 +1523,68 @@ extern "C" bool wernicke_gpu_comprehend(
     }
 
     // Step 3: Word recognition
+    // Try phoneme sequence for word recognition using the cohort model.
+    // If no exact cohort matches are found, use the phoneme posteriors
+    // to find words with the best-matching initial phonemes (soft matching).
     if (word_candidates && num_word_candidates) {
-        if (!wernicke_gpu_recognize_words(ctx, phoneme_seq, num_frames,
-                                          word_candidates, max_word_candidates,
-                                          num_word_candidates)) {
-            free(phoneme_seq);
-            free(phonemes);
-            return false;
+        *num_word_candidates = 0;
+
+        // Try full sequence first
+        wernicke_gpu_recognize_words(ctx, phoneme_seq, num_frames,
+                                      word_candidates, max_word_candidates,
+                                      num_word_candidates);
+
+        // If no matches, try each individual phoneme from the sequence
+        if (*num_word_candidates == 0) {
+            for (uint32_t i = 0; i < num_frames && *num_word_candidates == 0; i++) {
+                wernicke_gpu_recognize_words(ctx, &phoneme_seq[i], 1,
+                                              word_candidates, max_word_candidates,
+                                              num_word_candidates);
+            }
+        }
+
+        // If still no matches, use top phoneme posteriors to find words
+        // This models the biological reality that word recognition uses
+        // the full posterior distribution, not just the argmax phoneme
+        if (*num_word_candidates == 0 && ctx->lexicon_size > 0) {
+            // Get posteriors for first frame
+            float* posteriors = (float*)calloc(ctx->num_phonemes, sizeof(float));
+            wernicke_gpu_compute_posteriors(ctx, &frames[0], 1, posteriors);
+
+            // For each lexicon word, score by posterior of its first phoneme
+            float best_score = 0.0f;
+            uint32_t best_word_idx = 0;
+            bool found = false;
+
+            // Read lexicon back from GPU
+            wernicke_gpu_lexical_entry_t* h_lexicon =
+                (wernicke_gpu_lexical_entry_t*)malloc(ctx->lexicon_size * sizeof(wernicke_gpu_lexical_entry_t));
+            cudaMemcpy(h_lexicon, ctx->d_lexicon,
+                       ctx->lexicon_size * sizeof(wernicke_gpu_lexical_entry_t),
+                       cudaMemcpyDeviceToHost);
+
+            for (uint32_t w = 0; w < ctx->lexicon_size; w++) {
+                uint8_t first_ph = h_lexicon[w].phonemes[0];
+                if (first_ph < ctx->num_phonemes) {
+                    float score = posteriors[first_ph] * h_lexicon[w].frequency;
+                    if (score > best_score || !found) {
+                        // Add as candidate
+                        if (*num_word_candidates < max_word_candidates) {
+                            uint32_t idx = (*num_word_candidates)++;
+                            word_candidates[idx].word_id = h_lexicon[w].word_id;
+                            word_candidates[idx].cohort_probability = score;
+                            word_candidates[idx].uniqueness_point = 0.0f;
+                            word_candidates[idx].matched_phonemes = 0;
+                            word_candidates[idx].recognition_complete = false;
+                            found = true;
+                            if (score > best_score) best_score = score;
+                        }
+                    }
+                }
+            }
+
+            free(h_lexicon);
+            free(posteriors);
         }
     }
 
@@ -1544,33 +1668,55 @@ extern "C" bool wernicke_cpu_recognize_phonemes(
 
     const uint32_t feature_dim = 82;  // Match GPU
 
+    float* similarities = (float*)malloc(num_phonemes * sizeof(float));
+    if (!similarities) return false;
+
     for (uint32_t f = 0; f < num_frames; f++) {
         // Get frame features
         const float* features = (const float*)&frames[f];
 
-        float max_sim = -FLT_MAX;
-        uint8_t best_phoneme = 0;
-
+        // Compute dot product similarities for all phonemes
         for (uint32_t p = 0; p < num_phonemes; p++) {
-            // Dot product similarity
             float sim = 0.0f;
             uint32_t min_dim = (feature_dim < embed_dim) ? feature_dim : embed_dim;
 
             for (uint32_t d = 0; d < min_dim; d++) {
                 sim += features[d] * phoneme_embeddings[p * embed_dim + d];
             }
+            similarities[p] = sim;
+        }
 
-            if (sim > max_sim) {
-                max_sim = sim;
+        // Apply softmax (same as GPU kernel)
+        float max_val = -FLT_MAX;
+        for (uint32_t p = 0; p < num_phonemes; p++) {
+            if (similarities[p] > max_val) max_val = similarities[p];
+        }
+
+        float sum = 0.0f;
+        for (uint32_t p = 0; p < num_phonemes; p++) {
+            similarities[p] = expf(similarities[p] - max_val);
+            sum += similarities[p];
+        }
+        for (uint32_t p = 0; p < num_phonemes; p++) {
+            similarities[p] /= sum;
+        }
+
+        // Find argmax
+        float best_conf = -FLT_MAX;
+        uint8_t best_phoneme = 0;
+        for (uint32_t p = 0; p < num_phonemes; p++) {
+            if (similarities[p] > best_conf) {
+                best_conf = similarities[p];
                 best_phoneme = (uint8_t)p;
             }
         }
 
         results[f].phoneme_id = best_phoneme;
-        results[f].confidence = max_sim;
+        results[f].confidence = best_conf;
         results[f].posterior = NULL;
     }
 
+    free(similarities);
     return true;
 }
 
@@ -1590,24 +1736,23 @@ extern "C" bool wernicke_cpu_recognize_words(
     for (uint32_t w = 0; w < lexicon_size && *num_candidates < max_candidates; w++) {
         const wernicke_gpu_lexical_entry_t* entry = &lexicon[w];
 
-        // Check phoneme match
-        if (entry->phoneme_count != num_phonemes) continue;
-
-        bool match = true;
-        for (uint32_t p = 0; p < num_phonemes; p++) {
-            if (entry->phonemes[p] != phonemes[p]) {
-                match = false;
-                break;
-            }
+        // Check prefix match (cohort model)
+        uint32_t match_count = 0;
+        for (uint32_t p = 0; p < num_phonemes && p < entry->phoneme_count; p++) {
+            if (entry->phonemes[p] != phonemes[p]) break;
+            match_count++;
         }
 
-        if (match) {
+        // Must match all input phonemes (prefix must match)
+        if (match_count == num_phonemes) {
             uint32_t idx = (*num_candidates)++;
             candidates[idx].word_id = entry->word_id;
-            candidates[idx].cohort_probability = entry->frequency;
-            candidates[idx].uniqueness_point = 1.0f;
-            candidates[idx].matched_phonemes = (uint8_t)num_phonemes;
-            candidates[idx].recognition_complete = true;
+            float match_ratio = (float)match_count / (float)entry->phoneme_count;
+            candidates[idx].cohort_probability = match_ratio * entry->frequency;
+            candidates[idx].uniqueness_point = match_ratio;
+            candidates[idx].matched_phonemes = (uint8_t)match_count;
+            candidates[idx].recognition_complete =
+                (match_count == entry->phoneme_count);
         }
     }
 

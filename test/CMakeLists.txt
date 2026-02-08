@@ -431,6 +431,58 @@ if(TARGET unit_api_test_api_brain_lifecycle)
   )
 endif()
 
+# Additional brain API tests that create brains in setUp/tearDown
+# These need extended timeouts due to per-test brain creation overhead
+if(TARGET unit_api_test_api_complex)
+  set_tests_properties(
+    unit_api_test_api_complex
+    unit_api_test_api_error_handling
+    unit_api_test_api_working_memory
+    PROPERTIES TIMEOUT 180
+  )
+endif()
+
+# Tests using NIMCP_BRAIN_SMALL need even longer timeouts (1K neurons vs 100)
+if(TARGET unit_api_test_api_global_workspace)
+  set_tests_properties(
+    unit_api_test_api_global_workspace
+    unit_api_test_api_resizing
+    PROPERTIES TIMEOUT 600
+  )
+endif()
+
+# IO stream tests: 60 tests with heavyweight brain init/teardown per test
+# Each test takes 1-5 seconds, total runtime ~300 seconds
+if(TARGET unit_io_test_stream)
+  set_tests_properties(
+    unit_io_test_stream
+    PROPERTIES TIMEOUT 600
+  )
+endif()
+
+# Replication tests: heavyweight brain + cluster init/teardown
+if(TARGET unit_networking_replication_test_replication)
+  set_tests_properties(
+    unit_networking_replication_test_replication
+    PROPERTIES TIMEOUT 300
+  )
+endif()
+
+# Cognitive analysis tests: heavyweight brain initialization
+if(TARGET unit_cognitive_analysis_test_network_analysis)
+  set_tests_properties(
+    unit_cognitive_analysis_test_network_analysis
+    PROPERTIES TIMEOUT 180
+  )
+endif()
+
+if(TARGET unit_cognitive_analysis_test_network_analyzer_integration)
+  set_tests_properties(
+    unit_cognitive_analysis_test_network_analyzer_integration
+    PROPERTIES TIMEOUT 180
+  )
+endif()
+
 # ============================================================================
 # Test Execution Instructions
 # ============================================================================

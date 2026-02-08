@@ -106,7 +106,11 @@ nimcp_habenula_plasticity_bridge_t* nimcp_habenula_plasticity_create(const nimcp
     b->config = config ? *config : nimcp_habenula_plasticity_config_default();
     b->synapse_capacity = HABENULA_PLASTICITY_MAX_SYNAPSES;
     b->synapses = nimcp_calloc(b->synapse_capacity, sizeof(nimcp_habenula_plasticity_synapse_t));
-    if (!b->synapses) { nimcp_free(b); return NULL; }
+    if (!b->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "habenula_plasticity_create: synapses allocation failed");
+        nimcp_free(b);
+        return NULL;
+    }
     b->state.state = HABENULA_PLASTICITY_STATE_IDLE;
     b->current_modulation.lr_multiplier = 1.0f;
     return b;

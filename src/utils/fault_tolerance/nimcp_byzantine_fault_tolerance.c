@@ -433,10 +433,11 @@ bool bft_verify_signature(bft_context_t* ctx, const bft_msg_header_t* header, co
     }
 
     // Simple signature check (in real implementation, use Ed25519)
+    // The first BFT_HASH_SIZE bytes of the signature contain the payload hash
     uint8_t expected_hash[BFT_HASH_SIZE];
     bft_simple_hash(payload, payload_size, expected_hash);
 
-    return (memcmp(header->digest, expected_hash, BFT_HASH_SIZE) == 0);
+    return (memcmp(header->signature, expected_hash, BFT_HASH_SIZE) == 0);
 }
 
 bool bft_report_byzantine(bft_context_t* ctx, uint32_t accused_id, bft_behavior_t behavior, const bft_evidence_t* evidence, uint32_t evidence_count) {
@@ -614,7 +615,7 @@ bool bft_get_trust_info(bft_context_t* ctx, uint32_t node_id, bft_trust_info_t* 
 
     nimcp_mutex_lock(&ctx->lock);
 
-    bft_trust_info_t* found = bft_find_trust(ctx, node_id);
+    bft_trust_info_t* found = bft_get_or_create_trust(ctx, node_id);
     if (found) {
         *trust = *found;
         nimcp_mutex_unlock(&ctx->lock);
@@ -1015,17 +1016,17 @@ bool bft_is_cluster_healthy(bft_context_t* ctx) {
 
     nimcp_mutex_lock(&ctx->lock);
 
-    // Count healthy nodes
-    uint32_t healthy = 0;
+    // Count unhealthy (byzantine/quarantined) nodes
+    uint32_t unhealthy = 0;
     for (uint32_t i = 0; i < ctx->trust_count; i++) {
-        if (ctx->trust[i].status == BFT_STATUS_TRUSTED ||
-            ctx->trust[i].status == BFT_STATUS_PROBATION) {
-            healthy++;
+        if (ctx->trust[i].status == BFT_STATUS_BYZANTINE ||
+            ctx->trust[i].status == BFT_STATUS_QUARANTINED) {
+            unhealthy++;
         }
     }
 
-    // Need at least n - f healthy
-    bool result = (healthy >= ctx->config.total_nodes - ctx->config.max_byzantine);
+    // Cluster is healthy if unhealthy nodes don't exceed max_byzantine
+    bool result = (unhealthy <= ctx->config.max_byzantine);
 
     nimcp_mutex_unlock(&ctx->lock);
     return result;
@@ -1070,63 +1071,63 @@ void bft_hash(const void* data, size_t data_size, uint8_t* hash) {
 
 const char* bft_behavior_to_string(bft_behavior_t behavior) {
     switch (behavior) {
-        case BFT_BEHAV_NONE: return "NONE";
-        case BFT_BEHAV_SILENT: return "SILENT";
-        case BFT_BEHAV_EQUIVOCATION: return "EQUIVOCATION";
-        case BFT_BEHAV_INVALID_SIG: return "INVALID_SIGNATURE";
-        case BFT_BEHAV_REPLAY: return "REPLAY";
-        case BFT_BEHAV_FABRICATION: return "FABRICATION";
-        case BFT_BEHAV_TIMING: return "TIMING";
-        case BFT_BEHAV_COLLUSION: return "COLLUSION";
-        default: return "UNKNOWN";
+        case BFT_BEHAV_NONE: return "None";
+        case BFT_BEHAV_SILENT: return "Silent";
+        case BFT_BEHAV_EQUIVOCATION: return "Equivocation";
+        case BFT_BEHAV_INVALID_SIG: return "InvalidSignature";
+        case BFT_BEHAV_REPLAY: return "Replay";
+        case BFT_BEHAV_FABRICATION: return "Fabrication";
+        case BFT_BEHAV_TIMING: return "Timing";
+        case BFT_BEHAV_COLLUSION: return "Collusion";
+        default: return "Unknown";
     }
 }
 
 const char* bft_msg_type_to_string(bft_msg_type_t type) {
     switch (type) {
-        case BFT_MSG_REQUEST: return "REQUEST";
-        case BFT_MSG_PRE_PREPARE: return "PRE_PREPARE";
-        case BFT_MSG_PREPARE: return "PREPARE";
-        case BFT_MSG_COMMIT: return "COMMIT";
-        case BFT_MSG_REPLY: return "REPLY";
-        case BFT_MSG_CHECKPOINT: return "CHECKPOINT";
-        case BFT_MSG_VIEW_CHANGE: return "VIEW_CHANGE";
-        case BFT_MSG_NEW_VIEW: return "NEW_VIEW";
-        case BFT_MSG_ACCUSATION: return "ACCUSATION";
-        case BFT_MSG_DEFENSE: return "DEFENSE";
-        default: return "UNKNOWN";
+        case BFT_MSG_REQUEST: return "Request";
+        case BFT_MSG_PRE_PREPARE: return "PrePrepare";
+        case BFT_MSG_PREPARE: return "Prepare";
+        case BFT_MSG_COMMIT: return "Commit";
+        case BFT_MSG_REPLY: return "Reply";
+        case BFT_MSG_CHECKPOINT: return "Checkpoint";
+        case BFT_MSG_VIEW_CHANGE: return "ViewChange";
+        case BFT_MSG_NEW_VIEW: return "NewView";
+        case BFT_MSG_ACCUSATION: return "Accusation";
+        case BFT_MSG_DEFENSE: return "Defense";
+        default: return "Unknown";
     }
 }
 
 const char* bft_status_to_string(bft_node_status_t status) {
     switch (status) {
-        case BFT_STATUS_TRUSTED: return "TRUSTED";
-        case BFT_STATUS_SUSPECTED: return "SUSPECTED";
-        case BFT_STATUS_BYZANTINE: return "BYZANTINE";
-        case BFT_STATUS_QUARANTINED: return "QUARANTINED";
-        case BFT_STATUS_PROBATION: return "PROBATION";
-        default: return "UNKNOWN";
+        case BFT_STATUS_TRUSTED: return "Trusted";
+        case BFT_STATUS_SUSPECTED: return "Suspected";
+        case BFT_STATUS_BYZANTINE: return "Byzantine";
+        case BFT_STATUS_QUARANTINED: return "Quarantined";
+        case BFT_STATUS_PROBATION: return "Probation";
+        default: return "Unknown";
     }
 }
 
 const char* bft_evidence_type_to_string(bft_evidence_type_t type) {
     switch (type) {
-        case BFT_EVIDENCE_CONFLICTING_MSG: return "CONFLICTING_MESSAGE";
-        case BFT_EVIDENCE_INVALID_SIG: return "INVALID_SIGNATURE";
-        case BFT_EVIDENCE_INVALID_DATA: return "INVALID_DATA";
-        case BFT_EVIDENCE_TIMING_VIOLATION: return "TIMING_VIOLATION";
-        case BFT_EVIDENCE_PROTOCOL_VIOLATION: return "PROTOCOL_VIOLATION";
-        case BFT_EVIDENCE_WITNESS: return "WITNESS";
-        default: return "UNKNOWN";
+        case BFT_EVIDENCE_CONFLICTING_MSG: return "ConflictingMessage";
+        case BFT_EVIDENCE_INVALID_SIG: return "InvalidSignature";
+        case BFT_EVIDENCE_INVALID_DATA: return "InvalidData";
+        case BFT_EVIDENCE_TIMING_VIOLATION: return "TimingViolation";
+        case BFT_EVIDENCE_PROTOCOL_VIOLATION: return "ProtocolViolation";
+        case BFT_EVIDENCE_WITNESS: return "Witness";
+        default: return "Unknown";
     }
 }
 
 const char* bft_view_reason_to_string(bft_view_reason_t reason) {
     switch (reason) {
-        case BFT_VIEW_LEADER_TIMEOUT: return "LEADER_TIMEOUT";
-        case BFT_VIEW_LEADER_BYZANTINE: return "LEADER_BYZANTINE";
-        case BFT_VIEW_STUCK_CONSENSUS: return "STUCK_CONSENSUS";
-        case BFT_VIEW_MANUAL: return "MANUAL";
-        default: return "UNKNOWN";
+        case BFT_VIEW_LEADER_TIMEOUT: return "LeaderTimeout";
+        case BFT_VIEW_LEADER_BYZANTINE: return "LeaderByzantine";
+        case BFT_VIEW_STUCK_CONSENSUS: return "StuckConsensus";
+        case BFT_VIEW_MANUAL: return "Manual";
+        default: return "Unknown";
     }
 }

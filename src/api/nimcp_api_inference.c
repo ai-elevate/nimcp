@@ -142,7 +142,7 @@ nimcp_status_t nimcp_brain_predict(
     *out_confidence = decision->confidence;
 
     // Free decision
-    nimcp_free(decision);
+    brain_free_decision(decision);
 
     return NIMCP_OK;
 }
@@ -157,6 +157,9 @@ nimcp_status_t nimcp_brain_infer(
     NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in brain_infer");
     NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in brain_infer");
     NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL in brain_infer");
+    if (num_features == 0 || num_outputs == 0) {
+        return NIMCP_ERROR_INVALID;
+    }
 
     // Call internal brain API to get decision (which includes output vector)
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
@@ -179,7 +182,7 @@ nimcp_status_t nimcp_brain_infer(
     }
 
     // Free decision
-    nimcp_free(decision);
+    brain_free_decision(decision);
 
     return NIMCP_OK;
 }

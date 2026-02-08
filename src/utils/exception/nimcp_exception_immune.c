@@ -69,6 +69,14 @@ static nimcp_exception_immune_stats_t g_stats = {0};
  */
 static _Thread_local bool tl_in_immune_context = false;
 
+/* P1-5 FIX: Add depth counter for nested NIMCP_THROW_TO_IMMUNE calls.
+ * The boolean tl_in_immune_context only prevents direct reentry, but
+ * nested throws from recovery callbacks or the immune system itself
+ * could still cause unbounded recursion. The depth counter limits
+ * the maximum nesting depth to prevent stack overflow. */
+static _Thread_local int tl_immune_depth = 0;
+#define MAX_IMMUNE_DEPTH 3
+
 /* ============================================================================
  * Recovery Context
  * ============================================================================
@@ -447,8 +455,18 @@ int nimcp_exception_present_to_immune(
 ) {
     if (!ex) return -1;
 
-    /* Reentry guard - prevent recursive immune calls that could cause
-     * infinite loops or deadlocks if the immune system itself errors */
+    /* P1-5 FIX: Depth-based recursion guard - prevent nested immune calls
+     * from causing stack overflow. The boolean tl_in_immune_context prevents
+     * direct reentry, and the depth counter limits nesting from recovery
+     * callbacks that may trigger additional exceptions. */
+    if (tl_immune_depth >= MAX_IMMUNE_DEPTH) {
+        fprintf(stderr, "[IMMUNE] Max recursion depth (%d) reached, dropping exception code=%d\n",
+                MAX_IMMUNE_DEPTH, ex->code);
+        ex->presented_to_immune = true;
+        ex->antigen_id = 0;
+        return 0;
+    }
+
     if (tl_in_immune_context) {
         LOG_WARNING("Reentrant immune call blocked: code=%d", ex->code);
         ex->presented_to_immune = true;
@@ -461,8 +479,9 @@ int nimcp_exception_present_to_immune(
         return 0;
     }
 
-    /* Set reentry guard */
+    /* Set reentry guard and increment depth */
     tl_in_immune_context = true;
+    tl_immune_depth++;
 
     uint64_t start_time = get_timestamp_us();
 
@@ -496,8 +515,9 @@ int nimcp_exception_present_to_immune(
             response->memory_formed = false;
         }
 
-        /* Clear reentry guard */
+        /* Clear reentry guard and decrement depth */
         tl_in_immune_context = false;
+        tl_immune_depth--;
         return 0;
     }
 
@@ -519,8 +539,9 @@ int nimcp_exception_present_to_immune(
 
     if (result != 0) {
         LOG_WARNING("Failed to present exception to immune system: code=%d", ex->code);
-        /* Clear reentry guard */
+        /* Clear reentry guard and decrement depth */
         tl_in_immune_context = false;
+        tl_immune_depth--;
         return -1;
     }
 #else
@@ -569,8 +590,9 @@ int nimcp_exception_present_to_immune(
         }
     }
 
-    /* Clear reentry guard */
+    /* Clear reentry guard and decrement depth */
     tl_in_immune_context = false;
+    tl_immune_depth--;
     return 0;
 }
 
@@ -1250,11 +1272,7 @@ kg_module_wiring_t* nimcp_exception_create_kg_wiring(void) {
         KG_EXCEPTION_MODULE_TYPE
     );
     if (!wiring) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
-
         return NULL;
-
     }
 
     /* Set metadata */

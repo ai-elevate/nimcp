@@ -119,7 +119,11 @@ struct surprise_substrate_bridge {
 static void substrate_send_modulation_msg(surprise_substrate_bridge_t* bridge,
                                            float atp, float fatigue, float capacity)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "substrate_send_modulation_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;
@@ -151,7 +155,11 @@ static void substrate_send_modulation_msg(surprise_substrate_bridge_t* bridge,
 static void substrate_send_fatigue_msg(surprise_substrate_bridge_t* bridge,
                                         float atp, float fatigue)
 {
-    if (!bridge->bio_async_connected || !bridge->router) return;
+    if (!bridge->bio_async_connected) return;
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "substrate_send_fatigue_msg: bio_async_connected but router is NULL");
+        return;
+    }
 
     typedef struct {
         bio_message_header_t header;

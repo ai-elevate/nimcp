@@ -41,7 +41,7 @@
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spike_event)
 
 // C11 atomics for lock-free operations
-#if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
 #define ATOMIC_UINT atomic_uint
 #define ATOMIC_LOAD(ptr) atomic_load(ptr)
@@ -50,7 +50,11 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spike_event)
 #define ATOMIC_COMPARE_EXCHANGE(ptr, expected, desired) \
     atomic_compare_exchange_weak(ptr, expected, desired)
 #else
-// Fallback: non-atomic (thread-unsafe)
+// WARNING: This fallback is NOT thread-safe for concurrent access.
+// Platforms without C11 atomics must use external synchronization
+// (e.g., a mutex around all spike queue operations) to prevent
+// data races. The CAS emulation below is NOT atomic.
+#warning "C11 atomics unavailable - spike event queue is NOT thread-safe"
 #define ATOMIC_UINT volatile uint32_t
 #define ATOMIC_LOAD(ptr) (*(ptr))
 #define ATOMIC_STORE(ptr, val) (*(ptr) = (val))

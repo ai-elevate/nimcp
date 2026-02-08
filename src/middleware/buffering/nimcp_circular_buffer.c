@@ -323,6 +323,10 @@ bool circular_buffer_pop(circular_buffer_t* buffer, void* element) {
     return true;
 }
 
+/* NOTE: peek is subject to TOCTOU race in MPSC/MPMC scenarios.
+ * The data may change between size check and actual read.
+ * This is acceptable for SPSC use but callers using MPMC
+ * should use external synchronization. */
 bool circular_buffer_peek(
     const circular_buffer_t* buffer,
     size_t offset,
@@ -380,8 +384,11 @@ size_t circular_buffer_push_batch(
             if (buffer->strategy == OVERFLOW_ERROR) {
                 break;
             }
+            // For other strategies (OVERWRITE, BLOCK), push may fail (e.g.,
+            // BLOCK timeout) - do NOT count as written
+        } else {
+            written++;  // Only increment on successful push
         }
-        written++;
     }
 
     return written;

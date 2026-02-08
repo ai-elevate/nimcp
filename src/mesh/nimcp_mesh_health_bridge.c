@@ -703,7 +703,11 @@ nimcp_error_t mesh_health_bridge_get_stats(
     const mesh_health_bridge_t* bridge,
     mesh_health_bridge_stats_t* stats
 ) {
-    if (!bridge || bridge->magic != HEALTH_BRIDGE_MAGIC) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_health_bridge_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (bridge->magic != HEALTH_BRIDGE_MAGIC) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }

@@ -283,12 +283,25 @@ static mesh_participant_id_t get_election_winner(mesh_coordinator_pool_t* pool) 
      */
     size_t quorum = (active / 2) + 1;
 
+    /* First pass: check for majority winner */
     for (size_t i = 0; i < pool->tally_count; i++) {
         if (pool->vote_tallies[i].votes >= quorum) {
             return pool->vote_tallies[i].candidate;
         }
     }
-    return 0;
+
+    /* No majority winner - use plurality (most votes wins, first breaks ties).
+     * This ensures elections always converge when all coordinators vote for
+     * themselves, which is the common case when all are equally healthy. */
+    mesh_participant_id_t best_candidate = 0;
+    size_t best_votes = 0;
+    for (size_t i = 0; i < pool->tally_count; i++) {
+        if (pool->vote_tallies[i].votes > best_votes) {
+            best_votes = pool->vote_tallies[i].votes;
+            best_candidate = pool->vote_tallies[i].candidate;
+        }
+    }
+    return best_candidate;
 }
 
 /**
@@ -1107,6 +1120,8 @@ nimcp_error_t mesh_coordinator_pool_handle_failure(
 
     pool->stats.failovers++;
 
+    update_stats(pool);
+
     nimcp_mutex_unlock(pool->mutex);
 
     /* If leader failed, trigger election */
@@ -1362,8 +1377,14 @@ bool mesh_coordinator_pool_is_bft_valid(const mesh_coordinator_pool_t* pool) {
     size_t active = get_active_count(pool);
     size_t failed = pool->coordinator_count - active;
 
-    /* BFT requires N >= 3f + 1 where f is max tolerated faults */
-    /* So tolerated faults = (N - 1) / 3 */
+    /* BFT requires N >= 3f + 1 where f is max tolerated faults.
+     * Minimum meaningful BFT requires N >= 4 (to tolerate at least 1 fault).
+     * With fewer than 4 coordinators, BFT cannot tolerate any faults. */
+    if (pool->coordinator_count < 4) {
+        return false;
+    }
+
+    /* Tolerated faults = (N - 1) / 3 */
     size_t tolerated = (pool->coordinator_count - 1) / 3;
 
     return failed <= tolerated;

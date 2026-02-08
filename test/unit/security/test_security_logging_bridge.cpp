@@ -69,6 +69,7 @@ protected:
 
         // Create bridge with smaller buffer for testing
         config.buffer_capacity = 256;
+        config.min_severity = SECURITY_LOG_SEV_DEBUG;  // Accept all severities for testing
         config.log_to_console = false;
         config.log_to_file = false;
         config.enable_encrypted_audit = false;

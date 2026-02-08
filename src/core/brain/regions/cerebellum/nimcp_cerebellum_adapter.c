@@ -267,6 +267,9 @@ struct cerebellum_adapter {
     /* Bio-async communication context */
     bio_module_context_t bio_ctx;
 
+    /* Aggregate synapse tracking (used when glomerular layer not present) */
+    cerebellar_synapse_state_t aggregate_synapse;
+
     /* Statistics */
     cerebellum_stats_t stats;
 };
@@ -376,6 +379,19 @@ void cerebellar_synapse_update(cerebellar_synapse_state_t* state,
     state->stp_u += du;
     if (state->stp_u < U) state->stp_u = U;
 
+    /* Vesicle refill during no-activity periods */
+    if (state->rrp_available < state->rrp_capacity) {
+        float refill = CEREBELLUM_SYNAPSE_DEFAULT_REFILL_RATE * dt_ms;
+        if (refill >= 1.0f) {
+            uint32_t to_refill = (uint32_t)refill;
+            if (state->rrp_available + to_refill > state->rrp_capacity) {
+                state->rrp_available = state->rrp_capacity;
+            } else {
+                state->rrp_available += to_refill;
+            }
+        }
+    }
+
     /* If presynaptic activity (spike), trigger release */
     if (presynaptic_activity > 0.5f) {
         /* On spike: u += U(1 - u), then x -= ux */
@@ -386,6 +402,20 @@ void cerebellar_synapse_update(cerebellar_synapse_state_t* state,
 
         /* Calcium influx on spike */
         state->calcium_concentration += CEREBELLUM_SYNAPSE_DEFAULT_CA_INFLUX;
+
+        /* Vesicle release: deplete RRP based on release probability */
+        if (state->rrp_available > 0) {
+            float release_prob = CEREBELLUM_SYNAPSE_DEFAULT_RELEASE_PROB;
+            uint32_t to_release = (uint32_t)(release_prob * (float)state->rrp_available);
+            if (to_release < 1 && state->rrp_available > 0) to_release = 1;
+            if (to_release > state->rrp_available) to_release = state->rrp_available;
+            state->rrp_available -= to_release;
+        }
+    }
+
+    /* Update vesicle depletion factor */
+    if (state->rrp_capacity > 0) {
+        state->vesicle_depletion = 1.0f - (float)state->rrp_available / (float)state->rrp_capacity;
     }
 
     /* Calcium decay */
@@ -1081,6 +1111,18 @@ static void process_granule_layer(cerebellum_adapter_t* adapter) {
         }
     }
 
+    /* Update aggregate synapse dynamics if enabled (for stats tracking) */
+    if (adapter->config.enable_synaptic_dynamics && !adapter->glomerular) {
+        /* Find the max mossy fiber activity to drive aggregate synapse */
+        float max_mossy = 0.0f;
+        for (uint32_t i = 0; i < g->num_mossy_fibers; i++) {
+            if (g->mossy_input_buffer[i] > max_mossy) {
+                max_mossy = g->mossy_input_buffer[i];
+            }
+        }
+        cerebellar_synapse_update(&adapter->aggregate_synapse, 1.0f, max_mossy);
+    }
+
     LOG_DEBUG("[%s] Granule layer: %u/%u cells active", CEREBELLUM_LOG_MODULE,
               active_count, g->num_cells);
 }
@@ -1137,6 +1179,10 @@ static void process_deep_nuclei(cerebellum_adapter_t* adapter) {
         for (uint32_t j = 0; j < n->dentate[i].num_purkinje_inputs && j < p->num_cells; j++) {
             inhibition += p->cells[j].inhibition_output * n->dentate[i].purkinje_weights[j];
         }
+        /* Normalize inhibition by number of inputs */
+        if (n->dentate[i].num_purkinje_inputs > 0) {
+            inhibition /= (float)n->dentate[i].num_purkinje_inputs;
+        }
         /* Baseline excitation from mossy fiber collaterals, minus Purkinje inhibition */
         n->dentate[i].activity = fmaxf(0.0f, 0.8f + inhibition);
 
@@ -1154,6 +1200,9 @@ static void process_deep_nuclei(cerebellum_adapter_t* adapter) {
             uint32_t idx = (offset + j) % p->num_cells;
             inhibition += p->cells[idx].inhibition_output * n->interposed[i].purkinje_weights[j];
         }
+        if (n->interposed[i].num_purkinje_inputs > 0) {
+            inhibition /= (float)n->interposed[i].num_purkinje_inputs;
+        }
         n->interposed[i].activity = fmaxf(0.0f, 0.8f + inhibition);
     }
 
@@ -1164,6 +1213,9 @@ static void process_deep_nuclei(cerebellum_adapter_t* adapter) {
         for (uint32_t j = 0; j < n->fastigial[i].num_purkinje_inputs; j++) {
             uint32_t idx = (offset + j) % p->num_cells;
             inhibition += p->cells[idx].inhibition_output * n->fastigial[i].purkinje_weights[j];
+        }
+        if (n->fastigial[i].num_purkinje_inputs > 0) {
+            inhibition /= (float)n->fastigial[i].num_purkinje_inputs;
         }
         n->fastigial[i].activity = fmaxf(0.0f, 0.8f + inhibition);
     }
@@ -1285,8 +1337,11 @@ static void process_golgi_cells(cerebellum_adapter_t* adapter) {
             }
         }
 
-        /* Get input from mossy fibers (via glomeruli) */
-        float mossy_input = gc->mossy_fiber_input;
+        /* Get input from mossy fibers (via mossy buffer) */
+        float mossy_input = 0.0f;
+        uint32_t mossy_idx = i % gran->num_mossy_fibers;
+        mossy_input = gran->mossy_input_buffer[mossy_idx];
+        gc->mossy_fiber_input = mossy_input;
 
         /* Golgi cell activation */
         float total_input = pf_input + mossy_input;
@@ -1595,6 +1650,11 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
         LOG_DEBUG("[%s] Using default configuration", CEREBELLUM_LOG_MODULE);
     }
 
+    /* Initialize aggregate synapse for stats tracking when glomerular layer not present */
+    if (adapter->config.enable_synaptic_dynamics) {
+        cerebellar_synapse_init(&adapter->aggregate_synapse, &adapter->config.synapse_config);
+    }
+
     /* Create granule layer */
     LOG_DEBUG("[%s] Creating granule layer (%u cells)", CEREBELLUM_LOG_MODULE,
               adapter->config.num_granule_cells);
@@ -1692,6 +1752,8 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->glomerular is NULL");
             return NULL;
         }
+        /* Set initial divergence stat */
+        adapter->stats.effective_divergence = (float)adapter->config.granules_per_mossy_fiber;
     }
 
     /*=== Phase 2: Create molecular layer interneurons (if enabled) ===*/
@@ -2071,6 +2133,86 @@ bool cerebellum_process(cerebellum_adapter_t* adapter,
         memcpy(result->predicted_outcome, adapter->forward_model.last_prediction,
                sizeof(result->predicted_outcome));
         result->confidence = 0.8f;  /* Base confidence */
+    }
+
+    /* Update synaptic dynamics stats from glomerular synapses */
+    if (adapter->config.enable_synaptic_dynamics && adapter->glomerular) {
+        uint64_t total_releases = 0;
+        float total_calcium = 0.0f;
+        uint32_t synapse_count = 0;
+
+        for (uint32_t i = 0; i < adapter->glomerular->num_glomeruli; i++) {
+            cerebellar_synapse_state_t* syn = &adapter->glomerular->glomeruli[i].synapse;
+            /* Count vesicles that have been released (capacity - available) */
+            if (syn->rrp_capacity > 0 && syn->rrp_available < syn->rrp_capacity) {
+                total_releases += (syn->rrp_capacity - syn->rrp_available);
+            }
+            total_calcium += syn->calcium_concentration;
+            synapse_count++;
+        }
+
+        adapter->stats.vesicle_releases += total_releases;
+        if (synapse_count > 0) {
+            adapter->stats.avg_calcium_concentration = total_calcium / synapse_count;
+        }
+    } else if (adapter->config.enable_synaptic_dynamics && !adapter->glomerular) {
+        /* Use aggregate synapse for stats when glomerular layer not present */
+        cerebellar_synapse_state_t* syn = &adapter->aggregate_synapse;
+        if (syn->rrp_capacity > 0 && syn->rrp_available < syn->rrp_capacity) {
+            adapter->stats.vesicle_releases += (syn->rrp_capacity - syn->rrp_available);
+        }
+        adapter->stats.avg_calcium_concentration = syn->calcium_concentration;
+    }
+
+    /* Update glomerular divergence stats */
+    if (adapter->config.enable_glomerular_divergence && adapter->glomerular) {
+        adapter->stats.effective_divergence = (float)adapter->config.granules_per_mossy_fiber;
+    }
+
+    /* Update interneuron stats */
+    if (adapter->config.enable_basket_cells && adapter->molecular &&
+        adapter->molecular->basket_cells) {
+        float total_inh = 0.0f;
+        float total_rate = 0.0f;
+        for (uint32_t i = 0; i < adapter->molecular->num_basket_cells; i++) {
+            total_inh += adapter->molecular->basket_cells[i].somatic_inhibition;
+            total_rate += adapter->molecular->basket_cells[i].firing_rate;
+        }
+        adapter->stats.basket_inhibition_total += total_inh;
+        if (adapter->molecular->num_basket_cells > 0) {
+            /* Convert activation to Hz (scale by ~100 Hz max firing rate) */
+            adapter->stats.avg_basket_firing_rate =
+                (total_rate / adapter->molecular->num_basket_cells) * 100.0f;
+        }
+    }
+
+    if (adapter->config.enable_stellate_cells && adapter->molecular &&
+        adapter->molecular->stellate_cells) {
+        float total_inh = 0.0f;
+        float total_rate = 0.0f;
+        for (uint32_t i = 0; i < adapter->molecular->num_stellate_cells; i++) {
+            total_inh += adapter->molecular->stellate_cells[i].dendritic_inhibition;
+            total_rate += adapter->molecular->stellate_cells[i].activation;
+        }
+        adapter->stats.stellate_inhibition_total += total_inh;
+        if (adapter->molecular->num_stellate_cells > 0) {
+            adapter->stats.avg_stellate_firing_rate =
+                (total_rate / adapter->molecular->num_stellate_cells) * 100.0f;
+        }
+    }
+
+    if (adapter->config.enable_golgi_cells && adapter->golgi) {
+        float total_feedback = 0.0f;
+        float total_rate = 0.0f;
+        for (uint32_t i = 0; i < adapter->golgi->num_cells; i++) {
+            total_feedback += adapter->golgi->cells[i].feedback_inhibition;
+            total_rate += adapter->golgi->cells[i].activation;
+        }
+        adapter->stats.golgi_feedback_total += total_feedback;
+        if (adapter->golgi->num_cells > 0) {
+            adapter->stats.avg_golgi_firing_rate =
+                (total_rate / adapter->golgi->num_cells) * 100.0f;
+        }
     }
 
     adapter->status = CEREBELLUM_STATUS_OUTPUT_READY;

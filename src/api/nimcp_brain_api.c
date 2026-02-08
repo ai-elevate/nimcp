@@ -141,6 +141,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_learn_example(
     if (loss < 0.0f) {
         LOG_ERROR("Brain learning failed for label '%s'", label);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Brain learning failed for label '%s'", label);
+        return NIMCP_ERROR;
     }
 
     set_error("No error");
@@ -178,6 +179,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_predict(
 
     if (!decision) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INFERENCE_FAILED, "Brain prediction failed");
+        return NIMCP_ERROR;
     }
 
     // Copy results
@@ -186,7 +188,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_predict(
     *out_confidence = decision->confidence;
 
     // Free decision
-    nimcp_free(decision);
+    brain_free_decision(decision);
 
     set_error("No error");
     return NIMCP_OK;
@@ -202,6 +204,14 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_infer(
     NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
     NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
     NIMCP_API_CHECK_NULL(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (num_outputs == 0) {
+        set_error("num_outputs must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
 
     // Call internal brain API to get decision (which includes output vector)
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
@@ -224,7 +234,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_infer(
     }
 
     // Free decision
-    nimcp_free(decision);
+    brain_free_decision(decision);
 
     set_error("No error");
     return NIMCP_OK;
@@ -239,6 +249,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* fi
 
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain to '%s'", filepath);
+        return NIMCP_ERROR_IO;
     }
 
     set_error("No error");

@@ -106,6 +106,7 @@ TEST_F(CingulateQuantumBridgeTest, ResetClearsState) {
 
     // State should be cleared
     cingulate_quantum_state_t state;
+    memset(&state, 0, sizeof(state));
     cingulate_quantum_get_state(bridge, &state);
     EXPECT_EQ(state.num_qubits, 0u);
 }
@@ -132,6 +133,7 @@ TEST_F(CingulateQuantumBridgeTest, EncodeOptionsCreatesProperQubits) {
     EXPECT_TRUE(cingulate_quantum_encode_options(bridge, options, 4));
 
     cingulate_quantum_state_t state;
+    memset(&state, 0, sizeof(state));
     EXPECT_TRUE(cingulate_quantum_get_state(bridge, &state));
 
     // 4 options requires 2 qubits (2^2 = 4)
@@ -146,6 +148,7 @@ TEST_F(CingulateQuantumBridgeTest, EncodeOptionsNormalizesState) {
     EXPECT_TRUE(cingulate_quantum_encode_options(bridge, options, 4));
 
     cingulate_quantum_state_t state;
+    memset(&state, 0, sizeof(state));
     state.amplitudes = (float*)malloc(256 * sizeof(float));
     EXPECT_TRUE(cingulate_quantum_get_state(bridge, &state));
 
@@ -284,6 +287,7 @@ TEST_F(CingulateQuantumBridgeTest, PropagateErrorSuccess) {
 
     // State should be modified (probability redistributed)
     cingulate_quantum_state_t state;
+    memset(&state, 0, sizeof(state));
     state.amplitudes = (float*)malloc(256 * sizeof(float));
     EXPECT_TRUE(cingulate_quantum_get_state(bridge, &state));
 
@@ -438,6 +442,7 @@ TEST_F(CingulateQuantumBridgeTest, GetStateSuccess) {
     EXPECT_TRUE(cingulate_quantum_encode_options(bridge, options, 4));
 
     cingulate_quantum_state_t state;
+    memset(&state, 0, sizeof(state));
     state.amplitudes = (float*)malloc(256 * sizeof(float));
 
     EXPECT_TRUE(cingulate_quantum_get_state(bridge, &state));
@@ -460,6 +465,7 @@ TEST_F(CingulateQuantumBridgeTest, HandleLargeNumberOfOptions) {
     EXPECT_TRUE(cingulate_quantum_encode_options(bridge, options, 16));
 
     cingulate_quantum_state_t state;
+    memset(&state, 0, sizeof(state));
     EXPECT_TRUE(cingulate_quantum_get_state(bridge, &state));
 
     // 16 options requires 4 qubits

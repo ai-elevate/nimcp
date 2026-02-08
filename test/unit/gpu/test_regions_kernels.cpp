@@ -1514,9 +1514,8 @@ TEST_F(RegionsKernelTest, ParietalMultisensory_NullSafety) {
 
     EXPECT_FALSE(nimcp_gpu_parietal_multisensory(nullptr, state, tensor, tensor, tensor, &params));
     EXPECT_FALSE(nimcp_gpu_parietal_multisensory(ctx, nullptr, tensor, tensor, tensor, &params));
-    EXPECT_FALSE(nimcp_gpu_parietal_multisensory(ctx, state, nullptr, tensor, tensor, &params));
+    /* All sensory modalities (visual, auditory, proprioceptive) are optional */
     EXPECT_FALSE(nimcp_gpu_parietal_multisensory(ctx, state, tensor, tensor, tensor, nullptr));
-    // Note: auditory and proprioceptive can be null (optional modalities)
 
     nimcp_gpu_tensor_destroy(tensor);
     DestroyParietalState(state);

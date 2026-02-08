@@ -5746,6 +5746,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/recovery/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/recovery/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/recovery/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/perception/CMakeFiles/test_perception_gpu_recovery.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/perception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/perception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/perception/CMakeFiles/rebuild_cache.dir
@@ -5954,6 +5955,7 @@
 /home/bbrelin/nimcp/build/test/integration/gpu/cognitive/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/cognitive/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/cognitive/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/integration/gpu/perception/CMakeFiles/test_perception_gpu_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/perception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/perception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/perception/CMakeFiles/rebuild_cache.dir

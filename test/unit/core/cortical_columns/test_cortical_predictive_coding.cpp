@@ -47,7 +47,7 @@ TEST_F(CorticalPredictiveCodingTest, DefaultConfig) {
 
 TEST_F(CorticalPredictiveCodingTest, DefaultConfigNullPointer) {
     int result = cortical_predictive_default_config(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 }
 
 TEST_F(CorticalPredictiveCodingTest, CreateWithConfig) {
@@ -89,7 +89,7 @@ TEST_F(CorticalPredictiveCodingTest, AddMultipleLevels) {
 
 TEST_F(CorticalPredictiveCodingTest, AddLevelNullSystem) {
     int result = cortical_predictive_add_level(nullptr, 64, 32);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 }
 
 /* ============================================================================

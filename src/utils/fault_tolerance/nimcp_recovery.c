@@ -415,7 +415,7 @@ static recovery_status_t action_emergency_save(brain_t brain)
 
 recovery_strategy_t* recovery_select_strategy(diagnostic_summary_t* diagnosis)
 {
-    NIMCP_API_CHECK_NULL(diagnosis, NIMCP_ERROR_NULL_POINTER, "recovery_select_strategy: NULL diagnosis");
+    NIMCP_API_CHECK_NULL_RET_NULL(diagnosis, "recovery_select_strategy: NULL diagnosis");
 
     // Select strategy based on signal
     switch (diagnosis->signal) {
@@ -805,12 +805,12 @@ bool recovery_adjust_parameters(brain_t brain, adjustment_type_t type)
 
 circuit_breaker_t* circuit_breaker_create(uint32_t failure_threshold, uint32_t timeout_ms)
 {
-    // Validate failure threshold using API exception macro
-    NIMCP_API_CHECK(failure_threshold > 0 && failure_threshold <= 100,
+    // Validate failure threshold using API exception macro (returns NULL for pointer-returning function)
+    NIMCP_API_CHECK_RET_NULL(failure_threshold > 0 && failure_threshold <= 100,
         NIMCP_ERROR_INVALID_PARAM, "Circuit breaker: Invalid failure threshold (must be 1-100)");
 
-    // Validate timeout using API exception macro
-    NIMCP_API_CHECK(timeout_ms >= 100 && timeout_ms <= 60000,
+    // Validate timeout using API exception macro (returns NULL for pointer-returning function)
+    NIMCP_API_CHECK_RET_NULL(timeout_ms >= 100 && timeout_ms <= 60000,
         NIMCP_ERROR_INVALID_PARAM, "Circuit breaker: Invalid timeout (must be 100-60000 ms)");
 
     circuit_breaker_t* cb = (circuit_breaker_t*)nimcp_calloc(1, sizeof(circuit_breaker_t));

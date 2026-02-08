@@ -119,32 +119,40 @@ static std::vector<float> generate_map_representation(uint32_t size) {
 // Test Fixture
 //=============================================================================
 
-class E2ESpatialProcessingTest : public NimcpTestBase {
+class E2ESpatialProcessingTest : public ::testing::Test {
 protected:
+    static hemispheric_brain_t* shared_brain;
     hemispheric_brain_t* brain = nullptr;
 
-    void SetUp() override {
-        NimcpTestBase::SetUp();
+    static void SetUpTestSuite() {
+        signal_handler_unregister_brain();
+        signal_handler_reset_stats();
+        signal_handler_uninstall();
 
         hemispheric_brain_config_t config = hemispheric_brain_default_config();
-        config.size = BRAIN_SIZE_SMALL;
+        config.size = BRAIN_SIZE_MICRO;
         config.num_inputs = SPATIAL_INPUT_SIZE;
         config.num_outputs = SPATIAL_OUTPUT_SIZE;
         config.default_mode = HEMISPHERIC_MODE_LATERALIZED;
         config.enable_shared_thalamus = true;
 
-        brain = hemispheric_brain_create(&config);
-        ASSERT_NE(brain, nullptr) << "Failed to create hemispheric brain";
+        shared_brain = hemispheric_brain_create(&config);
     }
 
-    void TearDown() override {
-        if (brain) {
-            hemispheric_brain_destroy(brain);
-            brain = nullptr;
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            hemispheric_brain_destroy(shared_brain);
+            shared_brain = nullptr;
         }
-        NimcpTestBase::TearDown();
+    }
+
+    void SetUp() override {
+        brain = shared_brain;
+        ASSERT_NE(brain, nullptr) << "Failed to create hemispheric brain";
     }
 };
+
+hemispheric_brain_t* E2ESpatialProcessingTest::shared_brain = nullptr;
 
 //=============================================================================
 // Spatial Domain Routing Tests
@@ -413,10 +421,13 @@ TEST_F(E2ESpatialProcessingTest, MentalRotationWithMotorPlanning) {
     EXPECT_EQ(result, 0);
 
     // Motor planning (bilateral for gross motor)
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
+    std::vector<float> motor_input(SPATIAL_INPUT_SIZE, 0.0f);
+    std::copy(output.begin(), output.end(), motor_input.begin());
     result = hemispheric_brain_process_cooperative(
         brain,
-        output.data(),
-        SPATIAL_OUTPUT_SIZE,
+        motor_input.data(),
+        SPATIAL_INPUT_SIZE,
         output.data(),
         SPATIAL_OUTPUT_SIZE
     );
@@ -521,11 +532,14 @@ TEST_F(E2ESpatialProcessingTest, NavigationWithLandmarks) {
     E2E_STAGE_END();
 
     // Integrate with spatial navigation
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Integrate with navigation", MAX_NAVIGATION_TIME_MS);
+    std::vector<float> nav_input(SPATIAL_INPUT_SIZE, 0.0f);
+    std::copy(output.begin(), output.end(), nav_input.begin());
     result = hemispheric_brain_process_lateralized(
         brain,
-        output.data(),
-        SPATIAL_OUTPUT_SIZE,
+        nav_input.data(),
+        SPATIAL_INPUT_SIZE,
         COGNITIVE_DOMAIN_SPATIAL,
         output.data(),
         SPATIAL_OUTPUT_SIZE
@@ -597,11 +611,14 @@ TEST_F(E2ESpatialProcessingTest, MapProcessingTopDown) {
     E2E_STAGE_END();
 
     // Apply global attention (right hemisphere)
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Global attention on map", MAX_SPATIAL_PROCESSING_TIME_MS);
+    std::vector<float> attn_input(SPATIAL_INPUT_SIZE, 0.0f);
+    std::copy(output.begin(), output.end(), attn_input.begin());
     result = hemispheric_brain_process_lateralized(
         brain,
-        output.data(),
-        SPATIAL_OUTPUT_SIZE,
+        attn_input.data(),
+        SPATIAL_INPUT_SIZE,
         COGNITIVE_DOMAIN_ATTENTION_GLOBAL,
         output.data(),
         SPATIAL_OUTPUT_SIZE
@@ -632,10 +649,13 @@ TEST_F(E2ESpatialProcessingTest, MapProcessingDetailExtraction) {
     EXPECT_EQ(result, 0);
 
     // Then local detail extraction
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
+    std::vector<float> local_input(SPATIAL_INPUT_SIZE, 0.0f);
+    std::copy(output.begin(), output.end(), local_input.begin());
     result = hemispheric_brain_process_lateralized(
         brain,
-        output.data(),
-        SPATIAL_OUTPUT_SIZE,
+        local_input.data(),
+        SPATIAL_INPUT_SIZE,
         COGNITIVE_DOMAIN_ATTENTION_LOCAL,
         output.data(),
         SPATIAL_OUTPUT_SIZE
@@ -723,12 +743,15 @@ TEST_F(E2ESpatialProcessingTest, VisuospatialTransformPipeline) {
     E2E_STAGE_END();
 
     // Stage 2: Spatial transformation
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Spatial transformation", MAX_SPATIAL_PROCESSING_TIME_MS);
+    std::vector<float> stage2_input(SPATIAL_INPUT_SIZE, 0.0f);
+    std::copy(stage1_output.begin(), stage1_output.end(), stage2_input.begin());
     std::vector<float> stage2_output(SPATIAL_OUTPUT_SIZE);
     result = hemispheric_brain_process_lateralized(
         brain,
-        stage1_output.data(),
-        SPATIAL_OUTPUT_SIZE,
+        stage2_input.data(),
+        SPATIAL_INPUT_SIZE,
         COGNITIVE_DOMAIN_SPATIAL,
         stage2_output.data(),
         SPATIAL_OUTPUT_SIZE
@@ -737,12 +760,15 @@ TEST_F(E2ESpatialProcessingTest, VisuospatialTransformPipeline) {
     E2E_STAGE_END();
 
     // Stage 3: Integration with motor planning
+    // Pad output to INPUT_SIZE since brain expects consistent input dimensions
     E2E_STAGE_BEGIN("Motor planning integration", MAX_SPATIAL_PROCESSING_TIME_MS);
+    std::vector<float> motor_input(SPATIAL_INPUT_SIZE, 0.0f);
+    std::copy(stage2_output.begin(), stage2_output.end(), motor_input.begin());
     std::vector<float> motor_output(SPATIAL_OUTPUT_SIZE);
     result = hemispheric_brain_process_cooperative(
         brain,
-        stage2_output.data(),
-        SPATIAL_OUTPUT_SIZE,
+        motor_input.data(),
+        SPATIAL_INPUT_SIZE,
         motor_output.data(),
         SPATIAL_OUTPUT_SIZE
     );

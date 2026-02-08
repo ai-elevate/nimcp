@@ -894,8 +894,8 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
         }
     }
 
+    /* Region is not quarantined - simply return false without throwing */
     nimcp_mutex_unlock(&system->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_is_quarantined: validation failed");
     return false;
 }
 
@@ -947,51 +947,115 @@ NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* addre
 
         /* Check for overlap */
         if (check_start < q_end && check_end > q_start) {
+            /* P0-1 FIX: Only increment ref_count on the MATCHING overlapping region,
+             * not all active regions. This prevents over-incrementing unrelated entries. */
+            if (acquire_ref) {
+                atomic_fetch_add(&system->quarantine[i].ref_count, 1);
+            }
             nimcp_mutex_unlock(&system->mutex);
             return true;  /* Region is quarantined */
         }
     }
 
-    /* Region is not quarantined - optionally acquire reference to prevent TOCTOU */
-    if (acquire_ref) {
-        /* Find the closest containing region and increment its ref_count
-         * This prevents the region from being quarantined while in use */
-        for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
-            if (system->quarantine[i].active) {
-                /* Increment ref_count to signal region is in use */
-                atomic_fetch_add(&system->quarantine[i].ref_count, 1);
-            }
-        }
-    }
-
+    /* P0-3 FIX: Region is not quarantined - simply return false without throwing.
+     * The previous code unconditionally threw NIMCP_THROW_TO_IMMUNE here, which
+     * incorrectly treated a normal "not quarantined" result as an error. */
     nimcp_mutex_unlock(&system->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_is_quarantined_safe: validation failed");
     return false;
 }
 
 /**
- * @brief Release quarantine reference acquired by bbb_is_quarantined_safe
+ * @brief Release quarantine reference for a specific region
  *
- * WHAT: Release reference acquired during TOCTOU-safe check
- * WHY:  Allow quarantine operations to proceed after safe access
- * HOW:  Decrements ref_count on all active quarantine entries
+ * WHAT: Release reference acquired during TOCTOU-safe check for a specific region
+ * WHY:  P0-2 FIX: Only decrement ref_count on the matching overlapping region,
+ *       not all active regions (which was the old broken behavior)
+ * HOW:  Find the overlapping quarantine entry and atomically decrement its ref_count
+ *       using a compare-exchange loop to prevent underflow (P1-1 FIX)
  *
  * @param system BBB system handle
+ * @param address Address of the region to release
+ * @param size Size of the region to release
+ */
+NIMCP_EXPORT void bbb_release_quarantine_ref_for_region(bbb_system_t system,
+                                                          const void* address,
+                                                          size_t size)
+{
+    if (!system || !address || size == 0) return;
+
+    nimcp_mutex_lock(&system->mutex);
+
+    uintptr_t check_start = (uintptr_t)address;
+    if (size > UINTPTR_MAX - check_start) {
+        nimcp_mutex_unlock(&system->mutex);
+        return;
+    }
+    uintptr_t check_end = check_start + size;
+
+    for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
+        if (!system->quarantine[i].active) continue;
+
+        uintptr_t q_start = (uintptr_t)system->quarantine[i].address;
+        if (system->quarantine[i].size > UINTPTR_MAX - q_start) continue;
+        uintptr_t q_end = q_start + system->quarantine[i].size;
+
+        /* Check for overlap - same logic as bbb_is_quarantined_safe */
+        if (check_start < q_end && check_end > q_start) {
+            /* P1-1 FIX: Use atomic compare-exchange loop to prevent underflow.
+             * The old code did atomic_fetch_sub FIRST then checked for underflow,
+             * creating a window where another thread could read a negative value. */
+            int current = atomic_load(&system->quarantine[i].ref_count);
+            if (current <= 0) {
+                /* Already zero, skip - don't go negative */
+                LOG_WARN("bbb_release_quarantine_ref_for_region: ref_count already zero for region %p",
+                         system->quarantine[i].address);
+                break;
+            }
+            while (!atomic_compare_exchange_weak(&system->quarantine[i].ref_count,
+                                                  &current, current - 1)) {
+                if (current <= 0) break;  /* Became zero while we were trying */
+            }
+            break;  /* Only decrement the first matching region */
+        }
+    }
+
+    nimcp_mutex_unlock(&system->mutex);
+}
+
+/**
+ * @brief Release quarantine reference acquired by bbb_is_quarantined_safe (DEPRECATED)
+ *
+ * WHAT: Release reference acquired during TOCTOU-safe check
+ * WHY:  Backward compatibility wrapper - prefer bbb_release_quarantine_ref_for_region()
+ * HOW:  P0-2 FIX: The old implementation decremented ALL active quarantine entries,
+ *       which was mismatched with the acquire pattern. This version logs a deprecation
+ *       warning and attempts to decrement any region with a positive ref_count.
+ *
+ * @param system BBB system handle
+ * @deprecated Use bbb_release_quarantine_ref_for_region() instead for targeted release
  */
 NIMCP_EXPORT void bbb_release_quarantine_ref(bbb_system_t system)
 {
     if (!system) return;
 
+    LOG_WARN("bbb_release_quarantine_ref: DEPRECATED - use bbb_release_quarantine_ref_for_region() instead");
+
+    /* P0-2 FIX: Best-effort backward compat - find first region with positive ref_count
+     * and decrement it using the safe CAS loop (P1-1 FIX). This is imprecise because
+     * we don't know which region the caller intended to release. */
     nimcp_mutex_lock(&system->mutex);
     for (size_t i = 0; i < BBB_MAX_QUARANTINE_REGIONS; i++) {
-        if (system->quarantine[i].active) {
-            int prev = atomic_fetch_sub(&system->quarantine[i].ref_count, 1);
-            /* Ensure we don't go below zero (shouldn't happen with correct usage) */
-            if (prev <= 0) {
-                atomic_store(&system->quarantine[i].ref_count, 0);
-                LOG_WARN("bbb_release_quarantine_ref: ref_count underflow detected");
-            }
+        if (!system->quarantine[i].active) continue;
+
+        int current = atomic_load(&system->quarantine[i].ref_count);
+        if (current <= 0) continue;
+
+        /* P1-1 FIX: Atomic compare-exchange loop to prevent underflow race */
+        while (!atomic_compare_exchange_weak(&system->quarantine[i].ref_count,
+                                              &current, current - 1)) {
+            if (current <= 0) break;
         }
+        break;  /* Only decrement one region for backward compat */
     }
     nimcp_mutex_unlock(&system->mutex);
 }
@@ -1068,6 +1132,11 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
 
     /* Activate killer T cell to handle quarantined region (without holding BBB mutex) */
     if (has_immune) {
+        /* P2-1 FIX: Ensure pending_immune_ops is ALWAYS decremented after immune calls.
+         * Even though NIMCP_THROW_TO_IMMUNE doesn't longjmp (execution continues),
+         * we structure the code to guarantee the decrement is always reached by
+         * performing all immune calls first, then unconditionally decrementing. */
+
         /* Create antigen for quarantine event */
         uint32_t antigen_id = 0;
         uint8_t epitope[32];
@@ -1089,8 +1158,10 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
         uint32_t t_cell_id = 0;
         brain_immune_activate_killer_t(immune, antigen_id, &t_cell_id);
 
-        /* SECURITY FIX: Decrement pending operations counter and signal waiters.
-         * This allows bbb_connect_immune(NULL) to proceed if it was waiting. */
+        /* P2-1 FIX: Decrement pending operations counter UNCONDITIONALLY after
+         * all immune calls. This is placed outside any conditional logic to ensure
+         * the counter is always decremented, preventing permanent blocking of
+         * bbb_connect_immune(NULL) disconnect calls. */
         atomic_fetch_sub(&system->pending_immune_ops, 1);
         if (system->immune_ops_cond_initialized) {
             nimcp_cond_signal(&system->immune_ops_cond);

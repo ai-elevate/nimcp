@@ -193,7 +193,8 @@ TEST_F(VestibularOtolithTest, HeadTiltDetection) {
     EXPECT_TRUE(vestibular_get_postural_command(processor, postural));
 
     // Should have some corrective command
-    EXPECT_NE(postural[2], 0.0f);  // Roll correction
+    // Roll correction is in index 1 (pitch=0, roll=1, vertical=2)
+    EXPECT_NE(postural[1], 0.0f);  // Roll correction
 }
 
 TEST_F(VestibularOtolithTest, StatsTrackOtolithInputs) {
@@ -283,6 +284,14 @@ TEST_F(VestibularVORTest, VORGainClamped) {
 }
 
 TEST_F(VestibularVORTest, VORAdaptation) {
+    // First process a canal input to set head velocity
+    semicircular_canal_input_t canal_input;
+    canal_input.yaw_velocity = 1.0f;
+    canal_input.pitch_velocity = 0.0f;
+    canal_input.roll_velocity = 0.0f;
+    canal_input.timestamp_us = 0;
+    vestibular_process_canal_input(processor, &canal_input);
+
     float initial_gain[3];
     vestibular_get_vor_gain(processor, initial_gain);
 

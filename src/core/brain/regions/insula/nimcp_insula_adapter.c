@@ -581,7 +581,7 @@ bool insula_update_interoception(insula_adapter_t* adapter,
 
     /* Check for homeostatic alarms */
     float deviation = fabsf(signal->intensity - channel->baseline);
-    if (deviation > 0.7f) {
+    if (deviation > 0.4f) {
         adapter->current_output.homeostatic_alarm = true;
         adapter->stats.homeostatic_alarms++;
         emit_alarm(adapter, "homeostatic", deviation);
@@ -881,12 +881,15 @@ float insula_assess_trust(insula_adapter_t* adapter,
 
     trust = clamp(trust, 0.0f, 1.0f);
 
+    /* Detect betrayal (sharp trust drop) - check before updating */
+    float previous_estimate = adapter->social_state.trustworthiness_estimate;
+
     /* Update social state */
     adapter->social_state.trust_level = ema(adapter->social_state.trust_level, trust, 0.3f);
     adapter->social_state.trustworthiness_estimate = trust;
 
-    /* Detect betrayal (sharp trust drop) */
-    if (trust < 0.3f && adapter->social_state.trust_level > 0.6f) {
+    /* Check for betrayal: new trust is low but previous estimate was high */
+    if (trust < 0.3f && previous_estimate > 0.6f) {
         adapter->social_state.betrayal_detected = true;
         adapter->stats.trust_violations++;
         emit_social_event(adapter, SOCIAL_EMOTION_TRUST, -0.8f);

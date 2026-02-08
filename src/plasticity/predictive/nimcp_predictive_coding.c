@@ -137,6 +137,8 @@ pc_hierarchy_config_t pc_hierarchy_config_default(uint32_t num_levels,
      */
     if (num_levels == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_hierarchy_config_default: num_levels is 0");
+        pc_hierarchy_config_t empty = {0};
+        return empty;
     }
     pc_hierarchy_config_t config = {
         .num_levels = num_levels,

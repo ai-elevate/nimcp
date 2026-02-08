@@ -708,9 +708,16 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
                 // Map inflammation to distress
                 assessment.type = DISTRESS_RESOURCE_STARVATION;
 
-                // Determine severity based on inflammation sites and system health
-                if (immune_stats.system_health < 0.3f) {
-                    // Critical - cytokine storm or systemic inflammation
+                // Determine severity based on BOTH system health AND inflammation burden.
+                // Multiple active inflammation sites indicate systemic inflammation
+                // even if system_health hasn't degraded yet (e.g., freshly started).
+                // Thresholds: >=4 sites = systemic (severe+), <0.3 health = critical
+                bool systemic_inflammation = (immune_stats.inflammation_sites >= 4);
+                bool degraded_health = (immune_stats.system_health < 0.6f);
+                bool critical_health = (immune_stats.system_health < 0.3f);
+
+                if (critical_health || (systemic_inflammation && degraded_health)) {
+                    // Critical - cytokine storm or systemic inflammation with degraded health
                     assessment.severity = DISTRESS_SEVERITY_CRITICAL;
                     assessment.distress_score = 0.9f;
                     assessment.description = nimcp_malloc(256);
@@ -724,8 +731,8 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
                         snprintf(assessment.recommended_action, 256,
                                 "Immediate intervention: reduce load, isolate threats");
                     }
-                } else if (immune_stats.system_health < 0.6f) {
-                    // Severe - systemic inflammation
+                } else if (degraded_health || systemic_inflammation) {
+                    // Severe - systemic inflammation or degraded health
                     assessment.severity = DISTRESS_SEVERITY_SEVERE;
                     assessment.distress_score = 0.7f;
                     assessment.description = nimcp_malloc(256);
@@ -740,7 +747,7 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
                                 "Increase resources, begin threat resolution");
                     }
                 } else {
-                    // Moderate - regional inflammation
+                    // Moderate - regional inflammation (few sites, health OK)
                     assessment.severity = DISTRESS_SEVERITY_MODERATE;
                     assessment.distress_score = 0.5f;
                     assessment.description = nimcp_malloc(256);

@@ -40,6 +40,7 @@ target_link_libraries(unit_middleware_pipeline_encoding_stage
     )
 add_test(NAME unit_middleware_pipeline_encoding_stage
          COMMAND unit_middleware_pipeline_encoding_stage)
+set_tests_properties(unit_middleware_pipeline_encoding_stage PROPERTIES TIMEOUT 120)
 
 # Test Extraction Stage
 add_executable(unit_middleware_pipeline_extraction_stage
@@ -54,6 +55,7 @@ target_link_libraries(unit_middleware_pipeline_extraction_stage
     )
 add_test(NAME unit_middleware_pipeline_extraction_stage
          COMMAND unit_middleware_pipeline_extraction_stage)
+set_tests_properties(unit_middleware_pipeline_extraction_stage PROPERTIES TIMEOUT 120)
 
 # Test Detection Stage
 add_executable(unit_middleware_pipeline_detection_stage
@@ -68,6 +70,7 @@ target_link_libraries(unit_middleware_pipeline_detection_stage
     )
 add_test(NAME unit_middleware_pipeline_detection_stage
          COMMAND unit_middleware_pipeline_detection_stage)
+set_tests_properties(unit_middleware_pipeline_detection_stage PROPERTIES TIMEOUT 120)
 
 # Test Routing Stage
 add_executable(unit_middleware_pipeline_routing_stage
@@ -82,6 +85,7 @@ target_link_libraries(unit_middleware_pipeline_routing_stage
     )
 add_test(NAME unit_middleware_pipeline_routing_stage
          COMMAND unit_middleware_pipeline_routing_stage)
+set_tests_properties(unit_middleware_pipeline_routing_stage PROPERTIES TIMEOUT 120)
 
 # Test Normalization Stage
 add_executable(unit_middleware_pipeline_normalization_stage
@@ -96,6 +100,7 @@ target_link_libraries(unit_middleware_pipeline_normalization_stage
     )
 add_test(NAME unit_middleware_pipeline_normalization_stage
          COMMAND unit_middleware_pipeline_normalization_stage)
+set_tests_properties(unit_middleware_pipeline_normalization_stage PROPERTIES TIMEOUT 120)
 
 # Test Buffering Stage
 add_executable(unit_middleware_pipeline_buffering_stage
@@ -110,6 +115,7 @@ target_link_libraries(unit_middleware_pipeline_buffering_stage
     )
 add_test(NAME unit_middleware_pipeline_buffering_stage
          COMMAND unit_middleware_pipeline_buffering_stage)
+set_tests_properties(unit_middleware_pipeline_buffering_stage PROPERTIES TIMEOUT 120)
 
 # Test Events Stage
 add_executable(unit_middleware_pipeline_events_stage
@@ -124,3 +130,4 @@ target_link_libraries(unit_middleware_pipeline_events_stage
     )
 add_test(NAME unit_middleware_pipeline_events_stage
          COMMAND unit_middleware_pipeline_events_stage)
+set_tests_properties(unit_middleware_pipeline_events_stage PROPERTIES TIMEOUT 120)

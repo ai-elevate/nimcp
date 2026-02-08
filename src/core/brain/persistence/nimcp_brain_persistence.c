@@ -87,6 +87,38 @@ static persistence_module_state_t g_persistence_state = {
 };
 
 /**
+ * @brief Validate path for persistence operations (allows absolute paths)
+ *
+ * WHAT: Check for path traversal while permitting absolute paths
+ * WHY:  persistence_path_is_safe() rejects absolute paths by default, but
+ *       save/load operations legitimately use absolute paths (e.g. /tmp/brain.bin)
+ * HOW:  Create a validator with enable_absolute_path=false (don't reject abs paths)
+ *       while keeping all other traversal detection enabled
+ *
+ * @param path Path to validate
+ * @return true if path is safe for persistence I/O
+ */
+static bool persistence_path_is_safe(const char* path)
+{
+    if (!path) return false;
+
+    nimcp_path_validator_config_t cfg = nimcp_path_validator_default_config();
+    cfg.enable_absolute_path = false;  /* Allow absolute paths for I/O */
+
+    nimcp_path_validator_t validator = nimcp_path_validator_create(&cfg);
+    if (!validator) {
+        return false;  /* Conservative: reject if can't validate */
+    }
+
+    nimcp_path_validation_result_t result;
+    nimcp_path_error_t err = nimcp_path_validate(validator, path,
+                                                  NIMCP_PATH_CONTEXT_FILE, &result);
+    nimcp_path_validator_destroy(validator);
+
+    return (err == NIMCP_PATH_SUCCESS && result.valid);
+}
+
+/**
  * @brief Record persistence interaction with security module
  *
  * WHAT: Record save/load/snapshot operation for security audit
@@ -350,8 +382,8 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     // P1-3 fix: Path traversal validation
-    if (!nimcp_path_is_safe(meta_path)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_save_metadata: nimcp_path_is_safe is NULL");
+    if (!persistence_path_is_safe(meta_path)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_save_metadata: persistence_path_is_safe is NULL");
         return false;
     }
 
@@ -500,10 +532,10 @@ bool brain_save(brain_t brain, const char* filepath)
         return false;
     }
 
-    // P1-3 fix: Path traversal validation
-    if (!nimcp_path_is_safe(filepath)) {
+    // P1-3 fix: Path traversal validation (uses persistence_path_is_safe which allows absolute paths)
+    if (!persistence_path_is_safe(filepath)) {
         set_error("Path validation failed: %s", filepath);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save: nimcp_path_is_safe is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save: path traversal detected");
         return false;
     }
 
@@ -677,8 +709,8 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     // P1-3 fix: Path traversal validation
-    if (!nimcp_path_is_safe(meta_path)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: nimcp_path_is_safe is NULL");
+    if (!persistence_path_is_safe(meta_path)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: persistence_path_is_safe is NULL");
         return false;
     }
 
@@ -994,9 +1026,9 @@ brain_t brain_load(const char* filepath)
     }
 
     // P1-3 fix: Path traversal validation
-    if (!nimcp_path_is_safe(filepath)) {
+    if (!persistence_path_is_safe(filepath)) {
         set_error("Path validation failed: %s", filepath);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load: nimcp_path_is_safe is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load: persistence_path_is_safe is NULL");
         return NULL;
     }
 

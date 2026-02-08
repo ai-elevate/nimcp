@@ -219,7 +219,9 @@ TEST_F(PythonCIntegrationTest, Memory_ReferenceCountingBasic) {
 
     PyGILState_STATE gstate = PyGILState_Ensure();
 
-    PyObject* obj = PyLong_FromLong(42);
+    /* Use large value to avoid Python 3.12+ immortal object cache
+     * (small integers like 0-256 are immortal and Py_INCREF is a no-op) */
+    PyObject* obj = PyLong_FromLong(999999);
     ASSERT_NE(obj, nullptr);
 
     Py_ssize_t initial_refcount = Py_REFCNT(obj);
@@ -475,6 +477,11 @@ TEST_F(PythonCIntegrationTest, ThreadSafety_GILFromMultipleThreads) {
         }
     };
 
+    /* Release the GIL from the main thread so worker threads can acquire it.
+     * Without this, PyGILState_Ensure in workers deadlocks waiting for
+     * the GIL that the main thread implicitly holds. */
+    PyThreadState* save = PyEval_SaveThread();
+
     std::vector<std::thread> threads;
     for (int i = 0; i < 4; ++i) {
         threads.emplace_back(worker);
@@ -486,6 +493,9 @@ TEST_F(PythonCIntegrationTest, ThreadSafety_GILFromMultipleThreads) {
     for (auto& t : threads) {
         t.join();
     }
+
+    /* Restore the GIL for the main thread */
+    PyEval_RestoreThread(save);
 
     EXPECT_GT(successful_ops.load(), 100);
 }
@@ -517,6 +527,9 @@ TEST_F(PythonCIntegrationTest, ThreadSafety_ConcurrentObjectCreation) {
         }
     };
 
+    /* Release the GIL from the main thread so worker threads can acquire it */
+    PyThreadState* save = PyEval_SaveThread();
+
     std::vector<std::thread> threads;
     for (int i = 0; i < 4; ++i) {
         threads.emplace_back(worker);
@@ -528,6 +541,9 @@ TEST_F(PythonCIntegrationTest, ThreadSafety_ConcurrentObjectCreation) {
     for (auto& t : threads) {
         t.join();
     }
+
+    /* Restore the GIL for the main thread */
+    PyEval_RestoreThread(save);
 
     EXPECT_GT(objects_created.load(), 50);
 }

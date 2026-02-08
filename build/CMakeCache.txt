@@ -523,6 +523,9 @@ NIMCP_DISABLE_CUDA:BOOL=OFF
 //Enable cppcheck during build
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
 
+//No help, variable specified on the command line.
+NIMCP_ENABLE_CUDA:UNINITIALIZED=ON
+
 //Enable clang-tidy during build
 NIMCP_ENABLE_LINT:BOOL=OFF
 

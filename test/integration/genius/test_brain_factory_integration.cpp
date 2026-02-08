@@ -65,35 +65,35 @@ protected:
 //=============================================================================
 
 TEST_F(BrainFactoryIntegrationTest, CreateMathematicalGeniusBrain) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_MATHEMATICAL);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_MATHEMATICAL, true);
     ASSERT_NE(brain, nullptr);
 
     brain_destroy(brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateVisualArtisticGeniusBrain) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_VISUAL_ARTISTIC);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_VISUAL_ARTISTIC, true);
     ASSERT_NE(brain, nullptr);
 
     brain_destroy(brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateMusicalGeniusBrain) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_MUSICAL);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_MUSICAL, true);
     ASSERT_NE(brain, nullptr);
 
     brain_destroy(brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateScientificGeniusBrain) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_SCIENTIFIC);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_SCIENTIFIC, true);
     ASSERT_NE(brain, nullptr);
 
     brain_destroy(brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateFinancialGeniusBrain) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_FINANCIAL);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_FINANCIAL, true);
     ASSERT_NE(brain, nullptr);
 
     brain_destroy(brain);
@@ -112,7 +112,7 @@ TEST_F(BrainFactoryIntegrationTest, CreateAllGeniusTypesBrains) {
     };
 
     for (size_t i = 0; i < sizeof(types)/sizeof(types[0]); i++) {
-        brain_t brain = genius_brain_create(types[i]);
+        brain_t brain = genius_brain_create_ex(types[i], true);
         ASSERT_NE(brain, nullptr) << "Failed to create brain for type " << (int)types[i];
 
         brain_destroy(brain);
@@ -120,7 +120,7 @@ TEST_F(BrainFactoryIntegrationTest, CreateAllGeniusTypesBrains) {
 }
 
 TEST_F(BrainFactoryIntegrationTest, InvalidGeniusTypeReturnsNull) {
-    brain_t brain = genius_brain_create((genius_type_t)999);
+    brain_t brain = genius_brain_create_ex((genius_type_t)999, true);
     EXPECT_EQ(brain, nullptr);
 }
 
@@ -129,28 +129,28 @@ TEST_F(BrainFactoryIntegrationTest, InvalidGeniusTypeReturnsNull) {
 //=============================================================================
 
 TEST_F(BrainFactoryIntegrationTest, CreateMathematicalHemisphericBrain) {
-    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create(GENIUS_TYPE_MATHEMATICAL);
+    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create_ex(GENIUS_TYPE_MATHEMATICAL, true);
     ASSERT_NE(hemi_brain, nullptr);
 
     hemispheric_brain_destroy(hemi_brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateVisualArtisticHemisphericBrain) {
-    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create(GENIUS_TYPE_VISUAL_ARTISTIC);
+    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create_ex(GENIUS_TYPE_VISUAL_ARTISTIC, true);
     ASSERT_NE(hemi_brain, nullptr);
 
     hemispheric_brain_destroy(hemi_brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateMusicalHemisphericBrain) {
-    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create(GENIUS_TYPE_MUSICAL);
+    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create_ex(GENIUS_TYPE_MUSICAL, true);
     ASSERT_NE(hemi_brain, nullptr);
 
     hemispheric_brain_destroy(hemi_brain);
 }
 
 TEST_F(BrainFactoryIntegrationTest, InvalidTypeHemisphericBrainReturnsNull) {
-    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create((genius_type_t)999);
+    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create_ex((genius_type_t)999, true);
     EXPECT_EQ(hemi_brain, nullptr);
 }
 
@@ -159,7 +159,7 @@ TEST_F(BrainFactoryIntegrationTest, InvalidTypeHemisphericBrainReturnsNull) {
 //=============================================================================
 
 TEST_F(BrainFactoryIntegrationTest, MathematicalBrainHasStats) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_MATHEMATICAL);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_MATHEMATICAL, true);
     ASSERT_NE(brain, nullptr);
 
     // Verify brain can provide stats
@@ -171,7 +171,7 @@ TEST_F(BrainFactoryIntegrationTest, MathematicalBrainHasStats) {
 }
 
 TEST_F(BrainFactoryIntegrationTest, VisualArtisticBrainHasStats) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_VISUAL_ARTISTIC);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_VISUAL_ARTISTIC, true);
     ASSERT_NE(brain, nullptr);
 
     brain_stats_t stats;
@@ -210,8 +210,8 @@ TEST_F(BrainFactoryIntegrationTest, RegisterKGWiringWithoutActivationFails) {
 //=============================================================================
 
 TEST_F(BrainFactoryIntegrationTest, CreateBrainAndActivateProfile) {
-    // Create brain
-    brain_t brain = genius_brain_create(GENIUS_TYPE_MATHEMATICAL);
+    // Create brain (test_mode for fast init)
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_MATHEMATICAL, true);
     ASSERT_NE(brain, nullptr);
 
     // Also activate profile on bridge
@@ -227,11 +227,11 @@ TEST_F(BrainFactoryIntegrationTest, CreateBrainAndActivateProfile) {
 TEST_F(BrainFactoryIntegrationTest, CreateMultipleBrainsConcurrently) {
     brain_t brains[4] = {nullptr};
 
-    // Create multiple brains of different types
-    brains[0] = genius_brain_create(GENIUS_TYPE_MATHEMATICAL);
-    brains[1] = genius_brain_create(GENIUS_TYPE_VISUAL_ARTISTIC);
-    brains[2] = genius_brain_create(GENIUS_TYPE_MUSICAL);
-    brains[3] = genius_brain_create(GENIUS_TYPE_SCIENTIFIC);
+    // Create multiple brains of different types (test_mode for fast init)
+    brains[0] = genius_brain_create_ex(GENIUS_TYPE_MATHEMATICAL, true);
+    brains[1] = genius_brain_create_ex(GENIUS_TYPE_VISUAL_ARTISTIC, true);
+    brains[2] = genius_brain_create_ex(GENIUS_TYPE_MUSICAL, true);
+    brains[3] = genius_brain_create_ex(GENIUS_TYPE_SCIENTIFIC, true);
 
     // Verify all were created
     for (int i = 0; i < 4; i++) {
@@ -247,8 +247,8 @@ TEST_F(BrainFactoryIntegrationTest, CreateMultipleBrainsConcurrently) {
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateHemisphericBrainAndActivateProfile) {
-    // Create hemispheric brain
-    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create(GENIUS_TYPE_VISUAL_ARTISTIC);
+    // Create hemispheric brain (test_mode for fast init)
+    hemispheric_brain_t* hemi_brain = genius_hemispheric_brain_create_ex(GENIUS_TYPE_VISUAL_ARTISTIC, true);
     ASSERT_NE(hemi_brain, nullptr);
 
     // Also activate profile on bridge
@@ -267,7 +267,7 @@ TEST_F(BrainFactoryIntegrationTest, CreateHemisphericBrainAndActivateProfile) {
 
 TEST_F(BrainFactoryIntegrationTest, CreateBrainWithPolymathTypeNotSupported) {
     // GENIUS_TYPE_POLYMATH requires special handling, may or may not be supported
-    brain_t brain = genius_brain_create(GENIUS_TYPE_POLYMATH);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_POLYMATH, true);
     // May succeed or fail depending on implementation
     if (brain != nullptr) {
         brain_destroy(brain);
@@ -275,12 +275,12 @@ TEST_F(BrainFactoryIntegrationTest, CreateBrainWithPolymathTypeNotSupported) {
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateBrainNegativeType) {
-    brain_t brain = genius_brain_create((genius_type_t)-1);
+    brain_t brain = genius_brain_create_ex((genius_type_t)-1, true);
     EXPECT_EQ(brain, nullptr);
 }
 
 TEST_F(BrainFactoryIntegrationTest, CreateBrainTypeAtBoundary) {
-    brain_t brain = genius_brain_create(GENIUS_TYPE_COUNT);
+    brain_t brain = genius_brain_create_ex(GENIUS_TYPE_COUNT, true);
     EXPECT_EQ(brain, nullptr);
 }
 
@@ -290,7 +290,7 @@ TEST_F(BrainFactoryIntegrationTest, CreateBrainTypeAtBoundary) {
 
 TEST_F(BrainFactoryIntegrationTest, RapidBrainCreationDestruction) {
     for (int i = 0; i < 5; i++) {
-        brain_t brain = genius_brain_create(GENIUS_TYPE_MATHEMATICAL);
+        brain_t brain = genius_brain_create_ex(GENIUS_TYPE_MATHEMATICAL, true);
         ASSERT_NE(brain, nullptr) << "Failed at iteration " << i;
         brain_destroy(brain);
     }
@@ -298,7 +298,7 @@ TEST_F(BrainFactoryIntegrationTest, RapidBrainCreationDestruction) {
 
 TEST_F(BrainFactoryIntegrationTest, RapidHemisphericBrainCreationDestruction) {
     for (int i = 0; i < 5; i++) {
-        hemispheric_brain_t* hemi = genius_hemispheric_brain_create(GENIUS_TYPE_VISUAL_ARTISTIC);
+        hemispheric_brain_t* hemi = genius_hemispheric_brain_create_ex(GENIUS_TYPE_VISUAL_ARTISTIC, true);
         ASSERT_NE(hemi, nullptr) << "Failed at iteration " << i;
         hemispheric_brain_destroy(hemi);
     }

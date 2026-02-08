@@ -925,11 +925,9 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source);
 static bool is_cached_input(brain_t brain, const float* features, uint32_t num_features)
 {
     if (!brain->last_input || !brain->cached_decision) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_cached_input: required parameter is NULL (brain->last_input, brain->cached_decision)");
         return false;
     }
     if (brain->input_size != num_features) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_cached_input: validation failed");
         return false;
     }
 

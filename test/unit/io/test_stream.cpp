@@ -31,9 +31,11 @@
 // Test Fixture
 //=============================================================================
 
-class StreamTest : public NimcpTestBase {
+class StreamTest : public ::testing::Test {
 protected:
-    brain_t brain;
+    // Shared brain across all tests (heavyweight to create/destroy)
+    static brain_t shared_brain;
+    brain_t brain;  // Per-test alias (points to shared_brain)
     brain_stream_t stream;
     stream_config_t config;
 
@@ -48,12 +50,23 @@ protected:
     static std::atomic<int> buffer_full_count;
     static std::atomic<int> error_count;
 
-    void SetUp() override {
-        NimcpTestBase::SetUp();
+    // Suite-level setup: create brain once for all tests
+    static void SetUpTestSuite() {
+        shared_brain = brain_create("test_stream", BRAIN_SIZE_TINY,
+                                    BRAIN_TASK_CLASSIFICATION, NUM_FEATURES, 5);
+    }
 
-        // Create test brain
-        brain = brain_create("test_stream", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION,
-                           NUM_FEATURES, 5);
+    // Suite-level teardown: destroy brain after all tests
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            brain_destroy(shared_brain);
+            shared_brain = nullptr;
+        }
+    }
+
+    void SetUp() override {
+        // Use shared brain
+        brain = shared_brain;
         ASSERT_NE(brain, nullptr);
 
         // Initialize test features
@@ -79,15 +92,12 @@ protected:
             brain_destroy_stream(stream);
             stream = nullptr;
         }
-        if (brain) {
-            brain_destroy(brain);
-            brain = nullptr;
-        }
+
+        // Don't destroy brain here - it's shared across all tests
+        brain = nullptr;
 
         // Ensure stream module is properly shut down
         stream_shutdown();
-
-        NimcpTestBase::TearDown();
     }
 
     // Event callback handlers
@@ -113,6 +123,7 @@ protected:
 };
 
 // Initialize static members
+brain_t StreamTest::shared_brain{nullptr};
 std::atomic<int> StreamTest::high_salience_count{0};
 std::atomic<int> StreamTest::high_surprise_count{0};
 std::atomic<int> StreamTest::decision_ready_count{0};

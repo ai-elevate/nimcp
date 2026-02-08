@@ -279,11 +279,20 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     return m;
 
 error_cleanup:
+    // P1-14 fix: Properly rollback all partial type/exception additions.
+    // PyModule_AddObject steals a reference on success, so successfully-added
+    // objects are owned by the module and will be cleaned up when 'm' is decref'd.
+    // We only need to decref the exception objects that were created but may not
+    // have been added to the module yet.
     Py_XDECREF(NodeError);
+    NodeError = NULL;
     Py_XDECREF(ProtocolError);
+    ProtocolError = NULL;
     Py_XDECREF(NetworkError);
+    NetworkError = NULL;
     Py_XDECREF(NIMCPError);
+    NIMCPError = NULL;
     Py_DECREF(m);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: module initialization failed during type registration");
     return NULL;
 }

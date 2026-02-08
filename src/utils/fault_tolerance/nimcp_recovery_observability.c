@@ -506,18 +506,10 @@ double ro_histogram_mean(const ro_histogram_t* hist) {
 // Tracing Operations
 //=============================================================================
 
-ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
-    if (!ctx || !name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_trace: required parameter is NULL (ctx, name)");
-        return NULL;
-    }
-    if (!ctx->config.enable_tracing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_trace: ctx->config is NULL");
-        return NULL;
-    }
-
-    nimcp_mutex_lock(&ctx->mutex);
-
+/**
+ * @brief Internal unlocked trace start - caller must hold ctx->mutex
+ */
+static ro_span_t* ro_start_trace_unlocked(ro_context_t* ctx, const char* name) {
     if (ctx->span_count >= RO_MAX_SPANS) {
         /* Wrap around */
         ctx->span_head = (ctx->span_head + 1) % RO_MAX_SPANS;
@@ -535,6 +527,23 @@ ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
     span->is_recording = true;
 
     ctx->span_head = (ctx->span_head + 1) % RO_MAX_SPANS;
+
+    return span;
+}
+
+ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_trace: required parameter is NULL (ctx, name)");
+        return NULL;
+    }
+    if (!ctx->config.enable_tracing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_trace: ctx->config is NULL");
+        return NULL;
+    }
+
+    nimcp_mutex_lock(&ctx->mutex);
+
+    ro_span_t* span = ro_start_trace_unlocked(ctx, name);
 
     nimcp_mutex_unlock(&ctx->mutex);
 
@@ -641,11 +650,11 @@ ro_recovery_context_t* ro_start_recovery(ro_context_t* ctx, uint32_t fault_type)
     recovery->fault_type = fault_type;
     recovery->start_time_ns = ro_get_time_ns_internal();
 
-    /* Start trace span */
+    /* Start trace span (use unlocked version since we already hold ctx->mutex) */
     if (ctx->config.enable_tracing) {
         char span_name[64];
         snprintf(span_name, sizeof(span_name), "recovery_%u", recovery->recovery_id);
-        ro_span_t* span = ro_start_trace(ctx, span_name);
+        ro_span_t* span = ro_start_trace_unlocked(ctx, span_name);
         if (span) {
             recovery->root_span = *span;
         }
@@ -984,48 +993,71 @@ uint32_t ro_get_events_by_type(ro_context_t* ctx, ro_event_type_t type,
 // Export Operations
 //=============================================================================
 
+/**
+ * @brief Internal unlocked metrics export - caller must hold ctx->mutex
+ */
+static size_t ro_export_metrics_unlocked(ro_context_t* ctx, ro_export_format_t format, char* buffer, size_t buffer_size) {
+    size_t written = 0;
+
+    if (format == RO_EXPORT_JSON) {
+        int n = snprintf(buffer, buffer_size, "{\n  \"counters\": [\n");
+        if (n > 0) written += (size_t)n;
+        if (written >= buffer_size) return buffer_size - 1;
+
+        for (uint32_t i = 0; i < ctx->counter_count && written < buffer_size - 100; i++) {
+            n = snprintf(buffer + written, buffer_size - written,
+                               "    {\"name\": \"%s\", \"value\": %lu}%s\n",
+                               ctx->counters[i].name, (unsigned long)ctx->counters[i].value,
+                               i < ctx->counter_count - 1 ? "," : "");
+            if (n > 0) written += (size_t)n;
+            if (written >= buffer_size) return buffer_size - 1;
+        }
+
+        n = snprintf(buffer + written, buffer_size - written, "  ],\n  \"gauges\": [\n");
+        if (n > 0) written += (size_t)n;
+        if (written >= buffer_size) return buffer_size - 1;
+
+        for (uint32_t i = 0; i < ctx->gauge_count && written < buffer_size - 100; i++) {
+            n = snprintf(buffer + written, buffer_size - written,
+                               "    {\"name\": \"%s\", \"value\": %.6f}%s\n",
+                               ctx->gauges[i].name, ctx->gauges[i].value,
+                               i < ctx->gauge_count - 1 ? "," : "");
+            if (n > 0) written += (size_t)n;
+            if (written >= buffer_size) return buffer_size - 1;
+        }
+
+        n = snprintf(buffer + written, buffer_size - written, "  ]\n}\n");
+        if (n > 0) written += (size_t)n;
+        if (written >= buffer_size) return buffer_size - 1;
+    } else if (format == RO_EXPORT_PROMETHEUS) {
+        for (uint32_t i = 0; i < ctx->counter_count && written < buffer_size - 100; i++) {
+            int n = snprintf(buffer + written, buffer_size - written,
+                               "# TYPE %s counter\n%s %lu\n",
+                               ctx->counters[i].name, ctx->counters[i].name,
+                               (unsigned long)ctx->counters[i].value);
+            if (n > 0) written += (size_t)n;
+            if (written >= buffer_size) return buffer_size - 1;
+        }
+
+        for (uint32_t i = 0; i < ctx->gauge_count && written < buffer_size - 100; i++) {
+            int n = snprintf(buffer + written, buffer_size - written,
+                               "# TYPE %s gauge\n%s %.6f\n",
+                               ctx->gauges[i].name, ctx->gauges[i].name,
+                               ctx->gauges[i].value);
+            if (n > 0) written += (size_t)n;
+            if (written >= buffer_size) return buffer_size - 1;
+        }
+    }
+
+    return written;
+}
+
 size_t ro_export_metrics(ro_context_t* ctx, ro_export_format_t format, char* buffer, size_t buffer_size) {
     if (!ctx || !buffer || buffer_size == 0) return 0;
 
     nimcp_mutex_lock(&ctx->mutex);
 
-    size_t written = 0;
-
-    if (format == RO_EXPORT_JSON) {
-        written = snprintf(buffer, buffer_size, "{\n  \"counters\": [\n");
-
-        for (uint32_t i = 0; i < ctx->counter_count && written < buffer_size - 100; i++) {
-            written += snprintf(buffer + written, buffer_size - written,
-                               "    {\"name\": \"%s\", \"value\": %lu}%s\n",
-                               ctx->counters[i].name, (unsigned long)ctx->counters[i].value,
-                               i < ctx->counter_count - 1 ? "," : "");
-        }
-
-        written += snprintf(buffer + written, buffer_size - written, "  ],\n  \"gauges\": [\n");
-
-        for (uint32_t i = 0; i < ctx->gauge_count && written < buffer_size - 100; i++) {
-            written += snprintf(buffer + written, buffer_size - written,
-                               "    {\"name\": \"%s\", \"value\": %.6f}%s\n",
-                               ctx->gauges[i].name, ctx->gauges[i].value,
-                               i < ctx->gauge_count - 1 ? "," : "");
-        }
-
-        written += snprintf(buffer + written, buffer_size - written, "  ]\n}\n");
-    } else if (format == RO_EXPORT_PROMETHEUS) {
-        for (uint32_t i = 0; i < ctx->counter_count && written < buffer_size - 100; i++) {
-            written += snprintf(buffer + written, buffer_size - written,
-                               "# TYPE %s counter\n%s %lu\n",
-                               ctx->counters[i].name, ctx->counters[i].name,
-                               (unsigned long)ctx->counters[i].value);
-        }
-
-        for (uint32_t i = 0; i < ctx->gauge_count && written < buffer_size - 100; i++) {
-            written += snprintf(buffer + written, buffer_size - written,
-                               "# TYPE %s gauge\n%s %.6f\n",
-                               ctx->gauges[i].name, ctx->gauges[i].name,
-                               ctx->gauges[i].value);
-        }
-    }
+    size_t written = ro_export_metrics_unlocked(ctx, format, buffer, buffer_size);
 
     nimcp_mutex_unlock(&ctx->mutex);
 
@@ -1097,7 +1129,7 @@ bool ro_flush(ro_context_t* ctx) {
 
     for (uint32_t i = 0; i < ctx->exporter_count; i++) {
         if (ctx->exporters[i].active && ctx->exporters[i].callback) {
-            size_t written = ro_export_metrics(ctx, ctx->exporters[i].format, buffer, sizeof(buffer));
+            size_t written = ro_export_metrics_unlocked(ctx, ctx->exporters[i].format, buffer, sizeof(buffer));
             if (written > 0) {
                 ctx->exporters[i].callback(buffer, written, ctx->exporters[i].format,
                                            ctx->exporters[i].user_data);

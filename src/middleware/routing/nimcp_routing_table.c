@@ -76,8 +76,7 @@ static route_node_t* find_route(const routing_table_t* table,
         node = node->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_source_id: operation failed");
-    return NULL;
+    return NULL;  /* Route not found - normal return, not an error */
 }
 
 static bool create_route(routing_table_t* table,

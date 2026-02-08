@@ -406,6 +406,31 @@ static bool cache_precompute(
                        encoder->embedding_dim * sizeof(float));
                 break;
 
+            case NIMCP_POS_ROTARY: {
+                /* Generate position embedding from RoPE cos/sin cache */
+                uint32_t rope_dim = encoder->data.rope.rope_dim;
+                if (rope_dim == 0) rope_dim = encoder->embedding_dim;
+                uint32_t half_dim = rope_dim / 2;
+                memset(output, 0, encoder->embedding_dim * sizeof(float));
+                for (uint32_t i = 0; i < half_dim && (2 * i + 1) < encoder->embedding_dim; i++) {
+                    size_t cache_idx = pos * half_dim + i;
+                    output[2 * i]     = encoder->data.rope.cos_cache[cache_idx];
+                    output[2 * i + 1] = encoder->data.rope.sin_cache[cache_idx];
+                }
+                break;
+            }
+
+            case NIMCP_POS_RELATIVE: {
+                /* Generate simple sinusoidal position embedding for relative PE */
+                memset(output, 0, encoder->embedding_dim * sizeof(float));
+                for (uint32_t i = 0; i < encoder->embedding_dim; i++) {
+                    float freq = 1.0F / powf(10000.0F, (float)(i / 2 * 2) / (float)encoder->embedding_dim);
+                    float angle = (float)pos * freq;
+                    output[i] = (i % 2 == 0) ? sinf(angle) : cosf(angle);
+                }
+                break;
+            }
+
             default:
                 /* Other types may not use simple position caching */
                 break;
@@ -741,6 +766,31 @@ int nimcp_pos_encode_position(
                    &encoder->data.learned.embeddings[position * encoder->embedding_dim],
                    encoder->embedding_dim * sizeof(float));
             break;
+
+        case NIMCP_POS_ROTARY: {
+            /* Generate position embedding from RoPE cos/sin cache */
+            uint32_t rope_dim = encoder->data.rope.rope_dim;
+            if (rope_dim == 0) rope_dim = encoder->embedding_dim;
+            uint32_t half_dim = rope_dim / 2;
+            memset(output, 0, encoder->embedding_dim * sizeof(float));
+            for (uint32_t i = 0; i < half_dim && (2 * i + 1) < encoder->embedding_dim; i++) {
+                size_t cache_idx = position * half_dim + i;
+                output[2 * i]     = encoder->data.rope.cos_cache[cache_idx];
+                output[2 * i + 1] = encoder->data.rope.sin_cache[cache_idx];
+            }
+            break;
+        }
+
+        case NIMCP_POS_RELATIVE: {
+            /* Generate simple sinusoidal position embedding for relative PE */
+            memset(output, 0, encoder->embedding_dim * sizeof(float));
+            for (uint32_t i = 0; i < encoder->embedding_dim; i++) {
+                float freq = 1.0F / powf(10000.0F, (float)(i / 2 * 2) / (float)encoder->embedding_dim);
+                float angle = (float)position * freq;
+                output[i] = (i % 2 == 0) ? sinf(angle) : cosf(angle);
+            }
+            break;
+        }
 
         default:
             if (encoder->thread_safe) {

@@ -907,6 +907,12 @@ void oscillation_detector_reset(oscillation_detector_t* detector) {
     detector->buffer.count = 0;
     detector->buffer.head = 0;
     memset(detector->band_states, 0, sizeof(detector->band_states));
+
+    // Reset lifetime statistics
+    detector->total_samples = 0;
+    detector->total_bursts = 0;
+    detector->sum_power = 0.0;
+    detector->power_measurements = 0;
 }
 
 bool oscillation_detector_get_stats(const oscillation_detector_t* detector,

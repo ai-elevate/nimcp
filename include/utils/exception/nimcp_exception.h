@@ -856,6 +856,15 @@ int nimcp_exception_system_init(void);
 void nimcp_exception_system_shutdown(void);
 
 /**
+ * @brief Reset exception rate limiter (thread-local)
+ *
+ * Resets the per-thread exception rate limiting counters.
+ * Useful in test environments where many exceptions are expected
+ * across multiple test cases within the same second.
+ */
+void nimcp_exception_reset_rate_limit(void);
+
+/**
  * @brief Check if exception system is initialized
  *
  * @return true if initialized

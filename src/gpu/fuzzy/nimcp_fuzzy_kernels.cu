@@ -521,6 +521,12 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     uint32_t* d_num_params = NULL;
     float* d_alpha_cuts = NULL;
 
+    // Device memory for inputs and outputs (host pointers cannot be used in kernels)
+    float* d_inputs = NULL;
+    float* d_memberships = NULL;
+    size_t inputs_size = params->num_samples * sizeof(float);
+    size_t memberships_size = params->num_samples * num_mfs * sizeof(float);
+
     size_t types_size = num_mfs * sizeof(uint32_t);
     size_t params_size = num_mfs * FUZZY_GPU_MAX_PARAMS * sizeof(float);
 
@@ -530,6 +536,8 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_params, params_size), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_num_params, types_size), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_alpha_cuts, num_mfs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_inputs, inputs_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_memberships, memberships_size), GPU_ERROR_OUT_OF_MEMORY);
 
     // Prepare host arrays
     uint32_t* h_types = (uint32_t*)malloc(types_size);
@@ -565,6 +573,9 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_alpha_cuts, h_alpha_cuts,
                                       num_mfs * sizeof(float),
                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    // Upload inputs to device
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_inputs, inputs, inputs_size,
+                                      cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Launch kernel
     total_elements = params->num_samples * num_mfs;
@@ -572,8 +583,8 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     grid_size = NIMCP_CUDA_GRID_SIZE(total_elements, block_size);
 
     kernel_mf_evaluate_batch<<<grid_size, block_size, 0, stream>>>(
-        inputs, d_types, d_hedges, d_params, d_num_params, d_alpha_cuts,
-        memberships, params->num_samples, num_mfs,
+        d_inputs, d_types, d_hedges, d_params, d_num_params, d_alpha_cuts,
+        d_memberships, params->num_samples, num_mfs,
         params->apply_hedges, params->apply_alpha_cuts);
 
     // Check kernel launch with recovery
@@ -581,6 +592,10 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
 
     // Synchronize
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+
+    // Copy results back to host
+    NIMCP_CUDA_RECOVER(cudaMemcpy(memberships, d_memberships, memberships_size,
+                                  cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
     free(h_types);
@@ -593,6 +608,8 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     cudaFree(d_params);
     cudaFree(d_num_params);
     cudaFree(d_alpha_cuts);
+    cudaFree(d_inputs);
+    cudaFree(d_memberships);
 
     return true;
 
@@ -607,6 +624,8 @@ cleanup_error:
     if (d_params) cudaFree(d_params);
     if (d_num_params) cudaFree(d_num_params);
     if (d_alpha_cuts) cudaFree(d_alpha_cuts);
+    if (d_inputs) cudaFree(d_inputs);
+    if (d_memberships) cudaFree(d_memberships);
     return false;
 }
 
@@ -658,6 +677,10 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     float* d_params = NULL;
     uint32_t* d_num_params = NULL;
 
+    // Device memory for output (host pointer cannot be used in kernels)
+    float* d_discretized = NULL;
+    size_t disc_size = num_mfs * params->resolution * sizeof(float);
+
     size_t types_size = num_mfs * sizeof(uint32_t);
     size_t params_size = num_mfs * FUZZY_GPU_MAX_PARAMS * sizeof(float);
 
@@ -665,6 +688,7 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_hedges, types_size), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_params, params_size), GPU_ERROR_OUT_OF_MEMORY);
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_num_params, types_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_discretized, disc_size), GPU_ERROR_OUT_OF_MEMORY);
 
     // Prepare and upload (same pattern as evaluate)
     uint32_t* h_types = (uint32_t*)malloc(types_size);
@@ -701,11 +725,15 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
 
     kernel_mf_discretize<<<grid_size, block_size, 0, stream>>>(
         d_types, d_hedges, d_params, d_num_params,
-        discretized, num_mfs, params->resolution,
+        d_discretized, num_mfs, params->resolution,
         params->x_min, params->x_max);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+
+    // Copy results back to host
+    NIMCP_CUDA_RECOVER(cudaMemcpy(discretized, d_discretized, disc_size,
+                                  cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_types);
     free(h_hedges);
@@ -715,6 +743,7 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     cudaFree(d_hedges);
     cudaFree(d_params);
     cudaFree(d_num_params);
+    cudaFree(d_discretized);
 
     return true;
 
@@ -727,6 +756,7 @@ cleanup_discretize:
     if (d_hedges) cudaFree(d_hedges);
     if (d_params) cudaFree(d_params);
     if (d_num_params) cudaFree(d_num_params);
+    if (d_discretized) cudaFree(d_discretized);
     return false;
 }
 

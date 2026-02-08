@@ -129,8 +129,8 @@ hr_config_t hr_default_config(void) {
 }
 
 hr_context_t* hr_create(const hr_config_t* config) {
-    // Guard: Validate config using API exception macro
-    NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_POINTER, "hr_create: NULL config provided");
+    // Guard: Validate config - returns NULL for pointer-returning function
+    NIMCP_API_CHECK_NULL_RET_NULL(config, "hr_create: NULL config provided");
 
     // Allocate context
     hr_context_t* ctx = nimcp_malloc(sizeof(hr_context_t));

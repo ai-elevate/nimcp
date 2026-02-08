@@ -39,6 +39,15 @@ static nimcp_platform_mutex_t* g_exception_mutex = NULL;
 /* Thread-local current exception */
 static _Thread_local nimcp_exception_t* tl_current_exception = NULL;
 
+/* Rate limiter for non-severe exceptions to prevent performance degradation.
+ * When NIMCP_THROW_TO_IMMUNE was added to ~28,000 error returns, hot paths
+ * like neural_network_add_connection and brain_create generate thousands of
+ * exceptions during normal operation, each requiring allocation + dispatch. */
+static _Thread_local uint64_t tl_exception_window_start = 0;
+static _Thread_local uint32_t tl_exception_count_in_window = 0;
+#define EXCEPTION_RATE_LIMIT_WINDOW_US  1000000  /* 1 second window */
+#define EXCEPTION_RATE_LIMIT_MAX        5000     /* max 5000 non-severe per second */
+
 /* ============================================================================
  * Internal Helpers
  * ============================================================================ */
@@ -273,6 +282,22 @@ nimcp_exception_t* nimcp_exception_create(
     const char* format,
     ...
 ) {
+    /* Rate limit non-severe exceptions to prevent performance degradation.
+     * Severe/critical/fatal exceptions always pass through. */
+    if (severity < EXCEPTION_SEVERITY_SEVERE) {
+        uint64_t now = get_timestamp_us();
+        if (now - tl_exception_window_start > EXCEPTION_RATE_LIMIT_WINDOW_US) {
+            /* New window */
+            tl_exception_window_start = now;
+            tl_exception_count_in_window = 1;
+        } else {
+            tl_exception_count_in_window++;
+            if (tl_exception_count_in_window > EXCEPTION_RATE_LIMIT_MAX) {
+                return NULL;  /* Rate limited - NIMCP_THROW_TO_IMMUNE checks for NULL */
+            }
+        }
+    }
+
     nimcp_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_exception_t));
     if (!ex) return NULL;
 
@@ -294,8 +319,10 @@ nimcp_exception_t* nimcp_exception_create(
         va_end(args);
     }
 
-    /* Capture stack trace (skip 2 frames: this function + caller) */
-    nimcp_exception_capture_stack_trace(&ex->stack_trace, 2);
+    /* Capture stack trace only for severe+ exceptions (backtrace is expensive) */
+    if (severity >= EXCEPTION_SEVERITY_SEVERE) {
+        nimcp_exception_capture_stack_trace(&ex->stack_trace, 2);
+    }
 
     /* Generate immune epitope */
     nimcp_exception_generate_epitope(ex);
@@ -1114,10 +1141,21 @@ void nimcp_exception_clear_current(void) {
  * Exception System Initialization
  * ============================================================================ */
 
+void nimcp_exception_reset_rate_limit(void) {
+    tl_exception_window_start = 0;
+    tl_exception_count_in_window = 0;
+}
+
 int nimcp_exception_system_init(void) {
     if (g_exception_system_initialized) {
+        /* Reset rate limiter even if already initialized, so tests
+         * that call init/shutdown per test case get fresh limits */
+        nimcp_exception_reset_rate_limit();
         return 0;  /* Already initialized */
     }
+
+    /* Reset rate limiter on fresh init */
+    nimcp_exception_reset_rate_limit();
 
     g_exception_mutex = nimcp_calloc(1, sizeof(nimcp_platform_mutex_t));
     if (!g_exception_mutex) {
@@ -1150,6 +1188,9 @@ void nimcp_exception_system_shutdown(void) {
         nimcp_free(g_exception_mutex);
         g_exception_mutex = NULL;
     }
+
+    /* Reset rate limiter so re-initialization works correctly */
+    nimcp_exception_reset_rate_limit();
 
     g_exception_system_initialized = false;
 }

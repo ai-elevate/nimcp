@@ -369,9 +369,6 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
 
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create ToM substrate bridge: NULL substrate");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
-
-
         return NULL;
     }
 

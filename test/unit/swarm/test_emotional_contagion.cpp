@@ -387,8 +387,8 @@ TEST_F(EmotionalContagionTest, DecayToNeutral) {
 
     emotional_contagion_set_emotion(ec, 0, EMOTION_SADNESS, 0.5f);
 
-    /* Apply heavy decay */
-    for (int i = 0; i < 100; i++) {
+    /* Apply heavy decay - need ~200 iterations for 0.5 * exp(-0.1*200) < 1e-6 EPSILON */
+    for (int i = 0; i < 200; i++) {
         emotional_contagion_apply_decay(ec, 1000);
     }
 

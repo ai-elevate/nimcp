@@ -668,8 +668,8 @@ nimcp_error_t mesh_msp_authenticate(
     /* Check credential */
     if (!mesh_msp_is_credential_valid(msp, participant_id)) {
         msp->stats.auth_denied++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ACCESS_DENIED, "mesh_msp: error condition");
-        return NIMCP_ERROR_ACCESS_DENIED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNAUTHORIZED, "mesh_msp: participant has no valid credential");
+        return NIMCP_ERROR_UNAUTHORIZED;
     }
 
     /* Check quarantine */

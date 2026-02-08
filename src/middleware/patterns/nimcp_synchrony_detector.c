@@ -523,7 +523,9 @@ void synchrony_detector_reset(synchrony_detector_t* detector) {
     memset(detector->neuron_spike_counts, 0, detector->num_neurons * sizeof(uint32_t));
     memset(detector->last_spike_times, 0, detector->num_neurons * sizeof(double));
 
-    // Reset statistics (keep totals for lifetime stats)
+    // Reset all statistics including lifetime stats
+    detector->total_spikes = 0;
+    detector->total_critical_events = 0;
     detector->sum_synchrony = 0.0;
     detector->synchrony_measurements = 0;
 }
