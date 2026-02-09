@@ -228,7 +228,7 @@ int dragonfly_cnn_add_frame(
 
     bridge->motion_history.frames[idx].data = nimcp_malloc(size * sizeof(float));
     if (!bridge->motion_history.frames[idx].data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_cnn_add_frame: bridge->motion_history is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_cnn_add_frame: failed to allocate frame data");
         return -1;
     }
 
@@ -389,7 +389,7 @@ float dragonfly_cnn_evaluate(
 
 int dragonfly_cnn_set_learning_rate(dragonfly_cnn_bridge_t* bridge, float lr) {
     if (!bridge || lr <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_set_learning_rate: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_set_learning_rate: bridge is NULL or lr <= 0");
         return -1;
     }
     bridge->config.learning_rate = lr;

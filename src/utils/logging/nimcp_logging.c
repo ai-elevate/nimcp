@@ -478,7 +478,8 @@ static bool ring_buffer_push(log_ring_buffer_t* rb, const nimcp_log_entry_t* ent
         // Check if buffer is full
         if (next_pos - read_pos >= rb->capacity) {
             nimcp_atomic_fetch_add_u64(&rb->drop_count, 1, NIMCP_MEMORY_ORDER_RELAXED);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ring_buffer_push: capacity exceeded");
+            /* Buffer full is a normal condition in a bounded ring buffer.
+             * Caller (process_entry) handles this by falling back to sync writes. */
             return false;  // Buffer full
         }
 
@@ -494,7 +495,8 @@ static bool ring_buffer_push(log_ring_buffer_t* rb, const nimcp_log_entry_t* ent
     }
 
     nimcp_atomic_fetch_add_u64(&rb->drop_count, 1, NIMCP_MEMORY_ORDER_RELAXED);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_push: operation failed");
+    /* CAS retry exhaustion under contention is normal, not an error.
+     * Caller handles gracefully by falling back to sync writes. */
     return false;
 }
 

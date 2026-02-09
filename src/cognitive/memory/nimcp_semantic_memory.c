@@ -34,6 +34,7 @@ nimcp_error_t semantic_memory_mesh_register(mesh_participant_registry_t* registr
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "semantic_memory", MESH_MAX_NAME_LEN - 1);
+    iface.module_name[MESH_MAX_NAME_LEN - 1] = '\0';
     iface.type = MESH_PARTICIPANT_MODULE;
     iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
     mesh_participant_config_t config;

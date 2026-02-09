@@ -1372,7 +1372,7 @@ bool global_workspace_resolve(
         }
 
         nimcp_platform_mutex_unlock(&ws->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: validation failed");
+        /* No winner is normal competition outcome, not an error */
         return false;
     }
 
@@ -1423,7 +1423,7 @@ bool global_workspace_resolve(
         // Winner found but blocked by refractory period
         // Keep competitors in pool for next resolve attempt
         nimcp_platform_mutex_unlock(&ws->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: operation failed");
+        /* Refractory period block is normal operation, not an error */
         return false;
     }
 }

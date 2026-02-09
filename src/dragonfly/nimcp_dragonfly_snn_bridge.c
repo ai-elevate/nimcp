@@ -170,7 +170,7 @@ int dragonfly_snn_bridge_validate_config(const dragonfly_snn_config_t* config) {
         return -1;
     }
     if (config->algorithm >= DRAGONFLY_TRAIN_HYBRID + 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: invalid algorithm");
         return -1;
     }
     if (config->surrogate.method >= DRAGONFLY_SURROGATE_COUNT) {
@@ -653,7 +653,7 @@ int dragonfly_snn_update_eligibility(
 
 int dragonfly_snn_set_learning_rate(dragonfly_snn_bridge_t* bridge, float lr) {
     if (!bridge || lr <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_set_learning_rate: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_set_learning_rate: bridge is NULL or lr <= 0");
         return -1;
     }
     bridge->config.learning_rate = lr;

@@ -417,13 +417,15 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
     }
 
     if (token == NULL) {
-        // All slots full
+        // All slots full - normal contention, not an error
         LOG_MODULE_WARN("toctou_guard",
             "Maximum concurrent tokens reached (%u)",
             guard->config.max_concurrent_tokens);
         guard->stats.contention_events++;
         nimcp_platform_mutex_unlock(&guard->guard_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_toctou_validate_custom: validation failed");
+        /* P3: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+         * All token slots being in use is a normal contention condition,
+         * not an immune-level error. The caller checks the NULL return. */
         return NULL;
     }
 
@@ -438,7 +440,9 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
             token->state = TOKEN_STATE_INVALID;
             nimcp_platform_mutex_unlock(&token->token_lock);
             nimcp_platform_mutex_unlock(&guard->guard_lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_toctou_validate_custom: validator is NULL");
+            /* P3: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+             * Validation rejection is a normal result path, not an error.
+             * The caller checks the NULL return and stats track the failure. */
             return NULL;
         }
     }

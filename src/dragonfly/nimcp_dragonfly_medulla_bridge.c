@@ -542,7 +542,7 @@ int dragonfly_medulla_bridge_get_modulation(
 
 int dragonfly_medulla_bridge_notify_pursuit_start(dragonfly_medulla_bridge_t bridge) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_pursuit_start: required parameter is NULL (bridge, bridge->connected)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_pursuit_start: bridge is NULL or not connected");
         return -1;
     }
 
@@ -567,7 +567,7 @@ int dragonfly_medulla_bridge_notify_pursuit_start(dragonfly_medulla_bridge_t bri
 
 int dragonfly_medulla_bridge_notify_intercept_success(dragonfly_medulla_bridge_t bridge) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_intercept_success: required parameter is NULL (bridge, bridge->connected)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_intercept_success: bridge is NULL or not connected");
         return -1;
     }
 
@@ -595,7 +595,7 @@ int dragonfly_medulla_bridge_notify_pursuit_failure(
     const char* reason
 ) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_pursuit_failure: required parameter is NULL (bridge, bridge->connected)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_pursuit_failure: bridge is NULL or not connected");
         return -1;
     }
 
@@ -623,7 +623,7 @@ int dragonfly_medulla_bridge_notify_pursuit_failure(
 
 bool dragonfly_medulla_bridge_hunting_allowed(const dragonfly_medulla_bridge_t bridge) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_hunting_allowed: required parameter is NULL (bridge, bridge->connected)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_hunting_allowed: bridge is NULL or not connected");
         return false;
     }
 

@@ -655,7 +655,7 @@ bool symbolic_logic_lgss_parse_domain(const char* domain_str, safety_domain_t* d
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_domain: validation failed");
+    /* Unrecognized domain string is validation rejection, not an error */
     return false;
 }
 
@@ -675,7 +675,7 @@ bool symbolic_logic_lgss_parse_severity(const char* severity_str, safety_severit
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_severity: validation failed");
+    /* Unrecognized severity string is validation rejection, not an error */
     return false;
 }
 
@@ -695,7 +695,7 @@ bool symbolic_logic_lgss_parse_action(const char* action_str, safety_action_t* a
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_action: validation failed");
+    /* Unrecognized action string is validation rejection, not an error */
     return false;
 }
 
@@ -720,7 +720,7 @@ bool symbolic_logic_lgss_parse_operator(const char* op_str, safety_condition_op_
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_operator: validation failed");
+    /* Unrecognized operator string is validation rejection, not an error */
     return false;
 }
 

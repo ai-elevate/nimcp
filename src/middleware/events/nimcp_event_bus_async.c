@@ -373,7 +373,9 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
         nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to publish request");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: event_bus_publish is NULL");
+        /* P3: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+         * Publish failure (e.g., queue full) is a normal operational condition,
+         * not an immune-level error. The caller handles the NULL return. */
         return NULL;
     }
 
