@@ -8,10 +8,14 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <math.h>
+
+/* P3-OPT-2: Add LOG_MODULE for logging macros */
+#define LOG_MODULE "OPTIMIZATION_TERNARY"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantum_annealing_ternary)
@@ -151,9 +155,14 @@ int quantum_ternary_anneal(
             ? (float)sweep / (float)(config->num_sweeps - 1)
             : 1.0f;
 
+        /* P2-OPT-2: Validate temperatures before computing log ratio */
+        float clamped_init = (config->initial_temperature > 1e-10f) ? config->initial_temperature : 1e-10f;
+        float clamped_final = (config->final_temperature > 1e-10f) ? config->final_temperature : 1e-10f;
+        if (clamped_final >= clamped_init) clamped_final = clamped_init * 0.01f;
+
         /* Exponential cooling */
-        float log_ratio = logf(config->initial_temperature / config->final_temperature);
-        float temperature = config->initial_temperature * expf(-progress * log_ratio);
+        float log_ratio = logf(clamped_init / clamped_final);
+        float temperature = clamped_init * expf(-progress * log_ratio);
 
         /* Linear gamma decrease */
         float gamma = config->initial_gamma * (1.0f - progress) +
@@ -201,7 +210,10 @@ int quantum_ternary_anneal(
     /* Fill result */
     result->final_energy = trit_ising_energy(ising, J, h);
     result->total_flips = total_accepted;
-    result->tunnel_events = tunnel_count;
+    /* P2-OPT-3: tunnel_events was always 0 because tunnel_count is never incremented.
+     * Tunneling detection requires tracking superposition-to-classical transitions
+     * which is not yet instrumented. Set to 0 explicitly and document as TODO. */
+    result->tunnel_events = 0;  /* TODO: Instrument tunneling event detection */
     result->final_coherence = trit_ising_coherence(ising);
     result->converged = (result->final_coherence == 0.0f);
 

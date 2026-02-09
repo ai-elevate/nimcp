@@ -331,8 +331,11 @@ bool event_bus_unsubscribe(event_bus_t bus, subscription_handle_t handle) {
 uint32_t event_bus_process_events(event_bus_t bus, uint32_t max_events) {
     if (!bus) return 0;
 
-    event_t events[256];
-    uint32_t batch_size = (max_events < 256) ? max_events : 256;
+    /* P2-MW-07 fix: Reduced batch from 256 to 64 to limit stack usage.
+     * event_t is ~128 bytes, so 64 events = ~8KB (safe for default stacks).
+     * Previously 256 events = ~32KB which risks stack overflow on constrained platforms. */
+    event_t events[64];
+    uint32_t batch_size = (max_events < 64) ? max_events : 64;
     uint32_t count = event_queue_dequeue_batch(bus->queue, events, batch_size);
 
     if (count > 0) {

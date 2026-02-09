@@ -2719,6 +2719,7 @@
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_kg_hierarchy_graph_algorithms.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_cycle_coordinator.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_walkthrough_fixes.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_pass3_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/rebuild_cache.dir
@@ -4148,6 +4149,7 @@
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_world_model.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_creative.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_training_walkthrough.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_pass3_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/rebuild_cache.dir
@@ -4966,6 +4968,7 @@
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_p0_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_test_return_codes.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_test_bbb_quarantine.dir
+/home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_pass3_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/rebuild_cache.dir
@@ -5100,6 +5103,7 @@
 /home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/regression_async_test_wiring_diagram_validation.dir
 /home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/regression_async_test_self_assembly.dir
 /home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/regression_async_test_walkthrough_fixes.dir
+/home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/regression_async_test_middleware_pass3_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/async/CMakeFiles/rebuild_cache.dir
@@ -6067,6 +6071,7 @@
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_substrate_gpu_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_walkthrough_fixes.dir
+/home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_pass3_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/rebuild_cache.dir

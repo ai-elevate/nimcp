@@ -796,6 +796,9 @@ void bio_router_shutdown(void) {
     // Clear brain KG reference
     g_router_brain_kg = NULL;
 
+    /* P2-54 fix: Reset platform_once so bio-router can be re-initialized after shutdown */
+    g_router_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+
     LOG_INFO("Bio-router shutdown complete");
 }
 
@@ -997,8 +1000,11 @@ void bio_router_unregister_module(bio_module_context_t ctx) {
     // Mark as invalid (DO NOT compact array - other contexts have pointers to entries)
     entry->magic = 0;
 
-    // Note: We don't decrement module_count because it's a high-water mark.
-    // Invalid entries (magic=0) are skipped by find_module and shutdown.
+    /* P2-55 note: module_count is the high-water mark, NOT the active count.
+     * We do NOT decrement it because other contexts may hold pointers to entries
+     * at indices < module_count. Instead, invalid entries (magic=0) are skipped
+     * by find_module, shutdown, and iteration. Active count is tracked separately
+     * in stats.active_modules (updated below). */
 
     // Count active modules for statistics
     uint32_t active_count = 0;

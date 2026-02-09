@@ -69,6 +69,10 @@ static size_t compute_numel(const size_t* dims, uint32_t ndim)
     if (!dims || ndim == 0) return 0;
     size_t numel = 1;
     for (uint32_t i = 0; i < ndim; i++) {
+        /* P3-T2: Overflow check - detect multiplication overflow */
+        if (dims[i] != 0 && numel > SIZE_MAX / dims[i]) {
+            return 0; /* Overflow would occur */
+        }
         numel *= dims[i];
     }
     return numel;
@@ -1390,6 +1394,11 @@ extern "C" int nimcp_tensor_reduce_axes(
         return -1;
     }
 
+    /* P3-T1: Validate ndim against NIMCP_TENSOR_MAX_RANK (matches stack array sizes) */
+    if (input_ndim > NIMCP_TENSOR_MAX_RANK) {
+        return -1;
+    }
+
     // For single axis, use direct reduction
     if (num_axes == 1) {
         return nimcp_tensor_reduce_axis(gpu_ctx, input, output, input_dims, input_ndim, axes[0], op);
@@ -1420,8 +1429,14 @@ extern "C" int nimcp_tensor_reduce_axes(
     // Allocate temporary buffers
     float* temp1 = NULL;
     float* temp2 = NULL;
-    cudaMalloc(&temp1, numel * sizeof(float));
-    cudaMalloc(&temp2, numel * sizeof(float));
+    /* P1-T1: Check cudaMalloc return values to prevent NULL dereference */
+    cudaError_t alloc_err1 = cudaMalloc(&temp1, numel * sizeof(float));
+    cudaError_t alloc_err2 = cudaMalloc(&temp2, numel * sizeof(float));
+    if (alloc_err1 != cudaSuccess || alloc_err2 != cudaSuccess) {
+        if (temp1) cudaFree(temp1);
+        if (temp2) cudaFree(temp2);
+        return -1;
+    }
 
     // Copy current dims (will be modified as we reduce)
     size_t current_dims[8];
@@ -1468,12 +1483,13 @@ extern "C" int nimcp_tensor_reduce_axes(
     for (int i = 0; i < current_ndim; i++) {
         out_numel *= current_dims[i];
     }
-    cudaMemcpy(output, src, out_numel * sizeof(float), cudaMemcpyDeviceToDevice);
+    /* P2-T3: Check cudaMemcpy return value */
+    cudaError_t cpy_err = cudaMemcpy(output, src, out_numel * sizeof(float), cudaMemcpyDeviceToDevice);
 
     cudaFree(temp1);
     cudaFree(temp2);
 
-    return 0;
+    return (cpy_err == cudaSuccess) ? 0 : -1;
 }
 
 bool nimcp_gpu_sum(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
@@ -1608,8 +1624,10 @@ bool nimcp_gpu_argmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
         return true;
     }
 
-    LOG_WARN("Axis-specific argmax not yet implemented");
-    return nimcp_gpu_argmax(ctx, x, out, -1);
+    /* P2-T1: Return error instead of silently falling back to global argmax,
+     * which would produce incorrect results for axis-specific reduction */
+    LOG_ERROR("Axis-specific argmax not yet implemented for axis=%d", axis);
+    return false;
 }
 
 bool nimcp_gpu_argmin(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
@@ -1641,8 +1659,21 @@ bool nimcp_gpu_var(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
     nimcp_gpu_mean(ctx, x, mean_tensor, -1, false);
     nimcp_gpu_tensor_to_host(mean_tensor, &mean_val);
 
+    /* P2-T2: Guard against division by zero with unbiased=true and numel<=1 */
+    if (unbiased && x->numel <= 1) {
+        float zero = 0.0f;
+        cudaMemcpy(out->data, &zero, sizeof(float), cudaMemcpyHostToDevice);
+        nimcp_gpu_tensor_destroy(mean_tensor);
+        return true;
+    }
+
     // Compute variance on CPU (temporary solution)
     float* host_data = (float*)malloc(x->numel * sizeof(float));
+    /* P1-T2: Check malloc result for host_data */
+    if (!host_data) {
+        nimcp_gpu_tensor_destroy(mean_tensor);
+        return false;
+    }
     nimcp_gpu_tensor_to_host(x, host_data);
 
     float var = 0.0f;
@@ -1696,7 +1727,12 @@ bool nimcp_gpu_norm_l2(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, fl
 {
     if (!ctx || !x || !result) return false;
 
+    /* P2-T4: Validate cuBLAS handle before use */
     cublasHandle_t handle = (cublasHandle_t)ctx->cublas_handle;
+    if (!handle) {
+        LOG_ERROR("cuBLAS handle is NULL, cannot compute L2 norm");
+        return false;
+    }
     CUBLAS_CHECK(cublasSnrm2(handle, x->numel, (const float*)x->data, 1, result));
     return true;
 }
@@ -1910,12 +1946,15 @@ bool nimcp_gpu_reshape(nimcp_gpu_tensor_t* tensor, const size_t* new_dims, uint3
         return false;
     }
 
-    // Reallocate dimension arrays
+    /* P1-T3: Assign realloc result to tensor->dims immediately to prevent
+     * use-after-free if the second realloc fails (the first realloc may have
+     * freed the original pointer, leaving tensor->dims dangling) */
     size_t* new_dims_array = (size_t*)realloc(tensor->dims, new_ndim * sizeof(size_t));
-    size_t* new_strides = (size_t*)realloc(tensor->strides, new_ndim * sizeof(size_t));
-    if (!new_dims_array || !new_strides) return false;
+    if (!new_dims_array) return false;
+    tensor->dims = new_dims_array;  /* Update immediately */
 
-    tensor->dims = new_dims_array;
+    size_t* new_strides = (size_t*)realloc(tensor->strides, new_ndim * sizeof(size_t));
+    if (!new_strides) return false;
     tensor->strides = new_strides;
     tensor->ndim = new_ndim;
 

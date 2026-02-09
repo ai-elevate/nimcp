@@ -88,6 +88,13 @@ nimcp_ring_buffer_t* nimcp_ring_buffer_create_with_destructor(
         return NULL;
     }
     if (capacity == 0) capacity = NIMCP_RING_BUFFER_DEFAULT_CAPACITY;
+
+    /* P3-U2: Overflow check on capacity * element_size to prevent wrapping */
+    if (element_size > 0 && capacity > SIZE_MAX / element_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_ring_buffer_create_with_destructor: capacity * element_size overflows");
+        return NULL;
+    }
     if (capacity > NIMCP_RING_BUFFER_MAX_CAPACITY) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "nimcp_ring_buffer_create_with_destructor: capacity exceeds maximum");

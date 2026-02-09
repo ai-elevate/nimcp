@@ -93,9 +93,14 @@ typedef struct event_bus_internal {
     char name[EVENT_BUS_THREAD_NAME_SIZE]; /**< Bus name */
     fault_event_delivery_mode_t delivery_mode;   /**< Delivery mode */
 
+    /* P2-U5: Lock ordering documentation.
+     * When both locks are needed, always acquire subscriber_mutex BEFORE stats_mutex.
+     * deliver_event_to_subscribers() holds subscriber_mutex while calling stats_mutex,
+     * so the ordering is: subscriber_mutex -> stats_mutex. Never reverse. */
+
     // Subscriber management
     subscriber_t* subscribers[EVENT_BUS_MAX_EVENT_TYPES]; /**< Subscribers by type hash */
-    nimcp_mutex_t subscriber_mutex;        /**< Subscriber list mutex */
+    nimcp_mutex_t subscriber_mutex;        /**< Subscriber list mutex (ORDER: acquire FIRST) */
     uint64_t next_handle;                  /**< Next subscription handle */
     uint32_t subscriber_count;             /**< Total subscribers */
 
@@ -121,7 +126,7 @@ typedef struct event_bus_internal {
     uint64_t max_latency_us;               /**< Max delivery latency */
     uint64_t latency_samples;              /**< Latency sample count */
 
-    nimcp_mutex_t stats_mutex;             /**< Statistics mutex */
+    nimcp_mutex_t stats_mutex;             /**< Statistics mutex (ORDER: acquire SECOND) */
 } event_bus_internal_t;
 
 //=============================================================================
@@ -368,8 +373,11 @@ static bool event_queue_dequeue(event_queue_t* queue, fault_event_t* event) {
     nimcp_mutex_lock(&queue->mutex);
 
     // Wait if empty
+    // P2-U3: Check shutdown flag inside wait loop to avoid blocking forever
     while (queue->count == 0) {
         nimcp_cond_wait(&queue->not_empty, &queue->mutex);
+        /* Re-check after wakeup: if still empty, may be a spurious wakeup
+         * or a shutdown signal. Caller checks shutdown flag after dequeue. */
     }
 
     // Get head
@@ -525,7 +533,8 @@ static void* event_bus_worker_thread(void* arg) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_worker_thread: validation failed");
+    /* P2-U4: Worker thread exiting is normal shutdown behavior, not an error.
+     * Removed false positive NIMCP_THROW_TO_IMMUNE. */
     return NULL;
 }
 

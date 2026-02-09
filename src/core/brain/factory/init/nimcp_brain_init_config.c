@@ -71,9 +71,9 @@ void brain_init_config_mesh_unregister(void) {
 }
 
 
-// Compatibility macro for set_error (converts to LOG_ERROR)
+// P3-56 FIX: Variadic set_error macro for formatted error messages
 #ifndef set_error
-#define set_error(msg) LOG_ERROR(LOG_MODULE, "%s", msg)
+#define set_error(fmt, ...) LOG_ERROR(LOG_MODULE, fmt, ##__VA_ARGS__)
 #endif
 
 //=============================================================================
@@ -404,9 +404,26 @@ void nimcp_brain_factory_init_brain_stats(brain_stats_t* stats, const char* task
 
     stats->size = size;
     stats->num_neurons = num_neurons;
-    stats->num_synapses = num_neurons * num_inputs;
+
+    // P2-59 FIX: Check for integer overflow in num_neurons * num_inputs
+    // Use 64-bit multiplication to detect overflow
+    uint64_t synapse_count = (uint64_t)num_neurons * (uint64_t)num_inputs;
+    if (synapse_count > UINT32_MAX) {
+        LOG_WARN(LOG_MODULE, "Synapse count overflow: %u * %u exceeds uint32_t, clamping",
+                 num_neurons, num_inputs);
+        stats->num_synapses = UINT32_MAX;
+    } else {
+        stats->num_synapses = (uint32_t)synapse_count;
+    }
     stats->num_active_synapses = stats->num_synapses;
     stats->current_learning_rate = learning_rate;
     stats->quantum_annealing_runs = 0;
-    strncpy(stats->task_name, task_name, sizeof(stats->task_name) - 1);
+
+    // P2-58 FIX: Guard against task_name==NULL before strncpy
+    if (task_name) {
+        strncpy(stats->task_name, task_name, sizeof(stats->task_name) - 1);
+        stats->task_name[sizeof(stats->task_name) - 1] = '\0';
+    } else {
+        stats->task_name[0] = '\0';
+    }
 }

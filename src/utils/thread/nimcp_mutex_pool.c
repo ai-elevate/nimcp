@@ -220,10 +220,17 @@ void nimcp_mutex_pool_release(nimcp_mutex_slot_t slot) {
         return;
     }
 
-    // Update ref count atomically (lock-free)
+    /* P2-U22: Use CAS loop to prevent underflow. The old load-then-sub pattern
+     * was racy: between the load and sub_fetch, another thread could decrement
+     * to 0, causing this thread to underflow past 0 with the sub_fetch. */
     uint32_t old_count = __atomic_load_n(&g_pool.ref_counts[slot], __ATOMIC_RELAXED);
-    if (old_count > 0) {
-        __atomic_sub_fetch(&g_pool.ref_counts[slot], 1, __ATOMIC_RELAXED);
+    while (old_count > 0) {
+        if (__atomic_compare_exchange_n(&g_pool.ref_counts[slot], &old_count,
+                                         old_count - 1, false,
+                                         __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+            break;
+        }
+        /* CAS failed, old_count was reloaded - retry */
     }
     nimcp_atomic_fetch_add_u32(&g_pool.total_releases, 1, NIMCP_MEMORY_ORDER_RELAXED);
 }

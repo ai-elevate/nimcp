@@ -102,18 +102,21 @@ static uint64_t get_time_ns(void) {
 static _Atomic uint64_t s_ordering_prng_state = 0;
 
 static uint32_t ordering_thread_safe_rand(void) {
-    uint64_t old_state = atomic_load(&s_ordering_prng_state);
-    if (old_state == 0) {
-        old_state = (uint64_t)nimcp_time_now_ns();
-        atomic_store(&s_ordering_prng_state, old_state);
-    }
-    /* xorshift64 */
-    uint64_t x = old_state;
-    x ^= x << 13;
-    x ^= x >> 7;
-    x ^= x << 17;
-    atomic_store(&s_ordering_prng_state, x);
-    return (uint32_t)(x & 0x7FFFFFFF);
+    /* P2-143: Use CAS loop instead of atomic_load/atomic_store to prevent TOCTOU race */
+    uint64_t old_state, new_state;
+    do {
+        old_state = atomic_load(&s_ordering_prng_state);
+        if (old_state == 0) {
+            old_state = (uint64_t)nimcp_time_now_ns();
+            if (old_state == 0) old_state = 1;  /* Avoid zero seed */
+        }
+        /* xorshift64 */
+        new_state = old_state;
+        new_state ^= new_state << 13;
+        new_state ^= new_state >> 7;
+        new_state ^= new_state << 17;
+    } while (!atomic_compare_exchange_weak(&s_ordering_prng_state, &old_state, new_state));
+    return (uint32_t)(new_state & 0x7FFFFFFF);
 }
 
 static void generate_random_timeout(mesh_ordering_service_t* service) {
@@ -186,9 +189,9 @@ mesh_ordering_service_t* mesh_ordering_create(
 
     /* Copy name */
     if (service->config.service_name) {
-        service->name = strdup(service->config.service_name);
+        service->name = nimcp_strdup(service->config.service_name);
     } else {
-        service->name = strdup("ordering_service");
+        service->name = nimcp_strdup("ordering_service");
     }
 
     service->orderer_pool = orderer_pool;
@@ -612,7 +615,9 @@ mesh_ordered_block_t* mesh_ordering_create_block(
 
     block->block_number = service->current_block_number++;
     block->first_sequence = service->current_batch->transactions[0]->sequence_number;
-    block->last_sequence = service->current_batch->transactions[service->current_batch->count - 1]->sequence_number;
+    /* P2-144: NULL check on last transaction before dereferencing */
+    mesh_transaction_t* last_tx = service->current_batch->transactions[service->current_batch->count - 1];
+    block->last_sequence = last_tx ? last_tx->sequence_number : block->first_sequence;
     block->timestamp_ns = get_time_ns();
 
     /* Copy transaction IDs */
@@ -868,6 +873,8 @@ nimcp_error_t mesh_ordering_handle_append_entries(
     /* Check if log matches at prev_log_index */
     if (prev_log_index > 0) {
         if (prev_log_index > service->raft.log_size) {
+            /* P1-46: Must unlock mutex before early return */
+            nimcp_mutex_unlock(service->mutex);
             return NIMCP_SUCCESS;  /* Missing entries */
         }
         if (prev_log_index <= service->raft.log_size &&

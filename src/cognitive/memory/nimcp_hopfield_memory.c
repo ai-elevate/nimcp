@@ -210,12 +210,11 @@ static inline const float* get_pattern_const(const hopfield_memory_t* memory, ui
  */
 static inline bool should_use_gpu(const hopfield_memory_t* memory, uint32_t batch_size) {
 #ifdef NIMCP_ENABLE_CUDA
+    /* P2-COG-04: Returning false is normal behavior, not an error */
     if (!memory || !memory->gpu_initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "should_use_gpu: required parameter is NULL (memory, memory->gpu_initialized)");
         return false;
     }
     if (memory->config.gpu_mode == HOPFIELD_GPU_DISABLED) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "should_use_gpu: validation failed");
         return false;
     }
     if (memory->config.gpu_mode == HOPFIELD_GPU_REQUIRED) {
@@ -231,7 +230,7 @@ static inline bool should_use_gpu(const hopfield_memory_t* memory, uint32_t batc
 #else
     (void)memory;
     (void)batch_size;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "should_use_gpu: validation failed");
+    /* P2-COG-04: No GPU support is normal, not an error */
     return false;
 #endif
 }
@@ -302,7 +301,8 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
 
     if (hopfield_validate_config(config) != NIMCP_SUCCESS) {
         NIMCP_LOG_ERROR("Invalid configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hopfield_memory_create: validation failed");
+        /* P2-COG-05: Use NIMCP_ERROR_INVALID_PARAM for config validation failure */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hopfield_memory_create: invalid configuration");
         return NULL;
     }
 

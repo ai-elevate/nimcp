@@ -533,7 +533,9 @@ visual_image_t* visual_image_clone(const visual_image_t* src) {
         return NULL;
     }
 
-    size_t data_size = (size_t)src->width * src->height * src->channels;
+    /* P1-COG-01: Use dst dimensions (known-safe after successful create)
+     * to avoid trusting potentially-corrupted src dimensions for memcpy size */
+    size_t data_size = (size_t)dst->width * dst->height * dst->channels;
     memcpy(dst->pixels, src->pixels, data_size * sizeof(float));
 
     return dst;
@@ -543,8 +545,11 @@ visual_image_t* visual_image_clone(const visual_image_t* src) {
 // Music Track Utilities
 //=============================================================================
 
+/** P3-COG-02: Named constant for default track capacity */
+#define CREATIVE_DEFAULT_MAX_NOTES 10000
+
 music_track_t* music_track_create(uint32_t max_notes) {
-    if (max_notes == 0) max_notes = 10000;  /* Default */
+    if (max_notes == 0) max_notes = CREATIVE_DEFAULT_MAX_NOTES;
 
     music_track_t* track = nimcp_calloc(1, sizeof(music_track_t));
     if (!track) {
@@ -728,4 +733,99 @@ void creative_blend_result_free(influence_blend_result_t* result) {
     }
 
     result->num_influences = 0;
+}
+
+//=============================================================================
+// Appreciation API - Stub implementations
+//=============================================================================
+
+int creative_evaluate_text(creative_orchestrator_t* orchestrator,
+                           const char* text, size_t len,
+                           art_modality_t modality,
+                           aesthetic_evaluation_t* out) {
+    if (!orchestrator || !text || !out) return -1;
+    (void)len;
+    (void)modality;
+    memset(out, 0, sizeof(*out));
+    return -1;  /* Not yet implemented */
+}
+
+int creative_evaluate_music(creative_orchestrator_t* orchestrator,
+                            const music_track_t* tracks, uint32_t num_tracks,
+                            aesthetic_evaluation_t* out) {
+    if (!orchestrator || !tracks || !out) return -1;
+    (void)num_tracks;
+    memset(out, 0, sizeof(*out));
+    return -1;  /* Not yet implemented */
+}
+
+int creative_evaluate_visual(creative_orchestrator_t* orchestrator,
+                             const visual_image_t* image,
+                             aesthetic_evaluation_t* out) {
+    if (!orchestrator || !image || !out) return -1;
+    memset(out, 0, sizeof(*out));
+    return -1;  /* Not yet implemented */
+}
+
+//=============================================================================
+// Inspiration API - Stub implementations
+//=============================================================================
+
+int creative_extract_style(creative_orchestrator_t* orchestrator,
+                           const void* content,
+                           art_modality_t modality,
+                           style_embedding_t* out) {
+    if (!orchestrator || !content || !out) return -1;
+    (void)modality;
+    memset(out, 0, sizeof(*out));
+    return -1;  /* Not yet implemented */
+}
+
+int creative_blend_influences(creative_orchestrator_t* orchestrator,
+                              const creative_influence_t* influences,
+                              uint32_t num_influences,
+                              influence_blend_result_t* out) {
+    if (!orchestrator || !influences || !out) return -1;
+    (void)num_influences;
+    memset(out, 0, sizeof(*out));
+    return -1;  /* Not yet implemented */
+}
+
+int creative_get_archetype_style(creative_orchestrator_t* orchestrator,
+                                 art_modality_t modality,
+                                 int32_t archetype_id,
+                                 style_embedding_t* out) {
+    if (!orchestrator || !out) return -1;
+    (void)modality;
+    (void)archetype_id;
+    memset(out, 0, sizeof(*out));
+    return -1;  /* Not yet implemented */
+}
+
+//=============================================================================
+// Generation API - Stub implementations
+//=============================================================================
+
+int creative_generate_text(creative_orchestrator_t* orchestrator,
+                           const text_generation_request_t* request,
+                           text_generation_result_t* result) {
+    if (!orchestrator || !request || !result) return -1;
+    memset(result, 0, sizeof(*result));
+    return -1;  /* Not yet implemented */
+}
+
+int creative_generate_music(creative_orchestrator_t* orchestrator,
+                            const music_generation_request_t* request,
+                            music_generation_result_t* result) {
+    if (!orchestrator || !request || !result) return -1;
+    memset(result, 0, sizeof(*result));
+    return -1;  /* Not yet implemented */
+}
+
+int creative_generate_visual(creative_orchestrator_t* orchestrator,
+                             const visual_generation_request_t* request,
+                             visual_generation_result_t* result) {
+    if (!orchestrator || !request || !result) return -1;
+    memset(result, 0, sizeof(*result));
+    return -1;  /* Not yet implemented */
 }

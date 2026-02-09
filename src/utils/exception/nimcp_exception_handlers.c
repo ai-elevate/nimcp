@@ -18,6 +18,8 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include "utils/platform/nimcp_platform_once.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,19 +50,30 @@ static struct {
 static _Thread_local nimcp_try_context_t* tl_try_stack[NIMCP_TRY_STACK_DEPTH];
 static _Thread_local size_t tl_try_depth = 0;
 
+/* P2-U25: Thread-safe one-time initialization via platform_once */
+static nimcp_platform_once_t g_handler_init_once = NIMCP_PLATFORM_ONCE_INIT;
+
 /* ============================================================================
  * Internal Helpers
  * ============================================================================ */
 
-static void ensure_initialized(void) {
-    if (g_handlers_initialized) return;
-
+/**
+ * @brief Internal init callback for platform_once
+ */
+static void ensure_initialized_internal(void) {
     /* Use a statically-allocated mutex to avoid tracked nimcp_malloc.
      * This prevents a permanent ~40-byte leak in the memory tracker
      * since the handler mutex is never freed during normal operation. */
     nimcp_platform_mutex_init(&g_handler_mutex_storage, false);
     g_handler_mutex = &g_handler_mutex_storage;
     g_handlers_initialized = true;
+}
+
+static void ensure_initialized(void) {
+    if (g_handlers_initialized) return;
+    /* P2-U25: Use platform_once to prevent race condition where two threads
+     * could both see g_handlers_initialized==false and double-init the mutex */
+    nimcp_platform_once(&g_handler_init_once, ensure_initialized_internal);
 }
 
 /**
@@ -128,18 +141,26 @@ nimcp_handler_registration_t* nimcp_handler_register(
     ensure_initialized();
 
     if (!options || !options->handler) return NULL;
-    if (g_handler_count >= NIMCP_HANDLER_MAX_REGISTERED) return NULL;
 
     nimcp_handler_registration_t* reg = nimcp_calloc(1, sizeof(nimcp_handler_registration_t));
     if (!reg) {
         return NULL;
     }
 
-    reg->id = g_next_handler_id++;
+    /* P2-U27: Atomic ID generation to prevent duplicates under concurrency */
+    reg->id = __atomic_fetch_add(&g_next_handler_id, 1, __ATOMIC_RELAXED);
     reg->options = *options;
     reg->active = true;
 
     if (g_handler_mutex) nimcp_platform_mutex_lock(g_handler_mutex);
+
+    /* P2-U26: Check capacity inside mutex to prevent TOCTOU race where two
+     * threads both pass the check and exceed NIMCP_HANDLER_MAX_REGISTERED */
+    if (g_handler_count >= NIMCP_HANDLER_MAX_REGISTERED) {
+        if (g_handler_mutex) nimcp_platform_mutex_unlock(g_handler_mutex);
+        nimcp_free(reg);
+        return NULL;
+    }
 
     g_handlers[g_handler_count++] = reg;
     sort_handlers();
@@ -473,4 +494,7 @@ void nimcp_exception_handlers_shutdown(void) {
     }
 
     g_handlers_initialized = false;
+
+    /* P2-U25: Reset platform_once so handlers can be re-initialized after shutdown */
+    g_handler_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 }

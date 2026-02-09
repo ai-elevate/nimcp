@@ -78,7 +78,11 @@ static nimcp_metrics_config_t g_config;
 static nimcp_platform_mutex_t* g_metrics_mutex = NULL;
 static nimcp_platform_mutex_t* g_adaptive_mutex = NULL;
 
-/* Global counters (atomic) */
+/* P2-U28: Global counters use GCC __atomic_* builtins for atomicity.
+ * The volatile qualifier is retained for compatibility but the actual
+ * thread-safety comes from __atomic_add_fetch, __atomic_load_n, etc.
+ * We avoid C11 _Atomic here because the __atomic builtins are already
+ * used consistently throughout the codebase and work on plain types. */
 static volatile uint64_t g_total_exceptions = 0;
 static volatile uint64_t g_total_recoveries_attempted = 0;
 static volatile uint64_t g_total_recoveries_succeeded = 0;
@@ -640,6 +644,9 @@ size_t nimcp_metrics_top_categories(
 
     if (g_metrics_mutex) nimcp_platform_mutex_unlock(g_metrics_mutex);
 
+    /* P2-U29: Guard against underflow when count==0 (count-1 wraps to SIZE_MAX) */
+    if (count == 0) return 0;
+
     /* Simple bubble sort (categories array is small) */
     for (size_t i = 0; i < count - 1; i++) {
         for (size_t j = 0; j < count - i - 1; j++) {
@@ -688,6 +695,9 @@ size_t nimcp_metrics_top_patterns(
     }
 
     if (g_adaptive_mutex) nimcp_platform_mutex_unlock(g_adaptive_mutex);
+
+    /* P2-U30: Guard against underflow when count==0 (count-1 wraps to SIZE_MAX) */
+    if (count == 0) return 0;
 
     /* Sort by total attempts (descending) */
     for (size_t i = 0; i < count - 1; i++) {

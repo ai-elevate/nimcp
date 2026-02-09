@@ -18,6 +18,7 @@
 #include "cognitive/creative/nimcp_creative.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <time.h>
 
@@ -116,8 +117,9 @@ void creative_orchestrator_destroy(creative_orchestrator_t* orch) {
     /* Note: Subsystem destruction would be implemented when subsystems exist */
     /* For now, just free the orchestrator struct */
 
-    nimcp_free(orch);
+    /* P3-COG-03: Log before free to avoid use-after-free */
     LOG_INFO(LOG_MODULE, "Creative orchestrator destroyed");
+    nimcp_free(orch);
 }
 
 int creative_orchestrator_init_subsystems(creative_orchestrator_t* orch) {
@@ -175,7 +177,14 @@ int creative_orchestrator_get_stats(const creative_orchestrator_t* orch,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_get_stats: required parameter is NULL (orch, out)");
         return -1;
     }
+    /* P2: Copy stats under mutex to prevent torn reads */
+    if (orch->mutex) {
+        nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)orch->mutex);
+    }
     *out = orch->stats;
+    if (orch->mutex) {
+        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)orch->mutex);
+    }
     return 0;
 }
 

@@ -27,6 +27,9 @@
 #include <math.h>
 #include <stdatomic.h>
 
+/* P3-D: Named constant instead of magic number for belief array capacity */
+#define MESH_DEFAULT_BELIEF_CAPACITY 64
+
 /* ============================================================================
  * BBB Integration for Mesh Channel
  * ============================================================================ */
@@ -390,7 +393,7 @@ mesh_channel_t* mesh_channel_create(
     }
 
     /* Allocate beliefs array */
-    channel->belief_capacity = 64;
+    channel->belief_capacity = MESH_DEFAULT_BELIEF_CAPACITY;
     channel->beliefs = nimcp_calloc(channel->belief_capacity, sizeof(mesh_belief_t));
     if (!channel->beliefs) {
         LOG_ERROR("Failed to allocate beliefs array");
@@ -605,12 +608,16 @@ nimcp_error_t mesh_channel_get_participants(
     if (!validate_channel(channel)) return NIMCP_ERROR_INVALID_PARAM;
     if (!ids_out || !count_out) return NIMCP_ERROR_NULL_POINTER;
 
+    /* P2-152: Mutex protection for participant array access */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+
     size_t count = channel->participant_count < max_ids ?
                    channel->participant_count : max_ids;
 
     memcpy(ids_out, channel->participants, count * sizeof(mesh_participant_id_t));
     *count_out = count;
 
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -1167,7 +1174,9 @@ nimcp_error_t mesh_channel_update(
 
     nimcp_mutex_lock(channel->mutex);
 
-    /* Run gossip rounds */
+    /* Run gossip rounds - P2-153: Intentional unlock-relock pattern.
+     * Gossip rounds involve network I/O and must not hold the channel lock.
+     * State is re-validated after each round when lock is reacquired. */
     for (uint32_t i = 0; i < channel->config.gossip_rounds_per_update; i++) {
         nimcp_mutex_unlock(channel->mutex);
         mesh_channel_gossip_round(channel);

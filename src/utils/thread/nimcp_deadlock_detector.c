@@ -152,8 +152,8 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
         }
     }
 
-    // Check if mutex is held by another thread
-    if (waiting_on->is_locked && waiting_on->owner != 0) {
+    // Check if mutex is held by another thread - use owner_valid flag (P2-U20)
+    if (waiting_on->is_locked && waiting_on->owner_valid) {
         pthread_t owner = waiting_on->owner;
 
         // Check if already visited (cycle) - use in_use flag and pthread_equal for portability
@@ -289,7 +289,7 @@ bool tracked_mutex_init(tracked_mutex_t* mutex, const char* name, uint32_t timeo
     mutex->name = name ? name : "unnamed";
     mutex->order = g_next_order++;
     mutex->timeout_ms = (timeout_ms > 0) ? timeout_ms : g_config.default_timeout_ms;
-    mutex->owner = 0;
+    mutex->owner_valid = false;  /* P2-U20: Use bool flag instead of comparing pthread_t to 0 */
     mutex->is_locked = false;
     mutex->lock_count = 0;
     mutex->timeout_count = 0;
@@ -421,6 +421,7 @@ bool tracked_mutex_lock(tracked_mutex_t* mutex) {
 
         mutex->is_locked = true;
         mutex->owner = self;
+        mutex->owner_valid = true;  /* P2-U20: Mark owner as valid */
         mutex->lock_count++;
         mutex->total_wait_time_us += wait_time;
 
@@ -467,6 +468,7 @@ bool tracked_mutex_trylock(tracked_mutex_t* mutex) {
         lock_detector();
         mutex->is_locked = true;
         mutex->owner = pthread_self();
+        mutex->owner_valid = true;  /* P2-U20: Mark owner as valid */
         mutex->lock_count++;
         unlock_detector();
         return true;
@@ -483,10 +485,10 @@ void tracked_mutex_unlock(tracked_mutex_t* mutex) {
 
     pthread_t self = pthread_self();
 
-    // Update tracking
-    if (mutex->owner == self) {
+    // Update tracking - use pthread_equal for portability (P2-U20)
+    if (mutex->owner_valid && pthread_equal(mutex->owner, self)) {
         mutex->is_locked = false;
-        mutex->owner = 0;
+        mutex->owner_valid = false;  /* P2-U20: Clear flag instead of setting owner=0 */
         g_stats.total_unlocks++;
 
         // Remove from thread's holding list
@@ -546,7 +548,11 @@ uint32_t deadlock_detector_check(void) {
 }
 
 deadlock_detector_stats_t deadlock_detector_get_stats(void) {
-    return g_stats;
+    /* P2-U21: Copy stats under lock to get a consistent snapshot */
+    lock_detector();
+    deadlock_detector_stats_t snapshot = g_stats;
+    unlock_detector();
+    return snapshot;
 }
 
 void deadlock_detector_print_stats(void) {

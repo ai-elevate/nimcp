@@ -254,7 +254,10 @@ static uint32_t detect_critical_events(synchrony_detector_t* detector,
     bool* fired = (bool*)memory_pool_acquire(detector->neuron_bool_pool);
     if (!fired) return 0;
 
-    // Sliding window within the main window
+    /* P2-MW-15 fix: Document O(N^2) complexity. N = window->count (number of spikes).
+     * For each spike, we check all other spikes for coincidence - this is inherently
+     * O(N^2). For large windows (>10K spikes), consider spatial hashing or sorted
+     * timestamp binary search. Added early exit on inner loop once threshold is met. */
     for (uint32_t i = 0; i < window->count; i++) {
         uint32_t idx = (window->head + window->capacity - window->count + i) % window->capacity;
         double center_time = window->spikes[idx].timestamp_ms;
@@ -263,6 +266,8 @@ static uint32_t detect_critical_events(synchrony_detector_t* detector,
         memset(fired, 0, detector->num_neurons * sizeof(bool));
 
         uint32_t local_count = 0;
+        uint32_t neurons_needed = (uint32_t)(threshold * (float)detector->num_neurons);
+
         for (uint32_t j = 0; j < window->count; j++) {
             uint32_t jdx = (window->head + window->capacity - window->count + j) % window->capacity;
             double dt = fabs(window->spikes[jdx].timestamp_ms - center_time);
@@ -272,6 +277,8 @@ static uint32_t detect_critical_events(synchrony_detector_t* detector,
                 if (nid < detector->num_neurons && !fired[nid]) {
                     fired[nid] = true;
                     local_count++;
+                    /* P2-MW-15 fix: Early exit once threshold is definitely met */
+                    if (local_count >= neurons_needed) break;
                 }
             }
         }
@@ -557,13 +564,23 @@ float synchrony_detector_compute_correlation(const synchrony_detector_t* detecto
         return 0.0F;
     }
 
-    // Find appropriate window
+    /* Find appropriate window (smallest window >= requested size).
+     * P3-MW-10 fix: Log warning when no window is large enough and we fall
+     * back to the smallest (index 0). This means the requested window_ms
+     * exceeds all configured windows. */
     uint32_t window_idx = 0;
+    bool found_window = false;
     for (uint32_t i = 0; i < detector->config.num_windows; i++) {
         if (detector->windows[i].window_size_ms >= window_ms) {
             window_idx = i;
+            found_window = true;
             break;
         }
+    }
+    if (!found_window) {
+        LOG_WARN(LOG_MODULE, "compute_correlation: requested window %.1f ms exceeds all "
+                 "configured windows, falling back to smallest (%.1f ms)",
+                 window_ms, detector->windows[0].window_size_ms);
     }
 
     const spike_window_t* window = &detector->windows[window_idx];
@@ -599,5 +616,11 @@ float synchrony_detector_compute_correlation(const synchrony_detector_t* detecto
     if (total_a == 0 && total_b == 0) return 0.0F;
     if (total_a == 0 || total_b == 0) return 0.0F;
 
-    return (float)coincident / (float)(total_a + total_b - coincident + 1);
+    /* P3-MW-11 fix: Use max(1, denominator) instead of +1 bias.
+     * The +1 systematically underestimates correlation. Using max(1, ...) only
+     * protects against the degenerate case where all spikes are coincident
+     * (total_a + total_b - coincident == 0). */
+    uint32_t denominator = total_a + total_b - coincident;
+    if (denominator == 0) denominator = 1;
+    return (float)coincident / (float)denominator;
 }

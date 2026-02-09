@@ -269,8 +269,8 @@ mtl_ctx_t* mtl_create(const mtl_config_t* config) {
         return NULL;
     }
 
-    /* Initialize RNG */
-    ctx->rng_seed = (unsigned int)time(NULL);
+    /* P3-MTL-1: Mix in address of ctx for better entropy than time(NULL) alone */
+    ctx->rng_seed = (unsigned int)time(NULL) ^ (unsigned int)(uintptr_t)ctx;
 
     ctx->initialized = true;
     return ctx;
@@ -481,8 +481,19 @@ int mtl_compute_loss(
 
         /* Uncertainty weighting: loss / (2 * exp(log_var)) + 0.5 * log_var */
         if (ctx->config.weighting == MTL_WEIGHT_UNCERTAINTY) {
-            if (task_id >= MTL_MAX_TASKS) continue;
-            float log_var = ctx->uncertainty.log_vars[task_id];
+            /* P1-MTL-1: task_id is user-defined and may not equal internal index.
+             * Look up the task's internal index instead of using task_id directly. */
+            uint32_t internal_idx = 0;
+            bool found_idx = false;
+            for (uint32_t k = 0; k < ctx->num_tasks; k++) {
+                if (ctx->tasks[k].def.task_id == task_id) {
+                    internal_idx = k;
+                    found_idx = true;
+                    break;
+                }
+            }
+            if (!found_idx || internal_idx >= MTL_MAX_TASKS) continue;
+            float log_var = ctx->uncertainty.log_vars[internal_idx];
             float precision = expf(-log_var);
             weight = precision;
             task_loss = task_loss * precision + 0.5f * log_var;
@@ -764,6 +775,12 @@ int mtl_update_weights(
 
             /* Compute relative inverse training rates */
             float* r_i = nimcp_calloc(ctx->num_tasks, sizeof(float));
+            /* P2-MTL-1: NULL check on allocation */
+            if (!r_i) {
+                nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_update_weights: r_i allocation failed");
+                return -1;
+            }
             for (uint32_t i = 0; i < ctx->num_tasks; i++) {
                 r_i[i] = powf(ctx->gradnorm.loss_ratios[i] / (avg_ratio + MTL_EPSILON),
                               ctx->config.gradnorm.alpha);
@@ -822,6 +839,12 @@ int mtl_update_weights(
             /* r_i(t) = L_i(t-1) / L_i(t-2) */
 
             float* softmax_weights = nimcp_calloc(ctx->num_tasks, sizeof(float));
+            /* P2-MTL-2: NULL check on allocation */
+            if (!softmax_weights) {
+                nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_update_weights: softmax_weights allocation failed");
+                return -1;
+            }
             float max_rate = -1e9f;
 
             for (uint32_t i = 0; i < ctx->num_tasks; i++) {
@@ -978,6 +1001,11 @@ int mtl_update_weights(
 
     /* Compute entropy */
     float* normalized = nimcp_calloc(ctx->num_tasks, sizeof(float));
+    /* P2-MTL-5: NULL check on allocation */
+    if (!normalized) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return 0;
+    }
     float sum = 0.0f;
     for (uint32_t i = 0; i < ctx->num_tasks; i++) {
         sum += ctx->stats.task_weights[i];
@@ -1017,6 +1045,11 @@ uint32_t mtl_sample_task(mtl_ctx_t* ctx) {
         case MTL_SAMPLE_TEMPERATURE: {
             /* Temperature-based sampling */
             float* probs = nimcp_calloc(ctx->num_active, sizeof(float));
+            /* P2-MTL-3: NULL check on allocation */
+            if (!probs) {
+                nimcp_mutex_unlock(ctx->mutex);
+                return 0;
+            }
             float sum = 0.0f;
 
             for (uint32_t i = 0; i < ctx->num_active; i++) {
@@ -1070,6 +1103,11 @@ uint32_t mtl_sample_tasks(
     } else {
         /* Sample without replacement */
         bool* selected = nimcp_calloc(ctx->num_active, sizeof(bool));
+        /* P2-MTL-4: NULL check on allocation */
+        if (!selected) {
+            nimcp_mutex_unlock(ctx->mutex);
+            return 0;
+        }
 
         while (sampled < num_tasks) {
             uint32_t idx = rand_r(&ctx->rng_seed) % ctx->num_active;

@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -213,6 +214,9 @@ struct mesh_topology_ctx_internal {
     /* Cluster tracking */
     uint32_t num_clusters;
     bool clusters_computed;
+
+    /* P2-154: Thread safety */
+    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -385,6 +389,16 @@ mesh_topology_ctx_t mesh_topology_create(const mesh_topology_config_t* config) {
         return NULL;
     }
 
+    /* P2-154: Create mutex for thread safety */
+    ctx->mutex = nimcp_mutex_create(NULL);
+    if (!ctx->mutex) {
+        nimcp_free(ctx->hub_ids);
+        nimcp_free(ctx->nodes);
+        nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_topology_create: mutex creation failed");
+        return NULL;
+    }
+
     return ctx;
 }
 
@@ -396,6 +410,11 @@ void mesh_topology_destroy(mesh_topology_ctx_t ctx) {
         if (ctx->nodes[i].valid) {
             free_adj_list(ctx->nodes[i].neighbors);
         }
+    }
+
+    /* P2-154: Destroy mutex */
+    if (ctx->mutex) {
+        nimcp_mutex_destroy(ctx->mutex);
     }
 
     nimcp_free(ctx->nodes);
@@ -413,10 +432,14 @@ nimcp_error_t mesh_topology_add_participant(
 ) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P2-154: Mutex protection for topology modification */
+    nimcp_mutex_lock(ctx->mutex);
+
     /* BBB validation before topology modification */
     if (!validate_topology_change_bbb(ctx, participant_id)) {
         LOG_ERROR("Rejecting topology add for participant 0x%lx - BBB validation failed",
                   (unsigned long)participant_id);
+        nimcp_mutex_unlock(ctx->mutex);
         return NIMCP_ERROR_BBB_VALIDATION;
     }
 
@@ -425,6 +448,7 @@ nimcp_error_t mesh_topology_add_participant(
 
     /* Check if already exists */
     if (find_node(ctx, participant_id)) {
+        nimcp_mutex_unlock(ctx->mutex);
         return NIMCP_SUCCESS; /* Already present */
     }
 
@@ -432,7 +456,10 @@ nimcp_error_t mesh_topology_add_participant(
     if (ctx->node_count >= ctx->node_capacity * 0.7) {
         size_t new_capacity = ctx->node_capacity * 2;
         topo_node_t* new_nodes = (topo_node_t*)nimcp_calloc(new_capacity, sizeof(topo_node_t));
-        if (!new_nodes) return NIMCP_ERROR_NO_MEMORY;
+        if (!new_nodes) {
+            nimcp_mutex_unlock(ctx->mutex);
+            return NIMCP_ERROR_NO_MEMORY;
+        }
 
         /* Rehash all nodes */
         for (size_t i = 0; i < ctx->node_capacity; i++) {
@@ -452,7 +479,10 @@ nimcp_error_t mesh_topology_add_participant(
 
     /* Find slot and insert */
     topo_node_t* slot = find_empty_slot(ctx, participant_id);
-    if (!slot) return NIMCP_ERROR_CAPACITY_EXCEEDED;
+    if (!slot) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return NIMCP_ERROR_CAPACITY_EXCEEDED;
+    }
 
     memset(slot, 0, sizeof(topo_node_t));
     slot->id = participant_id;
@@ -460,6 +490,7 @@ nimcp_error_t mesh_topology_add_participant(
     ctx->node_count++;
     ctx->metrics_valid = false;
 
+    nimcp_mutex_unlock(ctx->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -471,10 +502,14 @@ nimcp_error_t mesh_topology_add_connection(
 ) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P2-154: Mutex protection for topology modification */
+    nimcp_mutex_lock(ctx->mutex);
+
     /* BBB validation of connection parameters */
     if (!validate_connection_bbb(from, to, weight)) {
         LOG_ERROR("Rejecting connection 0x%lx -> 0x%lx - BBB validation failed",
                   (unsigned long)from, (unsigned long)to);
+        nimcp_mutex_unlock(ctx->mutex);
         return NIMCP_ERROR_BBB_VALIDATION;
     }
 
@@ -485,15 +520,20 @@ nimcp_error_t mesh_topology_add_connection(
     topo_node_t* to_node = find_node(ctx, to);
 
     if (!from_node || !to_node) {
+        nimcp_mutex_unlock(ctx->mutex);
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     nimcp_error_t err = add_neighbor(from_node, to, weight);
-    if (err != NIMCP_SUCCESS) return err;
+    if (err != NIMCP_SUCCESS) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return err;
+    }
 
     ctx->connection_count++;
     ctx->metrics_valid = false;
 
+    nimcp_mutex_unlock(ctx->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -503,8 +543,14 @@ nimcp_error_t mesh_topology_remove_participant(
 ) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P2-154: Mutex protection for topology modification */
+    nimcp_mutex_lock(ctx->mutex);
+
     topo_node_t* node = find_node(ctx, participant_id);
-    if (!node) return NIMCP_ERROR_NOT_FOUND;
+    if (!node) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
 
     /* Remove all edges to this node from other nodes */
     for (size_t i = 0; i < ctx->node_capacity; i++) {
@@ -522,6 +568,7 @@ nimcp_error_t mesh_topology_remove_participant(
     ctx->node_count--;
     ctx->metrics_valid = false;
 
+    nimcp_mutex_unlock(ctx->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -730,6 +777,17 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
     size_t sample_count = ctx->node_count < 50 ? ctx->node_count : 50;
     size_t sampled = 0;
 
+    /* P3-E: Allocate BFS buffers once before loop instead of per-iteration */
+    uint32_t* dist = (uint32_t*)nimcp_malloc(ctx->node_capacity * sizeof(uint32_t));
+    uint32_t* paths = (uint32_t*)nimcp_malloc(ctx->node_capacity * sizeof(uint32_t));
+    size_t* queue = (size_t*)nimcp_malloc(ctx->node_capacity * sizeof(size_t));
+    if (!dist || !paths || !queue) {
+        nimcp_free(dist);
+        nimcp_free(paths);
+        nimcp_free(queue);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
     for (size_t src_idx = 0; src_idx < ctx->node_capacity && sampled < sample_count; src_idx++) {
         if (!ctx->nodes[src_idx].valid) continue;
         sampled++;
@@ -740,29 +798,13 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
             mesh_topology_heartbeat("betweenness_bfs", progress);
         }
 
-        /* BFS from this source */
-        uint32_t* dist = (uint32_t*)nimcp_malloc(ctx->node_capacity * sizeof(uint32_t));
-        uint32_t* paths = (uint32_t*)nimcp_malloc(ctx->node_capacity * sizeof(uint32_t));
-        if (!dist || !paths) {
-            nimcp_free(dist);
-            nimcp_free(paths);
-            return NIMCP_ERROR_NO_MEMORY;
-        }
-
+        /* Reset BFS buffers for this iteration */
         for (size_t j = 0; j < ctx->node_capacity; j++) {
             dist[j] = UINT32_MAX;
             paths[j] = 0;
         }
         dist[src_idx] = 0;
         paths[src_idx] = 1;
-
-        /* Simple BFS queue (array-based) */
-        size_t* queue = (size_t*)nimcp_malloc(ctx->node_capacity * sizeof(size_t));
-        if (!queue) {
-            nimcp_free(dist);
-            nimcp_free(paths);
-            return NIMCP_ERROR_NO_MEMORY;
-        }
 
         size_t front = 0, back = 0;
         queue[back++] = src_idx;
@@ -799,11 +841,11 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
                 ctx->nodes[j].betweenness += (float)paths[j];
             }
         }
-
-        nimcp_free(queue);
-        nimcp_free(dist);
-        nimcp_free(paths);
     }
+
+    nimcp_free(queue);
+    nimcp_free(dist);
+    nimcp_free(paths);
 
     /* Normalize betweenness */
     float max_betweenness = 0.0f;

@@ -197,8 +197,9 @@ static float* extract_segment(
     size_t offset,
     size_t segment_len) {
 
-    if (!signal || offset + segment_len > signal_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vector_cosine_similarity: signal is NULL");
+    /* P3-62 fix: Check for size_t addition overflow before comparison */
+    if (!signal || segment_len > signal_len || offset > signal_len - segment_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_segment: signal is NULL or out of bounds");
         return NULL;
     }
 
@@ -751,10 +752,17 @@ nimcp_result_t nimcp_semantic_compressor_get_stats(
     NIMCP_CHECK_THROW(compressor && stats, NIMCP_ERROR_NULL_POINTER,
                       "nimcp_semantic_compressor_get_stats: compressor or stats is NULL");
 
-    /* Copy stats without locking to avoid casting away const (undefined behavior).
-     * Reading stats without a lock may result in slightly stale data, but this is
-     * acceptable for monitoring purposes. The struct copy is essentially atomic
-     * for all practical purposes on aligned data. */
+    /* P2-61 fix: Document intentional lock-free stats read.
+     * We do NOT lock here because:
+     * 1. The compressor parameter is const, and casting away const for mutex
+     *    would be undefined behavior if the original object is truly const.
+     * 2. Stats are only used for monitoring/display - slightly stale data
+     *    is acceptable.
+     * 3. The struct copy on aligned data is safe on x86/x64 (no torn reads
+     *    for aligned 32/64-bit values). On ARM/RISC-V, individual fields may
+     *    be slightly inconsistent but the overall stats are still useful.
+     * Trade-off: Accepts potentially stale/inconsistent stats for monitoring
+     * in exchange for avoiding UB and const-correctness. */
     *stats = compressor->stats;
 
     return NIMCP_SUCCESS;

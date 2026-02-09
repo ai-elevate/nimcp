@@ -1044,3 +1044,59 @@ set_tests_properties(regression_security_test_bbb_quarantine PROPERTIES
     LABELS "regression;security;bbb;quarantine;p0;p1;p2"
     TIMEOUT 60
 )
+
+# ============================================================================
+# Security Pass-3 P1/P2/P3 Fixes Regression Tests
+# ============================================================================
+# WHAT: Regression tests for P1/P2/P3 security module fixes (pass 3)
+# WHY:  Prevent reintroduction of buffer over-read, deadlock, division by zero,
+#        thread safety, false positive, wrong error code, and atomics issues
+# HOW:  GTest with targeted verification of each fix
+#
+# FIXES COVERED:
+# P1-SEC-1: TOCTOU lock ordering inversion (ABBA deadlock)
+# P1-SEC-2: Heap buffer over-read in ct_strcmp
+# P1-SEC-3: WM guard occupied_slots never incremented
+# P1-SEC-4: WM guard division by zero in detect_manipulation
+# P2-SEC-1: TOCTOU false positive throw in token_is_valid
+# P2-SEC-2: TOCTOU g_toctou_module_cleaned_up not atomic
+# P2-SEC-3: TOCTOU g_toctou_init_once not reset on cleanup
+# P2-SEC-4: constant_time ct_memcmp_tracked stats not thread-safe
+# P2-SEC-5: constant_time constructor/destructor race
+# P2-SEC-6: constant_time division by zero in timing verification
+# P2-SEC-9: LGSS wrong error codes
+# P2-SEC-10: WM guard safety_reservation_ratio underflow
+# P2-SEC-11: WM guard division by zero in sanitization ratio
+# P2-SEC-12: WM guard no thread safety
+# P3-SEC-2: LGSS non-reentrant lgss_version_string
+# ============================================================================
+
+add_executable(regression_security_pass3_fixes
+    test_security_pass3_fixes.cpp
+)
+target_link_libraries(regression_security_pass3_fixes
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_pass3_fixes
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/lgss
+        ${CMAKE_SOURCE_DIR}/include/security/lgss/cognitive
+        ${CMAKE_SOURCE_DIR}/include/utils
+        ${CMAKE_SOURCE_DIR}/include/utils/error
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_pass3_fixes PRIVATE cxx_std_17)
+add_test(NAME regression_security_pass3_fixes
+         COMMAND regression_security_pass3_fixes)
+set_tests_properties(regression_security_pass3_fixes PROPERTIES
+    LABELS "regression;security;p1;p2;p3;pass3"
+    TIMEOUT 120
+)

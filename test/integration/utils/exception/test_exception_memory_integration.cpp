@@ -111,7 +111,7 @@ TEST_F(ExceptionMemoryIntegrationTest, ExceptionMemoryIntegration_RecursionGuard
 
     for (int i = 0; i < NUM_EXCEPTIONS; i++) {
         nimcp_exception_t* ex = nimcp_exception_create(
-            NIMCP_ERROR_GENERIC, EXCEPTION_SEVERITY_WARNING,
+            NIMCP_ERROR_UNKNOWN, EXCEPTION_SEVERITY_WARNING,
             __FILE__, __LINE__, __func__,
             "Recursion guard test exception %d", i);
         if (ex) {

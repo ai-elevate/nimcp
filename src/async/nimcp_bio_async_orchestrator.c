@@ -189,8 +189,11 @@ void bio_orchestrator_destroy(bio_async_orchestrator_t* orchestrator) {
         orchestrator->bio_async_connected = false;
     }
 
-    /* Free module dependencies */
+    /* Free module dependencies and strdup'd names (P2-50 fix) */
     for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].module_name) {
+            nimcp_free((void*)orchestrator->modules[i].module_name);
+        }
         if (orchestrator->modules[i].dependencies) {
             nimcp_free(orchestrator->modules[i].dependencies);
         }
@@ -327,7 +330,8 @@ int bio_orchestrator_register_module(
     memset(entry, 0, sizeof(bio_module_entry_t));
 
     entry->module_id = module_id;
-    entry->module_name = name;
+    /* P2-50 fix: Copy the string to prevent dangling pointer if caller frees name */
+    entry->module_name = name ? nimcp_strdup(name) : NULL;
     entry->category = category;
     entry->bio_context = bio_context;
     entry->startup_phase = startup_phase;
@@ -372,6 +376,11 @@ int bio_orchestrator_unregister_module(
         nimcp_platform_mutex_unlock(orchestrator->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_unregister_module: validation failed");
         return -1;
+    }
+
+    /* P2-50 fix: Free strdup'd module name */
+    if (orchestrator->modules[found_idx].module_name) {
+        nimcp_free((void*)orchestrator->modules[found_idx].module_name);
     }
 
     /* Free dependencies */
@@ -657,8 +666,14 @@ const bio_module_entry_t* bio_orchestrator_get_module_info(
         return NULL;
     }
 
-    /* Note: The returned pointer is only valid while orchestrator is not modified.
-     * Caller should ensure no concurrent module registration/unregistration. */
+    /* P2-51 fix: The returned pointer is to internal data. We hold the lock
+     * during lookup to ensure consistent read, but the pointer remains valid
+     * only while the orchestrator is not modified (no register/unregister).
+     *
+     * IMPORTANT: Caller must ensure no concurrent modification. For a fully
+     * safe API, use bio_orchestrator_copy_module_info() with a caller-provided buffer.
+     * We document this contract rather than copy because bio_module_entry_t contains
+     * nested pointers (dependencies, bio_context) that cannot be safely deep-copied. */
     bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
     nimcp_platform_mutex_lock(mutable_orch->mutex);
 
@@ -735,6 +750,10 @@ int bio_orchestrator_get_stats(
         return -1;
     }
 
+    /* P2-52 fix: Acquire lock for consistent stats read */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
     *stats = orchestrator->stats;
 
     /* Update runtime stats */
@@ -746,6 +765,8 @@ int bio_orchestrator_get_stats(
         if (orchestrator->modules[i].enabled) active++;
     }
     stats->active_modules = active;
+
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
 
     return 0;
 }

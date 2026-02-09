@@ -60,6 +60,7 @@ typedef struct {
     uint32_t order;                /**< Lock order number */
     uint32_t timeout_ms;           /**< Lock timeout in ms */
     pthread_t owner;               /**< Current owner thread */
+    bool owner_valid;              /**< P2-U20: Whether owner field is valid (portable pthread_t check) */
     bool is_locked;                /**< Lock state */
     uint64_t lock_count;           /**< Total locks */
     uint64_t timeout_count;        /**< Timeout failures */

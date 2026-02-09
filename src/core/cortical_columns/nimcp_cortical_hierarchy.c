@@ -251,6 +251,14 @@ cortical_hierarchy_t* cortical_hierarchy_create(
         return NULL;
     }
 
+    // P2-61 FIX: Validate max_areas and max_connections are non-zero
+    // Zero values would cause zero-size malloc and unusable hierarchy
+    if (config->max_areas == 0 || config->max_connections == 0) {
+        HIERARCHY_LOG_ERROR("max_areas (%u) and max_connections (%u) must be non-zero",
+                           config->max_areas, config->max_connections);
+        return NULL;
+    }
+
     // WHAT: Allocate hierarchy structure
     // WHY:  Need main container for areas/connections
     // HOW:  Use nimcp_malloc with size checks
@@ -528,6 +536,9 @@ uint32_t cortical_hierarchy_get_num_areas(
         return 0;
     }
 
+    // P3-58 FIX: Acquire mutex to prevent race with concurrent add/remove
+    nimcp_mutex_lock(&((cortical_hierarchy_t*)hierarchy)->mutex);
+
     // WHAT: Count only non-NULL (live) areas
     // WHY:  remove_area sets slots to NULL but keeps num_areas as iteration bound
     // HOW:  Scan array and count non-NULL entries
@@ -537,6 +548,8 @@ uint32_t cortical_hierarchy_get_num_areas(
             count++;
         }
     }
+
+    nimcp_mutex_unlock(&((cortical_hierarchy_t*)hierarchy)->mutex);
     return count;
 }
 
@@ -561,9 +574,14 @@ const cortical_area_config_t* cortical_hierarchy_get_area_config(
         return NULL;
     }
 
-    const cortical_area_config_t* config = &area->config;
+    // P1-54 FIX: Copy the config into a thread-local buffer before releasing
+    // the mutex. Previously we returned a pointer to internal data after
+    // releasing the lock, which was a use-after-free risk if the area was
+    // concurrently removed.
+    static _Thread_local cortical_area_config_t config_copy;
+    config_copy = area->config;
     nimcp_mutex_unlock(&((cortical_hierarchy_t*)hierarchy)->mutex);
-    return config;
+    return &config_copy;
 }
 
 //=============================================================================
@@ -628,15 +646,16 @@ int cortical_hierarchy_connect_areas(
         conn->target_layer = config->target_layer;
     }
 
-    // Update area connection counts
+    // Add to hierarchy
+    nimcp_mutex_lock(&hierarchy->mutex);
+
+    // P1-55 FIX: Move area connection count increments inside the mutex-protected
+    // section to prevent data races with concurrent connect/disconnect operations.
     if (config->type == CONNECTION_TYPE_FEEDFORWARD) {
         target->num_ff_inputs++;
     } else if (config->type == CONNECTION_TYPE_FEEDBACK) {
         target->num_fb_inputs++;
     }
-
-    // Add to hierarchy
-    nimcp_mutex_lock(&hierarchy->mutex);
 
     hierarchy->connections[hierarchy->num_connections] = conn;
     hierarchy->num_connections++;
@@ -672,9 +691,16 @@ int cortical_hierarchy_disconnect_areas(
 
     nimcp_mutex_lock(&hierarchy->mutex);
 
-    // Free connection
-    nimcp_free(conn);
-    hierarchy->connections[connection_id] = NULL;
+    // P2-60 FIX: Search for the connection by ID to find its actual array index,
+    // rather than using connection_id as the index directly. The connection_id
+    // may not correspond to the array index if connections have been removed.
+    for (uint32_t i = 0; i < hierarchy->num_connections; i++) {
+        if (hierarchy->connections[i] && hierarchy->connections[i]->id == connection_id) {
+            nimcp_free(hierarchy->connections[i]);
+            hierarchy->connections[i] = NULL;
+            break;
+        }
+    }
 
     nimcp_mutex_unlock(&hierarchy->mutex);
 
@@ -812,6 +838,10 @@ int cortical_hierarchy_propagate_feedforward(
         return -2;
     }
 
+    // P2-62 FIX: Acquire mutex for propagation duration to prevent
+    // concurrent modification of areas/connections during propagation
+    nimcp_mutex_lock(&hierarchy->mutex);
+
     // WHAT: Process areas level by level (ascending)
     // WHY:  Bottom-up processing requires sequential level processing
     // HOW:  For each level, propagate through FF connections
@@ -876,6 +906,7 @@ int cortical_hierarchy_propagate_feedforward(
     }
 
     hierarchy->propagation_count++;
+    nimcp_mutex_unlock(&hierarchy->mutex);  // P2-62: Release propagation mutex
     return 0;
 }
 
@@ -897,6 +928,9 @@ int cortical_hierarchy_propagate_feedback(
                            start_level, end_level);
         return -2;
     }
+
+    // P2-62 FIX: Acquire mutex for propagation duration
+    nimcp_mutex_lock(&hierarchy->mutex);
 
     // WHAT: Process areas level by level (descending)
     // WHY:  Top-down modulation requires reverse processing
@@ -956,6 +990,7 @@ int cortical_hierarchy_propagate_feedback(
     }
 
     hierarchy->propagation_count++;
+    nimcp_mutex_unlock(&hierarchy->mutex);  // P2-62: Release propagation mutex
     return 0;
 }
 

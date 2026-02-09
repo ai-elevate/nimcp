@@ -1753,9 +1753,15 @@ void nimcp_free(void* ptr)
     // 3. Allocated by external code (not via nimcp_malloc)
     // In any case, calling free() on it could corrupt the heap.
     if (!is_tracked_allocation(ptr)) {
-        fprintf(stderr, "[MEMORY] Warning: Skipping free of untracked pointer %p "
+        /* P3-U5: Log warning but still call free(ptr). Skipping free causes memory
+         * leaks for pointers allocated by external code or UMM internals. The original
+         * concern about heap corruption from double-free is already handled above by
+         * check_double_free(). Untracked pointers are most likely legitimate allocations
+         * from external libraries or UMM-internal code. */
+        fprintf(stderr, "[MEMORY] Warning: Freeing untracked pointer %p "
                 "(may be UMM internal or external allocation)\n", ptr);
-        return;  // Don't free - prevent heap corruption
+        free(ptr);
+        return;
     }
 
     // Get allocation info before untracking (needed for proper cleanup)

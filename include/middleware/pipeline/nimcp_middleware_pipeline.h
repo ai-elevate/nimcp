@@ -172,6 +172,14 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
                                    pipeline_stats_t* stats);
 
 /**
+ * @brief Free memory allocated by middleware_pipeline_get_stats()
+ *
+ * P2-MW-10 fix: get_stats allocates stage_execution_counts, stage_total_time_us,
+ * and stage_avg_time_us arrays. Callers MUST call this to free those arrays.
+ */
+void middleware_pipeline_stats_free(pipeline_stats_t* stats);
+
+/**
  * @brief Reset pipeline statistics
  */
 void middleware_pipeline_reset_stats(middleware_pipeline_t pipeline);

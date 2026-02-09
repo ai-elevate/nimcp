@@ -654,6 +654,12 @@ int fuzzy_anfis_train(fuzzy_inference_engine_t* engine,
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_anfis_train: NULL argument");
         return FUZZY_INF_ERR_NULL;
     }
+    /* P1-U1: Division by zero guard - num_samples==0 causes div-by-zero at epoch_error /= num_samples */
+    if (num_samples == 0) {
+        set_error("fuzzy_anfis_train: num_samples is 0");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_INVALID_PARAM, "fuzzy_anfis_train: num_samples is 0");
+        return FUZZY_INF_ERR_NULL;
+    }
     if (engine->config.fis_type != FUZZY_FIS_SUGENO) {
         set_error("fuzzy_anfis_train: ANFIS requires Sugeno-type FIS");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_INVALID_STATE, "fuzzy_anfis_train: ANFIS requires Sugeno-type FIS");

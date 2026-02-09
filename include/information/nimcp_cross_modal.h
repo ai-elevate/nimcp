@@ -120,7 +120,7 @@ cross_modal_channel_t cross_modal_analyze_channel(
  * @return true if bottleneck detected
  */
 bool cross_modal_is_bottleneck(
-    const cross_modal_channel_t* channel,
+    cross_modal_channel_t* channel,
     float efficiency_threshold
 );
 

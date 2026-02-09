@@ -467,15 +467,29 @@ nimcp_cublas_handle_t nimcp_gpu_get_cublas(nimcp_gpu_context_t* ctx) {
 nimcp_cufft_handle_t nimcp_gpu_get_cufft_1d(nimcp_gpu_context_t* ctx, int n) {
     if (!nimcp_gpu_context_is_valid(ctx)) return 0;
 
-    // Create plan on-demand
-    if (!ctx->cufft_initialized || ctx->cufft_plan_1d == 0) {
-        cufftResult result = cufftPlan1d(&ctx->cufft_plan_1d, n, CUFFT_C2C, 1);
-        if (result != CUFFT_SUCCESS) {
-            LOG_ERROR("Failed to create cuFFT 1D plan (result=%d)", (int)result);
-            return 0;
+    /* P2-C1: Double-checked locking for thread-safe cuFFT plan creation.
+     * Use atomic load/store to avoid data race on cufft_initialized flag. */
+    if (!__atomic_load_n(&ctx->cufft_initialized, __ATOMIC_ACQUIRE) || ctx->cufft_plan_1d == 0) {
+        /* Note: ctx-level serialization. In production, a per-context mutex
+         * would be ideal, but cuFFT plan creation is already serialized
+         * by the CUDA driver, so atomic flag is sufficient here. */
+        bool expected = false;
+        static volatile int cufft_creating = 0;
+        while (__atomic_exchange_n(&cufft_creating, 1, __ATOMIC_ACQUIRE) != 0) {
+            /* Spin - cuFFT plan creation is rare and fast */
         }
-        cufftSetStream(ctx->cufft_plan_1d, ctx->compute_stream);
-        ctx->cufft_initialized = true;
+        /* Re-check after acquiring spinlock */
+        if (!__atomic_load_n(&ctx->cufft_initialized, __ATOMIC_ACQUIRE) || ctx->cufft_plan_1d == 0) {
+            cufftResult result = cufftPlan1d(&ctx->cufft_plan_1d, n, CUFFT_C2C, 1);
+            if (result != CUFFT_SUCCESS) {
+                LOG_ERROR("Failed to create cuFFT 1D plan (result=%d)", (int)result);
+                __atomic_store_n(&cufft_creating, 0, __ATOMIC_RELEASE);
+                return 0;
+            }
+            cufftSetStream(ctx->cufft_plan_1d, ctx->compute_stream);
+            __atomic_store_n(&ctx->cufft_initialized, true, __ATOMIC_RELEASE);
+        }
+        __atomic_store_n(&cufft_creating, 0, __ATOMIC_RELEASE);
     }
 
     return ctx->cufft_plan_1d;

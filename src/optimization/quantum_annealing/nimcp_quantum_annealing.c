@@ -50,6 +50,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(qa)
 // Monte Carlo Integration - Thread-local seed for reproducibility
 //=============================================================================
 
+/** Thread-local fallback seed for Monte Carlo operations when annealer has no rng_state */
 static __thread uint32_t g_qa_mc_seed = 0;
 
 //=============================================================================
@@ -260,6 +261,10 @@ static float calculate_temperature(quantum_annealer_t annealer, uint32_t iterati
 
     // Avoid division by zero
     if (N == 0) return T_init;
+
+    /* P1-OPT-1: When N==1, (N-1)=0 causes division by zero in progress,
+     * lambda, lambda_adapt. Return T_init since there's only one iteration. */
+    if (N <= 1) return T_init;
 
     float progress = (float)iteration / (float)(N - 1);
 
@@ -567,6 +572,11 @@ float quantum_anneal(
     // Allocate temporary state vectors
     // BUGFIX: Use nimcp_malloc instead of malloc for consistency with memory tracking
     // WHY: Regular malloc/free can cause heap corruption detected by nimcp memory tracker
+    /* P2-OPT-1: Check for integer overflow in state allocation size */
+    if (dim > SIZE_MAX / sizeof(float)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "quantum_anneal: dim too large, allocation overflow");
+        return INFINITY;
+    }
     size_t state_alloc_size = dim * sizeof(float);
     float* current_state = nimcp_malloc(state_alloc_size);
     float* best_state = nimcp_malloc(state_alloc_size);
@@ -773,6 +783,12 @@ uint32_t quantum_annealer_sample_boltzmann_mc(
         return 0;
     }
 
+    /* P1-OPT-2: Guard against non-positive temperature */
+    if (temperature <= 0.0f) {
+        /* At zero temperature, always return the lowest-energy state */
+        return 0;
+    }
+
     /* Compute Boltzmann weights */
     size_t weights_size = num_states * sizeof(float);
     float* weights = nimcp_malloc(weights_size);
@@ -794,6 +810,14 @@ uint32_t quantum_annealer_sample_boltzmann_mc(
     for (uint32_t i = 0; i < num_states; i++) {
         weights[i] = expf(-(weights[i] - max_energy) / temperature);
         sum += weights[i];
+    }
+
+    /* P1-OPT-2: If all weights underflow to zero, fall back to uniform */
+    if (sum == 0.0f) {
+        for (uint32_t i = 0; i < num_states; i++) {
+            weights[i] = 1.0f / (float)num_states;
+        }
+        sum = 1.0f;
     }
 
     /* Normalize */
@@ -857,6 +881,12 @@ float quantum_annealer_estimate_partition_mc(
     }
     if (num_samples == 0) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "quantum_annealer_estimate_partition_mc: num_samples must be > 0");
+        if (variance_out) *variance_out = INFINITY;
+        return 0.0f;
+    }
+
+    /* P1-OPT-3: Validate temperature to avoid division by zero or negative */
+    if (temperature <= 0.0f) {
         if (variance_out) *variance_out = INFINITY;
         return 0.0f;
     }

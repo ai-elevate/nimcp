@@ -91,7 +91,7 @@ int dragonfly_cnn_bridge_validate_config(const dragonfly_cnn_config_t* config) {
         return -1;
     }
     if (config->task >= CNN_TASK_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dragonfly_cnn_bridge_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: invalid task type");
         return -1;
     }
     if (config->frame_width == 0 || config->frame_height == 0) {

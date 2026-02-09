@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -125,10 +126,103 @@ static policy_entry_t* find_policy(mesh_msp_t* msp, const char* name) {
     return NULL;
 }
 
+/**
+ * P1-47: Unlocked internal helpers for use within already-locked contexts.
+ * These avoid deadlock when public functions call each other while holding mutex.
+ */
+static const credential_t* get_credential_unlocked(
+    const mesh_msp_t* msp,
+    mesh_participant_id_t participant_id
+) {
+    credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
+    while (entry) {
+        if (entry->participant_id == participant_id) {
+            return &entry->credential;
+        }
+        entry = entry->next;
+    }
+    return NULL;
+}
+
+static bool is_credential_valid_unlocked(
+    const mesh_msp_t* msp,
+    mesh_participant_id_t participant_id
+) {
+    const credential_t* cred = get_credential_unlocked(msp, participant_id);
+    if (!cred || cred->state != CREDENTIAL_STATE_VALID) return false;
+    uint64_t now = get_time_ns();
+    if (cred->expires_at_ns > 0 && now > cred->expires_at_ns) return false;
+    return true;
+}
+
+static bool check_capability_unlocked(
+    const mesh_msp_t* msp,
+    mesh_participant_id_t participant_id,
+    uint64_t capability
+) {
+    const credential_t* cred = get_credential_unlocked(msp, participant_id);
+    if (!cred) return false;
+    return (cred->capabilities & capability) == capability;
+}
+
+static bool has_channel_membership_unlocked(
+    const mesh_msp_t* msp,
+    mesh_participant_id_t participant_id,
+    mesh_channel_id_t channel_id
+) {
+    credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
+    while (entry) {
+        if (entry->participant_id == participant_id) {
+            for (size_t i = 0; i < entry->membership_count; i++) {
+                if (entry->memberships[i] == channel_id) return true;
+            }
+            return false;
+        }
+        entry = entry->next;
+    }
+    return false;
+}
+
+static bool is_quarantined_unlocked(
+    const mesh_msp_t* msp,
+    mesh_participant_id_t participant_id
+) {
+    credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
+    while (entry) {
+        if (entry->participant_id == participant_id) {
+            if (!entry->quarantined) return false;
+            uint64_t now = get_time_ns();
+            if (entry->quarantine_end_ns > 0 && now > entry->quarantine_end_ns) return false;
+            return true;
+        }
+        entry = entry->next;
+    }
+    return false;
+}
+
+/* P2-145: Thread-safe PRNG using CAS loop instead of non-thread-safe rand() */
+static _Atomic uint64_t s_msp_prng_state = 0;
+
+static uint32_t msp_thread_safe_rand(void) {
+    uint64_t old_state, new_state;
+    do {
+        old_state = atomic_load(&s_msp_prng_state);
+        if (old_state == 0) {
+            old_state = (uint64_t)nimcp_time_now_ns();
+            if (old_state == 0) old_state = 1;
+        }
+        new_state = old_state;
+        new_state ^= new_state << 13;
+        new_state ^= new_state >> 7;
+        new_state ^= new_state << 17;
+    } while (!atomic_compare_exchange_weak(&s_msp_prng_state, &old_state, new_state));
+    return (uint32_t)(new_state & 0xFFFFFFFF);
+}
+
 static void generate_credential_id(uint8_t* id_out) {
-    /* Simple random ID generation */
+    /* P2-145: Use thread-safe PRNG instead of rand() */
     for (int i = 0; i < MESH_CREDENTIAL_ID_SIZE; i++) {
-        id_out[i] = (uint8_t)(rand() & 0xFF);
+        id_out[i] = (uint8_t)(msp_thread_safe_rand() & 0xFF);
     }
 }
 
@@ -180,9 +274,9 @@ mesh_msp_t* mesh_msp_create(
 
     /* Copy name */
     if (msp->config.msp_name) {
-        msp->name = strdup(msp->config.msp_name);
+        msp->name = nimcp_strdup(msp->config.msp_name);
     } else {
-        msp->name = strdup("msp");
+        msp->name = nimcp_strdup("msp");
     }
 
     msp->registry = registry;
@@ -337,12 +431,16 @@ nimcp_error_t mesh_msp_issue_credential(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: All credential operations must be mutex-protected */
+    nimcp_mutex_lock(msp->mutex);
+
     /* Check if already has credential */
     credential_entry_t* existing = find_credential(msp, participant_id);
     if (existing && existing->credential.state == CREDENTIAL_STATE_VALID) {
         if (credential_out) {
             *credential_out = existing->credential;
         }
+        nimcp_mutex_unlock(msp->mutex);
         return NIMCP_SUCCESS;
     }
 
@@ -353,6 +451,7 @@ nimcp_error_t mesh_msp_issue_credential(
     } else {
         entry = nimcp_calloc(1, sizeof(credential_entry_t));
         if (!entry) {
+            nimcp_mutex_unlock(msp->mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
@@ -382,6 +481,7 @@ nimcp_error_t mesh_msp_issue_credential(
     msp->stats.credentials_issued++;
     msp->stats.credentials_active++;
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -397,9 +497,13 @@ nimcp_error_t mesh_msp_revoke_credential(
 
     (void)reason;  /* For audit logging */
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -411,6 +515,7 @@ nimcp_error_t mesh_msp_revoke_credential(
     entry->credential.state = CREDENTIAL_STATE_REVOKED;
     msp->stats.credentials_revoked++;
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -424,13 +529,18 @@ nimcp_error_t mesh_msp_suspend_credential(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (entry->credential.state != CREDENTIAL_STATE_VALID) {
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_msp: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -439,6 +549,7 @@ nimcp_error_t mesh_msp_suspend_credential(
     entry->quarantine_end_ns = get_time_ns() + (duration_ms * 1000000ULL);
     msp->stats.credentials_suspended++;
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -451,13 +562,18 @@ nimcp_error_t mesh_msp_restore_credential(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (entry->credential.state != CREDENTIAL_STATE_SUSPENDED) {
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_msp: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -468,6 +584,7 @@ nimcp_error_t mesh_msp_restore_credential(
         msp->stats.credentials_suspended--;
     }
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -480,14 +597,19 @@ const credential_t* mesh_msp_get_credential(
         return NULL;
     }
 
+    /* P1-47: Mutex protection for credential list traversal */
+    nimcp_mutex_lock(((mesh_msp_t*)msp)->mutex);
+
     credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
     while (entry) {
         if (entry->participant_id == participant_id) {
+            nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
             return &entry->credential;
         }
         entry = entry->next;
     }
 
+    nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
     /* Not found is normal lookup result, not an error (P2: false positive removal) */
     return NULL;
 }
@@ -525,13 +647,18 @@ nimcp_error_t mesh_msp_refresh_credential(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (entry->credential.state != CREDENTIAL_STATE_VALID) {
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_msp: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -539,6 +666,7 @@ nimcp_error_t mesh_msp_refresh_credential(
     uint64_t now = get_time_ns();
     entry->credential.expires_at_ns = now + (msp->config.credential_expiration_ms * 1000000ULL);
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -556,25 +684,32 @@ nimcp_error_t mesh_msp_grant_channel_membership(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     /* Check if already member */
     for (size_t i = 0; i < entry->membership_count; i++) {
         if (entry->memberships[i] == channel_id) {
+            nimcp_mutex_unlock(msp->mutex);
             return NIMCP_SUCCESS;
         }
     }
 
     if (entry->membership_count >= MESH_MSP_MAX_MEMBERSHIPS) {
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_msp: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
     entry->memberships[entry->membership_count++] = channel_id;
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -588,9 +723,13 @@ nimcp_error_t mesh_msp_revoke_channel_membership(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -601,11 +740,13 @@ nimcp_error_t mesh_msp_revoke_channel_membership(
                 entry->memberships[j] = entry->memberships[j + 1];
             }
             entry->membership_count--;
+            nimcp_mutex_unlock(msp->mutex);
             return NIMCP_SUCCESS;
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+    nimcp_mutex_unlock(msp->mutex);
+    /* P2-146: Membership not found is normal lookup result, not an error (false positive removal) */
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -619,21 +760,14 @@ bool mesh_msp_has_channel_membership(
         return false;
     }
 
-    credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
-    while (entry) {
-        if (entry->participant_id == participant_id) {
-            for (size_t i = 0; i < entry->membership_count; i++) {
-                if (entry->memberships[i] == channel_id) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        entry = entry->next;
-    }
+    /* P1-47: Mutex protection for credential list traversal */
+    nimcp_mutex_lock(((mesh_msp_t*)msp)->mutex);
 
+    bool result = has_channel_membership_unlocked(msp, participant_id, channel_id);
+
+    nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
     /* Participant not found - normal lookup result, not an error (P2: false positive removal) */
-    return false;
+    return result;
 }
 
 nimcp_error_t mesh_msp_get_channel_memberships(
@@ -662,7 +796,7 @@ nimcp_error_t mesh_msp_get_channel_memberships(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+    /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -681,18 +815,23 @@ nimcp_error_t mesh_msp_authenticate(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for authentication */
+    nimcp_mutex_lock(msp->mutex);
+
     msp->stats.auth_requests++;
 
-    /* Check credential */
-    if (!mesh_msp_is_credential_valid(msp, participant_id)) {
+    /* Check credential - use unlocked helpers to avoid deadlock */
+    if (!is_credential_valid_unlocked(msp, participant_id)) {
         msp->stats.auth_denied++;
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNAUTHORIZED, "mesh_msp: participant has no valid credential");
         return NIMCP_ERROR_UNAUTHORIZED;
     }
 
     /* Check quarantine */
-    if (mesh_msp_is_quarantined(msp, participant_id)) {
+    if (is_quarantined_unlocked(msp, participant_id)) {
         msp->stats.auth_denied++;
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ACCESS_DENIED, "mesh_msp: error condition");
         return NIMCP_ERROR_ACCESS_DENIED;
     }
@@ -701,7 +840,7 @@ nimcp_error_t mesh_msp_authenticate(
     if (msp->config.require_signature && signature && signature_len > 0) {
         bbb_system_t bbb = (bbb_system_t)msp->bbb_handle;
         if (bbb) {
-            const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
+            const credential_t* cred = get_credential_unlocked(msp, participant_id);
             if (cred) {
                 /* Verify signature using BBB */
                 bool valid = bbb_verify_signature(
@@ -732,6 +871,7 @@ nimcp_error_t mesh_msp_authenticate(
                         );
                     }
 
+                    nimcp_mutex_unlock(msp->mutex);
                     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BBB_VALIDATION, "mesh_msp: error condition");
                     return NIMCP_ERROR_BBB_VALIDATION;
                 }
@@ -740,6 +880,7 @@ nimcp_error_t mesh_msp_authenticate(
     }
 
     msp->stats.auth_granted++;
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -936,7 +1077,6 @@ nimcp_error_t mesh_msp_remove_policy(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -1011,7 +1151,6 @@ nimcp_error_t mesh_msp_set_policy_callback(
 
     policy_entry_t* entry = find_policy(msp, policy_name);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1035,11 +1174,15 @@ nimcp_error_t mesh_msp_quarantine(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
         /* Create minimal entry for tracking */
         entry = nimcp_calloc(1, sizeof(credential_entry_t));
         if (!entry) {
+            nimcp_mutex_unlock(msp->mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp: memory allocation failed");
             return NIMCP_ERROR_NO_MEMORY;
         }
@@ -1056,7 +1199,9 @@ nimcp_error_t mesh_msp_quarantine(
 
     msp->stats.quarantine_events++;
 
-    /* Route quarantine through immune system */
+    nimcp_mutex_unlock(msp->mutex);
+
+    /* Route quarantine through immune system (outside lock - external calls) */
     brain_immune_system_t* immune = (brain_immune_system_t*)msp->immune_handle;
     if (immune) {
         /* Notify immune system of quarantine action */
@@ -1095,9 +1240,13 @@ nimcp_error_t mesh_msp_release_quarantine(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1-47: Mutex protection for credential operations */
+    nimcp_mutex_lock(msp->mutex);
+
     credential_entry_t* entry = find_credential(msp, participant_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_msp: error condition");
+        nimcp_mutex_unlock(msp->mutex);
+        /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1106,7 +1255,9 @@ nimcp_error_t mesh_msp_release_quarantine(
 
     msp->stats.recovery_events++;
 
-    /* Notify immune system of trust recovery */
+    nimcp_mutex_unlock(msp->mutex);
+
+    /* Notify immune system of trust recovery (outside lock - external calls) */
     brain_immune_system_t* immune = (brain_immune_system_t*)msp->immune_handle;
     if (immune) {
         brain_immune_handle_bft_trust_recovery(
@@ -1129,24 +1280,31 @@ bool mesh_msp_is_quarantined(
         return false;
     }
 
+    /* P1-47: Mutex protection for credential list traversal */
+    nimcp_mutex_lock(((mesh_msp_t*)msp)->mutex);
+
     credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
     while (entry) {
         if (entry->participant_id == participant_id) {
             if (!entry->quarantined) {
+                nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
                 /* Not quarantined is normal state, not an error (P2: false positive removal) */
                 return false;
             }
             /* Check if quarantine expired */
             uint64_t now = get_time_ns();
             if (entry->quarantine_end_ns > 0 && now > entry->quarantine_end_ns) {
+                nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
                 /* Quarantine expired is normal result, not an error (P2: false positive removal) */
                 return false;
             }
+            nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
             return true;
         }
         entry = entry->next;
     }
 
+    nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
     /* Participant not found - not quarantined, not an error (P2: false positive removal) */
     return false;
 }

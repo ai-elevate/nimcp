@@ -160,6 +160,12 @@ static nimcp_error_t g_brain_bio_init_result = NIMCP_SUCCESS;
 // NOTE: NOT static - nimcp_brain_factory.c references this via extern declaration.
 volatile int g_brain_bio_ref_count = 0;
 
+// P3-50: Named constant for loss history circular buffer size
+#define LOSS_HISTORY_SIZE 10
+
+// P3-51: Named constant for confidence normalization factor
+#define CONFIDENCE_NORMALIZATION_FACTOR 10.0F
+
 //=============================================================================
 // Forward Declarations - Strategy Pattern
 //=============================================================================
@@ -323,6 +329,8 @@ static float strategy_classification_lr(void)
 
 static void strategy_classification_transform(float* output, uint32_t size)
 {
+    // P1-52 FIX: Guard against NULL output pointer
+    if (!output) return;
     // Guard: size=0 would cause OOB read on output[0]
     if (size == 0) return;
 
@@ -2869,10 +2877,11 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
         brain->base_learning_rate = brain->config.learning_rate;
     }
 
+    // P3-50 FIX: Replace magic number 10 with named constant LOSS_HISTORY_SIZE
     // Store current loss in circular buffer
     brain->loss_history[brain->loss_history_index] = current_loss;
-    brain->loss_history_index = (brain->loss_history_index + 1) % 10;
-    if (brain->loss_history_count < 10) {
+    brain->loss_history_index = (brain->loss_history_index + 1) % LOSS_HISTORY_SIZE;
+    if (brain->loss_history_count < LOSS_HISTORY_SIZE) {
         brain->loss_history_count++;
     }
 
@@ -2881,20 +2890,26 @@ static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
         return;
     }
 
+    // P2-52 FIX: Read loss_history in correct chronological order.
+    // The circular buffer wraps around, so entry at raw index [0] may not be
+    // the oldest. Compute the start offset for correct chronological access.
+    uint32_t start_offset = (brain->loss_history_count < LOSS_HISTORY_SIZE)
+        ? 0 : brain->loss_history_index;  // Points to oldest entry when full
+
     // Compute loss trend: recent avg vs older avg
     float recent_avg = 0.0F;
     float older_avg = 0.0F;
     uint32_t half = brain->loss_history_count / 2;
 
-    // Older half
+    // Older half (chronologically first entries)
     for (uint32_t i = 0; i < half; i++) {
-        older_avg += brain->loss_history[i];
+        older_avg += brain->loss_history[(start_offset + i) % LOSS_HISTORY_SIZE];
     }
     older_avg /= half;
 
-    // Recent half
+    // Recent half (chronologically later entries)
     for (uint32_t i = half; i < brain->loss_history_count; i++) {
-        recent_avg += brain->loss_history[i];
+        recent_avg += brain->loss_history[(start_offset + i) % LOSS_HISTORY_SIZE];
     }
     recent_avg /= (brain->loss_history_count - half);
 
@@ -3256,6 +3271,9 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
  */
 static void determine_output_label(brain_t brain, brain_decision_t* decision)
 {
+    // P2-50 FIX: Guard against output_size==0 to prevent OOB access on output_vector[0]
+    if (decision->output_size == 0) return;
+
     uint32_t max_idx = 0;
     float max_value = decision->output_vector[0];
 
@@ -3273,8 +3291,8 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
         snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
     }
 
-    // Normalize confidence
-    decision->confidence = fminf(max_value / 10.0F, 1.0F);
+    // P3-51 FIX: Replace magic number with named constant
+    decision->confidence = fminf(max_value / CONFIDENCE_NORMALIZATION_FACTOR, 1.0F);
 }
 
 /**
@@ -3318,12 +3336,16 @@ static void update_inference_stats(brain_t brain, brain_decision_t* decision)
     }
 
     // Use atomic increment for thread-safe stats update
-    __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
-    brain->stats.avg_inference_time_us =
-        (brain->stats.avg_inference_time_us * (brain->stats.total_inferences - 1) +
-         decision->inference_time_us) /
-        brain->stats.total_inferences;
-    brain->stats.avg_sparsity = decision->sparsity;
+    uint64_t new_count = __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED) + 1;
+
+    // P1-51 FIX: Use atomic load/store for avg_inference_time_us to prevent
+    // torn reads/writes under concurrent access. This is intentionally approximate
+    // (not perfectly serialized) for performance - acceptable for statistics.
+    float old_avg;
+    __atomic_load(&brain->stats.avg_inference_time_us, &old_avg, __ATOMIC_RELAXED);
+    float new_avg = (old_avg * (new_count - 1) + decision->inference_time_us) / new_count;
+    __atomic_store(&brain->stats.avg_inference_time_us, &new_avg, __ATOMIC_RELAXED);
+    __atomic_store(&brain->stats.avg_sparsity, &decision->sparsity, __ATOMIC_RELAXED);
 }
 
 //=============================================================================
@@ -5182,7 +5204,7 @@ static bool load_working_memory_state(brain_t brain, FILE* file)
     // Initialize working memory if enabled but not yet created
     if (!brain->working_memory && brain->config.enable_working_memory) {
         if (!init_working_memory_subsystem(brain)) {
-            fprintf(stderr, "WARNING: Failed to initialize working memory on load\n");
+            LOG_WARN(LOG_MODULE, "Failed to initialize working memory on load");
             return true;  // Non-fatal: continue without WM
         }
     }
@@ -5241,23 +5263,23 @@ static bool load_metadata(brain_t brain, const char* filepath)
 
             // Validate version compatibility
             if (header.version_major != NIMCP_FORMAT_VERSION_MAJOR) {
-                fprintf(stderr, "ERROR: Incompatible format version %u.%u (expected %u.x)\n",
-                        header.version_major, header.version_minor,
-                        NIMCP_FORMAT_VERSION_MAJOR);
+                LOG_ERROR(LOG_MODULE, "Incompatible format version %u.%u (expected %u.x)",
+                          header.version_major, header.version_minor,
+                          NIMCP_FORMAT_VERSION_MAJOR);
                 fclose(meta_file);
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
                 return false;
             }
 
-            fprintf(stderr, "[INFO] Loading brain metadata v%u.%u\n",
-                    header.version_major, header.version_minor);
+            LOG_INFO(LOG_MODULE, "Loading brain metadata v%u.%u",
+                     header.version_major, header.version_minor);
 
             // TODO: Handle format flags (compression, encryption)
             if (header.flags & NIMCP_FORMAT_FLAG_COMPRESSED) {
-                fprintf(stderr, "[WARN] Compressed format not yet supported, skipping\n");
+                LOG_WARN(LOG_MODULE, "Compressed format not yet supported, skipping");
             }
             if (header.flags & NIMCP_FORMAT_FLAG_ENCRYPTED) {
-                fprintf(stderr, "[WARN] Encrypted format not yet supported, skipping\n");
+                LOG_WARN(LOG_MODULE, "Encrypted format not yet supported, skipping");
             }
         } else {
             // Not a versioned file - rewind and read as legacy format
@@ -5270,12 +5292,12 @@ static bool load_metadata(brain_t brain, const char* filepath)
     }
 
     if (!has_version_header) {
-        fprintf(stderr, "[INFO] Loading brain metadata (legacy format, no version header)\n");
+        LOG_INFO(LOG_MODULE, "Loading brain metadata (legacy format, no version header)");
     }
 
     // Read configuration - failure caught by subsequent field validation
     if (fread(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
-        fprintf(stderr, "ERROR: Failed to read brain config from metadata file\n");
+        LOG_ERROR(LOG_MODULE, "Failed to read brain config from metadata file");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
@@ -5285,7 +5307,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
     // Validate learning_rate (float field - NaN/Inf check)
     if (!nimcp_validate_float_field(&brain->config.learning_rate,
                                     sizeof(brain->config.learning_rate))) {
-        fprintf(stderr, "ERROR: Invalid learning_rate in loaded config (NaN or Inf)\n");
+        LOG_ERROR(LOG_MODULE, "Invalid learning_rate in loaded config (NaN or Inf)");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
@@ -5294,7 +5316,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
     // Validate sparsity_target (float field - NaN/Inf check)
     if (!nimcp_validate_float_field(&brain->config.sparsity_target,
                                     sizeof(brain->config.sparsity_target))) {
-        fprintf(stderr, "ERROR: Invalid sparsity_target in loaded config (NaN or Inf)\n");
+        LOG_ERROR(LOG_MODULE, "Invalid sparsity_target in loaded config (NaN or Inf)");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
@@ -5303,13 +5325,13 @@ static bool load_metadata(brain_t brain, const char* filepath)
     // Validate num_inputs (integer field, range 1-10000)
     if (!nimcp_validate_integer_field(&brain->config.num_inputs,
                                       sizeof(brain->config.num_inputs))) {
-        fprintf(stderr, "ERROR: Invalid num_inputs in loaded config\n");
+        LOG_ERROR(LOG_MODULE, "Invalid num_inputs in loaded config");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
     if (brain->config.num_inputs < 1 || brain->config.num_inputs > 10000) {
-        fprintf(stderr, "ERROR: num_inputs out of range (1-10000): %u\n", brain->config.num_inputs);
+        LOG_ERROR(LOG_MODULE, "num_inputs out of range (1-10000): %u", brain->config.num_inputs);
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
@@ -5318,21 +5340,21 @@ static bool load_metadata(brain_t brain, const char* filepath)
     // Validate num_outputs (integer field, range 1-10000)
     if (!nimcp_validate_integer_field(&brain->config.num_outputs,
                                       sizeof(brain->config.num_outputs))) {
-        fprintf(stderr, "ERROR: Invalid num_outputs in loaded config\n");
+        LOG_ERROR(LOG_MODULE, "Invalid num_outputs in loaded config");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
     if (brain->config.num_outputs < 1 || brain->config.num_outputs > 10000) {
-        fprintf(stderr, "ERROR: num_outputs out of range (1-10000): %u\n",
-                brain->config.num_outputs);
+        LOG_ERROR(LOG_MODULE, "num_outputs out of range (1-10000): %u",
+                  brain->config.num_outputs);
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
     }
 
     if (fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
-        fprintf(stderr, "ERROR: Failed to read num_output_labels from metadata file\n");
+        LOG_ERROR(LOG_MODULE, "Failed to read num_output_labels from metadata file");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
@@ -5345,15 +5367,14 @@ static bool load_metadata(brain_t brain, const char* filepath)
     // Validate num_output_labels (range 0-10000, 0 means no labels)
     if (!nimcp_validate_integer_field(&brain->num_output_labels,
                                       sizeof(brain->num_output_labels))) {
-        fprintf(stderr, "ERROR: Invalid num_output_labels in loaded metadata\n");
+        LOG_ERROR(LOG_MODULE, "Invalid num_output_labels in loaded metadata");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
     if (brain->num_output_labels > MAX_OUTPUT_LABELS) {
-        fprintf(stderr, "SECURITY ERROR: num_output_labels %u exceeds maximum %d\n",
-                brain->num_output_labels, MAX_OUTPUT_LABELS);
-        fprintf(stderr, "This file may be maliciously crafted\n");
+        LOG_ERROR(LOG_MODULE, "SECURITY: num_output_labels %u exceeds maximum %d - file may be maliciously crafted",
+                  brain->num_output_labels, MAX_OUTPUT_LABELS);
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
@@ -5368,7 +5389,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
 
     brain->output_labels = nimcp_malloc(brain->num_output_labels * sizeof(char*));
     if (!brain->output_labels) {
-        fprintf(stderr, "ERROR: Failed to allocate output_labels array\n");
+        LOG_ERROR(LOG_MODULE, "Failed to allocate output_labels array");
         fclose(meta_file);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "load_metadata: brain->output_labels is NULL");
         return false;
@@ -5378,32 +5399,31 @@ static bool load_metadata(brain_t brain, const char* filepath)
     for (i = 0; i < brain->num_output_labels; i++) {
         uint32_t len;
         if (fread(&len, sizeof(uint32_t), 1, meta_file) != 1) {
-            fprintf(stderr, "ERROR: Failed to read label length at index %u\n", i);
+            LOG_ERROR(LOG_MODULE, "Failed to read label length at index %u", i);
             goto cleanup;
         }
 
         // SECURITY: Validate label length to prevent buffer overflow
         if (len == 0 || len > MAX_LABEL_LENGTH) {
-            fprintf(stderr, "SECURITY ERROR: Label %u length %u exceeds maximum %d\n",
-                    i, len, MAX_LABEL_LENGTH);
-            fprintf(stderr, "This file may be maliciously crafted\n");
+            LOG_ERROR(LOG_MODULE, "SECURITY: Label %u length %u exceeds maximum %d - file may be maliciously crafted",
+                      i, len, MAX_LABEL_LENGTH);
             goto cleanup;
         }
 
         // Validate integer field integrity
         if (!nimcp_validate_integer_field(&len, sizeof(len))) {
-            fprintf(stderr, "ERROR: Invalid label length at index %u\n", i);
+            LOG_ERROR(LOG_MODULE, "Invalid label length at index %u", i);
             goto cleanup;
         }
 
         brain->output_labels[i] = nimcp_malloc(len);
         if (!brain->output_labels[i]) {
-            fprintf(stderr, "ERROR: Failed to allocate label at index %u\n", i);
+            LOG_ERROR(LOG_MODULE, "Failed to allocate label at index %u", i);
             goto cleanup;
         }
 
         if (fread(brain->output_labels[i], len, 1, meta_file) != 1) {
-            fprintf(stderr, "ERROR: Failed to read label content at index %u\n", i);
+            LOG_ERROR(LOG_MODULE, "Failed to read label content at index %u", i);
             goto cleanup;
         }
     }
@@ -5968,7 +5988,7 @@ bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new
 
     // Destroy and recreate glial integration (if glial system exists)
     if (brain->glial) {
-        fprintf(stderr, "[INFO] brain_resize: Destroying old glial integration system\n");
+        LOG_INFO(LOG_MODULE, "brain_resize: Destroying old glial integration system");
 
         // Save configuration flags before destroying
         bool enable_glial = brain->config.enable_glial;
@@ -5979,16 +5999,16 @@ bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new
 
         // Recreate glial integration with new network
         if (enable_glial) {
-            fprintf(stderr, "[INFO] brain_resize: Creating new glial integration system for %u neurons\n", new_neuron_count);
+            LOG_INFO(LOG_MODULE, "brain_resize: Creating new glial integration system for %u neurons", new_neuron_count);
 
             // Create new glial integration system
             brain->glial = glial_integration_create(new_base_network, 1000);  // 1000 = max_mappings
 
             if (brain->glial) {
-                fprintf(stderr, "[INFO] brain_resize: Glial integration system created successfully\n");
+                LOG_INFO(LOG_MODULE, "brain_resize: Glial integration system created successfully");
 
                 // Recreate spatial neuromodulator system
-                fprintf(stderr, "[INFO] brain_resize: Creating new spatial neuromodulator system\n");
+                LOG_INFO(LOG_MODULE, "brain_resize: Creating new spatial neuromodulator system");
 
                 // Enable all neuromodulator types by default
                 bool enabled_types[NEUROMOD_COUNT] = {true, true, true, true};
@@ -6003,12 +6023,12 @@ bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new
                 spatial_neuromod_system_t* new_spatial = spatial_neuromod_system_create(new_base_network, enabled_types, configs);
                 if (new_spatial) {
                     brain->glial->spatial_neuromod = new_spatial;
-                    fprintf(stderr, "[INFO] brain_resize: Spatial neuromodulator system created successfully\n");
+                    LOG_INFO(LOG_MODULE, "brain_resize: Spatial neuromodulator system created successfully");
                 } else {
-                    fprintf(stderr, "[WARN] brain_resize: Failed to create spatial neuromodulator system\n");
+                    LOG_WARN(LOG_MODULE, "brain_resize: Failed to create spatial neuromodulator system");
                 }
             } else {
-                fprintf(stderr, "[WARN] brain_resize: Failed to create glial integration system\n");
+                LOG_WARN(LOG_MODULE, "brain_resize: Failed to create glial integration system");
                 brain->config.enable_glial = false;
             }
         }

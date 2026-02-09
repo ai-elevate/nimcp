@@ -572,18 +572,31 @@ nimcp_tensor_t* nimcp_tensor_randn(
 
     }
 
-    /* Box-Muller transform for normal distribution */
-    float* data = (float*)t->data;
-    for (size_t i = 0; i < t->shape.numel; i += 2) {
-        /* Use nimcp_rand_uniform() with offset to avoid log(0) */
-        double u1 = (double)nimcp_rand_uniform() * 0.99999 + 0.00001;
-        double u2 = (double)nimcp_rand_uniform();
-        double z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
-        double z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
-
-        data[i] = (float)(z0 * std + mean);
-        if (i + 1 < t->shape.numel) {
-            data[i + 1] = (float)(z1 * std + mean);
+    /* P1-U2: Dispatch by dtype instead of always casting to float* */
+    if (dtype == NIMCP_DTYPE_F64) {
+        double* data = (double*)t->data;
+        for (size_t i = 0; i < t->shape.numel; i += 2) {
+            double u1 = (double)nimcp_rand_uniform() * 0.99999 + 0.00001;
+            double u2 = (double)nimcp_rand_uniform();
+            double z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+            double z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
+            data[i] = z0 * std + mean;
+            if (i + 1 < t->shape.numel) {
+                data[i + 1] = z1 * std + mean;
+            }
+        }
+    } else {
+        /* Default: float32 (and int types get truncated cast) */
+        float* data = (float*)t->data;
+        for (size_t i = 0; i < t->shape.numel; i += 2) {
+            double u1 = (double)nimcp_rand_uniform() * 0.99999 + 0.00001;
+            double u2 = (double)nimcp_rand_uniform();
+            double z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+            double z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
+            data[i] = (float)(z0 * std + mean);
+            if (i + 1 < t->shape.numel) {
+                data[i + 1] = (float)(z1 * std + mean);
+            }
         }
     }
 
@@ -607,11 +620,20 @@ nimcp_tensor_t* nimcp_tensor_rand(
 
     }
 
-    float* data = (float*)t->data;
+    /* P1-U2: Dispatch by dtype instead of always casting to float* */
     double range = high - low;
-    for (size_t i = 0; i < t->shape.numel; i++) {
-        double u = (double)nimcp_rand_uniform();
-        data[i] = (float)(u * range + low);
+    if (dtype == NIMCP_DTYPE_F64) {
+        double* data = (double*)t->data;
+        for (size_t i = 0; i < t->shape.numel; i++) {
+            double u = (double)nimcp_rand_uniform();
+            data[i] = u * range + low;
+        }
+    } else {
+        float* data = (float*)t->data;
+        for (size_t i = 0; i < t->shape.numel; i++) {
+            double u = (double)nimcp_rand_uniform();
+            data[i] = (float)(u * range + low);
+        }
     }
 
     return t;
@@ -1142,7 +1164,7 @@ nimcp_tensor_t* nimcp_tensor_squeeze(const nimcp_tensor_t* t)
 nimcp_tensor_t* nimcp_tensor_unsqueeze(const nimcp_tensor_t* t, int dim)
 {
     if (!tensor_is_valid(t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_unsqueeze: tensor_is_valid is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_unsqueeze: invalid tensor");
         return NULL;
     }
 
@@ -1170,7 +1192,7 @@ nimcp_tensor_t* nimcp_tensor_unsqueeze(const nimcp_tensor_t* t, int dim)
 nimcp_tensor_t* nimcp_tensor_flatten(const nimcp_tensor_t* t)
 {
     if (!tensor_is_valid(t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_flatten: tensor_is_valid is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_flatten: invalid tensor");
         return NULL;
     }
 
@@ -1213,7 +1235,7 @@ nimcp_tensor_t* nimcp_tensor_cat(
             return NULL;
         }
         if (tensors[i]->shape.rank != first->shape.rank) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_cat: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_cat: rank mismatch");
             return NULL;
         }
 
@@ -1375,7 +1397,14 @@ static nimcp_tensor_t* binary_op(
 static double op_add(double a, double b) { return a + b; }
 static double op_sub(double a, double b) { return a - b; }
 static double op_mul(double a, double b) { return a * b; }
-static double op_div(double a, double b) { return a / b; }
+static double op_div(double a, double b) {
+    /* P2-U17: Guard against division by zero */
+    if (b == 0.0) {
+        LOG_WARN("tensor division by zero (a=%g, b=0), returning 0", a);
+        return 0.0;
+    }
+    return a / b;
+}
 static double op_pow(double a, double b) { return pow(a, b); }
 static double op_max(double a, double b) { return (a > b) ? a : b; }
 static double op_min(double a, double b) { return (a < b) ? a : b; }
@@ -1431,9 +1460,17 @@ nimcp_tensor_t* nimcp_tensor_add_scalar(const nimcp_tensor_t* t, double s)
 
     }
 
-    float* data = (float*)result->data;
-    for (size_t i = 0; i < result->shape.numel; i++) {
-        data[i] += (float)s;
+    /* P2-U19: Dispatch by dtype instead of always casting to float* */
+    if (result->dtype == NIMCP_DTYPE_F64) {
+        double* data = (double*)result->data;
+        for (size_t i = 0; i < result->shape.numel; i++) {
+            data[i] += s;
+        }
+    } else {
+        float* data = (float*)result->data;
+        for (size_t i = 0; i < result->shape.numel; i++) {
+            data[i] += (float)s;
+        }
     }
 
     return result;
@@ -1455,9 +1492,17 @@ nimcp_tensor_t* nimcp_tensor_mul_scalar(const nimcp_tensor_t* t, double s)
 
     }
 
-    float* data = (float*)result->data;
-    for (size_t i = 0; i < result->shape.numel; i++) {
-        data[i] *= (float)s;
+    /* P2-U19: Dispatch by dtype instead of always casting to float* */
+    if (result->dtype == NIMCP_DTYPE_F64) {
+        double* data = (double*)result->data;
+        for (size_t i = 0; i < result->shape.numel; i++) {
+            data[i] *= s;
+        }
+    } else {
+        float* data = (float*)result->data;
+        for (size_t i = 0; i < result->shape.numel; i++) {
+            data[i] *= (float)s;
+        }
     }
 
     return result;
@@ -1851,7 +1896,7 @@ nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t*
     /* Matrix must be 2D, vector must be 1D */
     if (mat->shape.rank != 2 || vec->shape.rank != 1) {
         LOG_ERROR(LOG_MODULE, "mv: matrix must be 2D, vector must be 1D");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_mv: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_mv: rank mismatch");
         return NULL;
     }
 
@@ -1901,7 +1946,7 @@ nimcp_tensor_t* nimcp_tensor_vm(const nimcp_tensor_t* vec, const nimcp_tensor_t*
     /* Vector must be 1D, matrix must be 2D */
     if (vec->shape.rank != 1 || mat->shape.rank != 2) {
         LOG_ERROR(LOG_MODULE, "vm: vector must be 1D, matrix must be 2D");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_vm: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_vm: rank mismatch");
         return NULL;
     }
 
@@ -1948,7 +1993,7 @@ nimcp_tensor_t* nimcp_tensor_dot(const nimcp_tensor_t* a, const nimcp_tensor_t* 
         return NULL;
     }
     if (a->shape.numel != b->shape.numel) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_dot: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_dot: size mismatch");
         return NULL;
     }
 

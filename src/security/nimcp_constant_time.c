@@ -178,7 +178,8 @@ struct nimcp_ct_context {
 // Global State
 //=============================================================================
 
-static nimcp_ct_context_t g_default_ctx = NULL;
+/** P2-SEC-5: Use _Atomic to prevent constructor/destructor race on g_default_ctx */
+static _Atomic(nimcp_ct_context_t) g_default_ctx = NULL;
 
 /**
  * WHAT: Atomic counters for thread-safe global statistics updates
@@ -391,9 +392,9 @@ void nimcp_ct_destroy(nimcp_ct_context_t ctx)
 
     // Clear global reference if this is the default context
     // (prevents destructor from accessing freed memory)
-    if (ctx == g_default_ctx) {
-        g_default_ctx = NULL;
-    }
+    // P2-SEC-5: Atomic CAS to prevent race
+    nimcp_ct_context_t expected = ctx;
+    atomic_compare_exchange_strong(&g_default_ctx, &expected, NULL);
 
     free(ctx);
 
@@ -488,22 +489,24 @@ int nimcp_ct_memcmp_tracked(nimcp_ct_context_t ctx, const void* a, const void* b
 
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    // Update statistics if context provided
+    // P2-SEC-4: Update statistics atomically for thread safety
     if (ctx && ctx->magic == NIMCP_CT_MAGIC) {
-        ctx->stats.memcmp_operations++;
-        ctx->stats.total_bytes_compared += len;
+        __atomic_fetch_add(&ctx->stats.memcmp_operations, 1, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&ctx->stats.total_bytes_compared, len, __ATOMIC_RELAXED);
 
         // Update average timing
         double elapsed_ns = (end.tv_sec - start.tv_sec) * 1e9 +
                            (end.tv_nsec - start.tv_nsec);
 
-        // Running average
-        uint64_t total_ops = ctx->stats.memcmp_operations +
-                            ctx->stats.strcmp_operations +
-                            ctx->stats.hash_comparisons;
+        // Running average (relaxed ordering sufficient for stats)
+        uint64_t total_ops = __atomic_load_n(&ctx->stats.memcmp_operations, __ATOMIC_RELAXED) +
+                            __atomic_load_n(&ctx->stats.strcmp_operations, __ATOMIC_RELAXED) +
+                            __atomic_load_n(&ctx->stats.hash_comparisons, __ATOMIC_RELAXED);
 
-        ctx->stats.avg_comparison_time_ns =
-            (ctx->stats.avg_comparison_time_ns * (total_ops - 1) + elapsed_ns) / total_ops;
+        if (total_ops > 0) {
+            ctx->stats.avg_comparison_time_ns =
+                (ctx->stats.avg_comparison_time_ns * (total_ops - 1) + elapsed_ns) / total_ops;
+        }
     }
 
     return result;
@@ -532,9 +535,12 @@ int nimcp_ct_strcmp(const char* a, const char* b)
     size_t min_len = (len_a < len_b) ? len_a : len_b;
     size_t max_len = (len_a > len_b) ? len_a : len_b;
 
-    // WHAT: Constant-time memory comparison
-    // WHY:  Prevent timing leaks on string content
-    int mem_diff = nimcp_ct_memcmp(a, b, max_len);
+    // WHAT: Constant-time memory comparison using min_len
+    // WHY:  Prevent heap buffer over-read when strings have different lengths.
+    //        The shorter string's allocation may be < max_len bytes.
+    //        Length difference is already captured by len_diff below.
+    // FIX:  P1-SEC-2 - compare only min_len bytes of content
+    int mem_diff = nimcp_ct_memcmp(a, b, min_len);
 
     // WHAT: Constant-time length comparison
     // WHY:  Combine both checks without branches
@@ -768,6 +774,14 @@ bool nimcp_ct_verify_timing(const char* operation_name, size_t num_trials,
     double avg_zeros = total_time_zeros / num_trials;
     double avg_random = total_time_random / num_trials;
 
+    // P2-SEC-6: Guard against division by zero when avg_zeros is near zero
+    if (avg_zeros < 1.0) {
+        LOG_WARN("Timing measurement too fast to verify (avg_zeros=%.2f ns)", avg_zeros);
+        free(buf_zeros);
+        free(buf_random);
+        return false;
+    }
+
     // Calculate percentage difference
     double diff_percent = fabs(avg_random - avg_zeros) / avg_zeros * 100.0;
 
@@ -903,10 +917,17 @@ nimcp_result_t nimcp_secure_wipe(void* ptr, size_t len)
  */
 static void __attribute__((constructor)) s_ct_module_init(void)
 {
-    if (!g_default_ctx) {
-        g_default_ctx = nimcp_ct_create();
-        if (g_default_ctx) {
-            LOG_INFO("Constant-time module initialized");
+    /* P2-SEC-5: Atomic load/store for thread-safe lazy init */
+    if (!atomic_load(&g_default_ctx)) {
+        nimcp_ct_context_t ctx = nimcp_ct_create();
+        if (ctx) {
+            nimcp_ct_context_t expected = NULL;
+            if (!atomic_compare_exchange_strong(&g_default_ctx, &expected, ctx)) {
+                /* Another thread raced and won; destroy our duplicate */
+                nimcp_ct_destroy(ctx);
+            } else {
+                LOG_INFO("Constant-time module initialized");
+            }
         }
     }
 }
@@ -921,9 +942,10 @@ static void __attribute__((constructor)) s_ct_module_init(void)
  */
 static void __attribute__((destructor)) s_ct_module_cleanup(void)
 {
-    if (g_default_ctx) {
-        nimcp_ct_destroy(g_default_ctx);
-        g_default_ctx = NULL;
+    /* P2-SEC-5: Atomic exchange to prevent double-free race */
+    nimcp_ct_context_t ctx = atomic_exchange(&g_default_ctx, NULL);
+    if (ctx) {
+        nimcp_ct_destroy(ctx);
         LOG_INFO("Constant-time module cleaned up");
     }
 }
@@ -940,9 +962,10 @@ static void __attribute__((destructor)) s_ct_module_cleanup(void)
  */
 void nimcp_ct_shutdown(void)
 {
-    if (g_default_ctx) {
-        nimcp_ct_destroy(g_default_ctx);
-        g_default_ctx = NULL;
+    /* P2-SEC-5: Atomic exchange to prevent double-free race */
+    nimcp_ct_context_t ctx = atomic_exchange(&g_default_ctx, NULL);
+    if (ctx) {
+        nimcp_ct_destroy(ctx);
         LOG_INFO("Constant-time module explicitly shut down");
     }
 }

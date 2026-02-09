@@ -12,6 +12,7 @@
 #include "security/lgss/cognitive/nimcp_lgss_working_memory_guard.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -148,6 +149,10 @@ struct working_memory_guard {
 
     /* Initialized flag */
     bool initialized;
+
+    /* P2-SEC-12: Mutex for thread safety across all public API entry points */
+    nimcp_platform_mutex_t guard_mutex;
+    bool mutex_initialized;
 };
 
 //=============================================================================
@@ -341,6 +346,14 @@ working_memory_guard_t* wm_guard_create(
     /* Initialize default sanitization patterns */
     init_default_patterns(guard);
 
+    /* P2-SEC-12: Initialize mutex for thread safety */
+    if (nimcp_platform_mutex_init(&guard->guard_mutex, false) != 0) {
+        nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "wm_guard_create: mutex init failed");
+        return NULL;
+    }
+    guard->mutex_initialized = true;
+
     guard->initialized = true;
 
     return guard;
@@ -365,6 +378,11 @@ void wm_guard_destroy(working_memory_guard_t* guard) {
         }
     }
 
+    /* P2-SEC-12: Destroy mutex */
+    if (guard->mutex_initialized) {
+        nimcp_platform_mutex_destroy(&guard->guard_mutex);
+    }
+
     memset(guard, 0, sizeof(working_memory_guard_t));
     nimcp_free(guard);
 }
@@ -386,6 +404,11 @@ wm_guard_result_t wm_guard_insert(
         return WM_GUARD_ERROR_NOT_INIT;
     }
 
+    /* P2-SEC-12: Lock for thread safety */
+    if (guard->mutex_initialized) {
+        nimcp_platform_mutex_lock(&guard->guard_mutex);
+    }
+
     uint64_t current_time = get_current_time_ms();
 
     /* Initialize result */
@@ -400,6 +423,7 @@ wm_guard_result_t wm_guard_insert(
         result->result = WM_GUARD_ERROR_INVALID;
         strncpy(result->details, "Content is NULL but size > 0",
                 sizeof(result->details) - 1);
+        if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
         return WM_GUARD_ERROR_INVALID;
     }
 
@@ -409,6 +433,7 @@ wm_guard_result_t wm_guard_insert(
         guard->stats.rejected_items++;
         snprintf(result->details, sizeof(result->details),
                  "Item size %zu exceeds max %zu", proposal->size, guard->config.max_item_size);
+        if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
         return WM_GUARD_REJECTED;
     }
 
@@ -422,13 +447,19 @@ wm_guard_result_t wm_guard_insert(
             snprintf(result->details, sizeof(result->details),
                      "Source '%s' exceeded rate limit (%u items)",
                      proposal->source, guard->config.max_items_per_source);
+            if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
             return WM_GUARD_BLOCKED;
         }
     }
 
     /* Check capacity - ensure safety reservation */
     if (guard->config.preserve_safety_context) {
-        size_t reserved = (size_t)(LGSS_WM_MAX_SLOTS * guard->config.safety_reservation_ratio);
+        /* P2-SEC-10: Clamp safety_reservation_ratio to [0.0, 1.0] to prevent
+         * underflow (negative reserved) or overflow (reserved > max_slots) */
+        float clamped_ratio = guard->config.safety_reservation_ratio;
+        if (clamped_ratio < 0.0f) clamped_ratio = 0.0f;
+        if (clamped_ratio > 1.0f) clamped_ratio = 1.0f;
+        size_t reserved = (size_t)(LGSS_WM_MAX_SLOTS * clamped_ratio);
         size_t available = LGSS_WM_MAX_SLOTS - reserved;
 
         size_t non_safety_occupied = 0;
@@ -444,6 +475,7 @@ wm_guard_result_t wm_guard_insert(
             guard->stats.blocked_insertions++;
             strncpy(result->details, "Capacity reached, safety reservation protected",
                     sizeof(result->details) - 1);
+            if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
             return WM_GUARD_BLOCKED;
         }
     }
@@ -458,6 +490,7 @@ wm_guard_result_t wm_guard_insert(
         sanitized_content = nimcp_malloc(proposal->size + 1);
         if (sanitized_content == NULL) {
             result->result = WM_GUARD_ERROR_MEMORY;
+            if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
             return WM_GUARD_ERROR_MEMORY;
         }
 
@@ -478,6 +511,7 @@ wm_guard_result_t wm_guard_insert(
             guard->stats.rejected_items++;
             strncpy(result->details, "Content rejected during sanitization",
                     sizeof(result->details) - 1);
+            if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
             return WM_GUARD_REJECTED;
         }
 
@@ -485,8 +519,10 @@ wm_guard_result_t wm_guard_insert(
             result->was_sanitized = true;
             guard->stats.sanitized_items++;
 
-            /* Update average sanitization ratio */
-            float ratio = (float)sanitized_size / proposal->size;
+            /* P2-SEC-11: Guard division by zero when proposal->size==0 */
+            float ratio = (proposal->size > 0)
+                ? (float)sanitized_size / (float)proposal->size
+                : 1.0f;
             guard->stats.avg_sanitization_ratio =
                 (guard->stats.avg_sanitization_ratio * (guard->stats.sanitized_items - 1) + ratio)
                 / guard->stats.sanitized_items;
@@ -505,6 +541,7 @@ wm_guard_result_t wm_guard_insert(
                 result->result = WM_GUARD_PROTECTED;
                 strncpy(result->details, "Cannot replace protected safety item",
                         sizeof(result->details) - 1);
+                if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
                 return WM_GUARD_PROTECTED;
             }
         }
@@ -516,6 +553,7 @@ wm_guard_result_t wm_guard_insert(
             result->result = WM_GUARD_ERROR_CAPACITY;
             strncpy(result->details, "No empty slots available",
                     sizeof(result->details) - 1);
+            if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
             return WM_GUARD_ERROR_CAPACITY;
         }
     }
@@ -531,6 +569,10 @@ wm_guard_result_t wm_guard_insert(
 
     const void* final_content = sanitized_content ? sanitized_content : proposal->content;
     size_t final_size = sanitized_content ? sanitized_size : proposal->size;
+
+    /* P1-SEC-3: Save old occupied state BEFORE setting it to true,
+     * so we can correctly increment occupied_slots for new insertions. */
+    bool was_occupied = slot->state.occupied;
 
     slot->state.slot_id = slot_idx;
     slot->state.occupied = true;
@@ -569,7 +611,8 @@ wm_guard_result_t wm_guard_insert(
         }
     }
 
-    if (!guard->slots[slot_idx].state.occupied) {
+    /* P1-SEC-3: Use saved was_occupied to correctly detect new insertions */
+    if (!was_occupied) {
         guard->occupied_slots++;
     }
 
@@ -581,6 +624,8 @@ wm_guard_result_t wm_guard_insert(
     result->assigned_slot = slot_idx;
     result->result = result->was_sanitized ? WM_GUARD_SANITIZED : WM_GUARD_OK;
 
+    /* P2-SEC-12: Unlock before return */
+    if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
     return result->result;
 }
 
@@ -958,6 +1003,11 @@ wm_guard_result_t wm_guard_detect_manipulation(
         return WM_GUARD_ERROR_NOT_INIT;
     }
 
+    /* P2-SEC-12: Lock for thread safety */
+    if (guard->mutex_initialized) {
+        nimcp_platform_mutex_lock(&guard->guard_mutex);
+    }
+
     *manipulation = WM_MANIP_NONE;
     *confidence = 0.0f;
 
@@ -978,6 +1028,7 @@ wm_guard_result_t wm_guard_detect_manipulation(
         result.manipulation = WM_MANIP_TAMPERING;
         invoke_callback(guard, WM_MANIP_TAMPERING, &result);
 
+        if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
         return WM_GUARD_OK;
     }
 
@@ -993,11 +1044,13 @@ wm_guard_result_t wm_guard_detect_manipulation(
         result.manipulation = WM_MANIP_DISPLACEMENT;
         invoke_callback(guard, WM_MANIP_DISPLACEMENT, &result);
 
+        if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
         return WM_GUARD_OK;
     }
 
     /* Check for overflow patterns */
-    if (guard->occupied_slots >= LGSS_WM_MAX_SLOTS - 1) {
+    /* P1-SEC-4: Guard division by zero when occupied_slots==0 */
+    if (guard->occupied_slots > 0 && guard->occupied_slots >= LGSS_WM_MAX_SLOTS - 1) {
         /* Check if most items are from same source */
         size_t max_source_count = 0;
         for (size_t i = 0; i < guard->source_count; i++) {
@@ -1008,7 +1061,7 @@ wm_guard_result_t wm_guard_detect_manipulation(
 
         if (max_source_count > guard->occupied_slots * 0.7) {
             *manipulation = WM_MANIP_OVERFLOW;
-            *confidence = (float)max_source_count / guard->occupied_slots;
+            *confidence = (float)max_source_count / (float)guard->occupied_slots;
             guard->stats.manipulation_detections++;
             if (details != NULL && details_size > 0) {
                 snprintf(details, details_size,
@@ -1018,6 +1071,7 @@ wm_guard_result_t wm_guard_detect_manipulation(
         }
     }
 
+    if (guard->mutex_initialized) nimcp_platform_mutex_unlock(&guard->guard_mutex);
     return WM_GUARD_OK;
 }
 

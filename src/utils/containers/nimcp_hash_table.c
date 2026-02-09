@@ -240,16 +240,26 @@ static uint32_t compute_hash(hash_table_t* table, const void* key, size_t key_si
 {
     // For case-insensitive string keys, normalize to lowercase before hashing
     if (table->config.key_type == HASH_KEY_STRING && table->config.case_insensitive) {
-        // Allocate temporary buffer for lowercase version
-        char* lowercase_key = (char*)nimcp_malloc(key_size);
-        if (!lowercase_key) {
-            // Fallback to original key on allocation failure
-            // WARNING: This may cause case-insensitive lookups to fail for mixed-case keys
-            LOG_WARN("nimcp_hash_table",
-                     "Failed to allocate %zu bytes for lowercase key normalization. "
-                     "Falling back to original key - case-insensitive matching may fail.",
-                     key_size);
-            goto hash_original_key;
+        /* P2-U1: Use stack buffer for small keys to avoid heap allocation on every
+         * hash computation. Only fall back to heap for keys > 1024 bytes. */
+        #define HASH_STACK_BUF_SIZE 1024
+        char stack_buf[HASH_STACK_BUF_SIZE];
+        char* lowercase_key;
+        bool heap_allocated = false;
+
+        if (key_size <= HASH_STACK_BUF_SIZE) {
+            lowercase_key = stack_buf;
+        } else {
+            lowercase_key = (char*)nimcp_malloc(key_size);
+            if (!lowercase_key) {
+                // Fallback to original key on allocation failure
+                LOG_WARN("nimcp_hash_table",
+                         "Failed to allocate %zu bytes for lowercase key normalization. "
+                         "Falling back to original key - case-insensitive matching may fail.",
+                         key_size);
+                goto hash_original_key;
+            }
+            heap_allocated = true;
         }
 
         // Convert to lowercase
@@ -282,7 +292,9 @@ static uint32_t compute_hash(hash_table_t* table, const void* key, size_t key_si
                 break;
         }
 
-        nimcp_free(lowercase_key);
+        if (heap_allocated) {
+            nimcp_free(lowercase_key);
+        }
         return hash;
     }
 

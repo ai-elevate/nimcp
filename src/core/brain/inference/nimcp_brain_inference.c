@@ -82,6 +82,7 @@ nimcp_error_t brain_inference_mesh_register(mesh_participant_registry_t* registr
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "brain_inference", MESH_MAX_NAME_LEN - 1);
+    iface.module_name[MESH_MAX_NAME_LEN - 1] = '\0';  // P3-53 FIX: Ensure null-termination
     iface.type = MESH_PARTICIPANT_MODULE;
     iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
     mesh_participant_config_t config;
@@ -248,8 +249,14 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
  *
  * COMPLEXITY: O(n) where n = num_outputs
  */
+// P3-51: Named constant for confidence normalization factor
+#define CONFIDENCE_NORMALIZATION_FACTOR 10.0F
+
 static void determine_output_label(brain_t brain, brain_decision_t* decision)
 {
+    // P2-50 FIX: Guard against output_size==0 to prevent OOB access on output_vector[0]
+    if (decision->output_size == 0) return;
+
     uint32_t max_idx = 0;
     float max_value = decision->output_vector[0];
 
@@ -267,8 +274,8 @@ static void determine_output_label(brain_t brain, brain_decision_t* decision)
         snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
     }
 
-    // Normalize confidence
-    decision->confidence = fminf(max_value / 10.0F, 1.0F);
+    // P3-51 FIX: Replace magic number with named constant
+    decision->confidence = fminf(max_value / CONFIDENCE_NORMALIZATION_FACTOR, 1.0F);
 }
 
 /**
@@ -286,6 +293,11 @@ static void populate_interpretability(brain_t brain, const float* features, uint
         adaptive_network_explain(brain->network, features, num_features, decision->explanation,
                                  sizeof(decision->explanation));
     }
+
+    // P2-54 FIX: Guard against nimcp_malloc(0) when active_neurons==0
+    // malloc(0) is implementation-defined and may return NULL or a non-NULL
+    // pointer that must not be dereferenced.
+    if (active_neurons == 0) return;
 
     // Populate active neuron IDs
     decision->active_neuron_ids = nimcp_malloc(active_neurons * sizeof(uint32_t));
@@ -491,9 +503,10 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
                         uint32_t features_per_input, brain_decision_t* decisions)
 {
     // Guard: Validate parameters
-    if (!brain || !inputs || !decisions || num_inputs == 0) {
+    // P2-55 FIX: Also reject features_per_input==0 which would cause zero-size inference
+    if (!brain || !inputs || !decisions || num_inputs == 0 || features_per_input == 0) {
         set_error("Invalid parameters to brain_decide_batch");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide_batch: required parameter is NULL (brain, inputs, decisions)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide_batch: required parameter is NULL or zero (brain, inputs, decisions, num_inputs, features_per_input)");
         return false;
     }
 

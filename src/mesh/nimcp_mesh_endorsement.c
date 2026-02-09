@@ -394,6 +394,10 @@ nimcp_error_t mesh_endorsement_start_collection(
     );
 
     if (err != NIMCP_SUCCESS) {
+        /* P2-148: Free allocated endorsements array on failure to prevent leak */
+        nimcp_free(coll->received.endorsements);
+        coll->received.endorsements = NULL;
+        coll->received.capacity = 0;
         collector->collection_count--;
         nimcp_mutex_unlock(collector->mutex);
         return err;
@@ -590,10 +594,16 @@ const endorsement_set_t* mesh_endorsement_get_collected(
         return NULL;
     }
 
+    /* P2-149: Mutex protection for collection access */
+    nimcp_mutex_lock(((mesh_endorsement_collector_t*)collector)->mutex);
+
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
     );
-    return coll ? &coll->received : NULL;
+    const endorsement_set_t* result = coll ? &coll->received : NULL;
+
+    nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
+    return result;
 }
 
 const endorser_set_t* mesh_endorsement_get_selected(
@@ -605,10 +615,16 @@ const endorser_set_t* mesh_endorsement_get_selected(
         return NULL;
     }
 
+    /* P2-149: Mutex protection for collection access */
+    nimcp_mutex_lock(((mesh_endorsement_collector_t*)collector)->mutex);
+
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
     );
-    return coll ? &coll->selected : NULL;
+    const endorser_set_t* result = coll ? &coll->selected : NULL;
+
+    nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
+    return result;
 }
 
 nimcp_error_t mesh_endorsement_cancel_collection(

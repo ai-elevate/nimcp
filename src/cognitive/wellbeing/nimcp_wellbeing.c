@@ -261,7 +261,7 @@ static bool lock_wellbeing_memory(void)
                           strerror(errno));
         NIMCP_LOGGING_WARN("Wellbeing monitoring may experience page fault delays");
         NIMCP_LOGGING_WARN("Consider running with CAP_IPC_LOCK or increasing RLIMIT_MEMLOCK");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lock_wellbeing_memory: validation failed");
+        /* P2-COG-12: mlock failure is non-fatal, not an error condition */
         return false;
     }
 
@@ -305,6 +305,8 @@ static void ensure_event_log_init(void)
 
 /* Brain connection functions - defined later, used in shutdown */
 bool wellbeing_disconnect_brain(void);
+/* P2-COG-15: Reset resource init_once - defined later in resource section */
+void wellbeing_reset_resource_init_once(void);
 
 //=============================================================================
 // INITIALIZATION
@@ -421,6 +423,13 @@ void wellbeing_shutdown(void)
         }
     }
 
+    /* P2-COG-15: Reset all platform_once variables so re-init works after shutdown */
+    event_log_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    bio_async_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    immune_connection_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    brain_connection_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    wellbeing_reset_resource_init_once();
+
     NIMCP_LOGGING_INFO("wellbeing: Shutdown complete");
 }
 
@@ -499,7 +508,7 @@ bool wellbeing_disconnect_immune(void)
     // Guard: Not connected
     if (!connected_immune_system) {
         nimcp_platform_mutex_unlock(&immune_connection_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_disconnect_immune: connected_immune_system is NULL");
+        /* P2-COG-13: Not connected is normal state, not an error */
         return false;
     }
 
@@ -593,7 +602,7 @@ bool wellbeing_disconnect_brain(void)
 
     if (!connected_brain) {
         nimcp_platform_mutex_unlock(&brain_connection_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_disconnect_brain: connected_brain is NULL");
+        /* P2-COG-14: Not connected is normal state, not an error */
         return false;
     }
 
@@ -1689,6 +1698,11 @@ static uint32_t resource_history_count = 0;
 static uint32_t resource_history_index = 0;
 static nimcp_platform_mutex_t resource_mutex;
 static nimcp_platform_once_t resource_init_once = NIMCP_PLATFORM_ONCE_INIT;
+
+/* P2-COG-15: Reset resource init_once (called indirectly from wellbeing_shutdown) */
+void wellbeing_reset_resource_init_once(void) {
+    resource_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+}
 
 /**
  * WHAT: Resource monitoring thread state

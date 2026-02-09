@@ -197,3 +197,27 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_core_brain_walkthrough_fixes.cpp")
         LABELS "regression"
         TIMEOUT 120)
 endif()
+
+# Core Pass 3 Fixes Regression Test (P1/P2/P3 fixes)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_core_pass3_fixes.cpp")
+    add_executable(regression_core_pass3_fixes
+        test_core_pass3_fixes.cpp
+    )
+    target_link_libraries(regression_core_pass3_fixes
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            Threads::Threads
+        )
+    target_include_directories(regression_core_pass3_fixes
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+    add_test(NAME regression_core_pass3_fixes
+             COMMAND regression_core_pass3_fixes)
+    set_tests_properties(regression_core_pass3_fixes PROPERTIES
+        LABELS "regression"
+        TIMEOUT 120)
+endif()

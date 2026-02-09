@@ -168,7 +168,7 @@ bool environment_validate_config(const environment_config_t* config) {
     }
 
     if (config->min_temp_c >= config->max_temp_c) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "environment_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: min_temp >= max_temp");
         return false;
     }
     if (config->optimal_temp_min_c < config->min_temp_c) {

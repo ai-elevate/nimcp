@@ -174,7 +174,7 @@ int dragonfly_snn_bridge_validate_config(const dragonfly_snn_config_t* config) {
         return -1;
     }
     if (config->surrogate.method >= DRAGONFLY_SURROGATE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dragonfly_snn_bridge_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: invalid surrogate method");
         return -1;
     }
     if (config->learning_rate <= 0.0f) {

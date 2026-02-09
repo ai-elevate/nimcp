@@ -612,8 +612,9 @@ shannon_neuron_metrics_t shannon_analyze_neuron(
     // State entropy: treat neuron state as continuous → discretize
     // Map state to 10 bins
     uint32_t num_bins = 10;
-    int state_bin = (int)(neuron_state * (float)num_bins);
-    state_bin = clamp(state_bin, 0, num_bins - 1);
+    /* P2-SH-2: Use float clamp to match function signature (float, float, float) */
+    float state_bin_f = clamp(neuron_state * (float)num_bins, 0.0f, (float)(num_bins - 1));
+    int state_bin = (int)state_bin_f;
 
     // Simplified: assume uniform distribution for now
     // Real implementation would maintain state histogram
@@ -920,7 +921,14 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
     joint->num_x_states = num_x_states;
     joint->num_y_states = num_y_states;
 
-    uint32_t total_size = num_x_states * num_y_states;
+    /* P2-SH-1: Use size_t to prevent integer overflow on large distributions */
+    size_t total_size = (size_t)num_x_states * (size_t)num_y_states;
+    if (total_size / num_x_states != num_y_states) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "shannon_joint_distribution_create: allocation overflow");
+        nimcp_free(joint);
+        return NULL;
+    }
     joint->joint_probabilities = (float*)nimcp_malloc(total_size * sizeof(float));
 
     if (!joint->joint_probabilities) {

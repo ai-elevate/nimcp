@@ -507,7 +507,8 @@ static bool ring_buffer_pop(log_ring_buffer_t* rb, nimcp_log_entry_t* entry) {
     uint64_t write_pos = nimcp_atomic_load_u64(&rb->write_pos, NIMCP_MEMORY_ORDER_ACQUIRE);
 
     if (read_pos >= write_pos) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_pop: capacity exceeded");
+        /* P2-U7: Empty buffer is a normal condition (polled by async writer), not an error.
+         * Removed false positive NIMCP_THROW_TO_IMMUNE. */
         return false;  // Buffer empty
     }
 
@@ -573,14 +574,22 @@ static bool rate_limiter_try_acquire(log_rate_limiter_t* rl) {
         }
     }
 
-    // Try to consume a token
-    uint64_t tokens = nimcp_atomic_load_u64(&rl->tokens, NIMCP_MEMORY_ORDER_ACQUIRE);
-    if (tokens > 0) {
-        nimcp_atomic_fetch_sub_u64(&rl->tokens, 1, NIMCP_MEMORY_ORDER_ACQ_REL);
-        return true;
+    // P2-U11: Use CAS loop for atomic token consumption to prevent over-consumption
+    // under concurrent access. The previous load-then-sub was not atomic and could
+    // allow more threads to consume tokens than available.
+    {
+        uint64_t current = nimcp_atomic_load_u64(&rl->tokens, NIMCP_MEMORY_ORDER_ACQUIRE);
+        while (current > 0) {
+            if (nimcp_atomic_compare_exchange_u64(&rl->tokens, &current, current - 1,
+                                                   NIMCP_MEMORY_ORDER_ACQ_REL)) {
+                return true;
+            }
+            // CAS failed, current updated by compare_exchange; retry
+        }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_limiter_try_acquire: validation failed");
+    /* P2-U9: Rate limiter depleted is normal throttling behavior, not an error.
+     * Removed false positive NIMCP_THROW_TO_IMMUNE. */
     return false;
 }
 
@@ -915,7 +924,8 @@ static void* async_writer_thread(void* arg) {
         write_entry(logger, &entry);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_writer_thread: operation failed");
+    /* P2-U10: Worker thread shutdown is normal behavior, not an error.
+     * Removed false positive NIMCP_THROW_TO_IMMUNE. */
     return NULL;
 }
 
@@ -929,7 +939,8 @@ static void* async_writer_thread(void* arg) {
 static bool should_log(nimcp_logger_t logger, log_level_t level, const char* module) {
     // Check OFF level (never log)
     if (level >= LOG_LEVEL_OFF) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_log: capacity exceeded");
+        /* P2-U8: Level being OFF is a normal configuration, not an error.
+         * Removed false positive NIMCP_THROW_TO_IMMUNE. */
         return false;
     }
 
@@ -949,7 +960,8 @@ static bool should_log(nimcp_logger_t logger, log_level_t level, const char* mod
 
     // Check global level
     if (level < logger->level) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_log: validation failed");
+        /* P2-U8: Message below configured log level is a normal filter, not an error.
+         * Removed false positive NIMCP_THROW_TO_IMMUNE. */
         return false;
     }
 

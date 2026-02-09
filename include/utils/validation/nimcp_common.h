@@ -391,8 +391,26 @@ typedef struct nimcp_message {
 #define NIMCP_VERSION_STRING "2.6.3"
 #endif
 
+/* P2-10: WARNING - MIN/MAX macros evaluate arguments twice.
+ * Do NOT pass expressions with side effects (e.g., MIN(i++, j++)).
+ * For side-effect-safe versions, use NIMCP_MIN/NIMCP_MAX below. */
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* P2-10: Type-safe MIN/MAX using GCC statement expressions (no double-eval).
+ * Falls back to standard macros on non-GCC compilers. */
+#ifdef __GNUC__
+#define NIMCP_MIN(a, b) \
+    __extension__ ({ __typeof__(a) _a = (a); __typeof__(b) _b = (b); _a < _b ? _a : _b; })
+#define NIMCP_MAX(a, b) \
+    __extension__ ({ __typeof__(a) _a = (a); __typeof__(b) _b = (b); _a > _b ? _a : _b; })
+#else
+#define NIMCP_MIN(a, b) MIN(a, b)
+#define NIMCP_MAX(a, b) MAX(a, b)
+#endif
+
+/* P2-12: NIMCP_ALIGN requires 'a' to be a power of two.
+ * Behavior is undefined if a == 0 or a is not a power of 2. */
 #define NIMCP_ALIGN(x, a) (((x) + ((a) -1)) & ~((a) -1))
 
 /* Platform Detection - Use nimcp_platform.h if already defined */

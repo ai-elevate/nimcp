@@ -400,16 +400,30 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Auto-load from checkpoint if enabled (default behavior)
     if (config->checkpoint_path && config->auto_load) {
-        FILE* test_file = fopen(config->checkpoint_path, "rb");
-        if (test_file) {
-            fclose(test_file);
+        // P3-55 FIX: Use access() instead of fopen/fclose just to check existence
+        if (access(config->checkpoint_path, R_OK) == 0) {
             brain_t loaded_brain = brain_load(config->checkpoint_path);
             if (loaded_brain) {
-                memcpy(&loaded_brain->config, config, sizeof(brain_config_t));
+                // P1-53 FIX: Only copy behavioral config fields, NOT structural fields.
+                // memcpy(&loaded_brain->config, config, sizeof(brain_config_t)) would
+                // overwrite num_inputs/num_outputs/num_neurons from the loaded topology,
+                // replacing the trained architecture with the (possibly different) config.
+                loaded_brain->config.learning_rate = config->learning_rate;
+                loaded_brain->config.sparsity_target = config->sparsity_target;
+                loaded_brain->config.enable_explanations = config->enable_explanations;
+                loaded_brain->config.task = config->task;
+                loaded_brain->config.enable_working_memory = config->enable_working_memory;
+                loaded_brain->config.enable_theory_of_mind = config->enable_theory_of_mind;
+                loaded_brain->config.enable_empathy_responses = config->enable_empathy_responses;
+                loaded_brain->config.enable_mirror_neurons = config->enable_mirror_neurons;
+                loaded_brain->config.enable_quantum_annealing = config->enable_quantum_annealing;
+                loaded_brain->config.enable_glial = config->enable_glial;
+                /* enable_homeostasis removed - field no longer exists in brain_config_t */
+                loaded_brain->config.minimal_mode = config->minimal_mode;
                 return loaded_brain;
             }
-            fprintf(stderr, "WARNING: Failed to load checkpoint from '%s', creating fresh brain\n",
-                    config->checkpoint_path);
+            LOG_WARN(LOG_MODULE, "Failed to load checkpoint from '%s', creating fresh brain",
+                     config->checkpoint_path);
         }
     }
 
@@ -678,12 +692,19 @@ brain_t brain_create_custom(const brain_config_t* config)
     // ========================================================================
     // PHASE E: EMOTIONAL INTELLIGENCE SYSTEMS
     // ========================================================================
+    // P2-56 FIX: Check return values of emotional subsystem creation and log warnings
     brain->shadow_emotions = shadow_system_create(8);
+    if (!brain->shadow_emotions) { LOG_WARN(LOG_MODULE, "Shadow emotions subsystem creation failed"); }
     brain->bias_detection = bias_system_create(8);
+    if (!brain->bias_detection) { LOG_WARN(LOG_MODULE, "Bias detection subsystem creation failed"); }
     brain->grief_system = grief_system_create();
+    if (!brain->grief_system) { LOG_WARN(LOG_MODULE, "Grief system creation failed"); }
     brain->joy_system = joy_system_create();
+    if (!brain->joy_system) { LOG_WARN(LOG_MODULE, "Joy system creation failed"); }
     brain->remorse_system = remorse_regret_system_create();
+    if (!brain->remorse_system) { LOG_WARN(LOG_MODULE, "Remorse/regret system creation failed"); }
     brain->social_bond_system = social_bond_system_create();
+    if (!brain->social_bond_system) { LOG_WARN(LOG_MODULE, "Social bond system creation failed"); }
 
     // ========================================================================
     // COGNITIVE SUBSYSTEMS
@@ -816,7 +837,7 @@ brain_t brain_create_custom(const brain_config_t* config)
 
             nimcp_error_t router_err = bio_router_init(&router_config);
             if (router_err != NIMCP_SUCCESS) {
-                fprintf(stderr, "[WARN] Bio-router initialization failed! Bio-async features disabled.\n");
+                LOG_WARN(LOG_MODULE, "Bio-router initialization failed! Bio-async features disabled.");
                 brain->bio_async_enabled = false;
             }
         }
@@ -825,7 +846,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         if (bio_router_is_initialized()) {
             nimcp_error_t async_err = brain_bio_async_init(brain);
             if (async_err != NIMCP_SUCCESS) {
-                fprintf(stderr, "[WARN] Brain bio-async initialization failed! Async messaging disabled.\n");
+                LOG_WARN(LOG_MODULE, "Brain bio-async initialization failed! Async messaging disabled.");
                 brain->bio_async_enabled = false;
             } else {
                 brain->bio_async_enabled = true;
@@ -1116,7 +1137,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         };
         brain->quantum_annealer = quantum_annealer_create(&qa_config);
         if (!brain->quantum_annealer) {
-            fprintf(stderr, "[WARN] Quantum annealer creation failed! Disabling.\n");
+            LOG_WARN(LOG_MODULE, "Quantum annealer creation failed! Disabling.");
             brain->config.enable_quantum_annealing = false;
         }
     }

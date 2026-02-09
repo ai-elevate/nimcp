@@ -120,6 +120,9 @@ static nimcp_platform_mutex_t g_guard_creation_lock;
 /** @brief nimcp_platform_once control for thread-safe initialization */
 static nimcp_platform_once_t g_toctou_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
+/** P2-SEC-2: Atomic flag to prevent race on cleanup check (forward declaration) */
+static _Atomic bool g_toctou_module_cleaned_up = false;
+
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
@@ -142,6 +145,9 @@ static void toctou_module_init_internal(void) {
     nimcp_platform_mutex_init(&g_guard_creation_lock, false);
 
     /* Health agent uses _Atomic type, no init needed (statically initialized to NULL) */
+
+    /* P2-SEC-3: Reset cleanup flag so re-init after cleanup works */
+    atomic_store(&g_toctou_module_cleaned_up, false);
 
     LOG_MODULE_INFO("toctou_guard", "TOCTOU guard module initialized");
 }
@@ -494,6 +500,8 @@ nimcp_error_t nimcp_toctou_execute(
             "Token %u is not active (state=%d)", token->token_id, token->state);
         nimcp_platform_mutex_unlock(&token->token_lock);
 
+        /* P1-SEC-1: Release token_lock BEFORE acquiring guard_lock
+         * to maintain consistent lock ordering (guard_lock -> token_lock) */
         if (guard && is_valid_guard(guard)) {
             nimcp_platform_mutex_lock(&guard->guard_lock);
             guard->stats.execution_failures++;
@@ -509,6 +517,7 @@ nimcp_error_t nimcp_toctou_execute(
         token->state = TOKEN_STATE_EXPIRED;
         nimcp_platform_mutex_unlock(&token->token_lock);
 
+        /* P1-SEC-1: Release token_lock BEFORE acquiring guard_lock */
         if (guard && is_valid_guard(guard)) {
             nimcp_platform_mutex_lock(&guard->guard_lock);
             guard->stats.tokens_expired++;
@@ -520,7 +529,7 @@ nimcp_error_t nimcp_toctou_execute(
         return NIMCP_ERROR_TIMEOUT;
     }
 
-    // Execute action with lock held
+    // Execute action with token lock held
     if (guard && guard->config.enable_logging) {
         LOG_MODULE_DEBUG("toctou_guard",
             "Executing action for token %u", token->token_id);
@@ -531,7 +540,13 @@ nimcp_error_t nimcp_toctou_execute(
     // Mark token as used
     token->state = TOKEN_STATE_USED;
 
-    // Update statistics
+    /* P1-SEC-1: Release token_lock BEFORE acquiring guard_lock
+     * to prevent ABBA deadlock. validate_custom() acquires guard_lock
+     * then token_lock, so execute() must never hold token_lock while
+     * acquiring guard_lock. */
+    nimcp_platform_mutex_unlock(&token->token_lock);
+
+    // Update statistics (guard_lock only, no token_lock held)
     if (guard && is_valid_guard(guard)) {
         nimcp_platform_mutex_lock(&guard->guard_lock);
         guard->stats.tokens_used++;
@@ -541,8 +556,6 @@ nimcp_error_t nimcp_toctou_execute(
         }
         nimcp_platform_mutex_unlock(&guard->guard_lock);
     }
-
-    nimcp_platform_mutex_unlock(&token->token_lock);
 
     return result;
 }
@@ -576,8 +589,9 @@ nimcp_error_t nimcp_toctou_cancel(nimcp_toctou_token_t token) {
 }
 
 bool nimcp_toctou_token_is_valid(nimcp_toctou_token_t token) {
+    /* P2-SEC-1: Removed false-positive NIMCP_THROW_TO_IMMUNE.
+     * This is a query function - returning false is sufficient for invalid tokens. */
     if (!is_valid_token(token)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_toctou_token_is_valid: is_valid_token is NULL");
         return false;
     }
 
@@ -816,8 +830,6 @@ uint32_t nimcp_toctou_process_inbox(
  * @brief Flag to track if module cleanup has been performed
  * WHY: Prevent double-cleanup
  */
-static bool g_toctou_module_cleaned_up = false;
-
 /**
  * @brief Cleanup TOCTOU guard module resources
  *
@@ -830,8 +842,8 @@ static bool g_toctou_module_cleaned_up = false;
  * NOTE: This function is idempotent - safe to call multiple times
  */
 void nimcp_toctou_module_cleanup(void) {
-    /* Prevent double cleanup */
-    if (g_toctou_module_cleaned_up) {
+    /* P2-SEC-2: Atomic check to prevent double cleanup race */
+    if (atomic_exchange(&g_toctou_module_cleaned_up, true)) {
         return;
     }
 
@@ -842,7 +854,8 @@ void nimcp_toctou_module_cleanup(void) {
     /* Clear health agent pointer */
     atomic_store(&g_toctou_guard_health_agent, NULL);
 
-    g_toctou_module_cleaned_up = true;
+    /* P2-SEC-3: Reset init_once so module can be re-initialized after cleanup */
+    g_toctou_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 
     LOG_MODULE_INFO("toctou_guard", "TOCTOU guard module cleaned up");
 }

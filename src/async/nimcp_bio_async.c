@@ -32,6 +32,7 @@
 #include "security/nimcp_security.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_once.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -275,44 +276,44 @@ typedef struct {
 
 static bio_handle_tracker_t g_handle_tracker = {0};
 
+/** P1-48 fix: Use platform_once for thread-safe one-time initialization */
+static nimcp_platform_once_t g_handle_tracker_once = NIMCP_PLATFORM_ONCE_INIT;
+
 /**
- * @brief Initialize handle tracker
+ * @brief One-time initialization routine for handle tracker
  *
- * P1-23 fix: Uses double-checked locking to prevent TOCTOU race.
- * First check is fast (no lock), second check after acquiring mutex
- * ensures only one thread performs initialization.
+ * P1-48 fix: Called via nimcp_platform_once to ensure exactly one thread
+ * initializes the tracker, eliminating the TOCTOU race on mutex init.
  */
-static nimcp_error_t handle_tracker_init(void) {
-    // Fast path: already initialized (no lock needed)
-    if (g_handle_tracker.initialized) {
-        LOG_DEBUG("Handle tracker already initialized");
-        return NIMCP_SUCCESS;
-    }
-
-    LOG_DEBUG("Initializing handle tracker with capacity %d", BIO_MAX_TRACKED_HANDLES);
-
+static void handle_tracker_init_once_routine(void) {
     nimcp_error_t err = nimcp_mutex_init(&g_handle_tracker.mutex, NULL);
     if (err != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize handle tracker mutex: %d", err);
-        return err;
-    }
-
-    // P1-23 fix: Double-checked locking - re-check after acquiring mutex
-    nimcp_mutex_lock(&g_handle_tracker.mutex);
-    if (g_handle_tracker.initialized) {
-        // Another thread initialized while we were waiting for the mutex
-        nimcp_mutex_unlock(&g_handle_tracker.mutex);
-        LOG_DEBUG("Handle tracker initialized by another thread");
-        return NIMCP_SUCCESS;
+        return;
     }
 
     nimcp_atomic_init_u32(&g_handle_tracker.count, 0);
     memset(g_handle_tracker.entries, 0, sizeof(g_handle_tracker.entries));
     g_handle_tracker.initialized = true;
 
-    nimcp_mutex_unlock(&g_handle_tracker.mutex);
-
     LOG_INFO("Handle tracker initialized successfully");
+}
+
+/**
+ * @brief Initialize handle tracker
+ *
+ * P1-48 fix: Uses nimcp_platform_once for thread-safe one-time initialization,
+ * replacing the previous double-checked locking pattern which had a TOCTOU race
+ * on the mutex init itself.
+ */
+static nimcp_error_t handle_tracker_init(void) {
+    nimcp_platform_once(&g_handle_tracker_once, handle_tracker_init_once_routine);
+
+    if (!g_handle_tracker.initialized) {
+        LOG_ERROR("Handle tracker initialization failed");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
     return NIMCP_SUCCESS;
 }
 
@@ -354,6 +355,9 @@ static void handle_tracker_shutdown(void) {
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
     nimcp_mutex_destroy(&g_handle_tracker.mutex);
+
+    /* P1-48 fix: Reset platform_once so handle tracker can be re-initialized */
+    g_handle_tracker_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 
     LOG_INFO("Handle tracker shutdown complete");
 }
@@ -449,7 +453,7 @@ typedef struct {
 } bio_channel_state_t;
 
 static struct {
-    bool initialized;
+    _Atomic bool initialized;  /* P2-63 fix: atomic to prevent torn reads across threads */
     nimcp_bio_async_config_t config;
 
     /* Memory management */
@@ -775,6 +779,11 @@ static float shared_state_update_concentration(nimcp_bio_shared_state_t* shared)
     atomic_store_float(&shared->concentration_bits, concentration);
 
     /* Check for full decay */
+    /* P1-47 fix: Guard against division by zero when peak == baseline */
+    if (peak == baseline) {
+        /* No decay possible when peak equals baseline - confidence is 1.0 (fully decayed) */
+        return concentration;
+    }
     float confidence = (concentration - baseline) / (peak - baseline);
     if (confidence < BIO_CONFIDENCE_THRESHOLD) {
         uint32_t expected = BIO_FUTURE_COMPLETED;
@@ -1233,6 +1242,12 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
     /* Record completion time */
     shared->complete_time_ms = bio_time_ms();
     uint64_t latency_ms = shared->complete_time_ms - shared->create_time_ms;
+
+    /* P1-46 fix: Explicit release fence ensures all result data (result buffer,
+     * concentration, completion time) is fully visible to other threads before
+     * the CAS publishes the state transition. The CAS itself uses ACQ_REL, but
+     * we add an explicit fence for defense-in-depth on weakly-ordered architectures. */
+    nimcp_atomic_thread_fence(NIMCP_MEMORY_ORDER_RELEASE);
 
     /* Transition state */
     uint32_t expected = BIO_FUTURE_PENDING;

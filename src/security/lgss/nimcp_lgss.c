@@ -118,8 +118,9 @@ struct lgss_context {
         uint64_t start_time_us;
     } stats;
 
-    /** @brief Thread protection */
-    void* mutex;
+    /* P2-SEC-7: Removed unused mutex field. Thread safety is provided by
+     * __atomic_fetch_add on stats counters. LGSS contexts are designed to be
+     * single-owner; the safety KB has its own internal locking. */
 };
 
 /*=============================================================================
@@ -265,7 +266,8 @@ lgss_context_t* lgss_create(const lgss_config_t* config)
 
 cleanup:
     lgss_destroy(lgss);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_create: operation failed");
+    /* P2-SEC-9: Use correct error code for create failure */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "lgss_create: component creation failed");
     return NULL;
 }
 
@@ -357,7 +359,8 @@ int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)
     if (!compile_ok) {
         LGSS_LOG_ERROR("Failed to compile safety rules");
         lgss->status = LGSS_STATUS_ERROR;
-        return NIMCP_ERROR_NULL_POINTER;
+        /* P2-SEC-9: Return correct error code for compilation failure */
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     LGSS_LOG_INFO("Safety rules compiled successfully");
@@ -389,7 +392,8 @@ int lgss_lock(lgss_context_t* lgss)
     if (!lock_result) {
         LGSS_LOG_ERROR("Failed to lock safety KB");
         lgss->status = LGSS_STATUS_ERROR;
-        return NIMCP_ERROR_NULL_POINTER;
+        /* P2-SEC-9: Return correct error code for lock failure */
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     /* Log to telemetry */
@@ -489,7 +493,8 @@ int lgss_evaluate(
         LGSS_LOG_ERROR("Safety evaluation failed");
         result->action = SAFETY_ACTION_DENY;
         __atomic_fetch_add(&lgss->stats.actions_denied, 1, __ATOMIC_RELAXED);
-        return NIMCP_ERROR_NULL_POINTER;
+        /* P2-SEC-9: Return correct error code for evaluation failure */
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
     safety_action_t action = result->action;
 
@@ -544,11 +549,12 @@ int lgss_verify_integrity(lgss_context_t* lgss)
 {
     LGSS_VALIDATE(lgss);
 
-    lgss->stats.integrity_checks++;
+    /* P2-SEC-8: Use __atomic_fetch_add consistently with lgss_evaluate() */
+    __atomic_fetch_add(&lgss->stats.integrity_checks, 1, __ATOMIC_RELAXED);
     bool verify_ok = symbolic_logic_safety_verify_integrity(lgss->safety_kb);
 
     if (!verify_ok) {
-        lgss->stats.integrity_failures++;
+        __atomic_fetch_add(&lgss->stats.integrity_failures, 1, __ATOMIC_RELAXED);
 
         if (lgss->telemetry) {
             lgss_telemetry_log_system(lgss->telemetry,
@@ -658,7 +664,8 @@ override_controller_t lgss_get_override_controller(lgss_context_t* lgss)
 
 const char* lgss_version_string(void)
 {
-    static char version[32];
+    /* P3-SEC-2: Thread-local buffer to prevent reentrancy data race */
+    static _Thread_local char version[32];
     snprintf(version, sizeof(version), "%d.%d.%d",
         NIMCP_LGSS_VERSION_MAJOR,
         NIMCP_LGSS_VERSION_MINOR,

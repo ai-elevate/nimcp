@@ -470,7 +470,7 @@ const safety_rule_t* symbolic_logic_safety_get_rule(const safety_kb_t* kb, uint3
             return &kb->rules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_get_rule: validation failed");
+    /* P2-COG-21: Rule not found is normal lookup behavior, not an error */
     return NULL;
 }
 
@@ -542,21 +542,28 @@ static void compile_rule_to_fol(safety_rule_t* rule) {
 
     // Start with opening
     written = snprintf(pos, remaining, "(");
+    /* P3-COG-08: Check snprintf return for truncation */
+    if (written < 0 || (size_t)written >= remaining) {
+        rule->is_compiled = true;
+        return;
+    }
     pos += written;
     remaining -= (size_t)written;
 
     // Add all conditions with AND
-    for (uint32_t i = 0; i < rule->num_conditions && remaining > 0; i++) {
+    for (uint32_t i = 0; i < rule->num_conditions && remaining > 1; i++) {
         char cond_buf[256];
         compile_condition_to_fol(&rule->conditions[i], cond_buf, sizeof(cond_buf));
 
         if (i > 0) {
             written = snprintf(pos, remaining, " AND ");
+            if (written < 0 || (size_t)written >= remaining) break;
             pos += written;
             remaining -= (size_t)written;
         }
 
         written = snprintf(pos, remaining, "%s", cond_buf);
+        if (written < 0 || (size_t)written >= remaining) break;
         pos += written;
         remaining -= (size_t)written;
     }
@@ -702,9 +709,11 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
         return false;
     }
 
-    /* Cache result for locked KBs */
+    /* P2-COG-22: Cache result for locked KBs - explicit const cast for
+     * mutable cache field. integrity_verified_while_locked is a cache
+     * optimization that does not affect safety-critical state. */
     if (kb->is_locked) {
-        ((safety_kb_t*)kb)->integrity_verified_while_locked = true;
+        ((safety_kb_t*)(uintptr_t)kb)->integrity_verified_while_locked = true;
     }
 
     LOG_DEBUG("Safety KB integrity verified");
@@ -830,7 +839,9 @@ static bool evaluate_condition(const safety_condition_t* cond, const safety_acti
                 char list_copy[SAFETY_MAX_VALUE_LEN];
                 strncpy(list_copy, cond->value, sizeof(list_copy) - 1);
                 list_copy[sizeof(list_copy) - 1] = '\0';
-                char* token = strtok(list_copy, ",");
+                /* P2-COG-20: Use thread-safe strtok_r instead of strtok */
+                char* saveptr = NULL;
+                char* token = strtok_r(list_copy, ",", &saveptr);
                 while (token) {
                     // Trim whitespace
                     while (*token == ' ') token++;
@@ -838,7 +849,7 @@ static bool evaluate_condition(const safety_condition_t* cond, const safety_acti
                         result = true;
                         break;
                     }
-                    token = strtok(NULL, ",");
+                    token = strtok_r(NULL, ",", &saveptr);
                 }
             }
             break;
@@ -850,14 +861,16 @@ static bool evaluate_condition(const safety_condition_t* cond, const safety_acti
                 char list_copy[SAFETY_MAX_VALUE_LEN];
                 strncpy(list_copy, cond->value, sizeof(list_copy) - 1);
                 list_copy[sizeof(list_copy) - 1] = '\0';
-                char* token = strtok(list_copy, ",");
+                /* P2-COG-20: Use thread-safe strtok_r instead of strtok */
+                char* saveptr = NULL;
+                char* token = strtok_r(list_copy, ",", &saveptr);
                 while (token) {
                     while (*token == ' ') token++;
                     if (strcmp(str_val, token) == 0) {
                         result = false;
                         break;
                     }
-                    token = strtok(NULL, ",");
+                    token = strtok_r(NULL, ",", &saveptr);
                 }
             }
             break;

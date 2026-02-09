@@ -41,6 +41,11 @@ struct sliding_window {
     window_stats_t stats;       /**< Current statistics */
     float m2;                   /**< Sum of squared differences (for variance) */
 
+    /* P2-MW-05 fix: Separate lifetime counter for recalculation trigger.
+     * stats.count saturates at window_size, so modulo on it never re-triggers.
+     * This counter monotonically increases and is used for recalculation checks. */
+    uint64_t total_samples_added; /**< Lifetime sample counter (never wraps in practice) */
+
     // Memory pool for temporary allocations (stats recalculation)
     memory_pool_t temp_buffer_pool;  /**< Pool for temp sample arrays (already a pointer type) */
 };
@@ -207,6 +212,13 @@ sliding_window_t* sliding_window_create(
 
     // Create memory pool for temp allocations (stats recalculation)
     // Pool size: 2 buffers × window_size floats (double buffer for safety)
+    /* P2-MW-04 fix: Check for integer overflow in block_size calculation */
+    if (window_size > SIZE_MAX / sizeof(float)) {
+        circular_buffer_destroy(window->buffer);
+        nimcp_free(window);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sliding_window_create: window_size overflow");
+        return NULL;
+    }
     memory_pool_config_t pool_config = {
         .block_size = window_size * sizeof(float),  // Each block holds full window
         .num_blocks = 2,                             // Double buffer for safety
@@ -268,8 +280,10 @@ bool sliding_window_add(sliding_window_t* window, float value) {
     // Update statistics
     update_stats_add(window, value);
 
-    // Periodically recalculate for numerical stability and min/max accuracy
-    if (window->stats.count % 1000 == 0) {
+    /* P2-MW-05 fix: Use lifetime counter instead of stats.count for recalculation
+     * trigger. stats.count saturates at window_size and would never re-trigger. */
+    window->total_samples_added++;
+    if (window->total_samples_added % 1000 == 0) {
         recalculate_stats(window);
     }
 
@@ -392,11 +406,10 @@ size_t sliding_window_count(const sliding_window_t* window) {
 }
 
 bool sliding_window_is_full(const sliding_window_t* window) {
-    // Guard: validate input
-    if (!window) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sliding_window_is_full: window is NULL");
-        return false;
-    }
+    /* P3-MW-03 fix: Consistent NULL handling across query functions.
+     * All other query functions (size, count, overlap, stride) return early
+     * without throwing. is_full should be consistent. */
+    if (!window) return false;
     return window->stats.count >= window->window_size;
 }
 

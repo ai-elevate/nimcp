@@ -195,7 +195,7 @@ struct unified_mem_snapshot_struct {
  * @brief Get current time in nanoseconds
  */
 static inline uint64_t get_time_ns(void) {
-    LOG_DEBUG("Entering get_time_ns");
+
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * NIMCP_NS_PER_SEC + (uint64_t)ts.tv_nsec;
@@ -205,8 +205,8 @@ static inline uint64_t get_time_ns(void) {
  * @brief Initialize page pool
  */
 static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
-    LOG_DEBUG("Entering page_pool_init");
-    LOG_ERROR("Operation failed");
+
+
     if (!pool || num_pages == 0) return false;
 
     // Allocate pages via mmap
@@ -214,9 +214,9 @@ static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
     pool->base = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (pool->base == MAP_FAILED) {
-        LOG_DEBUG("Entering if");
+    
         pool->base = NULL;
-        LOG_ERROR("Operation failed");
+    
         return false;
     }
 
@@ -227,16 +227,16 @@ static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
     // Use raw calloc to avoid circular dependency with nimcp_* wrappers
     pool->free_list = calloc(num_pages, sizeof(void*));
     if (!pool->free_list) {
-        LOG_DEBUG("Entering if");
+    
         munmap(pool->base, total_size);
         pool->base = NULL;
-        LOG_ERROR("Operation failed");
+    
         return false;
     }
 
     // Initialize free list with all pages
     for (size_t i = 0; i < num_pages; i++) {
-        LOG_DEBUG("Entering for");
+    
         pool->free_list[i] = (char*)pool->base + i * PAGE_COW_PAGE_SIZE;
     }
 
@@ -256,15 +256,15 @@ static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
  * @brief Destroy page pool
  */
 static void page_pool_destroy(page_pool_t* pool) {
-    LOG_DEBUG("Entering page_pool_destroy");
+
     if (!pool || !pool->initialized) return;
 
     nimcp_platform_mutex_destroy(&pool->mutex);
-    LOG_DEBUG("Memory deallocation");
+
     free(pool->free_list);
 
     if (pool->base) {
-        LOG_DEBUG("Entering if");
+    
         munmap(pool->base, pool->num_pages * PAGE_COW_PAGE_SIZE);
     }
 
@@ -281,7 +281,7 @@ static void* page_pool_acquire(page_pool_t* pool) {
 
     void* page = NULL;
     if (pool->free_count > 0) {
-        LOG_DEBUG("Entering if");
+    
         page = pool->free_list[--pool->free_count];
     }
 
@@ -293,21 +293,21 @@ static void* page_pool_acquire(page_pool_t* pool) {
  * @brief Release page back to pool
  */
 static bool page_pool_release(page_pool_t* pool, void* page) {
-    LOG_DEBUG("Entering page_pool_release");
-    LOG_ERROR("Operation failed");
+
+
     if (!pool || !pool->initialized || !page) return false;
 
     // Verify page is from this pool
     if (page < pool->base ||
         page >= (void*)((char*)pool->base + pool->num_pages * PAGE_COW_PAGE_SIZE)) {
-        LOG_ERROR("Operation failed");
+    
         return false;
     }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
     if (pool->free_count < pool->num_pages) {
-        LOG_DEBUG("Entering if");
+    
         pool->free_list[pool->free_count++] = page;
     }
 
@@ -319,8 +319,8 @@ static bool page_pool_release(page_pool_t* pool, void* page) {
  * @brief Check if page is from pool
  */
 static bool page_pool_owns(page_pool_t* pool, void* page) {
-    LOG_DEBUG("Entering page_pool_owns");
-    LOG_ERROR("Operation failed");
+
+
     if (!pool || !pool->initialized || !page) return false;
 
     return page >= pool->base &&
@@ -335,20 +335,20 @@ static unified_mem_strategy_t select_strategy(
     const unified_mem_request_t* request
 ) {
     if (request->strategy != UNIFIED_STRATEGY_AUTO) {
-        LOG_DEBUG("Entering if");
+    
         return request->strategy;
     }
 
     // Auto-select based on size and CoW requirement
     if (!request->enable_cow) {
-        LOG_DEBUG("Entering if");
+    
         // No CoW - use direct pool if possible
         return UNIFIED_STRATEGY_POOL_DIRECT;
     }
 
     // CoW enabled - select based on size
     if (request->size >= manager->config.page_threshold) {
-        LOG_DEBUG("Entering if");
+    
         return UNIFIED_STRATEGY_PAGE_COW;
     }
 
@@ -376,9 +376,9 @@ static void remove_handle_from_list(
 ) {
     struct unified_mem_handle_struct** current = &manager->handles;
     while (*current) {
-        LOG_DEBUG("Entering while");
+    
         if (*current == handle) {
-            LOG_DEBUG("Entering if");
+        
             *current = handle->next;
             manager->handle_count--;
             break;
@@ -433,7 +433,7 @@ NIMCP_EXPORT unified_mem_manager_t unified_mem_create(
 
     // Initialize page pool if requested
     if (cfg.page_pool_num_pages > 0) {
-        LOG_DEBUG("Entering if");
+    
         if (!page_pool_init(&manager->page_pool, cfg.page_pool_num_pages)) {
             // Non-fatal - will fall back to mmap
         }
@@ -450,11 +450,11 @@ NIMCP_EXPORT void unified_mem_destroy(unified_mem_manager_t manager) {
 
     // Warning: handles should be freed first
     if (manager->handle_count > 0) {
-        LOG_DEBUG("Entering if");
+    
         // Force cleanup of remaining handles
         struct unified_mem_handle_struct* current = manager->handles;
         while (current) {
-            LOG_DEBUG("Entering while");
+        
             struct unified_mem_handle_struct* next = current->next;
             unified_mem_free(current);
             current = next;
@@ -466,7 +466,7 @@ NIMCP_EXPORT void unified_mem_destroy(unified_mem_manager_t manager) {
 
     // Destroy object pool if we created one
     if (manager->object_pool) {
-        LOG_DEBUG("Entering if");
+    
         memory_pool_destroy(manager->object_pool);
     }
 
@@ -483,8 +483,8 @@ NIMCP_EXPORT bool unified_mem_get_stats(
     unified_mem_stats_t* stats
 ) {
     if (!manager || manager->magic != UNIFIED_MANAGER_MAGIC || !stats) {
-        LOG_DEBUG("Entering if");
-        LOG_ERROR("Operation failed");
+    
+    
         return false;
     }
 
@@ -494,7 +494,7 @@ NIMCP_EXPORT bool unified_mem_get_stats(
 
     // Calculate pool utilization
     if (manager->page_pool.initialized) {
-        LOG_DEBUG("Entering if");
+    
         size_t used = manager->page_pool.num_pages - manager->page_pool.free_count;
         stats->page_pool_utilization = (used * 10000) / manager->page_pool.num_pages;
     }
@@ -526,7 +526,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
     const unified_mem_request_t* request
 ) {
     if (!manager || manager->magic != UNIFIED_MANAGER_MAGIC || !request) {
-        LOG_DEBUG("Entering if");
+    
         LOG_ERROR("Allocation or operation returned NULL");
         return NULL;
     }
@@ -567,10 +567,10 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
 
             handle->impl.object.cow_mgr = cow_manager_create(&cow_cfg, request->initial_data);
             if (handle->impl.object.cow_mgr) {
-                LOG_DEBUG("Entering if");
+            
                 handle->impl.object.cow_handle = cow_acquire(handle->impl.object.cow_mgr);
                 if (handle->impl.object.cow_handle) {
-                    LOG_DEBUG("Entering if");
+                
                     handle->state = UNIFIED_STATE_SHARED;
                     success = true;
                     manager->stats.object_cow_allocations++;
@@ -592,10 +592,10 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
 
             handle->impl.page.region = page_cow_region_create(&page_cfg, request->initial_data);
             if (handle->impl.page.region) {
-                LOG_DEBUG("Entering if");
+            
                 handle->impl.page.view = page_cow_view_create(handle->impl.page.region);
                 if (handle->impl.page.view) {
-                    LOG_DEBUG("Entering if");
+                
                     handle->state = UNIFIED_STATE_SHARED;
                     success = true;
                     manager->stats.page_cow_allocations++;
@@ -610,16 +610,16 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
             // Direct allocation from pool (no CoW)
             // Try page pool first for large allocations
             if (request->size >= PAGE_COW_PAGE_SIZE && manager->page_pool.initialized) {
-                LOG_DEBUG("Entering if");
+            
                 size_t pages_needed = (request->size + PAGE_COW_PAGE_SIZE - 1) / PAGE_COW_PAGE_SIZE;
                 if (pages_needed == 1) {
-                    LOG_DEBUG("Entering if");
+                
                     handle->impl.direct.data = page_pool_acquire(&manager->page_pool);
                     if (handle->impl.direct.data) {
-                        LOG_DEBUG("Entering if");
+                    
                         handle->impl.direct.from_pool = true;
                         if (request->initial_data) {
-                            LOG_DEBUG("Entering if");
+                        
                             memcpy(handle->impl.direct.data, request->initial_data, request->size);
                         } else {
                             memset(handle->impl.direct.data, 0, PAGE_COW_PAGE_SIZE);
@@ -633,14 +633,14 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
 
             // Fall back to malloc if pool unavailable
             if (!success) {
-                LOG_DEBUG("Entering if");
+            
                 LOG_DEBUG("Memory allocation requested");
                 handle->impl.direct.data = malloc(request->size);
                 if (handle->impl.direct.data) {
-                    LOG_DEBUG("Entering if");
+                
                     handle->impl.direct.from_pool = false;
                     if (request->initial_data) {
-                        LOG_DEBUG("Entering if");
+                    
                         memcpy(handle->impl.direct.data, request->initial_data, request->size);
                     } else {
                         memset(handle->impl.direct.data, 0, request->size);
@@ -659,10 +659,10 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
             // Direct malloc allocation
             handle->impl.direct.data = malloc(request->size);
             if (handle->impl.direct.data) {
-                LOG_DEBUG("Entering if");
+            
                 handle->impl.direct.from_pool = false;
                 if (request->initial_data) {
-                    LOG_DEBUG("Entering if");
+                
                     memcpy(handle->impl.direct.data, request->initial_data, request->size);
                 } else {
                     memset(handle->impl.direct.data, 0, request->size);
@@ -677,24 +677,24 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
     }
 
     if (success) {
-        LOG_DEBUG("Entering if");
+    
         add_handle_to_list(manager, handle);
         manager->stats.total_allocations++;
         manager->stats.total_memory_bytes += request->size;
 
         if (handle->state == UNIFIED_STATE_SHARED) {
-            LOG_DEBUG("Entering if");
+        
             manager->stats.shared_handles++;
             manager->stats.shared_memory_bytes += request->size;
         }
 
         if (manager->handle_count > manager->stats.peak_handles) {
-            LOG_DEBUG("Entering if");
+        
             manager->stats.peak_handles = manager->handle_count;
         }
 
         if (manager->config.enable_tracking) {
-            LOG_DEBUG("Entering if");
+        
             manager->stats.total_alloc_time_ns += get_time_ns() - start_time;
         }
     } else {
@@ -736,7 +736,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
             clone->impl.object.cow_mgr = handle->impl.object.cow_mgr;
             clone->impl.object.cow_handle = cow_acquire(clone->impl.object.cow_mgr);
             if (clone->impl.object.cow_handle) {
-                LOG_DEBUG("Entering if");
+            
                 clone->state = UNIFIED_STATE_SHARED;
                 success = true;
             }
@@ -748,7 +748,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
             clone->impl.page.region = handle->impl.page.region;
             clone->impl.page.view = page_cow_view_clone(handle->impl.page.view);
             if (clone->impl.page.view) {
-                LOG_DEBUG("Entering if");
+            
                 clone->state = UNIFIED_STATE_SHARED;
                 success = true;
             }
@@ -760,7 +760,7 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
             // Direct allocation - must copy
             clone->impl.direct.data = malloc(handle->size);
             if (clone->impl.direct.data) {
-                LOG_DEBUG("Entering if");
+            
                 memcpy(clone->impl.direct.data, handle->impl.direct.data, handle->size);
                 clone->impl.direct.from_pool = false;
                 clone->state = UNIFIED_STATE_DIRECT;
@@ -774,12 +774,12 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
     }
 
     if (success) {
-        LOG_DEBUG("Entering if");
+    
         add_handle_to_list(manager, clone);
         manager->stats.total_allocations++;
 
         if (clone->state == UNIFIED_STATE_SHARED) {
-            LOG_DEBUG("Entering if");
+        
             manager->stats.shared_handles++;
             manager->stats.memory_saved_bytes += handle->size;
         } else {
@@ -799,14 +799,20 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
 
     unified_mem_manager_t manager = handle->manager;
 
+    /* P2-U14: Capture strategy and pool state while holding the lock to avoid
+     * post-unlock access to handle fields that could theoretically race. */
+    unified_mem_strategy_t strategy = handle->strategy;
+    bool pool_initialized = false;
+
     if (manager && manager->magic == UNIFIED_MANAGER_MAGIC) {
-        LOG_DEBUG("Entering if");
+
         nimcp_platform_mutex_lock(&manager->mutex);
         remove_handle_from_list(manager, handle);
+        pool_initialized = manager->page_pool.initialized;
 
         // Update statistics
         if (handle->state == UNIFIED_STATE_SHARED) {
-            LOG_DEBUG("Entering if");
+
             manager->stats.shared_handles--;
             manager->stats.shared_memory_bytes -= handle->size;
         } else if (handle->state == UNIFIED_STATE_PRIVATE) {
@@ -819,11 +825,11 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
         nimcp_platform_mutex_unlock(&manager->mutex);
     }
 
-    // Strategy-specific cleanup
-    switch (handle->strategy) {
+    // Strategy-specific cleanup (using captured strategy)
+    switch (strategy) {
         case UNIFIED_STRATEGY_OBJECT_COW: {
             if (handle->impl.object.cow_handle) {
-                LOG_DEBUG("Entering if");
+            
                 cow_release(handle->impl.object.cow_handle);
             }
             // Note: cow_mgr is shared between original and clones
@@ -833,7 +839,7 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
             // - private handles also need the cow_manager
             size_t handle_count = cow_get_handle_count(handle->impl.object.cow_mgr);
             if (handle_count == 0) {
-                LOG_DEBUG("Entering if");
+            
                 cow_manager_destroy(handle->impl.object.cow_mgr);
             }
             break;
@@ -841,12 +847,12 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
 
         case UNIFIED_STRATEGY_PAGE_COW: {
             if (handle->impl.page.view) {
-                LOG_DEBUG("Entering if");
+            
                 page_cow_view_destroy(handle->impl.page.view);
             }
             // Check if region can be destroyed
             if (handle->impl.page.region) {
-                LOG_DEBUG("Entering if");
+            
                 page_cow_stats_t stats;
                 if (page_cow_region_get_stats(handle->impl.page.region, &stats) &&
                     stats.active_views == 0) {
@@ -858,12 +864,11 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
 
         case UNIFIED_STRATEGY_POOL_DIRECT: {
             if (handle->impl.direct.data) {
-                LOG_DEBUG("Entering if");
-                if (handle->impl.direct.from_pool && manager &&
-                    manager->page_pool.initialized) {
+
+                if (handle->impl.direct.from_pool && manager && pool_initialized) {
                     page_pool_release(&manager->page_pool, handle->impl.direct.data);
                 } else {
-                    LOG_DEBUG("Memory deallocation");
+                
                     free(handle->impl.direct.data);
                 }
             }
@@ -873,8 +878,8 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
         case UNIFIED_STRATEGY_MALLOC_DIRECT:
         default: {
             if (handle->impl.direct.data) {
-                LOG_DEBUG("Entering if");
-                LOG_DEBUG("Memory deallocation");
+            
+            
                 free(handle->impl.direct.data);
             }
             break;
@@ -891,7 +896,7 @@ NIMCP_EXPORT const void* unified_mem_read(unified_mem_handle_t handle) {
     if (handle->state == UNIFIED_STATE_INVALID) return NULL;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
+
         case UNIFIED_STRATEGY_OBJECT_COW:
             return cow_read(handle->impl.object.cow_handle);
 
@@ -927,7 +932,7 @@ NIMCP_EXPORT void* unified_mem_write(unified_mem_handle_t handle) {
         case UNIFIED_STRATEGY_PAGE_COW: {
             result = page_cow_view_write(handle->impl.page.view);
             if (result) {
-                LOG_DEBUG("Entering if");
+            
                 // Once writable, view is considered private
                 // Actual CoW happens lazily on page fault
                 handle->state = UNIFIED_STATE_PRIVATE;
@@ -954,7 +959,7 @@ NIMCP_EXPORT void* unified_mem_write(unified_mem_handle_t handle) {
         manager->stats.memory_saved_bytes -= handle->size;
 
         if (manager->config.enable_tracking) {
-            LOG_DEBUG("Entering if");
+        
             manager->stats.total_cow_time_ns += get_time_ns() - start_time;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);
@@ -978,7 +983,7 @@ NIMCP_EXPORT bool unified_mem_is_shared(unified_mem_handle_t handle) {
 
 NIMCP_EXPORT unified_mem_state_t unified_mem_get_state(unified_mem_handle_t handle) {
     if (!handle || handle->magic != UNIFIED_HANDLE_MAGIC) {
-        LOG_DEBUG("Entering if");
+    
         return UNIFIED_STATE_INVALID;
     }
     return handle->state;
@@ -991,7 +996,7 @@ NIMCP_EXPORT size_t unified_mem_get_size(unified_mem_handle_t handle) {
 
 NIMCP_EXPORT unified_mem_strategy_t unified_mem_get_strategy(unified_mem_handle_t handle) {
     if (!handle || handle->magic != UNIFIED_HANDLE_MAGIC) {
-        LOG_DEBUG("Entering if");
+    
         return UNIFIED_STRATEGY_AUTO;
     }
     return handle->strategy;
@@ -1002,7 +1007,7 @@ NIMCP_EXPORT size_t unified_mem_get_memory_saved(unified_mem_handle_t handle) {
     if (handle->state != UNIFIED_STATE_SHARED) return 0;
 
     switch (handle->strategy) {
-        LOG_DEBUG("Entering switch");
+
         case UNIFIED_STRATEGY_OBJECT_COW:
             return handle->size;  // Full size saved
 
@@ -1043,11 +1048,11 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
             // Full copy for object CoW (cow_acquire doesn't capture current state)
             const void* current_data = cow_read(handle->impl.object.cow_handle);
             if (current_data) {
-                LOG_DEBUG("Entering if");
+            
                 LOG_DEBUG("Memory allocation requested");
                 snap->data_copy = malloc(handle->size);
                 if (snap->data_copy) {
-                    LOG_DEBUG("Entering if");
+                
                     memcpy(snap->data_copy, current_data, handle->size);
                     success = true;
                 }
@@ -1058,7 +1063,7 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
         case UNIFIED_STRATEGY_PAGE_COW: {
             snap->impl.page.snap = page_cow_snapshot_create(handle->impl.page.view);
             if (snap->impl.page.snap) {
-                LOG_DEBUG("Entering if");
+            
                 success = true;
             }
             break;
@@ -1069,7 +1074,7 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
             // Full copy for direct allocations
             snap->data_copy = malloc(handle->size);
             if (snap->data_copy) {
-                LOG_DEBUG("Entering if");
+            
                 memcpy(snap->data_copy, handle->impl.direct.data, handle->size);
                 success = true;
             }
@@ -1081,10 +1086,10 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
     }
 
     if (!success) {
-        LOG_DEBUG("Entering if");
+    
         if (snap->data_copy) {
-            LOG_DEBUG("Entering if");
-            LOG_DEBUG("Memory deallocation");
+        
+        
             free(snap->data_copy);
         }
         free(snap);
@@ -1108,7 +1113,7 @@ NIMCP_EXPORT bool unified_mem_snapshot_restore(
             // Get writable pointer and copy snapshot data back
             void* dest = cow_write(handle->impl.object.cow_handle);
             if (dest && snapshot->data_copy) {
-                LOG_DEBUG("Entering if");
+            
                 memcpy(dest, snapshot->data_copy, snapshot->size);
                 return true;
             }
@@ -1122,7 +1127,7 @@ NIMCP_EXPORT bool unified_mem_snapshot_restore(
         case UNIFIED_STRATEGY_POOL_DIRECT:
         case UNIFIED_STRATEGY_MALLOC_DIRECT: {
             if (snapshot->data_copy) {
-                LOG_DEBUG("Entering if");
+            
                 memcpy(handle->impl.direct.data, snapshot->data_copy, snapshot->size);
                 return true;
             }
@@ -1139,14 +1144,14 @@ NIMCP_EXPORT void unified_mem_snapshot_destroy(unified_mem_snapshot_t snapshot) 
 
     // Free data copy for object/direct strategies
     if (snapshot->data_copy) {
-        LOG_DEBUG("Entering if");
-        LOG_DEBUG("Memory deallocation");
+    
+    
         free(snapshot->data_copy);
     }
 
     // Free page CoW snapshot if applicable
     if (snapshot->strategy == UNIFIED_STRATEGY_PAGE_COW && snapshot->impl.page.snap) {
-        LOG_DEBUG("Entering if");
+    
         page_cow_snapshot_destroy(snapshot->impl.page.snap);
     }
 
@@ -1171,7 +1176,7 @@ NIMCP_EXPORT size_t unified_mem_snapshot_get_delta_bytes(
 
             size_t delta = 0;
             for (size_t i = 0; i < handle->size; i++) {
-                LOG_DEBUG("Entering for");
+            
                 if (current[i] != snap_data[i]) delta++;
             }
             return delta;
@@ -1192,7 +1197,7 @@ NIMCP_EXPORT size_t unified_mem_snapshot_get_delta_bytes(
 
             size_t delta = 0;
             for (size_t i = 0; i < handle->size; i++) {
-                LOG_DEBUG("Entering for");
+            
                 if (current[i] != snap_data[i]) delta++;
             }
             return delta;
@@ -1218,7 +1223,7 @@ NIMCP_EXPORT bool unified_mem_enable_page_pool(
 
     // Destroy existing pool if any
     if (manager->page_pool.initialized) {
-        LOG_DEBUG("Entering if");
+    
         page_pool_destroy(&manager->page_pool);
     }
 

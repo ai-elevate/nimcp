@@ -408,6 +408,14 @@ size_t nimcp_circuit_get_count(nimcp_error_t code, uint32_t window_seconds) {
     return count;
 }
 
+/**
+ * P2-U32 WARNING: This returns a pointer into the static g_circuits[] array.
+ * The pointer is stable (static lifetime), but the data may be modified
+ * concurrently by other threads calling nimcp_circuit_record() or
+ * nimcp_circuit_reset(). Callers should treat the returned data as a
+ * best-effort snapshot. For a thread-safe snapshot, use nimcp_circuit_get_stats()
+ * or nimcp_circuit_get_state() which return values, not pointers.
+ */
 const nimcp_exception_circuit_t* nimcp_circuit_get_entry(nimcp_error_t code) {
     if (!g_circuit_initialized) {
         return NULL;
@@ -652,6 +660,12 @@ void nimcp_suppression_clear_expired(void) {
     nimcp_platform_mutex_unlock(g_circuit_mutex);
 }
 
+/**
+ * P2-U33 WARNING: Same thread-safety caveat as nimcp_circuit_get_entry (P2-U32).
+ * Returns a pointer into the static g_suppressions[] array. The pointer is stable
+ * but data may change concurrently. For a thread-safe check, use
+ * nimcp_exception_is_suppressed() which operates entirely under the mutex.
+ */
 const nimcp_suppression_entry_t* nimcp_suppression_get_entry(nimcp_error_t code) {
     if (!g_circuit_initialized) {
         return NULL;

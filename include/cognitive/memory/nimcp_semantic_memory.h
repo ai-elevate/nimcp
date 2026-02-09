@@ -187,6 +187,9 @@ typedef struct {
     uint64_t quantum_retrievals;      /**< Number of quantum-accelerated retrievals */
     bool enable_quantum;              /**< Whether quantum retrieval is enabled */
 
+    // P2-COG-07: Thread safety mutex for concept/relation operations
+    void* mutex;                      /**< nimcp_mutex_t* for thread safety */
+
 } semantic_memory_system_t;
 
 /**

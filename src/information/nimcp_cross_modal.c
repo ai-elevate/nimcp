@@ -37,6 +37,11 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cross_modal)
 
 /* Use project's standard logging macros (nimcp_logging.h included above) */
 
+/* P3-CM-1/2/3: Named constants for previously magic numbers */
+#define CROSS_MODAL_DEFAULT_SNR           10.0f  /**< Default SNR for capacity estimate */
+#define CROSS_MODAL_SAMPLE_RATE_HZ        1000.0f /**< Assumed sample rate for info rate */
+#define CROSS_MODAL_INTEGRATION_THRESHOLD 0.7f   /**< Efficiency threshold for "integrating well" */
+
 //=============================================================================
 // HELPER FUNCTIONS
 //=============================================================================
@@ -125,7 +130,13 @@ static float compute_mutual_information(
 
     // Compute joint entropy H(X,Y)
     uint32_t joint_dim = dim_x + dim_y;
-    float* joint_features = (float*)nimcp_malloc(num_samples * joint_dim * sizeof(float));
+    /* P1-CM-1: Check for integer overflow in allocation */
+    size_t joint_alloc_size = (size_t)num_samples * (size_t)joint_dim * sizeof(float);
+    if (joint_dim < dim_x || joint_alloc_size / sizeof(float) / num_samples != joint_dim) {
+        LOG_ERROR("compute_mutual_information: allocation overflow");
+        return 0.0F;
+    }
+    float* joint_features = (float*)nimcp_malloc(joint_alloc_size);
     if (!joint_features) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * joint_dim * sizeof(float),
                           "compute_mutual_information: Failed to allocate joint features");
@@ -231,13 +242,14 @@ cross_modal_channel_t cross_modal_analyze_channel(
         channel.transfer_efficiency = fminf(1.0F, fmaxf(0.0F, channel.transfer_efficiency));
     }
 
+    /* P3-CM-1/2: Use named constants for SNR and sample rate */
     // Estimate channel capacity (Shannon-Hartley)
-    // C = B * log2(1 + SNR), assume bandwidth ~ feature dim, SNR ~ 10
-    float snr = 10.0F;
+    // C = B * log2(1 + SNR), assume bandwidth ~ feature dim
+    float snr = CROSS_MODAL_DEFAULT_SNR;
     channel.channel_capacity = (float)dest_dim * log2f(1.0F + snr);
 
-    // Information rate (bits/sec), assume 1000 samples/sec
-    channel.information_rate = channel.mutual_information * 1000.0F / (float)num_samples;
+    // Information rate (bits/sec)
+    channel.information_rate = channel.mutual_information * CROSS_MODAL_SAMPLE_RATE_HZ / (float)num_samples;
 
     // Metadata
     channel.sample_count = num_samples;
@@ -246,8 +258,9 @@ cross_modal_channel_t cross_modal_analyze_channel(
     return channel;
 }
 
+/* P2-CM-1: Parameter changed from const to non-const since we mutate the channel */
 bool cross_modal_is_bottleneck(
-    const cross_modal_channel_t* channel,
+    cross_modal_channel_t* channel,
     float efficiency_threshold)
 {
     // WHAT: Check if channel is a bottleneck
@@ -278,10 +291,9 @@ bool cross_modal_is_bottleneck(
         severity = fminf(1.0F, fmaxf(0.0F, severity));
     }
 
-    // Update channel (const_cast pattern)
-    cross_modal_channel_t* mutable_channel = (cross_modal_channel_t*)channel;
-    mutable_channel->is_bottleneck = is_bottleneck;
-    mutable_channel->bottleneck_severity = severity;
+    /* P2-CM-1: Now that parameter is non-const, update directly */
+    channel->is_bottleneck = is_bottleneck;
+    channel->bottleneck_severity = severity;
 
     return is_bottleneck;
 }
@@ -313,8 +325,9 @@ multi_modal_integration_t cross_modal_analyze_integration(
         return integration;
     }
 
+    /* P2-CM-2: Use defined constant instead of magic number 4 */
     // Guard: Validate modality count
-    if (num_modalities < 2 || num_modalities > 4) {
+    if (num_modalities < 2 || num_modalities > CROSS_MODAL_MAX_MODALITIES) {
         LOG_ERROR("cross_modal_analyze_integration: Invalid num_modalities %u (must be 2-4)",
                        num_modalities);
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
@@ -353,7 +366,13 @@ multi_modal_integration_t cross_modal_analyze_integration(
         total_dim += dims[i];
     }
 
-    float* joint_features = (float*)nimcp_malloc(num_samples * total_dim * sizeof(float));
+    /* P1-CM-1: Check for integer overflow in allocation */
+    size_t joint_alloc_size = (size_t)num_samples * (size_t)total_dim * sizeof(float);
+    if (total_dim == 0 || joint_alloc_size / sizeof(float) / num_samples != total_dim) {
+        LOG_ERROR("cross_modal_analyze_integration: allocation overflow");
+        return integration;
+    }
+    float* joint_features = (float*)nimcp_malloc(joint_alloc_size);
     if (!joint_features) {
         LOG_ERROR("cross_modal_analyze_integration: malloc failed");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * total_dim * sizeof(float),
@@ -405,8 +424,8 @@ multi_modal_integration_t cross_modal_analyze_integration(
                                                     integration.integration_efficiency));
     }
 
-    // Check if integrating well (efficiency > 0.7)
-    integration.is_integrating_well = (integration.integration_efficiency > 0.7F);
+    /* P3-CM-3: Use named constant for integration threshold */
+    integration.is_integrating_well = (integration.integration_efficiency > CROSS_MODAL_INTEGRATION_THRESHOLD);
 
     return integration;
 }

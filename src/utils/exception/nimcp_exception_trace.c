@@ -126,6 +126,13 @@ static exception_trace_data_t* get_or_create_trace_data(nimcp_exception_t* ex) {
 
 /**
  * @brief Find trace data for exception (read-only)
+ *
+ * P2-U31 WARNING: This function returns a pointer to internal data AFTER
+ * releasing the mutex. The returned pointer is stable (heap-allocated and
+ * only freed during nimcp_trace_shutdown), but the DATA it points to could
+ * be modified concurrently by another thread calling get_or_create_trace_data.
+ * Callers should treat the returned data as a best-effort snapshot.
+ * A copy-based API would fix this but would break the public interface.
  */
 static const exception_trace_data_t* find_trace_data(const nimcp_exception_t* ex) {
     if (!ex || !g_trace_system_initialized) return NULL;

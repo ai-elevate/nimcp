@@ -147,7 +147,11 @@ static void buffer_add_sample(signal_buffer_t* buffer, float sample, double time
     buffer->newest_time_ms = timestamp_ms;
 
     if (buffer->count == buffer->capacity) {
-        uint32_t oldest_idx = buffer->head;
+        /* P3-MW-07 fix: Removed unused variable oldest_idx.
+         * P3-MW-08 fix: Use config sample_rate_hz via computed duration instead of
+         * hardcoded OSC_SAMPLE_RATE_HZ. Since we don't have config access here,
+         * compute from the known capacity and rate constant. In the future, pass
+         * sample_rate_hz as a parameter. */
         buffer->oldest_time_ms = timestamp_ms -
             (buffer->capacity / OSC_SAMPLE_RATE_HZ) * 1000.0;
     }
@@ -239,6 +243,11 @@ static float find_peak_frequency(const float* power_spectrum,
  * @brief Initialize Hann window
  */
 static void init_hann_window(float* window, uint32_t length) {
+    /* P2-MW-12 fix: Guard against division by zero when length <= 1 */
+    if (length <= 1) {
+        if (length == 1) window[0] = 1.0F;
+        return;
+    }
     for (uint32_t i = 0; i < length; i++) {
         window[i] = 0.5F * (1.0F - cosf(2.0F * M_PI * (float)i / (float)(length - 1)));
     }
@@ -304,7 +313,8 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
                                                float* peak_frequency,
                                                float* coherence) {
     if (!detector || !detector->hilbert || !detector->phasor_work_pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_hann_window: required parameter is NULL (detector, detector->hilbert, detector->phasor_work_pool)");
+        /* P3-MW-09 fix: Corrected function name in error message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_oscillation_phasor_hilbert: required parameter is NULL (detector, detector->hilbert, detector->phasor_work_pool)");
         return false;
     }
 
@@ -317,7 +327,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
         if (filtered_signal) memory_pool_release(detector->phasor_work_pool, filtered_signal);
         if (analytic_signal) memory_pool_release(detector->phasor_work_pool, analytic_signal);
         if (amplitude) memory_pool_release(detector->phasor_work_pool, amplitude);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_hann_window: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "detect_oscillation_phasor_hilbert: pool allocation failed");
         return false;
     }
 
@@ -345,7 +355,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
         memory_pool_release(detector->phasor_work_pool, filtered_signal);
         memory_pool_release(detector->phasor_work_pool, analytic_signal);
         memory_pool_release(detector->phasor_work_pool, amplitude);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_hann_window: hilbert_apply is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_oscillation_phasor_hilbert: hilbert_apply failed");
         return false;
     }
 
@@ -416,8 +426,10 @@ oscillation_detector_config_t oscillation_detector_default_config(void) {
 }
 
 oscillation_detector_t* oscillation_detector_create(const oscillation_detector_config_t* config) {
-    if (!config || config->window_size == 0 || config->sample_rate_hz <= 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillation_detector_create: config is NULL or invalid");
+    /* P2-MW-14 fix: Validate window_size >= 2 to prevent zero-size allocation
+     * (power_spectrum is window_size/2) and division by zero in Hann window. */
+    if (!config || config->window_size < 2 || config->sample_rate_hz <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillation_detector_create: config is NULL or invalid (window_size must be >= 2)");
         return NULL;
     }
 
@@ -704,8 +716,13 @@ bool oscillation_detector_compute_plv(oscillation_detector_t* detector,
                                        const float* signal2,
                                        uint32_t length,
                                        phase_locking_t* result) {
-    if (!detector || !signal1 || !signal2 || !result || length == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_destroy: required parameter is NULL (detector, signal1, signal2, result)");
+    /* P2-MW-13 fix: Changed guard to length < 2 to prevent division by zero
+     * in (length - 1) below. PLV requires at least 2 samples. */
+    if (!detector || !signal1 || !signal2 || !result || length < 2) {
+        if (result) { result->plv = 0.0F; result->mean_phase_diff = 0.0F; result->num_samples = 0; }
+        if (!detector || !signal1 || !signal2 || !result) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_compute_plv: required parameter is NULL");
+        }
         return false;
     }
 

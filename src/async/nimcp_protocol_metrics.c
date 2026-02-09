@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include <inttypes.h>  /* P3-60 fix: PRIu64 for portable uint64_t formatting */
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(protocol_metrics)
@@ -348,10 +349,14 @@ bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
         entry->metric.sample_count++;
     }
 
+    /* P2-59 fix: Capture values under lock for LOG statement, since entry->metric
+     * may be modified by another thread after we release the mutex. */
+    double log_value = entry->metric.value;
+
     nimcp_platform_mutex_unlock(&metrics->mutex);
 
     LOG_DEBUG("Incremented counter: %s += %.3f (total=%.3f)",
-             key, delta, entry->metric.value);
+             key, delta, log_value);
 
     return true;
 }
@@ -582,13 +587,14 @@ static size_t export_json(protocol_metrics_t metrics, char* buffer, size_t size)
             }
             first = false;
 
+            /* P3-60 fix: Use PRIu64 instead of %llu for portable uint64_t */
             written = snprintf(buffer + offset, size - offset,
                 "    {\n"
                 "      \"name\": \"%s\",\n"
                 "      \"type\": \"%s\",\n"
                 "      \"value\": %.6f,\n"
-                "      \"timestamp\": %llu,\n"
-                "      \"samples\": %llu\n"
+                "      \"timestamp\": %" PRIu64 ",\n"
+                "      \"samples\": %" PRIu64 "\n"
                 "    }",
                 entry->metric.name,
                 entry->metric.type == METRIC_TYPE_COUNTER ? "counter" :
@@ -623,8 +629,9 @@ static size_t export_prometheus(protocol_metrics_t metrics, char* buffer, size_t
                 entry->metric.type == METRIC_TYPE_COUNTER ? "counter" :
                 entry->metric.type == METRIC_TYPE_GAUGE ? "gauge" : "histogram";
 
+            /* P3-60 fix: Use PRIu64 instead of %llu */
             written = snprintf(buffer + offset, size - offset,
-                "# TYPE %s %s\n%s %.6f %llu\n",
+                "# TYPE %s %s\n%s %.6f %" PRIu64 "\n",
                 entry->metric.name, type_str,
                 entry->metric.name, entry->metric.value,
                 entry->metric.timestamp_ms

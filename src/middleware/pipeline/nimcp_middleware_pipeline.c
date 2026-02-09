@@ -25,6 +25,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(middleware_pipeline)
 #include <string.h>
 #include <math.h>
 
+/** P3-MW-06 fix: Named constant for bio-async inbox capacity */
+#define PIPELINE_BIO_ASYNC_INBOX_CAPACITY 64
+
 //=============================================================================
 // Internal Structure
 //=============================================================================
@@ -57,7 +60,15 @@ struct middleware_pipeline_struct {
 middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config) {
     if (!config || !config->stages || config->num_stages == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid pipeline configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_create: required parameter is NULL (config, config->stages)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_pipeline_create: required parameter is NULL (config, config->stages)");
+        return NULL;
+    }
+
+    /* P2-MW-11 fix: Validate num_stages to prevent integer overflow in
+     * num_stages * sizeof(pipeline_stage_config_t) and statistics arrays */
+    if (config->num_stages > 10000) {
+        LOG_ERROR(LOG_MODULE, "num_stages %u exceeds maximum (10000)", config->num_stages);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_pipeline_create: num_stages exceeds maximum");
         return NULL;
     }
 
@@ -89,6 +100,17 @@ middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config
     pipeline->stage_execution_counts = nimcp_calloc(config->num_stages, sizeof(uint64_t));
     pipeline->stage_total_time_us = nimcp_calloc(config->num_stages, sizeof(uint64_t));
 
+    /* P1-MW-04 fix: Check NULL after calloc for statistics arrays */
+    if (!pipeline->stage_execution_counts || !pipeline->stage_total_time_us) {
+        nimcp_free(pipeline->stage_total_time_us);
+        nimcp_free(pipeline->stage_execution_counts);
+        nimcp_free(pipeline->stages);
+        nimcp_free(pipeline);
+        LOG_ERROR(LOG_MODULE, "Failed to allocate statistics arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_create: statistics array allocation failed");
+        return NULL;
+    }
+
     if (nimcp_platform_mutex_init(&pipeline->mutex, false) != 0) {
         nimcp_free(pipeline->stage_total_time_us);
         nimcp_free(pipeline->stage_execution_counts);
@@ -106,7 +128,7 @@ middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config
         bio_module_info_t bio_info = {
             .module_id = BIO_MODULE_PIPELINE,
             .module_name = "pipeline",
-            .inbox_capacity = 64,
+            .inbox_capacity = PIPELINE_BIO_ASYNC_INBOX_CAPACITY,
             .user_data = pipeline
         };
         pipeline->bio_ctx = bio_router_register_module(&bio_info);
@@ -163,7 +185,8 @@ bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
 
     if (!pipeline || !context) {
         LOG_ERROR(LOG_MODULE, "Invalid pipeline or context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: required parameter is NULL (pipeline, context)");
+        /* P3-MW-05 fix: Corrected function name in error message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_execute: required parameter is NULL (pipeline, context)");
         return false;
     }
 
@@ -240,13 +263,14 @@ bool middleware_pipeline_execute_stage(middleware_pipeline_t pipeline,
                                        pipeline_stage_id_t stage_id,
                                        middleware_context_t* context) {
     if (!pipeline || !context || stage_id >= pipeline->num_stages) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: required parameter is NULL (pipeline, context)");
+        /* P3-MW-05 fix: Corrected function name in error message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_execute_stage: required parameter is NULL (pipeline, context)");
         return false;
     }
 
     pipeline_stage_config_t* stage = &pipeline->stages[stage_id];
     if (!stage->enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_execute_stage: stage is disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "middleware_pipeline_execute_stage: stage is disabled");
         return false;
     }
 
@@ -267,7 +291,8 @@ bool middleware_pipeline_set_stage_enabled(middleware_pipeline_t pipeline,
                                            pipeline_stage_id_t stage_id,
                                            bool enabled) {
     if (!pipeline || stage_id >= pipeline->num_stages) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_pipeline_destroy: pipeline is NULL");
+        /* P3-MW-05 fix: Corrected function name in error message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_pipeline_set_stage_enabled: pipeline is NULL");
         return false;
     }
 
@@ -285,7 +310,8 @@ bool middleware_pipeline_set_stage_enabled(middleware_pipeline_t pipeline,
 bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
                                    pipeline_stats_t* stats) {
     if (!pipeline || !stats) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: required parameter is NULL (pipeline, stats)");
+        /* P3-MW-05 fix: Corrected function name in error message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_get_stats: required parameter is NULL (pipeline, stats)");
         return false;
     }
 
@@ -300,7 +326,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
     stats->stage_execution_counts = nimcp_malloc(pipeline->num_stages * sizeof(uint64_t));
     if (!stats->stage_execution_counts) {
         nimcp_platform_mutex_unlock(&pipeline->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_destroy: stats->stage_execution_counts is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_get_stats: stats->stage_execution_counts allocation failed");
         return false;
     }
 
@@ -309,7 +335,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
         nimcp_free(stats->stage_execution_counts);
         stats->stage_execution_counts = NULL;
         nimcp_platform_mutex_unlock(&pipeline->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_destroy: stats->stage_total_time_us is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_get_stats: stats->stage_total_time_us allocation failed");
         return false;
     }
 
@@ -320,7 +346,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
         stats->stage_execution_counts = NULL;
         stats->stage_total_time_us = NULL;
         nimcp_platform_mutex_unlock(&pipeline->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: stats->stage_avg_time_us is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_get_stats: stats->stage_avg_time_us allocation failed");
         return false;
     }
 
@@ -340,6 +366,23 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
 
     nimcp_platform_mutex_unlock(&pipeline->mutex);
     return true;
+}
+
+/**
+ * P2-MW-10 fix: Helper to free memory allocated by middleware_pipeline_get_stats().
+ * Callers MUST call this after they are done using the pipeline_stats_t struct,
+ * since get_stats allocates stage_execution_counts, stage_total_time_us, and
+ * stage_avg_time_us arrays inside the caller's struct.
+ */
+void middleware_pipeline_stats_free(pipeline_stats_t* stats) {
+    if (!stats) return;
+
+    nimcp_free(stats->stage_execution_counts);
+    nimcp_free(stats->stage_total_time_us);
+    nimcp_free(stats->stage_avg_time_us);
+    stats->stage_execution_counts = NULL;
+    stats->stage_total_time_us = NULL;
+    stats->stage_avg_time_us = NULL;
 }
 
 void middleware_pipeline_reset_stats(middleware_pipeline_t pipeline) {

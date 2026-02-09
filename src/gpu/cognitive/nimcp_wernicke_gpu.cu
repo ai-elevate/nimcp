@@ -47,6 +47,15 @@
 #define WARP_SIZE 32
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
 
+/* P3-W1: Named constants for spectral feature dimensions (was magic number 82) */
+#define WERNICKE_SPECTRAL_FEATURE_DIM  82  /* 40 mel + 13 mfcc + 13 delta + 13 delta_delta + 3 */
+
+/* P3-W2: Named constant for working memory refresh amount (was magic number 0.1f) */
+#define WERNICKE_WM_REFRESH_AMOUNT  0.1f
+
+/* P3-W3: Named constant for activation threshold in spreading (was magic number 0.01f) */
+#define WERNICKE_ACTIVATION_THRESHOLD  0.01f
+
 //=============================================================================
 // Internal GPU Wernicke Context
 //=============================================================================
@@ -287,6 +296,9 @@ __global__ void kernel_check_recognition(
 
     // Include all active cohort members (both partial and complete)
     if (cohort_activations[idx] > 0.0f && cohort_matched[idx] > 0) {
+        /* P1-W1: Guard against division by zero when phoneme_count is 0 */
+        if (lexicon[idx].phoneme_count == 0) return;
+
         // Atomically add to candidates
         uint32_t slot = atomicAdd(candidate_count, 1);
         if (slot < max_candidates) {
@@ -688,21 +700,38 @@ extern "C" bool wernicke_gpu_recognize_phonemes(
 
     // Upload spectral features
     // Feature dim = 40 (mel) + 13 (mfcc) + 13 (delta) + 13 (delta_delta) + 3 = 82
-    const uint32_t feature_dim = 82;
+    const uint32_t feature_dim = WERNICKE_SPECTRAL_FEATURE_DIM;
     // Frame stride accounts for struct padding (sizeof(struct) / sizeof(float))
     const uint32_t frame_stride = (uint32_t)(sizeof(wernicke_gpu_spectral_frame_t) / sizeof(float));
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
-    float* d_spectral;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectral, frames_size), GPU_ERROR_OUT_OF_MEMORY);
+    /* P1-W2: Use goto cleanup pattern to prevent cascading GPU memory leaks */
+    float* d_spectral = NULL;
+    uint8_t* d_phoneme_ids = NULL;
+    float* d_confidences = NULL;
+
+    cudaError_t alloc_err = cudaMalloc(&d_spectral, frames_size);
+    if (alloc_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_spectral: %s", cudaGetErrorString(alloc_err));
+        return false;
+    }
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_spectral, frames, frames_size,
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Allocate outputs
-    uint8_t* d_phoneme_ids;
-    float* d_confidences;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_phoneme_ids, num_frames * sizeof(uint8_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_confidences, num_frames * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    alloc_err = cudaMalloc(&d_phoneme_ids, num_frames * sizeof(uint8_t));
+    if (alloc_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_phoneme_ids: %s", cudaGetErrorString(alloc_err));
+        cudaFree(d_spectral);
+        return false;
+    }
+    alloc_err = cudaMalloc(&d_confidences, num_frames * sizeof(float));
+    if (alloc_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_confidences: %s", cudaGetErrorString(alloc_err));
+        cudaFree(d_phoneme_ids);
+        cudaFree(d_spectral);
+        return false;
+    }
 
     // Compute similarities
     dim3 grid(num_frames, 1, 1);
@@ -791,7 +820,7 @@ extern "C" bool wernicke_gpu_compute_posteriors(
     }
     if (ctx->num_phonemes == 0) return false;
 
-    const uint32_t feature_dim = 82;
+    const uint32_t feature_dim = WERNICKE_SPECTRAL_FEATURE_DIM;
     const uint32_t frame_stride = (uint32_t)(sizeof(wernicke_gpu_spectral_frame_t) / sizeof(float));
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
@@ -921,11 +950,21 @@ extern "C" bool wernicke_gpu_recognize_words(
         NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
-    // Find recognized words
-    wernicke_gpu_word_candidate_t* d_candidates;
-    uint32_t* d_count;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_count, sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    /* P2-W1: Use goto cleanup to prevent GPU memory leaks on cascading failures */
+    wernicke_gpu_word_candidate_t* d_candidates = NULL;
+    uint32_t* d_count = NULL;
+
+    cudaError_t rw_err = cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t));
+    if (rw_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_candidates: %s", cudaGetErrorString(rw_err));
+        return false;
+    }
+    rw_err = cudaMalloc(&d_count, sizeof(uint32_t));
+    if (rw_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_count: %s", cudaGetErrorString(rw_err));
+        cudaFree(d_candidates);
+        return false;
+    }
     NIMCP_CUDA_RECOVER(cudaMemsetAsync(d_count, 0, sizeof(uint32_t), ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_check_recognition<<<GRID_SIZE(ctx->lexicon_size), BLOCK_SIZE, 0, ctx->stream>>>(
@@ -1012,11 +1051,21 @@ extern "C" bool wernicke_gpu_get_cohort(
         return true;
     }
 
-    // Get current cohort members (partial matches count too)
-    wernicke_gpu_word_candidate_t* d_candidates;
-    uint32_t* d_count;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_count, sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    /* P2-W2: Use explicit error handling to prevent GPU memory leaks on cascading failures */
+    wernicke_gpu_word_candidate_t* d_candidates = NULL;
+    uint32_t* d_count = NULL;
+
+    cudaError_t gc_err = cudaMalloc(&d_candidates, max_candidates * sizeof(wernicke_gpu_word_candidate_t));
+    if (gc_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_candidates: %s", cudaGetErrorString(gc_err));
+        return false;
+    }
+    gc_err = cudaMalloc(&d_count, sizeof(uint32_t));
+    if (gc_err != cudaSuccess) {
+        LOG_ERROR("Failed to allocate d_count: %s", cudaGetErrorString(gc_err));
+        cudaFree(d_candidates);
+        return false;
+    }
     NIMCP_CUDA_RECOVER(cudaMemsetAsync(d_count, 0, sizeof(uint32_t), ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_check_recognition<<<GRID_SIZE(ctx->lexicon_size), BLOCK_SIZE, 0, ctx->stream>>>(
@@ -1272,7 +1321,7 @@ extern "C" bool wernicke_gpu_spread_activation(
 
         uint32_t count = 0;
         for (uint32_t i = 0; i < ctx->num_concepts; i++) {
-            if (h_activations[i] > 0.01f) {  // Threshold
+            if (h_activations[i] > WERNICKE_ACTIVATION_THRESHOLD) {
                 pairs[count].id = i;
                 pairs[count].activation = h_activations[i];
                 count++;
@@ -1418,6 +1467,9 @@ extern "C" float wernicke_gpu_semantic_similarity(
         d_similarity
     );
 
+    /* P2-W3: Stream sync required before synchronous cudaMemcpy when kernel
+     * launched on a non-default stream, otherwise we may read stale data */
+    cudaStreamSynchronize(ctx->stream);
     cudaMemcpy(&h_similarity, d_similarity, sizeof(float), cudaMemcpyDeviceToHost);
     cudaFree(d_similarity);
 
@@ -1438,6 +1490,8 @@ extern "C" bool wernicke_gpu_wm_push(
         nimcp_gpu_recovery_init(NULL);
     }
 
+    /* P2-W4: Guard against uint32_t underflow when wm_count > working_memory_slots */
+    if (ctx->wm_count >= ctx->config.working_memory_slots) return true; /* WM full */
     uint32_t available = ctx->config.working_memory_slots - ctx->wm_count;
     uint32_t to_push = (count < available) ? count : available;
 
@@ -1504,7 +1558,7 @@ extern "C" bool wernicke_gpu_wm_rehearse(wernicke_gpu_context_t* ctx) {
     kernel_wm_rehearse<<<GRID_SIZE(ctx->wm_count), BLOCK_SIZE, 0, ctx->stream>>>(
         ctx->d_wm_activations,
         ctx->wm_count,
-        0.1f  // Refresh amount
+        WERNICKE_WM_REFRESH_AMOUNT
     );
 
     ctx->stats.wm_operations++;
@@ -1617,7 +1671,12 @@ extern "C" bool wernicke_gpu_comprehend(
         // the full posterior distribution, not just the argmax phoneme
         if (*num_word_candidates == 0 && ctx->lexicon_size > 0) {
             // Get posteriors for first frame
+            /* P1-W4: NULL check after calloc for posteriors */
             float* posteriors = (float*)calloc(ctx->num_phonemes, sizeof(float));
+            if (!posteriors) {
+                LOG_ERROR("Failed to allocate posteriors buffer");
+                goto skip_soft_matching;
+            }
             wernicke_gpu_compute_posteriors(ctx, &frames[0], 1, posteriors);
 
             // For each lexicon word, score by posterior of its first phoneme
@@ -1626,8 +1685,13 @@ extern "C" bool wernicke_gpu_comprehend(
             bool found = false;
 
             // Read lexicon back from GPU
+            /* P1-W3: NULL check after malloc for h_lexicon */
             wernicke_gpu_lexical_entry_t* h_lexicon =
                 (wernicke_gpu_lexical_entry_t*)malloc(ctx->lexicon_size * sizeof(wernicke_gpu_lexical_entry_t));
+            if (!h_lexicon) {
+                free(posteriors);
+                goto skip_soft_matching;
+            }
             cudaMemcpy(h_lexicon, ctx->d_lexicon,
                        ctx->lexicon_size * sizeof(wernicke_gpu_lexical_entry_t),
                        cudaMemcpyDeviceToHost);
@@ -1655,6 +1719,7 @@ extern "C" bool wernicke_gpu_comprehend(
             free(h_lexicon);
             free(posteriors);
         }
+        skip_soft_matching: ; /* P1-W3/W4: goto target for allocation failures */
     }
 
     // Step 4: Semantic activation (if words were recognized)
@@ -1743,7 +1808,7 @@ extern "C" bool wernicke_cpu_recognize_phonemes(
 ) {
     if (!frames || !phoneme_embeddings || !results) return false;
 
-    const uint32_t feature_dim = 82;  // Match GPU
+    const uint32_t feature_dim = WERNICKE_SPECTRAL_FEATURE_DIM;  // Match GPU
 
     float* similarities = (float*)malloc(num_phonemes * sizeof(float));
     if (!similarities) return false;
@@ -1897,6 +1962,9 @@ extern "C" bool wernicke_cpu_spread_activation(
 #include "gpu/cognitive/nimcp_wernicke_gpu.h"
 #include <stdlib.h>
 #include <string.h>
+
+/* P3-W1: Named constant for spectral feature dimensions (stub section) */
+#define WERNICKE_SPECTRAL_FEATURE_DIM  82
 
 wernicke_gpu_config_t wernicke_gpu_default_config(void) {
     wernicke_gpu_config_t config;
@@ -2132,7 +2200,7 @@ bool wernicke_cpu_recognize_phonemes(
 ) {
     if (!frames || !phoneme_embeddings || !results) return false;
 
-    const uint32_t feature_dim = 82;
+    const uint32_t feature_dim = WERNICKE_SPECTRAL_FEATURE_DIM;
 
     for (uint32_t f = 0; f < num_frames; f++) {
         const float* features = (const float*)&frames[f];

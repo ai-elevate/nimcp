@@ -33,7 +33,9 @@
  * Module State
  * ============================================================================ */
 
-static bool g_exception_system_initialized = false;
+/* P2-U24: Use volatile + __atomic builtins for thread-safe visibility.
+ * Multiple threads may call nimcp_exception_system_is_initialized() concurrently. */
+static volatile bool g_exception_system_initialized = false;
 static nimcp_platform_mutex_t* g_exception_mutex = NULL;
 
 /* Thread-local current exception */
@@ -194,15 +196,17 @@ size_t nimcp_exception_capture_stack_trace(nimcp_stack_trace_t* trace, int skip_
 
     for (int i = 0; i < count - start && trace->depth < NIMCP_EXCEPTION_MAX_STACK_DEPTH; i++) {
         trace->frames[trace->depth].address = addresses[start + i];
-        trace->frames[trace->depth].function = symbols ? symbols[i] : NULL;
+        /* P2-U23: Copy symbol strings so we can free the backtrace_symbols result.
+         * Previously we stored direct pointers into the symbols array, causing a
+         * memory leak since the array was never freed. Use strdup to copy. */
+        trace->frames[trace->depth].function = (symbols && symbols[i]) ? strdup(symbols[i]) : NULL;
         trace->frames[trace->depth].file = NULL;
         trace->frames[trace->depth].line = 0;
         trace->depth++;
     }
 
-    /* Note: symbols memory is intentionally not freed here as we store
-     * the pointers. In practice, this is OK for exception handling since
-     * exceptions are rare. For production, consider copying strings. */
+    /* P2-U23: Free the backtrace_symbols result now that strings are copied */
+    free(symbols);
 #endif
 
     return trace->depth;
@@ -258,7 +262,12 @@ size_t nimcp_exception_generate_epitope(nimcp_exception_t* ex) {
     memcpy(ex->epitope + offset, &line, sizeof(line));
     offset += sizeof(line);
 
-    /* Stack trace hash (32 bytes) - use first few addresses */
+    /* P3-U9: Stack trace hash - use first few addresses.
+     * We deliberately truncate to uint32_t to fit within the fixed-size epitope buffer
+     * (NIMCP_EXCEPTION_EPITOPE_SIZE = 64 bytes). On 64-bit systems, the lower 32 bits
+     * of addresses still provide sufficient entropy for pattern matching since ASLR
+     * randomizes page offsets within the lower address space. Using full uint64_t
+     * would halve the number of frames we can include. */
     for (size_t i = 0; i < 8 && i < ex->stack_trace.depth && offset < NIMCP_EXCEPTION_EPITOPE_SIZE - 4; i++) {
         uint32_t addr = (uint32_t)(uintptr_t)ex->stack_trace.frames[i].address;
         memcpy(ex->epitope + offset, &addr, sizeof(addr));
@@ -1147,7 +1156,7 @@ void nimcp_exception_reset_rate_limit(void) {
 }
 
 int nimcp_exception_system_init(void) {
-    if (g_exception_system_initialized) {
+    if (__atomic_load_n(&g_exception_system_initialized, __ATOMIC_ACQUIRE)) {
         /* Reset rate limiter even if already initialized, so tests
          * that call init/shutdown per test case get fresh limits */
         nimcp_exception_reset_rate_limit();
@@ -1168,12 +1177,12 @@ int nimcp_exception_system_init(void) {
         return -1;
     }
 
-    g_exception_system_initialized = true;
+    __atomic_store_n(&g_exception_system_initialized, true, __ATOMIC_RELEASE);
     return 0;
 }
 
 void nimcp_exception_system_shutdown(void) {
-    if (!g_exception_system_initialized) {
+    if (!__atomic_load_n(&g_exception_system_initialized, __ATOMIC_ACQUIRE)) {
         return;
     }
 
@@ -1192,9 +1201,10 @@ void nimcp_exception_system_shutdown(void) {
     /* Reset rate limiter so re-initialization works correctly */
     nimcp_exception_reset_rate_limit();
 
-    g_exception_system_initialized = false;
+    __atomic_store_n(&g_exception_system_initialized, false, __ATOMIC_RELEASE);
 }
 
 bool nimcp_exception_system_is_initialized(void) {
-    return g_exception_system_initialized;
+    /* P2-U24: Atomic load for cross-thread visibility */
+    return __atomic_load_n(&g_exception_system_initialized, __ATOMIC_ACQUIRE);
 }

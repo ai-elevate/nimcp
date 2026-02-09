@@ -44,6 +44,11 @@
 
 /* P3: Use _Atomic for thread-safe access to initialization flag */
 static _Atomic bool g_stats_initialized = false;
+/* P3-U8: g_stats_config is IMMUTABLE after nimcp_stats_init() returns.
+ * All fields are set once during initialization and only read thereafter.
+ * No mutex is needed because there is a happens-before relationship:
+ * g_stats_initialized (atomic store with release) guarantees visibility
+ * of g_stats_config writes to all threads that observe initialized==true. */
 static nimcp_stats_config_t g_stats_config;
 
 //=============================================================================
@@ -1118,8 +1123,18 @@ float nimcp_stats_quantile_dist(float p, const nimcp_distribution_params_t* para
 // Distribution Sampling (uses stdlib rand for now, integrate with nimcp_rand)
 //=============================================================================
 
+/* P2-U15: Use rand_r() with thread-local seed instead of thread-unsafe rand().
+ * Multiple threads calling rand() simultaneously causes data races on the
+ * internal state. rand_r() uses a caller-provided seed for thread safety. */
+static _Thread_local unsigned int tl_rand_seed = 0;
+static _Thread_local bool tl_rand_seeded = false;
+
 static float rand_uniform(void) {
-    return (float)rand() / (float)RAND_MAX;
+    if (!tl_rand_seeded) {
+        tl_rand_seed = (unsigned int)time(NULL) ^ (unsigned int)(uintptr_t)&tl_rand_seed;
+        tl_rand_seeded = true;
+    }
+    return (float)rand_r(&tl_rand_seed) / (float)RAND_MAX;
 }
 
 static float rand_normal(void) {
@@ -1522,6 +1537,14 @@ nimcp_stats_result_t nimcp_stats_correlation_pearson(
 static void compute_ranks(const float* data, float* ranks, uint32_t n) {
     // Create index array
     uint32_t* indices = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    /* P2-U16: NULL check - if allocation fails, fill ranks with sequential values
+     * as a fallback rather than dereferencing NULL. */
+    if (!indices) {
+        for (uint32_t i = 0; i < n; i++) {
+            ranks[i] = (float)(i + 1);
+        }
+        return;
+    }
     for (uint32_t i = 0; i < n; i++) {
         indices[i] = i;
     }

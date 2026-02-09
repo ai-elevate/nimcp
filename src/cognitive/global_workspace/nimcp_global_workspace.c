@@ -436,7 +436,7 @@ static bool resolve_priority_based(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "resolve_priority_based: capacity exceeded");
+    /* P2-COG-01: No winner found is normal resolution behavior, not an error */
     return false;
 }
 
@@ -496,7 +496,7 @@ static bool resolve_round_robin(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resolve_round_robin: operation failed");
+    /* P2-COG-02: No active competitor found is normal, not an error */
     return false;
 }
 

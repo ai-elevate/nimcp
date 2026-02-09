@@ -1087,8 +1087,9 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
     nimcp_atomic_fetch_add_u64(&g_stats_waits_total, 1, NIMCP_MEMORY_ORDER_RELAXED);
 
     if (wait_result == ETIMEDOUT) {
+        /* P2-58 fix: Timeout is normal behavior, not an error. Removed false
+         * positive NIMCP_THROW_TO_IMMUNE. The caller decides what to do on timeout. */
         nimcp_atomic_fetch_add_u64(&g_stats_waits_timeout, 1, NIMCP_MEMORY_ORDER_RELAXED);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait_timeout: validation failed");
         return false;
     }
 
@@ -1103,6 +1104,13 @@ nimcp_error_t nimcp_future_get(nimcp_future_t future, void* out_result)
     NIMCP_CHECK_THROW(future && future->magic == FUTURE_MAGIC,
                        NIMCP_ERROR_NULL_POINTER, "future is NULL or invalid");
     NIMCP_CHECK_THROW(out_result != NULL, NIMCP_ERROR_NULL_POINTER, "out_result is NULL");
+
+    /* P2-56 fix: Return clear error for bio-mode futures instead of crashing
+     * on NULL shared state. Bio-mode futures use bio_future_get instead. */
+    if (future->is_bio_mode) {
+        LOG_ERROR("nimcp_future_get: bio-mode futures must use nimcp_bio_future_get()");
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     nimcp_future_shared_state_t* shared = future->shared;
     NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
@@ -1279,6 +1287,13 @@ nimcp_error_t nimcp_future_then(nimcp_future_t future, nimcp_future_callback_t c
     NIMCP_CHECK_THROW(future && future->magic == FUTURE_MAGIC,
                        NIMCP_ERROR_NULL_POINTER, "future is NULL or invalid");
     NIMCP_CHECK_THROW(callback != NULL, NIMCP_ERROR_NULL_POINTER, "callback is NULL");
+
+    /* P2-57 fix: Return clear error for bio-mode futures.
+     * Bio-mode futures use nimcp_bio_future_on_complete() for callbacks. */
+    if (future->is_bio_mode) {
+        LOG_ERROR("nimcp_future_then: bio-mode futures must use nimcp_bio_future_on_complete()");
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     nimcp_future_shared_state_t* shared = future->shared;
     NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,

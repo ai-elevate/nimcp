@@ -231,8 +231,9 @@ void lockfree_metrics_destroy(lockfree_metrics_buffer_t* buffer) {
     nimcp_log(LOG_LEVEL_INFO, "Destroying metrics buffer '%s'", buffer->name);
 
     // Free entries array
+    // P2-U6: entries allocated with aligned_alloc(), must use raw free() to match
     if (buffer->entries) {
-        nimcp_free(buffer->entries);
+        free(buffer->entries);
         buffer->entries = NULL;
     }
 

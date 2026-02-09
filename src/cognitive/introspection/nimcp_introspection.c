@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "utils/algorithms/nimcp_monte_carlo.h"  /* P1-COG-02: mc_random_uniform, mc_seed_from_time */
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -205,6 +206,9 @@ struct introspection_context_struct {
     introspection_snn_bridge_t* snn_bridge;
     introspection_plasticity_bridge_t* plasticity_bridge;
     bool bridges_enabled;
+
+    /* P1-COG-02: Thread-safe RNG seed for uncertainty estimation */
+    uint32_t rand_seed;
 };
 
 /* ========================================================================
@@ -394,6 +398,8 @@ introspection_context_t introspection_context_create(brain_t brain,
     context->sample_callback = NULL;
     context->sample_callback_context = NULL;
     context->last_avg_activation = 0.0F;
+    /* P1-COG-02: Initialize thread-safe RNG seed */
+    context->rand_seed = mc_seed_from_time();
 
     /* WHAT: Register with bio-async router if enabled */
     /* WHY: Enable asynchronous introspection queries and responses */
@@ -453,6 +459,7 @@ introspection_context_t introspection_context_create(brain_t brain,
 
     nimcp_result_t result = nimcp_queue_create(&queue_config, &context->activity_queue);
     if (result != NIMCP_SUCCESS) {
+        /* P2-COG-03: Remove redundant second throw - one is sufficient */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_context_create: failed to create activity_queue");
         if (context->pattern_registry) {
             nimcp_mutex_destroy(&context->pattern_registry->lock);
@@ -460,7 +467,6 @@ introspection_context_t introspection_context_create(brain_t brain,
         }
         nimcp_mutex_destroy(&context->lock);
         nimcp_free(context);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_context_create: validation failed");
         return NULL;
     }
 
@@ -516,12 +522,7 @@ void introspection_context_destroy(introspection_context_t context)
     if (context->pattern_registry) {
         nimcp_mutex_lock(&context->pattern_registry->lock);
         for (uint32_t i = 0; i < 256; i++) {
-            /* Phase 8: Loop progress heartbeat */
-            if ((i & 0xFF) == 0 && 256 > 256) {
-                introspection_heartbeat("introspectio_loop",
-                                 (float)(i + 1) / (float)256);
-            }
-
+            /* P3-COG-04: Removed dead heartbeat code (256 > 256 is always false) */
             pattern_entry_t* entry = context->pattern_registry->buckets[i];
             while (entry) {
                 pattern_entry_t* next = entry->next;
@@ -1101,7 +1102,8 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
             }
 
             /* Add noise based on estimated variance */
-            float noise = ((float) rand() / RAND_MAX - 0.5F) * variance_estimate * 2.0F;
+            /* P1-COG-02: Use thread-safe mc_random_uniform instead of rand() */
+            float noise = (mc_random_uniform(&context->rand_seed) - 0.5F) * variance_estimate * 2.0F;
             uncertainty.ensemble_predictions[i] = base_prediction + noise;
             /* Clamp to [0, 1] */
             if (uncertainty.ensemble_predictions[i] < 0.0F)

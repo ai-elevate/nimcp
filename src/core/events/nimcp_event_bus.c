@@ -155,6 +155,8 @@ static bool event_queue_is_full(event_queue_t* queue);
 /**
  * @brief Get current timestamp in microseconds
  */
+// P3-59: Ideally this would be static, but it's declared in the public header
+// (nimcp_event_bus.h) and may be used by external callers. Keeping non-static.
 uint64_t event_get_timestamp_us(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -383,27 +385,26 @@ static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, vola
 
     // Wait if empty, checking shutdown flag to prevent blocking forever
     while (queue->count == 0) {
-        // Check shutdown flag before waiting - prevents indefinite blocking
+        // P2-64 FIX: Check shutdown flag before waiting - just return false,
+        // don't throw. Shutdown is a normal exit path, not an error.
         if (shutdown_flag && *shutdown_flag) {
             nimcp_mutex_unlock(&queue->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_dequeue: validation failed");
-            return false;  // Shutdown requested, exit immediately
+            return false;  // Shutdown requested, exit gracefully
         }
         nimcp_cond_wait(&queue->not_empty, &queue->mutex);
     }
 
-    // Final shutdown check after waking up
+    // P2-64 FIX: Final shutdown check after waking up - return false without throw
     if (shutdown_flag && *shutdown_flag) {
         nimcp_mutex_unlock(&queue->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_dequeue: validation failed");
         return false;
     }
 
-    // Get head
+    // P1-57 FIX: If head is NULL despite count>0 (race condition), return false
+    // gracefully instead of throwing. This is a defensive check.
     event_node_t* node = queue->head;
     if (!node) {
         nimcp_mutex_unlock(&queue->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_dequeue: node is NULL");
         return false;
     }
 
@@ -477,9 +478,20 @@ event_bus_t event_bus_create(const char* name, event_delivery_mode_t delivery_mo
     bus->running = false;
     bus->shutdown = false;
 
-    // Initialize mutexes
-    nimcp_mutex_init(&bus->subscriber_mutex, NULL);
-    nimcp_mutex_init(&bus->stats_mutex, NULL);
+    // P2-67 FIX: Check mutex init return values and clean up on failure
+    int sub_mutex_ret = nimcp_mutex_init(&bus->subscriber_mutex, NULL);
+    if (sub_mutex_ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "event_bus_create: subscriber mutex init failed");
+        nimcp_free(bus);
+        return NULL;
+    }
+    int stats_mutex_ret = nimcp_mutex_init(&bus->stats_mutex, NULL);
+    if (stats_mutex_ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "event_bus_create: stats mutex init failed");
+        nimcp_mutex_destroy(&bus->subscriber_mutex);
+        nimcp_free(bus);
+        return NULL;
+    }
 
     // Create event queue for async mode
     if (delivery_mode == EVENT_DELIVERY_ASYNC) {
@@ -560,7 +572,8 @@ static void* event_bus_worker_thread(void* arg) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_worker_thread: bus->shutdown is NULL");
+    // P2-63 FIX: Normal shutdown exit - removed false-positive NIMCP_THROW_TO_IMMUNE.
+    // Worker thread exiting after shutdown signal is expected behavior, not an error.
     return NULL;
 }
 
@@ -621,6 +634,30 @@ bool event_bus_stop(event_bus_t bus, bool drain_queue) {
 
     if (!internal->running) {
         return true; // Already stopped
+    }
+
+    // P2-66 FIX: When drain_queue is true, process remaining events before shutdown
+    if (drain_queue && internal->queue) {
+        brain_event_t event;
+        // Drain remaining events synchronously before signaling shutdown
+        while (!event_queue_is_empty(internal->queue)) {
+            // Use a non-blocking dequeue by temporarily setting shutdown to false
+            // and using a short drain loop
+            nimcp_mutex_lock(&internal->queue->mutex);
+            if (internal->queue->count > 0 && internal->queue->head) {
+                event_node_t* node = internal->queue->head;
+                event = node->event;
+                internal->queue->head = node->next;
+                if (!internal->queue->head) internal->queue->tail = NULL;
+                internal->queue->count--;
+                nimcp_mutex_unlock(&internal->queue->mutex);
+                nimcp_free(node);
+                deliver_event_to_subscribers((event_bus_t)internal, &event);
+            } else {
+                nimcp_mutex_unlock(&internal->queue->mutex);
+                break;
+            }
+        }
     }
 
     // Signal shutdown
@@ -780,7 +817,8 @@ bool event_bus_unsubscribe(event_bus_t bus, event_subscription_handle_t handle) 
     }
 
     nimcp_mutex_unlock(&internal->subscriber_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_unsubscribe: operation failed");
+    // P2-65 FIX: Not finding a subscriber is a normal "not found" result.
+    // Removed false-positive NIMCP_THROW_TO_IMMUNE - just return false.
     return false;
 }
 
@@ -925,8 +963,10 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
         snapshots[i].callback(event, snapshots[i].context);
         delivered++;
 
-        // Update subscriber stats atomically (sub_ptr still valid if not freed)
-        __atomic_fetch_add(&snapshots[i].sub_ptr->events_received, 1, __ATOMIC_RELAXED);
+        // P1-56 FIX: Removed per-subscriber stats update from snapshot path.
+        // After releasing the subscriber_mutex, the sub_ptr may point to freed
+        // memory if another thread unsubscribed concurrently. The global
+        // total_delivered counter (updated below under stats_mutex) is sufficient.
     }
 
     #undef MAX_SNAPSHOT_SUBSCRIBERS

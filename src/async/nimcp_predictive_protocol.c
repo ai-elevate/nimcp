@@ -672,13 +672,15 @@ void predictive_protocol_reset_patterns(predictive_protocol_t proto) {
  * HOW:  qsort-compatible comparison
  */
 static int compare_predictions(const void* a, const void* b) {
+    /* P1-49 fix: Removed NIMCP_THROW_TO_IMMUNE from qsort comparator.
+     * qsort calls this O(N log N) times per sort - throwing here would
+     * generate massive false positive noise. Return 0 for NULL inputs. */
+    if (!a || !b) return 0;
+
     const prediction_t* pa = (const prediction_t*)a;
     const prediction_t* pb = (const prediction_t*)b;
 
-    if (pa->confidence > pb->confidence) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_predictions: validation failed");
-        return -1;
-    }
+    if (pa->confidence > pb->confidence) return -1;
     if (pa->confidence < pb->confidence) return 1;
     return 0;
 }

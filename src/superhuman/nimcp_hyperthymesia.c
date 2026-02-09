@@ -85,6 +85,12 @@ struct hyperthymesia_module {
     hyperthymesia_stats_t stats;
 };
 
+/* P3-HT-1: Named constants for vividness thresholds */
+#define VIVIDNESS_THRESHOLD_EIDETIC   0.95f
+#define VIVIDNESS_THRESHOLD_VIVID     0.80f
+#define VIVIDNESS_THRESHOLD_CLEAR     0.60f
+#define VIVIDNESS_THRESHOLD_MODERATE  0.40f
+
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
@@ -126,13 +132,13 @@ static uint64_t datetime_to_timestamp(const hyperthymesia_datetime_t* dt) {
  * @brief Get year index position
  */
 static int32_t get_year_index(hyperthymesia_module_t* module, uint16_t year) {
+    /* P2-HT-4: Year out-of-range is a normal query miss, not an error.
+     * Callers check for -1 return and handle gracefully. */
     if (year < module->index_year_base) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_year_index: validation failed");
         return -1;
     }
     int32_t idx = year - module->index_year_base;
     if ((uint32_t)idx >= module->index_year_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_year_index: capacity exceeded");
         return -1;
     }
     return idx;
@@ -344,10 +350,11 @@ static bool index_memory_by_date(
  * @brief Calculate vividness from encoding strength
  */
 static memory_vividness_t calculate_vividness(float strength) {
-    if (strength >= 0.95f) return VIVIDNESS_EIDETIC;
-    if (strength >= 0.80f) return VIVIDNESS_VIVID;
-    if (strength >= 0.60f) return VIVIDNESS_CLEAR;
-    if (strength >= 0.40f) return VIVIDNESS_MODERATE;
+    /* P3-HT-1: Use named constants instead of magic numbers */
+    if (strength >= VIVIDNESS_THRESHOLD_EIDETIC)  return VIVIDNESS_EIDETIC;
+    if (strength >= VIVIDNESS_THRESHOLD_VIVID)    return VIVIDNESS_VIVID;
+    if (strength >= VIVIDNESS_THRESHOLD_CLEAR)    return VIVIDNESS_CLEAR;
+    if (strength >= VIVIDNESS_THRESHOLD_MODERATE)  return VIVIDNESS_MODERATE;
     return VIVIDNESS_FAINT;
 }
 
@@ -830,6 +837,12 @@ bool hyperthymesia_link_memories(
         new_links1[entry1->memory.link_count] = memory_id_2;
         entry1->memory.linked_memories = new_links1;
         entry1->memory.link_count++;
+    } else {
+        /* P2-HT-2: Report realloc failure instead of silently continuing */
+        LOG_ERROR("[%s] Failed to expand linked_memories for entry1 (id=%lu)",
+                  HYPERTHYMESIA_LOG_MODULE, (unsigned long)memory_id_1);
+        set_error(module, HYPERTHYMESIA_ERROR_ENCODING_FAILED);
+        return false;
     }
 
     /* Add link to entry2 */
@@ -841,6 +854,12 @@ bool hyperthymesia_link_memories(
         new_links2[entry2->memory.link_count] = memory_id_1;
         entry2->memory.linked_memories = new_links2;
         entry2->memory.link_count++;
+    } else {
+        /* P2-HT-2: Report realloc failure instead of silently continuing */
+        LOG_ERROR("[%s] Failed to expand linked_memories for entry2 (id=%lu)",
+                  HYPERTHYMESIA_LOG_MODULE, (unsigned long)memory_id_2);
+        set_error(module, HYPERTHYMESIA_ERROR_ENCODING_FAILED);
+        return false;
     }
 
     /* Set narrative tags */
@@ -1389,40 +1408,51 @@ bool hyperthymesia_navigate_timeline(
         return false;
     }
 
+    /* P1-HT-2: Use signed int temporaries to prevent unsigned underflow */
     /* Adjust current position based on zoom level and offset */
     switch (cursor->zoom_level) {
-        case TEMPORAL_RESOLUTION_DAY:
-            cursor->current.day += offset;
+        case TEMPORAL_RESOLUTION_DAY: {
+            int32_t day = (int32_t)cursor->current.day + offset;
+            int32_t month = (int32_t)cursor->current.month;
+            int32_t year = (int32_t)cursor->current.year;
             /* Normalize (simplified - doesn't handle month boundaries perfectly) */
-            while (cursor->current.day > 28) {
-                cursor->current.day -= 28;
-                cursor->current.month++;
-                if (cursor->current.month > 12) {
-                    cursor->current.month = 1;
-                    cursor->current.year++;
+            while (day > 28) {
+                day -= 28;
+                month++;
+                if (month > 12) {
+                    month = 1;
+                    year++;
                 }
             }
-            while (cursor->current.day < 1) {
-                cursor->current.day += 28;
-                cursor->current.month--;
-                if (cursor->current.month < 1) {
-                    cursor->current.month = 12;
-                    cursor->current.year--;
+            while (day < 1) {
+                day += 28;
+                month--;
+                if (month < 1) {
+                    month = 12;
+                    year--;
                 }
             }
+            cursor->current.day = (uint8_t)day;
+            cursor->current.month = (uint8_t)month;
+            cursor->current.year = (uint16_t)year;
             break;
+        }
 
-        case TEMPORAL_RESOLUTION_MONTH:
-            cursor->current.month += offset;
-            while (cursor->current.month > 12) {
-                cursor->current.month -= 12;
-                cursor->current.year++;
+        case TEMPORAL_RESOLUTION_MONTH: {
+            int32_t month = (int32_t)cursor->current.month + offset;
+            int32_t year = (int32_t)cursor->current.year;
+            while (month > 12) {
+                month -= 12;
+                year++;
             }
-            while (cursor->current.month < 1) {
-                cursor->current.month += 12;
-                cursor->current.year--;
+            while (month < 1) {
+                month += 12;
+                year--;
             }
+            cursor->current.month = (uint8_t)month;
+            cursor->current.year = (uint16_t)year;
             break;
+        }
 
         case TEMPORAL_RESOLUTION_YEAR:
             cursor->current.year += offset;
@@ -1577,13 +1607,17 @@ bool hyperthymesia_get_memory(
 
     while (entry) {
         if (entry->memory.memory_id == memory_id) {
+            /* P2-HT-1: NOTE - This is a SHALLOW COPY. The caller must NOT free
+             * internal pointers (core_features, sensory_traces, linked_memories,
+             * context sub-arrays). They are owned by the module's hash table entry.
+             * The returned struct is valid only while the module holds the memory. */
             *memory = entry->memory;
             return true;
         }
         entry = entry->hash_next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hyperthymesia_get_memory: validation failed");
+    /* P2-HT-3: Not finding a memory by ID is a normal lookup miss, not an error */
     return false;
 }
 
@@ -1794,8 +1828,10 @@ bool hyperthymesia_get_current_datetime(hyperthymesia_datetime_t* datetime) {
         return false;
     }
 
+    /* P1-HT-1: Use localtime_r for thread safety */
     time_t now = time(NULL);
-    struct tm* tm_info = localtime(&now);
+    struct tm tm_buf;
+    struct tm* tm_info = localtime_r(&now, &tm_buf);
     if (!tm_info) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_get_current_datetime: tm_info is NULL");
         return false;

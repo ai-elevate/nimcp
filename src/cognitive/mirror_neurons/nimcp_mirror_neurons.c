@@ -101,6 +101,9 @@ static inline void mirror_neurons_heartbeat_instance(
 #define MIRROR_LOG_WARN NIMCP_LOGGING_WARN
 #define MIRROR_LOG_INFO NIMCP_LOGGING_INFO
 
+/* P3-COG-06: Named constant for maximum action features per neuron */
+#define MIRROR_MAX_FEATURES 32
+
 //=============================================================================
 // Internal Data Structures
 //=============================================================================
@@ -126,7 +129,8 @@ typedef struct {
     uint32_t execution_count;          /**< Times activated by execution */
 
     // Feature representation
-    float action_features[32];         /**< Learned action features */
+    /* P3-COG-06: Named constant for max features */
+    float action_features[MIRROR_MAX_FEATURES];  /**< Learned action features */
     uint32_t num_features;             /**< Number of features */
 
     // Temporal state
@@ -213,6 +217,9 @@ struct mirror_neurons_system {
 
     // Memory management
     bool initialized;
+
+    // P2-COG-08: Thread safety mutex
+    nimcp_mutex_t* mutex;
 
     // Phase 10.11.2: Substrate integration
     mirror_substrate_config_t substrate_config;   /**< Substrate configuration */
@@ -319,7 +326,7 @@ action_t mirror_neurons_create_action(
     action_t action = {0};
     action.action_id = action_id;
     action.agent_id = agent_id;
-    action.num_features = (num_features > 32) ? 32 : num_features;
+    action.num_features = (num_features > MIRROR_MAX_FEATURES) ? MIRROR_MAX_FEATURES : num_features;
     action.timestamp = nimcp_time_get_ms();
     action.confidence = 1.0F;
 
@@ -834,6 +841,20 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         return NULL;
     }
 
+    /* P2-COG-08: Create mutex for thread safety */
+    {
+        mutex_attr_t mattr = {.type = MUTEX_TYPE_NORMAL};
+        mirror->mutex = nimcp_mutex_create(&mattr);
+        if (!mirror->mutex) {
+            MIRROR_LOG_ERROR("Mirror neurons: failed to create mutex");
+            nimcp_free(mirror->agents);
+            nimcp_free(mirror->actions);
+            nimcp_free(mirror->neurons);
+            nimcp_free(mirror);
+            return NULL;
+        }
+    }
+
     // Initialize temporal state
     mirror->creation_time = nimcp_time_get_ms();
     mirror->last_update_time = 0;  // Set to 0 until first observation
@@ -994,9 +1015,15 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
     nimcp_free(mirror->agents);
     nimcp_free(mirror->actions);
     nimcp_free(mirror->neurons);
-    nimcp_free(mirror);
+
+    /* P2-COG-08: Destroy mutex */
+    if (mirror->mutex) {
+        nimcp_mutex_destroy(mirror->mutex);
+        mirror->mutex = NULL;
+    }
 
     MIRROR_LOG_INFO("Mirror neurons: system destroyed");
+    nimcp_free(mirror);
 }
 
 //=============================================================================

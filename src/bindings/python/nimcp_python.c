@@ -11,7 +11,7 @@
  * FEATURES IMPLEMENTED:
  * - Brain API: create, learn, predict, save/load
  * - Neural Network API: create, forward, backward, save/load
- * - v2.7.0 Enhancements:
+ * - v2.6.3 Enhancements:
  *   * Batch Processing: predict_batch, learn_batch
  *   * Async Inference: async_predict with futures
  *   * Checkpointing: enable_checkpointing, checkpoint, list_checkpoints
@@ -251,18 +251,21 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    float loss = nimcp_brain_learn_example(self->brain, features,
-                                           (uint32_t)num_features, label, confidence);
+    /* P1-49: nimcp_brain_learn_example returns nimcp_status_t, NOT float.
+     * Error codes are POSITIVE (not negative), so checking < 0.0F was wrong. */
+    nimcp_status_t status = nimcp_brain_learn_example(self->brain, features,
+                                                      (uint32_t)num_features, label, confidence);
     nimcp_free(features);
 
-    if (loss < 0.0F) {
+    if (status != NIMCP_OK) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
                          "Brain_learn: Failed to learn example with label '%s'", label);
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return NULL;
     }
 
-    return PyFloat_FromDouble(loss);
+    /* Return 0.0 as loss placeholder - actual loss is not returned by the API */
+    return PyFloat_FromDouble(0.0);
 }
 
 /**
@@ -451,7 +454,10 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    return Py_BuildValue("(OO)", labels_list, confidences_list);
+    /* P2-4: Use "NN" instead of "OO" to transfer ownership and avoid ref leak.
+     * "N" steals the reference, "O" increments it - since we don't Py_DECREF
+     * labels_list/confidences_list after Py_BuildValue, we must use "N". */
+    return Py_BuildValue("(NN)", labels_list, confidences_list);
 }
 
 // Note: File-based checkpointing not yet in public API
@@ -719,7 +725,8 @@ static PyMethodDef module_methods[] = {
 static struct PyModuleDef nimcp_module = {
     PyModuleDef_HEAD_INIT,
     .m_name = "nimcp",
-    .m_doc = "NIMCP - Neural Interface Message Communication Protocol (Python Bindings v2.7.0)",
+    /* P2-5: Use correct version matching library */
+    .m_doc = "NIMCP - Neural Interface Message Communication Protocol (Python Bindings v" NIMCP_VERSION_STRING ")",
     .m_size = -1,
     .m_methods = module_methods
 };
@@ -732,7 +739,7 @@ static struct PyModuleDef nimcp_module = {
 PyMODINIT_FUNC PyInit_nimcp(void) {
     PyObject* m;
 
-    LOG_MODULE_INFO("bindings.python", "Initializing Python bindings for NIMCP v2.7.0");
+    LOG_MODULE_INFO("bindings.python", "Initializing Python bindings for NIMCP v" NIMCP_VERSION_STRING);
 
     // Initialize NIMCP library
     if (nimcp_init() != NIMCP_OK) {

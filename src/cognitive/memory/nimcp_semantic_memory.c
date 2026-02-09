@@ -95,6 +95,7 @@ static inline void semantic_memory_heartbeat_instance(
 #include <stdio.h>
 #include <math.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/thread/nimcp_thread.h"  /* P2-COG-07: nimcp_mutex_create/lock/unlock/destroy */
 #include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
@@ -264,7 +265,8 @@ semantic_memory_system_t* semantic_memory_create(void) {
     semantic_memory_heartbeat("semantic_mem_create", 0.0f);
 
 
-    LOG_INFO("Creating semantic memory system");
+    /* P3-COG-05: Add LOG_MODULE to LOG_INFO */
+    LOG_INFO(LOG_MODULE, "Creating semantic memory system");
 
     semantic_memory_system_t* system =
         (semantic_memory_system_t*)nimcp_calloc(1, sizeof(semantic_memory_system_t));
@@ -414,6 +416,12 @@ semantic_memory_system_t* semantic_memory_create(void) {
                 LOG_INFO(LOG_MODULE, "Bio-async registered with KG wiring callback (module_id=0x%04X)", BIO_MODULE_SEMANTIC_MEMORY);
             }
         }
+    }
+
+    /* P2-COG-07: Initialize mutex for thread-safe concept/relation operations */
+    {
+        mutex_attr_t mattr = {.type = MUTEX_TYPE_NORMAL};
+        system->mutex = nimcp_mutex_create(&mattr);
     }
 
     // Initialize quantum bridge (enabled by default)
@@ -581,6 +589,12 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
     if (system->quantum_bridge) {
         semantic_quantum_bridge_destroy((semantic_quantum_bridge_t*)system->quantum_bridge);
         system->quantum_bridge = NULL;
+    }
+
+    /* P2-COG-07: Destroy mutex */
+    if (system->mutex) {
+        nimcp_mutex_destroy((nimcp_mutex_t*)system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);
@@ -751,10 +765,10 @@ const semantic_concept_t* semantic_memory_get_concept(
         }
 
         if (system->concepts[i] && system->concepts[i]->id == concept_id) {
-            /* NOTE: access_count is treated as mutable (like a cache hit counter)
-             * despite the const qualifier on the system pointer. This is intentional -
-             * access_count tracks usage statistics and does not affect semantic state. */
-            system->concepts[i]->access_count++;
+            /* P2-COG-06: Explicit const cast for mutable access_count.
+             * access_count is a cache-hit counter that tracks usage statistics
+             * and does not affect semantic state. Cast is intentional. */
+            ((semantic_concept_t*)system->concepts[i])->access_count++;
             return system->concepts[i];
         }
     }

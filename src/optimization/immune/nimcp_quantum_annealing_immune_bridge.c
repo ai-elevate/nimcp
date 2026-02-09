@@ -206,8 +206,11 @@ qa_immune_bridge_t* qa_immune_create(
         return NULL;
     }
 
+    /* P3-OPT-3: Use named constant for default event capacity */
+#define QA_IMMUNE_DEFAULT_EVENT_CAPACITY 64
+
     /* Allocate events */
-    bridge->event_capacity = 64;
+    bridge->event_capacity = QA_IMMUNE_DEFAULT_EVENT_CAPACITY;
     size_t events_size = sizeof(qa_immune_problem_event_t) * bridge->event_capacity;
     bridge->events = (qa_immune_problem_event_t*)nimcp_malloc(events_size);
     if (!bridge->events) {
@@ -533,15 +536,23 @@ done:
         bridge->stats.failed_optimizations++;
     }
 
+    /* P2-OPT-4: Increment optimizations_run counter */
+    bridge->stats.optimizations_run++;
+
     bridge->stats.success_rate = bridge->stats.optimizations_run > 0 ?
         (float)bridge->stats.successful_optimizations / bridge->stats.optimizations_run : 0.0f;
 
+    /* P2-OPT-5: Read auto-immune config and metrics inside locked section
+     * to avoid race on post-unlock data access */
+    bool should_auto_respond = (problem != QA_PROBLEM_NONE && bridge->config.enable_auto_immune_response);
+    qa_immune_metrics_t metrics_snapshot = bridge->current_metrics;
+
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 
-    /* Auto-trigger immune response if enabled */
-    if (problem != QA_PROBLEM_NONE && bridge->config.enable_auto_immune_response) {
+    /* Auto-trigger immune response if enabled (uses snapshot taken under lock) */
+    if (should_auto_respond) {
         uint32_t event_id;
-        uint32_t severity = compute_problem_severity(problem, &bridge->current_metrics);
+        uint32_t severity = compute_problem_severity(problem, &metrics_snapshot);
         qa_immune_report_problem(bridge, problem, severity, &event_id);
         qa_immune_trigger_immune_response(bridge, event_id);
     }
@@ -708,7 +719,10 @@ int qa_immune_get_cytokine_effects(
         return -1;
     }
 
+    /* P2-OPT-6: Acquire mutex before reading cytokine_effects to avoid data race */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(qa_immune_cytokine_effects_t));
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 

@@ -118,7 +118,7 @@ int nimcp_gpu_memset(nimcp_gpu_context_t* ctx,
         memset(dev_ptr, value, size_bytes);
         return 0;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_free: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_memset: validation failed");
     return -1;
 }
 

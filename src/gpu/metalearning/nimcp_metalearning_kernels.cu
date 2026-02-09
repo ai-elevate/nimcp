@@ -29,6 +29,9 @@
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
 
+/* P3-M1: Named constant for momentum coefficient (was magic number 0.9f) */
+#define METALEARNING_MOMENTUM_COEFF  0.9f
+
 //=============================================================================
 // Default Parameters
 //=============================================================================
@@ -309,7 +312,7 @@ bool nimcp_gpu_maml_meta_update(
         (const float*)state->outer_grads->data,
         params->outer_lr,
         params->weight_decay,
-        0.9f,  // Momentum coefficient
+        METALEARNING_MOMENTUM_COEFF,
         n);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
@@ -531,6 +534,12 @@ bool nimcp_gpu_protonet_compute_prototypes(
         nimcp_gpu_recovery_init(NULL);
     }
 
+    /* P1-M1: Guard against division by zero when embedding_dim is 0 */
+    if (params->embedding_dim == 0) {
+        LOG_ERROR("embedding_dim must be > 0 for prototype computation");
+        return false;
+    }
+
     int n_samples = support_embeddings->numel / params->embedding_dim;
 
     // Zero prototypes
@@ -606,22 +615,25 @@ __global__ void kernel_distance_softmax(
     int query_idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (query_idx >= n_queries) return;
 
+    /* P2-M1: Guard against temperature <= 0 to prevent division by zero or NaN */
+    float safe_temp = (temperature > 1e-8f) ? temperature : 1e-8f;
+
     // Find max for numerical stability
     float max_neg_dist = -FLT_MAX;
     for (int c = 0; c < n_classes; c++) {
-        float neg_dist = -distances[query_idx * n_classes + c] / temperature;
+        float neg_dist = -distances[query_idx * n_classes + c] / safe_temp;
         if (neg_dist > max_neg_dist) max_neg_dist = neg_dist;
     }
 
     // Compute softmax
     float sum = 0.0f;
     for (int c = 0; c < n_classes; c++) {
-        float neg_dist = -distances[query_idx * n_classes + c] / temperature;
+        float neg_dist = -distances[query_idx * n_classes + c] / safe_temp;
         sum += expf(neg_dist - max_neg_dist);
     }
 
     for (int c = 0; c < n_classes; c++) {
-        float neg_dist = -distances[query_idx * n_classes + c] / temperature;
+        float neg_dist = -distances[query_idx * n_classes + c] / safe_temp;
         logits[query_idx * n_classes + c] = expf(neg_dist - max_neg_dist) / (sum + 1e-8f);
     }
 }
@@ -640,6 +652,12 @@ bool nimcp_gpu_protonet_classify(
 
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);
+    }
+
+    /* P1-M2: Guard against division by zero when embedding_dim is 0 */
+    if (state->embedding_dim == 0) {
+        LOG_ERROR("embedding_dim must be > 0 for classification");
+        return false;
     }
 
     int n_queries = query_embeddings->numel / state->embedding_dim;
@@ -769,6 +787,12 @@ bool nimcp_gpu_protonet_loss(
     }
 
     int n_queries = query_labels->numel;
+
+    /* P1-M3: Guard against division by zero when n_queries is 0 */
+    if (n_queries == 0) {
+        *loss_out = 0.0f;
+        return true;
+    }
 
     float* d_loss_sum;
     NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
@@ -902,6 +926,12 @@ bool nimcp_gpu_meta_memory_read(
 {
     if (!ctx || !state || !query_key || !read_output || !params) {
         LOG_ERROR("Invalid parameters for memory read");
+        return false;
+    }
+
+    /* P1-M4: Guard against division by zero when key_dim is 0 */
+    if (params->key_dim == 0) {
+        LOG_ERROR("key_dim must be > 0 for memory read");
         return false;
     }
 
@@ -1119,6 +1149,12 @@ bool nimcp_gpu_task_embed_film(
         return false;
     }
 
+    /* P2-M2: Guard against division by zero when embed_dim is 0 */
+    if (state->embed_dim == 0) {
+        LOG_ERROR("embed_dim must be > 0 for FiLM conditioning");
+        return false;
+    }
+
     int n_samples = activations->numel / state->embed_dim;
 
     dim3 grid(n_samples);
@@ -1222,6 +1258,13 @@ bool nimcp_gpu_few_shot_accuracy(
     }
 
     int n = labels->numel;
+
+    /* P1-M5: Guard against division by zero when n is 0 */
+    if (n == 0) {
+        *accuracy_out = 0.0f;
+        return true;
+    }
+
     int n_classes = predictions->numel / n;
 
     // Copy to CPU for argmax and comparison

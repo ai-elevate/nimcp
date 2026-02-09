@@ -95,6 +95,15 @@ add_gpu_regression_test(test_visual_processing_regression)
 # HOW:  Test specific bug scenarios (P1-12 through P3) and verify fixes
 add_gpu_regression_test(test_gpu_walkthrough_fixes)
 
+# =============================================================================
+# GPU Pass-3 Fixes Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU/Tensor pass-3 fixes (P1-M/T/U, P2-S/T/U, P3-T)
+# WHY:  Prevent reintroduction of div-by-zero guards, dtype dispatch,
+#        overflow detection, realloc safety, and error message fixes
+# HOW:  Test specific bug scenarios and verify fixes remain stable
+add_gpu_regression_test(test_gpu_pass3_fixes)
+
 # Include broca subdirectory if it exists
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/broca/CMakeLists.txt)
     add_subdirectory(broca)

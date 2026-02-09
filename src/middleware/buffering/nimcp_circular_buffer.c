@@ -267,7 +267,8 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
 
             case OVERFLOW_ERROR:
                 // Report error
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_push: operation failed");
+                /* P3-MW-02 fix: Use NIMCP_ERROR_BUFFER_OVERFLOW instead of generic INVALID_PARAM */
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "circular_buffer_push: buffer full (OVERFLOW_ERROR strategy)");
                 return false;
         }
     }
@@ -310,7 +311,10 @@ bool circular_buffer_pop(circular_buffer_t* buffer, void* element) {
     // Check if buffer empty
     if (read == write) {
         atomic_fetch_add(&buffer->atomic_underflows, 1);  // THREAD SAFETY FIX
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_pop: validation failed");
+        /* P2-MW-01 fix: Removed false positive NIMCP_THROW_TO_IMMUNE.
+         * Popping an empty buffer is normal behavior (e.g., consumer drains faster
+         * than producer). The caller checks the return value; the atomic underflow
+         * counter tracks occurrences for monitoring. */
         return false;
     }
 
@@ -352,7 +356,9 @@ bool circular_buffer_peek(
 
     // Check if offset valid
     if (offset >= size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_peek: capacity exceeded");
+        /* P2-MW-02 fix: Removed false positive NIMCP_THROW_TO_IMMUNE.
+         * Peeking beyond current buffer size is a normal boundary check failure,
+         * not an immune-level error. Caller checks the return value. */
         return false;
     }
 
@@ -452,10 +458,10 @@ bool circular_buffer_is_empty(const circular_buffer_t* buffer) {
 
 bool circular_buffer_is_full(const circular_buffer_t* buffer) {
     // Guard: validate input
-    if (!buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_is_full: buffer is NULL");
-        return false;
-    }
+    /* P2-MW-03 fix: Removed false positive NIMCP_THROW_TO_IMMUNE.
+     * is_full is a query function - NULL input returns false consistently
+     * with is_empty (which also returns early without throwing). */
+    if (!buffer) return false;
 
     size_t write = atomic_load(&buffer->write_pos);
     size_t read = atomic_load(&buffer->read_pos);

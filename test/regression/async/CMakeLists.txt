@@ -250,3 +250,36 @@ gtest_discover_tests(regression_async_test_walkthrough_fixes
         LABELS "regression;async;events;walkthrough"
         TIMEOUT 120
 )
+
+# =============================================================================
+# Async & Middleware Pass3 Fix Regression Tests (P1/P2/P3 fixes 2026-02-08)
+# =============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_async_middleware_pass3_fixes.cpp")
+add_executable(regression_async_test_middleware_pass3_fixes
+    test_async_middleware_pass3_fixes.cpp
+)
+
+target_link_libraries(regression_async_test_middleware_pass3_fixes
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_async_test_middleware_pass3_fixes
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_async_test_middleware_pass3_fixes PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_async_test_middleware_pass3_fixes
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;async;middleware;pass3"
+        TIMEOUT 120
+)
+endif()

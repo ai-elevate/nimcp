@@ -571,8 +571,8 @@ static json_value_t* json_parse(const char* json, size_t len, char* error, size_
 }
 
 static json_value_t* json_object_get(json_value_t* obj, const char* key) {
+    /* P2-COG-16: Returning NULL for invalid args or missing key is normal lookup behavior */
     if (!obj || obj->type != JSON_OBJECT || !key) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_object_get: required parameter is NULL (obj, key)");
         return NULL;
     }
 
@@ -586,8 +586,8 @@ static json_value_t* json_object_get(json_value_t* obj, const char* key) {
 }
 
 static const char* json_get_string(json_value_t* val) {
+    /* P2-COG-17: Type mismatch or NULL is normal, not an error */
     if (!val || val->type != JSON_STRING) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_get_string: val is NULL");
         return NULL;
     }
     return val->str_val;
@@ -599,8 +599,8 @@ static double json_get_number(json_value_t* val) {
 }
 
 static bool json_get_bool(json_value_t* val) {
+    /* P2-COG-18: Type mismatch or NULL is normal, not an error */
     if (!val || val->type != JSON_BOOL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_get_bool: val is NULL");
         return false;
     }
     return val->bool_val;
@@ -612,8 +612,8 @@ static size_t json_array_length(json_value_t* arr) {
 }
 
 static json_value_t* json_array_get(json_value_t* arr, size_t index) {
+    /* P2-COG-19: OOB or NULL is normal lookup behavior, not an error */
     if (!arr || arr->type != JSON_ARRAY || index >= arr->array.count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "json_array_get: arr is NULL");
         return NULL;
     }
     return arr->array.items[index];

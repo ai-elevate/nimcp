@@ -441,9 +441,9 @@ nimcp_status_t nimcp_brain_predict(
         NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Brain prediction failed");
     }
 
-    // Copy results
-    strncpy(out_label, decision->label, 63);
-    out_label[63] = '\0';
+    /* P1-48: Use NIMCP_MAX_LABEL_SIZE instead of hardcoded 63 */
+    strncpy(out_label, decision->label, NIMCP_MAX_LABEL_SIZE - 1);
+    out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
     *out_confidence = decision->confidence;
 
     // Free decision
@@ -1563,9 +1563,12 @@ nimcp_status_t nimcp_ethics_check(
     NIMCP_CHECK_THROW(situation, NIMCP_ERROR_NULL_ARG, "Situation array is NULL");
     NIMCP_CHECK_THROW(out_score, NIMCP_ERROR_NULL_ARG, "Output score pointer is NULL");
 
-    // Create action context from situation features
+    /* P2-1: The internal API accepts non-const float* but we guarantee
+     * the features are not modified during evaluation. This const_cast
+     * is safe because ethics_engine_evaluate_action() is read-only.
+     * TODO: Fix internal API to accept const float*. */
     action_context_t action = {0};
-    action.features = (float*)situation;  // Cast away const for internal API
+    action.features = (float*)(uintptr_t)situation;  /* const_cast - see above */
     action.num_features = num_features;
     action.affected_agents = NULL;
     action.num_affected_agents = 0;
@@ -2034,16 +2037,20 @@ typedef struct {
 
 // Global map from brain handle to training state (simple approach for now)
 // In production, this would be stored in the brain handle struct
+/* P1-46: Add mutex for thread-safe access to g_training_states */
 #define MAX_TRAINING_STATES 64
+static nimcp_mutex_t g_training_states_mutex = NIMCP_MUTEX_INITIALIZER;
 static struct {
     nimcp_brain_t brain;
     training_pipeline_state_t state;
 } g_training_states[MAX_TRAINING_STATES] = {0};
 
 static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
+    nimcp_mutex_lock(&g_training_states_mutex);
     // Find existing state
     for (int i = 0; i < MAX_TRAINING_STATES; i++) {
         if (g_training_states[i].brain == brain) {
+            nimcp_mutex_unlock(&g_training_states_mutex);
             return &g_training_states[i].state;
         }
     }
@@ -2052,14 +2059,18 @@ static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
         if (g_training_states[i].brain == NULL) {
             g_training_states[i].brain = brain;
             memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
+            nimcp_mutex_unlock(&g_training_states_mutex);
             return &g_training_states[i].state;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_training_state: validation failed");
+    nimcp_mutex_unlock(&g_training_states_mutex);
+    /* P2-3: Use correct error code for full table */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_training_state: training states table full");
     return NULL;  // No space
 }
 
 static void clear_training_state(nimcp_brain_t brain) {
+    nimcp_mutex_lock(&g_training_states_mutex);
     for (int i = 0; i < MAX_TRAINING_STATES; i++) {
         if (g_training_states[i].brain == brain) {
             // Destroy callback manager if present
@@ -2074,9 +2085,11 @@ static void clear_training_state(nimcp_brain_t brain) {
             }
             g_training_states[i].brain = NULL;
             memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
+            nimcp_mutex_unlock(&g_training_states_mutex);
             return;
         }
     }
+    nimcp_mutex_unlock(&g_training_states_mutex);
 }
 
 /**
@@ -2982,11 +2995,21 @@ uint32_t nimcp_brain_register_callback(
     wrapper->public_callback = callback;
     wrapper->user_data = user_data;
 
-    // Store wrapper for cleanup (thread-safe)
+    /* P1-47: Find first free slot instead of wrapping counter, to avoid
+     * freeing a live wrapper that's still referenced by the callback manager */
     nimcp_mutex_lock(&g_callback_wrappers_mutex);
-    uint32_t wrapper_idx = g_next_wrapper_id % MAX_CALLBACK_WRAPPERS;
-    if (g_callback_wrappers[wrapper_idx]) {
-        nimcp_free(g_callback_wrappers[wrapper_idx]);
+    uint32_t wrapper_idx = MAX_CALLBACK_WRAPPERS; /* sentinel = not found */
+    for (uint32_t i = 0; i < MAX_CALLBACK_WRAPPERS; i++) {
+        if (g_callback_wrappers[i] == NULL) {
+            wrapper_idx = i;
+            break;
+        }
+    }
+    if (wrapper_idx >= MAX_CALLBACK_WRAPPERS) {
+        nimcp_mutex_unlock(&g_callback_wrappers_mutex);
+        nimcp_free(wrapper);
+        set_error("Callback wrapper table full");
+        return 0;
     }
     g_callback_wrappers[wrapper_idx] = wrapper;
     g_next_wrapper_id++;

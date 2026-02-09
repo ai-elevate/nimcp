@@ -43,9 +43,14 @@ extern "C" {
 #define NIMCP_VERSION_STRING "2.6.3"
 #endif
 
+/* P2-7: Define NIMCP_MAX_LABEL_SIZE for predict buffer sizing */
+#ifndef NIMCP_MAX_LABEL_SIZE
+#define NIMCP_MAX_LABEL_SIZE 64
+#endif
+
 /**
  * @brief Get NIMCP version as string
- * @return Version string (e.g., "2.6.1")
+ * @return Version string (e.g., "2.6.3")
  */
 const char* nimcp_version(void);
 

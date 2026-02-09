@@ -881,8 +881,12 @@ size_t mesh_tx_cleanup_expired(
         mesh_transaction_t* tx = manager->entries[i].tx;
         if (!tx) continue;
 
-        /* Skip already complete */
-        if (mesh_tx_is_complete(manager, &tx->id)) continue;
+        /* P1-48: Check status directly instead of calling mesh_tx_is_complete()
+         * which would deadlock by re-locking manager->mutex we already hold */
+        if (tx->status == MESH_TX_STATUS_COMMITTED ||
+            tx->status == MESH_TX_STATUS_FAILED ||
+            tx->status == MESH_TX_STATUS_EXPIRED ||
+            tx->status == MESH_TX_STATUS_REJECTED) continue;
 
         /* Check timeout */
         if (tx->timeout_ns > 0 && current_time_ns >= tx->timeout_ns) {

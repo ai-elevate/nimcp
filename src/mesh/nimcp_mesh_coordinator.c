@@ -471,12 +471,19 @@ bool mesh_coordinator_has_participant(
         return false;
     }
 
+    /* P2-150: Mutex protection for participant array access */
+    nimcp_mutex_lock(((mesh_coordinator_t*)coord)->mutex);
+
+    bool found = false;
     for (size_t i = 0; i < coord->participant_count; i++) {
         if (coord->participants[i] == participant_id) {
-            return true;
+            found = true;
+            break;
         }
     }
-    return false;
+
+    nimcp_mutex_unlock(((mesh_coordinator_t*)coord)->mutex);
+    return found;
 }
 
 size_t mesh_coordinator_get_participant_count(const mesh_coordinator_t* coord) {
@@ -492,11 +499,15 @@ nimcp_error_t mesh_coordinator_get_participants(
     if (!validate_coordinator(coord)) return NIMCP_ERROR_INVALID_PARAM;
     if (!ids_out || !count_out) return NIMCP_ERROR_NULL_POINTER;
 
+    /* P2-150: Mutex protection for participant array access */
+    nimcp_mutex_lock(((mesh_coordinator_t*)coord)->mutex);
+
     size_t count = coord->participant_count < max_ids ?
                    coord->participant_count : max_ids;
     memcpy(ids_out, coord->participants, count * sizeof(mesh_participant_id_t));
     *count_out = count;
 
+    nimcp_mutex_unlock(((mesh_coordinator_t*)coord)->mutex);
     return NIMCP_SUCCESS;
 }
 

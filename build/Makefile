@@ -19165,6 +19165,19 @@ regression_core_brain_walkthrough_fixes/fast:
 .PHONY : regression_core_brain_walkthrough_fixes/fast
 
 #=============================================================================
+# Target rules for targets named regression_core_pass3_fixes
+
+# Build rule for target.
+regression_core_pass3_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_pass3_fixes
+.PHONY : regression_core_pass3_fixes
+
+# fast build rule for target.
+regression_core_pass3_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/CMakeFiles/regression_core_pass3_fixes.dir/build.make test/regression/core/brain/CMakeFiles/regression_core_pass3_fixes.dir/build
+.PHONY : regression_core_pass3_fixes/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_subcortical_test
 
 # Build rule for target.
@@ -26094,6 +26107,19 @@ regression_cognitive_training_walkthrough/fast:
 .PHONY : regression_cognitive_training_walkthrough/fast
 
 #=============================================================================
+# Target rules for targets named regression_cognitive_pass3_fixes
+
+# Build rule for target.
+regression_cognitive_pass3_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_pass3_fixes
+.PHONY : regression_cognitive_pass3_fixes
+
+# fast build rule for target.
+regression_cognitive_pass3_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_pass3_fixes.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_pass3_fixes.dir/build
+.PHONY : regression_cognitive_pass3_fixes/fast
+
+#=============================================================================
 # Target rules for targets named test_rcog_regression
 
 # Build rule for target.
@@ -29448,6 +29474,19 @@ regression_security_test_bbb_quarantine/fast:
 .PHONY : regression_security_test_bbb_quarantine/fast
 
 #=============================================================================
+# Target rules for targets named regression_security_pass3_fixes
+
+# Build rule for target.
+regression_security_pass3_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_pass3_fixes
+.PHONY : regression_security_pass3_fixes
+
+# fast build rule for target.
+regression_security_pass3_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_pass3_fixes.dir/build.make test/regression/security/CMakeFiles/regression_security_pass3_fixes.dir/build
+.PHONY : regression_security_pass3_fixes/fast
+
+#=============================================================================
 # Target rules for targets named regression_security_utils_walkthrough_fixes
 
 # Build rule for target.
@@ -30187,6 +30226,19 @@ regression_async_test_walkthrough_fixes: cmake_check_build_system
 regression_async_test_walkthrough_fixes/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_walkthrough_fixes.dir/build.make test/regression/async/CMakeFiles/regression_async_test_walkthrough_fixes.dir/build
 .PHONY : regression_async_test_walkthrough_fixes/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_middleware_pass3_fixes
+
+# Build rule for target.
+regression_async_test_middleware_pass3_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_middleware_pass3_fixes
+.PHONY : regression_async_test_middleware_pass3_fixes
+
+# fast build rule for target.
+regression_async_test_middleware_pass3_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_middleware_pass3_fixes.dir/build.make test/regression/async/CMakeFiles/regression_async_test_middleware_pass3_fixes.dir/build
+.PHONY : regression_async_test_middleware_pass3_fixes/fast
 
 #=============================================================================
 # Target rules for targets named regression_bio_async_self_repair
@@ -35116,6 +35168,19 @@ regression_gpu_test_gpu_walkthrough_fixes/fast:
 .PHONY : regression_gpu_test_gpu_walkthrough_fixes/fast
 
 #=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_pass3_fixes
+
+# Build rule for target.
+regression_gpu_test_gpu_pass3_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_pass3_fixes
+.PHONY : regression_gpu_test_gpu_pass3_fixes
+
+# fast build rule for target.
+regression_gpu_test_gpu_pass3_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_pass3_fixes.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_pass3_fixes.dir/build
+.PHONY : regression_gpu_test_gpu_pass3_fixes/fast
+
+#=============================================================================
 # Target rules for targets named regression_gpu_statistics_test_statistics_gpu_regression
 
 # Build rule for target.
@@ -39867,6 +39932,7 @@ help:
 	@echo "... regression_async_test_bio_async_regression"
 	@echo "... regression_async_test_bio_router_kg_dispatch"
 	@echo "... regression_async_test_future_regression"
+	@echo "... regression_async_test_middleware_pass3_fixes"
 	@echo "... regression_async_test_self_assembly"
 	@echo "... regression_async_test_walkthrough_fixes"
 	@echo "... regression_async_test_wiring_diagram"
@@ -39947,6 +40013,7 @@ help:
 	@echo "... regression_cognitive_mirror_neurons_snn_plasticity"
 	@echo "... regression_cognitive_mirror_neurons_substrate"
 	@echo "... regression_cognitive_modules_api_test"
+	@echo "... regression_cognitive_pass3_fixes"
 	@echo "... regression_cognitive_predictive_test_predictive_bridge_exception_regression"
 	@echo "... regression_cognitive_reasoning_snn_plasticity"
 	@echo "... regression_cognitive_salience_snn_plasticity"
@@ -40008,6 +40075,7 @@ help:
 	@echo "... regression_core_integration_test_integration_regression"
 	@echo "... regression_core_medulla"
 	@echo "... regression_core_neuron_types_regression"
+	@echo "... regression_core_pass3_fixes"
 	@echo "... regression_core_substrate_bridges"
 	@echo "... regression_core_synapse_compute_test_three_factor_backward_compat"
 	@echo "... regression_core_test_core_immune_regression"
@@ -40064,6 +40132,7 @@ help:
 	@echo "... regression_gpu_test_gpu_execution_mode_backward_compat"
 	@echo "... regression_gpu_test_gpu_neuron_backward_compat"
 	@echo "... regression_gpu_test_gpu_neuron_regression"
+	@echo "... regression_gpu_test_gpu_pass3_fixes"
 	@echo "... regression_gpu_test_gpu_spike_event_backward_compat"
 	@echo "... regression_gpu_test_gpu_walkthrough_fixes"
 	@echo "... regression_gpu_test_multigpu_regression"
@@ -40251,6 +40320,7 @@ help:
 	@echo "... regression_security_module"
 	@echo "... regression_security_module_bridges"
 	@echo "... regression_security_p0_fixes"
+	@echo "... regression_security_pass3_fixes"
 	@echo "... regression_security_pattern_db_v2"
 	@echo "... regression_security_rate_limiter_v2"
 	@echo "... regression_security_sleep_bridges"

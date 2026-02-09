@@ -239,33 +239,26 @@ static mesh_health_status_t compute_status_from_score(float score) {
  * Health Agent Registration API
  * ============================================================================ */
 
-nimcp_error_t mesh_resilience_register_agent(
+/**
+ * P2-147: Unlocked helper for agent registration. Used by heartbeat auto-register
+ * to avoid unlock-relock window. Caller MUST hold resilience->mutex.
+ */
+static nimcp_error_t register_agent_unlocked(
     mesh_resilience_integration_t* resilience,
     mesh_participant_id_t participant_id,
     health_agent_t* agent,
     const char* module_name
 ) {
-    if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    nimcp_mutex_lock(resilience->mutex);
-
     /* Check if already registered */
     int idx = find_agent_by_id(resilience, participant_id);
     if (idx >= 0) {
         /* Update existing */
         resilience->agents[idx].agent = agent;
-        nimcp_mutex_unlock(resilience->mutex);
         return NIMCP_SUCCESS;
     }
 
     /* Check capacity */
     if (resilience->agent_count >= MESH_RESILIENCE_MAX_AGENTS) {
-        nimcp_mutex_unlock(resilience->mutex);
-        LOG_WARN("Resilience integration at max agent capacity");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_resilience_integration: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -289,8 +282,33 @@ nimcp_error_t mesh_resilience_register_agent(
     resilience->agent_count++;
     resilience->stats.agents_registered++;
 
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t mesh_resilience_register_agent(
+    mesh_resilience_integration_t* resilience,
+    mesh_participant_id_t participant_id,
+    health_agent_t* agent,
+    const char* module_name
+) {
+    if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(resilience->mutex);
+
+    nimcp_error_t err = register_agent_unlocked(resilience, participant_id, agent, module_name);
+
+    if (err == NIMCP_ERROR_CAPACITY_EXCEEDED) {
+        nimcp_mutex_unlock(resilience->mutex);
+        LOG_WARN("Resilience integration at max agent capacity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_resilience_integration: error condition");
+        return NIMCP_ERROR_CAPACITY_EXCEEDED;
+    }
+
     /* Also register with health bridge */
-    if (resilience->health_bridge) {
+    if (err == NIMCP_SUCCESS && resilience->health_bridge) {
         mesh_health_bridge_register_agent(
             resilience->health_bridge,
             participant_id,
@@ -306,7 +324,7 @@ nimcp_error_t mesh_resilience_register_agent(
                  (unsigned long long)participant_id);
     }
 
-    return NIMCP_SUCCESS;
+    return err;
 }
 
 nimcp_error_t mesh_resilience_unregister_agent(
@@ -393,10 +411,8 @@ nimcp_error_t mesh_resilience_heartbeat(
 
     int idx = find_agent_by_id(resilience, participant_id);
     if (idx < 0) {
-        /* Auto-register if not found */
-        nimcp_mutex_unlock(resilience->mutex);
-        mesh_resilience_register_agent(resilience, participant_id, NULL, NULL);
-        nimcp_mutex_lock(resilience->mutex);
+        /* P2-147: Use unlocked helper to avoid unlock-relock window */
+        register_agent_unlocked(resilience, participant_id, NULL, NULL);
         idx = find_agent_by_id(resilience, participant_id);
     }
 
@@ -565,21 +581,17 @@ size_t mesh_resilience_check_heartbeats(
     return new_failures;
 }
 
-nimcp_error_t mesh_resilience_aggregate_channel(
+/**
+ * P1-49: Unlocked helper for channel aggregation to avoid deadlock when called
+ * from mesh_resilience_get_system_metrics() which already holds the mutex.
+ */
+static nimcp_error_t aggregate_channel_unlocked(
     mesh_resilience_integration_t* resilience,
     mesh_channel_id_t channel,
     mesh_channel_health_metrics_t* metrics
 ) {
-    if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!metrics) return NIMCP_ERROR_NULL_POINTER;
-
     memset(metrics, 0, sizeof(*metrics));
     metrics->channel = channel;
-
-    nimcp_mutex_lock(resilience->mutex);
 
     float total_score = 0.0f;
     float min_score = 1.0f;
@@ -628,8 +640,24 @@ nimcp_error_t mesh_resilience_aggregate_channel(
     metrics->status = compute_status_from_score(metrics->avg_health_score);
     metrics->computed_at_ns = nimcp_time_now_ns();
 
-    nimcp_mutex_unlock(resilience->mutex);
     return NIMCP_SUCCESS;
+}
+
+nimcp_error_t mesh_resilience_aggregate_channel(
+    mesh_resilience_integration_t* resilience,
+    mesh_channel_id_t channel,
+    mesh_channel_health_metrics_t* metrics
+) {
+    if (!resilience || resilience->magic != MESH_RESILIENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_resilience_integration: invalid parameter");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (!metrics) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(resilience->mutex);
+    nimcp_error_t err = aggregate_channel_unlocked(resilience, channel, metrics);
+    nimcp_mutex_unlock(resilience->mutex);
+    return err;
 }
 
 nimcp_error_t mesh_resilience_get_system_metrics(
@@ -659,7 +687,8 @@ nimcp_error_t mesh_resilience_get_system_metrics(
 
     float total_score = 0.0f;
     for (size_t i = 0; i < metrics->channel_count; i++) {
-        mesh_resilience_aggregate_channel(
+        /* P1-49: Use unlocked helper since we already hold the mutex */
+        aggregate_channel_unlocked(
             resilience, channels[i], &metrics->channels[i]);
         metrics->total_agents += metrics->channels[i].total_agents;
         metrics->healthy_agents += metrics->channels[i].healthy_agents;

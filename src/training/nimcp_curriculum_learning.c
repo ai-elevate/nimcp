@@ -362,8 +362,7 @@ curriculum_ctx_t* curriculum_create(
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(curriculum_ctx_t),
                           "curriculum_create: failed to allocate context");
         NIMCP_LOGGING_ERROR("Failed to allocate curriculum context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
+        /* P2-CL-3: Removed redundant NIMCP_THROW_TO_IMMUNE after NIMCP_THROW_MEMORY */
         return NULL;
     }
 
@@ -376,6 +375,12 @@ curriculum_ctx_t* curriculum_create(
     ctx->difficulty_ema = (float*)nimcp_calloc(num_samples, sizeof(float));
     ctx->update_counts = (uint32_t*)nimcp_calloc(num_samples, sizeof(uint32_t));
     ctx->initialized = (bool*)nimcp_calloc(num_samples, sizeof(bool));
+    /* P2-CL-2: Check integer overflow before allocation */
+    if (num_samples > SIZE_MAX / sizeof(uint32_t)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "curriculum_create: num_samples too large, allocation overflow");
+        curriculum_destroy(ctx);
+        return NULL;
+    }
     ctx->sorted_indices = (uint32_t*)nimcp_malloc(num_samples * sizeof(uint32_t));
 
     if (!ctx->difficulties || !ctx->difficulty_ema || !ctx->update_counts ||
@@ -649,10 +654,16 @@ int curriculum_get_ordered_indices(
 
     if (!mutable_ctx->sorted_valid) {
         sort_indices(mutable_ctx, ascending);
-    } else if ((ascending && g_sort_ctx.ascending != ascending) ||
-               (!ascending && g_sort_ctx.ascending != ascending)) {
-        /* Wrong order, re-sort */
-        sort_indices(mutable_ctx, ascending);
+    } else {
+        /* P2-CL-1: Read ascending flag inside g_sort_mutex to avoid data race */
+        nimcp_platform_once(&g_sort_mutex_once, init_sort_mutex);
+        nimcp_platform_mutex_lock(&g_sort_mutex);
+        bool current_ascending = g_sort_ctx.ascending;
+        nimcp_platform_mutex_unlock(&g_sort_mutex);
+        if (current_ascending != ascending) {
+            /* Wrong order, re-sort */
+            sort_indices(mutable_ctx, ascending);
+        }
     }
 
     memcpy(indices, ctx->sorted_indices, ctx->num_samples * sizeof(uint32_t));
@@ -833,7 +844,8 @@ float curriculum_get_threshold(const curriculum_ctx_t* ctx) {
 
 int curriculum_set_state(curriculum_ctx_t* ctx, curriculum_state_t state) {
     if (!ctx || state >= CURRICULUM_STATE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "curriculum_set_state: ctx is NULL");
+        /* P2-CL-4: Use NIMCP_ERROR_INVALID_PARAM instead of NIMCP_ERROR_BUFFER_OVERFLOW */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curriculum_set_state: invalid ctx or state");
         return -1;
     }
 

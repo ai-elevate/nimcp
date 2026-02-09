@@ -287,13 +287,16 @@ bool nimcp_in_try_block(void);
 /**
  * @brief Begin try block
  */
+/* P2-9: Track whether push succeeded so we only pop if push was successful.
+ * This prevents leaking the try context on push failure. */
 #define NIMCP_TRY \
     do { \
         nimcp_try_context_t _nimcp_try_ctx = {0}; \
+        int _nimcp_push_ok = 0; \
         _nimcp_try_ctx.file = __FILE__; \
         _nimcp_try_ctx.line = __LINE__; \
         _nimcp_try_ctx.function = __func__; \
-        if (nimcp_try_push(&_nimcp_try_ctx) == 0) { \
+        if ((_nimcp_push_ok = (nimcp_try_push(&_nimcp_try_ctx) == 0))) { \
             if (setjmp(_nimcp_try_ctx.jmp_buffer) == 0) {
 
 /**
@@ -301,7 +304,7 @@ bool nimcp_in_try_block(void);
  */
 #define NIMCP_CATCH(type, var) \
             } \
-            nimcp_try_pop(); \
+            if (_nimcp_push_ok) nimcp_try_pop(); \
         } \
         if (_nimcp_try_ctx.exception_caught) { \
             type* var = (type*)_nimcp_try_ctx.exception;
@@ -309,13 +312,15 @@ bool nimcp_in_try_block(void);
 /**
  * @brief Catch block with type filtering
  */
-#define NIMCP_CATCH_TYPE(type, expected_type, var) \
+/* P2-8: Renamed 'type' macro parameter to 'cast_type' to avoid collision
+ * with the 'type' field of the exception struct in the expansion. */
+#define NIMCP_CATCH_TYPE(cast_type, expected_type, var) \
             } \
-            nimcp_try_pop(); \
+            if (_nimcp_push_ok) nimcp_try_pop(); \
         } \
         if (_nimcp_try_ctx.exception_caught && \
             _nimcp_try_ctx.exception->type == (expected_type)) { \
-            type* var = (type*)_nimcp_try_ctx.exception;
+            cast_type* var = (cast_type*)_nimcp_try_ctx.exception;
 
 /**
  * @brief End try block

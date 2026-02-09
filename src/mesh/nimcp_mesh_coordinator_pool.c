@@ -622,7 +622,6 @@ nimcp_error_t mesh_coordinator_pool_remove(
     int idx = find_coordinator_index(pool, coordinator_id);
     if (idx < 0) {
         nimcp_mutex_unlock(pool->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_coordinator_pool: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -966,7 +965,6 @@ nimcp_error_t mesh_coordinator_pool_assign_participant(
 
     if (!coord) {
         nimcp_mutex_unlock(pool->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_coordinator_pool: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1060,7 +1058,7 @@ mesh_coordinator_t* mesh_coordinator_pool_get_assignment(
             return pool->coordinators[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_get_assignment: validate_pool is NULL");
+    /* P2-151: Not found is normal lookup result, not an error (false positive removal) */
     return NULL;
 }
 
@@ -1298,17 +1296,24 @@ nimcp_error_t mesh_coordinator_pool_scale_down(
 ) {
     if (!validate_pool(pool)) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P3-C: Mutex protection during scale_down iteration */
+    nimcp_mutex_lock(pool->mutex);
+
     /* Only remove standby coordinators */
     size_t removed = 0;
     while (removed < count && pool->coordinator_count > pool->config.min_size) {
         mesh_coordinator_t* standby = get_first_with_role(pool, COORD_ROLE_STANDBY);
         if (!standby) break;
 
-        mesh_coordinator_pool_remove(pool, mesh_coordinator_get_id(standby));
+        mesh_participant_id_t id = mesh_coordinator_get_id(standby);
+        nimcp_mutex_unlock(pool->mutex);
+        mesh_coordinator_pool_remove(pool, id);
         mesh_coordinator_destroy(standby);
+        nimcp_mutex_lock(pool->mutex);
         removed++;
     }
 
+    nimcp_mutex_unlock(pool->mutex);
     return NIMCP_SUCCESS;
 }
 

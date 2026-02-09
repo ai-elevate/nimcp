@@ -81,7 +81,7 @@ static bool hypogen_init_gpu_mc(void) {
     if (g_hypogen_gpu_init_attempted) return g_hypogen_gpu_rng != NULL;
     g_hypogen_gpu_init_attempted = true;
     if (!qmc_gpu_is_available()) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypogen_init_gpu_mc: qmc_gpu_is_available is NULL");
+        /* GPU not available is normal, not an error */
         return false;
     }
     g_hypogen_gpu_ctx = nimcp_gpu_context_create_auto();
@@ -103,8 +103,22 @@ static inline bool hypogen_has_gpu_mc(void) {
     if (!g_hypogen_gpu_init_attempted) hypogen_init_gpu_mc();
     return g_hypogen_gpu_rng != NULL;
 }
+
+/* P2-COG-11: Shutdown function to free leaked GPU resources */
+static void hypogen_shutdown_gpu_mc(void) {
+    if (g_hypogen_gpu_rng) {
+        qmc_gpu_rng_destroy(g_hypogen_gpu_rng);
+        g_hypogen_gpu_rng = NULL;
+    }
+    if (g_hypogen_gpu_ctx) {
+        nimcp_gpu_context_destroy(g_hypogen_gpu_ctx);
+        g_hypogen_gpu_ctx = NULL;
+    }
+    g_hypogen_gpu_init_attempted = false;
+}
 #else
 static inline bool hypogen_has_gpu_mc(void) { return false; }
+static inline void hypogen_shutdown_gpu_mc(void) {}
 #endif
 
 struct hypothesis_engine {
@@ -180,14 +194,17 @@ void hypothesis_engine_destroy(hypothesis_engine_t* engine) {
     /* Phase 8: Heartbeat at operation start */
     hypothesis_generation_heartbeat("hypothesis_g_hypothesis_engine_de", 0.0f);
 
-
     if (engine) nimcp_free(engine);
+
+    /* P2-COG-11: Clean up global GPU resources when last engine is destroyed */
+    hypogen_shutdown_gpu_mc();
 }
 
 hypogen_theory_t** hypothesis_generate_explanations(hypothesis_engine_t* engine,
     const hypogen_observation_t* observations, uint32_t num_obs, uint32_t* num_theories) {
     if (!engine || !observations || !num_theories) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: required parameter is NULL (engine, observations, num_theories)");
+        /* P2-COG-10: Correct function name */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_generate_explanations: required parameter is NULL (engine, observations, num_theories)");
         return NULL;
     }
 
@@ -226,11 +243,13 @@ hypogen_theory_t** hypothesis_generate_explanations(hypothesis_engine_t* engine,
 hypogen_theory_t* hypothesis_abductive_inference(hypothesis_engine_t* engine,
     const hypogen_observation_t* surprising_fact) {
     if (!engine || !surprising_fact) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: required parameter is NULL (engine, surprising_fact)");
+        /* P2-COG-10: Correct function name */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_abductive_inference: required parameter is NULL (engine, surprising_fact)");
         return NULL;
     }
     if (!engine->config.enable_abduction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: engine->config is NULL");
+        /* P2-COG-10: Correct function name and message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothesis_abductive_inference: abduction disabled in config");
         return NULL;
     }
 
@@ -264,8 +283,15 @@ hypogen_theory_t* hypothesis_abductive_inference(hypothesis_engine_t* engine,
 int hypothesis_rank_theories(hypothesis_engine_t* engine,
     hypogen_theory_t** theories, uint32_t num_theories, uint32_t* rankings) {
     if (!engine || !theories || !rankings) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: required parameter is NULL (engine, theories, rankings)");
+        /* P2-COG-10: Correct function name in throw message */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_rank_theories: required parameter is NULL (engine, theories, rankings)");
         return -1;
+    }
+
+    /* P1-COG-03: Guard against num_theories==0 or 1 (underflow in num_theories - 1) */
+    if (num_theories <= 1) {
+        if (num_theories == 1) rankings[0] = 0;
+        return 0;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -296,11 +322,11 @@ int hypothesis_rank_theories(hypothesis_engine_t* engine,
 hypogen_prediction_t** hypothesis_derive_predictions(hypothesis_engine_t* engine,
     const hypogen_theory_t* theory, uint32_t* num_predictions) {
     if (!engine || !theory || !num_predictions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: required parameter is NULL (engine, theory, num_predictions)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_derive_predictions: required parameter is NULL (engine, theory, num_predictions)");
         return NULL;
     }
     if (!engine->config.enable_prediction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: engine->config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothesis_derive_predictions: prediction disabled in config");
         return NULL;
     }
 
@@ -342,7 +368,7 @@ hypogen_prediction_t** hypothesis_derive_predictions(hypothesis_engine_t* engine
 int hypothesis_test_prediction(hypothesis_engine_t* engine,
     hypogen_prediction_t* prediction, const hypogen_observation_t* observation) {
     if (!engine || !prediction || !observation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: required parameter is NULL (engine, prediction, observation)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_test_prediction: required parameter is NULL (engine, prediction, observation)");
         return -1;
     }
 
@@ -362,7 +388,7 @@ int hypothesis_test_prediction(hypothesis_engine_t* engine,
 hypogen_theory_t* hypothesis_revise_theory(hypothesis_engine_t* engine,
     hypogen_theory_t* theory, const hypogen_observation_t* new_evidence) {
     if (!engine || !theory || !new_evidence) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypothesis_engine_destroy: required parameter is NULL (engine, theory, new_evidence)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_revise_theory: required parameter is NULL (engine, theory, new_evidence)");
         return NULL;
     }
 
@@ -381,7 +407,7 @@ hypogen_theory_t* hypothesis_revise_theory(hypothesis_engine_t* engine,
 int hypothesis_evaluate_theory(hypothesis_engine_t* engine,
     const hypogen_theory_t* theory, float* score) {
     if (!engine || !theory || !score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_engine_destroy: required parameter is NULL (engine, theory, score)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothesis_evaluate_theory: required parameter is NULL (engine, theory, score)");
         return -1;
     }
 
@@ -491,7 +517,8 @@ const char* hypothesis_get_last_error(void) { return g_last_error; }
  */
 typedef struct {
     uint32_t num_observations;
-    uint32_t tested_theory_mask;  /**< Bitmask of tested theories */
+    /* P1-COG-04: Use 64-bit mask to support up to 63 theories without UB */
+    uint64_t tested_theory_mask;  /**< Bitmask of tested theories */
     float best_confidence;
     uint32_t best_theory_id;
     uint32_t depth;
@@ -532,7 +559,8 @@ static void* hypogen_mcts_apply_action(const void* state, uint32_t action, void*
 
     *new_state = *s;
     new_state->depth = s->depth + 1;
-    new_state->tested_theory_mask |= (1u << action);
+    /* P1-COG-04: Use 1ULL for 64-bit shift to avoid UB when action >= 32 */
+    new_state->tested_theory_mask |= (1ULL << action);
 
     /* Simulate testing this theory */
     if (action < ud->num_theories) {
@@ -570,9 +598,10 @@ static bool hypogen_mcts_is_terminal(const void* state, void* user_data) {
 
     /* Terminal if high confidence or all tested */
     if (s->best_confidence >= 0.9f) return true;
-    if (s->tested_theory_mask == ((1u << ud->num_theories) - 1)) return true;
+    /* P1-COG-04: Use 1ULL for 64-bit shift */
+    if (s->tested_theory_mask == ((1ULL << ud->num_theories) - 1)) return true;
     if (s->depth >= 5) return true;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypogen_mcts_is_terminal: capacity exceeded");
+    /* P2-COG-09: Not terminal is normal state, not an error */
     return false;
 }
 
@@ -619,7 +648,8 @@ hypogen_theory_t* hypothesis_search_mcts(
     hypothesis_generation_heartbeat("hypothesis_g_hypothesis_search_mc", 0.0f);
 
 
-    if (num_theories > 32) num_theories = 32;  /* Limit for bitmask */
+    /* P1-COG-04: Clamp to 63 for 64-bit bitmask (bit 63 max) */
+    if (num_theories > 63) num_theories = 63;
 
     hypogen_mcts_state_t initial_state = {
         .num_observations = 0,

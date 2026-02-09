@@ -353,9 +353,10 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
 
     nimcp_mutex_lock(bridge->base.mutex);
 
+    /* P2-DM-1: Fix wrong error message - connected is a bool, not a pointer */
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_update: bridge->connected is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_medulla_bridge_update: bridge not connected");
         return -1;
     }
 
@@ -372,6 +373,7 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
     /* Map continuous arousal [0-1] to discrete level [0-6] */
     int arousal_level = (int)(arousal * 6.0f + 0.5f);
     if (arousal_level > 6) arousal_level = 6;
+    if (arousal_level < 0) arousal_level = 0;
 
     /* Store source states */
     bridge->modulation.arousal_level = arousal_level;
@@ -381,6 +383,10 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
     /* =====================================================================
      * AROUSAL MODULATION
      * ===================================================================== */
+
+    /* P1-DM-1: Bounds-check enum-derived indices before table lookup */
+    static const int AROUSAL_TABLE_SIZE = (int)(sizeof(AROUSAL_NAV_GAIN_FACTOR) / sizeof(AROUSAL_NAV_GAIN_FACTOR[0]));
+    if (arousal_level >= AROUSAL_TABLE_SIZE) arousal_level = AROUSAL_TABLE_SIZE - 1;
 
     float arousal_nav = AROUSAL_NAV_GAIN_FACTOR[arousal_level];
     float arousal_urgency = AROUSAL_URGENCY_FACTOR[arousal_level];
@@ -395,7 +401,11 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
 
     float circadian_mod = 1.0f;
     if (bridge->config.enable_circadian_modulation) {
-        circadian_mod = CIRCADIAN_PERFORMANCE_FACTOR[circadian];
+        /* P1-DM-1: Bounds-check circadian enum before table lookup */
+        static const int CIRCADIAN_TABLE_SIZE = (int)(sizeof(CIRCADIAN_PERFORMANCE_FACTOR) / sizeof(CIRCADIAN_PERFORMANCE_FACTOR[0]));
+        int circadian_idx = (int)circadian;
+        if (circadian_idx < 0 || circadian_idx >= CIRCADIAN_TABLE_SIZE) circadian_idx = 0;
+        circadian_mod = CIRCADIAN_PERFORMANCE_FACTOR[circadian_idx];
         /* Apply floor for night performance */
         if (circadian_mod < bridge->config.night_performance_floor) {
             circadian_mod = bridge->config.night_performance_floor;
@@ -408,7 +418,11 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
      * PROTECTION MODULATION
      * ===================================================================== */
 
-    protection_effect_t prot_effect = PROTECTION_EFFECTS[protection];
+    /* P1-DM-1: Bounds-check protection enum before table lookup */
+    static const int PROTECTION_TABLE_SIZE = (int)(sizeof(PROTECTION_EFFECTS) / sizeof(PROTECTION_EFFECTS[0]));
+    int prot_idx = (int)protection;
+    if (prot_idx < 0 || prot_idx >= PROTECTION_TABLE_SIZE) prot_idx = PROTECTION_TABLE_SIZE - 1;
+    protection_effect_t prot_effect = PROTECTION_EFFECTS[prot_idx];
     bridge->modulation.hunting_allowed = prot_effect.hunting_allowed;
     bridge->modulation.should_abort = prot_effect.should_abort;
     bridge->modulation.max_duration_scale = prot_effect.duration_scale;
@@ -613,8 +627,11 @@ bool dragonfly_medulla_bridge_hunting_allowed(const dragonfly_medulla_bridge_t b
         return false;
     }
 
-    /* Quick check without lock for performance */
-    return bridge->modulation.hunting_allowed;
+    /* P2-DM-2: Use mutex for thread-safe read of hunting_allowed */
+    nimcp_mutex_lock(bridge->base.mutex);
+    bool allowed = bridge->modulation.hunting_allowed;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return allowed;
 }
 
 int dragonfly_medulla_bridge_get_stats(
