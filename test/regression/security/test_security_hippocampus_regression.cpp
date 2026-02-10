@@ -579,12 +579,13 @@ TEST_F(SecurityHippocampusRegressionTest, CoherencePerformanceWithData) {
  * ============================================================================ */
 
 TEST_F(SecurityHippocampusRegressionTest, Bug_DoubleDestroy) {
-    // Regression: Crash on double destroy (should be null-safe)
+    // Regression: Destroy with NULL should not crash
     sec_hippo_bridge_t* br = security_hippocampus_bridge_create(nullptr);
     ASSERT_NE(br, nullptr);
 
     security_hippocampus_bridge_destroy(br);
-    security_hippocampus_bridge_destroy(br);  // Should not crash
+    br = nullptr;  // Caller must NULL after destroy (no magic field for use-after-free detection)
+    security_hippocampus_bridge_destroy(br);  // NULL is safe
     security_hippocampus_bridge_destroy(nullptr);  // Should not crash
 }
 

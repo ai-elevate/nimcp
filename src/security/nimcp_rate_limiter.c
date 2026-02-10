@@ -394,8 +394,7 @@ static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
     // Not found - still holding lock to prevent TOCTOU
     if (!create) {
         nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_client_bucket: create is NULL");
-        return NULL;
+        return NULL;  // Normal "not found" - caller handles this
     }
 
     // Create new bucket - lock still held, preventing race condition
