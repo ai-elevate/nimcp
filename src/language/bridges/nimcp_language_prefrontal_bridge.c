@@ -183,7 +183,7 @@ language_prefrontal_bridge_t* language_prefrontal_bridge_create(
     language_prefrontal_bridge_t* bridge = nimcp_calloc(1, sizeof(language_prefrontal_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_prefrontal_bridge_create: allocation failed");
 
         return NULL;
     }
@@ -411,7 +411,7 @@ int language_prefrontal_set_communication_goal(
     goal_entry_t* entry = nimcp_calloc(1, sizeof(goal_entry_t));
     if (!entry) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_prefrontal_set_communication_goal: allocation failed");
 
         return -1;
 
@@ -450,11 +450,7 @@ int language_prefrontal_cancel_goal(
 
     goal_entry_t* g = find_goal(bridge, goal_id);
     if (!g) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g is NULL");
-
-        return -1;
-
+        return -1;  /* Goal not found - normal lookup behavior */
     }
 
     g->active = false;
@@ -497,7 +493,7 @@ int language_prefrontal_submit_utterance_plan(
     }
 
     if (!queue_utterance(bridge, plan)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_prefrontal_submit_utterance_plan: queue_utterance is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "language_prefrontal_submit_utterance_plan: utterance queue is full");
         return -1;
     }
 
@@ -595,7 +591,6 @@ bool language_prefrontal_is_inhibited(
     const char* word_or_topic
 ) {
     if (!bridge || !word_or_topic) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_is_inhibited: required parameter is NULL (bridge, word_or_topic)");
         return false;
     }
     return check_inhibition((language_prefrontal_bridge_t*)bridge, word_or_topic);
@@ -641,11 +636,7 @@ int language_prefrontal_report_goal_complete(
 
     goal_entry_t* g = find_goal(bridge, goal_id);
     if (!g) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g is NULL");
-
-        return -1;
-
+        return -1;  /* Goal not found - normal lookup behavior */
     }
 
     g->active = false;

@@ -251,7 +251,6 @@ static int find_indicator_index(failure_predictor_t* predictor, metric_type_t me
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_indicator_index: validation failed");
     return -1;
 }
 
@@ -266,10 +265,7 @@ static int compare_predictions(const void* a, const void* b) {
     const failure_prediction_t* pred_b = (const failure_prediction_t*)b;
 
     // Sort descending by probability
-    if (pred_a->probability > pred_b->probability) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_predictions: validation failed");
-        return -1;
-    }
+    if (pred_a->probability > pred_b->probability) return -1;
     if (pred_a->probability < pred_b->probability) return 1;
     return 0;
 }

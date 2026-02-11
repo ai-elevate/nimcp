@@ -63,7 +63,6 @@ struct amp_ctx_s {
  */
 static bool contains_nan_inf(const float* data, size_t count) {
     if (!data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_nan_inf: data is NULL");
         return false;
     }
 

@@ -629,7 +629,8 @@ static int try_recovery_jump(int sig, bool handled)
         /* NOTREACHED */
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "try_recovery_jump: validation failed");
+    /* P1 fix: Cannot use NIMCP_THROW_TO_IMMUNE from signal handler (not async-signal-safe) */
+    safe_write("!!! try_recovery_jump: no valid recovery point\n");
     return -1;
 }
 

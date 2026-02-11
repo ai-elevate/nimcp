@@ -189,7 +189,6 @@ static active_inference_t* find_inference_by_id(
             return &integration->active_inferences[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_inference_by_id: operation failed");
     return NULL;
 }
 
@@ -212,7 +211,6 @@ static rule_usage_t* find_rule_by_string(
             return &integration->tracked_rules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_rule_by_string: validation failed");
     return NULL;
 }
 

@@ -74,7 +74,7 @@ static percept_bio_subscription_t* find_subscription(
     uint32_t module_id
 ) {
     if (modality >= PERCEPT_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_subscription: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_subscription: modality out of range");
         return NULL;
     }
 
@@ -1052,8 +1052,7 @@ int perception_bio_async_unsubscribe_module(
 
     percept_bio_subscription_t* sub = find_subscription(bridge, modality, module_id);
     if (!sub) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_unsubscribe_module: sub is NULL");
-        return -1;
+        return -1;  /* Subscription not found - normal lookup behavior */
     }
 
     sub->active = false;

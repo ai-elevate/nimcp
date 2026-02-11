@@ -994,6 +994,7 @@ int time_dilation_get_event(time_dilation_system_t* system,
     if (oldest->data_copy) {
         nimcp_free(oldest->data_copy);
         oldest->data_copy = NULL;
+        event->data = NULL;  /* Prevent use-after-free: data was freed above */
     }
     oldest->active = false;
     system->event_count--;

@@ -172,10 +172,7 @@ static int compare_resources(const void* a, const void* b) {
     const resource_sort_entry_t* entry_b = (const resource_sort_entry_t*)b;
 
     // Sort by score descending
-    if (entry_a->score > entry_b->score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_resources: validation failed");
-        return -1;
-    }
+    if (entry_a->score > entry_b->score) return -1;
     if (entry_a->score < entry_b->score) return 1;
     return 0;
 }

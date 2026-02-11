@@ -153,7 +153,7 @@ eligibility_immune_bridge_t* eligibility_immune_bridge_create(
     if (!immune_system || !eligibility_config) {
         LOG_MODULE_ERROR("eligibility_immune_bridge",
                   "Cannot create bridge without immune system and eligibility config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "eligibility_immune_bridge_create: required parameter is NULL (immune_system, eligibility_config)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_bridge_create: required parameter is NULL (immune_system, eligibility_config)");
         return NULL;
     }
 

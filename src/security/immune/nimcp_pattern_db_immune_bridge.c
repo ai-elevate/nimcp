@@ -205,7 +205,7 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
         nimcp_malloc(sizeof(pattern_db_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern DB immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_db_immune_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -229,8 +229,8 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
         nimcp_malloc(sizeof(pattern_immune_mapping_t) * bridge->mapping_capacity);
     if (!bridge->mappings) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern mappings");
-        nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_db_immune_create: bridge->mappings is NULL");
+        nimcp_free(bridge);
         return NULL;
     }
     memset(bridge->mappings, 0, sizeof(pattern_immune_mapping_t) * bridge->mapping_capacity);
@@ -472,7 +472,6 @@ int pattern_db_immune_connect_bio_async(pattern_db_immune_bridge_t* bridge) {
 
 int pattern_db_immune_disconnect_bio_async(pattern_db_immune_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_immune_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 
@@ -518,6 +517,5 @@ int pattern_db_immune_get_mapping(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_db_immune_get_mapping: validation failed");
     return -1; /* Not found */
 }

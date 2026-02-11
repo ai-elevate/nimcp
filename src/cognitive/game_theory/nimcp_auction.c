@@ -104,18 +104,10 @@ static int compare_bids_desc(const void* a, const void* b) {
     const nimcp_bid_t* bid_b = (const nimcp_bid_t*)b;
 
     if (bid_b->bid_amount > bid_a->bid_amount) return 1;
-    if (bid_b->bid_amount < bid_a->bid_amount) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-            "compare_bids_desc: invalid parameter");
-        return -1;
-    }
+    if (bid_b->bid_amount < bid_a->bid_amount) return -1;
 
     // Tie-break by timestamp (earlier wins)
-    if (bid_a->timestamp_ms < bid_b->timestamp_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-            "compare_bids_desc: invalid parameter");
-        return -1;
-    }
+    if (bid_a->timestamp_ms < bid_b->timestamp_ms) return -1;
     if (bid_a->timestamp_ms > bid_b->timestamp_ms) return 1;
     return 0;
 }

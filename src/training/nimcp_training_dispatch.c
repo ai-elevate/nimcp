@@ -599,7 +599,6 @@ int training_dispatch_set_reward(brain_t brain, float reward) {
         return 0;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_set_reward: validation failed");
     return -1;  // Not SNN or no training context
 }
 
@@ -648,7 +647,6 @@ int training_dispatch_get_stats(
             break;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_get_stats: operation failed");
     return -1;
 }
 
@@ -718,7 +716,6 @@ bool training_dispatch_is_supported(uint8_t network_type) {
         case NIMCP_NETWORK_HYBRID:
             return true;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_is_supported: operation failed");
             return false;
     }
 }

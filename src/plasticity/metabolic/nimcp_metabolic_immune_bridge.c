@@ -134,7 +134,7 @@ metabolic_immune_bridge_t* metabolic_immune_bridge_create(
     /* Guard: require immune system and metabolic system */
     if (!immune_system || !metabolic) {
         NIMCP_LOGGING_ERROR("Cannot create metabolic-immune bridge without both systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_immune_bridge_create: required parameter is NULL (immune_system, metabolic)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_bridge_create: required parameter is NULL (immune_system, metabolic)");
         return NULL;
     }
 

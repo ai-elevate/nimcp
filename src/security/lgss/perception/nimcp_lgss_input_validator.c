@@ -162,7 +162,6 @@ static bool check_float_validity(const float* data, size_t len) {
     }
     for (size_t i = 0; i < len; i++) {
         if (isnan(data[i]) || isinf(data[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_float_validity: validation failed");
             return false;
         }
     }
@@ -175,12 +174,11 @@ static bool check_float_validity(const float* data, size_t len) {
 static bool check_range_float(const float* data, size_t len,
                                float min_val, float max_val) {
     if (!data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_float_validity: data is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_range_float: data is NULL");
         return false;
     }
     for (size_t i = 0; i < len; i++) {
         if (data[i] < min_val || data[i] > max_val) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_float_validity: validation failed");
             return false;
         }
     }

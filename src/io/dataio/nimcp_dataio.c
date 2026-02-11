@@ -2127,10 +2127,11 @@ float brain_train_from_dataset_streaming(brain_t brain, dataset_t dataset, uint3
             avg_loss /= (float)batch.num_samples;
         }
 
+        bool at_end = batch.end_of_dataset;
         dataset_free_batch(&batch);
         batches_processed++;
 
-        if (batch.end_of_dataset)
+        if (at_end)
             break;
     }
 

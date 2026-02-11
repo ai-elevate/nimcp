@@ -205,7 +205,7 @@ lgss_bio_bridge_t* lgss_bio_bridge_create(
     lgss_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_bio_bridge_create: allocation failed");
 
         return NULL;
 
@@ -253,7 +253,7 @@ int lgss_bio_bridge_connect(
         return -1;
     }
     if (bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_bio_bridge_connect: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "lgss_bio_bridge_connect: bridge already connected");
         return -1;
     }
 
@@ -356,8 +356,7 @@ int lgss_bio_bridge_process_inbox(
     uint32_t max_messages
 ) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_process_inbox: required parameter is NULL (bridge, bridge->connected)");
-        return -1;
+        return -1;  /* Not connected - normal operational state */
     }
 
     uint32_t processed = 0;
@@ -372,8 +371,7 @@ int lgss_bio_bridge_update(
     uint32_t delta_ms
 ) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_update: required parameter is NULL (bridge, bridge->connected)");
-        return -1;
+        return -1;  /* Not connected - normal operational state */
     }
 
     bridge->time_since_heartbeat_ms += delta_ms;

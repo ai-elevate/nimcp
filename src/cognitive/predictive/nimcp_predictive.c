@@ -173,19 +173,17 @@ predictive_config_t predictive_default_config(void)
 
     LOG_DEBUG("Creating default predictive config");
 
-    // Allocate default layer sizes on heap (freed by caller)
-    uint32_t* default_sizes = (uint32_t*)nimcp_malloc(
-        PRED_DEFAULT_LAYERS * sizeof(uint32_t));
-
-    // Default hierarchy: 256 -> 128 -> 64 -> 32
-    default_sizes[0] = 256;  // Sensory level
-    default_sizes[1] = 128;  // Low-level features
-    default_sizes[2] = 64;   // Mid-level features
-    default_sizes[3] = 32;   // High-level concepts
+    // Static default layer sizes - no allocation needed
+    static const uint32_t default_sizes[PRED_DEFAULT_LAYERS] = {
+        256,  // Sensory level
+        128,  // Low-level features
+        64,   // Mid-level features
+        32    // High-level concepts
+    };
 
     predictive_config_t config = {
         .num_layers = PRED_DEFAULT_LAYERS,
-        .layer_sizes = default_sizes,
+        .layer_sizes = (uint32_t*)default_sizes,
         .learning_rate = PRED_LEARNING_RATE,
         .precision_learning_rate = PRED_PRECISION_LR,
         .initial_precision = PRED_DEFAULT_PRECISION,

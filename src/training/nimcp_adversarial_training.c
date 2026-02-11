@@ -525,7 +525,10 @@ int adv_pgd(
     return 0;
 }
 
-int adv_generate_batch(
+/**
+ * @brief Generate adversarial batch (unlocked helper, caller must hold mutex)
+ */
+static int adv_generate_batch_unlocked(
     adv_ctx_t* ctx,
     const nimcp_tensor_t* inputs,
     const nimcp_tensor_t* labels,
@@ -534,19 +537,8 @@ int adv_generate_batch(
     void* model,
     nimcp_tensor_t** adv_inputs
 ) {
-    if (!ctx || !inputs || !labels || !forward_fn || !model || !adv_inputs) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_generate_batch: required parameter is NULL (ctx, inputs, labels, forward_fn, model, adv_inputs)");
-        return -1;
-    }
-
-    /* For batch processing, create adversarial version of entire batch */
-    /* This is simplified - actual implementation would process per-sample */
-
-    nimcp_mutex_lock(ctx->mutex);
-
     nimcp_tensor_t* batch_adv = nimcp_tensor_clone(inputs);
     if (!batch_adv) {
-        nimcp_mutex_unlock(ctx->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_generate_batch: batch_adv is NULL");
         return -1;
     }
@@ -606,8 +598,27 @@ int adv_generate_batch(
     *adv_inputs = batch_adv;
 
     nimcp_free(grad);
-    nimcp_mutex_unlock(ctx->mutex);
     return 0;
+}
+
+int adv_generate_batch(
+    adv_ctx_t* ctx,
+    const nimcp_tensor_t* inputs,
+    const nimcp_tensor_t* labels,
+    uint32_t batch_size,
+    nimcp_tensor_t* (*forward_fn)(void* model, const nimcp_tensor_t* input),
+    void* model,
+    nimcp_tensor_t** adv_inputs
+) {
+    if (!ctx || !inputs || !labels || !forward_fn || !model || !adv_inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_generate_batch: required parameter is NULL (ctx, inputs, labels, forward_fn, model, adv_inputs)");
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+    int ret = adv_generate_batch_unlocked(ctx, inputs, labels, batch_size, forward_fn, model, adv_inputs);
+    nimcp_mutex_unlock(ctx->mutex);
+    return ret;
 }
 
 //=============================================================================
@@ -641,11 +652,11 @@ int adv_compute_loss(
 
     float l_clean = compute_loss(clean_logits, labels);
 
-    /* Generate adversarial examples */
+    /* Generate adversarial examples (use unlocked version - we already hold mutex) */
     nimcp_tensor_t* adv_inputs = NULL;
     uint32_t batch_size = nimcp_tensor_shape(inputs)->dims[0];
 
-    int ret = adv_generate_batch(ctx, inputs, labels, batch_size, forward_fn, model, &adv_inputs);
+    int ret = adv_generate_batch_unlocked(ctx, inputs, labels, batch_size, forward_fn, model, &adv_inputs);
     if (ret != 0 || !adv_inputs) {
         nimcp_tensor_destroy(clean_logits);
         nimcp_mutex_unlock(ctx->mutex);
@@ -1001,9 +1012,9 @@ int adv_evaluate(
         nimcp_tensor_destroy(clean_logits);
     }
 
-    /* Generate adversarial examples and evaluate */
+    /* Generate adversarial examples and evaluate (use unlocked version - we already hold mutex) */
     nimcp_tensor_t* adv_inputs = NULL;
-    int ret = adv_generate_batch(ctx, inputs, labels, batch_size, forward_fn, model, &adv_inputs);
+    int ret = adv_generate_batch_unlocked(ctx, inputs, labels, batch_size, forward_fn, model, &adv_inputs);
 
     if (ret == 0 && adv_inputs) {
         nimcp_tensor_t* adv_logits = forward_fn(model, adv_inputs);

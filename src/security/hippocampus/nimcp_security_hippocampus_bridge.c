@@ -220,7 +220,6 @@ static registered_encoding_t* find_encoding(
             return &internal->encodings[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_encoding: internal is NULL");
     return NULL;
 }
 
@@ -408,7 +407,6 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
             nimcp_free(bridge->replay_sequences);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_hippocampus_bridge_create: bridge->audit_log is NULL");
             return NULL;
         }
         memset(bridge->audit_log, 0,
@@ -425,7 +423,6 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
         nimcp_free(bridge->replay_sequences);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_hippocampus_bridge_create: validation failed");
         return NULL;
     }
     memset(internal, 0, sizeof(sec_hippo_internal_t));
@@ -580,7 +577,6 @@ int security_hippocampus_disconnect_all(sec_hippo_bridge_t* bridge)
 bool security_hippocampus_is_fully_connected(const sec_hippo_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_hippocampus_is_fully_connected: bridge is NULL");
         return false;
     }
     return bridge->hippocampus_connected && bridge->sleep_connected;
@@ -696,7 +692,6 @@ sec_hippo_sleep_phase_t security_hippocampus_get_sleep_phase(
 bool security_hippocampus_is_sleep_protected(const sec_hippo_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_hippocampus_is_sleep_protected: bridge is NULL");
         return false;
     }
     return bridge->security_effects.sleep_protection_active;
@@ -1728,7 +1723,6 @@ int security_hippocampus_disconnect_bio_async(sec_hippo_bridge_t* bridge)
 bool security_hippocampus_is_bio_async_connected(const sec_hippo_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_hippocampus_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

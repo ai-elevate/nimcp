@@ -279,7 +279,7 @@ static void unregister_view(page_cow_view_t view) {
  */
 static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     if (!view || view->magic != PAGE_VIEW_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: view is NULL");
+        /* P1 fix: Cannot use NIMCP_THROW_TO_IMMUNE from SIGSEGV handler (not async-signal-safe) */
         return false;
     }
 

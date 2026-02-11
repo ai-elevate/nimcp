@@ -456,7 +456,7 @@ lip_reading_system_t* lip_reading_create(const lip_reading_config_t* config) {
 
 error:
     lip_reading_destroy(system);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_create: system->feature_buffer is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lip_reading_create: buffer allocation failed");
     return NULL;
 }
 
@@ -477,7 +477,6 @@ void lip_reading_destroy(lip_reading_system_t* system) {
 
 bool lip_reading_reset(lip_reading_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_reset: system is NULL");
         return false;
     }
 
@@ -594,8 +593,7 @@ bool lip_reading_detect_face(
         /* Not enough skin-colored pixels - likely no face */
         system->last_error = LIP_READING_ERROR_NO_FACE_DETECTED;
         system->stats.face_detection_failures++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_detect_face: validation failed");
-        return false;
+        return false;  /* Not enough skin pixels - normal detection failure */
     }
 
     /* Estimate face center from skin pixels */
@@ -666,8 +664,7 @@ bool lip_reading_extract_mouth_roi(
 
     if (!face_result->face_detected) {
         system->last_error = LIP_READING_ERROR_NO_FACE_DETECTED;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_extract_mouth_roi: face_result->face_detected is NULL");
-        return false;
+        return false;  /* No face detected - normal detection failure */
     }
 
     /* Calculate source region */
@@ -1144,8 +1141,7 @@ bool lip_reading_classify_viseme_from_roi(
     visual_speech_features_t features;
     if (!lip_reading_extract_features(system, mouth_roi, roi_width, roi_height,
                                        NULL, &features)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_classify_viseme_from_roi: validation failed");
-        return false;
+        return false;  /* Feature extraction failed - normal processing failure */
     }
 
     /* Update dynamics if we have previous features */

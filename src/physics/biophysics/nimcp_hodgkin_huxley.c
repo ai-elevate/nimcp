@@ -97,37 +97,49 @@ static float beta_n(float V) {
 float nimcp_hh_m_inf(float V) {
     float a = alpha_m(V);
     float b = beta_m(V);
-    return a / (a + b);
+    float sum = a + b;
+    if (sum < 1e-7f) sum = 1e-7f;
+    return a / sum;
 }
 
 float nimcp_hh_m_tau(float V) {
     float a = alpha_m(V);
     float b = beta_m(V);
-    return 1.0f / (a + b);
+    float sum = a + b;
+    if (sum < 1e-7f) sum = 1e-7f;
+    return 1.0f / sum;
 }
 
 float nimcp_hh_h_inf(float V) {
     float a = alpha_h(V);
     float b = beta_h(V);
-    return a / (a + b);
+    float sum = a + b;
+    if (sum < 1e-7f) sum = 1e-7f;
+    return a / sum;
 }
 
 float nimcp_hh_h_tau(float V) {
     float a = alpha_h(V);
     float b = beta_h(V);
-    return 1.0f / (a + b);
+    float sum = a + b;
+    if (sum < 1e-7f) sum = 1e-7f;
+    return 1.0f / sum;
 }
 
 float nimcp_hh_n_inf(float V) {
     float a = alpha_n(V);
     float b = beta_n(V);
-    return a / (a + b);
+    float sum = a + b;
+    if (sum < 1e-7f) sum = 1e-7f;
+    return a / sum;
 }
 
 float nimcp_hh_n_tau(float V) {
     float a = alpha_n(V);
     float b = beta_n(V);
-    return 1.0f / (a + b);
+    float sum = a + b;
+    if (sum < 1e-7f) sum = 1e-7f;
+    return 1.0f / sum;
 }
 
 //=============================================================================

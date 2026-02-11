@@ -189,7 +189,6 @@ static int find_replay_buffer(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_replay_buffer: validation failed");
     return -1;
 }
 
@@ -1418,7 +1417,6 @@ float security_cl_get_threat_level(const security_cl_bridge_t* bridge) {
 
 bool security_cl_is_under_attack(const security_cl_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_is_under_attack: bridge is NULL");
         return false;
     }
     return bridge->security_effects.under_attack;

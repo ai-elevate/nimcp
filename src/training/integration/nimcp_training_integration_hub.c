@@ -73,7 +73,6 @@ struct training_integration_hub_struct {
  */
 static module_entry_t* find_module_unlocked(training_integration_hub_t hub, uint32_t module_id) {
     if (!hub || !hub->modules) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_unlocked: required parameter is NULL (hub, hub->modules)");
         return NULL;
     }
 
@@ -83,7 +82,6 @@ static module_entry_t* find_module_unlocked(training_integration_hub_t hub, uint
             return &hub->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_unlocked: operation failed");
     return NULL;
 }
 
@@ -93,7 +91,6 @@ static module_entry_t* find_module_unlocked(training_integration_hub_t hub, uint
  */
 static module_entry_t* find_empty_slot_unlocked(training_integration_hub_t hub) {
     if (!hub || !hub->modules) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_empty_slot_unlocked: required parameter is NULL (hub, hub->modules)");
         return NULL;
     }
 
@@ -102,7 +99,6 @@ static module_entry_t* find_empty_slot_unlocked(training_integration_hub_t hub) 
             return &hub->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: hub->modules is NULL");
     return NULL;
 }
 
@@ -114,12 +110,10 @@ static subscription_t* find_subscription_unlocked(training_integration_hub_t hub
                                                    uint32_t subscriber_id,
                                                    training_event_type_t event_type) {
     if (!hub || !hub->subscriptions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: required parameter is NULL (hub, hub->subscriptions)");
         return NULL;
     }
 
     if (!TRAINING_EVENT_TYPE_IS_VALID(event_type)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: TRAINING_EVENT_TYPE_IS_VALID is NULL");
         return NULL;
     }
 
@@ -131,7 +125,6 @@ static subscription_t* find_subscription_unlocked(training_integration_hub_t hub
             return &subs[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: validation failed");
     return NULL;
 }
 
@@ -185,12 +178,10 @@ static int deliver_event_unlocked(training_integration_hub_t hub,
                                    training_event_type_t event_type,
                                    const training_event_data_t* data) {
     if (!hub || !hub->subscriptions || !data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unsubscribe_all_unlocked: required parameter is NULL (hub, hub->subscriptions, data)");
         return -1;
     }
 
     if (!TRAINING_EVENT_TYPE_IS_VALID(event_type)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unsubscribe_all_unlocked: TRAINING_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 

@@ -78,8 +78,7 @@ static sleep_bio_subscription_t* sleep_find_subscription(
             return &b->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_find_subscription: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 /* ============================================================================
@@ -484,8 +483,7 @@ int sleep_bio_async_subscribe_module(
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sleep_bio_async_subscribe_module: capacity exceeded");
-        return -1;
+        return -1;  /* Pool exhaustion is normal operational state */
     }
 
     sleep_bio_subscription_t* sub = &bridge->subscriptions[bridge->subscription_count++];
@@ -523,8 +521,7 @@ int sleep_bio_async_unsubscribe_module(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_bio_async_unsubscribe_module: validation failed");
-    return -1;
+    return -1;  /* Module not found in subscription list - normal lookup behavior */
 }
 
 uint32_t sleep_bio_async_get_subscriber_count(

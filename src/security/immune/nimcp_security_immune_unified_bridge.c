@@ -243,7 +243,7 @@ static int allocate_tolerance_whitelist(
     size_t capacity
 ) {
     if (!bridge || capacity == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_tolerance_whitelist: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_tolerance_whitelist: bridge is NULL");
         return -1;
     }
 
@@ -289,7 +289,6 @@ static sec_immune_tolerance_entry_t* find_tolerance_entry(
             return entry;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tolerance_entry: operation failed");
     return NULL;
 }
 
@@ -302,7 +301,7 @@ static sec_immune_memory_cell_t* find_memory_cell_by_id(
     uint32_t memory_id
 ) {
     if (!bridge || !bridge->memory_cells) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_cell_by_id: required parameter is NULL (bridge, bridge->memory_cells)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_memory_cell_by_id: required parameter is NULL (bridge, bridge->memory_cells)");
         return NULL;
     }
 
@@ -311,7 +310,6 @@ static sec_immune_memory_cell_t* find_memory_cell_by_id(
             return &bridge->memory_cells[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -424,7 +422,7 @@ sec_immune_unified_bridge_t* sec_immune_unified_create(
         nimcp_malloc(sizeof(sec_immune_unified_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-immune unified bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_immune_unified_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -1262,7 +1260,7 @@ int sec_immune_unified_form_memory(
     if (bridge->memory_cell_count >= bridge->memory_cell_capacity) {
         /* Would need to grow array or evict old entries */
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_MUTEX_INIT;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     /* Get antigen info */
@@ -1373,7 +1371,7 @@ int sec_immune_unified_check_memory(
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
-    return NIMCP_ERROR_MUTEX_INIT;
+    return NIMCP_ERROR_NOT_FOUND;
 }
 
 int sec_immune_unified_secondary_response(
@@ -1443,7 +1441,7 @@ int sec_immune_unified_add_tolerance(
     /* Check capacity */
     if (bridge->tolerance.whitelist_count >= bridge->tolerance.whitelist_capacity) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_MUTEX_INIT;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     /* Add new entry */
@@ -1520,7 +1518,6 @@ bool sec_immune_unified_is_tolerated(
         return false;
     }
     if (!bridge->config.enable_tolerance_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_is_tolerated: bridge->config is NULL");
         return false;
     }
 
@@ -1690,7 +1687,6 @@ int sec_immune_unified_connect_bio_async(sec_immune_unified_bridge_t* bridge) {
 
 int sec_immune_unified_disconnect_bio_async(sec_immune_unified_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 
@@ -1716,7 +1712,6 @@ int sec_immune_unified_broadcast_security_event(
     size_t data_len
 ) {
     if (!bridge || !bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_broadcast_security_event: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
     if (!bridge->config.broadcast_security_events) return 0;
@@ -1731,7 +1726,7 @@ int sec_immune_unified_broadcast_security_event(
     void* msg_buffer = nimcp_malloc(msg_size);
     if (!msg_buffer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "msg_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_immune_unified_broadcast_security_event: failed to allocate msg_buffer");
 
         return -1;
 
@@ -1801,7 +1796,6 @@ bool sec_immune_unified_is_emergency_mode(
     const sec_immune_unified_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_is_emergency_mode: bridge is NULL");
         return false;
     }
     return bridge->cytokine_effects.emergency_mode_active ||

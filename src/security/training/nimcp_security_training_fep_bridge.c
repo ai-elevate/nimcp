@@ -175,7 +175,6 @@ static int find_source_index(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_source_index: validation failed");
     return -1;
 }
 
@@ -1146,7 +1145,6 @@ security_train_policy_t security_train_fep_get_recommended_policy(
 
 bool security_train_fep_should_act(const security_train_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_should_act: required parameter is NULL (bridge, bridge->fep_system)");
         return false;
     }
 

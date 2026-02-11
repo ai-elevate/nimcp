@@ -371,8 +371,7 @@ float criticality_get_index(const criticality_analyzer_t* ca) {
 
 bool criticality_in_avalanche(const criticality_analyzer_t* ca) {
     if (!ca) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_in_avalanche: ca is NULL");
-        return false;
+        return false;  /* Boolean query returning false for NULL is normal */
     }
     return ca->in_avalanche;
 }

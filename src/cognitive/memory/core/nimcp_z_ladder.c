@@ -2025,10 +2025,7 @@ static int compare_strength_desc(const void* a, const void* b) {
     pr_memory_node_t* na = *(pr_memory_node_t**)a;
     pr_memory_node_t* nb = *(pr_memory_node_t**)b;
 
-    if (na->current_strength > nb->current_strength) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_strength_desc: validation failed");
-        return -1;
-    }
+    if (na->current_strength > nb->current_strength) return -1;
     if (na->current_strength < nb->current_strength) return 1;
     return 0;
 }

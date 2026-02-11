@@ -185,10 +185,7 @@ static float clamp_float(float value, float min_val, float max_val) {
 static int compare_weights_desc(const void* a, const void* b) {
     float wa = *(const float*)a;
     float wb = *(const float*)b;
-    if (wa > wb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_weights_desc: validation failed");
-        return -1;
-    }
+    if (wa > wb) return -1;
     if (wa < wb) return 1;
     return 0;
 }

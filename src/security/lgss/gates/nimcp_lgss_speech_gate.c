@@ -122,7 +122,6 @@ static bool validate_gate(const speech_gate_t* gate) {
  */
 static const char* strcasestr_local(const char* haystack, const char* needle) {
     if (haystack == NULL || needle == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: validation failed");
         return NULL;
     }
 
@@ -133,7 +132,6 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
 
     size_t haystack_len = strlen(haystack);
     if (haystack_len < needle_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "strcasestr_local: validation failed");
         return NULL;
     }
 
@@ -151,7 +149,6 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: validation failed");
     return NULL;
 }
 
@@ -160,7 +157,6 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
  */
 static bool matches_pattern(const char* text, const filter_pattern_t* pattern) {
     if (text == NULL || pattern == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_pattern: validation failed");
         return false;
     }
 
@@ -347,7 +343,6 @@ static float detect_unsafe_instructions(const char* text, size_t length) {
  */
 static bool contains_profanity(const char* text, size_t length) {
     if (text == NULL || length == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_profanity: length is zero");
         return false;
     }
 
@@ -356,7 +351,6 @@ static bool contains_profanity(const char* text, size_t length) {
     (void)text;
     (void)length;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_profanity: length is zero");
     return false;
 }
 
@@ -365,7 +359,6 @@ static bool contains_profanity(const char* text, size_t length) {
  */
 static bool contains_urls(const char* text, size_t length) {
     if (text == NULL || length == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_urls: length is zero");
         return false;
     }
 
@@ -379,7 +372,6 @@ static bool contains_urls(const char* text, size_t length) {
  */
 static bool contains_code(const char* text, size_t length) {
     if (text == NULL || length == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_code: length is zero");
         return false;
     }
 

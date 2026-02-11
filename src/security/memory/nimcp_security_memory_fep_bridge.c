@@ -226,6 +226,7 @@ sec_mem_fep_bridge_t* sec_mem_fep_create(
     if (bridge_base_init(&bridge->base, 0, "security_memory_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security Memory FEP bridge: mutex creation failed");
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_create: bridge->base is NULL");
         return NULL;
@@ -412,7 +413,6 @@ int sec_mem_fep_compute_effects(sec_mem_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -462,7 +462,7 @@ int sec_mem_fep_compute_effects(sec_mem_fep_bridge_t* bridge) {
     );
 
     /* Update statistics */
-    bridge->stats.avg_free_energy = bridge->state.avg_surprise;
+    bridge->stats.avg_free_energy = current_fe;
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
     bridge->stats.avg_prediction_error = bridge->state.avg_prediction_error;
 

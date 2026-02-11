@@ -150,7 +150,7 @@ dendritic_immune_bridge_t* dendritic_immune_bridge_create(
     if (!immune_system || !dendritic_tree) {
         LOG_MODULE_ERROR("dendritic_immune_bridge",
                   "Cannot create bridge without immune and dendritic systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_immune_bridge_create: required parameter is NULL (immune_system, dendritic_tree)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_immune_bridge_create: required parameter is NULL (immune_system, dendritic_tree)");
         return NULL;
     }
 

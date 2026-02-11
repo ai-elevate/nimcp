@@ -696,7 +696,6 @@ bool training_logic_hub_is_action_safe(
 
     if (any_blocking) {
         bridge->stats.constraints_violated++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "training_logic_hub_is_action_safe: validation failed");
         return false;
     }
 
@@ -1159,7 +1158,6 @@ static bool evaluate_rule_condition(training_logic_hub_bridge_t* bridge,
             return m->epochs_since_improvement > 5;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_rule_condition: operation failed");
             return false;
     }
 }

@@ -625,7 +625,7 @@ static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_task_by_id: validation failed");
+    set_error("find_task_by_id: task %u not found", task_id);
     return NULL;
 }
 
@@ -652,9 +652,12 @@ static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t
  */
 static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec)
 {
-    if (!exec || exec->num_tasks == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_highest_priority_task: exec is NULL");
+    if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_highest_priority_task: exec is NULL");
         return NULL;
+    }
+    if (exec->num_tasks == 0) {
+        return NULL;  /* Empty queue - normal condition */
     }
 
     task_descriptor_t* best = NULL;

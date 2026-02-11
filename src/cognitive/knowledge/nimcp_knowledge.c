@@ -242,10 +242,7 @@ static int compare_confidence(const char* key1, const char* key2)
     float conf1 = strtof(key1, &endptr);
     float conf2 = strtof(key2, &endptr);
 
-    if (conf1 < conf2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_confidence: validation failed");
-        return -1;
-    }
+    if (conf1 < conf2) return -1;
     if (conf1 > conf2) return 1;
 
     // If confidence is equal, compare by full key (including index) for stable sorting

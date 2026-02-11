@@ -528,7 +528,6 @@ int security_epist_disconnect_all(security_epist_bridge_t* bridge)
 bool security_epist_is_connected(const security_epist_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_is_connected: bridge is NULL");
         return false;
     }
     return bridge->epistemic_connected;
@@ -547,7 +546,6 @@ bool security_epist_validate_confidence(
 {
     if (!bridge) {
         if (status_out) *status_out = SEC_EPIST_CONF_VALID;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_epist_validate_confidence: validation failed");
         return false;
     }
 
@@ -1067,7 +1065,6 @@ bool security_epist_check_circular_evidence(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_epist_check_circular_evidence: validation failed");
     return false;
 }
 
@@ -1604,7 +1601,6 @@ int security_epist_disconnect_bio_async(security_epist_bridge_t* bridge)
 bool security_epist_is_bio_async_connected(const security_epist_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

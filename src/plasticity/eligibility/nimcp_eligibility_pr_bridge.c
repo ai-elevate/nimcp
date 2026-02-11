@@ -133,7 +133,7 @@ bool elig_pr_bridge_validate_config(const elig_pr_bridge_config_t* config) {
 
 elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
     if (!config || !elig_pr_bridge_validate_config(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_pr_bridge_create: required parameter is NULL (config, elig_pr_bridge_validate_config)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_create: required parameter is NULL (config)");
         return NULL;
     }
 

@@ -2582,7 +2582,6 @@ static sr_spaced_item_t* hash_lookup(sr_system_t system, uint64_t item_id) {
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_lookup: validation failed");
     return NULL;
 }
 

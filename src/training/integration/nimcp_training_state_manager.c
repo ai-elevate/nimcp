@@ -486,7 +486,6 @@ static training_state_module_t* find_module(
             return &registry->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: required parameter is NULL (registry, name)");
     return NULL;
 }
 

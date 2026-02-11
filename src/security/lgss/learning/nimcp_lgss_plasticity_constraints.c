@@ -171,14 +171,13 @@ static bool hashmap_insert(frozen_entry_t* map, uint32_t size,
         }
         if (map[idx].synapse_id == synapse_id) {
             /* Already exists */
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_create: validation failed");
             return false;
         }
         idx = (idx + 1) % size;
     } while (idx != start);
 
     /* Hashmap full */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_create: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hashmap_insert: hashmap full");
     return false;
 }
 
@@ -187,7 +186,6 @@ static bool hashmap_insert(frozen_entry_t* map, uint32_t size,
  */
 static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synapse_id) {
     if (!map) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hashmap_contains: map is NULL");
         return false;
     }
 
@@ -196,7 +194,6 @@ static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synaps
 
     do {
         if (!map[idx].occupied) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: map is NULL");
             return false;
         }
         if (map[idx].synapse_id == synapse_id) {
@@ -205,7 +202,6 @@ static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synaps
         idx = (idx + 1) % size;
     } while (idx != start);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: validation failed");
     return false;
 }
 
@@ -215,7 +211,7 @@ static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synaps
 static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
                            uint64_t synapse_id, uint32_t* count) {
     if (!map) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hashmap_contains: map is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hashmap_remove: map is NULL");
         return false;
     }
 
@@ -224,7 +220,6 @@ static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
 
     do {
         if (!map[idx].occupied) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: map is NULL");
             return false;
         }
         if (map[idx].synapse_id == synapse_id) {
@@ -235,7 +230,6 @@ static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
         idx = (idx + 1) % size;
     } while (idx != start);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: validation failed");
     return false;
 }
 

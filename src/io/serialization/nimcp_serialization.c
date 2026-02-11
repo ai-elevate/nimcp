@@ -83,7 +83,8 @@ static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_check_read: serializer is NULL");
         return false;
     }
-    if (serializer->position + bytes_needed - 1 >= serializer->length) {
+    if (bytes_needed == 0) return true;
+    if (serializer->position + bytes_needed > serializer->length) {
         serializer->has_error = true;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_check_read: capacity exceeded");
         return false;

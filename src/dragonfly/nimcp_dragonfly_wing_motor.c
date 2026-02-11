@@ -128,64 +128,51 @@ wing_motor_config_t wing_motor_default_config(void) {
 
 bool wing_motor_validate_config(const wing_motor_config_t* config) {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wing_motor_validate_config: config is NULL");
         return false;
     }
 
     if (config->wing_length_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->wing_chord_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->wing_mass_kg <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
 
     if (config->base_frequency_hz < WING_MIN_FREQUENCY_HZ ||
         config->base_frequency_hz > WING_MAX_FREQUENCY_HZ) return false;
     if (config->frequency_range_hz < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->phase_coupling_strength < 0.0f ||
         config->phase_coupling_strength > 1.0f) return false;
 
     if (config->thrust_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->roll_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->pitch_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->yaw_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
 
     if (config->max_amplitude <= 0.0f || config->max_amplitude > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->max_frequency_hz < WING_MIN_FREQUENCY_HZ) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
     if (config->max_asymmetry < 0.0f || config->max_asymmetry > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
 
     if (config->energy_per_stroke_j < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wing_motor_validate_config: validation failed");
         return false;
     }
 

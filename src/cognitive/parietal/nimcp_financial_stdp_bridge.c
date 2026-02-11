@@ -1271,10 +1271,7 @@ static int compare_correlations_by_weight(const void* a, const void* b) {
     const fin_stdp_correlation_t* ca = (const fin_stdp_correlation_t*)a;
     const fin_stdp_correlation_t* cb = (const fin_stdp_correlation_t*)b;
     if (cb->weight > ca->weight) return 1;
-    if (cb->weight < ca->weight) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_correlations_by_weight: validation failed");
-        return -1;
-    }
+    if (cb->weight < ca->weight) return -1;
     return 0;
 }
 

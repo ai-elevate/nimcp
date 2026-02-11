@@ -572,10 +572,7 @@ static int compare_batch_results_desc(const void* a, const void* b) {
     const resonance_batch_result_t* rb = (const resonance_batch_result_t*)b;
 
     if (rb->result.total > ra->result.total) return 1;
-    if (rb->result.total < ra->result.total) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_batch_results_desc: validation failed");
-        return -1;
-    }
+    if (rb->result.total < ra->result.total) return -1;
     return 0;
 }
 

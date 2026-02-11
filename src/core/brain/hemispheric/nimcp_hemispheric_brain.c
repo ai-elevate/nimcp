@@ -110,7 +110,7 @@ bool hemispheric_brain_validate_config(const hemispheric_brain_config_t* config)
 
     if (config->left_resource_fraction < 0.0f ||
         config->left_resource_fraction > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_brain_validate_config: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_brain_validate_config: left_resource_fraction out of range [0.0, 1.0]");
         return false;
     }
 
@@ -157,6 +157,7 @@ hemispheric_brain_t* hemispheric_brain_create(
     cfg.left_config.num_inputs = cfg.num_inputs;
     cfg.left_config.num_outputs = cfg.num_outputs;
     cfg.left_config.size = cfg.size;
+    cfg.left_config.initial_tier = cfg.initial_tier;
 
     brain->left = hemisphere_create(&cfg.left_config);
     if (!brain->left) {
@@ -172,6 +173,7 @@ hemispheric_brain_t* hemispheric_brain_create(
     cfg.right_config.num_inputs = cfg.num_inputs;
     cfg.right_config.num_outputs = cfg.num_outputs;
     cfg.right_config.size = cfg.size;
+    cfg.right_config.initial_tier = cfg.initial_tier;
 
     brain->right = hemisphere_create(&cfg.right_config);
     if (!brain->right) {

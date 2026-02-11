@@ -304,7 +304,6 @@ static param_registry_entry_t* find_param(struct meta_learning_guard_internal* g
         return NULL;
     }
     if (!g->params[param_id].registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_param: g->params is NULL");
         return NULL;
     }
     return &g->params[param_id];
@@ -315,7 +314,6 @@ static param_registry_entry_t* find_param(struct meta_learning_guard_internal* g
  */
 static bool detect_oscillation(param_registry_entry_t* param, uint32_t window_size, float threshold) {
     if (param->history_count < window_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_oscillation: validation failed");
         return false;
     }
 
@@ -415,7 +413,7 @@ meta_learning_guard_t meta_learning_guard_create(
 ) {
     struct meta_learning_guard_internal* guard = nimcp_calloc(1, sizeof(*guard));
     if (!guard) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_guard_create: allocation failed");
 
         return NULL;
     }
@@ -448,7 +446,7 @@ meta_learning_guard_t meta_learning_guard_create(
             }
             nimcp_free(guard->params);
             nimcp_free(guard);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_guard_create: guard->params is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_guard_create: update_history allocation failed");
             return NULL;
         }
     }
@@ -461,7 +459,7 @@ meta_learning_guard_t meta_learning_guard_create(
         }
         nimcp_free(guard->params);
         nimcp_free(guard);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_guard_create: guard->frozen_flags is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_guard_create: frozen_flags allocation failed");
         return NULL;
     }
 
@@ -1004,18 +1002,15 @@ int meta_learning_guard_unfreeze_param(meta_learning_guard_t guard, uint32_t par
 
 bool meta_learning_guard_is_param_frozen(meta_learning_guard_t guard, uint32_t param_id) {
     if (!guard) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_guard_is_param_frozen: guard is NULL");
         return false;
     }
 
     struct meta_learning_guard_internal* g = guard;
     if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_learning_guard_is_param_frozen: validation failed");
         return false;
     }
 
     if (param_id >= g->param_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_learning_guard_is_param_frozen: capacity exceeded");
         return false;
     }
 

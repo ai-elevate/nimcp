@@ -84,8 +84,7 @@ static int find_tag_index(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_tag_index: validation failed");
-    return -1;
+    return -1;  /* Not found - normal lookup behavior */
 }
 
 /**
@@ -615,8 +614,7 @@ bool protein_synthesis_can_consolidate(
     int idx = find_tag_index(system, synapse_id);
     if (idx < 0) {
         nimcp_platform_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protein_synthesis_can_consolidate: validation failed");
-        return false;
+        return false;  /* Tag not found - normal lookup behavior */
     }
 
     /* Check PRP availability */

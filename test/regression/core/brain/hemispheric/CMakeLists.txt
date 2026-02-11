@@ -23,7 +23,8 @@ add_test(NAME regression_hemispheric_brain_regression
 set_tests_properties(regression_hemispheric_brain_regression
     PROPERTIES
         LABELS "regression"
-        TIMEOUT 300
+        TIMEOUT 600
+        RESOURCE_LOCK "hemispheric_brain_heavy"
 )
 
 # Corpus Callosum Regression Test

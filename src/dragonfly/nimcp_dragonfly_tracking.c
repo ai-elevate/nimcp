@@ -155,7 +155,7 @@ static void kalman_init_state(
     kf->state[1] = position[1];
     kf->state[2] = position[2];
     if (velocity) {
-        kf->state[3] = velocity[3];
+        kf->state[3] = velocity[0];
         kf->state[4] = velocity[1];
         kf->state[5] = velocity[2];
     } else {

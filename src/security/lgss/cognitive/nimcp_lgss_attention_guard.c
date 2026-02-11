@@ -232,7 +232,7 @@ attention_guard_t* attention_guard_create(
 
     attention_guard_t* guard = (attention_guard_t*)nimcp_calloc(1, sizeof(attention_guard_t));
     if (guard == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_guard_create: failed to allocate guard");
 
         return NULL;
     }

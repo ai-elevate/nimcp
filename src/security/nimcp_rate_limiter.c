@@ -475,7 +475,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     if (actual_config.requests_per_second <= 0.0F ||
         actual_config.burst_size == 0) {
         LOG_ERROR("Invalid rate limiter configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rate_limiter_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_create: invalid config (zero rate or burst)");
         return NULL;
     }
 

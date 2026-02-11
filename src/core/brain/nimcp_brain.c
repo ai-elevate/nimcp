@@ -3510,7 +3510,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     if (is_cached_input(brain, features, num_features)) {
-        brain_decision_t* cached_copy = copy_decision(brain->cached_decision);
+        brain_decision_t* cached_copy = copy_decision_deep(brain->cached_decision);
 
         if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
             set_error("Failed to unlock cache mutex after cache hit");

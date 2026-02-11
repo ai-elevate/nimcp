@@ -365,9 +365,8 @@ int sec_async_fep_compute_effects(sec_async_fep_bridge_t* bridge) {
         return -1;
     }
 
-    if (!bridge->state.active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_compute_effects: bridge->state is NULL");
-        return -1;
+    if (!bridge->state.active || !bridge->fep_system) {
+        return NIMCP_ERROR_INVALID_STATE;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -415,7 +414,6 @@ int sec_async_fep_compute_effects(sec_async_fep_bridge_t* bridge) {
     );
 
     /* Update statistics */
-    bridge->stats.avg_free_energy = bridge->state.avg_surprise;
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
     bridge->stats.avg_prediction_error = bridge->state.avg_prediction_error;
 

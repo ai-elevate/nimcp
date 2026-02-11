@@ -309,18 +309,15 @@ brain_region_t* brain_module_get_region(brain_module_t* brain, uint32_t region_i
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_module_get_region: validation failed");
+    set_error("brain_module_get_region: region_id %u not found", region_id);
     return NULL;
 }
 
 brain_region_t* brain_module_get_region_by_type(brain_module_t* brain,
                                                  brain_region_type_t type) {
     if (!brain) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_module_get_region_by_type: brain is NULL");
         return NULL;
-
     }
 
     for (uint32_t i = 0; i < brain->num_regions; i++) {
@@ -329,7 +326,7 @@ brain_region_t* brain_module_get_region_by_type(brain_module_t* brain,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_module_get_region: validation failed");
+    set_error("brain_module_get_region_by_type: type %d not found", (int)type);
     return NULL;
 }
 

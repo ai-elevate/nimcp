@@ -62,17 +62,11 @@ static int compare_obs_time(const void* a, const void* b) {
     const sorted_obs_t* oa = (const sorted_obs_t*)a;
     const sorted_obs_t* ob = (const sorted_obs_t*)b;
 
-    if (oa->time < ob->time) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_obs_time: validation failed");
-        return -1;
-    }
+    if (oa->time < ob->time) return -1;
     if (oa->time > ob->time) return 1;
 
     // Events before censorings at same time
-    if (oa->event && !ob->event) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compare_obs_time: ob->event is NULL");
-        return -1;
-    }
+    if (oa->event && !ob->event) return -1;
     if (!oa->event && ob->event) return 1;
 
     return 0;

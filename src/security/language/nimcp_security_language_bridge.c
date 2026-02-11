@@ -198,7 +198,6 @@ static uint64_t get_time_ns(void) {
  */
 static const char* stristr(const char* haystack, const char* needle) {
     if (!haystack || !needle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stristr: required parameter is NULL (haystack, needle)");
         return NULL;
     }
     if (!*needle) return haystack;
@@ -215,7 +214,6 @@ static const char* stristr(const char* haystack, const char* needle) {
         if (!*n) return haystack;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stristr: validation failed");
     return NULL;
 }
 
@@ -229,7 +227,6 @@ static bool match_patterns(
     size_t* match_offset
 ) {
     if (!input || !patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "match_patterns: required parameter is NULL (input, patterns)");
         return false;
     }
 
@@ -242,7 +239,6 @@ static bool match_patterns(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "match_patterns: validation failed");
     return false;
 }
 
@@ -252,7 +248,6 @@ static bool match_patterns(
 static char* escape_string(const char* input, size_t input_len, size_t* output_len) {
     if (!input || input_len == 0) {
         if (output_len) *output_len = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "escape_string: validation failed");
         return NULL;
     }
 
@@ -316,7 +311,6 @@ static char* escape_string(const char* input, size_t input_len, size_t* output_l
 static char* remove_dangerous_patterns(const char* input, size_t input_len, size_t* output_len) {
     if (!input || input_len == 0) {
         if (output_len) *output_len = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "remove_dangerous_patterns: validation failed");
         return NULL;
     }
 
@@ -665,7 +659,6 @@ int security_language_disconnect_security(security_language_bridge_t* bridge) {
 
 bool security_language_is_connected(const security_language_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_language_is_connected: bridge is NULL");
         return false;
     }
 
@@ -1445,13 +1438,11 @@ bool security_language_exceeds_threshold(
     size_t text_len
 ) {
     if (!bridge || !text) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_language_exceeds_threshold: required parameter is NULL (bridge, text)");
         return false;
     }
 
     security_language_threat_score_t score;
     if (security_language_get_threat_score(bridge, text, text_len, &score) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_language_exceeds_threshold: validation failed");
         return false;
     }
 
@@ -1658,7 +1649,6 @@ int security_language_disconnect_bio_async(security_language_bridge_t* bridge) {
 
 bool security_language_is_bio_async_connected(const security_language_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_language_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge_base_is_bio_async_connected(&bridge->base);

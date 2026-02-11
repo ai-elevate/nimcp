@@ -189,7 +189,8 @@ static void update_pending_neuron(pending_neuron_t* neuron, float dt,
 
         case NEURON_STAGE_INTEGRATING:
             neuron->maturity += dt * 0.01f;
-            neuron->integration_steps_remaining--;
+            if (neuron->integration_steps_remaining > 0)
+                neuron->integration_steps_remaining--;
 
             /* Form connections based on activity */
             if (neuron->recent_activity > 0.1f) {

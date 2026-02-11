@@ -232,6 +232,7 @@ typedef struct {
 
     // Current inflammation level
     brain_inflammation_level_t current_inflammation;
+    bool inflammation_override;  // True when set via set_inflammation()
     float cytokine_levels[BRAIN_CYTOKINE_COUNT];
 
     // Statistics

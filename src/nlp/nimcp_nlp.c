@@ -137,7 +137,15 @@ static bool init_embeddings(nlp_network_t network) {
                     vocab_size, embedding_dim);
 
     // Allocate embedding matrix using unified memory
-    size_t size = vocab_size * embedding_dim * sizeof(float);
+    // Overflow check: vocab_size * embedding_dim * sizeof(float)
+    if (vocab_size > 0 && embedding_dim > SIZE_MAX / sizeof(float) / vocab_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ARGUMENT,
+            "Embedding allocation overflow: vocab_size=%u, embedding_dim=%u", vocab_size, embedding_dim);
+        LOG_ERROR(LOG_MODULE, "Embedding allocation would overflow: vocab_size=%u, embedding_dim=%u",
+                  vocab_size, embedding_dim);
+        return false;
+    }
+    size_t size = (size_t)vocab_size * embedding_dim * sizeof(float);
     network->embeddings = (float*)nimcp_malloc(size);
     if (!network->embeddings) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate %zu bytes for embeddings", size);
@@ -296,7 +304,6 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
         if (network->attention) multihead_attention_destroy(network->attention);
         neural_network_destroy(network->network);
         nimcp_free(network);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_create: validation failed");
         return NULL;
     }
 
@@ -313,7 +320,6 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
         if (network->attention) multihead_attention_destroy(network->attention);
         neural_network_destroy(network->network);
         nimcp_free(network);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_create: validation failed");
         return NULL;
     }
     LOG_DEBUG(LOG_MODULE, "Allocated attention output buffer: %u elements",
@@ -523,14 +529,19 @@ bool nlp_network_forward(
     } else {
         LOG_DEBUG(LOG_MODULE, "No attention system, copying embeddings directly");
         // Copy embeddings directly to output if no attention
+        // Cap copy size to attention_output_size to prevent buffer overflow
+        size_t copy_elems = sequence_length * embedding_dim;
+        if (copy_elems > network->attention_output_size) {
+            copy_elems = network->attention_output_size;
+        }
         memcpy(network->attention_output, sequence_embeddings,
-               sequence_length * embedding_dim * sizeof(float));
+               copy_elems * sizeof(float));
     }
 
     nimcp_free(sequence_embeddings);
 
     if (!attention_success) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_forward: attention_success is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_forward: attention forward pass failed");
         return false;
     }
 

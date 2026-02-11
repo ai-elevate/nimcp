@@ -198,10 +198,7 @@ static int compare_coalitions(
         }
         // Lower rank = more preferred
         if (rank1 < 0 && rank2 < 0) return 0;
-        if (rank1 < 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_coalitions: validation failed");
-            return -1;
-        }
+        if (rank1 < 0) return -1;
         if (rank2 < 0) return 1;
         return rank2 - rank1;  // Higher rank2 means coal1 is preferred
     }
@@ -221,10 +218,7 @@ static int compare_coalitions(
     float per_cap2 = (size2 > 0) ? val2 / (float)size2 : 0.0f;
 
     if (per_cap1 > per_cap2) return 1;
-    if (per_cap1 < per_cap2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_coalitions: validation failed");
-        return -1;
-    }
+    if (per_cap1 < per_cap2) return -1;
     return 0;
 }
 

@@ -215,8 +215,7 @@ static float* acquire_buffer(feature_buffer_pool_t* pool)
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acquire_buffer: pool->in_use is NULL");
-    return NULL;  // Pool exhausted
+    return NULL;  // Pool exhausted - all buffers in use
 }
 
 /**

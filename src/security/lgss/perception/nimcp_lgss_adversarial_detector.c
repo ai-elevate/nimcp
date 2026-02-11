@@ -351,7 +351,7 @@ lgss_adversarial_detector_t* lgss_adversarial_detector_create(
     lgss_adversarial_detector_t* detector = nimcp_calloc(1, sizeof(*detector));
     if (!detector) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_adversarial_detector_create: allocation failed");
 
         return NULL;
 

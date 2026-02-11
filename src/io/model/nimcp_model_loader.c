@@ -815,6 +815,15 @@ nimcp_model_result_t nimcp_model_validate_file(const char* filepath,
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
+    if (file_size < 0) {
+        fclose(file);
+        set_error("ftell failed for: %s", filepath);
+        validation->result = NIMCP_MODEL_ERROR_FILE_READ;
+        snprintf(validation->error_message, sizeof(validation->error_message),
+                "ftell failed for: %s", filepath);
+        return NIMCP_MODEL_ERROR_FILE_READ;
+    }
+
     if (file_size > (long)NIMCP_MODEL_MAX_FILE_SIZE) {
         fclose(file);
         set_error("File too large: %ld bytes", file_size);
@@ -964,6 +973,12 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
+
+    if (file_size < 0) {
+        fclose(file);
+        set_error("ftell failed for: %s", filepath);
+        return NIMCP_MODEL_ERROR_FILE_READ;
+    }
 
     // Allocate model structure
     nimcp_loaded_model_t* model = nimcp_calloc(1, sizeof(nimcp_loaded_model_t));
@@ -1435,7 +1450,7 @@ nimcp_model_result_t nimcp_model_save(const nimcp_loaded_model_t* model,
     }
 
     // Calculate data offset
-    size_t arch_size = 36;  // Base architecture size
+    size_t arch_size = 38;  // Base architecture size (20 basic + 18 topology hints)
     if (model->architecture.num_layers > 0) {
         arch_size += model->architecture.num_layers * 5;  // layer_sizes + layer_types
     }

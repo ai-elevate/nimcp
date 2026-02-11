@@ -92,21 +92,14 @@ static inline void ethics_incidents_heartbeat_instance(
 static int compare_incident_timestamps(const char* key1, const char* key2)
 {
     if (!key1 || !key2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "compare_incident_timestamps: invalid parameters");
-
-            return 0;
+        return 0;
     }
 
     // Parse timestamp keys
     uint64_t ts1 = strtoull(key1, NULL, 10);
     uint64_t ts2 = strtoull(key2, NULL, 10);
 
-    if (ts1 < ts2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_incident_timestamps: validation failed");
-        return -1;
-    }
+    if (ts1 < ts2) return -1;
     if (ts1 > ts2) return 1;
     return 0;
 }

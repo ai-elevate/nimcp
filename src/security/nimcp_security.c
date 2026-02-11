@@ -1186,10 +1186,13 @@ void nimcp_directive_system_destroy(nimcp_directive_system_t* system)
 nimcp_input_validation_t nimcp_security_validate_input(const char* input, size_t max_length,
                                                         nimcp_threat_level_t* threat_level)
 {
-    if (!input || !threat_level) {
-        if (threat_level)
-            *threat_level = NIMCP_THREAT_NONE;
-        return NIMCP_INPUT_VALID;
+    if (!threat_level) {
+        return NIMCP_INPUT_VALID;  /* Can't report, safe default */
+    }
+    if (!input) {
+        *threat_level = NIMCP_THREAT_MEDIUM;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_security_validate_input: NULL input treated as injection");
+        return NIMCP_INPUT_CONTAINS_INJECTION;
     }
 
     /* WHAT: Check validation cache first for O(1) lookup

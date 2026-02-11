@@ -890,10 +890,7 @@ static int compare_scores(const void* a, const void* b)
     const episode_score_t* sb = (const episode_score_t*)b;
 
     // Sort descending (highest similarity first)
-    if (sa->similarity > sb->similarity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scores: validation failed");
-        return -1;
-    }
+    if (sa->similarity > sb->similarity) return -1;
     if (sa->similarity < sb->similarity) return 1;
     return 0;
 }

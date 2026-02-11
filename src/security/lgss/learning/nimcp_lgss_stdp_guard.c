@@ -224,7 +224,6 @@ static float compute_stdp_delta(const stdp_guard_config_t* config, float dt_ms) 
  */
 static bool detect_timing_regularity(struct stdp_guard_internal* g) {
     if (g->dt_history_count < 10) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_timing_regularity: validation failed");
         return false;
     }
 
@@ -250,7 +249,6 @@ static bool detect_timing_regularity(struct stdp_guard_internal* g) {
 static bool detect_burst(spike_buffer_t* buf, uint32_t threshold_count,
                          float interval_ms, uint32_t* burst_count_out) {
     if (buf->count < threshold_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_timing_regularity: validation failed");
         return false;
     }
 

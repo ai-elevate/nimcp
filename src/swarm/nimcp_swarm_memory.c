@@ -105,8 +105,7 @@ static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
 
     nimcp_heap_element_t elem;
     if (!nimcp_min_heap_extract_min(heap, &elem)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_replay_heap_extract: nimcp_min_heap_extract_min is NULL");
-        return NULL;
+        return NULL;  // Heap empty
     }
 
     void* entry = _replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES];
@@ -3353,7 +3352,6 @@ static int compare_replay_priority(const void *a, const void *b)
 
     /* Higher priority comes first (min heap, so negate) */
     if (entry_a->replay_priority > entry_b->replay_priority) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_replay_priority: validation failed");
         return -1;
     } else if (entry_a->replay_priority < entry_b->replay_priority) {
         return 1;

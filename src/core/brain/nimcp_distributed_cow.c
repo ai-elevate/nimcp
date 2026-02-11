@@ -510,8 +510,7 @@ static network_segment_t* find_cached_segment(
 
     state->cache_misses++;
     nimcp_platform_rwlock_rdunlock(&state->cache_lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cached_segment: validation failed");
-    return NULL;
+    return NULL;  /* Cache miss - normal path */
 }
 
 /**
@@ -748,6 +747,13 @@ static bool register_distributed_cow_brain(brain_t brain, distributed_cow_state_
     entry->brain = brain;
     entry->dcow_state = state;
 
+    if (g_num_dcow_brains >= 16) {
+        nimcp_platform_mutex_unlock(&g_registry_mutex);
+        nimcp_free(entry);
+        set_error("register_distributed_cow_brain: registry full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "register_distributed_cow_brain: registry full");
+        return false;
+    }
     g_dcow_brains[g_num_dcow_brains++] = entry;
 
     nimcp_platform_mutex_unlock(&g_registry_mutex);

@@ -1055,13 +1055,9 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
     return NIMCP_NOT_FOUND;
 }
 
-nimcp_result_t nimcp_swarm_immune_affinity_maturation(
+static nimcp_result_t nimcp_swarm_immune_affinity_maturation_unlocked(
     NimcpSwarmImmuneSystem* system
 ) {
-    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
-
-    nimcp_platform_mutex_lock(system->mutex);
-
     /* Sort memory cells by effectiveness and activation count */
     /* Keep most effective, remove least effective */
     size_t removed = 0;
@@ -1083,8 +1079,18 @@ nimcp_result_t nimcp_swarm_immune_affinity_maturation(
         LOG_INFO("Affinity maturation: removed %zu low-affinity cells", removed);
     }
 
-    nimcp_platform_mutex_unlock(system->mutex);
     return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_swarm_immune_affinity_maturation(
+    NimcpSwarmImmuneSystem* system
+) {
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+
+    nimcp_platform_mutex_lock(system->mutex);
+    nimcp_result_t result = nimcp_swarm_immune_affinity_maturation_unlocked(system);
+    nimcp_platform_mutex_unlock(system->mutex);
+    return result;
 }
 
 /* ============================================================================
@@ -1378,7 +1384,7 @@ nimcp_result_t nimcp_swarm_immune_update(
 
     /* Perform affinity maturation periodically - move static to system state */
     if (current_time - system->last_maturation_time > 60000) { /* Every minute */
-        nimcp_swarm_immune_affinity_maturation(system);
+        nimcp_swarm_immune_affinity_maturation_unlocked(system);
         system->last_maturation_time = current_time;
     }
 

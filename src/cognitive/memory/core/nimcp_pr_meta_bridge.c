@@ -242,10 +242,7 @@ static int compare_recalls(const void* a, const void* b) {
     const pr_meta_recall_t* ra = (const pr_meta_recall_t*)a;
     const pr_meta_recall_t* rb = (const pr_meta_recall_t*)b;
     if (rb->similarity > ra->similarity) return 1;
-    if (rb->similarity < ra->similarity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_recalls: validation failed");
-        return -1;
-    }
+    if (rb->similarity < ra->similarity) return -1;
     return 0;
 }
 

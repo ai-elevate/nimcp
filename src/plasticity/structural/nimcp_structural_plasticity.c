@@ -76,7 +76,7 @@ static synapse_structural_state_t* find_spine(
             return &system->spines[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_spine: operation failed");
+    set_error("find_spine: synapse_id %u not found", synapse_id);
     return NULL;
 }
 
@@ -97,7 +97,7 @@ static synapse_structural_state_t* find_spine_any_state(
             return &system->spines[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_spine_any_state: validation failed");
+    set_error("find_spine_any_state: synapse_id %u not found", synapse_id);
     return NULL;
 }
 

@@ -208,7 +208,7 @@ rate_limiter_immune_bridge_t* rate_limiter_immune_create(
         nimcp_malloc(sizeof(rate_limiter_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate rate limiter immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_limiter_immune_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -430,7 +430,6 @@ int rate_limiter_immune_connect_bio_async(rate_limiter_immune_bridge_t* bridge) 
 
 int rate_limiter_immune_disconnect_bio_async(rate_limiter_immune_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_immune_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 

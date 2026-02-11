@@ -131,7 +131,6 @@ static void compute_model_hash(
 
 static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
     if (!h1 || !h2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_equals: required parameter is NULL (h1, h2)");
         return false;
     }
     return memcmp(h1, h2, SECURITY_DISTRIBUTED_HASH_SIZE) == 0;
@@ -440,10 +439,9 @@ int security_distributed_training_register_worker(
 
     bridge->num_workers++;
     bridge->security_effects.active_worker_count++;
+    stats->total_workers_registered++;
 
     BRIDGE_UNLOCK(bridge);
-
-    stats->total_workers_registered++;
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Registered worker '%s'", worker_id);
@@ -975,7 +973,6 @@ bool security_distributed_training_validate_aggregated(
 
     if (num_params == 0) {
         if (anomaly_score) *anomaly_score = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_distributed_training_validate_aggregated: validation failed");
         return false;
     }
 
@@ -1327,7 +1324,6 @@ bool security_distributed_training_is_under_attack(
     const security_distributed_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_distributed_training_is_under_attack: bridge is NULL");
         return false;
     }
     return bridge->security_effects.under_attack;

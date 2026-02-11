@@ -328,7 +328,7 @@ int lgss_load_rules(lgss_context_t* lgss, const char* rules_path)
 
     if (symbolic_logic_safety_is_locked(lgss->safety_kb)) {
         LGSS_LOG_ERROR("Cannot load rules - KB is locked");
-        return NIMCP_ERROR_MUTEX_INIT;
+        return NIMCP_ERROR_INVALID_STATE;
     }
 
     LGSS_LOG_INFO("Loading safety rules from: %s", rules_path);

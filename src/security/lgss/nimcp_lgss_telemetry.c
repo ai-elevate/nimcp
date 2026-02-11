@@ -204,7 +204,6 @@ lgss_telemetry_t* lgss_telemetry_create(const lgss_telemetry_config_t* config)
 
     if (!config->enabled) {
         TELEM_LOG_INFO("Telemetry disabled by configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_telemetry_create: config->enabled is NULL");
         return NULL;
     }
 

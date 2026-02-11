@@ -247,7 +247,6 @@ static bool contains_pattern_icase(const char* haystack, const char* needle)
     size_t needle_len = strlen(needle);
 
     if (needle_len > hay_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_pattern_icase: validation failed");
         return false;
     }
 
@@ -664,7 +663,7 @@ sec_log_fep_bridge_t* sec_log_fep_create(
 
     if (!log_bridge || !fep_system) {
         NIMCP_LOGGING_ERROR("sec_log_fep_create: NULL pointer for required system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_log_fep_create: required parameter is NULL (log_bridge, fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_create: required parameter is NULL (log_bridge, fep_system)");
         return NULL;
     }
 
@@ -820,6 +819,10 @@ int sec_log_fep_reset(sec_log_fep_bridge_t* bridge)
     }
     bridge->history_head = 0;
     bridge->history_count = 0;
+    bridge->fe_history_head = 0;
+    bridge->fe_history_count = 0;
+    bridge->surprise_history_head = 0;
+    bridge->surprise_history_count = 0;
 
     /* Reset protection state */
     bridge->pending_action = SEC_LOG_FEP_ACTION_NONE;
@@ -896,7 +899,6 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
     }
 
     if (!bridge->state.active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -907,10 +909,10 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
     float surprise = fep_compute_surprise(bridge->fep_system);
     float pred_error = fep_get_prediction_error(bridge->fep_system, 0);
 
-    /* Record in history */
-    record_history(bridge->fe_history, &bridge->history_head, &bridge->history_count,
+    /* P1 fix: Use separate head/count per history buffer to prevent misalignment */
+    record_history(bridge->fe_history, &bridge->fe_history_head, &bridge->fe_history_count,
                    SEC_LOG_FEP_HISTORY_SIZE, current_fe);
-    record_history(bridge->surprise_history, &bridge->history_head, &bridge->history_count,
+    record_history(bridge->surprise_history, &bridge->surprise_history_head, &bridge->surprise_history_count,
                    SEC_LOG_FEP_HISTORY_SIZE, surprise);
 
     /* Update running averages */
@@ -1068,8 +1070,9 @@ int sec_log_fep_analyze_entry(
     sec_log_fep_detection_t detection = SEC_LOG_FEP_DETECT_NONE;
     sec_log_fep_inject_type_t inject = SEC_LOG_FEP_INJECT_NONE;
 
-    /* Check for injection in message */
-    inject = check_injection_patterns(bridge, entry->message, strlen(entry->message),
+    /* P1 fix: Use sizeof(entry->message) instead of strlen() so contains_null_byte()
+     * can detect embedded null bytes (strlen stops at first null, defeating the check) */
+    inject = check_injection_patterns(bridge, entry->message, sizeof(entry->message),
                                        result->pattern_matched, sizeof(result->pattern_matched));
 
     if (inject != SEC_LOG_FEP_INJECT_NONE) {
@@ -1686,7 +1689,6 @@ int sec_log_fep_execute_protection(
     /* Rate limit protections */
     if (now - bridge->last_protection_time < MIN_PROTECTION_INTERVAL_MS) {
         BRIDGE_UNLOCK(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_log_fep_execute_protection: validation failed");
         return -1;  /* Rate limited */
     }
 

@@ -249,7 +249,6 @@ float rate_limiter_sleep_get_burst_capacity(const rate_limiter_sleep_bridge_t br
 bool rate_limiter_sleep_is_relaxed(const rate_limiter_sleep_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_sleep_is_relaxed: bridge is NULL");
         return false;
     }
 

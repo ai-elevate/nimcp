@@ -27,13 +27,37 @@
 
 class HemisphericSleepBridgeTest : public ::testing::Test {
 protected:
+    // Shared brain instance - created once for all tests (very expensive to create)
+    static hemispheric_brain_t* shared_brain;
+
     hemispheric_sleep_bridge_t* bridge = nullptr;
     hemispheric_brain_t* brain = nullptr;
 
-    void SetUp() override {
-        // Use minimal config for fast tests
+    static void SetUpTestSuite() {
         hemispheric_brain_config_t brain_config = hemispheric_brain_default_config();
-        brain = hemispheric_brain_create(&brain_config);
+        brain_config.size = BRAIN_SIZE_TINY;
+        brain_config.num_inputs = 8;
+        brain_config.num_outputs = 4;
+        brain_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        brain_config.enable_bio_async = false;
+        brain_config.left_config.size = BRAIN_SIZE_TINY;
+        brain_config.left_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        brain_config.left_config.enable_bio_async = false;
+        brain_config.right_config.size = BRAIN_SIZE_TINY;
+        brain_config.right_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        brain_config.right_config.enable_bio_async = false;
+        shared_brain = hemispheric_brain_create(&brain_config);
+    }
+
+    static void TearDownTestSuite() {
+        if (shared_brain) {
+            hemispheric_brain_destroy(shared_brain);
+            shared_brain = nullptr;
+        }
+    }
+
+    void SetUp() override {
+        brain = shared_brain;
         ASSERT_NE(brain, nullptr);
     }
 
@@ -42,12 +66,10 @@ protected:
             hemispheric_sleep_destroy(bridge);
             bridge = nullptr;
         }
-        if (brain) {
-            hemispheric_brain_destroy(brain);
-            brain = nullptr;
-        }
     }
 };
+
+hemispheric_brain_t* HemisphericSleepBridgeTest::shared_brain = nullptr;
 
 //=============================================================================
 // Lifecycle Tests

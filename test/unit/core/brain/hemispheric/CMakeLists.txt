@@ -17,7 +17,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_brain.cpp
     unit
 )
-set_tests_properties(unit_core_brain_hemispheric_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_hemispheric_test PROPERTIES
+    TIMEOUT 300
+    RESOURCE_LOCK "hemispheric_brain_heavy"
+)
 
 # Test: Hemispheric Immune Bridge Tests
 add_test_binary(
@@ -25,7 +28,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_immune_bridge.cpp
     unit
 )
-set_tests_properties(unit_core_brain_hemispheric_immune_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_hemispheric_immune_test PROPERTIES
+    TIMEOUT 300
+    RESOURCE_LOCK "hemispheric_brain_heavy"
+)
 
 # Test: Hemispheric Sleep Bridge Tests
 add_test_binary(
@@ -33,7 +39,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_sleep_bridge.cpp
     unit
 )
-set_tests_properties(unit_core_brain_hemispheric_sleep_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_hemispheric_sleep_test PROPERTIES
+    TIMEOUT 600
+    RESOURCE_LOCK "hemispheric_brain_heavy"
+)
 
 # Test: Hemispheric FEP Bridge Tests
 add_test_binary(

@@ -180,7 +180,6 @@ float bbb_sleep_get_permeability(const bbb_sleep_bridge_t bridge) {
 
 bool bbb_sleep_is_glymphatic_active(const bbb_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sleep_is_glymphatic_active: bridge is NULL");
         return false;
     }
     nimcp_mutex_lock(bridge->base.mutex);

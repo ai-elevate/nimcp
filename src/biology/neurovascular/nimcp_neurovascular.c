@@ -109,6 +109,7 @@ static float calculate_bold(
     float dq = q * v;
 
     /* BOLD signal (simplified) */
+    if (fabsf(v) < 1e-7f) v = 1e-7f;  /* Prevent division by zero */
     float bold = v0 * (BOLD_K1 * (1.0f - q) +
                        BOLD_K2 * (1.0f - dq / v) +
                        BOLD_K3 * (1.0f - v));
@@ -361,7 +362,7 @@ nimcp_nvc_unit_t* nimcp_nvc_get_unit(
     }
 
     if (unit_id >= system->num_units) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_nvc_get_unit: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_nvc_get_unit: unit_id out of range");
         return NULL;
     }
 

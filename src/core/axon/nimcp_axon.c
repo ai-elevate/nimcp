@@ -1277,7 +1277,7 @@ axon_t* axon_network_find(axon_network_t* network, uint32_t axon_id)
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_network_find: validation failed");
+    set_error("axon_network_find: axon_id %u not found", axon_id);
     return NULL;
 }
 

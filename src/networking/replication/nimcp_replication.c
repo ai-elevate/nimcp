@@ -690,7 +690,6 @@ static registered_brain_t* find_brain(replication_cluster_t cluster, const char*
     }
 
     nimcp_mutex_unlock(&cluster->brains_lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_brain: validation failed");
     return NULL;
 }
 

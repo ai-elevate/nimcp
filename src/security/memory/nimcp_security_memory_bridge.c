@@ -134,7 +134,6 @@ static int find_subject_index(const security_mem_bridge_t* bridge, uint32_t subj
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_subject_index: validation failed");
     return -1;
 }
 
@@ -171,7 +170,6 @@ static bool check_operation_permission(
         case SEC_MEM_OP_ENCODE:
             return rights->can_encode;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_operation_permission: operation failed");
             return false;
     }
 }
@@ -348,7 +346,6 @@ static bool stub_decrypt(
     }
 
     if (memcmp(computed_tag, tag, SEC_MEM_GCM_TAG_SIZE) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stub_decrypt: validation failed");
         return false;  /* Authentication failed */
     }
 
@@ -733,7 +730,6 @@ int security_memory_disconnect_all(security_mem_bridge_t* bridge)
 bool security_memory_is_fully_connected(const security_mem_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_is_fully_connected: bridge is NULL");
         return false;
     }
     return bridge->working_connected &&
@@ -1911,7 +1907,6 @@ int security_memory_disconnect_bio_async(security_mem_bridge_t* bridge)
 bool security_memory_is_bio_async_connected(const security_mem_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -159,7 +159,6 @@ static quarantined_node_state_t* find_quarantined_node(
             return &bridge->quarantined_nodes[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_quarantined_node: validation failed");
     return NULL;
 }
 
@@ -183,7 +182,6 @@ static inflammation_routing_impact_t* find_inflammation_impact(
             return &bridge->inflammation_impacts[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_inflammation_impact: validation failed");
     return NULL;
 }
 
@@ -231,7 +229,7 @@ router_immune_bridge_t* router_immune_bridge_create(
     if (!router || !immune_system) {
         LOG_MODULE_ERROR("router_immune_bridge",
                   "Cannot create bridge without router and immune system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: required parameter is NULL (router, immune_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_create: required parameter is NULL (router, immune_system)");
         return NULL;
     }
 

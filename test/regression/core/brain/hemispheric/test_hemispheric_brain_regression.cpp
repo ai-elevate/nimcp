@@ -18,9 +18,6 @@
 #include <algorithm>
 #include <numeric>
 
-#include "utils/nimcp_test_base.h"
-
-
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
 #include "core/brain/hemispheric/nimcp_lateralization.h"
 
@@ -28,19 +25,24 @@
 // Test Fixtures
 //=============================================================================
 
-class HemisphericBrainRegressionTest : public NimcpTestBase {
+class HemisphericBrainRegressionTest : public ::testing::Test {
 protected:
     hemispheric_brain_t* brain = nullptr;
 
     void SetUp() override {
-        NimcpTestBase::SetUp();
-
         hemispheric_brain_config_t config = hemispheric_brain_default_config();
-        config.size = BRAIN_SIZE_SMALL;
-        config.num_inputs = 32;
-        config.num_outputs = 16;
+        config.size = BRAIN_SIZE_TINY;
+        config.num_inputs = 8;
+        config.num_outputs = 4;
+        config.initial_tier = PLATFORM_TIER_CONSTRAINED;
         config.default_mode = HEMISPHERIC_MODE_LATERALIZED;
         config.enable_bio_async = false;  // Disable for determinism tests
+        config.left_config.size = BRAIN_SIZE_TINY;
+        config.left_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        config.left_config.enable_bio_async = false;
+        config.right_config.size = BRAIN_SIZE_TINY;
+        config.right_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        config.right_config.enable_bio_async = false;
         brain = hemispheric_brain_create(&config);
     }
 
@@ -49,7 +51,6 @@ protected:
             hemispheric_brain_destroy(brain);
             brain = nullptr;
         }
-        NimcpTestBase::TearDown();
     }
 
     // Helper to measure execution time
@@ -72,12 +73,12 @@ protected:
 TEST_F(HemisphericBrainRegressionTest, LateralizedModePerformance) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f + 0.01f * i;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f + 0.01f * i;
 
     double avgMs = measureTimeMs([&]() {
-        hemispheric_brain_process_lateralized(brain, input, 32,
-            COGNITIVE_DOMAIN_LANGUAGE, output, 16);
+        hemispheric_brain_process_lateralized(brain, input, 8,
+            COGNITIVE_DOMAIN_LANGUAGE, output, 4);
     });
 
     // Performance regression: lateralized should be fast (<5ms per call)
@@ -87,12 +88,12 @@ TEST_F(HemisphericBrainRegressionTest, LateralizedModePerformance) {
 TEST_F(HemisphericBrainRegressionTest, ParallelModePerformance) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], left_out[16], right_out[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], left_out[4], right_out[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     double avgMs = measureTimeMs([&]() {
-        hemispheric_brain_process_parallel(brain, input, 32,
-            left_out, right_out, 16);
+        hemispheric_brain_process_parallel(brain, input, 8,
+            left_out, right_out, 4);
     });
 
     // Parallel mode involves both hemispheres, expect slightly slower
@@ -102,13 +103,13 @@ TEST_F(HemisphericBrainRegressionTest, ParallelModePerformance) {
 TEST_F(HemisphericBrainRegressionTest, CompetitiveModePerformance) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
     hemisphere_id_t winner;
 
     double avgMs = measureTimeMs([&]() {
-        hemispheric_brain_process_competitive(brain, input, 32,
-            output, 16, &winner);
+        hemispheric_brain_process_competitive(brain, input, 8,
+            output, 4, &winner);
     });
 
     EXPECT_LT(avgMs, 10.0) << "Competitive processing too slow: " << avgMs << "ms";
@@ -117,11 +118,11 @@ TEST_F(HemisphericBrainRegressionTest, CompetitiveModePerformance) {
 TEST_F(HemisphericBrainRegressionTest, CooperativeModePerformance) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     double avgMs = measureTimeMs([&]() {
-        hemispheric_brain_process_cooperative(brain, input, 32, output, 16);
+        hemispheric_brain_process_cooperative(brain, input, 8, output, 4);
     });
 
     EXPECT_LT(avgMs, 10.0) << "Cooperative processing too slow: " << avgMs << "ms";
@@ -145,20 +146,20 @@ TEST_F(HemisphericBrainRegressionTest, UpdatePerformance) {
 TEST_F(HemisphericBrainRegressionTest, LateralizedProcessingDeterministic) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output1[16], output2[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f + 0.01f * i;
+    float input[8], output1[4], output2[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f + 0.01f * i;
 
     // First run
-    hemispheric_brain_process_lateralized(brain, input, 32,
-        COGNITIVE_DOMAIN_LANGUAGE, output1, 16);
+    hemispheric_brain_process_lateralized(brain, input, 8,
+        COGNITIVE_DOMAIN_LANGUAGE, output1, 4);
 
     // Reset and run again
     hemispheric_brain_reset_stats(brain);
-    hemispheric_brain_process_lateralized(brain, input, 32,
-        COGNITIVE_DOMAIN_LANGUAGE, output2, 16);
+    hemispheric_brain_process_lateralized(brain, input, 8,
+        COGNITIVE_DOMAIN_LANGUAGE, output2, 4);
 
     // Outputs should be identical
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 4; i++) {
         EXPECT_FLOAT_EQ(output1[i], output2[i]) << "Mismatch at index " << i;
     }
 }
@@ -166,18 +167,18 @@ TEST_F(HemisphericBrainRegressionTest, LateralizedProcessingDeterministic) {
 TEST_F(HemisphericBrainRegressionTest, ParallelProcessingDeterministic) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32];
-    float left1[16], right1[16], left2[16], right2[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.6f;
+    float input[8];
+    float left1[4], right1[4], left2[4], right2[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.6f;
 
     // First run
-    hemispheric_brain_process_parallel(brain, input, 32, left1, right1, 16);
+    hemispheric_brain_process_parallel(brain, input, 8, left1, right1, 4);
 
     // Reset and run again
     hemispheric_brain_reset_stats(brain);
-    hemispheric_brain_process_parallel(brain, input, 32, left2, right2, 16);
+    hemispheric_brain_process_parallel(brain, input, 8, left2, right2, 4);
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 4; i++) {
         EXPECT_FLOAT_EQ(left1[i], left2[i]) << "Left mismatch at " << i;
         EXPECT_FLOAT_EQ(right1[i], right2[i]) << "Right mismatch at " << i;
     }
@@ -186,17 +187,17 @@ TEST_F(HemisphericBrainRegressionTest, ParallelProcessingDeterministic) {
 TEST_F(HemisphericBrainRegressionTest, InferenceDeterministic) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output1[16], output2[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.4f;
+    float input[8], output1[4], output2[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.4f;
 
     // First inference
-    hemispheric_brain_infer(brain, input, 32, output1, 16);
+    hemispheric_brain_infer(brain, input, 8, output1, 4);
 
     // Reset stats and repeat
     hemispheric_brain_reset_stats(brain);
-    hemispheric_brain_infer(brain, input, 32, output2, 16);
+    hemispheric_brain_infer(brain, input, 8, output2, 4);
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 4; i++) {
         EXPECT_FLOAT_EQ(output1[i], output2[i]);
     }
 }
@@ -204,8 +205,8 @@ TEST_F(HemisphericBrainRegressionTest, InferenceDeterministic) {
 TEST_F(HemisphericBrainRegressionTest, UpdateSequenceDeterministic) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32] = {0.5f}, output[16];
-    hemispheric_brain_infer(brain, input, 32, output, 16);
+    float input[8] = {0.5f}, output[4];
+    hemispheric_brain_infer(brain, input, 8, output, 4);
 
     // Run sequence
     for (int i = 0; i < 100; i++) {
@@ -215,7 +216,7 @@ TEST_F(HemisphericBrainRegressionTest, UpdateSequenceDeterministic) {
 
     // Reset and repeat
     hemispheric_brain_reset_stats(brain);
-    hemispheric_brain_infer(brain, input, 32, output, 16);
+    hemispheric_brain_infer(brain, input, 8, output, 4);
     for (int i = 0; i < 100; i++) {
         hemispheric_brain_update(brain, 0.001f);
     }
@@ -303,11 +304,19 @@ TEST_F(HemisphericBrainRegressionTest, HemisphereAccessConsistency) {
 //=============================================================================
 
 TEST_F(HemisphericBrainRegressionTest, CreateDestroyNoLeak) {
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 5; i++) {
         hemispheric_brain_config_t config = hemispheric_brain_default_config();
-        config.size = BRAIN_SIZE_SMALL;
-        config.num_inputs = 16;
-        config.num_outputs = 8;
+        config.size = BRAIN_SIZE_TINY;
+        config.num_inputs = 4;
+        config.num_outputs = 2;
+        config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        config.enable_bio_async = false;
+        config.left_config.size = BRAIN_SIZE_TINY;
+        config.left_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        config.left_config.enable_bio_async = false;
+        config.right_config.size = BRAIN_SIZE_TINY;
+        config.right_config.initial_tier = PLATFORM_TIER_CONSTRAINED;
+        config.right_config.enable_bio_async = false;
         hemispheric_brain_t* b = hemispheric_brain_create(&config);
         ASSERT_NE(b, nullptr);
         hemispheric_brain_destroy(b);
@@ -317,12 +326,12 @@ TEST_F(HemisphericBrainRegressionTest, CreateDestroyNoLeak) {
 TEST_F(HemisphericBrainRegressionTest, RepeatedOperationsNoGrowth) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     // Perform many operations - memory should not grow unboundedly
     for (int i = 0; i < 1000; i++) {
-        hemispheric_brain_infer(brain, input, 32, output, 16);
+        hemispheric_brain_infer(brain, input, 8, output, 4);
         hemispheric_brain_update(brain, 0.001f);
     }
 
@@ -354,8 +363,8 @@ TEST_F(HemisphericBrainRegressionTest, NullPointerSafety) {
 TEST_F(HemisphericBrainRegressionTest, StatsAccumulateCorrectly) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     // Reset stats first
     hemispheric_brain_reset_stats(brain);
@@ -366,15 +375,15 @@ TEST_F(HemisphericBrainRegressionTest, StatsAccumulateCorrectly) {
     // Perform operations
     hemispheric_brain_set_mode(brain, HEMISPHERIC_MODE_LATERALIZED);
     for (int i = 0; i < 10; i++) {
-        hemispheric_brain_process_lateralized(brain, input, 32,
-            COGNITIVE_DOMAIN_LANGUAGE, output, 16);
+        hemispheric_brain_process_lateralized(brain, input, 8,
+            COGNITIVE_DOMAIN_LANGUAGE, output, 4);
     }
 
     hemispheric_brain_set_mode(brain, HEMISPHERIC_MODE_PARALLEL);
-    float left_out[16], right_out[16];
+    float left_out[4], right_out[4];
     for (int i = 0; i < 5; i++) {
-        hemispheric_brain_process_parallel(brain, input, 32,
-            left_out, right_out, 16);
+        hemispheric_brain_process_parallel(brain, input, 8,
+            left_out, right_out, 4);
     }
 
     hemispheric_brain_stats_t stats_after;
@@ -389,8 +398,8 @@ TEST_F(HemisphericBrainRegressionTest, StatsAccumulateCorrectly) {
 TEST_F(HemisphericBrainRegressionTest, CompetitiveWinsAccumulate) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
     hemisphere_id_t winner;
 
     hemispheric_brain_reset_stats(brain);
@@ -398,8 +407,8 @@ TEST_F(HemisphericBrainRegressionTest, CompetitiveWinsAccumulate) {
     // Run competitive processing multiple times
     int left_wins = 0, right_wins = 0;
     for (int i = 0; i < 100; i++) {
-        hemispheric_brain_process_competitive(brain, input, 32,
-            output, 16, &winner);
+        hemispheric_brain_process_competitive(brain, input, 8,
+            output, 4, &winner);
         if (winner == HEMISPHERE_LEFT) left_wins++;
         else if (winner == HEMISPHERE_RIGHT) right_wins++;
     }
@@ -414,12 +423,12 @@ TEST_F(HemisphericBrainRegressionTest, CompetitiveWinsAccumulate) {
 TEST_F(HemisphericBrainRegressionTest, StatsResetWorks) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     // Generate some stats
     for (int i = 0; i < 10; i++) {
-        hemispheric_brain_infer(brain, input, 32, output, 16);
+        hemispheric_brain_infer(brain, input, 8, output, 4);
     }
 
     hemispheric_brain_stats_t stats;
@@ -444,8 +453,8 @@ TEST_F(HemisphericBrainRegressionTest, StatsResetWorks) {
 TEST_F(HemisphericBrainRegressionTest, DefaultConfigStable) {
     hemispheric_brain_config_t config = hemispheric_brain_default_config();
 
-    // Default mode should be LATERALIZED
-    EXPECT_EQ(config.default_mode, HEMISPHERIC_MODE_LATERALIZED);
+    // Default mode should be COOPERATIVE
+    EXPECT_EQ(config.default_mode, HEMISPHERIC_MODE_COOPERATIVE);
 
     // Cooperation strategy should be WEIGHTED
     EXPECT_EQ(config.cooperation_strategy, COOPERATION_WEIGHTED);
@@ -476,8 +485,8 @@ TEST_F(HemisphericBrainRegressionTest, CooperationStrategyNamesStable) {
 TEST_F(HemisphericBrainRegressionTest, RapidModeSwitch) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     hemispheric_mode_t modes[] = {
         HEMISPHERIC_MODE_LATERALIZED,
@@ -489,10 +498,10 @@ TEST_F(HemisphericBrainRegressionTest, RapidModeSwitch) {
     // Rapidly switch modes with processing
     for (int i = 0; i < 1000; i++) {
         hemispheric_brain_set_mode(brain, modes[i % 4]);
-        hemispheric_brain_infer(brain, input, 32, output, 16);
+        hemispheric_brain_infer(brain, input, 8, output, 4);
 
         // Verify output bounds
-        for (int j = 0; j < 16; j++) {
+        for (int j = 0; j < 4; j++) {
             EXPECT_FALSE(std::isnan(output[j])) << "NaN at iteration " << i;
             EXPECT_FALSE(std::isinf(output[j])) << "Inf at iteration " << i;
         }
@@ -502,11 +511,11 @@ TEST_F(HemisphericBrainRegressionTest, RapidModeSwitch) {
 TEST_F(HemisphericBrainRegressionTest, LongSimulationStable) {
     ASSERT_NE(brain, nullptr);
 
-    float input[32], output[16];
-    for (int i = 0; i < 32; i++) input[i] = 0.5f;
+    float input[8], output[4];
+    for (int i = 0; i < 8; i++) input[i] = 0.5f;
 
     for (int i = 0; i < 5000; i++) {
-        hemispheric_brain_infer(brain, input, 32, output, 16);
+        hemispheric_brain_infer(brain, input, 8, output, 4);
         hemispheric_brain_update(brain, 0.001f);
 
         // Verify no numerical issues

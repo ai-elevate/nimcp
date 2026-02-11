@@ -209,7 +209,7 @@ anomaly_immune_bridge_t* anomaly_immune_create(
         nimcp_malloc(sizeof(anomaly_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate anomaly immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anomaly_immune_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -431,7 +431,6 @@ int anomaly_immune_connect_bio_async(anomaly_immune_bridge_t* bridge) {
 
 int anomaly_immune_disconnect_bio_async(anomaly_immune_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_immune_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 

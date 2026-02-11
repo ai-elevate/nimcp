@@ -207,7 +207,6 @@ static int validate_tree_recursive(
             snprintf(result->explanation, sizeof(result->explanation),
                      "Node %u blocked: p_harm=%.2f exceeds threshold",
                      node->node_id, adjusted_p_harm);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_tree_recursive: validation failed");
             return -1;  /* Signal early termination */
         }
     } else if (node_result == LGSS_RESULT_ESCALATE) {

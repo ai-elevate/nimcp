@@ -257,7 +257,6 @@ float pattern_db_sleep_get_priority_threshold(const pattern_db_sleep_bridge_t br
 bool pattern_db_sleep_is_consolidating(const pattern_db_sleep_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_sleep_is_consolidating: bridge is NULL");
         return false;
     }
 

@@ -115,6 +115,16 @@ static uint8_t* decompress_zlib(const uint8_t* data, size_t size, size_t* out_si
     uint32_t orig_size;
     memcpy(&orig_size, data, sizeof(uint32_t));
 
+    /* P1 fix: Sanity-check orig_size to prevent enormous allocation from crafted data.
+     * Typical compression ratios don't exceed 1000:1. */
+    if (orig_size > (size - sizeof(uint32_t)) * 1024) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "decompress_zlib: orig_size %u implausibly large for %zu bytes of compressed data",
+            orig_size, size - sizeof(uint32_t));
+        *out_size = 0;
+        return NULL;
+    }
+
     uint8_t* decompressed = nimcp_malloc(orig_size);
     if (!decompressed) {
         LOG_ERROR("Failed to allocate decompression buffer");
@@ -175,6 +185,15 @@ static uint8_t* decompress_fallback(const uint8_t* data, size_t size, size_t* ou
 
     uint32_t orig_size;
     memcpy(&orig_size, data, sizeof(uint32_t));
+
+    /* P1 fix: Validate orig_size against available buffer to prevent heap over-read */
+    if ((size_t)orig_size > size - sizeof(uint32_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "decompress_fallback: orig_size %u exceeds available data %zu",
+            orig_size, size - sizeof(uint32_t));
+        *out_size = 0;
+        return NULL;
+    }
 
     uint8_t* copy = nimcp_malloc(orig_size);
     if (!copy) {

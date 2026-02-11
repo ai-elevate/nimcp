@@ -241,7 +241,7 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
     if (config->num_hypercolumns == 0 ||
         config->num_hypercolumns > VISUAL_CORTICAL_MAX_HYPERCOLUMNS) {
         NIMCP_LOGGING_ERROR("Invalid num_hypercolumns: %u", config->num_hypercolumns);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_bridge_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortical_bridge_create: invalid num_hypercolumns");
         return NULL;
     }
 

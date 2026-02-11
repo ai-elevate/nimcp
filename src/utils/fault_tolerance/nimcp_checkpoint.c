@@ -573,10 +573,7 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
 static int compare_checkpoint_timestamp_desc(const void* a, const void* b) {
     const checkpoint_info_t* ca = (const checkpoint_info_t*)a;
     const checkpoint_info_t* cb = (const checkpoint_info_t*)b;
-    if (ca->timestamp > cb->timestamp) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_checkpoint_timestamp_desc: validation failed");
-        return -1;
-    }
+    if (ca->timestamp > cb->timestamp) return -1;
     if (ca->timestamp < cb->timestamp) return 1;
     return 0;
 }

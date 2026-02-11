@@ -152,7 +152,7 @@ static primitive_entry_t* find_best_primitive(
     float* out_distance) {
 
     if (!compressor || !segment) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vector_cosine_similarity: required parameter is NULL (compressor, segment)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_best_primitive: required parameter is NULL (compressor, segment)");
         return NULL;
     }
 
@@ -389,21 +389,21 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
     /* Validate input */
     if (!config) {
         LOG_ERROR(COMPRESSION_MODULE, "NULL configuration provided");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_default_config: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_create: config is NULL");
         return NULL;
     }
 
     if (config->max_primitives > SEMANTIC_MAX_PRIMITIVES) {
         LOG_ERROR(COMPRESSION_MODULE, "max_primitives exceeds limit: %u > %u",
                   config->max_primitives, SEMANTIC_MAX_PRIMITIVES);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_semantic_compressor_create: max_primitives exceeds limit");
         return NULL;
     }
 
     if (config->vector_dimension > SEMANTIC_MAX_VECTOR_DIM) {
         LOG_ERROR(COMPRESSION_MODULE, "vector_dimension exceeds limit: %u > %u",
                   config->vector_dimension, SEMANTIC_MAX_VECTOR_DIM);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_semantic_compressor_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_semantic_compressor_create: vector_dimension exceeds limit");
         return NULL;
     }
 

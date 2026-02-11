@@ -1290,7 +1290,6 @@ static uint32_t hash_string(const char* str)
 static pattern_entry_t* pattern_registry_lookup(pattern_registry_t* registry, const char* name)
 {
     if (registry == NULL || name == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_registry_lookup: validation failed");
         return NULL;
     }
 

@@ -319,7 +319,7 @@ dynsys_error_t dynsys_get_stats(dynsys_system_t sys, dynsys_stats_t* stats)
 dynsys_lyapunov_t dynsys_lyapunov_create(const dynsys_lyapunov_config_t* config, dynsys_system_t sys)
 {
     if (!config || !sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_lyapunov_create: required parameter is NULL (config, sys)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_lyapunov_create: required parameter is NULL (config, sys)");
         return NULL;
     }
 

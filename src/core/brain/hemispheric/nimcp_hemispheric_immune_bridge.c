@@ -408,8 +408,8 @@ int hemispheric_immune_update(hemispheric_immune_bridge_t* bridge) {
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    // Get current inflammation from immune system
-    if (bridge->immune_system) {
+    // Get current inflammation from immune system (unless manually overridden)
+    if (bridge->immune_system && !bridge->inflammation_override) {
         bridge->current_inflammation = brain_immune_get_inflammation_level(bridge->immune_system);
 
         // Get cytokine levels
@@ -642,6 +642,7 @@ int hemispheric_immune_set_inflammation(
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_inflammation = level;
+    bridge->inflammation_override = true;
     nimcp_mutex_unlock(bridge->base.mutex);
 
     // Trigger update to recompute effects

@@ -297,8 +297,12 @@ int thermo_qmc_free_energy_landscape(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_free_energy_landscape: required parameter is NULL (state, temperatures, free_energies)");
         return -1;
     }
-    if (!state->initialized || num_points == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_free_energy_landscape: state->initialized is NULL");
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "thermo_qmc_free_energy_landscape: state not initialized");
+        return -1;
+    }
+    if (num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thermo_qmc_free_energy_landscape: num_points is 0");
         return -1;
     }
 

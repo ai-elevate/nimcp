@@ -99,14 +99,8 @@ static brain_inflammation_level_t get_max_inflammation_level(
  */
 static bool is_illness_word(const char* word) {
     if (!word) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "is_illness_word: word is NULL");
-
-            return false;
-
-        }
+        return false;  /* NULL word is not an illness word */
+    }
 
     /* Common illness-related words */
     const char* illness_words[] = {

@@ -165,7 +165,6 @@ static decision_record_t* find_decision_unlocked(emotion_executive_bridge_t* bri
             return &bridge->decisions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_timestamp_ms: validation failed");
     return NULL;
 }
 
@@ -254,8 +253,8 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
 void emotion_executive_bridge_destroy(emotion_executive_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_executive");
     }
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_executive");
 
     /* Destroy mutex */
     /* Phase 8: Heartbeat at operation start */

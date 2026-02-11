@@ -131,7 +131,6 @@ static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, flo
                 if (sum <= 0.0f) {
                     nimcp_free(L);
                     nimcp_free(A_reg);
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invert_matrix_cholesky: validation failed");
                     return false;  /* Not positive definite */
                 }
                 L[i * n + j] = sqrtf(sum);

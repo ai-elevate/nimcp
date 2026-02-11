@@ -317,6 +317,11 @@ int security_collective_fep_compute_effects(security_collective_fep_bridge_t* br
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
+    if (!bridge->fep_system) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
     /* Get current FEP state */
     float current_fe = fep_get_free_energy(bridge->fep_system);
     float surprise = fep_compute_surprise(bridge->fep_system);
@@ -855,8 +860,7 @@ int security_collective_fep_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Security collective FEP: bio-async connection failed");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_collective_fep_connect_bio_async: validation failed");
-    return -1;
+    return NIMCP_ERROR_OPERATION_FAILED;
 }
 
 int security_collective_fep_disconnect_bio_async(

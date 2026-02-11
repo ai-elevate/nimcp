@@ -157,7 +157,6 @@ static int find_worker_index(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_worker_index: validation failed");
     return -1;
 }
 
@@ -319,16 +318,22 @@ int security_dist_fep_reset(security_dist_fep_bridge_t* bridge) {
     bridge->state.max_surprise_seen = 0.0f;
     bridge->state.system_precision = SECURITY_DIST_FEP_DEFAULT_PRECISION;
 
-    /* Reset worker precisions */
+    /* Reset worker precisions - save pointer before memset */
+    float* saved_worker_precisions = bridge->fep_effects.worker_precisions;
+    uint32_t saved_num_worker_precisions = bridge->fep_effects.num_worker_precisions;
+
+    /* Reset effects */
+    memset(&bridge->fep_effects, 0, sizeof(bridge->fep_effects));
+    memset(&bridge->security_effects, 0, sizeof(bridge->security_effects));
+
+    /* Restore and reset worker precisions */
+    bridge->fep_effects.worker_precisions = saved_worker_precisions;
+    bridge->fep_effects.num_worker_precisions = saved_num_worker_precisions;
     if (bridge->fep_effects.worker_precisions) {
         for (uint32_t i = 0; i < bridge->fep_effects.num_worker_precisions; i++) {
             bridge->fep_effects.worker_precisions[i] = SECURITY_DIST_FEP_DEFAULT_PRECISION;
         }
     }
-
-    /* Reset effects */
-    memset(&bridge->fep_effects, 0, sizeof(bridge->fep_effects));
-    memset(&bridge->security_effects, 0, sizeof(bridge->security_effects));
 
     /* Reset stats */
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -384,7 +389,7 @@ int security_dist_fep_compute_effects(security_dist_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_compute_effects: required parameter is NULL (bridge->state, bridge->fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "security_dist_fep_compute_effects: bridge inactive or fep_system is NULL");
         return -1;
     }
 
@@ -465,7 +470,11 @@ int security_dist_fep_compute_effects(security_dist_fep_bridge_t* bridge) {
                 nimcp_free(bridge->fep_effects.worker_precisions);
             }
             bridge->fep_effects.worker_precisions = nimcp_malloc(num_workers * sizeof(float));
-            bridge->fep_effects.num_worker_precisions = num_workers;
+            if (bridge->fep_effects.worker_precisions) {
+                bridge->fep_effects.num_worker_precisions = num_workers;
+            } else {
+                bridge->fep_effects.num_worker_precisions = 0;
+            }
         }
 
         /* Update each worker's precision */

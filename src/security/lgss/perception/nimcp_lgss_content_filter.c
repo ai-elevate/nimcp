@@ -237,13 +237,11 @@ static void to_lowercase(char* str, size_t len) {
 static const char* strcasestr_safe(const char* haystack, size_t haystack_len,
                                     const char* needle) {
     if (!haystack || !needle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "to_lowercase: required parameter is NULL (haystack, needle)");
         return NULL;
     }
     size_t needle_len = strlen(needle);
     if (needle_len == 0) return haystack;
     if (needle_len > haystack_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "to_lowercase: validation failed");
         return NULL;
     }
 
@@ -260,7 +258,6 @@ static const char* strcasestr_safe(const char* haystack, size_t haystack_len,
             return haystack + i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "to_lowercase: validation failed");
     return NULL;
 }
 
@@ -302,8 +299,11 @@ static float calculate_text_entropy(const char* text, size_t len) {
  * @brief Check for Base64 encoded content
  */
 static bool has_base64_content(const char* text, size_t len) {
-    if (!text || len < 20) {
+    if (!text) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "has_base64_content: text is NULL");
+        return false;
+    }
+    if (len < 20) {
         return false;
     }
 

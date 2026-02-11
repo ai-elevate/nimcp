@@ -1849,10 +1849,7 @@ static int compare_replay_priority(const void* a, const void* b) {
     const pr_replay_candidate_t* cb = (const pr_replay_candidate_t*)b;
 
     // Descending order (highest priority first)
-    if (ca->replay_priority > cb->replay_priority) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_replay_priority: validation failed");
-        return -1;
-    }
+    if (ca->replay_priority > cb->replay_priority) return -1;
     if (ca->replay_priority < cb->replay_priority) return 1;
     return 0;
 }

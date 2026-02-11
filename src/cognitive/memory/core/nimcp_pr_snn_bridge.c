@@ -266,10 +266,7 @@ static uint64_t get_time_ms(void) {
 static int compare_floats(const void* a, const void* b) {
     float fa = *(const float*)a;
     float fb = *(const float*)b;
-    if (fa < fb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_floats: validation failed");
-        return -1;
-    }
+    if (fa < fb) return -1;
     if (fa > fb) return 1;
     return 0;
 }
@@ -285,10 +282,7 @@ typedef struct {
 static int compare_spikes(const void* a, const void* b) {
     const spike_entry_t* sa = (const spike_entry_t*)a;
     const spike_entry_t* sb = (const spike_entry_t*)b;
-    if (sa->time < sb->time) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_spikes: validation failed");
-        return -1;
-    }
+    if (sa->time < sb->time) return -1;
     if (sa->time > sb->time) return 1;
     return 0;
 }

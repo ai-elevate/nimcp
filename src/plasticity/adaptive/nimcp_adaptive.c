@@ -107,10 +107,7 @@ static int compare_neuron_importance_desc(const void* a, const void* b) {
 
     /* Descending order: higher importance first */
     if (nb->importance > na->importance) return 1;
-    if (nb->importance < na->importance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_neuron_importance_desc: validation failed");
-        return -1;
-    }
+    if (nb->importance < na->importance) return -1;
     return 0;
 }
 
@@ -359,8 +356,7 @@ static uint8_t* acquire_spike_buffer(spike_buffer_pool_t* pool)
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acquire_spike_buffer: pool->in_use is NULL");
-    return NULL;  // Pool exhausted
+    return NULL;  // Pool exhausted - all buffers in use
 }
 
 /**

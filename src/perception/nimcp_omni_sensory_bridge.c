@@ -107,7 +107,6 @@ static void update_modality_state(omni_modality_state_t* state,
     if (!state) return;
 
     state->prediction_error = pe;
-    state->dim = dim;
     state->active = (features != NULL);
 
     /* Copy features if provided */
@@ -120,6 +119,7 @@ static void update_modality_state(omni_modality_state_t* state,
             memcpy(state->features, features, dim * sizeof(float));
         }
     }
+    state->dim = dim;
 }
 
 /* ============================================================================
@@ -698,18 +698,18 @@ int omni_sensory_apply_attention(omni_sensory_bridge_t* bridge,
 int omni_sensory_get_omni_effects(const omni_sensory_bridge_t* bridge,
                                    omni_to_sensory_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in omni_sensory_get_omni_effects");
-    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_sensory_effects_t));
-    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_sensory_get_sensory_effects(const omni_sensory_bridge_t* bridge,
                                       sensory_to_omni_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in omni_sensory_get_sensory_effects");
-    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->sensory_effects, sizeof(sensory_to_omni_effects_t));
-    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -719,18 +719,18 @@ int omni_sensory_get_modality_state(const omni_sensory_bridge_t* bridge,
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in omni_sensory_get_modality_state");
     NIMCP_CHECK_THROW(modality < OMNI_MODALITY_COUNT, NIMCP_ERROR_INVALID_PARAM, "Invalid modality in omni_sensory_get_modality_state");
 
-    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     memcpy(state, &bridge->modality_states[modality], sizeof(omni_modality_state_t));
-    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_sensory_get_stats(const omni_sensory_bridge_t* bridge,
                             omni_sensory_stats_t* stats) {
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in omni_sensory_get_stats");
-    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_sensory_stats_t));
-    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 

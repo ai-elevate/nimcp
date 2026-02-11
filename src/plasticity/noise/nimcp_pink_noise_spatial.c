@@ -785,8 +785,7 @@ int pink_spatial_connect_memory_manager(
 
 bool pink_spatial_has_memory_manager(const pink_spatial_t* spatial) {
     if (!spatial) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_has_memory_manager: spatial is NULL");
-        return false;
+        return false;  /* Boolean query returning false for NULL is normal */
     }
     return spatial->mem_manager != NULL;
 }

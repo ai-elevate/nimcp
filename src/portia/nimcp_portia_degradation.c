@@ -114,10 +114,7 @@ static int compare_features_by_level(const void* a, const void* b) {
 
     // Secondary sort by resource cost
     if (fa->resource_cost > fb->resource_cost) return 1;
-    if (fa->resource_cost < fb->resource_cost) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_features_by_level: validation failed");
-        return -1;
-    }
+    if (fa->resource_cost < fb->resource_cost) return -1;
     return 0;
 }
 

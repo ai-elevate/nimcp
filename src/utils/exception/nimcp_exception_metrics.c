@@ -1049,8 +1049,20 @@ int nimcp_adaptive_import(const uint8_t* buffer, size_t size) {
 
     if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
 
-    /* Clear existing patterns */
-    nimcp_adaptive_reset_all();
+    /* P1 fix: Call unlocked reset to avoid deadlock (we already hold g_adaptive_mutex) */
+    /* Free chained entries and reset base array */
+    if (g_patterns) {
+        for (size_t i = 0; i < NIMCP_METRICS_MAX_PATTERNS; i++) {
+            pattern_entry_t* entry = g_patterns[i].next;
+            while (entry) {
+                pattern_entry_t* next = entry->next;
+                nimcp_free(entry);
+                entry = next;
+            }
+            memset(&g_patterns[i], 0, sizeof(pattern_entry_t));
+        }
+    }
+    g_pattern_count = 0;
 
     /* Import patterns */
     size_t offset = sizeof(persistence_header_t);

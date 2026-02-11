@@ -3042,7 +3042,7 @@ brain_t genius_brain_create_ex(genius_type_t type, bool test_mode) {
 
     const genius_profile_t* profile = genius_profile_get(type);
     if (!profile) {
-        NIMCP_THROW_TO_IMMUNE(GENIUS_ERROR_INVALID_TYPE, "Profile not found for genius type");
+        set_error("genius_create_brain: profile not found for type %d", (int)type);
         return NULL;
     }
 

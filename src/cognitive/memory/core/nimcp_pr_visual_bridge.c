@@ -245,10 +245,7 @@ static int compare_retrieval_results(const void* a, const void* b) {
     const pr_visual_retrieval_result_t* ra = (const pr_visual_retrieval_result_t*)a;
     const pr_visual_retrieval_result_t* rb = (const pr_visual_retrieval_result_t*)b;
 
-    if (ra->resonance_score > rb->resonance_score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_retrieval_results: validation failed");
-        return -1;
-    }
+    if (ra->resonance_score > rb->resonance_score) return -1;
     if (ra->resonance_score < rb->resonance_score) return 1;
     return 0;
 }

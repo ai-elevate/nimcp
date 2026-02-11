@@ -349,7 +349,7 @@ static int send_message_internal(
 ) {
     if (!bridge->connected) {
         bridge->messages_dropped++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "send_message_internal: bridge->connected is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "send_message_internal: bridge is not connected");
         return -1;
     }
 

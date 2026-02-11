@@ -1449,7 +1449,7 @@ void astrocyte_network_get_stats(astrocyte_network_t* network,
                                  float* max_calcium,
                                  float* avg_glutamate)
 {
-    if (!network) {
+    if (!network || network->num_astrocytes == 0) {
         if (avg_calcium) *avg_calcium = 0.0F;
         if (max_calcium) *max_calcium = 0.0F;
         if (avg_glutamate) *avg_glutamate = 0.0F;

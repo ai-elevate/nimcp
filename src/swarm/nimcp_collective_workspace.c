@@ -155,7 +155,6 @@ static int compare_vector_clocks(
     if (equal) {
         return 0;  // Same event
     } else if (a_less_or_equal) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_vector_clocks: validation failed");
         return -1; // a happened-before b
     } else if (b_less_or_equal) {
         return 1;  // b happened-before a
@@ -290,8 +289,7 @@ static bool types_compatible(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "types_compatible: validation failed");
-    return false;
+    return false;  // Types not compatible
 }
 
 /**
@@ -372,7 +370,6 @@ static int32_t insert_item_sorted(
     // Workspace full - check if new item displaces lowest
     uint32_t lowest_idx = workspace->item_count - 1;
     if (item->salience <= workspace->items[lowest_idx].salience) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insert_item_sorted: validation failed");
         return -1;  // New item too low salience
     }
 

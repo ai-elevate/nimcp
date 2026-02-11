@@ -275,7 +275,6 @@ static gist_node_t* gist_table_lookup(gist_hash_entry_t** table, size_t size,
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_table_destroy: validation failed");
     return NULL;
 }
 
@@ -299,7 +298,6 @@ static gist_node_t* gist_table_remove(gist_hash_entry_t** table, size_t size,
         prev_ptr = &entry->next;
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_table_destroy: validation failed");
     return NULL;
 }
 
@@ -348,7 +346,7 @@ static bool trace_table_insert(trace_hash_entry_t** table, size_t size,
 
     trace_hash_entry_t* entry = nimcp_malloc(sizeof(trace_hash_entry_t));
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trace_table_destroy: entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trace_table_insert: entry allocation failed");
         return false;
     }
 
@@ -374,7 +372,6 @@ static dual_trace_t* trace_table_lookup(trace_hash_entry_t** table, size_t size,
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trace_table_destroy: validation failed");
     return NULL;
 }
 
@@ -451,10 +448,7 @@ static int compare_features_by_score(const void* a, const void* b) {
     const gist_key_feature_t* fa = (const gist_key_feature_t*)a;
     const gist_key_feature_t* fb = (const gist_key_feature_t*)b;
 
-    if (fa->importance > fb->importance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_features_by_score: validation failed");
-        return -1;
-    }
+    if (fa->importance > fb->importance) return -1;
     if (fa->importance < fb->importance) return 1;
     return 0;
 }

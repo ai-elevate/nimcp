@@ -54,6 +54,9 @@ extern bbb_system_t nimcp_bbb_get_global_system(void);
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_router)
 
+/* Forward declaration: reset subsystem statics on shutdown (defined at end of file) */
+static void bio_router_reset_subsystem_statics(void);
+
 /*=============================================================================
  * CONSTANTS
  *============================================================================*/
@@ -795,6 +798,15 @@ void bio_router_shutdown(void) {
 
     // Clear brain KG reference
     g_router_brain_kg = NULL;
+
+    /* P1-8 fix: Destroy brain KG mutex before shutdown completes */
+    if (g_router_brain_kg_mutex_initialized) {
+        nimcp_platform_mutex_destroy(&g_router_brain_kg_mutex);
+        g_router_brain_kg_mutex_initialized = false;
+    }
+
+    /* P1-1 fix: Reset subsystem once-flags so they re-initialize after shutdown */
+    bio_router_reset_subsystem_statics();
 
     /* P2-54 fix: Reset platform_once so bio-router can be re-initialized after shutdown */
     g_router_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
@@ -2784,4 +2796,25 @@ int bio_router_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/*=============================================================================
+ * Subsystem statics reset (called from bio_router_shutdown)
+ *============================================================================*/
+static void bio_router_reset_subsystem_statics(void) {
+    g_signal_mutex_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    g_signal_observer_count = 0;
+    memset(g_signal_observers, 0, sizeof(g_signal_observers));
+
+    g_wave_mutex_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    g_wave_callback_count = 0;
+    memset(g_wave_callbacks, 0, sizeof(g_wave_callbacks));
+
+    g_subscription_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    g_subscription_count = 0;
+    memset(g_subscriptions, 0, sizeof(g_subscriptions));
+
+    g_emotion_reg_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+    g_emotion_registration_count = 0;
+    memset(g_emotion_registrations, 0, sizeof(g_emotion_registrations));
 }

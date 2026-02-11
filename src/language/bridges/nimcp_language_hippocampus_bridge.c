@@ -443,8 +443,10 @@ int language_hippocampus_retrieve(language_hippocampus_bridge_t* bridge,
     result->status = MEM_OP_NOT_FOUND;
 
     if (!result->memories || !result->similarities) {
+        if (result->memories) { nimcp_free(result->memories); result->memories = NULL; }
+        if (result->similarities) { nimcp_free(result->similarities); result->similarities = NULL; }
         bridge->state = LH_STATE_IDLE;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve: required parameter is NULL (result->memories, result->similarities)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_retrieve: failed to allocate result buffers");
         return -1;
     }
 

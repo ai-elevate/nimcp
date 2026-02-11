@@ -592,7 +592,6 @@ static nimcp_error_t language_bio_async_message_callback(
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    (void)msg_size;
     (void)response_promise;
 
     language_orchestrator_t* orchestrator = (language_orchestrator_t*)user_data;
@@ -601,9 +600,19 @@ static nimcp_error_t language_bio_async_message_callback(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1 fix: Validate msg_size before reading header and payload */
+    if (msg_size < sizeof(bio_message_header_t)) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
     /* Extract message type from header */
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
     uint32_t message_type = header->type;
+
+    if (msg_size < sizeof(bio_message_header_t) + header->payload_size) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
     const void* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
     uint32_t payload_size = header->payload_size;
 

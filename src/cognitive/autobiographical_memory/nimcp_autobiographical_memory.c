@@ -243,7 +243,6 @@ static bool matches_query(const autobiographical_memory_entry_t* mem,
                    (strstr(mem->outcome, query->search_text) != NULL);
         }
         if (!found) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "matches_query: found is NULL");
             return false;
         }
     }
@@ -260,10 +259,7 @@ static int compare_by_recency(const void* a, const void* b)
     const autobiographical_memory_entry_t* mb = (const autobiographical_memory_entry_t*)b;
 
     // Newer first
-    if (ma->timestamp_ms > mb->timestamp_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_recency: validation failed");
-        return -1;
-    }
+    if (ma->timestamp_ms > mb->timestamp_ms) return -1;
     if (ma->timestamp_ms < mb->timestamp_ms) return 1;
     return 0;
 }
@@ -277,10 +273,7 @@ static int compare_by_importance(const void* a, const void* b)
     const autobiographical_memory_entry_t* mb = (const autobiographical_memory_entry_t*)b;
 
     // More important first
-    if (ma->importance > mb->importance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_importance: validation failed");
-        return -1;
-    }
+    if (ma->importance > mb->importance) return -1;
     if (ma->importance < mb->importance) return 1;
     return 0;
 }

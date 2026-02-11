@@ -272,6 +272,10 @@ void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
 }
 
 void* nimcp_calloc_guarded(size_t nmemb, size_t size, const char* file, int line) {
+    if (size != 0 && nmemb > SIZE_MAX / size) {
+        set_error("nimcp_calloc_guarded: integer overflow %zu * %zu", nmemb, size);
+        return NULL;
+    }
     size_t total = nmemb * size;
     void* ptr = nimcp_malloc_guarded(total, file, line);
     if (ptr) {

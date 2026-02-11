@@ -1815,10 +1815,7 @@ static int compare_at_risk(const void* a, const void* b) {
 
     // Sort by risk score descending
     if (mb->risk_score > ma->risk_score) return 1;
-    if (mb->risk_score < ma->risk_score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_at_risk: validation failed");
-        return -1;
-    }
+    if (mb->risk_score < ma->risk_score) return -1;
     return 0;
 }
 
@@ -1828,10 +1825,7 @@ static int compare_review_priority(const void* a, const void* b) {
 
     // Sort by priority descending
     if (rb->priority > ra->priority) return 1;
-    if (rb->priority < ra->priority) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_review_priority: validation failed");
-        return -1;
-    }
+    if (rb->priority < ra->priority) return -1;
     return 0;
 }
 

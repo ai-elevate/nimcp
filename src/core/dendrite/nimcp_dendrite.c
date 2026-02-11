@@ -1293,19 +1293,19 @@ bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
                                    uint64_t timestamp) {
     // Guard: NULL dendrite
     if (!dendrite) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calculate_mg_block: dendrite is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_initiate_nmda_spike: dendrite is NULL");
         return false;
     }
 
     // Guard: Invalid segment
     if (segment_id >= dendrite->num_segments) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_mg_block: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_initiate_nmda_spike: segment_id out of range");
         return false;
     }
 
     // Guard: Already in NMDA spike
     if (dendrite->nmda_state.active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_mg_block: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_initiate_nmda_spike: NMDA spike already active");
         return false;
     }
 
@@ -1317,14 +1317,14 @@ bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
     float voltage_mv = segment->voltage * 1000.0F;  // Convert to mV
     if (voltage_mv < NIMCP_NMDA_SPIKE_THRESHOLD_MV) {
         nimcp_mutex_unlock(&dendrite->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_mg_block: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_initiate_nmda_spike: voltage below threshold");
         return false;
     }
 
     // Check if segment has active properties
     if (!segment->has_active_properties) {
         nimcp_mutex_unlock(&dendrite->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calculate_mg_block: segment->has_active_properties is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_initiate_nmda_spike: segment lacks active properties");
         return false;
     }
 

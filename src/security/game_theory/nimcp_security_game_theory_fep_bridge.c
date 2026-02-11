@@ -328,22 +328,18 @@ int sgt_fep_set_config(
  * ============================================================================ */
 
 /**
- * WHAT: Update FEP effects on security game theory
- * WHY:  Compute FEP-derived manipulation scores
- * HOW:  Process current FEP state, update effects
+ * WHAT: Update FEP effects on security game theory (unlocked version)
+ * WHY:  Called from within locked context (e.g., sgt_fep_compute_effects)
+ * HOW:  Process current FEP state, update effects - caller must hold mutex
  */
-int sgt_fep_update(sgt_fep_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return -1;
-    }
-
+static int sgt_fep_update_unlocked(sgt_fep_bridge_t* bridge) {
     if (!bridge->state.active) {
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    if (!bridge->fep_system) {
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     /* Get current FEP state */
     float current_fe = fep_get_free_energy(bridge->fep_system);
@@ -403,8 +399,25 @@ int sgt_fep_update(sgt_fep_bridge_t* bridge) {
         bridge->stats.max_surprise = surprise;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
+}
+
+/**
+ * WHAT: Update FEP effects on security game theory
+ * WHY:  Compute FEP-derived manipulation scores
+ * HOW:  Process current FEP state, update effects
+ */
+int sgt_fep_update(sgt_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    int result = sgt_fep_update_unlocked(bridge);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 /**
@@ -423,8 +436,13 @@ int sgt_fep_compute_effects(
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    /* Update internal effects first */
-    sgt_fep_update(bridge);
+    if (!bridge->fep_system) {
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Update internal effects first (already locked) */
+    sgt_fep_update_unlocked(bridge);
 
     /* Copy to output */
     *effects = bridge->fep_effects;

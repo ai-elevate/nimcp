@@ -245,17 +245,13 @@ static int ring_buffer_push(log_entry_ring_buffer_t* rb,
                             const security_log_entry_t* entry,
                             bool overwrite_on_full) {
     if (!rb || !entry || !rb->entries) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ring_buffer_cleanup: required parameter is NULL (rb, entry, rb->entries)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ring_buffer_push: required parameter is NULL (rb, entry, rb->entries)");
         return -1;
     }
 
     if (rb->count >= rb->capacity) {
         if (!overwrite_on_full) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "overwrite_on_full is NULL");
-
             return NIMCP_ERROR_OPERATION_FAILED;
-
         }
         /* Overwrite oldest: advance tail */
         rb->tail = (rb->tail + 1) % rb->capacity;
@@ -273,8 +269,11 @@ static int ring_buffer_push(log_entry_ring_buffer_t* rb,
  * @brief Get entry at index (0 = oldest)
  */
 static security_log_entry_t* ring_buffer_get(log_entry_ring_buffer_t* rb, size_t index) {
-    if (!rb || !rb->entries || index >= rb->count) {
+    if (!rb || !rb->entries) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ring_buffer_get: required parameter is NULL (rb, rb->entries)");
+        return NULL;
+    }
+    if (index >= rb->count) {
         return NULL;
     }
     size_t actual_index = (rb->tail + index) % rb->capacity;
@@ -826,7 +825,6 @@ int security_logging_disconnect_all(security_logging_bridge_t* bridge) {
 
 bool security_logging_is_connected(const security_logging_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_is_connected: bridge is NULL");
         return false;
     }
 
@@ -1370,7 +1368,6 @@ int security_logging_register_stream(
     }
 
     BRIDGE_UNLOCK(bridge);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_logging_register_stream: operation failed");
     return -1;  /* No free slots */
 }
 
@@ -1854,7 +1851,7 @@ int security_logging_export_to_file(
     if (!fp) {
         LOG_MODULE_ERROR(SECURITY_LOGGING_MODULE_NAME,
                         "Failed to open export file: %s", file_path);
-        return NIMCP_ERROR_NULL_POINTER;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     BRIDGE_LOCK(bridge);
@@ -2183,7 +2180,6 @@ int security_logging_disconnect_bio_async(security_logging_bridge_t* bridge) {
 
 bool security_logging_is_bio_async_connected(const security_logging_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge_base_is_bio_async_connected(&bridge->base);
@@ -2212,7 +2208,6 @@ int security_logging_broadcast_event(
         return -1;
     }
     if (!bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_broadcast_event: bridge->base is NULL");
         return -1;
     }
 

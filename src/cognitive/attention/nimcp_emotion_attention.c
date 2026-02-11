@@ -218,8 +218,7 @@ static bool is_emotion_congruent(emotion_primary_t current, emotion_primary_t st
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_emotion_congruent: validation failed");
-    return false;
+    return false;  /* Emotions not congruent - normal result */
 }
 
 //=============================================================================

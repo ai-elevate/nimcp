@@ -154,7 +154,7 @@ incentive_validator_t* incentive_validator_create(
 {
     incentive_validator_t* validator = nimcp_calloc(1, sizeof(incentive_validator_t));
     if (!validator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "incentive_validator_create: allocation failed");
 
         return NULL;
     }
@@ -466,32 +466,27 @@ bool incentive_validator_quick_check(
     const incentive_proposal_t* proposal)
 {
     if (!validator || !proposal || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incentive_validator_quick_check: required parameter is NULL (validator, proposal)");
         return false;
     }
 
     /* Quick domain check */
     if (proposal->domain < INCENTIVE_DOMAIN_COUNT) {
         if (!validator->domains[proposal->domain].authorized) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incentive_validator_quick_check: validator->domains is NULL");
             return false;
         }
     }
 
     /* Quick harm check */
     if (proposal->worst_harm == HARM_EXISTENTIAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incentive_validator_quick_check: validation failed");
         return false;  /* Always reject existential harm */
     }
 
     if (proposal->p_harm > validator->config.default_harm_threshold * 2.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incentive_validator_quick_check: validation failed");
         return false;  /* Reject high harm */
     }
 
     /* Quick alignment check */
     if (validator->config.require_safety_verification && !proposal->is_safety_aligned) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incentive_validator_quick_check: proposal->is_safety_aligned is NULL");
         return false;
     }
 
@@ -532,26 +527,22 @@ bool incentive_validator_is_aligned(
     const incentive_proposal_t* proposal)
 {
     if (!validator || !proposal || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incentive_validator_is_aligned: required parameter is NULL (validator, proposal)");
         return false;
     }
 
     /* Check explicit alignment flag */
     if (!proposal->is_safety_aligned) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incentive_validator_is_aligned: proposal->is_safety_aligned is NULL");
         return false;
     }
 
     /* Check confidence threshold */
     if (proposal->alignment_confidence < validator->config.min_alignment_confidence) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incentive_validator_is_aligned: validation failed");
         return false;
     }
 
     /* Check goal registration if applicable */
     if (validator->config.require_goal_registration && validator->reward_monitor) {
         if (!reward_alignment_is_goal_safe(validator->reward_monitor, proposal->goal_id)) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incentive_validator_is_aligned: reward_alignment_is_goal_safe is NULL");
             return false;
         }
     }
@@ -589,11 +580,9 @@ bool incentive_validator_domain_authorized(
     incentive_domain_t domain)
 {
     if (!validator || validator->magic != INCENTIVE_VALIDATOR_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incentive_validator_domain_authorized: validator is NULL");
         return false;
     }
     if (domain >= INCENTIVE_DOMAIN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "incentive_validator_domain_authorized: capacity exceeded");
         return false;
     }
     return validator->domains[domain].authorized;
@@ -693,8 +682,7 @@ int incentive_validator_record_review(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incentive_validator_record_review: operation failed");
-    return -1;  /* Not found */
+    return -1;  /* Proposal not found - normal lookup behavior */
 }
 
 uint32_t incentive_validator_pending_review_count(

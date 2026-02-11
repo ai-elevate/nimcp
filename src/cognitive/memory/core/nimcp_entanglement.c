@@ -318,7 +318,6 @@ static node_entry_t* find_node_unlocked(entangle_graph_t graph, uint64_t node_id
         entry = entry->hash_next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node_unlocked: validation failed");
     return NULL;
 }
 
@@ -378,7 +377,6 @@ static edge_entry_t* find_edge_unlocked(entangle_graph_t graph, uint64_t from_id
         entry = entry->hash_next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_edge_unlocked: validation failed");
     return NULL;
 }
 
@@ -444,10 +442,7 @@ static int compare_neighbors_by_weight_desc(const void* a, const void* b) {
     const entangle_neighbor_t* nb = (const entangle_neighbor_t*)b;
 
     if (nb->edge.weight > na->edge.weight) return 1;
-    if (nb->edge.weight < na->edge.weight) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_neighbors_by_weight_desc: validation failed");
-        return -1;
-    }
+    if (nb->edge.weight < na->edge.weight) return -1;
     return 0;
 }
 
@@ -459,10 +454,7 @@ static int compare_walk_results_desc(const void* a, const void* b) {
     const quantum_walk_result_t* rb = (const quantum_walk_result_t*)b;
 
     if (rb->probability > ra->probability) return 1;
-    if (rb->probability < ra->probability) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_walk_results_desc: validation failed");
-        return -1;
-    }
+    if (rb->probability < ra->probability) return -1;
     return 0;
 }
 

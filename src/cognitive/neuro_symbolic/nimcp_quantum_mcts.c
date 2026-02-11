@@ -1557,7 +1557,6 @@ static qmcts_cache_entry_t* cache_lookup(quantum_mcts_t* qmcts, uint64_t hash)
         return &qmcts->cache[idx];
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_lookup: validation failed");
     return NULL;
 }
 

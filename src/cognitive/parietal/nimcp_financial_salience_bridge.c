@@ -460,10 +460,7 @@ static int compare_scored_events_desc(const void* a, const void* b) {
     const fin_scored_event_t* eb = (const fin_scored_event_t*)b;
 
     if (eb->score.combined > ea->score.combined) return 1;
-    if (eb->score.combined < ea->score.combined) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scored_events_desc: validation failed");
-        return -1;
-    }
+    if (eb->score.combined < ea->score.combined) return -1;
     return 0;
 }
 

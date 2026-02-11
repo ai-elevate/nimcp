@@ -71,7 +71,6 @@ static float compute_lr_factor(const cnn_cortex_bridge_t* bridge) {
  */
 static bool should_skip(const cnn_cortex_bridge_t* bridge) {
     if (!bridge || !bridge->config.skip_low_quality_samples) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_skip: required parameter is NULL (bridge, bridge->config)");
         return false;
     }
 
@@ -91,7 +90,6 @@ static bool should_skip(const cnn_cortex_bridge_t* bridge) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip: validation failed");
     return false;
 }
 
@@ -414,7 +412,6 @@ bool cnn_cortex_bridge_is_connected(const cnn_cortex_bridge_t* bridge) {
      * HOW:  Check cortex pointers
      */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_cortex_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->visual_cortex != NULL || bridge->audio_cortex != NULL;
@@ -893,7 +890,6 @@ bool cnn_cortex_bridge_should_skip_sample(const cnn_cortex_bridge_t* bridge) {
      * HOW:  Return cached skip decision
      */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_cortex_bridge_should_skip_sample: bridge is NULL");
         return false;
     }
     return bridge->metrics.skip_sample;

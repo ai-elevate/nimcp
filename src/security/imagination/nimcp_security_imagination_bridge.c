@@ -267,7 +267,6 @@ int security_imagination_connect_workspace(
  */
 bool security_imagination_is_connected(const security_imagination_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_is_connected: bridge is NULL");
         return false;
     }
     /* Minimum: either engine or workspace */
@@ -506,7 +505,6 @@ bool security_imagination_enforce_bounds(
     uint32_t requested_depth
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_enforce_bounds: bridge is NULL");
         return false;
     }
 
@@ -521,7 +519,6 @@ bool security_imagination_enforce_bounds(
     size_t index;
     if (find_sandbox_by_id(bridge, sandbox_id, &index) != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "security_imagination_enforce_bounds: validation failed");
         return false;
     }
 
@@ -557,7 +554,6 @@ bool security_imagination_check_depth(
     uint32_t current_depth
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_check_depth: bridge is NULL");
         return false;
     }
 
@@ -1146,7 +1142,6 @@ bool security_imagination_is_restricted(
     const security_imagination_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_is_restricted: bridge is NULL");
         return false;
     }
     return bridge->state.imagination_restricted;

@@ -233,10 +233,7 @@ static inline float random_float(uint32_t* state) {
 static int compare_scores_asc(const void* a, const void* b) {
     const sample_score_t* sa = (const sample_score_t*)a;
     const sample_score_t* sb = (const sample_score_t*)b;
-    if (sa->score < sb->score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scores_asc: validation failed");
-        return -1;
-    }
+    if (sa->score < sb->score) return -1;
     if (sa->score > sb->score) return 1;
     return 0;
 }
@@ -247,10 +244,7 @@ static int compare_scores_asc(const void* a, const void* b) {
 static int compare_scores_desc(const void* a, const void* b) {
     const sample_score_t* sa = (const sample_score_t*)a;
     const sample_score_t* sb = (const sample_score_t*)b;
-    if (sa->score > sb->score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scores_desc: validation failed");
-        return -1;
-    }
+    if (sa->score > sb->score) return -1;
     if (sa->score < sb->score) return 1;
     return 0;
 }

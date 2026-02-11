@@ -180,7 +180,7 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
     if (!immune_system || !bcm_params) {
         LOG_MODULE_ERROR("bcm_immune_bridge",
                   "Cannot create bridge without immune and BCM systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bcm_immune_bridge_create: required parameter is NULL (immune_system, bcm_params)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_bridge_create: required parameter is NULL (immune_system, bcm_params)");
         return NULL;
     }
 

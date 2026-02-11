@@ -1183,7 +1183,7 @@ bool multihead_attention_forward(multihead_attention_t mha,
     if (!head_outputs || !attention_weights) {
         free_attention_buffer(head_outputs);
         free_attention_buffer(attention_weights);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multihead_attention_forward: required parameter is NULL (head_outputs, attention_weights)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_forward: allocation failed (head_outputs, attention_weights)");
         return false;
     }
 

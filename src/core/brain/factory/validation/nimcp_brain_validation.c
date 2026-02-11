@@ -102,7 +102,7 @@ void brain_validation_mesh_unregister(void) {
 extern void set_error(const char* format, ...);
 
 // External decision copy function declaration
-extern brain_decision_t* copy_decision(brain_decision_t* decision);
+extern brain_decision_t* copy_decision_deep(const brain_decision_t* decision);
 
 //=============================================================================
 // Validation Functions
@@ -169,7 +169,7 @@ void nimcp_brain_factory_cache_decision(brain_t brain, const float* features, ui
 
     // Create new decision copy FIRST (before freeing old)
     // This reduces the race window where cached_decision could be NULL
-    brain_decision_t* new_cached = copy_decision(decision);
+    brain_decision_t* new_cached = copy_decision_deep(decision);
     if (!new_cached) {
         set_error("Failed to copy decision for cache");
         return;

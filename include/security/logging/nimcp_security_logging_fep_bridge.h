@@ -495,8 +495,12 @@ typedef struct {
     /* History buffers for running averages */
     float* fe_history;                       /**< Free energy history */
     float* surprise_history;                 /**< Surprise history */
-    uint32_t history_head;                   /**< Circular buffer head */
-    uint32_t history_count;                  /**< Number of history entries */
+    uint32_t history_head;                   /**< Circular buffer head (deprecated - use per-buffer heads) */
+    uint32_t history_count;                  /**< Number of history entries (deprecated) */
+    uint32_t fe_history_head;                /**< FE history circular buffer head */
+    uint32_t fe_history_count;               /**< FE history entry count */
+    uint32_t surprise_history_head;          /**< Surprise history circular buffer head */
+    uint32_t surprise_history_count;         /**< Surprise history entry count */
 
     /* Protection state */
     sec_log_fep_action_t pending_action;     /**< Pending protective action */

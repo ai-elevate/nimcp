@@ -529,6 +529,7 @@ static nimcp_error_t create_snapshot(nimcp_pattern_db_t db, uint32_t* snapshot_i
     for (size_t i = 0; i < db->capacity; i++) {
         if (db->patterns[i].is_compiled) {
             snapshot->patterns[i] = db->patterns[i];
+            snapshot->patterns[i].is_compiled = false;  /* Reset before re-compile to avoid double regfree */
             // Re-compile regex in snapshot
             compile_pattern(&snapshot->patterns[i]);
         }

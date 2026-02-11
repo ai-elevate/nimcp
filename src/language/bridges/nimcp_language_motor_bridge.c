@@ -150,7 +150,10 @@ static bool queue_command(language_motor_bridge_t* bridge, const articulator_com
 static bool dequeue_command(language_motor_bridge_t* bridge, articulator_command_t* cmd)
 {
     if (bridge->queue_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_command: bridge->queue_count is zero");
+        return false;
+    }
+
+    if (!cmd) {
         return false;
     }
 

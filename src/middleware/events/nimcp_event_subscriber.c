@@ -79,8 +79,7 @@ static bool event_matches_subscription(const event_t* event,
             }
         }
         if (!type_match) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_get_last_error: type_match is NULL");
-            return false;
+            return false;  /* Event type filter non-match is normal filtering */
         }
     }
 
@@ -94,16 +93,14 @@ static bool event_matches_subscription(const event_t* event,
             }
         }
         if (!source_match) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_get_last_error: source_match is NULL");
-            return false;
+            return false;  /* Event source filter non-match is normal filtering */
         }
     }
 
     // Check custom predicate
     if (config->predicate) {
         if (!config->predicate(event, config->predicate_context)) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_get_last_error: config->predicate is NULL");
-            return false;
+            return false;  /* Predicate rejection is normal filtering */
         }
     }
 
@@ -248,7 +245,6 @@ bool subscriber_unsubscribe(subscriber_manager_t manager, subscription_handle_t 
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_unsubscribe: operation failed");
     return false;
 }
 
@@ -271,7 +267,6 @@ bool subscriber_pause(subscriber_manager_t manager, subscription_handle_t handle
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_pause: validation failed");
     return false;
 }
 
@@ -294,7 +289,6 @@ bool subscriber_resume(subscriber_manager_t manager, subscription_handle_t handl
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_resume: validation failed");
     return false;
 }
 
@@ -358,8 +352,7 @@ bool subscriber_get_stats(subscriber_manager_t manager, subscription_handle_t ha
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_dispatch_event: validation failed");
-    return false;
+    return false;  /* Handle not found - normal search behavior */
 }
 
 uint32_t subscriber_get_count(subscriber_manager_t manager) {

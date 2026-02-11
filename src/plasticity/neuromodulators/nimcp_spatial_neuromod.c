@@ -1506,10 +1506,7 @@ static int compare_neuron_scores(const void* a, const void* b) {
     const neuron_score_t* na = (const neuron_score_t*)a;
     const neuron_score_t* nb = (const neuron_score_t*)b;
 
-    if (na->score > nb->score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_neuron_scores: validation failed");
-        return -1;
-    }
+    if (na->score > nb->score) return -1;
     if (na->score < nb->score) return 1;
     return 0;
 }

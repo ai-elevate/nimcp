@@ -645,7 +645,7 @@ int language_orchestrator_process_text(
 
     uint32_t len = (uint32_t)strlen(text);
     uint32_t space = orchestrator->input.text_capacity -
-                     orchestrator->input.text_length;
+                     orchestrator->input.text_length - 1;  /* -1 for NUL terminator */
     uint32_t to_copy = (len < space) ? len : space;
 
     if (to_copy > 0) {
@@ -713,6 +713,9 @@ int language_orchestrator_get_comprehension(
         return -1;
     }
 
+    /* P1 note: Shallow copy - returned pointers (words, concepts, parse_tree,
+     * semantic_vector, prosody contours) are BORROWED from the orchestrator.
+     * Caller must NOT free them. Valid until next orchestrator update. */
     *result = orchestrator->current_comprehension;
     return 0;
 }
@@ -731,6 +734,9 @@ int language_orchestrator_get_production_plan(
         return -1;
     }
 
+    /* P1 note: Shallow copy - returned pointers (semantic_input, words, phonemes,
+     * motor_commands, prosody contours) are BORROWED from the orchestrator.
+     * Caller must NOT free them. Valid until next orchestrator update. */
     *plan = orchestrator->current_production;
     return 0;
 }

@@ -193,7 +193,7 @@ security_executive_bridge_t* security_executive_bridge_create(
     security_executive_bridge_t* bridge = nimcp_malloc(sizeof(security_executive_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security_executive_bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_executive_bridge_create: allocation failed");
 
         return NULL;
     }

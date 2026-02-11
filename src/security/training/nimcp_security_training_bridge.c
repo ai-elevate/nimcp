@@ -172,7 +172,6 @@ static int find_data_source(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_data_source: validation failed");
     return -1;
 }
 
@@ -184,7 +183,6 @@ static int find_checkpoint(
     const char* checkpoint_name)
 {
     if (!bridge || !checkpoint_name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_checkpoint: required parameter is NULL (bridge, checkpoint_name)");
         return -1;
     }
 
@@ -193,7 +191,6 @@ static int find_checkpoint(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_checkpoint: validation failed");
     return -1;
 }
 
@@ -532,7 +529,6 @@ bool security_training_validate_data_source(
         if (bridge->num_data_sources >= SECURITY_TRAINING_MAX_DATA_SOURCES) {
             BRIDGE_UNLOCK(bridge);
             NIMCP_LOGGING_WARN("Max data sources reached");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "security_training_validate_data_source: capacity exceeded");
             return false;
         }
 
@@ -549,7 +545,6 @@ bool security_training_validate_data_source(
     if (bridge->data_sources[idx].blocked) {
         BRIDGE_UNLOCK(bridge);
         stats->total_validations++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_training_validate_data_source: validation failed");
         return false;
     }
 
@@ -1009,7 +1004,6 @@ bool security_training_check_gradient_anomaly(
 
     if (num_params == 0) {
         if (anomaly_score) *anomaly_score = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_training_check_gradient_anomaly: validation failed");
         return false;
     }
 
@@ -1267,12 +1261,10 @@ bool security_training_detect_concept_drift(
     if (drift_score) *drift_score = 0.0f;
 
     if (!bridge->config.enable_concept_drift_detection) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_detect_concept_drift: bridge->config is NULL");
         return false;
     }
 
     if (!current_features || num_features == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_training_detect_concept_drift: current_features is NULL");
         return false;
     }
 
@@ -1284,7 +1276,6 @@ bool security_training_detect_concept_drift(
     /* Check if baseline exists */
     if (!bridge->drift_baseline || bridge->drift_baseline_samples == 0) {
         BRIDGE_UNLOCK(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_detect_concept_drift: bridge->drift_baseline is NULL");
         return false;
     }
 
@@ -1572,7 +1563,6 @@ bool security_training_is_under_attack(
     const security_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_is_under_attack: bridge is NULL");
         return false;
     }
     return bridge->security_effects.under_attack;

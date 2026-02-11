@@ -250,8 +250,7 @@ static bool ring_buffer_enqueue(ring_buffer_t* rb, const float* features, uint32
             atomic_fetch_add(&rb->dropped, 1);
         } else {
             atomic_fetch_add(&rb->dropped, 1);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_enqueue: validation failed");
-            return false;  // Buffer full, drop new input
+            return false;  /* Buffer full is normal operational state */
         }
     }
 
@@ -316,8 +315,7 @@ static bool ring_buffer_dequeue(ring_buffer_t* rb, float** features, uint32_t* n
      * HOW: Empty when tail == head
      */
     if (tail == head) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_dequeue: validation failed");
-        return false;  // Buffer empty
+        return false;  /* Buffer empty is normal operational state */
     }
 
     stream_input_t* entry = &rb->buffer[tail];
@@ -833,8 +831,7 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream)
      *
      * @deprecated This function now always returns NULL. Use callbacks instead.
      */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_get_decision: operation failed");
-    return NULL;
+    return NULL;  /* Deprecated function - always returns NULL */
 }
 
 float brain_stream_get_salience(brain_stream_t stream)
@@ -1093,8 +1090,7 @@ static void* stream_processing_thread(void* arg)
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_processing_thread: processed_any is NULL");
-    return NULL;
+    return NULL;  /* Worker thread normal exit */
 }
 
 //=============================================================================
@@ -1146,8 +1142,7 @@ bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms)
 
     while (ring_buffer_size(stream->input_queue) > 0) {
         if (timeout_ms > 0 && elapsed >= timeout_ms) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stream_flush: capacity exceeded");
-            return false;  // Timeout
+            return false;  /* Timeout is normal operational state */
         }
 
         usleep(sleep_interval * 1000);

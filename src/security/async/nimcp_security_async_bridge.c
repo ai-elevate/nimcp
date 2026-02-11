@@ -461,7 +461,6 @@ int security_async_disconnect_bio_async(security_async_bridge_t* bridge) {
 
 bool security_async_is_bio_async_connected(const security_async_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -781,7 +780,7 @@ int security_async_broadcast_rate_limit(
     uint32_t violation_count
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_OPERATION_FAILED;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->config.enable_rate_limit_events) {
@@ -1351,7 +1350,6 @@ int security_async_reset_stats(security_async_bridge_t* bridge) {
 
 bool security_async_is_connected(const security_async_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_is_connected: bridge is NULL");
         return false;
     }
 
@@ -1389,7 +1387,7 @@ int security_async_cache_threat_intel(
     if (bridge->intel_cache.count >= bridge->intel_cache.capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("Threat intel cache full");
-        return NIMCP_ERROR_MUTEX_INIT;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     memcpy(&bridge->intel_cache.entries[bridge->intel_cache.count],
@@ -1429,7 +1427,6 @@ bool security_async_lookup_threat_intel(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_async_lookup_threat_intel: operation failed");
     return false;
 }
 
@@ -1457,7 +1454,7 @@ int security_async_get_intel_stats(
     uint32_t* confirmed
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_OPERATION_FAILED;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -1557,7 +1554,6 @@ int security_async_exit_emergency_mode(security_async_bridge_t* bridge) {
 
 bool security_async_is_emergency_mode(const security_async_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_is_emergency_mode: bridge is NULL");
         return false;
     }
     return bridge->state.emergency_mode;
@@ -1596,7 +1592,7 @@ static int send_bio_message(security_async_bridge_t* bridge,
     /* Caller must hold mutex */
 
     if (!bridge->base.bio_ctx) {
-        return NIMCP_ERROR_MUTEX_INIT;
+        return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Allocate message buffer */

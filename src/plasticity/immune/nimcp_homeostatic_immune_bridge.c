@@ -161,7 +161,7 @@ homeostatic_immune_bridge_t* homeostatic_immune_bridge_create(
     if (!immune_system || !homeostatic_controller) {
         LOG_MODULE_ERROR("homeostatic_immune_bridge",
                   "Cannot create bridge without immune and homeostatic systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_immune_bridge_create: required parameter is NULL (immune_system, homeostatic_controller)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_bridge_create: required parameter is NULL (immune_system, homeostatic_controller)");
         return NULL;
     }
 

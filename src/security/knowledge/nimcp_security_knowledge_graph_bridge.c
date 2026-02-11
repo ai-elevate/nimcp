@@ -161,7 +161,6 @@ static float clamp_float(float value, float min_val, float max_val) {
  */
 static bool contains_injection_pattern(const char* str, size_t len) {
     if (!str || len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_injection_pattern: str is NULL");
         return false;
     }
 
@@ -178,7 +177,6 @@ static bool contains_injection_pattern(const char* str, size_t len) {
  */
 static bool is_safe_entity_name(const char* name) {
     if (!name || name[0] == '\0') {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_entity_name: name is NULL");
         return false;
     }
 

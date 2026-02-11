@@ -83,7 +83,9 @@ static int compare_handlers(const void* a, const void* b) {
     const nimcp_handler_registration_t* ha = *(const nimcp_handler_registration_t**)a;
     const nimcp_handler_registration_t* hb = *(const nimcp_handler_registration_t**)b;
     /* Higher priority first */
-    return hb->options.priority - ha->options.priority;
+    if (hb->options.priority > ha->options.priority) return 1;
+    if (hb->options.priority < ha->options.priority) return -1;
+    return 0;
 }
 
 /**

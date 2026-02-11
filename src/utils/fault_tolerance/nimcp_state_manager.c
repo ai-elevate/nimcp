@@ -89,10 +89,7 @@ static uint64_t get_timestamp_us(void) {
 static int compare_by_priority(const void* a, const void* b) {
     const nimcp_state_module_entry_t* ma = (const nimcp_state_module_entry_t*)a;
     const nimcp_state_module_entry_t* mb = (const nimcp_state_module_entry_t*)b;
-    if (ma->priority < mb->priority) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_priority: validation failed");
-        return -1;
-    }
+    if (ma->priority < mb->priority) return -1;
     if (ma->priority > mb->priority) return 1;
     return 0;
 }

@@ -67,10 +67,7 @@ static inline float distance_squared(const float a[3], const float b[3]) {
 static int compare_points_x(const void* a, const void* b) {
     const kdtree_build_point_t* pa = (const kdtree_build_point_t*)a;
     const kdtree_build_point_t* pb = (const kdtree_build_point_t*)b;
-    if (pa->point[0] < pb->point[0]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_x: validation failed");
-        return -1;
-    }
+    if (pa->point[0] < pb->point[0]) return -1;
     if (pa->point[0] > pb->point[0]) return 1;
     return 0;
 }
@@ -78,10 +75,7 @@ static int compare_points_x(const void* a, const void* b) {
 static int compare_points_y(const void* a, const void* b) {
     const kdtree_build_point_t* pa = (const kdtree_build_point_t*)a;
     const kdtree_build_point_t* pb = (const kdtree_build_point_t*)b;
-    if (pa->point[1] < pb->point[1]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_y: validation failed");
-        return -1;
-    }
+    if (pa->point[1] < pb->point[1]) return -1;
     if (pa->point[1] > pb->point[1]) return 1;
     return 0;
 }
@@ -89,10 +83,7 @@ static int compare_points_y(const void* a, const void* b) {
 static int compare_points_z(const void* a, const void* b) {
     const kdtree_build_point_t* pa = (const kdtree_build_point_t*)a;
     const kdtree_build_point_t* pb = (const kdtree_build_point_t*)b;
-    if (pa->point[2] < pb->point[2]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_z: validation failed");
-        return -1;
-    }
+    if (pa->point[2] < pb->point[2]) return -1;
     if (pa->point[2] > pb->point[2]) return 1;
     return 0;
 }

@@ -433,7 +433,6 @@ int32_t graph_theory_find_hubs(
     graph_theory_error_t err = graph_theory_compute_centrality(bridge, graph,
                                                                 type, &result);
     if (err != GRAPH_THEORY_OK || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph_theory_find_hubs: result is NULL");
         return -1;
     }
 
@@ -1111,7 +1110,6 @@ static void report_exception(graph_theory_bridge_t bridge, const char* func,
 static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 {
     if (!graph || !num_nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_degree_centrality: required parameter is NULL (graph, num_nodes)");
         return NULL;
     }
 
@@ -1120,11 +1118,8 @@ static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 
     float* values = nimcp_calloc(n, sizeof(float));
     if (!values) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_degree_centrality: allocation failed");
         return NULL;
-
     }
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1137,7 +1132,6 @@ static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 static float* compute_betweenness_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 {
     if (!graph || !num_nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_betweenness_centrality: required parameter is NULL (graph, num_nodes)");
         return NULL;
     }
 
@@ -1146,11 +1140,8 @@ static float* compute_betweenness_centrality(NimcpGraph* graph, uint32_t* num_no
 
     float* values = nimcp_calloc(n, sizeof(float));
     if (!values) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_betweenness_centrality: allocation failed");
         return NULL;
-
     }
 
     for (uint32_t s = 0; s < n; s++) {
@@ -1171,7 +1162,6 @@ static float* compute_pagerank(NimcpGraph* graph, float damping,
                                uint32_t max_iter, float tol, uint32_t* num_nodes)
 {
     if (!graph || !num_nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_pagerank: required parameter is NULL (graph, num_nodes)");
         return NULL;
     }
 
@@ -1183,7 +1173,7 @@ static float* compute_pagerank(NimcpGraph* graph, float damping,
     if (!rank || !new_rank) {
         nimcp_free(rank);
         nimcp_free(new_rank);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_pagerank: required parameter is NULL (rank, new_rank)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_pagerank: allocation failed");
         return NULL;
     }
 
@@ -1228,7 +1218,6 @@ static uint32_t* louvain_communities(NimcpGraph* graph, uint32_t* num_communitie
                                      float* modularity)
 {
     if (!graph || !num_communities || !modularity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_communities: required parameter is NULL (graph, num_communities, modularity)");
         return NULL;
     }
 
@@ -1236,9 +1225,7 @@ static uint32_t* louvain_communities(NimcpGraph* graph, uint32_t* num_communitie
 
     uint32_t* assignments = nimcp_calloc(n, sizeof(uint32_t));
     if (!assignments) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "assignments is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "louvain_communities: allocation failed");
         return NULL;
 
     }

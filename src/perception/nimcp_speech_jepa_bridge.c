@@ -34,8 +34,45 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(speech_jepa_bridge)
 
 #define SPEECH_JEPA_LOG_TAG "SPEECH_JEPA"
 
-/* GELU approximation constant */
-#define GELU_CONST 0.044715f
+/* GELU activation constants */
+#define GELU_CONST              0.044715f
+#define GELU_SQRT_2_OVER_PI     0.7978845608f   /* sqrt(2/pi) */
+
+/* Default config values */
+#define SPEECH_JEPA_DEFAULT_LATENT_DIM          256
+#define SPEECH_JEPA_DEFAULT_NUM_LAYERS          2
+#define SPEECH_JEPA_DEFAULT_MASK_RATIO          0.3f
+#define SPEECH_JEPA_DEFAULT_MIN_MASK_LEN        3
+#define SPEECH_JEPA_DEFAULT_MAX_MASK_LEN        10
+#define SPEECH_JEPA_DEFAULT_PREDICTOR_LAYERS    2
+#define SPEECH_JEPA_DEFAULT_LEARNING_RATE       0.0001f
+#define SPEECH_JEPA_DEFAULT_EMA_MOMENTUM        0.996f
+#define SPEECH_JEPA_DEFAULT_PRECISION           1.0f
+
+/* Stack buffer and dimension limits */
+#define SPEECH_JEPA_MAX_ENCODER_DIM             512
+
+/* Feature normalization constants */
+#define SPEECH_JEPA_PHONEME_NORM_FACTOR         64.0f
+#define SPEECH_JEPA_FORMANT_MAX_FREQ_HZ         5000.0f
+#define SPEECH_JEPA_PITCH_MAX_FREQ_HZ           400.0f
+#define SPEECH_JEPA_DURATION_NORM_MS            100.0f
+
+/* Phoneme vocabulary */
+#define SPEECH_JEPA_PHONEME_COUNT               64
+
+/* Training parameters */
+#define SPEECH_JEPA_MIN_TRAIN_SEQUENCE_LEN      4
+
+/* Masking threshold */
+#define SPEECH_JEPA_MASK_THRESHOLD              0.5f
+
+/* Decoding constants */
+#define SPEECH_JEPA_CONFIDENCE_SCALE            10.0f
+#define SPEECH_JEPA_NEG_INF                     (-1e10f)
+
+/* Layer normalization epsilon */
+#define SPEECH_JEPA_LAYER_NORM_EPSILON          1e-5f
 
 /* ============================================================================
  * Forward Declarations
@@ -71,7 +108,6 @@ static void layer_normalize(float* data, uint32_t dim);
 int speech_jepa_bridge_default_config(speech_jepa_bridge_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in speech_jepa_bridge_default_config");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -81,8 +117,8 @@ int speech_jepa_bridge_default_config(speech_jepa_bridge_config_t* config)
     config->encoder.type = SPEECH_JEPA_ENCODER_MLP;
     config->encoder.input_dim = SPEECH_JEPA_FRAME_FEATURES;
     config->encoder.hidden_dim = SPEECH_JEPA_DEFAULT_ENCODER_DIM;
-    config->encoder.output_dim = 256;  /* Default latent dim */
-    config->encoder.num_layers = 2;
+    config->encoder.output_dim = SPEECH_JEPA_DEFAULT_LATENT_DIM;
+    config->encoder.num_layers = SPEECH_JEPA_DEFAULT_NUM_LAYERS;
     config->encoder.features = SPEECH_JEPA_FEAT_ALL;
     config->encoder.use_positional_encoding = true;
     config->encoder.use_layer_norm = true;
@@ -94,23 +130,23 @@ int speech_jepa_bridge_default_config(speech_jepa_bridge_config_t* config)
 
     /* Masking config */
     config->mask_strategy = SPEECH_JEPA_MASK_TEMPORAL;
-    config->mask_ratio = 0.3f;
-    config->min_mask_len = 3;
-    config->max_mask_len = 10;
+    config->mask_ratio = SPEECH_JEPA_DEFAULT_MASK_RATIO;
+    config->min_mask_len = SPEECH_JEPA_DEFAULT_MIN_MASK_LEN;
+    config->max_mask_len = SPEECH_JEPA_DEFAULT_MAX_MASK_LEN;
 
     /* Predictor config */
     config->predictor.type = JEPA_PREDICTOR_MLP;
     config->predictor.input_dim = config->encoder.output_dim;
     config->predictor.hidden_dim = config->encoder.hidden_dim;
     config->predictor.output_dim = config->encoder.output_dim;
-    config->predictor.num_layers = 2;
+    config->predictor.num_layers = SPEECH_JEPA_DEFAULT_PREDICTOR_LAYERS;
     config->predictor.dropout_rate = 0.0f;
     config->predictor.enable_layer_norm = true;
     config->predictor.activation = JEPA_ACT_GELU;
 
     /* Training parameters */
-    config->learning_rate = 0.0001f;
-    config->momentum = 0.996f;
+    config->learning_rate = SPEECH_JEPA_DEFAULT_LEARNING_RATE;
+    config->momentum = SPEECH_JEPA_DEFAULT_EMA_MOMENTUM;
     config->use_target_encoder = true;
 
     return NIMCP_SUCCESS;
@@ -144,6 +180,15 @@ speech_jepa_bridge_t* speech_jepa_bridge_create(
     /* Initialize bridge base */
     bridge_base_init(&bridge->base, BIO_MODULE_SPEECH_JEPA, "speech_jepa");
     bridge->base.bridge_active = false;
+
+    /* P1 fix: Validate output_dim fits in stack encoding buffers */
+    if (config->encoder.output_dim > SPEECH_JEPA_MAX_ENCODER_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "speech_jepa_bridge_create: encoder.output_dim %u exceeds max %u",
+            config->encoder.output_dim, SPEECH_JEPA_MAX_ENCODER_DIM);
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     /* Copy configuration */
     memcpy(&bridge->config, config, sizeof(speech_jepa_bridge_config_t));
@@ -341,7 +386,7 @@ int speech_jepa_bridge_extract_features(
     /* Phoneme features (one-hot encoding, simplified) */
     if (flags & SPEECH_JEPA_FEAT_PHONEME) {
         /* Use phoneme index directly, normalized */
-        features[idx++] = (float)frame->phoneme / 64.0f;  /* Normalize */
+        features[idx++] = (float)frame->phoneme / SPEECH_JEPA_PHONEME_NORM_FACTOR;
         features[idx++] = frame->phoneme_confidence;
         features[idx++] = frame->is_voiced ? 1.0f : 0.0f;
     } else {
@@ -352,7 +397,7 @@ int speech_jepa_bridge_extract_features(
     if (flags & SPEECH_JEPA_FEAT_FORMANT) {
         for (uint32_t i = 0; i < SPEECH_NUM_FORMANTS && idx < feature_dim; i++) {
             /* Normalize formant frequencies (typical range ~200-5000 Hz) */
-            features[idx++] = frame->formants[i] / 5000.0f;
+            features[idx++] = frame->formants[i] / SPEECH_JEPA_FORMANT_MAX_FREQ_HZ;
         }
     } else {
         idx += SPEECH_NUM_FORMANTS;
@@ -361,11 +406,11 @@ int speech_jepa_bridge_extract_features(
     /* Prosody features */
     if (flags & SPEECH_JEPA_FEAT_PROSODY) {
         /* Pitch (F0): typical range 80-400 Hz */
-        features[idx++] = frame->pitch / 400.0f;
+        features[idx++] = frame->pitch / SPEECH_JEPA_PITCH_MAX_FREQ_HZ;
         /* Energy: already normalized */
         features[idx++] = frame->energy;
         /* Duration: normalize to typical frame duration */
-        features[idx++] = frame->duration_ms / 100.0f;
+        features[idx++] = frame->duration_ms / SPEECH_JEPA_DURATION_NORM_MS;
     } else {
         idx += 3;
     }
@@ -445,7 +490,7 @@ int speech_jepa_bridge_encode(
 
     /* Copy to latent */
     memcpy(latent->embedding, pooled, latent_dim * sizeof(float));
-    latent->precision = 1.0f;  /* Default precision */
+    latent->precision = SPEECH_JEPA_DEFAULT_PRECISION;
     latent->modality = JEPA_MODALITY_SPEECH;
     latent->timestamp_ms = sequence->end_time_ms;
 
@@ -528,7 +573,7 @@ int speech_jepa_bridge_encode_frames(
         }
 
         /* Encode frame */
-        float encoding[512];
+        float encoding[SPEECH_JEPA_MAX_ENCODER_DIM];
         rc = speech_encoder_forward(
             bridge->encoder,
             bridge->frame_buffer,
@@ -593,7 +638,7 @@ int speech_jepa_bridge_train_step(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    if (sequence->num_frames < 4) {
+    if (sequence->num_frames < SPEECH_JEPA_MIN_TRAIN_SEQUENCE_LEN) {
         *loss = 0.0f;
         return NIMCP_SUCCESS;  /* Sequence too short */
     }
@@ -669,7 +714,7 @@ int speech_jepa_bridge_train_step(
             }
 
             /* Encode frame */
-            float encoding[512];
+            float encoding[SPEECH_JEPA_MAX_ENCODER_DIM];
             rc = speech_encoder_forward(bridge->encoder, bridge->frame_buffer, encoding);
             if (rc != NIMCP_SUCCESS) {
                 goto cleanup;
@@ -717,7 +762,7 @@ int speech_jepa_bridge_train_step(
                 goto cleanup;
             }
 
-            float encoding[512];
+            float encoding[SPEECH_JEPA_MAX_ENCODER_DIM];
             rc = speech_encoder_forward(target_enc, bridge->frame_buffer, encoding);
             if (rc != NIMCP_SUCCESS) {
                 nimcp_free(target_sum);
@@ -877,7 +922,7 @@ int speech_jepa_bridge_predict_masked(
     /* Count masked positions */
     uint32_t masked_count = 0;
     for (uint32_t i = 0; i < mask->total_size; i++) {
-        if (mask->data[i] > 0.5f) {
+        if (mask->data[i] > SPEECH_JEPA_MASK_THRESHOLD) {
             masked_count++;
         }
     }
@@ -887,7 +932,7 @@ int speech_jepa_bridge_predict_masked(
     /* Predict each masked position */
     uint32_t pred_idx = 0;
     for (uint32_t i = 0; i < mask->total_size && pred_idx < masked_count; i++) {
-        if (mask->data[i] > 0.5f) {
+        if (mask->data[i] > SPEECH_JEPA_MASK_THRESHOLD) {
             if (!predictions[pred_idx]) {
                 predictions[pred_idx] = jepa_latent_create_dim(latent_dim);
             }
@@ -1040,8 +1085,7 @@ void speech_jepa_phoneme_to_onehot(phoneme_t phoneme, float* encoding)
         return;
     }
 
-    /* Assume PHONEME_COUNT is defined, default to 64 */
-    const uint32_t num_phonemes = 64;
+    const uint32_t num_phonemes = SPEECH_JEPA_PHONEME_COUNT;
     memset(encoding, 0, num_phonemes * sizeof(float));
 
     if (phoneme < num_phonemes) {
@@ -1061,10 +1105,10 @@ int speech_jepa_decode_phoneme(
     /* This is a placeholder - real implementation would use a learned decoder */
 
     /* For now, return most confident based on embedding magnitude */
-    float max_val = -1e10f;
+    float max_val = SPEECH_JEPA_NEG_INF;
     uint32_t max_idx = 0;
 
-    uint32_t check_dim = latent->latent_dim < 64 ? latent->latent_dim : 64;
+    uint32_t check_dim = latent->latent_dim < SPEECH_JEPA_PHONEME_COUNT ? latent->latent_dim : SPEECH_JEPA_PHONEME_COUNT;
     for (uint32_t i = 0; i < check_dim; i++) {
         if (latent->embedding[i] > max_val) {
             max_val = latent->embedding[i];
@@ -1073,7 +1117,7 @@ int speech_jepa_decode_phoneme(
     }
 
     *phoneme = (phoneme_t)max_idx;
-    *confidence = max_val > 0 ? max_val / 10.0f : 0.0f;
+    *confidence = max_val > 0 ? max_val / SPEECH_JEPA_CONFIDENCE_SCALE : 0.0f;
     if (*confidence > 1.0f) *confidence = 1.0f;
     if (*confidence < 0.0f) *confidence = 0.0f;
 
@@ -1091,7 +1135,7 @@ static float gelu_activation(float x)
 {
     /* GELU(x) = x * 0.5 * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3))) */
     float x3 = x * x * x;
-    float inner = 0.7978845608f * (x + GELU_CONST * x3);  /* sqrt(2/pi) ≈ 0.7978845608 */
+    float inner = GELU_SQRT_2_OVER_PI * (x + GELU_CONST * x3);
     return 0.5f * x * (1.0f + tanhf(inner));
 }
 
@@ -1118,7 +1162,7 @@ static void layer_normalize(float* data, uint32_t dim)
     variance /= (float)dim;
 
     /* Normalize */
-    float std_inv = 1.0f / sqrtf(variance + 1e-5f);
+    float std_inv = 1.0f / sqrtf(variance + SPEECH_JEPA_LAYER_NORM_EPSILON);
     for (uint32_t i = 0; i < dim; i++) {
         data[i] = (data[i] - mean) * std_inv;
     }

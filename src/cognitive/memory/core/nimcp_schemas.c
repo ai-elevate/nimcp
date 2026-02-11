@@ -250,13 +250,11 @@ static bool id_table_lookup(schema_system_t system, uint64_t key, size_t* value)
             return true;
         }
         if (system->id_table_keys[idx] == 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_lookup: validation failed");
             return false;  // Not found
         }
         idx = (idx + 1) % system->id_table_capacity;
     } while (idx != start);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_lookup: validation failed");
     return false;
 }
 

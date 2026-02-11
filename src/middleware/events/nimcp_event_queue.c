@@ -159,7 +159,7 @@ static bool event_copy_pooled(event_t* dest, const event_t* src,
                                 memory_pool_t pool, uint32_t max_pool_size,
                                 bool* used_pool) {
     if (!dest || !src || !used_pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_get_last_error: required parameter is NULL (dest, src, used_pool)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_copy_pooled: required parameter is NULL (dest, src, used_pool)");
         return false;
     }
 
@@ -235,7 +235,7 @@ static bool event_copy_pooled(event_t* dest, const event_t* src,
     if (!allocated) {
         allocated = nimcp_malloc(payload_size);
         if (!allocated) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_get_last_error: allocated is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_copy_pooled: allocated is NULL");
             return false;
         }
         *used_pool = false;
@@ -651,8 +651,7 @@ bool event_queue_dequeue(event_queue_t queue, event_t* event) {
 
     if (queue->size == 0) {
         nimcp_platform_mutex_unlock(&queue->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_dequeue: queue->size is zero");
-        return false;
+        return false;  /* Empty queue is normal operational state */
     }
 
     // Get the heap entry (contains used_pool flag)

@@ -127,7 +127,6 @@ static security_bio_subscription_t* find_subscription(
             return &b->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
     return NULL;
 }
 
@@ -249,7 +248,6 @@ int security_bio_bridge_connect(
         return -1;
     }
     if (bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_bio_bridge_connect: validation failed");
         return -1;
     }
 
@@ -430,11 +428,9 @@ int security_bio_bridge_initiate_lockdown(
     const char* reason
 ) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_initiate_lockdown: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
     if (bridge->internal.lockdown_active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_bio_bridge_initiate_lockdown: validation failed");
         return -1;
     }
 
@@ -472,11 +468,9 @@ int security_bio_bridge_end_lockdown(
     const char* reason
 ) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_end_lockdown: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
     if (!bridge->internal.lockdown_active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_end_lockdown: bridge->internal is NULL");
         return -1;
     }
 
@@ -634,11 +628,9 @@ int security_bio_bridge_propose_consensus(
     const char* description
 ) {
     if (!bridge || !bridge->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_propose_consensus: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
     if (!bridge->config.enable_consensus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_propose_consensus: bridge->config is NULL");
         return -1;
     }
 

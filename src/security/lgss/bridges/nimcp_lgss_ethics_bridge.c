@@ -182,9 +182,9 @@ lgss_ethics_bridge_t* lgss_ethics_bridge_create(
 
 void lgss_ethics_bridge_destroy(lgss_ethics_bridge_t* bridge)
 {
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "lgss_ethics");
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "lgss_ethics");
     }
 
     if (bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {

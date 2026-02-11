@@ -258,6 +258,12 @@ int language_thalamic_bridge_send_signal(
         return -1;
     }
 
+    /* Bounds check for target nucleus */
+    if (signal->target < 0 || signal->target >= LANG_THAL_NUCLEUS_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_thalamic_bridge_send_signal: signal->target out of bounds");
+        return -1;
+    }
+
     /* Check gating for target nucleus */
     float gating = bridge->gating_state[signal->target];
     if (gating < signal->gating_threshold) {

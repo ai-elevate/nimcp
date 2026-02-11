@@ -160,7 +160,7 @@ stdp_immune_bridge_t* stdp_immune_bridge_create(
     if (!immune_system || !synapses || num_synapses == 0) {
         LOG_MODULE_ERROR("stdp_immune_bridge",
                   "Cannot create bridge without immune system and synapses");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_immune_bridge_create: required parameter is NULL (immune_system, synapses)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_bridge_create: required parameter is NULL (immune_system, synapses)");
         return NULL;
     }
 
