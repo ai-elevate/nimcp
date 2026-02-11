@@ -118,8 +118,8 @@ static void update_modality_state(omni_modality_state_t* state,
         if (state->features) {
             memcpy(state->features, features, dim * sizeof(float));
         }
+        state->dim = dim;
     }
-    state->dim = dim;
 }
 
 /* ============================================================================
@@ -565,11 +565,11 @@ bool omni_sensory_are_bound(const omni_sensory_bridge_t* bridge,
                              omni_modality_t m1,
                              omni_modality_t m2) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_sensory_apply_to_omni: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_sensory_are_bound: bridge is NULL");
         return false;
     }
     if (m1 >= OMNI_MODALITY_COUNT || m2 >= OMNI_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "omni_sensory_apply_to_omni: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "omni_sensory_are_bound: capacity exceeded");
         return false;
     }
     if (m1 == m2) return true;

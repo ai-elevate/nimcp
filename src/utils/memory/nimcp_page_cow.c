@@ -288,7 +288,7 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     size_t page_idx = offset / PAGE_COW_PAGE_SIZE;
 
     if (page_idx >= view->num_pages) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: capacity exceeded");
+        /* Not async-signal-safe: omit THROW in signal handler context */
         return false;
     }
 
@@ -299,14 +299,12 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     // If already private, this isn't a COW fault
     if (vpage->is_private) {
         spinlock_release(&view->spinlock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: validation failed");
         return false;
     }
 
     page_cow_region_t region = view->region;
     if (!region || region->magic != PAGE_COW_MAGIC) {
         spinlock_release(&view->spinlock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: region is NULL");
         return false;
     }
 
@@ -316,7 +314,6 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (private_page == MAP_FAILED) {
         spinlock_release(&view->spinlock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: validation failed");
         return false;
     }
 
@@ -334,7 +331,6 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     if (result == MAP_FAILED) {
         munmap(private_page, PAGE_COW_PAGE_SIZE);
         spinlock_release(&view->spinlock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: validation failed");
         return false;
     }
 

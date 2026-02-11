@@ -701,7 +701,7 @@ float glial_integration_get_myelination_factor(glial_integration_t* gi, uint32_t
 bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pre_neuron_id,
                                             uint32_t post_neuron_id) {
     if (!gi || !gi->enable_microglia_pruning) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_get_myelination_factor: required parameter is NULL (gi, gi->enable_microglia_pruning)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_should_prune_synapse: required parameter is NULL (gi, gi->enable_microglia_pruning)");
         return false;
     }
 
@@ -730,7 +730,7 @@ bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pr
     }
 
     nimcp_mutex_unlock(&gi->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_integration_get_myelination_factor: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_integration_should_prune_synapse: operation failed");
     return false;
 }
 
@@ -960,7 +960,7 @@ myelin_sheath_t* glial_integration_create_myelin_sheath(
     float axon_length,
     float axon_diameter) {
     if (!gi || !gi->myelin_sheath_network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_get_myelin_delay: required parameter is NULL (gi, gi->myelin_sheath_network)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_create_myelin_sheath: required parameter is NULL (gi, gi->myelin_sheath_network)");
         return NULL;
     }
 

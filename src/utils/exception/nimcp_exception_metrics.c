@@ -942,12 +942,8 @@ void nimcp_adaptive_reset_pattern(const uint8_t* epitope, size_t len) {
     if (g_adaptive_mutex) nimcp_platform_mutex_unlock(g_adaptive_mutex);
 }
 
-void nimcp_adaptive_reset_all(void) {
-    if (!g_adaptive_initialized) return;
-
-    if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
-
-    /* Free chained entries and reset base array */
+/* Internal helper: reset patterns without acquiring mutex (caller must hold it) */
+static void adaptive_reset_all_unlocked(void) {
     if (g_patterns) {
         for (size_t i = 0; i < NIMCP_METRICS_MAX_PATTERNS; i++) {
             pattern_entry_t* entry = g_patterns[i].next;
@@ -959,6 +955,15 @@ void nimcp_adaptive_reset_all(void) {
             memset(&g_patterns[i], 0, sizeof(pattern_entry_t));
         }
     }
+    g_pattern_count = 0;
+}
+
+void nimcp_adaptive_reset_all(void) {
+    if (!g_adaptive_initialized) return;
+
+    if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
+
+    adaptive_reset_all_unlocked();
 
     g_pattern_count = 0;
 
@@ -1049,20 +1054,8 @@ int nimcp_adaptive_import(const uint8_t* buffer, size_t size) {
 
     if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
 
-    /* P1 fix: Call unlocked reset to avoid deadlock (we already hold g_adaptive_mutex) */
-    /* Free chained entries and reset base array */
-    if (g_patterns) {
-        for (size_t i = 0; i < NIMCP_METRICS_MAX_PATTERNS; i++) {
-            pattern_entry_t* entry = g_patterns[i].next;
-            while (entry) {
-                pattern_entry_t* next = entry->next;
-                nimcp_free(entry);
-                entry = next;
-            }
-            memset(&g_patterns[i], 0, sizeof(pattern_entry_t));
-        }
-    }
-    g_pattern_count = 0;
+    /* Use unlocked helper since we already hold g_adaptive_mutex */
+    adaptive_reset_all_unlocked();
 
     /* Import patterns */
     size_t offset = sizeof(persistence_header_t);

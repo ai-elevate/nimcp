@@ -974,8 +974,11 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
     bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
     if (!ctx) {
         LOG_ERROR("Failed to allocate module context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_register_module: failed to allocate context");
+        /* Undo registration to avoid orphaned entry */
+        nimcp_platform_mutex_lock(&g_router->modules_mutex);
+        entry->magic = 0;
+        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         return NULL;
     }
 

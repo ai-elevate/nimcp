@@ -275,8 +275,13 @@ float compute_characteristic_path_length(NimcpGraph* graph)
         return 0.0F;
     }
 
+    // Integer overflow check for n * n * sizeof(float)
+    if ((size_t)n * n > SIZE_MAX / sizeof(float)) {
+        return -1.0F;
+    }
+
     // Allocate distance matrix (flattened 2D array)
-    float* dist = (float*)nimcp_malloc(n * n * sizeof(float));
+    float* dist = (float*)nimcp_malloc((size_t)n * n * sizeof(float));
     if (!dist) {
         return -1.0F;
     }
@@ -621,7 +626,11 @@ graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
     // Reuse Floyd-Warshall calculation
     if (graph->vertex_count > 0) {
         uint32_t n = graph->vertex_count;
-        float* dist = (float*)nimcp_malloc(n * n * sizeof(float));
+        if ((size_t)n * n > SIZE_MAX / sizeof(float)) {
+            nimcp_free(metrics);
+            return NULL;
+        }
+        float* dist = (float*)nimcp_malloc((size_t)n * n * sizeof(float));
 
         if (dist) {
             // Initialize distance matrix

@@ -117,7 +117,7 @@ snn_encoder_t* snn_encoder_create_rate(uint32_t n_inputs,
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_inputs, SNN_ENCODE_RATE);
     if (!encoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_create_rate: encoder is NULL");
         return NULL;
     }
 
@@ -138,7 +138,7 @@ snn_encoder_t* snn_encoder_create_temporal(uint32_t n_inputs,
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_inputs, SNN_ENCODE_TEMPORAL);
     if (!encoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_create_temporal: encoder is NULL");
         return NULL;
     }
 
@@ -162,7 +162,7 @@ snn_encoder_t* snn_encoder_create_population(uint32_t n_inputs,
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_outputs, SNN_ENCODE_POPULATION);
     if (!encoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_create_population: encoder is NULL");
         return NULL;
     }
 
@@ -184,7 +184,7 @@ snn_encoder_t* snn_encoder_create_latency(uint32_t n_inputs,
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_inputs, SNN_ENCODE_LATENCY);
     if (!encoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_create_latency: encoder is NULL");
         return NULL;
     }
 
@@ -250,7 +250,7 @@ snn_decoder_t* snn_decoder_create_rate(uint32_t n_inputs,
 
     snn_decoder_t* decoder = decoder_alloc(n_inputs, n_outputs, SNN_DECODE_RATE);
     if (!decoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_destroy: decoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_decoder_create_rate: decoder is NULL");
         return NULL;
     }
 
@@ -273,7 +273,7 @@ snn_decoder_t* snn_decoder_create_first_spike(uint32_t n_inputs,
     /* First-spike decoder outputs a single class */
     snn_decoder_t* decoder = decoder_alloc(n_inputs, 1, SNN_DECODE_FIRST_SPIKE);
     if (!decoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_destroy: decoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_decoder_create_first_spike: decoder is NULL");
         return NULL;
     }
 
@@ -295,7 +295,7 @@ snn_decoder_t* snn_decoder_create_population(uint32_t n_inputs,
 
     snn_decoder_t* decoder = decoder_alloc(n_inputs, n_outputs, SNN_DECODE_POPULATION);
     if (!decoder) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_destroy: decoder is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_decoder_create_population: decoder is NULL");
         return NULL;
     }
 

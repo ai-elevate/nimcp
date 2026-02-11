@@ -529,7 +529,7 @@ bool protocol_metrics_query(protocol_metrics_t metrics, const char* pattern,
                            metric_t* out_metrics, uint32_t max_metrics,
                            uint32_t* out_count) {
     if (!metrics || !out_metrics || !out_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (metrics, out_metrics, out_count)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_query: required parameter is NULL (metrics, out_metrics, out_count)");
         return false;
     }
 
@@ -648,7 +648,7 @@ static size_t export_prometheus(protocol_metrics_t metrics, char* buffer, size_t
 bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
                             char* out_buffer, size_t buffer_size, size_t* out_bytes) {
     if (!metrics || !out_buffer || !out_bytes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "export_prometheus: required parameter is NULL (metrics, out_buffer, out_bytes)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_export: required parameter is NULL (metrics, out_buffer, out_bytes)");
         return false;
     }
 
@@ -679,7 +679,7 @@ bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
 bool protocol_metrics_export_file(protocol_metrics_t metrics,
                                  export_format_t format, const char* filename) {
     if (!metrics || !filename) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "export_prometheus: required parameter is NULL (metrics, filename)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_export_file: required parameter is NULL (metrics, filename)");
         return false;
     }
 
@@ -688,14 +688,14 @@ bool protocol_metrics_export_file(protocol_metrics_t metrics,
 
     if (!protocol_metrics_export(metrics, format, buffer, sizeof(buffer), &bytes)) {
         LOG_ERROR("Export buffer too small");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "export_prometheus: protocol_metrics_export is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_metrics_export_file: protocol_metrics_export is NULL");
         return false;
     }
 
     FILE* f = fopen(filename, "w");
     if (!f) {
         LOG_ERROR("Failed to open file: %s", filename);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "export_prometheus: f is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_export_file: f is NULL");
         return false;
     }
 
@@ -705,7 +705,7 @@ bool protocol_metrics_export_file(protocol_metrics_t metrics,
     if (written != bytes) {
         LOG_ERROR("Failed to write all bytes to file: %s (wrote %zu of %zu)",
                   filename, written, bytes);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "export_prometheus: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_metrics_export_file: validation failed");
         return false;
     }
 

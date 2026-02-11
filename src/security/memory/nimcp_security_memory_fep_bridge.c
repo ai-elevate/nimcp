@@ -461,8 +461,7 @@ int sec_mem_fep_compute_effects(sec_mem_fep_bridge_t* bridge) {
         urgency
     );
 
-    /* Update statistics */
-    bridge->stats.avg_free_energy = current_fe;
+    /* Update statistics (avg_free_energy maintained by update_running_averages) */
     bridge->stats.avg_surprise = bridge->state.avg_surprise;
     bridge->stats.avg_prediction_error = bridge->state.avg_prediction_error;
 

@@ -411,7 +411,7 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
         config->quality_level > SEMANTIC_MAX_QUALITY) {
         LOG_ERROR(COMPRESSION_MODULE, "quality_level out of range: %.2f",
                   config->quality_level);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_default_config: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_create: operation failed");
         return NULL;
     }
 
@@ -420,7 +420,7 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
         (nimcp_semantic_compressor_t*)nimcp_malloc(sizeof(nimcp_semantic_compressor_t));
     if (!compressor) {
         LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate compressor");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_default_config: compressor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_create: compressor is NULL");
         return NULL;
     }
 
@@ -437,7 +437,7 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
     if (!compressor->primitive_hash) {
         LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate primitive hash table");
         nimcp_free(compressor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_default_config: compressor->primitive_hash is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_create: compressor->primitive_hash is NULL");
         return NULL;
     }
 
@@ -451,7 +451,7 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
         LOG_ERROR(COMPRESSION_MODULE, "Failed to initialize mutex");
         nimcp_free(compressor->primitive_hash);
         nimcp_free(compressor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_semantic_compressor_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_semantic_compressor_create: validation failed");
         return NULL;
     }
 
@@ -526,7 +526,7 @@ nimcp_compressed_signal_t* nimcp_semantic_compressor_compress(
     /* Validate inputs */
     if (!compressor || !signal || len == 0) {
         LOG_ERROR(COMPRESSION_MODULE, "Invalid parameters for compress");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_destroy: required parameter is NULL (compressor, signal)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_compress: required parameter is NULL (compressor, signal)");
         return NULL;
     }
 
@@ -540,7 +540,7 @@ nimcp_compressed_signal_t* nimcp_semantic_compressor_compress(
     if (!compressed) {
         LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate compressed signal");
         nimcp_platform_mutex_unlock(&compressor->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_destroy: compressed is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_compress: compressed is NULL");
         return NULL;
     }
 
@@ -556,7 +556,7 @@ nimcp_compressed_signal_t* nimcp_semantic_compressor_compress(
         LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate primitive IDs");
         nimcp_free(compressed);
         nimcp_platform_mutex_unlock(&compressor->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_destroy: compressed->primitive_ids is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_compress: compressed->primitive_ids is NULL");
         return NULL;
     }
 
@@ -643,7 +643,7 @@ nimcp_decompressed_signal_t* nimcp_semantic_compressor_decompress(
     /* Validate inputs */
     if (!compressor || !compressed) {
         LOG_ERROR(COMPRESSION_MODULE, "Invalid parameters for decompress");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_destroy: required parameter is NULL (compressor, compressed)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_decompress: required parameter is NULL (compressor, compressed)");
         return NULL;
     }
 
@@ -658,7 +658,7 @@ nimcp_decompressed_signal_t* nimcp_semantic_compressor_decompress(
     if (!decompressed) {
         LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate decompressed signal");
         nimcp_platform_mutex_unlock(&compressor->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_destroy: decompressed is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_decompress: decompressed is NULL");
         return NULL;
     }
 
@@ -673,7 +673,7 @@ nimcp_decompressed_signal_t* nimcp_semantic_compressor_decompress(
         LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate signal array");
         nimcp_free(decompressed);
         nimcp_platform_mutex_unlock(&compressor->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_destroy: decompressed->signal is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_decompress: decompressed->signal is NULL");
         return NULL;
     }
 
@@ -685,7 +685,7 @@ nimcp_decompressed_signal_t* nimcp_semantic_compressor_decompress(
         nimcp_free(decompressed->signal);
         nimcp_free(decompressed);
         nimcp_platform_mutex_unlock(&compressor->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: compressed->primitive_ids is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_decompress: compressed->primitive_ids is NULL");
         return NULL;
     }
 

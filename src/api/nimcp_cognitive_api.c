@@ -376,7 +376,7 @@ NIMCP_EXPORT bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_co
     bool success = brain_resize(brain->internal_brain, new_neuron_count);
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to resize brain to %u neurons", new_neuron_count);
-        return -1;
+        return false;
     }
     return success;
 }
@@ -391,7 +391,7 @@ NIMCP_EXPORT bool nimcp_brain_auto_resize(nimcp_brain_t brain) {
     bool success = brain_auto_resize(brain->internal_brain);
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to auto-resize brain");
-        return -1;
+        return false;
     }
     return success;
 }

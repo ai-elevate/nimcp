@@ -394,11 +394,11 @@ void language_motor_bridge_destroy(language_motor_bridge_t* bridge)
 {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_motor");
     }
 
     if (bridge->log_ctx) {
         NIMCP_LOG_INFO(bridge->log_ctx, "Language-Motor bridge destroyed");
+        nimcp_log_context_destroy(bridge->log_ctx);
     }
 
     nimcp_free(bridge);

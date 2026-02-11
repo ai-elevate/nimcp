@@ -475,9 +475,14 @@ static void qstats_compute_eigenvalues_jacobi(
 ) {
     uint32_t n = dm->dim;
 
+    // Integer overflow check for n * n allocation
+    if (n > 0 && (size_t)n * n > SIZE_MAX / sizeof(float)) {
+        return;
+    }
+
     // Work with real part (density matrices are Hermitian, eigenvalues are real)
-    float* A = nimcp_malloc(n * n * sizeof(float));
-    float* V = nimcp_malloc(n * n * sizeof(float));
+    float* A = nimcp_malloc((size_t)n * n * sizeof(float));
+    float* V = nimcp_malloc((size_t)n * n * sizeof(float));
 
     // Copy real parts (for Hermitian matrix, eigenvalues come from real part structure)
     for (uint32_t i = 0; i < n; i++) {

@@ -506,7 +506,10 @@ nimcp_mv_result_t nimcp_mv_eigh(
     char uplo = 'U';
     int info;
 
-    float* A_work = (float*)nimcp_malloc(n * n * sizeof(float));
+    if (n > 0 && (size_t)n * n > SIZE_MAX / sizeof(float)) {
+        return NIMCP_MV_ERROR_MEMORY;
+    }
+    float* A_work = (float*)nimcp_malloc((size_t)n * n * sizeof(float));
     if (!A_work) return NIMCP_MV_ERROR_MEMORY;
 
     // LAPACK expects column-major, transpose symmetric matrix
@@ -647,8 +650,12 @@ nimcp_mv_result_t nimcp_mv_solve(
     int ldb = NRHS;
     int info;
 
-    float* A_col = (float*)nimcp_malloc(n * n * sizeof(float));
-    float* B_col = (float*)nimcp_malloc(n * nrhs * sizeof(float));
+    if (n > 0 && ((size_t)n * n > SIZE_MAX / sizeof(float) ||
+                   (size_t)n * nrhs > SIZE_MAX / sizeof(float))) {
+        return NIMCP_MV_ERROR_MEMORY;
+    }
+    float* A_col = (float*)nimcp_malloc((size_t)n * n * sizeof(float));
+    float* B_col = (float*)nimcp_malloc((size_t)n * nrhs * sizeof(float));
     int* ipiv = (int*)nimcp_malloc(n * sizeof(int));
 
     if (!A_col || !B_col || !ipiv) {

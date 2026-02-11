@@ -57,7 +57,8 @@
 #include "core/brain/nimcp_brain_bio_async.h" // Brain bio-async integration API
 #include "utils/memory/nimcp_memory_guards.h" // For nimcp_calloc/nimcp_free
 
-/* Logging module identifier */
+/* Logging module identifier (undef to suppress redefinition warning) */
+#undef LOG_MODULE
 #define LOG_MODULE "BRAIN"
 #include "core/topology/nimcp_community_detection.h"  // Community detection & topology analysis
 #include "utils/algorithms/nimcp_graph_metrics.h"       // Graph metrics

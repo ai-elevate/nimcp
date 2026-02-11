@@ -345,8 +345,10 @@ int language_gpu_bridge_upload_word_embeddings(
         return -1;
     }
 
-    /* Free existing embeddings */
+    /* Free existing embeddings and adjust memory tracking */
     if (bridge->word_embeddings_gpu) {
+        size_t old_size = (size_t)bridge->word_embedding_count * bridge->embedding_dim * sizeof(float);
+        bridge->memory_pool.used_memory -= old_size;
         nimcp_free(bridge->word_embeddings_gpu);
     }
 
@@ -384,8 +386,10 @@ int language_gpu_bridge_upload_concept_embeddings(
         return -1;
     }
 
-    /* Free existing embeddings */
+    /* Free existing embeddings and adjust memory tracking */
     if (bridge->concept_embeddings_gpu) {
+        size_t old_size = (size_t)bridge->concept_count * bridge->embedding_dim * sizeof(float);
+        bridge->memory_pool.used_memory -= old_size;
         nimcp_free(bridge->concept_embeddings_gpu);
     }
 

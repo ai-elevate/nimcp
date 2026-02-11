@@ -328,6 +328,7 @@ static bool index_memory_by_date(
         year_node->child_count = 12;
     }
 
+    if (timestamp->month < 1 || timestamp->month > 12) return false;
     temporal_node_t* month_node = &year_node->children[timestamp->month - 1];
 
     /* Ensure day children exist */
@@ -340,6 +341,7 @@ static bool index_memory_by_date(
         month_node->child_count = 31;
     }
 
+    if (timestamp->day < 1 || timestamp->day > 31) return false;
     temporal_node_t* day_node = &month_node->children[timestamp->day - 1];
 
     /* Add memory ID to day node */

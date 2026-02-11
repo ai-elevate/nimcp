@@ -176,7 +176,11 @@ bool integration_integrate(
 
     // Allocate trajectory if requested
     if (trajectory != NULL && *trajectory == NULL) {
-        *trajectory = (float*)nimcp_malloc(steps * n * sizeof(float));
+        if (steps > 0 && (size_t)steps * n > SIZE_MAX / sizeof(float)) {
+            integration_error("Trajectory allocation overflow");
+            return false;
+        }
+        *trajectory = (float*)nimcp_malloc((size_t)steps * n * sizeof(float));
         if (*trajectory == NULL) {
             integration_error("Failed to allocate trajectory memory");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate: validation failed");
@@ -282,6 +286,10 @@ bool integration_rk4_step(
     bool heap_allocated = false;
 
     if (n > STACK_ALLOC_THRESHOLD) {
+        if ((size_t)5 * n > SIZE_MAX / sizeof(float)) {
+            integration_error("RK4: Allocation overflow");
+            return false;
+        }
         temp_storage = (float*)nimcp_malloc(5 * n * sizeof(float));
         if (temp_storage == NULL) {
             integration_error("RK4: Failed to allocate temporary storage");
@@ -392,6 +400,10 @@ bool integration_adaptive_step(
     bool heap_allocated = false;
 
     if (n > STACK_ALLOC_THRESHOLD) {
+        if ((size_t)7 * n > SIZE_MAX / sizeof(float)) {
+            integration_error("Adaptive: Allocation overflow");
+            return false;
+        }
         temp_storage = (float*)nimcp_malloc(7 * n * sizeof(float));
         if (temp_storage == NULL) {
             integration_error("Adaptive: Failed to allocate temporary storage");

@@ -417,11 +417,11 @@ void language_cingulate_bridge_destroy(language_cingulate_bridge_t* bridge)
 {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_cingulate");
     }
 
     if (bridge->log_ctx) {
         NIMCP_LOG_INFO(bridge->log_ctx, "Language-Cingulate bridge destroyed");
+        nimcp_log_context_destroy(bridge->log_ctx);
     }
 
     nimcp_free(bridge);

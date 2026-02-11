@@ -251,8 +251,8 @@ static char* escape_string(const char* input, size_t input_len, size_t* output_l
         return NULL;
     }
 
-    /* Worst case: every char needs escaping (4x expansion) */
-    size_t max_len = input_len * 4 + 1;
+    /* Worst case: every char needs escaping (6x expansion for &quot;) */
+    size_t max_len = input_len * 6 + 1;
     char* output = (char*)nimcp_malloc(max_len);
     if (!output) {
         if (output_len) *output_len = 0;

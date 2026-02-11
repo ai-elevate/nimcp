@@ -104,6 +104,7 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 #include "portia/nimcp_portia_messages.h"
 #include "utils/platform/nimcp_platform_tier.h"
 
+#undef LOG_MODULE
 #define LOG_MODULE "cognitive.executive"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"

@@ -72,6 +72,7 @@
 #define BIO_MODULE_ID 0x013B
 
 
+#undef LOG_MODULE
 #define LOG_MODULE "neuralnet"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 

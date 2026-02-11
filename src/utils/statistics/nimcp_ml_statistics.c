@@ -705,10 +705,16 @@ nimcp_ml_error_t nimcp_gp_fit(nimcp_gp_t* gp, const float* X, const float* y,
     gp->n_train = n;
     gp->n_features = d;
 
+    /* Integer overflow check for quadratic allocations */
+    if (n > 0 && ((size_t)n * n > SIZE_MAX / sizeof(float) ||
+                   (size_t)n * d > SIZE_MAX / sizeof(float))) {
+        return NIMCP_ML_ERROR_MEMORY;
+    }
+
     /* Store training data */
-    gp->X_train = (float*)nimcp_realloc(gp->X_train, n * d * sizeof(float));
+    gp->X_train = (float*)nimcp_realloc(gp->X_train, (size_t)n * d * sizeof(float));
     gp->y_train = (float*)nimcp_realloc(gp->y_train, n * sizeof(float));
-    gp->L = (float*)nimcp_realloc(gp->L, n * n * sizeof(float));
+    gp->L = (float*)nimcp_realloc(gp->L, (size_t)n * n * sizeof(float));
     gp->alpha = (float*)nimcp_realloc(gp->alpha, n * sizeof(float));
 
     if (!gp->X_train || !gp->y_train || !gp->L || !gp->alpha) {

@@ -1378,7 +1378,7 @@ static bool is_suspicious_output(
     float* score
 ) {
     if (!output || output_size == 0 || !score) {
-        *score = 0.0f;
+        if (score) *score = 0.0f;
         return false;
     }
 

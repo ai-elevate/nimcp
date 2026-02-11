@@ -71,7 +71,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-/* Logging module identifier */
+/* Logging module identifier (undef to suppress redefinition warning) */
+#undef LOG_MODULE
 #define LOG_MODULE "BRAIN_LIFECYCLE"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"

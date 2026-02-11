@@ -1971,7 +1971,8 @@ int security_logging_rotate(security_logging_bridge_t* bridge) {
         if (bridge->config.log_file_path[0]) {
             char rotated_path[512];
             time_t now = time(NULL);
-            struct tm* tm_info = localtime(&now);
+            struct tm tm_buf;
+            struct tm* tm_info = localtime_r(&now, &tm_buf);
             char timestamp[32];
             strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", tm_info);
 

@@ -125,14 +125,14 @@ static int create_node(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t type,
                        const char* name, const char* description,
                        uint32_t module_id, uint32_t* out_node_id) {
     if (!wiring || !name || !out_node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_edge: required parameter is NULL (wiring, name, out_node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_node: required parameter is NULL (wiring, name, out_node_id)");
         return -1;
     }
 
     sensory_kg_node_t* node = allocate_node(wiring);
     if (!node) {
         wiring->stats.registration_errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_edge: node is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_node: node is NULL");
         return -1;
     }
 
@@ -303,7 +303,7 @@ int sensory_kg_register_somatosensory(sensory_kg_wiring_t* wiring, nimcp_somatos
 int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* name,
                                     body_segment_t region, uint32_t* node_id) {
     if (!wiring || !name || !node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_somatosensory: required parameter is NULL (wiring, name, node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_body_region: required parameter is NULL (wiring, name, node_id)");
         return -1;
     }
 
@@ -323,7 +323,7 @@ int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* nam
 int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char* name,
                                         soma_receptor_type_t type, uint32_t* node_id) {
     if (!wiring || !name || !node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_somatosensory: required parameter is NULL (wiring, name, node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_mechanoreceptor: required parameter is NULL (wiring, name, node_id)");
         return -1;
     }
 
@@ -403,7 +403,7 @@ int sensory_kg_register_glomerulus(sensory_kg_wiring_t* wiring, uint32_t glom_id
 int sensory_kg_register_odor_category(sensory_kg_wiring_t* wiring, const char* name,
                                       odor_category_t category, uint32_t* node_id) {
     if (!wiring || !name || !node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_glomerulus: required parameter is NULL (wiring, name, node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_odor_category: required parameter is NULL (wiring, name, node_id)");
         return -1;
     }
 
@@ -523,7 +523,7 @@ int sensory_kg_register_tongue_region(sensory_kg_wiring_t* wiring, tongue_region
 int sensory_kg_register_food_category(sensory_kg_wiring_t* wiring, const char* name,
                                       food_category_t category, uint32_t* node_id) {
     if (!wiring || !name || !node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, name, node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_food_category: required parameter is NULL (wiring, name, node_id)");
         return -1;
     }
 
@@ -547,11 +547,11 @@ int sensory_kg_register_food_category(sensory_kg_wiring_t* wiring, const char* n
 int sensory_kg_register_flavor(sensory_kg_wiring_t* wiring, uint32_t taste_node,
                                uint32_t odor_node, uint32_t* flavor_node_id) {
     if (!wiring || !flavor_node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, flavor_node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_flavor: required parameter is NULL (wiring, flavor_node_id)");
         return -1;
     }
     if (!wiring->config.enable_cross_modal) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring->config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_flavor: wiring->config is NULL");
         return -1;
     }
 
@@ -559,7 +559,7 @@ int sensory_kg_register_flavor(sensory_kg_wiring_t* wiring, uint32_t taste_node,
     sensory_kg_node_t* taste = find_node(wiring, taste_node);
     sensory_kg_node_t* odor = find_node(wiring, odor_node);
     if (!taste || !odor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (taste, odor)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_flavor: required parameter is NULL (taste, odor)");
         return -1;
     }
 
@@ -585,11 +585,11 @@ int sensory_kg_register_flavor(sensory_kg_wiring_t* wiring, uint32_t taste_node,
 int sensory_kg_register_chemosensory(sensory_kg_wiring_t* wiring, uint32_t olfact_node,
                                      uint32_t gust_node, uint32_t* node_id) {
     if (!wiring || !node_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, node_id)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_chemosensory: required parameter is NULL (wiring, node_id)");
         return -1;
     }
     if (!wiring->config.enable_cross_modal) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring->config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_chemosensory: wiring->config is NULL");
         return -1;
     }
 
@@ -610,7 +610,7 @@ int sensory_kg_register_chemosensory(sensory_kg_wiring_t* wiring, uint32_t olfac
 int sensory_kg_create_integration_edge(sensory_kg_wiring_t* wiring, uint32_t node_a,
                                        uint32_t node_b, float weight) {
     if (!wiring) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_create_integration_edge: wiring is NULL");
         return -1;
     }
 
@@ -628,19 +628,19 @@ int sensory_kg_create_integration_edge(sensory_kg_wiring_t* wiring, uint32_t nod
 int sensory_kg_add_edge(sensory_kg_wiring_t* wiring, sensory_kg_edge_type_t type,
                         uint32_t source, uint32_t target, float weight) {
     if (!wiring) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_add_edge: wiring is NULL");
         return -1;
     }
 
     /* Verify nodes exist */
     if (!find_node(wiring, source) || !find_node(wiring, target)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_register_tongue_region: required parameter is NULL (find_node, find_node)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_add_edge: required parameter is NULL (find_node, find_node)");
         return -1;
     }
 
     sensory_kg_edge_t* edge = allocate_edge(wiring);
     if (!edge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_register_tongue_region: edge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_add_edge: edge is NULL");
         return -1;
     }
 
@@ -729,7 +729,7 @@ int sensory_kg_query_node(sensory_kg_wiring_t* wiring, uint32_t node_id, sensory
 int sensory_kg_query_by_type(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t type,
                              sensory_kg_query_result_t* result) {
     if (!wiring || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_by_type: required parameter is NULL (wiring, result)");
         return -1;
     }
 
@@ -753,7 +753,7 @@ int sensory_kg_query_by_type(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t
     /* Allocate result */
     result->nodes = (sensory_kg_node_t**)nimcp_calloc(count, sizeof(sensory_kg_node_t*));
     if (!result->nodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_query_node: result->nodes is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_query_by_type: result->nodes is NULL");
         return -1;
     }
 
@@ -779,7 +779,7 @@ int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
                                sensory_kg_edge_type_t edge_type,
                                sensory_kg_query_result_t* result) {
     if (!wiring || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_connected: required parameter is NULL (wiring, result)");
         return -1;
     }
 
@@ -807,7 +807,7 @@ int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
     if (!result->nodes || !result->edges) {
         nimcp_free(result->nodes);
         nimcp_free(result->edges);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_query_node: required parameter is NULL (result->nodes, result->edges)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_query_connected: required parameter is NULL (result->nodes, result->edges)");
         return -1;
     }
 
@@ -834,7 +834,7 @@ int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
 int sensory_kg_query_path(sensory_kg_wiring_t* wiring, uint32_t source_id,
                           uint32_t target_id, sensory_kg_query_result_t* result) {
     if (!wiring || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_path: required parameter is NULL (wiring, result)");
         return -1;
     }
 
@@ -1102,13 +1102,13 @@ size_t sensory_kg_get_serialization_size(const sensory_kg_wiring_t* wiring) {
 int sensory_kg_serialize(const sensory_kg_wiring_t* wiring, uint8_t* buffer,
                          size_t size, size_t* written) {
     if (!wiring || !buffer || !written) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_get_serialization_size: required parameter is NULL (wiring, buffer, written)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_serialize: required parameter is NULL (wiring, buffer, written)");
         return -1;
     }
 
     size_t required = sensory_kg_get_serialization_size(wiring);
     if (size < required) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_get_serialization_size: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_serialize: validation failed");
         return -1;
     }
 
