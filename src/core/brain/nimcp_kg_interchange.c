@@ -158,29 +158,75 @@ int kg_export_full(
         local_options.format = kg_infer_format_from_path(output_path);
     }
 
-    /* In a real implementation:
-     * 1. Open output file
-     * 2. Iterate all nodes (apply filter if set)
-     * 3. Iterate all edges (apply filter if set)
-     * 4. Serialize according to format
-     * 5. Optionally compress/encrypt
-     * 6. Write to file
-     */
-
     FILE* file = fopen(output_path, "w");
     if (!file) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "kg_export_full: failed to open output file");
         return -1;
     }
 
-    /* Placeholder: write minimal JSON */
-    if (local_options.format == KG_FORMAT_JSON) {
+    /* Get all nodes from KG */
+    brain_kg_node_list_t* nodes = brain_kg_get_all_nodes(kg);
+
+    if (local_options.format == KG_FORMAT_JSON || local_options.format == KG_FORMAT_JSON_LD) {
+        fprintf(file, "{\n  \"nodes\": [\n");
+
+        if (nodes) {
+            for (uint32_t i = 0; i < nodes->count; i++) {
+                const brain_kg_node_t* node = nodes->nodes[i];
+                if (!node || !node->in_use) continue;
+
+                fprintf(file, "%s    {\n", (i > 0) ? ",\n" : "");
+                fprintf(file, "      \"id\": %u,\n", node->id);
+                fprintf(file, "      \"name\": \"%s\",\n", node->name);
+                fprintf(file, "      \"type\": \"%s\",\n", brain_kg_node_type_to_string(node->type));
+                fprintf(file, "      \"state\": %d,\n", node->state);
+                fprintf(file, "      \"enabled\": %s,\n", node->enabled ? "true" : "false");
+                fprintf(file, "      \"description\": \"%s\"\n", node->description);
+                fprintf(file, "    }");
+            }
+        }
+
+        fprintf(file, "\n  ],\n  \"edges\": [\n");
+
+        /* Collect edges by iterating outgoing edges for each node */
+        bool first_edge = true;
+        if (nodes) {
+            for (uint32_t i = 0; i < nodes->count; i++) {
+                const brain_kg_node_t* node = nodes->nodes[i];
+                if (!node || !node->in_use) continue;
+
+                brain_kg_edge_list_t* edges = brain_kg_get_outgoing(kg, node->id);
+                if (!edges) continue;
+
+                for (uint32_t j = 0; j < edges->count; j++) {
+                    const brain_kg_edge_t* edge = edges->edges[j];
+                    if (!edge || !edge->in_use) continue;
+
+                    fprintf(file, "%s    {\n", first_edge ? "" : ",\n");
+                    fprintf(file, "      \"id\": %u,\n", edge->id);
+                    fprintf(file, "      \"from\": %u,\n", edge->from);
+                    fprintf(file, "      \"to\": %u,\n", edge->to);
+                    fprintf(file, "      \"type\": \"%s\",\n", brain_kg_edge_type_to_string(edge->type));
+                    fprintf(file, "      \"weight\": %.4f,\n", (double)edge->weight);
+                    fprintf(file, "      \"bidirectional\": %s,\n", edge->bidirectional ? "true" : "false");
+                    fprintf(file, "      \"description\": \"%s\"\n", edge->description);
+                    fprintf(file, "    }");
+                    first_edge = false;
+                }
+                brain_kg_edge_list_destroy(edges);
+            }
+        }
+
+        fprintf(file, "\n  ]\n}\n");
+
+        if (nodes) brain_kg_node_list_destroy(nodes);
+    } else {
+        /* For unsupported formats, write empty JSON as fallback */
+        if (nodes) brain_kg_node_list_destroy(nodes);
         fprintf(file, "{\n  \"nodes\": [],\n  \"edges\": []\n}\n");
     }
 
     fclose(file);
-
     return 0;
 }
 
@@ -226,19 +272,57 @@ int kg_export_to_buffer(
         kg_export_options_default(&local_options);
     }
 
-    /* Placeholder: allocate minimal JSON buffer */
-    const char* placeholder = "{\"nodes\":[],\"edges\":[]}";
-    size_t len = strlen(placeholder) + 1;
+    /* Export to a temporary file, then read into buffer */
+    char tmp_path[256];
+    snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_kg_export_%ld.json", (long)time(NULL));
 
-    *buffer = nimcp_malloc(len);
-    if (!*buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_export_to_buffer: validation failed");
+    int ret = kg_export_full(kg, tmp_path, &local_options);
+    if (ret != 0) {
+        return ret;
+    }
+
+    /* Read the file into buffer */
+    FILE* fp = fopen(tmp_path, "rb");
+    if (!fp) {
+        remove(tmp_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "kg_export_to_buffer: failed to read temp file");
         return -1;
     }
 
-    memcpy(*buffer, placeholder, len);
-    *size = len;
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
 
+    if (file_size <= 0) {
+        fclose(fp);
+        remove(tmp_path);
+        /* Return empty JSON */
+        const char* empty = "{\"nodes\":[],\"edges\":[]}";
+        size_t len = strlen(empty) + 1;
+        *buffer = nimcp_malloc(len);
+        if (!*buffer) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_export_to_buffer: allocation failed");
+            return -1;
+        }
+        memcpy(*buffer, empty, len);
+        *size = len;
+        return 0;
+    }
+
+    *buffer = nimcp_malloc((size_t)file_size + 1);
+    if (!*buffer) {
+        fclose(fp);
+        remove(tmp_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_export_to_buffer: allocation failed");
+        return -1;
+    }
+
+    size_t read_bytes = fread(*buffer, 1, (size_t)file_size, fp);
+    ((char*)*buffer)[read_bytes] = '\0';
+    *size = read_bytes + 1;
+
+    fclose(fp);
+    remove(tmp_path);
     return 0;
 }
 

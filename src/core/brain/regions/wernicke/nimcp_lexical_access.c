@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -1306,9 +1307,52 @@ int32_t lexical_load_lexicon(
         return -1;
     }
 
-    /* Phase 3 will implement file loading */
-    NIMCP_LOG_WARN("lexical", "lexical_load_lexicon not yet implemented");
-    return 0;
+    FILE* fp = fopen(filepath, "rb");
+    if (!fp) {
+        NIMCP_LOG_WARN("lexical", "Failed to open lexicon file: %s", filepath);
+        return -1;
+    }
+
+    /* Read header: magic, version, num_entries */
+    uint32_t magic = 0, version = 0, num_entries = 0;
+    if (fread(&magic, sizeof(uint32_t), 1, fp) != 1 ||
+        fread(&version, sizeof(uint32_t), 1, fp) != 1 ||
+        fread(&num_entries, sizeof(uint32_t), 1, fp) != 1) {
+        fclose(fp);
+        return -1;
+    }
+
+    if (magic != 0x4C455849) {  /* "LEXI" */
+        NIMCP_LOG_WARN("lexical", "Invalid lexicon format");
+        fclose(fp);
+        return -1;
+    }
+
+    /* Read entries */
+    int32_t loaded = 0;
+    for (uint32_t i = 0; i < num_entries; i++) {
+        lexical_entry_t entry;
+        memset(&entry, 0, sizeof(entry));
+
+        if (fread(&entry.word_id, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(entry.orthography, sizeof(entry.orthography), 1, fp) != 1 ||
+            fread(entry.phonemes, sizeof(entry.phonemes), 1, fp) != 1 ||
+            fread(&entry.phoneme_count, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(&entry.pos, sizeof(entry.pos), 1, fp) != 1 ||
+            fread(&entry.frequency, sizeof(float), 1, fp) != 1 ||
+            fread(&entry.syllable_count, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(&entry.concept_id, sizeof(uint32_t), 1, fp) != 1) {
+            break;
+        }
+
+        if (lexical_add_entry(lex, &entry)) {
+            loaded++;
+        }
+    }
+
+    fclose(fp);
+    NIMCP_LOG_INFO("lexical", "Loaded %d lexicon entries from %s", loaded, filepath);
+    return loaded;
 }
 
 bool lexical_save_lexicon(
@@ -1324,10 +1368,40 @@ bool lexical_save_lexicon(
         return false;
     }
 
-    /* Phase 3 will implement file saving */
-    NIMCP_LOG_WARN("lexical", "lexical_save_lexicon not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_save_lexicon: filepath is NULL");
-    return false;
+    FILE* fp = fopen(filepath, "wb");
+    if (!fp) {
+        NIMCP_LOG_WARN("lexical", "Failed to open file for writing: %s", filepath);
+        return false;
+    }
+
+    /* Write header */
+    uint32_t magic = 0x4C455849;  /* "LEXI" */
+    uint32_t version = 1;
+    uint32_t num_entries = lex->num_words;
+    fwrite(&magic, sizeof(uint32_t), 1, fp);
+    fwrite(&version, sizeof(uint32_t), 1, fp);
+    fwrite(&num_entries, sizeof(uint32_t), 1, fp);
+
+    /* Write entries from direct access array */
+    uint32_t written = 0;
+    for (uint32_t i = 0; i < lex->entries_capacity; i++) {
+        if (!lex->entries[i]) continue;
+        lexical_entry_t* entry = lex->entries[i];
+
+        fwrite(&entry->word_id, sizeof(uint32_t), 1, fp);
+        fwrite(entry->orthography, sizeof(entry->orthography), 1, fp);
+        fwrite(entry->phonemes, sizeof(entry->phonemes), 1, fp);
+        fwrite(&entry->phoneme_count, sizeof(uint32_t), 1, fp);
+        fwrite(&entry->pos, sizeof(entry->pos), 1, fp);
+        fwrite(&entry->frequency, sizeof(float), 1, fp);
+        fwrite(&entry->syllable_count, sizeof(uint32_t), 1, fp);
+        fwrite(&entry->concept_id, sizeof(uint32_t), 1, fp);
+        written++;
+    }
+
+    fclose(fp);
+    NIMCP_LOG_INFO("lexical", "Saved %u lexicon entries to %s", written, filepath);
+    return true;
 }
 
 uint32_t lexical_build_common_english(lexical_access_t* lex)

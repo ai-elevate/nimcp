@@ -22,6 +22,7 @@
  */
 
 #include "training/nimcp_auto_architecture.h"
+#include "lnn/nimcp_lnn_config.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
@@ -806,10 +807,23 @@ auto_arch_result_t* auto_arch_resume(
         return NULL;
     }
 
-    /* TODO: Implement checkpoint loading */
-    NIMCP_LOGGING_ERROR("Checkpoint resume not yet implemented");
+    /* Load best architecture from checkpoint to restore state */
+    auto_arch_architecture_t* saved = auto_arch_load_json(checkpoint_path);
+    if (saved) {
+        /* Restore best architecture from checkpoint */
+        if (ctx->best_arch) {
+            auto_arch_architecture_destroy(ctx->best_arch);
+        }
+        ctx->best_arch = saved;
+        ctx->next_arch_id = saved->arch_id + 1;
+        ctx->stats.total_evaluations = saved->generation;
+        NIMCP_LOGGING_INFO("Resumed from checkpoint: arch_id=%lu, generation=%u",
+                           (unsigned long)saved->arch_id, saved->generation);
+    } else {
+        NIMCP_LOGGING_WARN("Could not load checkpoint '%s', starting fresh search", checkpoint_path);
+    }
 
-    /* Continue with regular search */
+    /* Continue search from restored state */
     return auto_arch_search(ctx, train_data, train_labels, val_data, val_labels);
 }
 
@@ -1017,8 +1031,93 @@ int auto_arch_mutate(auto_arch_architecture_t* arch, float mutation_rate, auto_a
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_mutate: required parameter is NULL (arch, ctx)");
         return -1;
     }
-    /* TODO: Implement mutation */
-    return 0;
+    if (!arch->layers || arch->n_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "auto_arch_mutate: arch has no layers");
+        return -1;
+    }
+
+    int mutations_applied = 0;
+
+    /* Mutate each layer independently */
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        auto_arch_layer_spec_t* layer = &arch->layers[i];
+
+        /* Mutate neuron count (scale by up to +/- 50%) */
+        if (randf(&ctx->rng_state) < mutation_rate) {
+            float scale = 0.5f + randf(&ctx->rng_state) * 1.0f;
+            uint32_t new_neurons = (uint32_t)(layer->n_neurons * scale);
+            if (new_neurons < 1) new_neurons = 1;
+            if (new_neurons > 10000) new_neurons = 10000;
+            layer->n_neurons = new_neurons;
+            mutations_applied++;
+        }
+
+        /* Mutate sparsity */
+        if (randf(&ctx->rng_state) < mutation_rate) {
+            layer->sparsity += (randf(&ctx->rng_state) - 0.5f) * 0.2f;
+            if (layer->sparsity < 0.0f) layer->sparsity = 0.0f;
+            if (layer->sparsity > 0.99f) layer->sparsity = 0.99f;
+            mutations_applied++;
+        }
+
+        /* Mutate time constants (SNN/LNN) */
+        if (randf(&ctx->rng_state) < mutation_rate) {
+            layer->tau_mem *= (0.5f + randf(&ctx->rng_state));
+            if (layer->tau_mem < 0.1f) layer->tau_mem = 0.1f;
+            if (layer->tau_mem > 1000.0f) layer->tau_mem = 1000.0f;
+            mutations_applied++;
+        }
+
+        /* Mutate dropout rate */
+        if (randf(&ctx->rng_state) < mutation_rate) {
+            layer->dropout_rate += (randf(&ctx->rng_state) - 0.5f) * 0.1f;
+            if (layer->dropout_rate < 0.0f) layer->dropout_rate = 0.0f;
+            if (layer->dropout_rate > 0.5f) layer->dropout_rate = 0.5f;
+            mutations_applied++;
+        }
+    }
+
+    /* Mutate global learning rate */
+    if (randf(&ctx->rng_state) < mutation_rate) {
+        arch->learning_rate *= (0.1f + randf(&ctx->rng_state) * 1.9f);
+        if (arch->learning_rate < 1e-6f) arch->learning_rate = 1e-6f;
+        if (arch->learning_rate > 1.0f) arch->learning_rate = 1.0f;
+        mutations_applied++;
+    }
+
+    /* Mutate dt */
+    if (randf(&ctx->rng_state) < mutation_rate) {
+        arch->dt *= (0.5f + randf(&ctx->rng_state));
+        if (arch->dt < 0.01f) arch->dt = 0.01f;
+        if (arch->dt > 10.0f) arch->dt = 10.0f;
+        mutations_applied++;
+    }
+
+    /* Recompute derived properties */
+    uint64_t total_params = 0;
+    uint64_t total_connections = 0;
+    float total_sparsity = 0.0f;
+
+    /* Fix input sizes for consistency after neuron count mutations */
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        if (i == 0) {
+            arch->layers[i].n_inputs = arch->n_inputs;
+        } else {
+            arch->layers[i].n_inputs = arch->layers[i - 1].n_neurons;
+        }
+        float density = 1.0f - arch->layers[i].sparsity;
+        uint64_t layer_params = (uint64_t)arch->layers[i].n_inputs * arch->layers[i].n_neurons;
+        layer_params += arch->layers[i].n_neurons;
+        total_params += (uint64_t)(layer_params * density);
+        total_connections += (uint64_t)(arch->layers[i].n_inputs * arch->layers[i].n_neurons * density);
+        total_sparsity += arch->layers[i].sparsity;
+    }
+
+    arch->n_parameters = total_params;
+    arch->n_connections = total_connections;
+    arch->avg_sparsity = (arch->n_layers > 0) ? total_sparsity / arch->n_layers : 0.0f;
+
+    return mutations_applied;
 }
 
 auto_arch_architecture_t* auto_arch_crossover(
@@ -1235,7 +1334,50 @@ int auto_arch_validate_architecture(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_validate_architecture: required parameter is NULL (arch, constraints)");
         return -1;
     }
-    /* TODO: Implement validation */
+
+    /* Validate layer count */
+    if (constraints->min_layers > 0 && arch->n_layers < constraints->min_layers) return -1;
+    if (constraints->max_layers > 0 && arch->n_layers > constraints->max_layers) return -1;
+
+    /* Validate total parameters */
+    if (constraints->max_parameters > 0 && arch->n_parameters > constraints->max_parameters) return -1;
+
+    /* Validate computational budget */
+    if (constraints->max_memory > 0 && arch->n_parameters * sizeof(float) > constraints->max_memory) return -1;
+
+    /* Validate per-layer constraints */
+    uint64_t total_neurons = 0;
+    for (uint32_t i = 0; i < arch->n_layers && arch->layers; i++) {
+        const auto_arch_layer_spec_t* layer = &arch->layers[i];
+
+        if (constraints->min_neurons_per_layer > 0 && layer->n_neurons < constraints->min_neurons_per_layer) return -1;
+        if (constraints->max_neurons_per_layer > 0 && layer->n_neurons > constraints->max_neurons_per_layer) return -1;
+
+        /* Sparsity range */
+        if (layer->sparsity < constraints->min_sparsity) return -1;
+        if (constraints->max_sparsity > 0.0f && layer->sparsity > constraints->max_sparsity) return -1;
+
+        /* Time constant range */
+        if (constraints->min_tau > 0.0f && layer->tau_mem > 0.0f && layer->tau_mem < constraints->min_tau) return -1;
+        if (constraints->max_tau > 0.0f && layer->tau_mem > constraints->max_tau) return -1;
+
+        /* Feedforward enforcement */
+        if (constraints->enforce_feedforward && layer->input_layers) {
+            for (uint32_t j = 0; j < layer->n_input_layers; j++) {
+                if (layer->input_layers[j] >= i) return -1;
+            }
+        }
+
+        total_neurons += layer->n_neurons;
+    }
+
+    /* Total neuron count */
+    if (constraints->max_total_neurons > 0 && total_neurons > constraints->max_total_neurons) return -1;
+
+    /* dt range */
+    if (constraints->min_dt > 0.0f && arch->dt < constraints->min_dt) return -1;
+    if (constraints->max_dt > 0.0f && arch->dt > constraints->max_dt) return -1;
+
     return 0;
 }
 
@@ -1246,57 +1388,247 @@ int auto_arch_validate_architecture(
 snn_config_t* auto_arch_export_snn(const auto_arch_architecture_t* arch)
 {
     if (!arch) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_export_snn: arch is NULL");
         return NULL;
-
     }
-    /* TODO: Implement SNN export */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_export_snn: arch is NULL");
-    return NULL;
+
+    snn_config_t* config = (snn_config_t*)nimcp_calloc(1, sizeof(snn_config_t));
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_export_snn: failed to allocate snn_config_t");
+        return NULL;
+    }
+
+    /* Map architecture dimensions */
+    config->n_inputs = arch->n_inputs;
+    config->n_outputs = arch->n_outputs;
+    config->n_populations = arch->n_layers;
+
+    /* Simulation parameters from architecture globals */
+    config->dt = arch->dt;
+    config->learning_rate = arch->learning_rate;
+
+    /* Use first layer's neuron parameters as defaults */
+    if (arch->layers && arch->n_layers > 0) {
+        config->tau_mem = arch->layers[0].tau_mem > 0.0f ? arch->layers[0].tau_mem : 20.0f;
+        config->tau_syn = arch->layers[0].tau_syn > 0.0f ? arch->layers[0].tau_syn : 5.0f;
+        config->v_thresh = arch->layers[0].v_thresh != 0.0f ? arch->layers[0].v_thresh : -55.0f;
+        config->v_reset = arch->layers[0].v_reset != 0.0f ? arch->layers[0].v_reset : -70.0f;
+        config->v_rest = -65.0f;
+        config->t_ref = arch->layers[0].refractory_period > 0.0f ? arch->layers[0].refractory_period : 2.0f;
+    } else {
+        config->tau_mem = 20.0f;
+        config->tau_syn = 5.0f;
+        config->v_thresh = -55.0f;
+        config->v_reset = -70.0f;
+        config->v_rest = -65.0f;
+        config->t_ref = 2.0f;
+    }
+
+    /* Encoding/decoding */
+    config->encoder.method = arch->input_encoding;
+    config->encoder.time_window = arch->encoding_time;
+    config->encoder.max_rate = 200.0f;
+    config->encoder.min_rate = 0.0f;
+    config->encoder.population_size = 1;
+    config->decoder.method = arch->output_decoding;
+    config->decoder.time_window = arch->encoding_time;
+    config->decoder.use_softmax = true;
+
+    /* Training defaults */
+    config->train_mode = SNN_TRAIN_SURROGATE;
+    config->surrogate = SNN_SURROGATE_FAST_SIGMOID;
+    config->surrogate_beta = 10.0f;
+    config->enable_stdp = false;
+    config->enable_reward_modulation = false;
+
+    return config;
 }
 
 lnn_config_t* auto_arch_export_lnn(const auto_arch_architecture_t* arch)
 {
     if (!arch) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_export_lnn: arch is NULL");
         return NULL;
-
     }
-    /* TODO: Implement LNN export */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_export_lnn: arch is NULL");
-    return NULL;
+
+    lnn_config_t* config = (lnn_config_t*)nimcp_calloc(1, sizeof(lnn_config_t));
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_export_lnn: failed to allocate lnn_config_t");
+        return NULL;
+    }
+
+    config->n_inputs = arch->n_inputs;
+    config->n_outputs = arch->n_outputs;
+    config->n_layers = arch->n_layers;
+    config->default_dt = arch->dt > 0.0f ? arch->dt : 1.0f;
+    config->default_ode_method = LNN_ODE_RK4;
+    config->adaptive_dt_min = 0.01f;
+    config->adaptive_dt_max = 10.0f;
+    config->adaptive_error_tol = 1e-5f;
+    config->train_mode = LNN_TRAIN_ADJOINT;
+    config->bptt_truncation = 100;
+    config->gradient_clip_norm = 1.0f;
+    config->enable_simd = true;
+
+    /* Build per-layer configs from architecture layers */
+    if (arch->n_layers > 0 && arch->layers) {
+        config->layer_configs = (lnn_layer_config_t*)nimcp_calloc(
+            arch->n_layers, sizeof(lnn_layer_config_t));
+        if (!config->layer_configs) {
+            nimcp_free(config);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_export_lnn: failed to allocate layer_configs");
+            return NULL;
+        }
+
+        for (uint32_t i = 0; i < arch->n_layers; i++) {
+            lnn_layer_config_t* lc = &config->layer_configs[i];
+            const auto_arch_layer_spec_t* al = &arch->layers[i];
+
+            lc->n_neurons = al->n_neurons;
+            lc->activation = al->activation;
+            lc->tau_base_init = al->tau_base > 0.0f ? al->tau_base : 10.0f;
+            lc->tau_min = al->tau_min > 0.0f ? al->tau_min : 0.1f;
+            lc->tau_max = al->tau_max > 0.0f ? al->tau_max : 1000.0f;
+            lc->learn_tau = al->learn_tau;
+            lc->sparsity = al->sparsity;
+            lc->ode_method = al->ode_method;
+            lc->dt = arch->dt > 0.0f ? arch->dt : 1.0f;
+            lc->weight_init_std = 0.1f;
+        }
+    }
+
+    return config;
 }
 
 auto_arch_architecture_t* auto_arch_import_snn(const snn_config_t* snn_config)
 {
     if (!snn_config) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_config is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_import_snn: snn_config is NULL");
         return NULL;
-
     }
-    /* TODO: Implement SNN import */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_import_snn: snn_config is NULL");
-    return NULL;
+
+    auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
+        1, sizeof(auto_arch_architecture_t));
+    if (!arch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_import_snn: failed to allocate architecture");
+        return NULL;
+    }
+
+    arch->magic = AUTO_ARCH_MAGIC;
+    arch->network_type = AUTO_ARCH_TYPE_SNN;
+    arch->n_inputs = snn_config->n_inputs;
+    arch->n_outputs = snn_config->n_outputs;
+    arch->dt = snn_config->dt;
+    arch->learning_rate = snn_config->learning_rate;
+    arch->input_encoding = snn_config->encoder.method;
+    arch->output_decoding = snn_config->decoder.method;
+    arch->encoding_time = snn_config->encoder.time_window;
+
+    /* Create one layer per population */
+    arch->n_layers = snn_config->n_populations > 0 ? snn_config->n_populations : 1;
+    arch->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+        arch->n_layers, sizeof(auto_arch_layer_spec_t));
+    if (!arch->layers) {
+        nimcp_free(arch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_import_snn: failed to allocate layers");
+        return NULL;
+    }
+
+    uint64_t total_params = 0;
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        auto_arch_layer_spec_t* layer = &arch->layers[i];
+        layer->layer_id = i;
+        layer->type = AUTO_ARCH_LAYER_SNN_LIF;
+
+        /* Interpolate neuron count between input and output */
+        if (arch->n_layers == 1) {
+            layer->n_neurons = arch->n_outputs;
+        } else {
+            float t = (float)i / (float)(arch->n_layers - 1);
+            layer->n_neurons = (uint32_t)((1.0f - t) * arch->n_inputs + t * arch->n_outputs);
+            if (layer->n_neurons < 1) layer->n_neurons = 1;
+        }
+
+        layer->n_inputs = (i == 0) ? arch->n_inputs : arch->layers[i - 1].n_neurons;
+        layer->tau_mem = snn_config->tau_mem;
+        layer->tau_syn = snn_config->tau_syn;
+        layer->v_thresh = snn_config->v_thresh;
+        layer->v_reset = snn_config->v_reset;
+        layer->refractory_period = snn_config->t_ref;
+
+        uint64_t lp = (uint64_t)layer->n_inputs * layer->n_neurons + layer->n_neurons;
+        total_params += lp;
+    }
+
+    arch->n_parameters = total_params;
+    arch->n_connections = total_params;
+
+    return arch;
 }
 
 auto_arch_architecture_t* auto_arch_import_lnn(const lnn_config_t* lnn_config)
 {
     if (!lnn_config) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_config is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_import_lnn: lnn_config is NULL");
         return NULL;
-
     }
-    /* TODO: Implement LNN import */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_import_lnn: lnn_config is NULL");
-    return NULL;
+
+    auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
+        1, sizeof(auto_arch_architecture_t));
+    if (!arch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_import_lnn: failed to allocate architecture");
+        return NULL;
+    }
+
+    arch->magic = AUTO_ARCH_MAGIC;
+    arch->network_type = AUTO_ARCH_TYPE_LNN;
+    arch->n_inputs = lnn_config->n_inputs;
+    arch->n_outputs = lnn_config->n_outputs;
+    arch->dt = lnn_config->default_dt;
+    arch->learning_rate = 0.001f;
+
+    arch->n_layers = lnn_config->n_layers > 0 ? lnn_config->n_layers : 1;
+    arch->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+        arch->n_layers, sizeof(auto_arch_layer_spec_t));
+    if (!arch->layers) {
+        nimcp_free(arch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_import_lnn: failed to allocate layers");
+        return NULL;
+    }
+
+    uint64_t total_params = 0;
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        auto_arch_layer_spec_t* layer = &arch->layers[i];
+        layer->layer_id = i;
+        layer->type = AUTO_ARCH_LAYER_LNN_LTC;
+
+        /* Use layer config if available */
+        if (lnn_config->layer_configs && i < lnn_config->n_layers) {
+            const lnn_layer_config_t* lc = &lnn_config->layer_configs[i];
+            layer->n_neurons = lc->n_neurons;
+            layer->activation = lc->activation;
+            layer->tau_base = lc->tau_base_init;
+            layer->tau_min = lc->tau_min;
+            layer->tau_max = lc->tau_max;
+            layer->learn_tau = lc->learn_tau;
+            layer->sparsity = lc->sparsity;
+            layer->ode_method = lc->ode_method;
+        } else {
+            layer->n_neurons = (i == arch->n_layers - 1) ? arch->n_outputs : 64;
+            layer->tau_base = 10.0f;
+        }
+
+        layer->n_inputs = (i == 0) ? arch->n_inputs : arch->layers[i - 1].n_neurons;
+
+        uint64_t lp = (uint64_t)layer->n_inputs * layer->n_neurons + layer->n_neurons;
+        float density = 1.0f - layer->sparsity;
+        total_params += (uint64_t)(lp * density);
+    }
+
+    arch->n_parameters = total_params;
+    arch->n_connections = total_params;
+
+    return arch;
 }
 
 int auto_arch_save_json(const auto_arch_architecture_t* arch, const char* filepath)

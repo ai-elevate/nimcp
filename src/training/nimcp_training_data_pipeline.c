@@ -791,14 +791,142 @@ training_pipeline_ctx_t* training_pipeline_create_from_files(
     uint32_t num_files,
     const training_pipeline_config_t* config
 ) {
-    /* File-based loading not yet implemented */
-    NIMCP_LOGGING_ERROR("File-based pipeline not yet implemented");
-    (void)data_paths;
-    (void)label_paths;
-    (void)num_files;
-    (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create_from_files: operation failed");
-    return NULL;
+    if (!data_paths || num_files == 0 || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "training_pipeline_create_from_files: required parameter is NULL");
+        return NULL;
+    }
+
+    /* Load all files into memory, concatenate into single tensor */
+    /* First pass: count total samples across all files */
+    uint32_t total_samples = 0;
+    uint32_t sample_dim = 0;
+    uint32_t label_dim = 0;
+
+    for (uint32_t f = 0; f < num_files; f++) {
+        if (!data_paths[f]) continue;
+
+        FILE* fp = fopen(data_paths[f], "rb");
+        if (!fp) {
+            NIMCP_LOGGING_ERROR("Failed to open data file: %s", data_paths[f]);
+            continue;
+        }
+
+        /* Read header: num_samples (uint32), sample_dim (uint32) */
+        uint32_t file_samples = 0, file_dim = 0;
+        if (fread(&file_samples, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(&file_dim, sizeof(uint32_t), 1, fp) != 1) {
+            NIMCP_LOGGING_ERROR("Failed to read header from: %s", data_paths[f]);
+            fclose(fp);
+            continue;
+        }
+
+        if (sample_dim == 0) {
+            sample_dim = file_dim;
+        } else if (file_dim != sample_dim) {
+            NIMCP_LOGGING_ERROR("Dimension mismatch in %s: expected %u, got %u",
+                               data_paths[f], sample_dim, file_dim);
+            fclose(fp);
+            continue;
+        }
+
+        total_samples += file_samples;
+        fclose(fp);
+    }
+
+    if (total_samples == 0 || sample_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "training_pipeline_create_from_files: no valid data files found");
+        return NULL;
+    }
+
+    /* Allocate data tensor */
+    uint32_t data_dims[2] = {total_samples, sample_dim};
+    nimcp_tensor_t* data = nimcp_tensor_create(data_dims, 2, NIMCP_DTYPE_FLOAT32);
+    if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "training_pipeline_create_from_files: data tensor allocation failed");
+        return NULL;
+    }
+
+    /* Second pass: load data */
+    float* data_ptr = nimcp_tensor_data(data);
+    uint32_t offset = 0;
+
+    for (uint32_t f = 0; f < num_files; f++) {
+        if (!data_paths[f]) continue;
+
+        FILE* fp = fopen(data_paths[f], "rb");
+        if (!fp) continue;
+
+        uint32_t file_samples = 0, file_dim = 0;
+        if (fread(&file_samples, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(&file_dim, sizeof(uint32_t), 1, fp) != 1 ||
+            file_dim != sample_dim) {
+            fclose(fp);
+            continue;
+        }
+
+        size_t read_count = fread(data_ptr + (size_t)offset * sample_dim,
+                                  sizeof(float), (size_t)file_samples * sample_dim, fp);
+        if (read_count == (size_t)file_samples * sample_dim) {
+            offset += file_samples;
+        }
+        fclose(fp);
+    }
+
+    /* Load labels if provided */
+    nimcp_tensor_t* labels = NULL;
+    if (label_paths) {
+        uint32_t label_total = 0;
+        for (uint32_t f = 0; f < num_files; f++) {
+            if (!label_paths[f]) continue;
+            FILE* fp = fopen(label_paths[f], "rb");
+            if (!fp) continue;
+
+            uint32_t file_samples = 0;
+            if (fread(&file_samples, sizeof(uint32_t), 1, fp) != 1 ||
+                fread(&label_dim, sizeof(uint32_t), 1, fp) != 1) {
+                fclose(fp);
+                continue;
+            }
+            label_total += file_samples;
+            fclose(fp);
+        }
+
+        if (label_dim == 0) label_dim = 1;
+        uint32_t label_dims[2] = {total_samples, label_dim};
+        labels = nimcp_tensor_create(label_dims, 2, NIMCP_DTYPE_FLOAT32);
+        if (labels) {
+            float* label_ptr = nimcp_tensor_data(labels);
+            uint32_t loffset = 0;
+            for (uint32_t f = 0; f < num_files; f++) {
+                if (!label_paths[f]) continue;
+                FILE* fp = fopen(label_paths[f], "rb");
+                if (!fp) continue;
+                uint32_t fs = 0, fd = 0;
+                if (fread(&fs, sizeof(uint32_t), 1, fp) == 1 &&
+                    fread(&fd, sizeof(uint32_t), 1, fp) == 1) {
+                    size_t rc = fread(label_ptr + (size_t)loffset * label_dim,
+                                      sizeof(float), (size_t)fs * label_dim, fp);
+                    if (rc == (size_t)fs * label_dim) loffset += fs;
+                }
+                fclose(fp);
+            }
+        }
+    }
+
+    /* Create pipeline using loaded tensors */
+    training_pipeline_ctx_t* ctx = training_pipeline_create(data, labels, config);
+    if (!ctx) {
+        nimcp_tensor_destroy(data);
+        if (labels) nimcp_tensor_destroy(labels);
+        return NULL;
+    }
+
+    NIMCP_LOGGING_INFO("Created file-based pipeline from %u files: %u samples, dim=%u",
+                       num_files, total_samples, sample_dim);
+    return ctx;
 }
 
 void training_pipeline_destroy(training_pipeline_ctx_t* pipeline) {
@@ -873,10 +1001,42 @@ int training_pipeline_peek_batch(
     const training_pipeline_ctx_t* pipeline,
     training_batch_t* batch
 ) {
-    /* Peek not implemented - would require prefetch buffer usage */
-    (void)pipeline;
-    (void)batch;
-    return NIMCP_ERROR_NOT_IMPLEMENTED;
+    if (!pipeline || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "training_pipeline_peek_batch: required parameter is NULL");
+        return -1;
+    }
+
+    memset(batch, 0, sizeof(training_batch_t));
+
+    /* Check if epoch is exhausted */
+    if (pipeline->current_index >= pipeline->dataset_size) {
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    /* Load batch without advancing the iterator.
+     * We need to cast away const temporarily since load_batch_entry
+     * accesses shared state - but we restore current_index after. */
+    training_pipeline_ctx_t* mutable_pipeline = (training_pipeline_ctx_t*)pipeline;
+    uint32_t saved_index = mutable_pipeline->current_index;
+
+    nimcp_platform_mutex_lock(&mutable_pipeline->prefetch_mutex);
+
+    prefetch_entry_t entry;
+    memset(&entry, 0, sizeof(entry));
+    int result = load_batch_entry(mutable_pipeline, &entry);
+
+    /* Restore the iterator position so the batch isn't consumed */
+    mutable_pipeline->current_index = saved_index;
+
+    nimcp_platform_mutex_unlock(&mutable_pipeline->prefetch_mutex);
+
+    if (result < 0) {
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    *batch = entry.batch;
+    return 0;
 }
 
 void training_batch_release(training_batch_t* batch) {

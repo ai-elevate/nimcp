@@ -99,7 +99,7 @@ static struct language_perception_bridge* language_perception_bridge_create_stub
     (void)orchestrator;
     (void)config;
     /* Stub - returns NULL, actual implementation in bridge .c files */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -109,7 +109,7 @@ static struct language_cognitive_bridge* language_cognitive_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -119,7 +119,7 @@ static struct language_training_bridge* language_training_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -129,7 +129,7 @@ static struct language_omni_bridge* language_omni_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -139,7 +139,7 @@ static struct language_immune_bridge* language_immune_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -149,7 +149,7 @@ static struct language_gpu_bridge* language_gpu_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -159,7 +159,7 @@ static struct language_thalamic_bridge* language_thalamic_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -169,7 +169,7 @@ static struct language_substrate_bridge* language_substrate_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 
@@ -179,7 +179,7 @@ static struct language_logic_bridge* language_logic_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_create_stub: operation failed");
+    /* Stub - callers handle NULL gracefully */
     return NULL;
 }
 

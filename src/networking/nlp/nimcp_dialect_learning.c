@@ -737,17 +737,16 @@ int dialect_get_bridge_path(
     uint32_t* path,
     uint32_t* path_len
 ) {
-    // Guard clauses
     if (!dl || !path || !path_len) {
         set_error("Invalid parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get_bridge_path: required parameter is NULL (dl, path, path_len)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dialect_get_bridge_path: required parameter is NULL (dl, path, path_len)");
         return -1;
     }
 
-    // Simple BFS implementation (placeholder - full implementation would use queue)
-    // For now, just check for direct connection
     nimcp_mutex_lock(&dl->lock);
 
+    /* Direct connection check (fast path) */
     dialect_entry_t* entry = find_dialect_entry(dl, source, target);
     if (entry) {
         path[0] = source;
@@ -757,10 +756,109 @@ int dialect_get_bridge_path(
         return 0;
     }
 
+    /* BFS for multi-hop path */
+    /* Collect all unique region IDs from dialect table */
+    uint32_t regions[512];
+    uint32_t num_regions = 0;
+    uint32_t parent[512];   /* parent index in BFS tree */
+    bool visited[512];
+
+    memset(visited, 0, sizeof(visited));
+    memset(parent, 0xFF, sizeof(parent));
+
+    /* Gather all unique regions */
+    for (uint32_t bucket = 0; bucket < DIALECT_HASH_SIZE; bucket++) {
+        for (dialect_entry_t* e = dl->dialect_table[bucket]; e; e = e->next) {
+            bool found_src = false, found_tgt = false;
+            for (uint32_t i = 0; i < num_regions; i++) {
+                if (regions[i] == e->dialect.source_region) found_src = true;
+                if (regions[i] == e->dialect.target_region) found_tgt = true;
+            }
+            if (!found_src && num_regions < 512) {
+                regions[num_regions++] = e->dialect.source_region;
+            }
+            if (!found_tgt && num_regions < 512) {
+                regions[num_regions++] = e->dialect.target_region;
+            }
+        }
+    }
+
+    /* Find source index */
+    int32_t source_idx = -1;
+    int32_t target_idx = -1;
+    for (uint32_t i = 0; i < num_regions; i++) {
+        if (regions[i] == source) source_idx = (int32_t)i;
+        if (regions[i] == target) target_idx = (int32_t)i;
+    }
+
+    if (source_idx < 0 || target_idx < 0) {
+        nimcp_mutex_unlock(&dl->lock);
+        set_error("Source or target region not found in dialect table");
+        return -1;
+    }
+
+    /* BFS using circular queue */
+    uint32_t queue[512];
+    uint32_t q_head = 0, q_tail = 0;
+
+    queue[q_tail++] = (uint32_t)source_idx;
+    visited[(uint32_t)source_idx] = true;
+
+    bool found = false;
+    while (q_head < q_tail && !found) {
+        uint32_t curr_idx = queue[q_head++];
+        uint32_t curr_region = regions[curr_idx];
+
+        /* Check all edges from curr_region */
+        for (uint32_t bucket = 0; bucket < DIALECT_HASH_SIZE && !found; bucket++) {
+            for (dialect_entry_t* e = dl->dialect_table[bucket]; e && !found; e = e->next) {
+                if (e->dialect.source_region != curr_region) continue;
+
+                /* Find neighbor index */
+                uint32_t neighbor = e->dialect.target_region;
+                int32_t neighbor_idx = -1;
+                for (uint32_t i = 0; i < num_regions; i++) {
+                    if (regions[i] == neighbor) { neighbor_idx = (int32_t)i; break; }
+                }
+
+                if (neighbor_idx >= 0 && !visited[(uint32_t)neighbor_idx]) {
+                    visited[(uint32_t)neighbor_idx] = true;
+                    parent[(uint32_t)neighbor_idx] = curr_idx;
+                    queue[q_tail++] = (uint32_t)neighbor_idx;
+
+                    if (neighbor == target) {
+                        found = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!found) {
+        nimcp_mutex_unlock(&dl->lock);
+        set_error("No path found between regions %u and %u", source, target);
+        return -1;
+    }
+
+    /* Reconstruct path by backtracking from target */
+    uint32_t reverse_path[MAX_PATH_LENGTH];
+    uint32_t rlen = 0;
+    uint32_t cur = (uint32_t)target_idx;
+
+    while (cur != (uint32_t)source_idx && rlen < MAX_PATH_LENGTH) {
+        reverse_path[rlen++] = regions[cur];
+        cur = parent[cur];
+    }
+    reverse_path[rlen++] = source;
+
+    /* Reverse into output */
+    *path_len = rlen;
+    for (uint32_t i = 0; i < rlen; i++) {
+        path[i] = reverse_path[rlen - 1 - i];
+    }
+
     nimcp_mutex_unlock(&dl->lock);
-    set_error("No path found (multi-hop search not yet implemented)");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_get_bridge_path: operation failed");
-    return -1;
+    return 0;
 }
 
 int dialect_translate_path(

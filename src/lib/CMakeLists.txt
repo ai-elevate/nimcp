@@ -2156,6 +2156,22 @@ set(NIMCP_CORE_SOURCES
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/context/nimcp_gpu_context_stub.c>
     # GPU module stubs (wernicke_gpu, tensor_gpu, graph_gpu - only if CUDA NOT available)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs.c>
+    # GPU tensor extended stubs (reductions, norms, comparisons, FFT, CPU-GPU interop)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_ext.c>
+    # GPU FP16/mixed precision stubs (FP16 ops, loss scaling, AMP context, autocast)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensor_fp16.c>
+    # GPU gradient/activation checkpoint stubs (checkpoint ctx, sequential, transformer)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_checkpoint.c>
+    # GPU CNN stubs (conv2d, pooling, batch norm - CPU fallback with im2col)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_cnn.c>
+    # GPU SNN stubs (spiking neural network - LIF, Izhikevich, STDP, surrogate gradients)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_snn.c>
+    # GPU INT8 stubs (quantization, calibration, INT8 GEMM, requantization)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_int8.c>
+    # GPU TensorRT stubs (network definition, engine build/serialize, calibration)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensorrt.c>
+    # GPU training stubs (loss functions, optimizers, gradient ops, backward passes)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_training.c>
 
     # Kernel backend CPU implementation (always compiled - provides CPU fallback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend.c

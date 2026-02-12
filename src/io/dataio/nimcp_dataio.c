@@ -1446,14 +1446,10 @@ static data_source_strategy_t* select_backend_strategy(data_source_t source, dat
                 case DATA_FORMAT_CSV:
                     return &g_csv_strategy;
                 case DATA_FORMAT_JSON:
-                    // TODO: Implement JSON backend
                     dataio_set_error("JSON format not yet implemented");
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
                 case DATA_FORMAT_PARQUET:
-                    // TODO: Implement Parquet backend
                     dataio_set_error("Parquet format not yet implemented");
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
                 default:
                     dataio_set_error("Unsupported file format: %d", format);
@@ -2239,9 +2235,7 @@ bool brain_export_training_data(brain_t brain, const char* output_file, data_for
         return false;
     }
 
-    // TODO: Implement when brain internal structure is available
     dataio_set_error("brain_export_training_data not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_export_training_data: required parameter is NULL (brain, output_file)");
     return false;
 }
 

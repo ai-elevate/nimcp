@@ -107,20 +107,87 @@ int visual_cortex_extract_features(
         return 0;
     }
 
-    /* TODO: Integrate with actual visual_cortex_extract_features_tensor
-     * For now, provide stub implementation that can be replaced when
-     * full visual cortex integration is available.
-     *
-     * The expected integration would be:
-     * 1. Call visual_cortex_extract_features_tensor() to get tensor output
-     * 2. Parse tensor output into motion regions
-     * 3. Compute salience and velocity from temporal differences
-     */
+    /* Basic feature extraction from raw image data.
+     * When full visual cortex integration is available, this should call
+     * visual_cortex_extract_features_tensor() instead. */
 
-    (void)image;
-    (void)width;
-    (void)height;
-    (void)channels;
+    if (width == 0 || height == 0) return 0;
+
+    uint32_t stride = width * channels;
+
+    /* Compute average luminance */
+    uint64_t total_lum = 0;
+    uint32_t pixel_count = width * height;
+    for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+            uint32_t idx = y * stride + x * channels;
+            if (channels >= 3) {
+                /* RGB luminance approximation */
+                total_lum += (uint64_t)(image[idx] * 77 + image[idx+1] * 150 + image[idx+2] * 29) >> 8;
+            } else {
+                total_lum += image[idx];
+            }
+        }
+    }
+    features->avg_luminance = (float)total_lum / (float)pixel_count / 255.0f;
+
+    /* Simple block-based contrast detection for motion regions.
+     * Divide image into a grid and find high-contrast blocks. */
+    uint32_t block_w = width / 8;
+    uint32_t block_h = height / 8;
+    if (block_w < 1) block_w = 1;
+    if (block_h < 1) block_h = 1;
+
+    features->num_motion_regions = 0;
+    float avg_lum_byte = features->avg_luminance * 255.0f;
+
+    for (uint32_t by = 0; by < 8 && by * block_h < height; by++) {
+        for (uint32_t bx = 0; bx < 8 && bx * block_w < width; bx++) {
+            if (features->num_motion_regions >= MAX_MOTION_REGIONS) break;
+
+            /* Compute block statistics */
+            float block_sum = 0.0f;
+            float block_var = 0.0f;
+            uint32_t count = 0;
+
+            for (uint32_t y = by * block_h; y < (by + 1) * block_h && y < height; y++) {
+                for (uint32_t x = bx * block_w; x < (bx + 1) * block_w && x < width; x++) {
+                    uint32_t idx = y * stride + x * channels;
+                    float val = (float)image[idx];
+                    block_sum += val;
+                    count++;
+                }
+            }
+
+            if (count == 0) continue;
+            float block_mean = block_sum / (float)count;
+
+            /* Compute variance */
+            for (uint32_t y = by * block_h; y < (by + 1) * block_h && y < height; y++) {
+                for (uint32_t x = bx * block_w; x < (bx + 1) * block_w && x < width; x++) {
+                    uint32_t idx = y * stride + x * channels;
+                    float diff = (float)image[idx] - block_mean;
+                    block_var += diff * diff;
+                }
+            }
+            block_var /= (float)count;
+
+            /* High contrast blocks become motion regions */
+            float contrast = fabsf(block_mean - avg_lum_byte) / 255.0f;
+            if (contrast > 0.15f && block_var > 100.0f) {
+                visual_motion_region_t* reg = &features->motion_regions[features->num_motion_regions];
+                reg->center_x = ((float)bx + 0.5f) / 8.0f;
+                reg->center_y = ((float)by + 0.5f) / 8.0f;
+                reg->size = (float)(block_w * block_h);
+                reg->contrast = contrast;
+                reg->salience = contrast * sqrtf(block_var) / 128.0f;
+                if (reg->salience > 1.0f) reg->salience = 1.0f;
+                reg->velocity_x = 0.0f;  /* No temporal info for single frame */
+                reg->velocity_y = 0.0f;
+                features->num_motion_regions++;
+            }
+        }
+    }
 
     return 0;
 }

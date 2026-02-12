@@ -819,8 +819,38 @@ nimcp_result_t semantic_save_dictionary(
 ) {
     if (!comp || !filepath) return NIMCP_INVALID_PARAM;
 
-    LOG_INFO("Dictionary save not yet implemented");
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* fp = fopen(filepath, "wb");
+    if (!fp) {
+        LOG_ERROR("Failed to open file for writing: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "semantic_save_dictionary: failed to open file");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Write header: magic, version, num_primitives, dictionary_version */
+    uint32_t magic = COMPRESSION_MAGIC;
+    uint32_t version = COMPRESSION_VERSION;
+    fwrite(&magic, sizeof(uint32_t), 1, fp);
+    fwrite(&version, sizeof(uint32_t), 1, fp);
+    fwrite(&comp->num_primitives, sizeof(uint32_t), 1, fp);
+    fwrite(&comp->dictionary_version, sizeof(uint64_t), 1, fp);
+
+    /* Write each primitive */
+    for (uint32_t i = 0; i < comp->num_primitives; i++) {
+        semantic_primitive_t* p = &comp->primitives[i];
+        fwrite(&p->primitive_id, sizeof(uint32_t), 1, fp);
+        fwrite(p->name, sizeof(p->name), 1, fp);
+        fwrite(&p->vector_size, sizeof(uint32_t), 1, fp);
+        fwrite(&p->frequency, sizeof(float), 1, fp);
+        fwrite(&p->mean_activation, sizeof(float), 1, fp);
+        if (p->vector && p->vector_size > 0) {
+            fwrite(p->vector, sizeof(float), p->vector_size, fp);
+        }
+    }
+
+    fclose(fp);
+    LOG_INFO("Saved dictionary: %u primitives to %s", comp->num_primitives, filepath);
+    return NIMCP_SUCCESS;
 }
 
 nimcp_result_t semantic_load_dictionary(
@@ -829,6 +859,86 @@ nimcp_result_t semantic_load_dictionary(
 ) {
     if (!comp || !filepath) return NIMCP_INVALID_PARAM;
 
-    LOG_INFO("Dictionary load not yet implemented");
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* fp = fopen(filepath, "rb");
+    if (!fp) {
+        LOG_ERROR("Failed to open file for reading: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "semantic_load_dictionary: failed to open file");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Read and validate header */
+    uint32_t magic = 0, version = 0, num_prims = 0;
+    uint64_t dict_version = 0;
+    if (fread(&magic, sizeof(uint32_t), 1, fp) != 1 ||
+        fread(&version, sizeof(uint32_t), 1, fp) != 1 ||
+        fread(&num_prims, sizeof(uint32_t), 1, fp) != 1 ||
+        fread(&dict_version, sizeof(uint64_t), 1, fp) != 1) {
+        fclose(fp);
+        LOG_ERROR("Failed to read dictionary header");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    if (magic != COMPRESSION_MAGIC || version > COMPRESSION_VERSION) {
+        fclose(fp);
+        LOG_ERROR("Invalid dictionary format: magic=0x%08X version=%u", magic, version);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    if (num_prims > 100000) {
+        fclose(fp);
+        LOG_ERROR("Dictionary too large: %u primitives", num_prims);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Free existing primitives */
+    if (comp->primitives) {
+        for (uint32_t i = 0; i < comp->num_primitives; i++) {
+            if (comp->primitives[i].vector) {
+                nimcp_free(comp->primitives[i].vector);
+            }
+        }
+        nimcp_free(comp->primitives);
+    }
+
+    /* Allocate new primitives */
+    comp->primitives = nimcp_calloc(num_prims, sizeof(semantic_primitive_t));
+    if (!comp->primitives) {
+        fclose(fp);
+        comp->num_primitives = 0;
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Read each primitive */
+    for (uint32_t i = 0; i < num_prims; i++) {
+        semantic_primitive_t* p = &comp->primitives[i];
+        if (fread(&p->primitive_id, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(p->name, sizeof(p->name), 1, fp) != 1 ||
+            fread(&p->vector_size, sizeof(uint32_t), 1, fp) != 1 ||
+            fread(&p->frequency, sizeof(float), 1, fp) != 1 ||
+            fread(&p->mean_activation, sizeof(float), 1, fp) != 1) {
+            LOG_ERROR("Failed to read primitive %u", i);
+            break;
+        }
+
+        if (p->vector_size > 0 && p->vector_size <= 1048576) {
+            p->vector = nimcp_calloc(p->vector_size, sizeof(float));
+            if (p->vector) {
+                if (fread(p->vector, sizeof(float), p->vector_size, fp) != p->vector_size) {
+                    LOG_ERROR("Failed to read vector data for primitive %u", i);
+                    nimcp_free(p->vector);
+                    p->vector = NULL;
+                    p->vector_size = 0;
+                }
+            }
+        }
+    }
+
+    comp->num_primitives = num_prims;
+    comp->dictionary_version = dict_version;
+    fclose(fp);
+
+    LOG_INFO("Loaded dictionary: %u primitives from %s (version %lu)",
+             num_prims, filepath, (unsigned long)dict_version);
+    return NIMCP_SUCCESS;
 }

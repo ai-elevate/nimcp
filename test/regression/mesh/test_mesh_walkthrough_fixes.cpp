@@ -214,9 +214,7 @@ TEST_F(MeshWalkthroughFixTest, CreateBlockNullFirstTransaction) {
     mesh_ordered_block_t* block = mesh_ordering_create_block(ordering);
     EXPECT_NE(block, nullptr) << "P1-30: Block creation should succeed with valid batch";
 
-    if (block) {
-        mesh_ordered_block_destroy(block);
-    }
+    /* Block is owned by the ordering service - TearDown will destroy it */
 }
 
 /* ============================================================================
@@ -527,5 +525,5 @@ TEST_F(MeshWalkthroughFixTest, FullOrderingLifecycle) {
     EXPECT_EQ(stats.transactions_submitted, (uint64_t)tx_count);
     EXPECT_EQ(stats.blocks_created, 1u);
 
-    mesh_ordered_block_destroy(block);
+    /* Block is owned by the ordering service - TearDown will destroy it */
 }

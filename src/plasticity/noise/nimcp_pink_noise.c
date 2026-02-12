@@ -1049,32 +1049,57 @@ const char* pink_noise_get_last_error(void) {
 //=============================================================================
 
 bool pink_noise_save(pink_noise_generator_t generator, FILE* file) {
-    // WHAT: Save pink noise generator state (stub)
-    // WHY: Enable persistence for neuromodulator state
-    // HOW: Binary serialization (TODO: full implementation)
+    // WHAT: Save pink noise generator state to binary file
+    // WHY: Enable persistence for neuromodulator state across sessions
+    // HOW: Binary serialization of config + internal state
 
-    // Guard: NULL generator
     if (!generator) {
         set_error("Generator is NULL");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_save: generator is NULL");
         return false;
     }
 
-    // Guard: NULL file handle
     if (!file) {
         set_error("File handle is NULL");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_save: file is NULL");
         return false;
     }
 
-    // TODO: Implement full serialization of internal state
-    // For now, just write a marker to indicate saved state
+    // Write marker and version
     uint32_t marker = 0x50494E4B;  // "PINK" in ASCII
-    size_t written = fwrite(&marker, sizeof(uint32_t), 1, file);
+    uint32_t version = 2;          // Version 2: full state serialization
+    if (fwrite(&marker, sizeof(uint32_t), 1, file) != 1 ||
+        fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write header");
+        return false;
+    }
 
-    if (written != 1) {
-        set_error("Failed to write marker");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_save: validation failed");
+    // Write config
+    if (fwrite(&generator->config, sizeof(pink_noise_config_t), 1, file) != 1) {
+        set_error("Failed to write config");
+        return false;
+    }
+
+    // Write RNG state
+    if (fwrite(&generator->rng_state, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write RNG state");
+        return false;
+    }
+
+    // Write Voss-McCartney state
+    if (fwrite(generator->voss_octaves, sizeof(float), VOSS_NUM_OCTAVES, file) != VOSS_NUM_OCTAVES) {
+        set_error("Failed to write Voss octaves");
+        return false;
+    }
+    if (fwrite(&generator->voss_counter, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to write Voss counter");
+        return false;
+    }
+
+    // Write IIR filter state
+    if (fwrite(generator->iir_history, sizeof(float), 4, file) != 4 ||
+        fwrite(generator->iir_coeffs, sizeof(float), 5, file) != 5) {
+        set_error("Failed to write IIR state");
         return false;
     }
 
@@ -1083,9 +1108,9 @@ bool pink_noise_save(pink_noise_generator_t generator, FILE* file) {
 }
 
 pink_noise_generator_t pink_noise_load(FILE* file) {
-    // WHAT: Load pink noise generator state (stub)
-    // WHY: Restore persistence for neuromodulator state
-    // HOW: Binary deserialization (TODO: full implementation)
+    // WHAT: Load pink noise generator state from binary file
+    // WHY: Restore neuromodulator state from persistence
+    // HOW: Binary deserialization, config + internal state
 
     if (!file) {
         set_error("Invalid file handle");
@@ -1093,28 +1118,71 @@ pink_noise_generator_t pink_noise_load(FILE* file) {
         return NULL;
     }
 
-    // TODO: Implement full deserialization
-    // For now, just read the marker and return a default generator
-    uint32_t marker;
-    size_t read_count = fread(&marker, sizeof(uint32_t), 1, file);
-
-    if (read_count != 1 || marker != 0x50494E4B) {  // "PINK" in ASCII
-        set_error("Failed to read marker or invalid format");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_load: validation failed");
+    // Read and validate header
+    uint32_t marker, version;
+    if (fread(&marker, sizeof(uint32_t), 1, file) != 1 ||
+        fread(&version, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read header");
         return NULL;
     }
 
-    // Create default generator (stub)
-    pink_noise_config_t config = {
-        .alpha = 1.0F,
-        .amplitude = 0.05F,
-        .min_frequency = 0.1F,
-        .max_frequency = 100.0F,
-        .sample_rate = 1000.0F,
-        .method = PINK_NOISE_VOSS,
-        .seed = 0
-    };
+    if (marker != 0x50494E4B) {
+        set_error("Invalid marker (expected PINK)");
+        return NULL;
+    }
+
+    // Handle version 1 (legacy: marker only, no state)
+    if (version == 1 || version == 0) {
+        pink_noise_config_t config = {
+            .alpha = 1.0F,
+            .amplitude = 0.05F,
+            .min_frequency = 0.1F,
+            .max_frequency = 100.0F,
+            .sample_rate = 1000.0F,
+            .method = PINK_NOISE_VOSS,
+            .seed = 0
+        };
+        set_error(NULL);
+        return pink_noise_create(&config);
+    }
+
+    // Version 2: full state
+    pink_noise_config_t config;
+    if (fread(&config, sizeof(pink_noise_config_t), 1, file) != 1) {
+        set_error("Failed to read config");
+        return NULL;
+    }
+
+    // Create generator with loaded config
+    pink_noise_generator_t gen = pink_noise_create(&config);
+    if (!gen) {
+        set_error("Failed to create generator from loaded config");
+        return NULL;
+    }
+
+    // Restore RNG state
+    if (fread(&gen->rng_state, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read RNG state");
+        pink_noise_destroy(gen);
+        return NULL;
+    }
+
+    // Restore Voss-McCartney state
+    if (fread(gen->voss_octaves, sizeof(float), VOSS_NUM_OCTAVES, file) != VOSS_NUM_OCTAVES ||
+        fread(&gen->voss_counter, sizeof(uint32_t), 1, file) != 1) {
+        set_error("Failed to read Voss state");
+        pink_noise_destroy(gen);
+        return NULL;
+    }
+
+    // Restore IIR filter state
+    if (fread(gen->iir_history, sizeof(float), 4, file) != 4 ||
+        fread(gen->iir_coeffs, sizeof(float), 5, file) != 5) {
+        set_error("Failed to read IIR state");
+        pink_noise_destroy(gen);
+        return NULL;
+    }
 
     set_error(NULL);
-    return pink_noise_create(&config);
+    return gen;
 }

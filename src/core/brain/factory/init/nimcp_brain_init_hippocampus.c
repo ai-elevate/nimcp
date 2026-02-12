@@ -177,20 +177,19 @@ static hippocampus_substrate_bridge_t* hippocampus_substrate_bridge_create(
     (void)hippocampus;
     (void)substrate;
     (void)config;
-    // Stub: Return NULL to indicate not yet implemented
-    // Full implementation will integrate with neural_substrate module
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_substrate_bridge_create: operation failed");
+    /* Stub: Return NULL to indicate not yet implemented.
+     * Full implementation will integrate with neural_substrate module.
+     * Callers handle NULL gracefully. */
     return NULL;
 }
 
 static void hippocampus_substrate_bridge_destroy(hippocampus_substrate_bridge_t* bridge) {
     (void)bridge;
-    // Stub
 }
 
 static int hippocampus_substrate_bridge_update(hippocampus_substrate_bridge_t* bridge) {
     (void)bridge;
-    return 0;  // Stub
+    return 0;
 }
 
 static hippocampus_thalamic_config_t hippocampus_thalamic_default_config(void) {
@@ -210,9 +209,9 @@ static hippocampus_thalamic_bridge_t* hippocampus_thalamic_bridge_create(
     (void)hippocampus;
     (void)router;
     (void)config;
-    // Stub: Return NULL to indicate not yet implemented
-    // Full implementation will integrate with thalamic router module
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_thalamic_bridge_create: operation failed");
+    /* Stub: Return NULL to indicate not yet implemented.
+     * Full implementation will integrate with thalamic router module.
+     * Callers handle NULL gracefully. */
     return NULL;
 }
 

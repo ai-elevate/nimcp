@@ -107,8 +107,11 @@ static uint32_t ordering_thread_safe_rand(void) {
     do {
         old_state = atomic_load(&s_ordering_prng_state);
         if (old_state == 0) {
-            old_state = (uint64_t)nimcp_time_now_ns();
-            if (old_state == 0) old_state = 1;  /* Avoid zero seed */
+            /* Seed the PRNG - CAS 0 -> seed value, then loop will read the seed */
+            uint64_t seed = (uint64_t)nimcp_time_now_ns();
+            if (seed == 0) seed = 1;
+            atomic_compare_exchange_strong(&s_ordering_prng_state, &old_state, seed);
+            continue;  /* Re-read the (now-seeded) state */
         }
         /* xorshift64 */
         new_state = old_state;

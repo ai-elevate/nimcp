@@ -798,13 +798,11 @@ int broca_immune_set_aphasia_callback(
     void* user_data)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
-    /* Callback registration not implemented yet */
+    bridge->aphasia_cb = (void (*)(void))callback;
+    bridge->aphasia_cb_data = user_data;
     return 0;
 }
 
@@ -814,13 +812,11 @@ int broca_immune_set_error_callback(
     void* user_data)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
-    /* Callback registration not implemented yet */
+    bridge->error_cb = (void (*)(void))callback;
+    bridge->error_cb_data = user_data;
     return 0;
 }
 
@@ -830,13 +826,11 @@ int broca_immune_set_impairment_callback(
     void* user_data)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
-    /* Callback registration not implemented yet */
+    bridge->impairment_cb = (void (*)(void))callback;
+    bridge->impairment_cb_data = user_data;
     return 0;
 }
 
@@ -846,13 +840,11 @@ int broca_immune_set_recovery_callback(
     void* user_data)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
-    /* Callback registration not implemented yet */
+    bridge->recovery_cb = (void (*)(void))callback;
+    bridge->recovery_cb_data = user_data;
     return 0;
 }
 

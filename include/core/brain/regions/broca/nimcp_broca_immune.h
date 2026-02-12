@@ -460,6 +460,16 @@ typedef struct {
 
     /* Status */
     bool running;                      /**< Integration active */
+
+    /* Callbacks (stored as void* since types defined after struct) */
+    void (*aphasia_cb)(void);
+    void* aphasia_cb_data;
+    void (*error_cb)(void);
+    void* error_cb_data;
+    void (*impairment_cb)(void);
+    void* impairment_cb_data;
+    void (*recovery_cb)(void);
+    void* recovery_cb_data;
 } broca_immune_bridge_t;
 
 /* ============================================================================

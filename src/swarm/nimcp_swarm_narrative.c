@@ -640,23 +640,126 @@ int swarm_narrative_broadcast(swarm_narrative_t* sn, uint32_t narrative_id)
  * Narrative Retrieval Implementation
  * ============================================================================ */
 
+/* Callback context for topic query iteration */
+typedef struct {
+    const float* topic_vector;
+    uint32_t vec_size;
+    narrative_t** results;
+    float* scores;
+    uint32_t count;
+    uint32_t max_results;
+} topic_query_ctx_t;
+
+static bool topic_query_iterator(const void* key, size_t key_size, void* value,
+                                  size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    topic_query_ctx_t* ctx = (topic_query_ctx_t*)user_data;
+    narrative_t* narr = (narrative_t*)value;
+
+    if (!narr || narr->num_events == 0 || ctx->count >= ctx->max_results) {
+        return ctx->count < ctx->max_results;
+    }
+
+    /* Compute average similarity across events */
+    float total_sim = 0.0f;
+    uint32_t matched = 0;
+    for (uint32_t e = 0; e < narr->num_events; e++) {
+        if (narr->events[e].event_encoding && narr->events[e].encoding_size == ctx->vec_size) {
+            float sim = vector_cosine_similarity(ctx->topic_vector,
+                                                  narr->events[e].event_encoding, ctx->vec_size);
+            total_sim += sim;
+            matched++;
+        }
+    }
+
+    if (matched > 0) {
+        float avg_sim = total_sim / (float)matched;
+        if (avg_sim > 0.1f) {
+            ctx->results[ctx->count] = narr;
+            ctx->scores[ctx->count] = avg_sim;
+            ctx->count++;
+        }
+    }
+
+    return ctx->count < ctx->max_results;
+}
+
 int swarm_narrative_query_by_topic(swarm_narrative_t* sn, const float* topic_vector,
                                     uint32_t vec_size, narrative_t** results, uint32_t* count)
 {
-    /* WHAT: Find narratives similar to topic
-     * WHY:  Content-based retrieval
-     * HOW:  Cosine similarity with event encodings
+    /* WHAT: Find narratives similar to topic vector
+     * WHY:  Content-based retrieval for relevant stories
+     * HOW:  Cosine similarity between topic and event encodings
      */
 
     if (!sn || !topic_vector || !results || !count) {
         return NIMCP_INVALID_PARAM;
     }
 
-    /* TODO: Implement topic-based search with similarity ranking */
     *count = 0;
-    LOG_DEBUG("Topic-based query not yet implemented");
 
+    if (!sn->narratives || sn->total_narratives == 0) {
+        return NIMCP_SUCCESS;
+    }
+
+    uint32_t max_results = 32;
+    float* scores = nimcp_calloc(max_results, sizeof(float));
+    if (!scores) return NIMCP_SUCCESS;
+
+    topic_query_ctx_t ctx = {
+        .topic_vector = topic_vector,
+        .vec_size = vec_size,
+        .results = results,
+        .scores = scores,
+        .count = 0,
+        .max_results = max_results
+    };
+
+    hash_table_iterate(sn->narratives, topic_query_iterator, &ctx);
+
+    /* Sort by score (simple insertion sort for small arrays) */
+    for (uint32_t i = 1; i < ctx.count; i++) {
+        narrative_t* tmp_narr = results[i];
+        float tmp_score = scores[i];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && scores[j] < tmp_score) {
+            results[j + 1] = results[j];
+            scores[j + 1] = scores[j];
+            j--;
+        }
+        results[j + 1] = tmp_narr;
+        scores[j + 1] = tmp_score;
+    }
+
+    *count = ctx.count;
+    nimcp_free(scores);
     return NIMCP_SUCCESS;
+}
+
+/* Callback context for popular narratives iteration */
+typedef struct {
+    narrative_t** results;
+    uint32_t* shares;
+    uint32_t count;
+    uint32_t max_results;
+} popular_ctx_t;
+
+static bool popular_iterator(const void* key, size_t key_size, void* value,
+                              size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    popular_ctx_t* ctx = (popular_ctx_t*)user_data;
+    narrative_t* narr = (narrative_t*)value;
+
+    if (!narr || ctx->count >= ctx->max_results) {
+        return ctx->count < ctx->max_results;
+    }
+
+    ctx->results[ctx->count] = narr;
+    ctx->shares[ctx->count] = narr->share_count;
+    ctx->count++;
+    return ctx->count < ctx->max_results;
 }
 
 int swarm_narrative_get_popular(swarm_narrative_t* sn, narrative_t** results, uint32_t* count)
@@ -670,10 +773,41 @@ int swarm_narrative_get_popular(swarm_narrative_t* sn, narrative_t** results, ui
         return NIMCP_INVALID_PARAM;
     }
 
-    /* TODO: Implement popularity-based retrieval */
     *count = 0;
-    LOG_DEBUG("Popularity-based query not yet implemented");
 
+    if (!sn->narratives || sn->total_narratives == 0) {
+        return NIMCP_SUCCESS;
+    }
+
+    uint32_t max_results = 32;
+    uint32_t* shares = nimcp_calloc(max_results, sizeof(uint32_t));
+    if (!shares) return NIMCP_SUCCESS;
+
+    popular_ctx_t ctx = {
+        .results = results,
+        .shares = shares,
+        .count = 0,
+        .max_results = max_results
+    };
+
+    hash_table_iterate(sn->narratives, popular_iterator, &ctx);
+
+    /* Sort by shares descending */
+    for (uint32_t i = 1; i < ctx.count; i++) {
+        narrative_t* tmp_narr = results[i];
+        uint32_t tmp_shares = shares[i];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && shares[j] < tmp_shares) {
+            results[j + 1] = results[j];
+            shares[j + 1] = shares[j];
+            j--;
+        }
+        results[j + 1] = tmp_narr;
+        shares[j + 1] = tmp_shares;
+    }
+
+    *count = ctx.count;
+    nimcp_free(shares);
     return NIMCP_SUCCESS;
 }
 
