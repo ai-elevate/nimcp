@@ -888,7 +888,7 @@ int security_hippocampus_reject_replay(
  * @return 0 on success, -1 on error
  */
 int security_hippocampus_get_replay_info(
-    const sec_hippo_bridge_t* bridge,
+    sec_hippo_bridge_t* bridge,
     uint64_t sequence_id,
     sec_hippo_replay_sequence_t* sequence_out
 );

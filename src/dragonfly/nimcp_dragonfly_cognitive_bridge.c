@@ -702,8 +702,7 @@ int dragonfly_cognitive_wm_get_target(
             return 0;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_cognitive_wm_get_target: target not found");
-    return -1;  /* Not found */
+    return -1;  /* Target not found */
 }
 
 int dragonfly_cognitive_wm_get_all_targets(

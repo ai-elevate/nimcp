@@ -232,8 +232,6 @@ hemispheric_brain_t* hemispheric_brain_create(
     // Mutex
     brain->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!brain->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "hemispheric_brain_create: failed to allocate mutex");
         callosum_destroy(brain->callosum);
         hemisphere_destroy(brain->left);
         hemisphere_destroy(brain->right);
@@ -297,10 +295,13 @@ void hemispheric_brain_destroy(hemispheric_brain_t* brain) {
 //=============================================================================
 
 int hemispheric_brain_update(hemispheric_brain_t* brain, float dt) {
-    if (!brain || !brain->is_active) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-            "hemispheric_brain_update: brain is NULL or inactive");
+            "hemispheric_brain_update: brain is NULL");
         return -1;
+    }
+    if (!brain->is_active) {
+        return 0;  /* Inactive brain - normal, skip update */
     }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {

@@ -859,10 +859,7 @@ int executive_safety_connect_executive(
 }
 
 bool executive_safety_is_connected(const executive_safety_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_safety_is_connected: bridge is NULL");
-        return false;
-    }
+    if (!bridge) { return false; }
     /* Bridge is functional if AIx is connected (executive is optional) */
     return bridge->base.system_a_connected;
 }
@@ -882,9 +879,6 @@ int executive_safety_disconnect_bio_async(executive_safety_bridge_t* bridge) {
 }
 
 bool executive_safety_is_bio_async_connected(const executive_safety_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_safety_is_bio_async_connected: bridge is NULL");
-        return false;
-    }
+    if (!bridge) { return false; }
     return bridge_base_is_bio_async_connected(&bridge->base);
 }

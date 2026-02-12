@@ -112,6 +112,10 @@ bg_neuromod_system_t* bg_neuromod_create(const bg_neuromod_config_t* config) {
     sys->targets = sys->config.baseline;
     sys->motive_state = BG_MOTIVE_STATE_NEUTRAL;
     sys->mutex = nimcp_mutex_create(NULL);
+    if (!sys->mutex) {
+        nimcp_free(sys);
+        return NULL;
+    }
 
     return sys;
 }

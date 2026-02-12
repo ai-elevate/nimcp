@@ -771,10 +771,7 @@ int planning_safety_connect_aix(
 }
 
 bool planning_safety_is_connected(const planning_safety_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planning_safety_is_connected: bridge is NULL");
-        return false;
-    }
+    if (!bridge) { return false; }
     return bridge->base.system_a_connected;
 }
 
@@ -793,9 +790,6 @@ int planning_safety_disconnect_bio_async(planning_safety_bridge_t* bridge) {
 }
 
 bool planning_safety_is_bio_async_connected(const planning_safety_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planning_safety_is_bio_async_connected: bridge is NULL");
-        return false;
-    }
+    if (!bridge) { return false; }
     return bridge_base_is_bio_async_connected(&bridge->base);
 }

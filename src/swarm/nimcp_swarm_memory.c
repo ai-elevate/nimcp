@@ -87,7 +87,7 @@ static inline nimcp_result_t nimcp_replay_heap_insert(nimcp_min_heap_t *heap, vo
 
     /* Atomic fetch-and-add for thread-safe counter increment (P0-4 fix) */
     uint32_t idx = nimcp_atomic_fetch_add_u32(&_replay_entry_counter, 1, NIMCP_MEMORY_ORDER_RELAXED) % MAX_REPLAY_ENTRIES;
-    _replay_entry_map[idx] = entry;
+    __atomic_store_n(&_replay_entry_map[idx], entry, __ATOMIC_RELEASE);
 
     /* Use negative priority so higher priority = lower value (min-heap) */
     nimcp_heap_element_t elem = { .vertex_id = idx, .priority = -(float)idx };
@@ -96,11 +96,7 @@ static inline nimcp_result_t nimcp_replay_heap_insert(nimcp_min_heap_t *heap, vo
 
 static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
     if (!heap) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heap is NULL");
-
         return NULL;
-
     }
 
     nimcp_heap_element_t elem;
@@ -108,8 +104,8 @@ static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
         return NULL;  // Heap empty
     }
 
-    void* entry = _replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES];
-    _replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES] = NULL;
+    void* entry = __atomic_load_n(&_replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES], __ATOMIC_ACQUIRE);
+    __atomic_store_n(&_replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES], (void*)NULL, __ATOMIC_RELEASE);
     return entry;
 }
 

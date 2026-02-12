@@ -188,6 +188,7 @@ bg_temporal_credit_t* bgtc_create(const bgtc_config_t* config) {
 
     /* Create mutex */
     tc->mutex = nimcp_mutex_create(NULL);
+    if (!tc->mutex) goto cleanup;
 
     return tc;
 

@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
@@ -97,15 +98,16 @@ static float brain_get_phi_internal(brain_t* brain);
 /**
  * Get/set consciousness context on swarm brain.
  * These are stub implementations - real implementation would store in swarm_brain struct.
+ * Uses _Atomic to prevent data races on the global pointer.
  */
-static swarm_consciousness_ctx_t* swarm_consciousness_ctx_storage = NULL;
+static _Atomic(swarm_consciousness_ctx_t*) swarm_consciousness_ctx_storage = NULL;
 static void swarm_brain_set_consciousness_ctx(swarm_brain_t* swarm, swarm_consciousness_ctx_t* ctx) {
     (void)swarm;
-    swarm_consciousness_ctx_storage = ctx;
+    atomic_store(&swarm_consciousness_ctx_storage, ctx);
 }
 static swarm_consciousness_ctx_t* swarm_brain_get_consciousness_ctx(const swarm_brain_t* swarm) {
     (void)swarm;
-    return swarm_consciousness_ctx_storage;
+    return atomic_load(&swarm_consciousness_ctx_storage);
 }
 
 //=============================================================================
@@ -710,7 +712,6 @@ static void* consciousness_monitor_thread(void* arg) {
     }
 
     LOG_INFO("Swarm consciousness monitoring thread stopped");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consciousness_monitor_thread: validation failed");
     return NULL;
 }
 
@@ -1088,7 +1089,10 @@ float swarm_brain_get_collective_phi(const swarm_brain_t* swarm) {
     // Get consciousness context
     swarm_consciousness_ctx_t* ctx = swarm_brain_get_consciousness_ctx(swarm);
     if (ctx && ctx->current_metrics) {
-        return ctx->current_metrics->collective_phi;
+        nimcp_mutex_lock(&ctx->lock);
+        float phi = ctx->current_metrics->collective_phi;
+        nimcp_mutex_unlock(&ctx->lock);
+        return phi;
     }
 
     // No monitoring context - compute on demand
@@ -1382,8 +1386,8 @@ static brain_t* swarm_brain_get_drone_brain_internal(const swarm_brain_t* swarm,
     // Only local brain is accessible
     if (index == 0) {
         // Note: swarm_brain_get_local_brain returns brain_t (value), not pointer
-        // This is a simplified stub - real implementation would cache the brain pointer
-        static brain_t local_brain_cache = NULL;
+        // _Thread_local prevents data race on the static cache variable
+        static _Thread_local brain_t local_brain_cache = NULL;
         local_brain_cache = swarm_brain_get_local_brain((swarm_brain_t*)swarm);
         return local_brain_cache ? &local_brain_cache : NULL;
     }

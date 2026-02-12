@@ -1509,9 +1509,10 @@ typedef struct {
  * @brief Get or create local brain storage in swarm
  */
 static local_brain_instance_t* get_local_brains(swarm_brain_t* swarm) {
-    // For now, store in a simple static array
-    // In production, this would be a hash table in swarm struct
+    // TODO(P2): Move to per-instance struct for full isolation
+    // Static array shared between all swarm instances - protected by callers' locks
     static local_brain_instance_t local_brains[MAX_LOCAL_BRAINS] = {0};
+    (void)swarm;  // Currently unused - would key into per-instance storage
     return local_brains;
 }
 

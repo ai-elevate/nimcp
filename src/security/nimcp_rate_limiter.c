@@ -576,7 +576,7 @@ bool nimcp_rate_limiter_allow(
     const char* client_id)
 {
     if (!is_valid_limiter(limiter)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_allow: is_valid_limiter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_allow: invalid or NULL limiter");
         return false;
     }
 
@@ -633,8 +633,7 @@ bool nimcp_rate_limiter_allow(
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
         limiter->stats.requests_denied++;
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_rate_limiter_allow: validation failed");
-        return false;
+        return false;  /* Client permanently blocked - expected behavior */
     }
 
     if (bucket->state == CLIENT_STATE_BLOCKED_TEMP) {
@@ -643,8 +642,7 @@ bool nimcp_rate_limiter_allow(
             nimcp_platform_mutex_lock(&limiter->limiter_lock);
             limiter->stats.requests_denied++;
             nimcp_platform_mutex_unlock(&limiter->limiter_lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_rate_limiter_allow: validation failed");
-            return false;
+            return false;  /* Client temporarily blocked - expected behavior */
         } else {
             // Unblock
             bucket->state = CLIENT_STATE_NORMAL;
@@ -725,8 +723,7 @@ bool nimcp_rate_limiter_allow(
                                  deferred_cb.action, deferred_cb.user_data);
         }
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_allow: validation failed");
-        return false;  // Request was denied
+        return false;  /* Rate limit exceeded - request denied */
     }
 }
 
@@ -745,7 +742,7 @@ bool nimcp_rate_limiter_acquire(
     uint32_t count)
 {
     if (!is_valid_limiter(limiter) || count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_acquire: is_valid_limiter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_acquire: invalid limiter or zero count");
         return false;
     }
 

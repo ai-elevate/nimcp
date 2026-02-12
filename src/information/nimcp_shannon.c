@@ -884,7 +884,6 @@ bool shannon_distribution_normalize(shannon_distribution_t* distribution)
     }
 
     if (sum < SHANNON_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shannon_distribution_normalize: validation failed");
         return false;
     }
 

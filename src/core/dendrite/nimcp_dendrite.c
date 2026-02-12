@@ -1412,26 +1412,22 @@ bool dendrite_can_generate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id)
     // Check voltage threshold
     float voltage_mv = segment->voltage * 1000.0F;
     if (voltage_mv < NIMCP_NMDA_SPIKE_THRESHOLD_MV * 0.8F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: validation failed");
         return false;
     }
 
     // Check active properties
     if (!segment->has_active_properties) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_can_generate_nmda_spike: segment->has_active_properties is NULL");
         return false;
     }
 
     // Check if already in NMDA spike
     if (segment->nmda_spike_active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: validation failed");
         return false;
     }
 
     // Check Mg²⁺ block is sufficiently relieved
     float mg_block = calculate_mg_block(voltage_mv);
     if (mg_block < 0.5F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dendrite_can_generate_nmda_spike: validation failed");
         return false;
     }
 
@@ -1773,14 +1769,13 @@ float dendrite_apply_cluster_boost(dendrite_t* dendrite, uint32_t cluster_id) {
 // STDP Integration Implementation
 // ============================================================================
 
-void dendrite_stdp_pre_spike(dendrite_t* dendrite, uint32_t spine_id,
+static void dendrite_stdp_pre_spike_unlocked(dendrite_t* dendrite, uint32_t spine_id,
                               uint64_t timestamp) {
     // Guard clauses
     if (!dendrite) return;
     if (spine_id >= dendrite->num_spines) return;
 
-    nimcp_mutex_lock(&dendrite->lock);
-
+    // NOTE: caller must hold dendrite->lock
     dendritic_spine_t* spine = &dendrite->spines[spine_id];
     stdp_state_t* stdp = &spine->stdp;
 
@@ -1802,7 +1797,14 @@ void dendrite_stdp_pre_spike(dendrite_t* dendrite, uint32_t spine_id,
             stdp->eligible_for_update = true;
         }
     }
+}
 
+void dendrite_stdp_pre_spike(dendrite_t* dendrite, uint32_t spine_id,
+                              uint64_t timestamp) {
+    if (!dendrite) return;
+    if (spine_id >= dendrite->num_spines) return;
+    nimcp_mutex_lock(&dendrite->lock);
+    dendrite_stdp_pre_spike_unlocked(dendrite, spine_id, timestamp);
     nimcp_mutex_unlock(&dendrite->lock);
 }
 
@@ -1997,7 +1999,7 @@ dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite) {
     }
 
     nimcp_mutex_unlock(&pool->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_pool_alloc_spine: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_pool_alloc_spine: operation failed");
     return NULL;
 }
 
@@ -2212,8 +2214,8 @@ float dendrite_spine_process_input(dendrite_t* dendrite, uint32_t spine_id,
     // Apply synaptic weight
     I_dendrite *= spine->synaptic_weight;
 
-    // Register pre-spike for STDP
-    dendrite_stdp_pre_spike(dendrite, spine_id, timestamp);
+    // Register pre-spike for STDP (use unlocked variant - we already hold dendrite->lock)
+    dendrite_stdp_pre_spike_unlocked(dendrite, spine_id, timestamp);
 
     nimcp_mutex_unlock(&dendrite->lock);
 

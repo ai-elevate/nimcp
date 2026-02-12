@@ -671,7 +671,7 @@ bool init_epistemic_subsystem(brain_t brain)
 static personality_profile_t* create_personality(const brain_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_personality: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_personality: config is NULL");
         return NULL;
     }
 
@@ -803,6 +803,17 @@ void brain_destroy(brain_t brain)
     // Cleanup distributed cognition
     if (brain->distributed) {
         distrib_cognition_destroy(brain->distributed);
+    }
+
+    // Cleanup long-term memory consolidation buffer
+    if (brain->longterm_memory) {
+        for (uint32_t i = 0; i < brain->longterm_count; i++) {
+            if (brain->longterm_memory[i].features) {
+                nimcp_free(brain->longterm_memory[i].features);
+            }
+        }
+        nimcp_free(brain->longterm_memory);
+        brain->longterm_memory = NULL;
     }
 
     // Cleanup subsystems (extensive list truncated for brevity)
@@ -1008,14 +1019,18 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_gpu_subsystem(brain);
     }
 
-    // Bio-async cleanup
+    // Bio-async cleanup - respect refcount to avoid breaking other brains
     extern bool g_brain_bio_initialized;
     extern bio_module_context_t g_brain_bio_ctx;
-    if (g_brain_bio_initialized && g_brain_bio_ctx) {
-        LOG_MODULE_INFO("BRAIN_LIFECYCLE", "Unregistering brain from bio-async router");
-        bio_router_unregister_module(g_brain_bio_ctx);
-        g_brain_bio_ctx = NULL;
-        g_brain_bio_initialized = false;
+    extern volatile int g_brain_bio_ref_count;
+    if (brain->bio_async_enabled) {
+        int prev_ref = __atomic_fetch_sub(&g_brain_bio_ref_count, 1, __ATOMIC_ACQ_REL);
+        if (prev_ref <= 1 && g_brain_bio_initialized && g_brain_bio_ctx) {
+            LOG_MODULE_INFO("BRAIN_LIFECYCLE", "Unregistering brain from bio-async router");
+            bio_router_unregister_module(g_brain_bio_ctx);
+            g_brain_bio_ctx = NULL;
+            g_brain_bio_initialized = false;
+        }
     }
 
     if (brain->bio_async_enabled) {

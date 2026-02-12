@@ -601,11 +601,7 @@ static inline uint64_t exec_get_time_ms(void)
 static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t task_id)
 {
     if (!exec) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec is NULL");
-
         return NULL;
-
     }
 
     // Check active task first
@@ -654,7 +650,6 @@ static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t
 static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec)
 {
     if (!exec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_highest_priority_task: exec is NULL");
         return NULL;
     }
     if (exec->num_tasks == 0) {

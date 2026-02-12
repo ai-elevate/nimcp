@@ -417,10 +417,7 @@ int lgss_lock(lgss_context_t* lgss)
 
 bool lgss_is_locked(const lgss_context_t* lgss)
 {
-    if (!lgss || lgss->magic != NIMCP_LGSS_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_is_locked: lgss is NULL");
-        return false;
-    }
+    if (!lgss || lgss->magic != NIMCP_LGSS_MAGIC) { return false; }
     return symbolic_logic_safety_is_locked(lgss->safety_kb);
 }
 

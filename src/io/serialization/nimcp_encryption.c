@@ -65,7 +65,10 @@ static void encryption_security_init(void) {
 
 /**
  * @brief Cleanup security subsystem
+ * WHY: __attribute__((destructor)) ensures cleanup on library unload,
+ *      since this static function would otherwise never be called.
  */
+__attribute__((destructor))
 static void encryption_security_cleanup(void) {
     if (g_bbb_system) {
         bbb_system_destroy(g_bbb_system);
@@ -315,8 +318,7 @@ bool nimcp_decrypt_with_password(
 // Stub implementations when encryption is not available
 bool nimcp_encryption_available(void)
 {
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encryption_available: operation failed");
-    return false;
+    return false;  /* Encryption not compiled - normal query result */
 }
 
 size_t nimcp_encrypted_size(size_t plaintext_len)
@@ -340,8 +342,7 @@ bool nimcp_encrypt_with_password(
     (void)password_len;
     (void)ciphertext;
     (void)ciphertext_len;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypt_with_password: operation failed");
-    return false;  // Encryption not available
+    return false;  /* Encryption not available - normal stub result */
 }
 
 bool nimcp_decrypt_with_password(
@@ -359,8 +360,7 @@ bool nimcp_decrypt_with_password(
     (void)password_len;
     (void)plaintext;
     (void)plaintext_len;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt_with_password: operation failed");
-    return false;  // Decryption not available
+    return false;  /* Decryption not available - normal stub result */
 }
 
 #endif  // NIMCP_ENABLE_ENCRYPTION

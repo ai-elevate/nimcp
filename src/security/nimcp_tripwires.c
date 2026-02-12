@@ -56,7 +56,6 @@ static inline bool safe_uint64_add(uint64_t* dest, uint64_t addend) {
     if (*dest > UINT64_MAX - addend) {
         /* Overflow would occur - clamp to maximum */
         *dest = UINT64_MAX;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_uint64_add: validation failed");
         return false;
     }
     *dest += addend;
@@ -70,7 +69,6 @@ static inline bool safe_uint64_add(uint64_t* dest, uint64_t addend) {
  */
 static inline bool safe_uint32_inc(uint32_t* dest) {
     if (*dest == UINT32_MAX) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_uint32_inc: validation failed");
         return false;  /* Already at max */
     }
     (*dest)++;

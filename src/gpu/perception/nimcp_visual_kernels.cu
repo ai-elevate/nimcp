@@ -104,37 +104,49 @@ bool nimcp_gpu_gabor_filterbank(
         nimcp_gpu_recovery_init(NULL);
     }
 
+    bool success = false;
+    float* d_filters = NULL;
+
     int batch = input->dims[0];
     int height = input->dims[input->ndim - 2];
     int width = input->dims[input->ndim - 1];
 
     // Create Gabor filter bank
-    float* d_filters;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filters, n_orientations * kernel_size * kernel_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-
-    dim3 filter_block(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 filter_grid((kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                     (kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
-
-    for (int o = 0; o < n_orientations; o++) {
-        float theta = o * 3.14159265f / n_orientations;
-        kernel_gabor_filter_create<<<filter_grid, filter_block>>>(
-            d_filters + o * kernel_size * kernel_size,
-            kernel_size, sigma, theta, lambda, gamma, 0.0f);
+    if (cudaMalloc(&d_filters, n_orientations * kernel_size * kernel_size * sizeof(float)) != cudaSuccess) {
+        goto cleanup;
     }
 
-    // Apply filter bank
-    dim3 conv_block(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 conv_grid((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                   (height + BLOCK_SIZE - 1) / BLOCK_SIZE, batch);
+    {
+        dim3 filter_block(BLOCK_SIZE, BLOCK_SIZE);
+        dim3 filter_grid((kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE,
+                         (kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
-    kernel_apply_gabor_bank<<<conv_grid, conv_block>>>(
-        (const float*)input->data, d_filters, (float*)output->data,
-        batch, height, width, n_orientations, kernel_size);
+        for (int o = 0; o < n_orientations; o++) {
+            float theta = o * 3.14159265f / n_orientations;
+            kernel_gabor_filter_create<<<filter_grid, filter_block>>>(
+                d_filters + o * kernel_size * kernel_size,
+                kernel_size, sigma, theta, lambda, gamma, 0.0f);
+        }
 
-    cudaFree(d_filters);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+        // Apply filter bank
+        dim3 conv_block(BLOCK_SIZE, BLOCK_SIZE);
+        dim3 conv_grid((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
+                       (height + BLOCK_SIZE - 1) / BLOCK_SIZE, batch);
+
+        kernel_apply_gabor_bank<<<conv_grid, conv_block>>>(
+            (const float*)input->data, d_filters, (float*)output->data,
+            batch, height, width, n_orientations, kernel_size);
+
+        if (cudaGetLastError() != cudaSuccess) {
+            goto cleanup;
+        }
+    }
+
+    success = true;
+
+cleanup:
+    if (d_filters) cudaFree(d_filters);
+    return success;
 }
 
 //=============================================================================
@@ -614,21 +626,21 @@ int nimcp_optical_flow_lucas_kanade(void* gpu_ctx,
     size_t size = width * height * sizeof(float);
 
     // Allocate gradient buffers
-    float *d_Ix, *d_Iy, *d_It;
-    cudaMalloc(&d_Ix, size);
-    cudaMalloc(&d_Iy, size);
-    cudaMalloc(&d_It, size);
+    float *d_Ix = NULL, *d_Iy = NULL, *d_It = NULL;
+    if (cudaMalloc(&d_Ix, size) != cudaSuccess) { return -1; }
+    if (cudaMalloc(&d_Iy, size) != cudaSuccess) { cudaFree(d_Ix); return -1; }
+    if (cudaMalloc(&d_It, size) != cudaSuccess) { cudaFree(d_Ix); cudaFree(d_Iy); return -1; }
 
     dim3 block(BLOCK_SIZE, BLOCK_SIZE);
     dim3 grid((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
               (height + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
     // Compute spatial gradients (averaged over both frames for better accuracy)
-    float *d_Ix1, *d_Iy1, *d_Ix2, *d_Iy2;
-    cudaMalloc(&d_Ix1, size);
-    cudaMalloc(&d_Iy1, size);
-    cudaMalloc(&d_Ix2, size);
-    cudaMalloc(&d_Iy2, size);
+    float *d_Ix1 = NULL, *d_Iy1 = NULL, *d_Ix2 = NULL, *d_Iy2 = NULL;
+    if (cudaMalloc(&d_Ix1, size) != cudaSuccess) { cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It); return -1; }
+    if (cudaMalloc(&d_Iy1, size) != cudaSuccess) { cudaFree(d_Ix1); cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It); return -1; }
+    if (cudaMalloc(&d_Ix2, size) != cudaSuccess) { cudaFree(d_Ix1); cudaFree(d_Iy1); cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It); return -1; }
+    if (cudaMalloc(&d_Iy2, size) != cudaSuccess) { cudaFree(d_Ix1); cudaFree(d_Iy1); cudaFree(d_Ix2); cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It); return -1; }
 
     kernel_compute_spatial_gradients<<<grid, block>>>(frame1, d_Ix1, d_Iy1, width, height);
     kernel_compute_spatial_gradients<<<grid, block>>>(frame2, d_Ix2, d_Iy2, width, height);
@@ -704,13 +716,21 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
     float** pyramid2 = (float**)malloc(num_levels * sizeof(float*));
     int* widths = (int*)malloc(num_levels * sizeof(int));
     int* heights = (int*)malloc(num_levels * sizeof(int));
+    if (!pyramid1 || !pyramid2 || !widths || !heights) {
+        free(pyramid1); free(pyramid2); free(widths); free(heights);
+        return -1;
+    }
 
     // Level 0 is the original image
     widths[0] = width;
     heights[0] = height;
     size_t size0 = width * height * sizeof(float);
-    cudaMalloc(&pyramid1[0], size0);
-    cudaMalloc(&pyramid2[0], size0);
+    if (cudaMalloc(&pyramid1[0], size0) != cudaSuccess) {
+        free(pyramid1); free(pyramid2); free(widths); free(heights); return -1;
+    }
+    if (cudaMalloc(&pyramid2[0], size0) != cudaSuccess) {
+        cudaFree(pyramid1[0]); free(pyramid1); free(pyramid2); free(widths); free(heights); return -1;
+    }
     cudaMemcpy(pyramid1[0], frame1, size0, cudaMemcpyDeviceToDevice);
     cudaMemcpy(pyramid2[0], frame2, size0, cudaMemcpyDeviceToDevice);
 
@@ -725,8 +745,16 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
         }
 
         size_t size_l = widths[level] * heights[level] * sizeof(float);
-        cudaMalloc(&pyramid1[level], size_l);
-        cudaMalloc(&pyramid2[level], size_l);
+        pyramid1[level] = NULL;
+        pyramid2[level] = NULL;
+        if (cudaMalloc(&pyramid1[level], size_l) != cudaSuccess ||
+            cudaMalloc(&pyramid2[level], size_l) != cudaSuccess) {
+            // Free this level's partial alloc and break
+            if (pyramid1[level]) cudaFree(pyramid1[level]);
+            if (pyramid2[level]) cudaFree(pyramid2[level]);
+            num_levels = level;
+            break;
+        }
 
         dim3 block(BLOCK_SIZE, BLOCK_SIZE);
         dim3 grid((widths[level] + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -747,6 +775,12 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
     float** flow_x = (float**)malloc(num_levels * sizeof(float*));
     float** flow_y = (float**)malloc(num_levels * sizeof(float*));
     float** conf = (float**)malloc(num_levels * sizeof(float*));
+    if (!flow_x || !flow_y || !conf) {
+        for (int l = 0; l < num_levels; l++) { cudaFree(pyramid1[l]); cudaFree(pyramid2[l]); }
+        free(pyramid1); free(pyramid2); free(widths); free(heights);
+        free(flow_x); free(flow_y); free(conf);
+        return -1;
+    }
 
     for (int level = 0; level < num_levels; level++) {
         size_t size_l = widths[level] * heights[level] * sizeof(float);
@@ -781,8 +815,8 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
         // Compute flow at this level (iterative refinement)
         for (int iter = 0; iter < p.max_iterations; iter++) {
             // Warp frame2 according to current flow estimate
-            float* warped;
-            cudaMalloc(&warped, w * h * sizeof(float));
+            float* warped = NULL;
+            if (cudaMalloc(&warped, w * h * sizeof(float)) != cudaSuccess) break;
 
             dim3 block(BLOCK_SIZE, BLOCK_SIZE);
             dim3 grid((w + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -793,18 +827,18 @@ int nimcp_optical_flow_pyramidal(void* gpu_ctx,
                 warped, w, h);
 
             // Compute flow increment
-            float *d_Ix, *d_Iy, *d_It;
-            cudaMalloc(&d_Ix, w * h * sizeof(float));
-            cudaMalloc(&d_Iy, w * h * sizeof(float));
-            cudaMalloc(&d_It, w * h * sizeof(float));
+            float *d_Ix = NULL, *d_Iy = NULL, *d_It = NULL;
+            if (cudaMalloc(&d_Ix, w * h * sizeof(float)) != cudaSuccess) { cudaFree(warped); break; }
+            if (cudaMalloc(&d_Iy, w * h * sizeof(float)) != cudaSuccess) { cudaFree(d_Ix); cudaFree(warped); break; }
+            if (cudaMalloc(&d_It, w * h * sizeof(float)) != cudaSuccess) { cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(warped); break; }
 
             kernel_compute_spatial_gradients<<<grid, block>>>(pyramid1[level], d_Ix, d_Iy, w, h);
             kernel_compute_temporal_gradient<<<grid, block>>>(pyramid1[level], warped, d_It, w, h);
 
             // Solve for flow increment
-            float *d_du, *d_dv;
-            cudaMalloc(&d_du, w * h * sizeof(float));
-            cudaMalloc(&d_dv, w * h * sizeof(float));
+            float *d_du = NULL, *d_dv = NULL;
+            if (cudaMalloc(&d_du, w * h * sizeof(float)) != cudaSuccess) { cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It); cudaFree(warped); break; }
+            if (cudaMalloc(&d_dv, w * h * sizeof(float)) != cudaSuccess) { cudaFree(d_du); cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It); cudaFree(warped); break; }
 
             kernel_lucas_kanade_solve<<<grid, block>>>(
                 d_Ix, d_Iy, d_It,
@@ -901,8 +935,14 @@ bool nimcp_gpu_sobel_edge_detect(
     float* d_grad_y = NULL;
 
     if (direction) {
-        NIMCP_CUDA_RECOVER(cudaMalloc(&d_grad_x, height * width * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-        NIMCP_CUDA_RECOVER(cudaMalloc(&d_grad_y, height * width * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        if (cudaMalloc(&d_grad_x, height * width * sizeof(float)) != cudaSuccess) {
+            return false;
+        }
+        if (cudaMalloc(&d_grad_y, height * width * sizeof(float)) != cudaSuccess) {
+            cudaFree(d_grad_x);
+            d_grad_x = NULL;
+            return false;
+        }
     }
 
     kernel_sobel_edge<<<grid, block>>>(
@@ -911,9 +951,13 @@ bool nimcp_gpu_sobel_edge_detect(
 
     // Compute direction (atan2) if requested
     if (direction && d_grad_x && d_grad_y) {
-        kernel_atan2_2d<<<grid, block>>>(
+        // kernel_atan2_2d uses 1D indexing, so launch with 1D grid
+        size_t n_pixels = (size_t)height * width;
+        int atan2_block = BLOCK_SIZE * BLOCK_SIZE;  // flatten 2D block to 1D
+        int atan2_grid = (n_pixels + atan2_block - 1) / atan2_block;
+        kernel_atan2_2d<<<atan2_grid, atan2_block>>>(
             d_grad_y, d_grad_x,
-            (float*)direction->data, height * width);
+            (float*)direction->data, n_pixels);
     }
 
     if (d_grad_x) cudaFree(d_grad_x);
@@ -969,11 +1013,11 @@ bool nimcp_gpu_optical_flow_lk(
     int width = frame1->dims[frame1->ndim - 1];
 
     // Allocate gradient buffers
-    float *d_Ix, *d_Iy, *d_It;
+    float *d_Ix = NULL, *d_Iy = NULL, *d_It = NULL;
     size_t size = height * width * sizeof(float);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_Ix, size), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_Iy, size), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_It, size), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_Ix, size) != cudaSuccess) { return false; }
+    if (cudaMalloc(&d_Iy, size) != cudaSuccess) { cudaFree(d_Ix); return false; }
+    if (cudaMalloc(&d_It, size) != cudaSuccess) { cudaFree(d_Ix); cudaFree(d_Iy); return false; }
 
     dim3 block(BLOCK_SIZE, BLOCK_SIZE);
     dim3 grid((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -2232,7 +2276,12 @@ nimcp_gabor_bank_gpu_t* nimcp_gabor_bank_gpu_create(
     float log_min = logf(cfg.min_wavelength);
     float log_max = logf(cfg.max_wavelength);
     for (int s = 0; s < cfg.num_scales; s++) {
-        float wavelength = expf(log_min + s * (log_max - log_min) / (cfg.num_scales - 1));
+        float wavelength;
+        if (cfg.num_scales <= 1) {
+            wavelength = expf(log_min);
+        } else {
+            wavelength = expf(log_min + s * (log_max - log_min) / (cfg.num_scales - 1));
+        }
         bank->frequencies[s] = 1.0f / wavelength;
         bank->sigmas[s] = wavelength * cfg.sigma_factor;
     }
@@ -2588,7 +2637,12 @@ nimcp_gabor_bank_gpu_t* nimcp_gabor_bank_gpu_create(
     float log_min = logf(cfg.min_wavelength);
     float log_max = logf(cfg.max_wavelength);
     for (int s = 0; s < cfg.num_scales; s++) {
-        float wavelength = expf(log_min + s * (log_max - log_min) / (cfg.num_scales - 1));
+        float wavelength;
+        if (cfg.num_scales <= 1) {
+            wavelength = expf(log_min);
+        } else {
+            wavelength = expf(log_min + s * (log_max - log_min) / (cfg.num_scales - 1));
+        }
         bank->frequencies[s] = 1.0f / wavelength;
         bank->sigmas[s] = wavelength * cfg.sigma_factor;
     }

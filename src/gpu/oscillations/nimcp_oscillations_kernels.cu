@@ -344,15 +344,18 @@ bool nimcp_gpu_phase_locking_value(
     }
 
     uint32_t n_samples = (uint32_t)phase1->numel;
+    bool success = false;
+
+    // Pre-initialize all device pointers to NULL
+    float *d_cos_diff = NULL, *d_sin_diff = NULL, *d_sum_cos = NULL, *d_sum_sin = NULL;
 
     // Allocate temporary buffers
-    float *d_cos_diff, *d_sin_diff, *d_sum_cos, *d_sum_sin;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cos_diff, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sin_diff, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum_cos, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum_sin, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_sum_cos, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_sum_sin, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&d_cos_diff, n_samples * sizeof(float)) != cudaSuccess) goto cleanup_plv;
+    if (cudaMalloc(&d_sin_diff, n_samples * sizeof(float)) != cudaSuccess) goto cleanup_plv;
+    if (cudaMalloc(&d_sum_cos, sizeof(float)) != cudaSuccess) goto cleanup_plv;
+    if (cudaMalloc(&d_sum_sin, sizeof(float)) != cudaSuccess) goto cleanup_plv;
+    if (cudaMemset(d_sum_cos, 0, sizeof(float)) != cudaSuccess) goto cleanup_plv;
+    if (cudaMemset(d_sum_sin, 0, sizeof(float)) != cudaSuccess) goto cleanup_plv;
 
     // Compute exp(i * (phase1 - phase2))
     kernel_phase_diff_exp<<<GRID_SIZE(n_samples), BLOCK_SIZE>>>(
@@ -367,23 +370,26 @@ bool nimcp_gpu_phase_locking_value(
         d_sin_diff, d_sum_sin, n_samples);
 
     // Copy results to host
-    float h_sum_cos, h_sum_sin;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum_cos, d_sum_cos, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum_sin, d_sum_sin, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        float h_sum_cos, h_sum_sin;
+        if (cudaMemcpy(&h_sum_cos, d_sum_cos, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto cleanup_plv;
+        if (cudaMemcpy(&h_sum_sin, d_sum_sin, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto cleanup_plv;
 
-    // PLV = |mean(exp(i * diff))|
-    float mean_cos = h_sum_cos / (float)n_samples;
-    float mean_sin = h_sum_sin / (float)n_samples;
-    *plv = sqrtf(mean_cos * mean_cos + mean_sin * mean_sin);
+        // PLV = |mean(exp(i * diff))|
+        float mean_cos = h_sum_cos / (float)n_samples;
+        float mean_sin = h_sum_sin / (float)n_samples;
+        *plv = sqrtf(mean_cos * mean_cos + mean_sin * mean_sin);
+    }
 
-    // Cleanup
+    success = true;
+
+cleanup_plv:
     cudaFree(d_cos_diff);
     cudaFree(d_sin_diff);
     cudaFree(d_sum_cos);
     cudaFree(d_sum_sin);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -423,12 +429,15 @@ bool nimcp_gpu_phase_lag_index(
     }
 
     uint32_t n_samples = (uint32_t)phase1->numel;
+    bool success = false;
+
+    // Pre-initialize all device pointers to NULL
+    float *d_signs = NULL, *d_sum = NULL;
 
     // Allocate temporary buffers
-    float *d_signs, *d_sum;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_signs, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&d_signs, n_samples * sizeof(float)) != cudaSuccess) goto cleanup_pli;
+    if (cudaMalloc(&d_sum, sizeof(float)) != cudaSuccess) goto cleanup_pli;
+    if (cudaMemset(d_sum, 0, sizeof(float)) != cudaSuccess) goto cleanup_pli;
 
     // Compute sign of imaginary part of phase difference
     kernel_phase_diff_sign<<<GRID_SIZE(n_samples), BLOCK_SIZE>>>(
@@ -441,18 +450,21 @@ bool nimcp_gpu_phase_lag_index(
         d_signs, d_sum, n_samples);
 
     // Copy result to host
-    float h_sum;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        float h_sum;
+        if (cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto cleanup_pli;
 
-    // PLI = |mean(sign(imag(exp(i*diff))))|
-    *pli = fabsf(h_sum / (float)n_samples);
+        // PLI = |mean(sign(imag(exp(i*diff))))|
+        *pli = fabsf(h_sum / (float)n_samples);
+    }
 
-    // Cleanup
+    success = true;
+
+cleanup_pli:
     cudaFree(d_signs);
     cudaFree(d_sum);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -519,10 +531,12 @@ bool nimcp_gpu_global_sync_index(
     uint32_t n_channels = (uint32_t)phases->dims[0];
     uint32_t n_samples = (uint32_t)phases->dims[1];
 
+    // Pre-initialize all device pointers to NULL
+    float *d_sync_re = NULL, *d_sync_im = NULL;
+
     // Allocate temporary buffers for complex order parameter
-    float *d_sync_re, *d_sync_im;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sync_re, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sync_im, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_sync_re, n_samples * sizeof(float)) != cudaSuccess) goto cleanup_sync;
+    if (cudaMalloc(&d_sync_im, n_samples * sizeof(float)) != cudaSuccess) goto cleanup_sync;
 
     // Compute Kuramoto order parameter: R = |mean(exp(i * phases))|
     kernel_kuramoto_order_parameter<<<GRID_SIZE(n_samples), BLOCK_SIZE>>>(
@@ -539,8 +553,12 @@ bool nimcp_gpu_global_sync_index(
     cudaFree(d_sync_re);
     cudaFree(d_sync_im);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
+
+cleanup_sync:
+    cudaFree(d_sync_re);
+    cudaFree(d_sync_im);
+    return false;
 }
 
 //=============================================================================
@@ -945,14 +963,18 @@ int nimcp_pac_compute(
     }
 
     // Allocate analytic signal buffers
-    float *d_phase_signal, *d_phase_unused;
-    float *d_amp_envelope, *d_amp_phase_unused;
+    float *d_phase_signal = NULL, *d_phase_unused = NULL;
+    float *d_amp_envelope = NULL, *d_amp_phase_unused = NULL;
     if (cudaMalloc(&d_phase_signal, n * sizeof(float)) != cudaSuccess ||
         cudaMalloc(&d_phase_unused, n * sizeof(float)) != cudaSuccess ||
         cudaMalloc(&d_amp_envelope, n * sizeof(float)) != cudaSuccess ||
         cudaMalloc(&d_amp_phase_unused, n * sizeof(float)) != cudaSuccess) {
         cudaFree(d_phase_filtered);
         cudaFree(d_amp_filtered);
+        cudaFree(d_phase_signal);
+        cudaFree(d_phase_unused);
+        cudaFree(d_amp_envelope);
+        cudaFree(d_amp_phase_unused);
         return -1;
     }
 
@@ -1014,12 +1036,30 @@ int nimcp_pac_compute(
     nimcp_gpu_hilbert_amplitude(ctx, amp_filtered_tensor, amp_out);
 
     // 5. Compute PAC modulation index
-    float *d_phase_bins;
-    uint32_t *d_bin_counts;
-    float *d_mi;
-    cudaMalloc(&d_phase_bins, n_bins * sizeof(float));
-    cudaMalloc(&d_bin_counts, n_bins * sizeof(uint32_t));
-    cudaMalloc(&d_mi, sizeof(float));
+    float *d_phase_bins = NULL;
+    uint32_t *d_bin_counts = NULL;
+    float *d_mi = NULL;
+    float *d_mvl = NULL;
+
+    if (cudaMalloc(&d_phase_bins, n_bins * sizeof(float)) != cudaSuccess ||
+        cudaMalloc(&d_bin_counts, n_bins * sizeof(uint32_t)) != cudaSuccess ||
+        cudaMalloc(&d_mi, sizeof(float)) != cudaSuccess) {
+        cudaFree(d_phase_bins);
+        cudaFree(d_bin_counts);
+        cudaFree(d_mi);
+        nimcp_gpu_tensor_destroy(signal_tensor);
+        nimcp_gpu_tensor_destroy(phase_filtered_tensor);
+        nimcp_gpu_tensor_destroy(amp_filtered_tensor);
+        nimcp_gpu_tensor_destroy(phase_out);
+        nimcp_gpu_tensor_destroy(amp_out);
+        cudaFree(d_phase_filtered);
+        cudaFree(d_amp_filtered);
+        cudaFree(d_phase_signal);
+        cudaFree(d_phase_unused);
+        cudaFree(d_amp_envelope);
+        cudaFree(d_amp_phase_unused);
+        return -1;
+    }
     cudaMemset(d_phase_bins, 0, n_bins * sizeof(float));
     cudaMemset(d_bin_counts, 0, n_bins * sizeof(uint32_t));
     cudaMemset(d_mi, 0, sizeof(float));
@@ -1046,13 +1086,15 @@ int nimcp_pac_compute(
     }
 
     // Compute MVL as alternative measure
-    float *d_mvl;
-    cudaMalloc(&d_mvl, sizeof(float));
-    cudaMemset(d_mvl, 0, sizeof(float));
-    kernel_pac_compute_mvl<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * 3 * sizeof(float)>>>(
-        (float*)phase_out->data, (float*)amp_out->data, d_mvl, n);
-    cudaMemcpy(&result->mean_vector_length, d_mvl, sizeof(float), cudaMemcpyDeviceToHost);
-    cudaFree(d_mvl);
+    if (cudaMalloc(&d_mvl, sizeof(float)) != cudaSuccess) {
+        result->mean_vector_length = 0.0f;
+    } else {
+        cudaMemset(d_mvl, 0, sizeof(float));
+        kernel_pac_compute_mvl<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * 3 * sizeof(float)>>>(
+            (float*)phase_out->data, (float*)amp_out->data, d_mvl, n);
+        cudaMemcpy(&result->mean_vector_length, d_mvl, sizeof(float), cudaMemcpyDeviceToHost);
+        cudaFree(d_mvl);
+    }
 
     // Cleanup
     cudaFree(d_phase_bins);
@@ -1277,46 +1319,55 @@ bool nimcp_gpu_hilbert_phase(
     }
 
     uint32_t n = (uint32_t)signal->numel;
+    bool success = false;
+
+    // Pre-initialize all device pointers to NULL
+    cufftComplex *d_spectrum = NULL;
+    float *d_filter = NULL;
+    float *d_signal_copy = NULL;
+    float *d_analytic_im = NULL;
+    cufftHandle plan = 0;
+    cufftHandle plan_inv = 0;
+    bool plan_created = false;
+    bool plan_inv_created = false;
+    uint32_t n_freq = n / 2 + 1;
 
     // Allocate complex spectrum buffer
-    cufftComplex *d_spectrum;
-    float *d_filter;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filter, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_hilbert_phase;
+    if (cudaMalloc(&d_filter, n * sizeof(float)) != cudaSuccess) goto cleanup_hilbert_phase;
 
     // Copy signal to complex buffer (real part)
-    float *d_signal_copy;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_signal_copy, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_signal_copy, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&d_signal_copy, n * sizeof(float)) != cudaSuccess) goto cleanup_hilbert_phase;
+    if (cudaMemcpy(d_signal_copy, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto cleanup_hilbert_phase;
 
     // Create FFT plan
-    cufftHandle plan;
-    CUFFT_CHECK(cufftPlan1d(&plan, n, CUFFT_R2C, 1));
+    if (cufftPlan1d(&plan, n, CUFFT_R2C, 1) != CUFFT_SUCCESS) goto cleanup_hilbert_phase;
+    plan_created = true;
 
     // Forward FFT
-    CUFFT_CHECK(cufftExecR2C(plan, d_signal_copy, d_spectrum));
+    if (cufftExecR2C(plan, d_signal_copy, d_spectrum) != CUFFT_SUCCESS) goto cleanup_hilbert_phase;
 
     // Create Hilbert filter
     kernel_create_hilbert_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_filter, n);
 
     // Apply filter to spectrum
     // Note: R2C gives n/2+1 complex values, need to handle carefully
-    uint32_t n_freq = n / 2 + 1;
     kernel_apply_spectrum_filter<<<GRID_SIZE(n_freq), BLOCK_SIZE>>>(
         (float*)d_spectrum, d_filter, n_freq);
 
     // Create inverse FFT plan
-    cufftHandle plan_inv;
-    CUFFT_CHECK(cufftPlan1d(&plan_inv, n, CUFFT_C2R, 1));
+    if (cufftPlan1d(&plan_inv, n, CUFFT_C2R, 1) != CUFFT_SUCCESS) goto cleanup_hilbert_phase;
+    plan_inv_created = true;
 
     // Inverse FFT to get analytic signal
-    float *d_analytic_im;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_analytic_im, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    CUFFT_CHECK(cufftExecC2R(plan_inv, d_spectrum, d_analytic_im));
+    if (cudaMalloc(&d_analytic_im, n * sizeof(float)) != cudaSuccess) goto cleanup_hilbert_phase;
+    if (cufftExecC2R(plan_inv, d_spectrum, d_analytic_im) != CUFFT_SUCCESS) goto cleanup_hilbert_phase;
 
     // Normalize inverse FFT (cuFFT doesn't normalize)
-    float norm_factor = 1.0f / (float)n;
-    kernel_scale_array<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_analytic_im, norm_factor, n);
+    {
+        float norm_factor = 1.0f / (float)n;
+        kernel_scale_array<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_analytic_im, norm_factor, n);
+    }
 
     // Extract phase: atan2(hilbert(x), x)
     kernel_extract_phase<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -1324,16 +1375,17 @@ bool nimcp_gpu_hilbert_phase(
         d_analytic_im,
         (float*)phase->data, n);
 
-    // Cleanup
-    cufftDestroy(plan);
-    cufftDestroy(plan_inv);
+    success = true;
+
+cleanup_hilbert_phase:
+    if (plan_created) cufftDestroy(plan);
+    if (plan_inv_created) cufftDestroy(plan_inv);
     cudaFree(d_spectrum);
     cudaFree(d_filter);
     cudaFree(d_signal_copy);
     cudaFree(d_analytic_im);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 bool nimcp_gpu_hilbert_amplitude(
@@ -1352,51 +1404,59 @@ bool nimcp_gpu_hilbert_amplitude(
     }
 
     uint32_t n = (uint32_t)signal->numel;
+    bool success = false;
+
+    // Pre-initialize all device pointers to NULL
+    cufftComplex *d_complex_signal = NULL, *d_spectrum = NULL;
+    float *d_filter = NULL;
+    cufftHandle plan = 0;
+    bool plan_created = false;
 
     // Allocate complex buffers for C2C FFT
-    cufftComplex *d_complex_signal, *d_spectrum;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_complex_signal, n * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_complex_signal, n * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_hilbert_amp;
+    if (cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_hilbert_amp;
 
     // Copy real signal to complex (imaginary = 0)
     kernel_real_to_complex<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)signal->data, d_complex_signal, n);
 
     // Create C2C FFT plan
-    cufftHandle plan;
-    CUFFT_CHECK(cufftPlan1d(&plan, n, CUFFT_C2C, 1));
+    if (cufftPlan1d(&plan, n, CUFFT_C2C, 1) != CUFFT_SUCCESS) goto cleanup_hilbert_amp;
+    plan_created = true;
 
     // Forward FFT
-    CUFFT_CHECK(cufftExecC2C(plan, d_complex_signal, d_spectrum, CUFFT_FORWARD));
+    if (cufftExecC2C(plan, d_complex_signal, d_spectrum, CUFFT_FORWARD) != CUFFT_SUCCESS) goto cleanup_hilbert_amp;
 
     // Apply analytic signal filter in-place:
     // - DC (k=0): multiply by 1
     // - Positive freqs (k=1 to N/2-1): multiply by 2
     // - Nyquist (k=N/2): multiply by 1
     // - Negative freqs (k=N/2+1 to N-1): multiply by 0
-    float *d_filter;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filter, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_filter, n * sizeof(float)) != cudaSuccess) goto cleanup_hilbert_amp;
     kernel_create_hilbert_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_filter, n);
     kernel_apply_spectrum_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)d_spectrum, d_filter, n);
 
     // Inverse FFT (in-place)
-    CUFFT_CHECK(cufftExecC2C(plan, d_spectrum, d_spectrum, CUFFT_INVERSE));
+    if (cufftExecC2C(plan, d_spectrum, d_spectrum, CUFFT_INVERSE) != CUFFT_SUCCESS) goto cleanup_hilbert_amp;
 
     // Extract amplitude from analytic signal: |z| = sqrt(re^2 + im^2)
     // Note: cuFFT doesn't normalize, so divide by n
-    float norm = 1.0f / (float)n;
-    kernel_complex_amplitude<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        d_spectrum, (float*)amplitude->data, norm, n);
+    {
+        float norm = 1.0f / (float)n;
+        kernel_complex_amplitude<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_spectrum, (float*)amplitude->data, norm, n);
+    }
 
-    // Cleanup
-    cufftDestroy(plan);
+    success = true;
+
+cleanup_hilbert_amp:
+    if (plan_created) cufftDestroy(plan);
     cudaFree(d_complex_signal);
     cudaFree(d_spectrum);
     cudaFree(d_filter);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1474,8 +1534,14 @@ bool nimcp_gpu_band_power(
     }
 
     // Allocate FFT buffers
-    cufftComplex *d_spectrum;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_channels * (n_fft / 2 + 1) * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    cufftComplex *d_spectrum = NULL;
+    {
+        cudaError_t alloc_err = cudaMalloc(&d_spectrum, n_channels * (n_fft / 2 + 1) * sizeof(cufftComplex));
+        if (alloc_err != cudaSuccess) {
+            LOG_ERROR("Failed to allocate FFT spectrum buffer");
+            return false;
+        }
+    }
 
     // Create batched FFT plan
     cufftHandle plan;
@@ -1577,17 +1643,30 @@ bool nimcp_gpu_power_spectral_density(
     uint32_t n_segments = (n_samples - n_fft) / hop + 1;
 
     // Allocate buffers
-    float *d_windowed;
-    cufftComplex *d_spectrum;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    float *d_windowed = NULL;
+    cufftComplex *d_spectrum = NULL;
+    cufftHandle plan = 0;
+    bool plan_created = false;
+    bool success = false;
+
+    if (cudaMalloc(&d_windowed, n_fft * sizeof(float)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate windowed buffer");
+        goto cleanup_psd;
+    }
+    if (cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate spectrum buffer");
+        goto cleanup_psd;
+    }
 
     // Zero PSD accumulator
-    NIMCP_CUDA_RECOVER(cudaMemset(psd->data, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemset(psd->data, 0, n_freqs * sizeof(float)) != cudaSuccess) {
+        LOG_ERROR("Failed to zero PSD accumulator");
+        goto cleanup_psd;
+    }
 
     // Create FFT plan
-    cufftHandle plan;
     CUFFT_CHECK(cufftPlan1d(&plan, n_fft, CUFFT_R2C, 1));
+    plan_created = true;
 
     // Process each segment
     for (uint32_t seg = 0; seg < n_segments; seg++) {
@@ -1606,21 +1685,33 @@ bool nimcp_gpu_power_spectral_density(
     }
 
     // Compute frequency array on host and copy to device
-    float *h_freqs = (float*)malloc(n_freqs * sizeof(float));
-    float freq_resolution = params->sampling_rate / (float)n_fft;
-    for (uint32_t k = 0; k < n_freqs; k++) {
-        h_freqs[k] = k * freq_resolution;
+    {
+        float *h_freqs = (float*)malloc(n_freqs * sizeof(float));
+        if (!h_freqs) {
+            LOG_ERROR("Failed to allocate host frequency array");
+            goto cleanup_psd;
+        }
+        float freq_resolution = params->sampling_rate / (float)n_fft;
+        for (uint32_t k = 0; k < n_freqs; k++) {
+            h_freqs[k] = k * freq_resolution;
+        }
+        if (cudaMemcpy(freqs->data, h_freqs, n_freqs * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+            free(h_freqs);
+            LOG_ERROR("Failed to copy frequency array to device");
+            goto cleanup_psd;
+        }
+        free(h_freqs);
     }
-    NIMCP_CUDA_RECOVER(cudaMemcpy(freqs->data, h_freqs, n_freqs * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    free(h_freqs);
 
-    // Cleanup
-    cufftDestroy(plan);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    success = true;
+
+cleanup_psd:
+    if (plan_created) cufftDestroy(plan);
     cudaFree(d_windowed);
     cudaFree(d_spectrum);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1650,14 +1741,24 @@ bool nimcp_gpu_spectrogram(
     }
 
     // Allocate buffers
-    float *d_windowed;
-    cufftComplex *d_spectrum;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    float *d_windowed = NULL;
+    cufftComplex *d_spectrum = NULL;
+    cufftHandle plan = 0;
+    bool plan_created = false;
+    bool success = false;
+
+    if (cudaMalloc(&d_windowed, n_fft * sizeof(float)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate windowed buffer");
+        goto cleanup_spectrogram;
+    }
+    if (cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate spectrum buffer");
+        goto cleanup_spectrogram;
+    }
 
     // Create FFT plan
-    cufftHandle plan;
     CUFFT_CHECK(cufftPlan1d(&plan, n_fft, CUFFT_R2C, 1));
+    plan_created = true;
 
     // Process each time frame
     for (uint32_t t = 0; t < n_time; t++) {
@@ -1676,13 +1777,15 @@ bool nimcp_gpu_spectrogram(
             (float*)spectrogram->data + t * n_freqs, n_freqs);
     }
 
-    // Cleanup
-    cufftDestroy(plan);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    success = true;
+
+cleanup_spectrogram:
+    if (plan_created) cufftDestroy(plan);
     cudaFree(d_windowed);
     cudaFree(d_spectrum);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1769,35 +1872,39 @@ bool nimcp_gpu_coherence(
     uint32_t hop = n_fft - n_overlap;
     uint32_t n_freqs = n_fft / 2 + 1;
     uint32_t n_segments = (n_samples - n_fft) / hop + 1;
+    bool success = false;
+
+    // Pre-initialize all device pointers to NULL
+    float *d_windowed1 = NULL, *d_windowed2 = NULL;
+    cufftComplex *d_spectrum1 = NULL, *d_spectrum2 = NULL, *d_cross = NULL;
+    float *d_psd1 = NULL, *d_psd2 = NULL;
+    cufftComplex *d_cross_temp = NULL;
+    float *d_psd1_temp = NULL, *d_psd2_temp = NULL;
+    cufftHandle plan = 0;
+    bool plan_created = false;
 
     // Allocate buffers
-    float *d_windowed1, *d_windowed2;
-    cufftComplex *d_spectrum1, *d_spectrum2, *d_cross;
-    float *d_psd1, *d_psd2;
-
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed1, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed2, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd1, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd2, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_windowed1, n_fft * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_windowed2, n_fft * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_psd1, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_psd2, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
 
     // Zero accumulators
-    NIMCP_CUDA_RECOVER(cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_psd1, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_psd2, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMemset(d_psd1, 0, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMemset(d_psd2, 0, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
 
     // Create FFT plan
-    cufftHandle plan;
-    CUFFT_CHECK(cufftPlan1d(&plan, n_fft, CUFFT_R2C, 1));
+    if (cufftPlan1d(&plan, n_fft, CUFFT_R2C, 1) != CUFFT_SUCCESS) goto cleanup_coherence;
+    plan_created = true;
 
     // Temporary cross-spectrum for accumulation
-    cufftComplex *d_cross_temp;
-    float *d_psd1_temp, *d_psd2_temp;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cross_temp, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd1_temp, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd2_temp, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_cross_temp, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_psd1_temp, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
+    if (cudaMalloc(&d_psd2_temp, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_coherence;
 
     // Process each segment
     for (uint32_t seg = 0; seg < n_segments; seg++) {
@@ -1810,8 +1917,8 @@ bool nimcp_gpu_coherence(
             (const float*)signal2->data, d_windowed2, offset, n_fft);
 
         // FFTs
-        CUFFT_CHECK(cufftExecR2C(plan, d_windowed1, d_spectrum1));
-        CUFFT_CHECK(cufftExecR2C(plan, d_windowed2, d_spectrum2));
+        if (cufftExecR2C(plan, d_windowed1, d_spectrum1) != CUFFT_SUCCESS) goto cleanup_coherence;
+        if (cufftExecR2C(plan, d_windowed2, d_spectrum2) != CUFFT_SUCCESS) goto cleanup_coherence;
 
         // Compute cross-spectrum and auto-spectra
         kernel_cross_spectrum<<<GRID_SIZE(n_freqs), BLOCK_SIZE>>>(
@@ -1825,8 +1932,10 @@ bool nimcp_gpu_coherence(
     kernel_compute_coherence<<<GRID_SIZE(n_freqs), BLOCK_SIZE>>>(
         d_cross, d_psd1, d_psd2, (float*)coherence->data, n_freqs);
 
-    // Cleanup
-    cufftDestroy(plan);
+    success = true;
+
+cleanup_coherence:
+    if (plan_created) cufftDestroy(plan);
     cudaFree(d_windowed1);
     cudaFree(d_windowed2);
     cudaFree(d_spectrum1);
@@ -1838,8 +1947,7 @@ bool nimcp_gpu_coherence(
     cudaFree(d_psd1_temp);
     cudaFree(d_psd2_temp);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -2001,26 +2109,32 @@ bool nimcp_gpu_imaginary_coherence(
     uint32_t n_segments = (n_samples - n_fft) / hop + 1;
 
     // Allocate buffers
-    float *d_windowed1, *d_windowed2;
-    cufftComplex *d_spectrum1, *d_spectrum2, *d_cross;
-    float *d_psd1, *d_psd2;
+    float *d_windowed1 = NULL, *d_windowed2 = NULL;
+    cufftComplex *d_spectrum1 = NULL, *d_spectrum2 = NULL, *d_cross = NULL;
+    float *d_psd1 = NULL, *d_psd2 = NULL;
+    cufftHandle plan = 0;
+    bool plan_created = false;
+    bool success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed1, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed2, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd1, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd2, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_windowed1, n_fft * sizeof(float)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMalloc(&d_windowed2, n_fft * sizeof(float)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMalloc(&d_psd1, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMalloc(&d_psd2, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_icoh;
 
     // Zero accumulators
-    NIMCP_CUDA_RECOVER(cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_psd1, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_psd2, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMemset(d_psd1, 0, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_icoh;
+    if (cudaMemset(d_psd2, 0, n_freqs * sizeof(float)) != cudaSuccess) goto cleanup_icoh;
 
     // Create FFT plan
-    cufftHandle plan;
-    CUFFT_CHECK(cufftPlan1d(&plan, n_fft, CUFFT_R2C, 1));
+    if (cufftPlan1d(&plan, n_fft, CUFFT_R2C, 1) != CUFFT_SUCCESS) {
+        LOG_ERROR("Failed to create FFT plan for imaginary coherence");
+        goto cleanup_icoh;
+    }
+    plan_created = true;
 
     // Process segments (simplified - use first segment only for demo)
     if (n_segments > 0) {
@@ -2029,8 +2143,8 @@ bool nimcp_gpu_imaginary_coherence(
         kernel_apply_hanning_window<<<GRID_SIZE(n_fft), BLOCK_SIZE>>>(
             (const float*)signal2->data, d_windowed2, 0, n_fft);
 
-        CUFFT_CHECK(cufftExecR2C(plan, d_windowed1, d_spectrum1));
-        CUFFT_CHECK(cufftExecR2C(plan, d_windowed2, d_spectrum2));
+        if (cufftExecR2C(plan, d_windowed1, d_spectrum1) != CUFFT_SUCCESS) goto cleanup_icoh;
+        if (cufftExecR2C(plan, d_windowed2, d_spectrum2) != CUFFT_SUCCESS) goto cleanup_icoh;
 
         kernel_cross_spectrum<<<GRID_SIZE(n_freqs), BLOCK_SIZE>>>(
             d_spectrum1, d_spectrum2, d_cross, d_psd1, d_psd2, n_freqs);
@@ -2040,8 +2154,11 @@ bool nimcp_gpu_imaginary_coherence(
     kernel_compute_imaginary_coherence<<<GRID_SIZE(n_freqs), BLOCK_SIZE>>>(
         d_cross, d_psd1, d_psd2, (float*)icoh->data, n_freqs);
 
-    // Cleanup
-    cufftDestroy(plan);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    success = true;
+
+cleanup_icoh:
+    if (plan_created) cufftDestroy(plan);
     cudaFree(d_windowed1);
     cudaFree(d_windowed2);
     cudaFree(d_spectrum1);
@@ -2050,8 +2167,7 @@ bool nimcp_gpu_imaginary_coherence(
     cudaFree(d_psd1);
     cudaFree(d_psd2);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -2113,36 +2229,63 @@ bool nimcp_gpu_bandpass_filter(
     uint32_t n_freqs = n / 2 + 1;
 
     // Allocate spectrum buffer
-    cufftComplex *d_spectrum;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    cufftComplex *d_spectrum = NULL;
+    cufftHandle plan_fwd = 0, plan_inv = 0;
+    bool fwd_created = false, inv_created = false;
+    bool success = false;
+
+    if (cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate spectrum buffer for bandpass");
+        goto cleanup_bandpass;
+    }
 
     // Copy signal for in-place processing
-    NIMCP_CUDA_RECOVER(cudaMemcpy(filtered->data, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(filtered->data, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) {
+        LOG_ERROR("Failed to copy signal for bandpass");
+        goto cleanup_bandpass;
+    }
 
     // Forward FFT
-    cufftHandle plan_fwd, plan_inv;
-    CUFFT_CHECK(cufftPlan1d(&plan_fwd, n, CUFFT_R2C, 1));
-    CUFFT_CHECK(cufftExecR2C(plan_fwd, (float*)filtered->data, d_spectrum));
+    if (cufftPlan1d(&plan_fwd, n, CUFFT_R2C, 1) != CUFFT_SUCCESS) {
+        LOG_ERROR("Failed to create forward FFT plan");
+        goto cleanup_bandpass;
+    }
+    fwd_created = true;
+    if (cufftExecR2C(plan_fwd, (float*)filtered->data, d_spectrum) != CUFFT_SUCCESS) {
+        LOG_ERROR("Failed to execute forward FFT");
+        goto cleanup_bandpass;
+    }
 
     // Apply bandpass filter
     kernel_frequency_bandpass<<<GRID_SIZE(n_freqs), BLOCK_SIZE>>>(
         d_spectrum, sampling_rate, low_freq, high_freq, n, order);
 
     // Inverse FFT
-    CUFFT_CHECK(cufftPlan1d(&plan_inv, n, CUFFT_C2R, 1));
-    CUFFT_CHECK(cufftExecC2R(plan_inv, d_spectrum, (float*)filtered->data));
+    if (cufftPlan1d(&plan_inv, n, CUFFT_C2R, 1) != CUFFT_SUCCESS) {
+        LOG_ERROR("Failed to create inverse FFT plan");
+        goto cleanup_bandpass;
+    }
+    inv_created = true;
+    if (cufftExecC2R(plan_inv, d_spectrum, (float*)filtered->data) != CUFFT_SUCCESS) {
+        LOG_ERROR("Failed to execute inverse FFT");
+        goto cleanup_bandpass;
+    }
 
     // Normalize (cuFFT doesn't normalize inverse FFT)
-    float norm = 1.0f / (float)n;
-    kernel_scale_array<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)filtered->data, norm, n);
-
-    // Cleanup
-    cufftDestroy(plan_fwd);
-    cufftDestroy(plan_inv);
-    cudaFree(d_spectrum);
+    {
+        float norm = 1.0f / (float)n;
+        kernel_scale_array<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)filtered->data, norm, n);
+    }
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    success = true;
+
+cleanup_bandpass:
+    if (fwd_created) cufftDestroy(plan_fwd);
+    if (inv_created) cufftDestroy(plan_inv);
+    cudaFree(d_spectrum);
+
+    return success;
 }
 
 //=============================================================================
@@ -2167,6 +2310,10 @@ bool nimcp_gpu_relative_band_power(
 
     // Allocate temporary for individual band powers
     float *h_band_powers = (float*)malloc(n_bands * sizeof(float));
+    if (!h_band_powers) {
+        LOG_ERROR("Failed to allocate band powers array");
+        return false;
+    }
     float total_power = 0.0f;
 
     // Create temporary power tensor
@@ -2188,7 +2335,12 @@ bool nimcp_gpu_relative_band_power(
             continue;
         }
 
-        NIMCP_CUDA_RECOVER(cudaMemcpy(&h_band_powers[i], band_power->data, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+        if (cudaMemcpy(&h_band_powers[i], band_power->data, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+            LOG_ERROR("Failed to copy band power from device");
+            free(h_band_powers);
+            nimcp_gpu_tensor_destroy(band_power);
+            return false;
+        }
         total_power += h_band_powers[i];
     }
 
@@ -2200,7 +2352,12 @@ bool nimcp_gpu_relative_band_power(
     }
 
     // Copy to output
-    NIMCP_CUDA_RECOVER(cudaMemcpy(relative_power->data, h_band_powers, n_bands * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(relative_power->data, h_band_powers, n_bands * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        LOG_ERROR("Failed to copy relative power to device");
+        free(h_band_powers);
+        nimcp_gpu_tensor_destroy(band_power);
+        return false;
+    }
 
     // Cleanup
     free(h_band_powers);

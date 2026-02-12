@@ -674,7 +674,6 @@ static replication_backend_strategy_t g_filesystem_strategy = {
 static registered_brain_t* find_brain(replication_cluster_t cluster, const char* brain_name)
 {
     if (!cluster || !brain_name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_brain: required parameter is NULL (cluster, brain_name)");
         return NULL;
     }
 
@@ -690,7 +689,7 @@ static registered_brain_t* find_brain(replication_cluster_t cluster, const char*
     }
 
     nimcp_mutex_unlock(&cluster->brains_lock);
-    return NULL;
+    return NULL;  /* Not found - normal search behavior */
 }
 
 /**

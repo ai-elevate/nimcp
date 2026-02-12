@@ -997,6 +997,10 @@ __global__ void kernel_task_auction_round(
         float bid_inc = best_value - second_best + epsilon;
         float my_bid = bids[agent * n_tasks + best_task] + bid_inc;
 
+        // Clamp negative bids to zero - atomicMax on float via int cast
+        // requires non-negative values for correct ordering
+        if (my_bid < 0.0f) my_bid = 0.0f;
+
         // Atomic max to compete for task
         atomicMax((int*)&best_bids[best_task], __float_as_int(my_bid));
     }
@@ -1558,34 +1562,55 @@ extern "C" bool nimcp_gpu_consensus_check_convergence(
     if (!ctx || !state || !converged || !variance) return false;
 
     // Allocate device memory for variances
-    float* d_variances;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_variances, state->belief_dim * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    float* d_variances = NULL;
+    float* h_variances = NULL;
+    bool success = false;
 
-    size_t shared_size = BLOCK_SIZE * sizeof(float);
-    kernel_consensus_variance<<<state->belief_dim, BLOCK_SIZE, shared_size>>>(
-        (const float*)state->beliefs->data,
-        d_variances,
-        state->n_agents,
-        state->belief_dim);
+    if (cudaMalloc(&d_variances, state->belief_dim * sizeof(float)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate device variances for convergence check");
+        goto cleanup_convergence;
+    }
+
+    {
+        size_t shared_size = BLOCK_SIZE * sizeof(float);
+        kernel_consensus_variance<<<state->belief_dim, BLOCK_SIZE, shared_size>>>(
+            (const float*)state->beliefs->data,
+            d_variances,
+            state->n_agents,
+            state->belief_dim);
+    }
 
     // Copy back and compute total variance
-    float* h_variances = (float*)malloc(state->belief_dim * sizeof(float));
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_variances, d_variances, state->belief_dim * sizeof(float),
-                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-
-    float total_var = 0.0f;
-    for (size_t d = 0; d < state->belief_dim; d++) {
-        total_var += h_variances[d];
+    h_variances = (float*)malloc(state->belief_dim * sizeof(float));
+    if (!h_variances) {
+        LOG_ERROR("Failed to allocate host variances");
+        goto cleanup_convergence;
     }
-    total_var /= state->belief_dim;
 
-    *variance = total_var;
-    *converged = (total_var < state->params.min_confidence);
+    if (cudaMemcpy(h_variances, d_variances, state->belief_dim * sizeof(float),
+                   cudaMemcpyDeviceToHost) != cudaSuccess) {
+        LOG_ERROR("Failed to copy variances from device");
+        goto cleanup_convergence;
+    }
 
+    {
+        float total_var = 0.0f;
+        for (size_t d = 0; d < state->belief_dim; d++) {
+            total_var += h_variances[d];
+        }
+        total_var /= state->belief_dim;
+
+        *variance = total_var;
+        *converged = (total_var < state->params.min_confidence);
+    }
+
+    success = true;
+
+cleanup_convergence:
     free(h_variances);
     cudaFree(d_variances);
 
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1697,19 +1722,28 @@ extern "C" bool nimcp_gpu_pheromone_decay(
     if (!ctx || !state) return false;
 
     // Upload decay rates
-    float* d_decay_rates;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_decay_rates, SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_decay_rates, state->params.decay_rates,
-                          SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    float* d_decay_rates = NULL;
+    if (cudaMalloc(&d_decay_rates, SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float)) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate decay rates on device");
+        return false;
+    }
+    if (cudaMemcpy(d_decay_rates, state->params.decay_rates,
+                   SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        LOG_ERROR("Failed to copy decay rates to device");
+        cudaFree(d_decay_rates);
+        return false;
+    }
 
-    size_t total_cells = (size_t)state->grid_x * state->grid_y * state->grid_z;
+    {
+        size_t total_cells = (size_t)state->grid_x * state->grid_y * state->grid_z;
 
-    kernel_pheromone_decay<<<GRID_SIZE(total_cells), BLOCK_SIZE>>>(
-        (float*)state->concentration->data,
-        state->concentration->numel,
-        d_decay_rates,
-        state->n_types,
-        dt);
+        kernel_pheromone_decay<<<GRID_SIZE(total_cells), BLOCK_SIZE>>>(
+            (float*)state->concentration->data,
+            state->concentration->numel,
+            d_decay_rates,
+            state->n_types,
+            dt);
+    }
 
     cudaFree(d_decay_rates);
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);

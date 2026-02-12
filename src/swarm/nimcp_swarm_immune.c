@@ -334,7 +334,6 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
         nimcp_free(system->active_threats);
         nimcp_free(system->memory_cells);
         nimcp_free(system);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_immune_create: system->threat_rules is NULL");
         return NULL;
     }
 
@@ -349,7 +348,6 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
         nimcp_free(system->active_threats);
         nimcp_free(system->memory_cells);
         nimcp_free(system);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_immune_create: system->mutex is NULL");
         return NULL;
     }
 

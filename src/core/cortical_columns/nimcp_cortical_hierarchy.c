@@ -307,7 +307,11 @@ cortical_hierarchy_t* cortical_hierarchy_create(
 
     // Initialize mutex for thread safety
     if (nimcp_mutex_init(&hierarchy->mutex, NULL) != 0) {
-        HIERARCHY_LOG_WARN("Failed to init mutex, proceeding without thread safety");
+        HIERARCHY_LOG_ERROR("Failed to init mutex");
+        nimcp_free(hierarchy->connections);
+        nimcp_free(hierarchy->areas);
+        nimcp_free(hierarchy);
+        return NULL;
     }
 
     HIERARCHY_LOG_INFO("Created cortical hierarchy (max_areas=%u, max_connections=%u)",

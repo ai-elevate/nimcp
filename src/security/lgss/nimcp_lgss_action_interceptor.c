@@ -231,7 +231,6 @@ static void* background_evaluation_thread(void* arg) {
 
     if (!ctx || !is_valid_aix(ctx->aix)) {
         nimcp_free(ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_evaluation_thread: required parameter is NULL (ctx, is_valid_aix)");
         return NULL;
     }
 

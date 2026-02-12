@@ -239,7 +239,6 @@ static float clamp_float(float value, float min_val, float max_val)
 static bool contains_pattern_icase(const char* haystack, const char* needle)
 {
     if (!haystack || !needle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_pattern_icase: required parameter is NULL (haystack, needle)");
         return false;
     }
 
@@ -274,7 +273,6 @@ static bool contains_pattern_icase(const char* haystack, const char* needle)
 static bool contains_null_byte(const char* str, size_t len)
 {
     if (!str) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_null_byte: str is NULL");
         return false;
     }
 
@@ -297,7 +295,6 @@ static bool contains_null_byte(const char* str, size_t len)
 static bool contains_newline_injection(const char* str, size_t len)
 {
     if (!str) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_newline_injection: str is NULL");
         return false;
     }
 

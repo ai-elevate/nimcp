@@ -907,7 +907,11 @@ stats_gpu_rng_t* stats_gpu_rng_create(
     curandSetPseudoRandomGeneratorSeed(rng->generator, seed);
 
     /* Allocate device states for kernel-side RNG */
-    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&rng->d_states, n * sizeof(curandState)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&rng->d_states, n * sizeof(curandState)) != cudaSuccess) {
+        curandDestroyGenerator(rng->generator);
+        free(rng);
+        return NULL;
+    }
 
     /* Initialize device states */
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -917,7 +921,12 @@ stats_gpu_rng_t* stats_gpu_rng_create(
     kernel_init_rng_states<<<grid_size, block_size, 0, stream>>>(
         rng->d_states, seed, n);
 
-    NIMCP_CUDA_RECOVER_LAST_NULL(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(rng->d_states);
+        curandDestroyGenerator(rng->generator);
+        free(rng);
+        return NULL;
+    }
 
     rng->initialized = true;
     return rng;
@@ -1009,6 +1018,7 @@ stats_gpu_workspace_t* stats_gpu_workspace_create(
     if (err != cudaSuccess) goto cleanup_ws;
 
     err = cudaMalloc(&ws->d_temp2, ws->temp_size);
+    if (err != cudaSuccess) goto cleanup_ws;
 
     err = cudaMalloc(&ws->d_partial_sums, reduction_size * sizeof(float));
     if (err != cudaSuccess) goto cleanup_ws;
@@ -1084,15 +1094,24 @@ bool nimcp_stats_gpu_mean_batch(
 
     /* Allocate temporary variance buffer (will be ignored) */
     float* d_variances = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_variances, params->num_variables * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_variances, params->num_variables * sizeof(float)) != cudaSuccess) {
+        set_stats_error("Failed to allocate variance buffer");
+        return false;
+    }
 
     /* Use Welford's algorithm for numerical stability */
     kernel_welford_stats<<<grid_size, block_size, 0, stream>>>(
         data, means_out, d_variances, NULL, NULL,
         params->num_samples, params->num_variables, false);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_variances);
+        return false;
+    }
+    if (cudaStreamSynchronize(stream) != cudaSuccess) {
+        cudaFree(d_variances);
+        return false;
+    }
 
     cudaFree(d_variances);
 
@@ -1129,7 +1148,10 @@ bool nimcp_stats_gpu_variance_batch(
     float* d_means = means_out;
     bool alloc_means = (means_out == NULL);
     if (alloc_means) {
-        NIMCP_CUDA_RECOVER(cudaMalloc(&d_means, params->num_variables * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        if (cudaMalloc(&d_means, params->num_variables * sizeof(float)) != cudaSuccess) {
+            set_stats_error("Failed to allocate means buffer");
+            return false;
+        }
     }
 
     bool sample_var = (params->var_mode == STATS_GPU_VAR_SAMPLE);
@@ -1138,8 +1160,14 @@ bool nimcp_stats_gpu_variance_batch(
         data, d_means, variances_out, NULL, NULL,
         params->num_samples, params->num_variables, sample_var);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaGetLastError() != cudaSuccess) {
+        if (alloc_means) cudaFree(d_means);
+        return false;
+    }
+    if (cudaStreamSynchronize(stream) != cudaSuccess) {
+        if (alloc_means) cudaFree(d_means);
+        return false;
+    }
 
     if (alloc_means) {
         cudaFree(d_means);
@@ -1179,8 +1207,15 @@ bool nimcp_stats_gpu_covariance_matrix(
     float* d_means = NULL;
     float* d_centered = NULL;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_means, p * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_centered, n * p * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_means, p * sizeof(float)) != cudaSuccess) {
+        set_stats_error("Failed to allocate means buffer");
+        return false;
+    }
+    if (cudaMalloc(&d_centered, n * p * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_means);
+        set_stats_error("Failed to allocate centered buffer");
+        return false;
+    }
 
     // Compute means
     stats_gpu_descriptive_params_t desc_params = stats_gpu_descriptive_params_default();
@@ -1200,7 +1235,11 @@ bool nimcp_stats_gpu_covariance_matrix(
 
     kernel_center_data<<<grid_size, block_size, 0, stream>>>(
         data, d_means, d_centered, n, p);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_means);
+        cudaFree(d_centered);
+        return false;
+    }
 
     // Compute covariance: Cov = (1/(n-1)) * X^T * X
     // X is n x p (row-major as samples x variables)
@@ -1220,7 +1259,11 @@ bool nimcp_stats_gpu_covariance_matrix(
         &beta,
         cov_out, p));               // Result (p x p)
 
-    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaStreamSynchronize(stream) != cudaSuccess) {
+        cudaFree(d_means);
+        cudaFree(d_centered);
+        return false;
+    }
 
     cudaFree(d_means);
     cudaFree(d_centered);
@@ -1297,9 +1340,15 @@ bool nimcp_stats_gpu_quantiles_batch(
 
     /* Copy data to sort (don't modify original) */
     float* d_sorted = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sorted, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_sorted, data, n * sizeof(float),
-                                      cudaMemcpyDeviceToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&d_sorted, n * sizeof(float)) != cudaSuccess) {
+        set_stats_error("Failed to allocate sort buffer");
+        return false;
+    }
+    if (cudaMemcpyAsync(d_sorted, data, n * sizeof(float),
+                                      cudaMemcpyDeviceToDevice, stream) != cudaSuccess) {
+        cudaFree(d_sorted);
+        return false;
+    }
 
     /* Simple insertion sort for small n, or use thrust for larger
        For production, use CUB radix sort
@@ -1311,7 +1360,11 @@ bool nimcp_stats_gpu_quantiles_batch(
         return false;
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_sorted, data, n * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(h_sorted, data, n * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        free(h_sorted);
+        cudaFree(d_sorted);
+        return false;
+    }
 
     // Simple qsort
     for (uint32_t i = 0; i < n - 1; i++) {
@@ -1347,8 +1400,13 @@ bool nimcp_stats_gpu_quantiles_batch(
         }
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(quantiles_out, h_quantiles, num_q * sizeof(float),
-                                 cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(quantiles_out, h_quantiles, num_q * sizeof(float),
+                                 cudaMemcpyHostToDevice) != cudaSuccess) {
+        free(h_sorted);
+        free(h_quantiles);
+        cudaFree(d_sorted);
+        return false;
+    }
 
     free(h_sorted);
     free(h_quantiles);
@@ -1394,13 +1452,24 @@ bool nimcp_stats_gpu_bootstrap(
     float* d_bootstrap_dist = NULL;
     uint32_t* d_indices = NULL;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_bootstrap_dist, B * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_indices, B * n * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_bootstrap_dist, B * sizeof(float)) != cudaSuccess) {
+        set_stats_error("Failed to allocate bootstrap distribution buffer");
+        return false;
+    }
+    if (cudaMalloc(&d_indices, B * n * sizeof(uint32_t)) != cudaSuccess) {
+        cudaFree(d_bootstrap_dist);
+        set_stats_error("Failed to allocate bootstrap indices buffer");
+        return false;
+    }
 
     // Generate bootstrap indices
     kernel_bootstrap_indices<<<B, block_size, 0, stream>>>(
         rng->d_states, d_indices, n, B);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_bootstrap_dist);
+        cudaFree(d_indices);
+        return false;
+    }
 
     // Compute statistic for each resample
     size_t shared_size = block_size * sizeof(float);
@@ -1423,11 +1492,19 @@ bool nimcp_stats_gpu_bootstrap(
             cudaFree(d_indices);
             return false;
     }
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_bootstrap_dist);
+        cudaFree(d_indices);
+        return false;
+    }
 
     /* Compute original statistic for point estimate */
     float* d_point_est = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_point_est, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_point_est, sizeof(float)) != cudaSuccess) {
+        cudaFree(d_bootstrap_dist);
+        cudaFree(d_indices);
+        return false;
+    }
 
     stats_gpu_descriptive_params_t desc_params = stats_gpu_descriptive_params_default();
     desc_params.num_samples = n;
@@ -1437,13 +1514,21 @@ bool nimcp_stats_gpu_bootstrap(
         nimcp_stats_gpu_mean_batch(ctx, data, d_point_est, &desc_params);
     } else {
         float* d_mean_tmp = NULL;
-        cudaMalloc(&d_mean_tmp, sizeof(float));
+        if (cudaMalloc(&d_mean_tmp, sizeof(float)) != cudaSuccess) {
+            cudaFree(d_point_est);
+            return false;
+        }
         nimcp_stats_gpu_variance_batch(ctx, data, d_mean_tmp, d_point_est, &desc_params);
         cudaFree(d_mean_tmp);
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&result->point_estimate, d_point_est, sizeof(float),
-                                 cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(&result->point_estimate, d_point_est, sizeof(float),
+                                 cudaMemcpyDeviceToHost) != cudaSuccess) {
+        cudaFree(d_point_est);
+        cudaFree(d_bootstrap_dist);
+        cudaFree(d_indices);
+        return false;
+    }
     cudaFree(d_point_est);
 
     /* Copy bootstrap distribution to result (allocate on host) */
@@ -1455,8 +1540,14 @@ bool nimcp_stats_gpu_bootstrap(
         return false;
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(result->bootstrap_distribution, d_bootstrap_dist,
-                                 B * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(result->bootstrap_distribution, d_bootstrap_dist,
+                                 B * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        free(result->bootstrap_distribution);
+        result->bootstrap_distribution = NULL;
+        cudaFree(d_bootstrap_dist);
+        cudaFree(d_indices);
+        return false;
+    }
 
     // Compute standard error and bias
     float sum = 0.0f;
@@ -1775,7 +1866,10 @@ bool nimcp_stats_gpu_entropy(
         return false;
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_data, data, n * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(h_data, data, n * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        free(h_data);
+        return false;
+    }
 
     h_min = h_data[0];
     h_max = h_data[0];
@@ -1792,8 +1886,15 @@ bool nimcp_stats_gpu_entropy(
 
     /* Allocate histogram */
     uint32_t* d_hist = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_hist, num_bins * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemsetAsync(d_hist, 0, num_bins * sizeof(uint32_t), stream), GPU_ERROR_CUDA_RUNTIME);
+    float* d_partial_entropy = NULL;
+    if (cudaMalloc(&d_hist, num_bins * sizeof(uint32_t)) != cudaSuccess) {
+        set_stats_error("Failed to allocate histogram buffer");
+        return false;
+    }
+    if (cudaMemsetAsync(d_hist, 0, num_bins * sizeof(uint32_t), stream) != cudaSuccess) {
+        cudaFree(d_hist);
+        return false;
+    }
 
     /* Build histogram */
     uint32_t block_size = STATS_GPU_BLOCK_SIZE;
@@ -1801,18 +1902,28 @@ bool nimcp_stats_gpu_entropy(
 
     kernel_histogram<<<grid_size, block_size, 0, stream>>>(
         data, d_hist, n, num_bins, h_min, h_max);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_hist);
+        return false;
+    }
 
     /* Compute entropy from histogram */
-    float* d_partial_entropy = NULL;
     uint32_t reduce_blocks = NIMCP_CUDA_GRID_SIZE(num_bins, block_size);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial_entropy, reduce_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_partial_entropy, reduce_blocks * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_hist);
+        set_stats_error("Failed to allocate partial entropy buffer");
+        return false;
+    }
 
     float log_base = (params->base > 0) ? logf(params->base) : logf(2.0f);
 
     kernel_entropy_from_hist<<<reduce_blocks, block_size, block_size * sizeof(float), stream>>>(
         d_hist, d_partial_entropy, num_bins, n, log_base);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_hist);
+        cudaFree(d_partial_entropy);
+        return false;
+    }
 
     /* Sum partial entropies on CPU */
     float* h_partial = (float*)malloc(reduce_blocks * sizeof(float));
@@ -1823,8 +1934,13 @@ bool nimcp_stats_gpu_entropy(
         return false;
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_partial, d_partial_entropy, reduce_blocks * sizeof(float),
-                                 cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(h_partial, d_partial_entropy, reduce_blocks * sizeof(float),
+                                 cudaMemcpyDeviceToHost) != cudaSuccess) {
+        free(h_partial);
+        cudaFree(d_hist);
+        cudaFree(d_partial_entropy);
+        return false;
+    }
 
     float total_entropy = 0.0f;
     for (uint32_t i = 0; i < reduce_blocks; i++) {
@@ -1898,13 +2014,19 @@ bool nimcp_stats_gpu_kl_divergence(
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
     float* d_partial_kl = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial_kl, grid_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_partial_kl, grid_size * sizeof(float)) != cudaSuccess) {
+        set_stats_error("Failed to allocate KL divergence buffer");
+        return false;
+    }
 
     float log_base = (base > 0) ? logf(base) : logf(2.0f);
 
     kernel_kl_divergence<<<grid_size, block_size, block_size * sizeof(float), stream>>>(
         p, q, d_partial_kl, n, log_base);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_partial_kl);
+        return false;
+    }
 
     /* Sum partial KL on CPU */
     float* h_partial = (float*)malloc(grid_size * sizeof(float));
@@ -1914,8 +2036,12 @@ bool nimcp_stats_gpu_kl_divergence(
         return false;
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_partial, d_partial_kl, grid_size * sizeof(float),
-                                 cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(h_partial, d_partial_kl, grid_size * sizeof(float),
+                                 cudaMemcpyDeviceToHost) != cudaSuccess) {
+        free(h_partial);
+        cudaFree(d_partial_kl);
+        return false;
+    }
 
     float total_kl = 0.0f;
     for (uint32_t i = 0; i < grid_size; i++) {
@@ -1953,10 +2079,16 @@ bool nimcp_stats_gpu_js_divergence(
 
     /* Compute M = 0.5 * (P + Q) */
     float* d_m = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_m, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_m, n * sizeof(float)) != cudaSuccess) {
+        set_stats_error("Failed to allocate JS divergence buffer");
+        return false;
+    }
 
     kernel_average_distribution<<<grid_size, block_size, 0, stream>>>(p, q, d_m, n);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) {
+        cudaFree(d_m);
+        return false;
+    }
 
     // Compute KL(P || M) and KL(Q || M)
     float kl_pm, kl_qm;
@@ -2008,14 +2140,15 @@ bool nimcp_stats_gpu_eigendecomposition(
     float* d_work = NULL;
     int* d_info = NULL;
     int work_size = 0;
+    bool eigen_success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_eigenvalues, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_eigenvectors, n * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_info, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_eigenvalues, n * sizeof(float)) != cudaSuccess) goto eigen_cleanup;
+    if (cudaMalloc(&d_eigenvectors, n * n * sizeof(float)) != cudaSuccess) goto eigen_cleanup;
+    if (cudaMalloc(&d_info, sizeof(int)) != cudaSuccess) goto eigen_cleanup;
 
     /* Copy matrix to eigenvectors buffer (will be overwritten) */
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_eigenvectors, matrix, n * n * sizeof(float),
-                                 cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(d_eigenvectors, matrix, n * n * sizeof(float),
+                                 cudaMemcpyDeviceToDevice) != cudaSuccess) goto eigen_cleanup;
 
     if (params->symmetric) {
         // Query workspace size for syevd
@@ -2029,7 +2162,7 @@ bool nimcp_stats_gpu_eigendecomposition(
             d_eigenvalues,
             &work_size));
 
-        NIMCP_CUDA_RECOVER(cudaMalloc(&d_work, work_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        if (cudaMalloc(&d_work, work_size * sizeof(float)) != cudaSuccess) goto eigen_cleanup;
 
         /* Compute eigendecomposition */
         NIMCP_CUSOLVER_CHECK(cusolverDnSsyevd(
@@ -2045,36 +2178,31 @@ bool nimcp_stats_gpu_eigendecomposition(
             d_info));
     } else {
         set_stats_error("Non-symmetric eigendecomposition not yet implemented");
-        cudaFree(d_eigenvalues);
-        cudaFree(d_eigenvectors);
-        cudaFree(d_info);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        goto eigen_cleanup;
     }
 
     /* Check info */
-    int h_info;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        int h_info;
+        if (cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost) != cudaSuccess) goto eigen_cleanup;
 
-    if (h_info != 0) {
-        set_stats_error("Eigendecomposition failed with info=%d", h_info);
-        cudaFree(d_eigenvalues);
-        cudaFree(d_eigenvectors);
-        cudaFree(d_work);
-        cudaFree(d_info);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        if (h_info != 0) {
+            set_stats_error("Eigendecomposition failed with info=%d", h_info);
+            goto eigen_cleanup;
+        }
     }
 
     /* Copy results */
     result->eigenvalues = (float*)malloc(n * sizeof(float));
-    NIMCP_CUDA_RECOVER(cudaMemcpy(result->eigenvalues, d_eigenvalues, n * sizeof(float),
-                                 cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (!result->eigenvalues) goto eigen_cleanup;
+    if (cudaMemcpy(result->eigenvalues, d_eigenvalues, n * sizeof(float),
+                                 cudaMemcpyDeviceToHost) != cudaSuccess) goto eigen_cleanup;
 
     if (params->compute_eigenvectors) {
         result->eigenvectors = (float*)malloc(n * n * sizeof(float));
-        NIMCP_CUDA_RECOVER(cudaMemcpy(result->eigenvectors, d_eigenvectors, n * n * sizeof(float),
-                                     cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+        if (!result->eigenvectors) goto eigen_cleanup;
+        if (cudaMemcpy(result->eigenvectors, d_eigenvectors, n * n * sizeof(float),
+                                     cudaMemcpyDeviceToHost) != cudaSuccess) goto eigen_cleanup;
     } else {
         result->eigenvectors = NULL;
     }
@@ -2082,11 +2210,16 @@ bool nimcp_stats_gpu_eigendecomposition(
     result->n = n;
     result->rank = n;  // Would need to count non-zero eigenvalues for true rank
 
+    eigen_success = true;
+
+eigen_cleanup:
     cudaFree(d_eigenvalues);
     cudaFree(d_eigenvectors);
     cudaFree(d_work);
     cudaFree(d_info);
     cusolverDnDestroy(solver_handle);
+
+    if (!eigen_success) return false;
 
     g_stats_gpu_stats.eigendecompositions++;
 
@@ -2124,74 +2257,75 @@ bool nimcp_stats_gpu_svd(
     float* d_work = NULL;
     int* d_info = NULL;
     int work_size = 0;
+    bool svd_success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_A, m * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_S, k * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_info, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_A, m * n * sizeof(float)) != cudaSuccess) goto svd_cleanup;
+    if (cudaMalloc(&d_S, k * sizeof(float)) != cudaSuccess) goto svd_cleanup;
+    if (cudaMalloc(&d_info, sizeof(int)) != cudaSuccess) goto svd_cleanup;
 
     if (params->compute_u) {
-        NIMCP_CUDA_RECOVER(cudaMalloc(&d_U, m * m * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        if (cudaMalloc(&d_U, m * m * sizeof(float)) != cudaSuccess) goto svd_cleanup;
     }
     if (params->compute_v) {
-        NIMCP_CUDA_RECOVER(cudaMalloc(&d_VT, n * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        if (cudaMalloc(&d_VT, n * n * sizeof(float)) != cudaSuccess) goto svd_cleanup;
     }
 
     // Copy matrix
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_A, matrix, m * n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(d_A, matrix, m * n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto svd_cleanup;
 
-    // Query workspace size
-    signed char jobu = params->compute_u ? 'A' : 'N';
-    signed char jobvt = params->compute_v ? 'A' : 'N';
+    {
+        // Query workspace size
+        signed char jobu = params->compute_u ? 'A' : 'N';
+        signed char jobvt = params->compute_v ? 'A' : 'N';
 
-    NIMCP_CUSOLVER_CHECK(cusolverDnSgesvd_bufferSize(solver_handle, m, n, &work_size));
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_work, work_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        NIMCP_CUSOLVER_CHECK(cusolverDnSgesvd_bufferSize(solver_handle, m, n, &work_size));
+        if (cudaMalloc(&d_work, work_size * sizeof(float)) != cudaSuccess) goto svd_cleanup;
 
-    // Compute SVD
-    NIMCP_CUSOLVER_CHECK(cusolverDnSgesvd(
-        solver_handle,
-        jobu, jobvt,
-        m, n,
-        d_A, m,
-        d_S,
-        d_U, m,
-        d_VT, n,
-        d_work, work_size,
-        NULL,  // rwork (not needed for float)
-        d_info));
+        // Compute SVD
+        NIMCP_CUSOLVER_CHECK(cusolverDnSgesvd(
+            solver_handle,
+            jobu, jobvt,
+            m, n,
+            d_A, m,
+            d_S,
+            d_U, m,
+            d_VT, n,
+            d_work, work_size,
+            NULL,  // rwork (not needed for float)
+            d_info));
+    }
 
     // Check info
-    int h_info;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        int h_info;
+        if (cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost) != cudaSuccess) goto svd_cleanup;
 
-    if (h_info != 0) {
-        set_stats_error("SVD failed with info=%d", h_info);
-        cudaFree(d_A);
-        cudaFree(d_S);
-        if (d_U) cudaFree(d_U);
-        if (d_VT) cudaFree(d_VT);
-        cudaFree(d_work);
-        cudaFree(d_info);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        if (h_info != 0) {
+            set_stats_error("SVD failed with info=%d", h_info);
+            goto svd_cleanup;
+        }
     }
 
     // Copy results
     result->singular_values = (float*)malloc(k * sizeof(float));
-    NIMCP_CUDA_RECOVER(cudaMemcpy(result->singular_values, d_S, k * sizeof(float),
-                                 cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (!result->singular_values) goto svd_cleanup;
+    if (cudaMemcpy(result->singular_values, d_S, k * sizeof(float),
+                                 cudaMemcpyDeviceToHost) != cudaSuccess) goto svd_cleanup;
 
     if (params->compute_u) {
         result->u = (float*)malloc(m * m * sizeof(float));
-        NIMCP_CUDA_RECOVER(cudaMemcpy(result->u, d_U, m * m * sizeof(float),
-                                     cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+        if (!result->u) goto svd_cleanup;
+        if (cudaMemcpy(result->u, d_U, m * m * sizeof(float),
+                                     cudaMemcpyDeviceToHost) != cudaSuccess) goto svd_cleanup;
     } else {
         result->u = NULL;
     }
 
     if (params->compute_v) {
         result->vt = (float*)malloc(n * n * sizeof(float));
-        NIMCP_CUDA_RECOVER(cudaMemcpy(result->vt, d_VT, n * n * sizeof(float),
-                                     cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+        if (!result->vt) goto svd_cleanup;
+        if (cudaMemcpy(result->vt, d_VT, n * n * sizeof(float),
+                                     cudaMemcpyDeviceToHost) != cudaSuccess) goto svd_cleanup;
     } else {
         result->vt = NULL;
     }
@@ -2200,13 +2334,18 @@ bool nimcp_stats_gpu_svd(
     result->n = n;
     result->k = k;
 
+    svd_success = true;
+
+svd_cleanup:
     cudaFree(d_A);
     cudaFree(d_S);
-    if (d_U) cudaFree(d_U);
-    if (d_VT) cudaFree(d_VT);
+    cudaFree(d_U);
+    cudaFree(d_VT);
     cudaFree(d_work);
     cudaFree(d_info);
     cusolverDnDestroy(solver_handle);
+
+    if (!svd_success) return false;
 
     g_stats_gpu_stats.svd_decompositions++;
 
@@ -2233,53 +2372,58 @@ bool nimcp_stats_gpu_matrix_inverse(
     NIMCP_CUSOLVER_CHECK(cusolverDnCreate(&solver_handle));
 
     cublasHandle_t cublas = nimcp_gpu_get_cublas(ctx);
+    (void)cublas;
 
     // Allocate device memory
     float* d_A = NULL;
     float* d_work = NULL;
     int* d_pivot = NULL;
     int* d_info = NULL;
+    float* d_I = NULL;
     int work_size = 0;
+    bool inv_success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_A, n * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_pivot, n * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_info, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_A, n * n * sizeof(float)) != cudaSuccess) goto inv_cleanup;
+    if (cudaMalloc(&d_pivot, n * sizeof(int)) != cudaSuccess) goto inv_cleanup;
+    if (cudaMalloc(&d_info, sizeof(int)) != cudaSuccess) goto inv_cleanup;
 
     // Copy matrix
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_A, matrix, n * n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(d_A, matrix, n * n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto inv_cleanup;
 
     // LU factorization
     NIMCP_CUSOLVER_CHECK(cusolverDnSgetrf_bufferSize(solver_handle, n, n, d_A, n, &work_size));
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_work, work_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_work, work_size * sizeof(float)) != cudaSuccess) goto inv_cleanup;
 
     NIMCP_CUSOLVER_CHECK(cusolverDnSgetrf(solver_handle, n, n, d_A, n, d_work, d_pivot, d_info));
 
     // Check for singularity
-    int h_info;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        int h_info;
+        if (cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost) != cudaSuccess) goto inv_cleanup;
 
-    if (h_info != 0) {
-        set_stats_error("Matrix is singular (info=%d)", h_info);
-        cudaFree(d_A);
-        cudaFree(d_work);
-        cudaFree(d_pivot);
-        cudaFree(d_info);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        if (h_info != 0) {
+            set_stats_error("Matrix is singular (info=%d)", h_info);
+            goto inv_cleanup;
+        }
     }
 
     // Create identity matrix for inverse
-    float* d_I = NULL;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_I, n * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_I, 0, n * n * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&d_I, n * n * sizeof(float)) != cudaSuccess) goto inv_cleanup;
+    if (cudaMemset(d_I, 0, n * n * sizeof(float)) != cudaSuccess) goto inv_cleanup;
 
     // Set diagonal to 1
-    float* h_I = (float*)calloc(n * n, sizeof(float));
-    for (uint32_t i = 0; i < n; i++) {
-        h_I[i * n + i] = 1.0f;
+    {
+        float* h_I = (float*)calloc(n * n, sizeof(float));
+        if (!h_I) goto inv_cleanup;
+        for (uint32_t i = 0; i < n; i++) {
+            h_I[i * n + i] = 1.0f;
+        }
+        if (cudaMemcpy(d_I, h_I, n * n * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+            free(h_I);
+            goto inv_cleanup;
+        }
+        free(h_I);
     }
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_I, h_I, n * n * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    free(h_I);
 
     // Solve A * X = I for X = A^{-1}
     NIMCP_CUSOLVER_CHECK(cusolverDnSgetrs(
@@ -2292,22 +2436,22 @@ bool nimcp_stats_gpu_matrix_inverse(
         d_info));
 
     // Check
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        int h_info;
+        if (cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost) != cudaSuccess) goto inv_cleanup;
 
-    if (h_info != 0) {
-        set_stats_error("Inverse solve failed (info=%d)", h_info);
-        cudaFree(d_A);
-        cudaFree(d_work);
-        cudaFree(d_pivot);
-        cudaFree(d_info);
-        cudaFree(d_I);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        if (h_info != 0) {
+            set_stats_error("Inverse solve failed (info=%d)", h_info);
+            goto inv_cleanup;
+        }
     }
 
     // Copy result
-    NIMCP_CUDA_RECOVER(cudaMemcpy(inverse, d_I, n * n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(inverse, d_I, n * n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto inv_cleanup;
 
+    inv_success = true;
+
+inv_cleanup:
     cudaFree(d_A);
     cudaFree(d_work);
     cudaFree(d_pivot);
@@ -2315,7 +2459,7 @@ bool nimcp_stats_gpu_matrix_inverse(
     cudaFree(d_I);
     cusolverDnDestroy(solver_handle);
 
-    return true;
+    return inv_success;
 }
 
 bool nimcp_stats_gpu_matrix_pinverse(
@@ -2350,9 +2494,14 @@ bool nimcp_stats_gpu_matrix_pinverse(
     // S^+ is diagonal with 1/s_i for s_i > tolerance
 
     uint32_t k = svd_result.k;
+    bool pinv_success = false;
 
     // Invert singular values above tolerance
     float* s_inv = (float*)malloc(k * sizeof(float));
+    if (!s_inv) {
+        nimcp_stats_gpu_svd_result_free(ctx, &svd_result);
+        return false;
+    }
     for (uint32_t i = 0; i < k; i++) {
         if (svd_result.singular_values[i] > tolerance) {
             s_inv[i] = 1.0f / svd_result.singular_values[i];
@@ -2366,6 +2515,11 @@ bool nimcp_stats_gpu_matrix_pinverse(
 
     // For now, compute on host (simplified)
     float* pinv_host = (float*)calloc(n * m, sizeof(float));
+    if (!pinv_host) {
+        free(s_inv);
+        nimcp_stats_gpu_svd_result_free(ctx, &svd_result);
+        return false;
+    }
 
     for (uint32_t i = 0; i < n; i++) {
         for (uint32_t j = 0; j < m; j++) {
@@ -2380,7 +2534,12 @@ bool nimcp_stats_gpu_matrix_pinverse(
         }
     }
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(pinv, pinv_host, n * m * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(pinv, pinv_host, n * m * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        free(s_inv);
+        free(pinv_host);
+        nimcp_stats_gpu_svd_result_free(ctx, &svd_result);
+        return false;
+    }
 
     free(s_inv);
     free(pinv_host);
@@ -2416,35 +2575,32 @@ bool nimcp_stats_gpu_solve_linear(
     int* d_pivot = NULL;
     int* d_info = NULL;
     int work_size = 0;
+    bool solve_success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_A, n * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_b, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_pivot, n * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_info, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_A, n * n * sizeof(float)) != cudaSuccess) goto solve_cleanup;
+    if (cudaMalloc(&d_b, n * sizeof(float)) != cudaSuccess) goto solve_cleanup;
+    if (cudaMalloc(&d_pivot, n * sizeof(int)) != cudaSuccess) goto solve_cleanup;
+    if (cudaMalloc(&d_info, sizeof(int)) != cudaSuccess) goto solve_cleanup;
 
     // Copy data
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_A, A, n * n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_b, b, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(d_A, A, n * n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto solve_cleanup;
+    if (cudaMemcpy(d_b, b, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto solve_cleanup;
 
     // LU factorization
     NIMCP_CUSOLVER_CHECK(cusolverDnSgetrf_bufferSize(solver_handle, n, n, d_A, n, &work_size));
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_work, work_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_work, work_size * sizeof(float)) != cudaSuccess) goto solve_cleanup;
 
     NIMCP_CUSOLVER_CHECK(cusolverDnSgetrf(solver_handle, n, n, d_A, n, d_work, d_pivot, d_info));
 
     // Check
-    int h_info;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        int h_info;
+        if (cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost) != cudaSuccess) goto solve_cleanup;
 
-    if (h_info != 0) {
-        set_stats_error("LU factorization failed (info=%d)", h_info);
-        cudaFree(d_A);
-        cudaFree(d_b);
-        cudaFree(d_work);
-        cudaFree(d_pivot);
-        cudaFree(d_info);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        if (h_info != 0) {
+            set_stats_error("LU factorization failed (info=%d)", h_info);
+            goto solve_cleanup;
+        }
     }
 
     // Solve
@@ -2458,8 +2614,11 @@ bool nimcp_stats_gpu_solve_linear(
         d_info));
 
     // Copy solution
-    NIMCP_CUDA_RECOVER(cudaMemcpy(x, d_b, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(x, d_b, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto solve_cleanup;
 
+    solve_success = true;
+
+solve_cleanup:
     cudaFree(d_A);
     cudaFree(d_b);
     cudaFree(d_work);
@@ -2467,7 +2626,7 @@ bool nimcp_stats_gpu_solve_linear(
     cudaFree(d_info);
     cusolverDnDestroy(solver_handle);
 
-    return true;
+    return solve_success;
 }
 
 bool nimcp_stats_gpu_cholesky(
@@ -2494,12 +2653,13 @@ bool nimcp_stats_gpu_cholesky(
     float* d_work = NULL;
     int* d_info = NULL;
     int work_size = 0;
+    bool chol_success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_A, n * n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_info, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_A, n * n * sizeof(float)) != cudaSuccess) goto chol_cleanup;
+    if (cudaMalloc(&d_info, sizeof(int)) != cudaSuccess) goto chol_cleanup;
 
     // Copy matrix
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_A, matrix, n * n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(d_A, matrix, n * n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto chol_cleanup;
 
     // Query workspace
     NIMCP_CUSOLVER_CHECK(cusolverDnSpotrf_bufferSize(
@@ -2509,7 +2669,7 @@ bool nimcp_stats_gpu_cholesky(
         d_A, n,
         &work_size));
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_work, work_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_work, work_size * sizeof(float)) != cudaSuccess) goto chol_cleanup;
 
     // Compute Cholesky
     NIMCP_CUSOLVER_CHECK(cusolverDnSpotrf(
@@ -2521,27 +2681,28 @@ bool nimcp_stats_gpu_cholesky(
         d_info));
 
     // Check
-    int h_info;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        int h_info;
+        if (cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost) != cudaSuccess) goto chol_cleanup;
 
-    if (h_info != 0) {
-        set_stats_error("Cholesky failed - matrix not positive definite (info=%d)", h_info);
-        cudaFree(d_A);
-        cudaFree(d_work);
-        cudaFree(d_info);
-        cusolverDnDestroy(solver_handle);
-        return false;
+        if (h_info != 0) {
+            set_stats_error("Cholesky failed - matrix not positive definite (info=%d)", h_info);
+            goto chol_cleanup;
+        }
     }
 
     // Copy result
-    NIMCP_CUDA_RECOVER(cudaMemcpy(L, d_A, n * n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(L, d_A, n * n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto chol_cleanup;
 
+    chol_success = true;
+
+chol_cleanup:
     cudaFree(d_A);
     cudaFree(d_work);
     cudaFree(d_info);
     cusolverDnDestroy(solver_handle);
 
-    return true;
+    return chol_success;
 }
 
 //=============================================================================

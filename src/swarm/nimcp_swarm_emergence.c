@@ -257,9 +257,12 @@ static swarm_emergence_tier_t apply_hysteresis(
  */
 static bool check_health_ratio(const swarm_state_t* state)
 {
-    if (!state || state->connected_drones == 0) {
+    if (!state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_health_ratio: state is NULL");
         return false;
+    }
+    if (state->connected_drones == 0) {
+        return false;  /* Zero connected drones - normal initial state */
     }
 
     float health_ratio = (float)state->healthy_drones / (float)state->connected_drones;

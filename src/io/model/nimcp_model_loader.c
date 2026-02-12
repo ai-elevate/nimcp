@@ -401,8 +401,8 @@ static nimcp_model_result_t parse_architecture(const uint8_t* buf, size_t buf_si
 {
     size_t pos = *offset;
 
-    // Need at least basic architecture fields
-    if (buf_size - pos < 36) {
+    // Need at least basic architecture fields (20) + topology hints (18) = 38 bytes
+    if (buf_size - pos < 38) {
         set_error("Buffer too small for architecture at offset %zu", pos);
         return NIMCP_MODEL_ERROR_INCOMPLETE;
     }
@@ -477,7 +477,11 @@ static nimcp_model_result_t parse_architecture(const uint8_t* buf, size_t buf_si
         }
     }
 
-    // Parse network topology hints
+    // Parse network topology hints (18 bytes: 4+4+1+4+4+1)
+    if (buf_size - pos < 18) {
+        set_error("Buffer too small for topology hints at offset %zu", pos);
+        return NIMCP_MODEL_ERROR_INCOMPLETE;
+    }
     arch->sparsity = read_le_float(buf + pos);
     pos += 4;
 
@@ -742,14 +746,12 @@ bool nimcp_model_version_compatible(uint16_t major, uint16_t minor)
 {
     // Major version must match exactly for compatibility
     if (major > NIMCP_MODEL_VERSION_MAJOR) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_model_version_compatible: validation failed");
-        return false;
+        return false;  /* Version incompatibility is normal validation result */
     }
 
     // If major version is older but within minimum, it's compatible
     if (major < NIMCP_MODEL_MIN_MAJOR) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_model_version_compatible: validation failed");
-        return false;
+        return false;  /* Version incompatibility is normal validation result */
     }
 
     // If same major version, any minor version is compatible

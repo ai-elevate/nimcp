@@ -177,7 +177,6 @@ static bool hashmap_insert(frozen_entry_t* map, uint32_t size,
     } while (idx != start);
 
     /* Hashmap full */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hashmap_insert: hashmap full");
     return false;
 }
 
@@ -440,7 +439,7 @@ int plasticity_guard_freeze_synapse(plasticity_guard_t guard, uint64_t synapse_i
 
     if (!hashmap_insert(g->frozen_synapses, g->frozen_hashmap_size,
                        synapse_id, &g->frozen_count)) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "synapse already frozen");
+        return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
     return NIMCP_SUCCESS;
@@ -454,23 +453,17 @@ int plasticity_guard_unfreeze_synapse(plasticity_guard_t guard, uint64_t synapse
 
     if (!hashmap_remove(g->frozen_synapses, g->frozen_hashmap_size,
                        synapse_id, &g->frozen_count)) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "synapse not found in frozen list");
+        return NIMCP_ERROR_NOT_FOUND;
     }
 
     return NIMCP_SUCCESS;
 }
 
 bool plasticity_guard_is_frozen(plasticity_guard_t guard, uint64_t synapse_id) {
-    if (!guard) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_guard_is_frozen: guard is NULL");
-        return false;
-    }
+    if (!guard) { return false; }
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_guard_is_frozen: validation failed");
-        return false;
-    }
+    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) { return false; }
 
     return hashmap_contains(g->frozen_synapses, g->frozen_hashmap_size, synapse_id);
 }
@@ -485,7 +478,7 @@ int plasticity_guard_freeze_pathway(plasticity_guard_t guard, uint32_t pathway_i
     /* Check for duplicates */
     for (uint32_t i = 0; i < g->frozen_pathway_count; i++) {
         if (g->frozen_pathways[i] == pathway_id) {
-            NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "pathway already frozen");
+            return NIMCP_ERROR_ALREADY_EXISTS;
         }
     }
 
@@ -510,8 +503,7 @@ int plasticity_guard_unfreeze_pathway(plasticity_guard_t guard, uint32_t pathway
         }
     }
 
-    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "pathway not found in frozen list");
-    return 0; /* unreachable */
+    return NIMCP_ERROR_NOT_FOUND;
 }
 
 uint32_t plasticity_guard_freeze_bulk(
@@ -807,7 +799,7 @@ int plasticity_guard_register_reward_synapse(plasticity_guard_t guard, uint64_t 
 
     if (!hashmap_insert(g->reward_synapses, g->reward_hashmap_size,
                        synapse_id, &g->reward_synapse_count)) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "reward synapse already registered");
+        return NIMCP_ERROR_ALREADY_EXISTS;
     }
     return NIMCP_SUCCESS;
 }
@@ -820,7 +812,7 @@ int plasticity_guard_register_self_reward_synapse(plasticity_guard_t guard, uint
 
     if (!hashmap_insert(g->self_reward_synapses, g->self_reward_hashmap_size,
                        synapse_id, &g->self_reward_count)) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "self-reward synapse already registered");
+        return NIMCP_ERROR_ALREADY_EXISTS;
     }
     return NIMCP_SUCCESS;
 }

@@ -227,7 +227,6 @@ static event_entry_t* find_empty_slot(time_dilation_system_t* sys) {
             return &sys->events[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: sys->events is NULL");
     return NULL;
 }
 
@@ -242,7 +241,6 @@ static event_entry_t* find_event_by_id(time_dilation_system_t* sys, uint32_t id)
             return &sys->events[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_event_by_id: validation failed");
     return NULL;
 }
 

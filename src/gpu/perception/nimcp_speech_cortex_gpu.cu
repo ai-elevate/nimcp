@@ -625,6 +625,7 @@ __global__ void kernel_find_pitch_refined(
     int max_idx = min_lag;
 
     for (int lag = min_lag; lag < max_lag - 1; lag++) {
+        if (lag < 1) continue;
         if (ac[lag] > max_val && ac[lag] > ac[lag-1] && ac[lag] > ac[lag+1]) {
             max_val = ac[lag];
             max_idx = lag;
@@ -724,6 +725,7 @@ __global__ void kernel_levinson_durbin_batch(
 
     // Temporary arrays (in registers/local memory)
     float a_prev[32];  // Max order supported
+    if (order > 32) return;  // Guard against stack overflow
     float error = r[0];
 
     if (fabsf(error) < 1e-10f) {
@@ -1230,10 +1232,7 @@ extern "C" nimcp_speech_gpu_state_t* nimcp_speech_gpu_create_with_config(
 
     // Allocate complex FFT buffer (2 floats per complex)
     // Note: Complex buffer = max_frames * fft_bins * 2 floats
-    cudaError_t err = cudaMalloc(&state->fft_buffer, sizeof(nimcp_gpu_tensor_t));
-    if (err == cudaSuccess) {
-        state->fft_buffer = nimcp_gpu_tensor_create(ctx, fft_buf_dims, 2, NIMCP_GPU_PRECISION_FP32);
-    }
+    state->fft_buffer = nimcp_gpu_tensor_create(ctx, fft_buf_dims, 2, NIMCP_GPU_PRECISION_FP32);
 
     state->power_spectrum = nimcp_gpu_tensor_create(ctx, fft_buf_dims, 2, NIMCP_GPU_PRECISION_FP32);
     state->mel_energies = nimcp_gpu_tensor_create(ctx, mel_buf_dims, 2, NIMCP_GPU_PRECISION_FP32);
@@ -1357,27 +1356,39 @@ extern "C" nimcp_gpu_tensor_t* nimcp_speech_gpu_compute_spectrogram(
     );
 
     // Allocate complex FFT output
-    cufftComplex* d_fft_out;
-    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_fft_out, num_frames * state->fft_bins * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
-
-    // Execute batched FFT
+    cufftComplex* d_fft_out = NULL;
+    bool plan_created = false;
     cufftHandle batch_plan;
-    cufftResult fft_result = cufftPlan1d(&batch_plan, state->fft_size, CUFFT_R2C, num_frames);
-    if (fft_result != CUFFT_SUCCESS) {
-        cudaFree(d_fft_out);
+
+    if (cudaMalloc(&d_fft_out, num_frames * state->fft_bins * sizeof(cufftComplex)) != cudaSuccess) {
         nimcp_gpu_tensor_destroy(frames);
         nimcp_gpu_tensor_destroy(spectrogram);
         return NULL;
     }
 
-    cufftExecR2C(batch_plan, (cufftReal*)frames->data, d_fft_out);
-    cufftDestroy(batch_plan);
+    // Execute batched FFT
+    {
+        cufftResult fft_result = cufftPlan1d(&batch_plan, state->fft_size, CUFFT_R2C, num_frames);
+        if (fft_result != CUFFT_SUCCESS) {
+            cudaFree(d_fft_out);
+            nimcp_gpu_tensor_destroy(frames);
+            nimcp_gpu_tensor_destroy(spectrogram);
+            return NULL;
+        }
+        plan_created = true;
+
+        cufftExecR2C(batch_plan, (cufftReal*)frames->data, d_fft_out);
+        cufftDestroy(batch_plan);
+        plan_created = false;
+    }
 
     // Compute magnitude spectrum
-    dim3 spec_grid((state->fft_bins + BLOCK_SIZE - 1) / BLOCK_SIZE, num_frames);
-    kernel_magnitude_spectrum<<<spec_grid, BLOCK_SIZE>>>(
-        d_fft_out, (float*)spectrogram->data, num_frames, state->fft_bins
-    );
+    {
+        dim3 spec_grid((state->fft_bins + BLOCK_SIZE - 1) / BLOCK_SIZE, num_frames);
+        kernel_magnitude_spectrum<<<spec_grid, BLOCK_SIZE>>>(
+            d_fft_out, (float*)spectrogram->data, num_frames, state->fft_bins
+        );
+    }
 
     cudaFree(d_fft_out);
     nimcp_gpu_tensor_destroy(frames);
@@ -2034,7 +2045,10 @@ extern "C" nimcp_gpu_tensor_t* nimcp_speech_gpu_compute_zcr(
 
     // Create rectangular window for ZCR
     float* d_rect_window;
-    cudaMalloc(&d_rect_window, state->frame_size * sizeof(float));
+    if (cudaMalloc(&d_rect_window, state->frame_size * sizeof(float)) != cudaSuccess) {
+        nimcp_gpu_tensor_destroy(frames);
+        return NULL;
+    }
     kernel_generate_window<<<GRID_SIZE(state->frame_size), BLOCK_SIZE>>>(
         d_rect_window, state->frame_size, 3  // Rectangular
     );
@@ -2260,12 +2274,16 @@ extern "C" bool nimcp_speech_gpu_apply_cmn(
         nimcp_gpu_recovery_init(NULL);
     }
 
+    bool success = false;
+    float* d_mean = NULL;
+
     int num_frames = features->dims[0];
     int feature_dim = features->dims[1];
 
     // Allocate mean vector
-    float* d_mean;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_mean, feature_dim * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_mean, feature_dim * sizeof(float)) != cudaSuccess) {
+        goto cleanup;
+    }
 
     // Compute mean
     kernel_compute_mean<<<GRID_SIZE(feature_dim), BLOCK_SIZE>>>(
@@ -2275,16 +2293,20 @@ extern "C" bool nimcp_speech_gpu_apply_cmn(
     );
 
     // Subtract mean
-    dim3 grid((feature_dim + BLOCK_SIZE - 1) / BLOCK_SIZE, num_frames);
-    kernel_subtract_mean<<<grid, BLOCK_SIZE>>>(
-        (float*)features->data,
-        d_mean,
-        num_frames, feature_dim
-    );
+    {
+        dim3 grid((feature_dim + BLOCK_SIZE - 1) / BLOCK_SIZE, num_frames);
+        kernel_subtract_mean<<<grid, BLOCK_SIZE>>>(
+            (float*)features->data,
+            d_mean,
+            num_frames, feature_dim
+        );
+    }
 
-    cudaFree(d_mean);
+    success = true;
 
-    return true;
+cleanup:
+    if (d_mean) cudaFree(d_mean);
+    return success;
 }
 
 //=============================================================================

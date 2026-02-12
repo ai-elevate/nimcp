@@ -653,7 +653,6 @@ int training_state_unregister(
 
     training_state_module_t* module = find_module(registry, module_name);
     if (!module) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_state_unregister: module is NULL");
         return -1;  /* Not found */
     }
 

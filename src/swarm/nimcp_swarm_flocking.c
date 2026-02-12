@@ -695,8 +695,7 @@ static int flocking_get_formation_position_unlocked(nimcp_flocking_engine_t *eng
 
     int index = flocking_find_boid_index(engine, boid_id);
     if (index < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "flocking_get_formation_position_unlocked: boid not found");
-        return -1;
+        return -1;  /* Boid not found */
     }
 
     switch (engine->formation_type) {

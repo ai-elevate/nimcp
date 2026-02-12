@@ -375,6 +375,7 @@ int core_directives_evaluate(core_directives_system_t* system,
                      "First Law violation: Predicted harm %.2f exceeds threshold %.2f",
                      severity, system->config.harm_config.block_threshold);
             system->stats.blocked_first_law++;
+            free_action_context(&context);
             goto evaluation_complete;
         } else if (severity > system->config.harm_config.warn_threshold) {
             evaluation->result = DIRECTIVE_RESULT_WARN;
@@ -428,6 +429,7 @@ int core_directives_evaluate(core_directives_system_t* system,
                      golden_eval.golden_rule_score,
                      system->config.reciprocity_config.symmetry_threshold);
             system->stats.blocked_golden_rule++;
+            free_action_context(&context);
             goto evaluation_complete;
         }
 

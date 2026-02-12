@@ -184,7 +184,6 @@ static bool is_safe_entity_name(const char* name) {
         char c = name[i];
         /* Allow alphanumeric, underscore, hyphen, period */
         if (!isalnum((unsigned char)c) && c != '_' && c != '-' && c != '.') {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_entity_name: isalnum is NULL");
             return false;
         }
     }

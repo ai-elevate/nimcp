@@ -169,7 +169,7 @@ stdp_immune_bridge_t* stdp_immune_bridge_create(
         nimcp_malloc(sizeof(stdp_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("stdp_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_immune_bridge_create: bridge allocation failed");
 
         return NULL;
     }

@@ -109,7 +109,6 @@ static nimcp_object_properties_t* find_object(
             return &ctx->objects[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_object: validation failed");
     return NULL;
 }
 
@@ -125,7 +124,6 @@ static nimcp_affordance_t* find_affordance(
             return &ctx->affordances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_affordance: validation failed");
     return NULL;
 }
 

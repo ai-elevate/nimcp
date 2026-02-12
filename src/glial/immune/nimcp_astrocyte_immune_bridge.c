@@ -166,7 +166,7 @@ astro_network_bridge_t* astro_network_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("astro_network_bridge_create: mutex creation failed");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astro_network_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "astro_network_bridge_create: bridge->base is NULL");
         return NULL;
     }
 

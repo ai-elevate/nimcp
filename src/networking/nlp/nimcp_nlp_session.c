@@ -162,6 +162,19 @@ static void nlp_session_ensure_bio_registered(void) {
 }
 
 /**
+ * @brief Cleanup session bio-async registration on library unload
+ * WHY: Reset once-guard so re-initialization works after dlclose/dlopen cycle
+ */
+__attribute__((destructor))
+static void nlp_session_bio_cleanup(void) {
+    if (g_session_bio_ctx) {
+        bio_router_unregister_module(g_session_bio_ctx);
+        g_session_bio_ctx = NULL;
+    }
+    g_session_bio_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+}
+
+/**
  * WHAT: Send bio-async message for session event
  * WHY:  Integrate session management with cognitive systems
  * HOW:  Broadcast to cognitive modules + BBB audit logging

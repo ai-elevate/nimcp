@@ -485,8 +485,7 @@ bool neuromod_reasoning_should_switch_mode(neuromod_reasoning_bridge_t* bridge) 
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_reasoning_should_switch_mode: validation failed");
-    return false;
+    return false;  /* No mode switch needed - normal condition */
 }
 
 float neuromod_reasoning_estimate_effort_needed(neuromod_reasoning_bridge_t* bridge,

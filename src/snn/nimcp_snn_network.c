@@ -169,8 +169,8 @@ static void snn_simulation_destroy_internal(snn_simulation_t* sim) {
 }
 
 /** Track spike buffer overflow events for monitoring */
-static uint64_t g_spike_buffer_overflow_count = 0;
-static uint64_t g_last_overflow_warning_count = 0;
+static volatile uint64_t g_spike_buffer_overflow_count = 0;
+static volatile uint64_t g_last_overflow_warning_count = 0;
 
 /**
  * @brief Record spike to spike train with overflow protection
@@ -196,17 +196,18 @@ static void record_spike(snn_spike_train_t* train, uint64_t time_us) {
          * WHY:  High spike rates may indicate network instability
          * HOW:  Log periodic warnings (not every overflow to avoid log spam)
          */
-        g_spike_buffer_overflow_count++;
+        uint64_t overflow_count = __atomic_add_fetch(&g_spike_buffer_overflow_count, 1, __ATOMIC_RELAXED);
 
         /* Log warning every 1000 overflows to avoid log spam */
-        if (g_spike_buffer_overflow_count - g_last_overflow_warning_count >= 1000) {
+        uint64_t last_warning = __atomic_load_n(&g_last_overflow_warning_count, __ATOMIC_RELAXED);
+        if (overflow_count - last_warning >= 1000) {
             NIMCP_LOGGING_WARN("Spike buffer overflow: neuron %u buffer full "
                                   "(capacity=%u), overwriting old spikes. "
                                   "Total overflows: %lu. Consider increasing "
                                   "SNN_SPIKE_BUFFER_SIZE or reducing simulation time.",
                                   train->neuron_id, SNN_SPIKE_BUFFER_SIZE,
-                                  (unsigned long)g_spike_buffer_overflow_count);
-            g_last_overflow_warning_count = g_spike_buffer_overflow_count;
+                                  (unsigned long)overflow_count);
+            __atomic_store_n(&g_last_overflow_warning_count, overflow_count, __ATOMIC_RELAXED);
         }
     }
     train->total_spikes++;

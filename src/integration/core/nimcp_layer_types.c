@@ -131,8 +131,7 @@ bool nimcp_layers_are_adjacent(nimcp_layer_id_t a, nimcp_layer_id_t b) {
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_layers_are_adjacent: validation failed");
-    return false;
+    return false;  /* Layers are not adjacent */
 }
 
 nimcp_layer_config_t nimcp_layer_default_config(nimcp_layer_id_t layer_id) {

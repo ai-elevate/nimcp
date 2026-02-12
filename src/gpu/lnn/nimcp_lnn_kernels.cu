@@ -539,9 +539,6 @@ bool nimcp_gpu_lnn_heun_step(
     nimcp_gpu_lnn_compute_derivative(ctx, layer, input, k2);
 
     // x_new = x + 0.5 * dt * (k1 + k2) (corrector)
-    __global__ void kernel_heun_combine(
-        const float* x, const float* k1, const float* k2, float dt, float* x_new, size_t n);
-
     // Inline kernel launch
     kernel_add_scaled<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)k1->data, (const float*)k2->data,
@@ -788,7 +785,9 @@ bool nimcp_gpu_lnn_dopri5_step(
             // Compute max error using reduction
             float* d_max_error;
             float h_max_error = 0.0f;
-            cudaMalloc(&d_max_error, sizeof(float));
+            if (cudaMalloc(&d_max_error, sizeof(float)) != cudaSuccess) {
+                break;  // Fall back to non-adaptive step
+            }
             cudaMemset(d_max_error, 0, sizeof(float));
 
             kernel_max_abs_reduce<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
@@ -1117,32 +1116,36 @@ bool nimcp_gpu_sparse_add(
     }
 
     // Phase 1: Count nnz per row for C
-    uint32_t* d_C_row_nnz;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_C_row_nnz, n_rows * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    uint32_t* d_C_row_nnz = NULL;
+    uint32_t* h_C_row_nnz = NULL;
+    uint32_t* h_C_row_ptr = NULL;
+    bool success = false;
+
+    if (cudaMalloc(&d_C_row_nnz, n_rows * sizeof(uint32_t)) != cudaSuccess) goto sparse_add_cleanup;
 
     kernel_sparse_add_count_nnz<<<GRID_SIZE(n_rows), BLOCK_SIZE>>>(
         (const uint32_t*)A_row_ptr->data, (const uint32_t*)A_col_idx->data,
         (const uint32_t*)B_row_ptr->data, (const uint32_t*)B_col_idx->data,
         d_C_row_nnz, n_rows);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) goto sparse_add_cleanup;
 
     // Phase 2: Compute row pointers via prefix sum
     // Simple sequential prefix sum on CPU for now (can be parallelized)
-    uint32_t* h_C_row_nnz = (uint32_t*)malloc(n_rows * sizeof(uint32_t));
-    uint32_t* h_C_row_ptr = (uint32_t*)malloc((n_rows + 1) * sizeof(uint32_t));
+    h_C_row_nnz = (uint32_t*)malloc(n_rows * sizeof(uint32_t));
+    if (!h_C_row_nnz) goto sparse_add_cleanup;
+    h_C_row_ptr = (uint32_t*)malloc((n_rows + 1) * sizeof(uint32_t));
+    if (!h_C_row_ptr) goto sparse_add_cleanup;
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(h_C_row_nnz, d_C_row_nnz, n_rows * sizeof(uint32_t), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(h_C_row_nnz, d_C_row_nnz, n_rows * sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto sparse_add_cleanup;
 
     h_C_row_ptr[0] = 0;
     for (uint32_t i = 0; i < n_rows; i++) {
         h_C_row_ptr[i + 1] = h_C_row_ptr[i] + h_C_row_nnz[i];
     }
 
-    uint32_t total_nnz = h_C_row_ptr[n_rows];
-
     // Copy row pointers to GPU
-    NIMCP_CUDA_RECOVER(cudaMemcpy(C_row_ptr->data, h_C_row_ptr, (n_rows + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(C_row_ptr->data, h_C_row_ptr, (n_rows + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto sparse_add_cleanup;
 
     // Resize C_col_idx and C_values if needed (caller must ensure sufficient space)
 
@@ -1155,14 +1158,16 @@ bool nimcp_gpu_sparse_add(
         (const uint32_t*)C_row_ptr->data, (uint32_t*)C_col_idx->data, (float*)C_values->data,
         n_rows, alpha, beta);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) goto sparse_add_cleanup;
 
-    // Cleanup
+    success = true;
+
+sparse_add_cleanup:
     cudaFree(d_C_row_nnz);
     free(h_C_row_nnz);
     free(h_C_row_ptr);
 
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1943,10 +1948,14 @@ void nimcp_lnn_gradient_clip_gpu(void* d_grads, size_t n, float clip_value)
 
 float nimcp_lnn_gradient_norm_gpu(const void* d_grads, size_t n)
 {
-    float* d_result;
+    float* d_result = NULL;
     float h_result = 0.0f;
-    cudaMalloc(&d_result, sizeof(float));
-    cudaMemset(d_result, 0, sizeof(float));
+
+    if (cudaMalloc(&d_result, sizeof(float)) != cudaSuccess) return 0.0f;
+    if (cudaMemset(d_result, 0, sizeof(float)) != cudaSuccess) {
+        cudaFree(d_result);
+        return 0.0f;
+    }
 
     kernel_sum_squares_reduce<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)d_grads, d_result, n);
@@ -2213,26 +2222,29 @@ float nimcp_lnn_compute_spectral_radius(void* ctx_ptr, const float* weight_matri
     int max_iterations = config->max_iterations > 0 ? config->max_iterations : 100;
     float tolerance = config->tolerance > 0 ? config->tolerance : 1e-6f;
 
-    // Allocate device memory
-    float *d_A, *d_v, *d_Av, *d_norm;
-    cudaMalloc(&d_A, n * n * sizeof(float));
-    cudaMalloc(&d_v, n * sizeof(float));
-    cudaMalloc(&d_Av, n * sizeof(float));
-    cudaMalloc(&d_norm, sizeof(float));
+    // Allocate device memory - pre-init to NULL for cleanup
+    float *d_A = NULL, *d_v = NULL, *d_Av = NULL, *d_norm = NULL;
+    float* h_v = NULL;
+    float eigenvalue = 0.0f;
+    float prev_eigenvalue = 0.0f;
+
+    if (cudaMalloc(&d_A, n * n * sizeof(float)) != cudaSuccess) goto spectral_cleanup;
+    if (cudaMalloc(&d_v, n * sizeof(float)) != cudaSuccess) goto spectral_cleanup;
+    if (cudaMalloc(&d_Av, n * sizeof(float)) != cudaSuccess) goto spectral_cleanup;
+    if (cudaMalloc(&d_norm, sizeof(float)) != cudaSuccess) goto spectral_cleanup;
 
     // Copy matrix to device
     cudaMemcpy(d_A, weight_matrix, n * n * sizeof(float), cudaMemcpyHostToDevice);
 
     // Initialize v to [1, 0, 0, ..., 0] (or uniform would work too)
-    float* h_v = (float*)calloc(n, sizeof(float));
+    h_v = (float*)calloc(n, sizeof(float));
+    if (!h_v) goto spectral_cleanup;
     for (size_t i = 0; i < n; i++) {
         h_v[i] = 1.0f / sqrtf((float)n);  // Normalized uniform
     }
     cudaMemcpy(d_v, h_v, n * sizeof(float), cudaMemcpyHostToDevice);
     free(h_v);
-
-    float eigenvalue = 0.0f;
-    float prev_eigenvalue = 0.0f;
+    h_v = NULL;
 
     // Power iteration
     for (int iter = 0; iter < max_iterations; iter++) {
@@ -2257,9 +2269,11 @@ float nimcp_lnn_compute_spectral_radius(void* ctx_ptr, const float* weight_matri
         }
 
         // Swap v and Av
-        float* temp = d_v;
-        d_v = d_Av;
-        d_Av = temp;
+        {
+            float* temp = d_v;
+            d_v = d_Av;
+            d_Av = temp;
+        }
 
         // Check convergence
         if (iter > 0 && fabsf(eigenvalue - prev_eigenvalue) < tolerance) {
@@ -2276,6 +2290,13 @@ float nimcp_lnn_compute_spectral_radius(void* ctx_ptr, const float* weight_matri
     cudaFree(d_norm);
 
     return eigenvalue;
+
+spectral_cleanup:
+    cudaFree(d_A);
+    cudaFree(d_v);
+    cudaFree(d_Av);
+    cudaFree(d_norm);
+    return -1.0f;
 }
 
 int nimcp_lnn_rescale_to_spectral_radius(void* ctx_ptr, float* weight_matrix,
@@ -2301,15 +2322,21 @@ int nimcp_lnn_rescale_to_spectral_radius(void* ctx_ptr, float* weight_matrix,
     float scale = target_radius / current_radius;
 
     // Allocate device memory and rescale
-    float* d_A;
-    cudaMalloc(&d_A, n * n * sizeof(float));
-    cudaMemcpy(d_A, weight_matrix, n * n * sizeof(float), cudaMemcpyHostToDevice);
+    float* d_A = NULL;
+    if (cudaMalloc(&d_A, n * n * sizeof(float)) != cudaSuccess) return -1;
+    if (cudaMemcpy(d_A, weight_matrix, n * n * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) {
+        cudaFree(d_A);
+        return -1;
+    }
 
     kernel_rescale_matrix<<<GRID_SIZE(n * n), BLOCK_SIZE>>>(d_A, n, scale);
     cudaDeviceSynchronize();
 
     // Copy back
-    cudaMemcpy(weight_matrix, d_A, n * n * sizeof(float), cudaMemcpyDeviceToHost);
+    if (cudaMemcpy(weight_matrix, d_A, n * n * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        cudaFree(d_A);
+        return -1;
+    }
     cudaFree(d_A);
 
     LOG_DEBUG("Rescaled matrix from spectral radius %.4f to %.4f (scale=%.4f)",

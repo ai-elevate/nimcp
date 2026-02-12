@@ -20,10 +20,7 @@
 
 #include "language/nimcp_language_bio_async.h"
 
-/* Define error codes if not available (NIMCP_SUCCESS is in bio_async.h) */
-#ifndef NIMCP_ERROR_INVALID_PARAM
-#define NIMCP_ERROR_INVALID_PARAM -1
-#endif
+#include "utils/error/nimcp_error_codes.h"
 #include "language/nimcp_language_orchestrator.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -162,14 +159,17 @@ int language_bio_async_unregister(language_orchestrator_t* orchestrator)
     g_bio_async_ctx->orchestrator = NULL;
     g_bio_async_ctx->router = NULL;
 
+    /* Free the context itself to prevent leak (allocated in register) */
+    nimcp_free(g_bio_async_ctx);
+    g_bio_async_ctx = NULL;
+
     return 0;
 }
 
 bool language_bio_async_is_registered(const language_orchestrator_t* orchestrator)
 {
     if (!orchestrator || !g_bio_async_ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_is_registered: required parameter is NULL (orchestrator, g_bio_async_ctx)");
-        return false;
+        return false;  /* Not registered - normal query result */
     }
     return g_bio_async_ctx->registered &&
            g_bio_async_ctx->orchestrator == orchestrator;
@@ -179,12 +179,10 @@ bio_module_context_t language_bio_async_get_context(
     const language_orchestrator_t* orchestrator)
 {
     if (!orchestrator || !g_bio_async_ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_get_context: required parameter is NULL (orchestrator, g_bio_async_ctx)");
-        return NULL;
+        return NULL;  /* No context available - normal query result */
     }
     if (g_bio_async_ctx->orchestrator != orchestrator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_get_context: validation failed");
-        return NULL;
+        return NULL;  /* Orchestrator mismatch - normal query result */
     }
     return g_bio_async_ctx->module_ctx;
 }

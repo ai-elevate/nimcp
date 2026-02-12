@@ -185,8 +185,7 @@ static bool queue_speech_event(
 ) {
     uint32_t next_tail = (bridge->speech_buffer_tail + 1) % bridge->speech_buffer_size;
     if (next_tail == bridge->speech_buffer_head) {
-        /* Buffer full */
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_speech_event: validation failed");
+        /* Buffer full - normal backpressure */
         return false;
     }
 
@@ -203,8 +202,7 @@ static bool dequeue_speech_event(
     lt_speech_event_data_t* event
 ) {
     if (bridge->speech_buffer_head == bridge->speech_buffer_tail) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_speech_event: validation failed");
-        return false;
+        return false;  /* Buffer empty - normal condition */
     }
 
     *event = bridge->speech_buffer[bridge->speech_buffer_head];
@@ -1022,6 +1020,5 @@ void* language_temporal_get_bio_context(
 
     }
     /* TODO: Return actual bio context when integrated */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_bio_context: bridge is NULL");
     return NULL;
 }

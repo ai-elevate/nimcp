@@ -416,10 +416,11 @@ bool nimcp_gpu_bfs(
     uint32_t* d_current_frontier = NULL;
     uint32_t* d_next_frontier = NULL;
     uint32_t* d_frontier_count = NULL;
+    bool success = false;
 
-    CUDA_CHECK(cudaMalloc(&d_current_frontier, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_next_frontier, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_frontier_count, sizeof(uint32_t)));
+    if (cudaMalloc(&d_current_frontier, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto bfs_cleanup;
+    if (cudaMalloc(&d_next_frontier, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto bfs_cleanup;
+    if (cudaMalloc(&d_frontier_count, sizeof(uint32_t)) != cudaSuccess) goto bfs_cleanup;
 
     // Initialize distances and visited
     kernel_bfs_init<<<GRID_SIZE(num_nodes), BLOCK_SIZE>>>(
@@ -428,62 +429,66 @@ bool nimcp_gpu_bfs(
         (uint32_t*)result->visited->data,
         source_node,
         num_nodes);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto bfs_cleanup;
 
     // Initialize frontier with source
-    CUDA_CHECK(cudaMemcpy(d_current_frontier, &source_node, sizeof(uint32_t), cudaMemcpyHostToDevice));
+    if (cudaMemcpy(d_current_frontier, &source_node, sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto bfs_cleanup;
 
-    uint32_t frontier_size = 1;
-    uint32_t current_depth = 0;
-    uint32_t total_visited = 1;
+    {
+        uint32_t frontier_size = 1;
+        uint32_t current_depth = 0;
+        uint32_t total_visited = 1;
 
-    // BFS loop
-    while (frontier_size > 0) {
-        if (max_depth >= 0 && (int32_t)current_depth >= max_depth) {
-            break;
+        // BFS loop
+        while (frontier_size > 0) {
+            if (max_depth >= 0 && (int32_t)current_depth >= max_depth) {
+                break;
+            }
+
+            // Reset next frontier count
+            if (cudaMemset(d_frontier_count, 0, sizeof(uint32_t)) != cudaSuccess) goto bfs_cleanup;
+
+            // Expand frontier
+            kernel_bfs_expand<<<GRID_SIZE(frontier_size), BLOCK_SIZE>>>(
+                (const uint32_t*)graph->row_offsets->data,
+                (const uint32_t*)graph->col_indices->data,
+                d_current_frontier,
+                frontier_size,
+                (uint32_t*)result->distances->data,
+                (uint32_t*)result->parents->data,
+                (uint32_t*)result->visited->data,
+                d_next_frontier,
+                d_frontier_count,
+                current_depth,
+                num_nodes);
+            if (cudaGetLastError() != cudaSuccess) goto bfs_cleanup;
+
+            // Get next frontier size
+            uint32_t next_size = 0;
+            if (cudaMemcpy(&next_size, d_frontier_count, sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto bfs_cleanup;
+
+            // Swap frontiers
+            uint32_t* temp = d_current_frontier;
+            d_current_frontier = d_next_frontier;
+            d_next_frontier = temp;
+
+            frontier_size = next_size;
+            total_visited += next_size;
+            current_depth++;
         }
 
-        // Reset next frontier count
-        CUDA_CHECK(cudaMemset(d_frontier_count, 0, sizeof(uint32_t)));
-
-        // Expand frontier
-        kernel_bfs_expand<<<GRID_SIZE(frontier_size), BLOCK_SIZE>>>(
-            (const uint32_t*)graph->row_offsets->data,
-            (const uint32_t*)graph->col_indices->data,
-            d_current_frontier,
-            frontier_size,
-            (uint32_t*)result->distances->data,
-            (uint32_t*)result->parents->data,
-            (uint32_t*)result->visited->data,
-            d_next_frontier,
-            d_frontier_count,
-            current_depth,
-            num_nodes);
-        CUDA_CHECK(cudaGetLastError());
-
-        // Get next frontier size
-        uint32_t next_size = 0;
-        CUDA_CHECK(cudaMemcpy(&next_size, d_frontier_count, sizeof(uint32_t), cudaMemcpyDeviceToHost));
-
-        // Swap frontiers
-        uint32_t* temp = d_current_frontier;
-        d_current_frontier = d_next_frontier;
-        d_next_frontier = temp;
-
-        frontier_size = next_size;
-        total_visited += next_size;
-        current_depth++;
+        result->num_visited = total_visited;
+        result->max_depth = current_depth;
     }
 
-    result->num_visited = total_visited;
-    result->max_depth = current_depth;
+    success = true;
 
-    // Cleanup
+bfs_cleanup:
     cudaFree(d_current_frontier);
     cudaFree(d_next_frontier);
     cudaFree(d_frontier_count);
 
-    return true;
+    return success;
 }
 
 bool nimcp_gpu_bfs_multi_source(
@@ -517,17 +522,18 @@ bool nimcp_gpu_bfs_multi_source(
 
     // Copy source nodes to device
     uint32_t* d_sources = NULL;
-    CUDA_CHECK(cudaMalloc(&d_sources, num_sources * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemcpy(d_sources, source_nodes, num_sources * sizeof(uint32_t), cudaMemcpyHostToDevice));
-
-    // Allocate frontier buffers
     uint32_t* d_current_frontier = NULL;
     uint32_t* d_next_frontier = NULL;
     uint32_t* d_frontier_count = NULL;
+    bool success = false;
 
-    CUDA_CHECK(cudaMalloc(&d_current_frontier, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_next_frontier, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_frontier_count, sizeof(uint32_t)));
+    if (cudaMalloc(&d_sources, num_sources * sizeof(uint32_t)) != cudaSuccess) goto bfs_multi_cleanup;
+    if (cudaMemcpy(d_sources, source_nodes, num_sources * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto bfs_multi_cleanup;
+
+    // Allocate frontier buffers
+    if (cudaMalloc(&d_current_frontier, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto bfs_multi_cleanup;
+    if (cudaMalloc(&d_next_frontier, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto bfs_multi_cleanup;
+    if (cudaMalloc(&d_frontier_count, sizeof(uint32_t)) != cudaSuccess) goto bfs_multi_cleanup;
 
     // Initialize with multi-source
     kernel_bfs_init_multi_source<<<GRID_SIZE(num_nodes), BLOCK_SIZE>>>(
@@ -537,58 +543,63 @@ bool nimcp_gpu_bfs_multi_source(
         d_sources,
         num_sources,
         num_nodes);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto bfs_multi_cleanup;
 
     // Initialize frontier with all sources
-    CUDA_CHECK(cudaMemcpy(d_current_frontier, source_nodes, num_sources * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    if (cudaMemcpy(d_current_frontier, source_nodes, num_sources * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto bfs_multi_cleanup;
 
-    uint32_t frontier_size = num_sources;
-    uint32_t current_depth = 0;
-    uint32_t total_visited = num_sources;
+    {
+        uint32_t frontier_size = num_sources;
+        uint32_t current_depth = 0;
+        uint32_t total_visited = num_sources;
 
-    // BFS loop
-    while (frontier_size > 0) {
-        if (max_depth >= 0 && (int32_t)current_depth >= max_depth) {
-            break;
+        // BFS loop
+        while (frontier_size > 0) {
+            if (max_depth >= 0 && (int32_t)current_depth >= max_depth) {
+                break;
+            }
+
+            if (cudaMemset(d_frontier_count, 0, sizeof(uint32_t)) != cudaSuccess) goto bfs_multi_cleanup;
+
+            kernel_bfs_expand<<<GRID_SIZE(frontier_size), BLOCK_SIZE>>>(
+                (const uint32_t*)graph->row_offsets->data,
+                (const uint32_t*)graph->col_indices->data,
+                d_current_frontier,
+                frontier_size,
+                (uint32_t*)result->distances->data,
+                (uint32_t*)result->parents->data,
+                (uint32_t*)result->visited->data,
+                d_next_frontier,
+                d_frontier_count,
+                current_depth,
+                num_nodes);
+            if (cudaGetLastError() != cudaSuccess) goto bfs_multi_cleanup;
+
+            uint32_t next_size = 0;
+            if (cudaMemcpy(&next_size, d_frontier_count, sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto bfs_multi_cleanup;
+
+            uint32_t* temp = d_current_frontier;
+            d_current_frontier = d_next_frontier;
+            d_next_frontier = temp;
+
+            frontier_size = next_size;
+            total_visited += next_size;
+            current_depth++;
         }
 
-        CUDA_CHECK(cudaMemset(d_frontier_count, 0, sizeof(uint32_t)));
-
-        kernel_bfs_expand<<<GRID_SIZE(frontier_size), BLOCK_SIZE>>>(
-            (const uint32_t*)graph->row_offsets->data,
-            (const uint32_t*)graph->col_indices->data,
-            d_current_frontier,
-            frontier_size,
-            (uint32_t*)result->distances->data,
-            (uint32_t*)result->parents->data,
-            (uint32_t*)result->visited->data,
-            d_next_frontier,
-            d_frontier_count,
-            current_depth,
-            num_nodes);
-        CUDA_CHECK(cudaGetLastError());
-
-        uint32_t next_size = 0;
-        CUDA_CHECK(cudaMemcpy(&next_size, d_frontier_count, sizeof(uint32_t), cudaMemcpyDeviceToHost));
-
-        uint32_t* temp = d_current_frontier;
-        d_current_frontier = d_next_frontier;
-        d_next_frontier = temp;
-
-        frontier_size = next_size;
-        total_visited += next_size;
-        current_depth++;
+        result->num_visited = total_visited;
+        result->max_depth = current_depth;
     }
 
-    result->num_visited = total_visited;
-    result->max_depth = current_depth;
+    success = true;
 
+bfs_multi_cleanup:
     cudaFree(d_sources);
     cudaFree(d_current_frontier);
     cudaFree(d_next_frontier);
     cudaFree(d_frontier_count);
 
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -716,11 +727,12 @@ bool nimcp_gpu_dfs(
     uint32_t* d_stack_ptr = NULL;
     uint32_t* d_visit_order = NULL;
     uint32_t* d_visit_count = NULL;
+    bool success = false;
 
-    CUDA_CHECK(cudaMalloc(&d_stack, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_stack_ptr, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_visit_order, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_visit_count, sizeof(uint32_t)));
+    if (cudaMalloc(&d_stack, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto dfs_cleanup;
+    if (cudaMalloc(&d_stack_ptr, sizeof(uint32_t)) != cudaSuccess) goto dfs_cleanup;
+    if (cudaMalloc(&d_visit_order, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto dfs_cleanup;
+    if (cudaMalloc(&d_visit_count, sizeof(uint32_t)) != cudaSuccess) goto dfs_cleanup;
 
     // Initialize
     kernel_bfs_init<<<GRID_SIZE(num_nodes), BLOCK_SIZE>>>(
@@ -729,13 +741,15 @@ bool nimcp_gpu_dfs(
         (uint32_t*)result->visited->data,
         source_node,
         num_nodes);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto dfs_cleanup;
 
     // Initialize stack with source
-    CUDA_CHECK(cudaMemcpy(d_stack, &source_node, sizeof(uint32_t), cudaMemcpyHostToDevice));
-    uint32_t one = 1;
-    CUDA_CHECK(cudaMemcpy(d_stack_ptr, &one, sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemset(d_visit_count, 0, sizeof(uint32_t)));
+    if (cudaMemcpy(d_stack, &source_node, sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto dfs_cleanup;
+    {
+        uint32_t one = 1;
+        if (cudaMemcpy(d_stack_ptr, &one, sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto dfs_cleanup;
+    }
+    if (cudaMemset(d_visit_count, 0, sizeof(uint32_t)) != cudaSuccess) goto dfs_cleanup;
 
     // Run DFS exploration
     kernel_dfs_explore<<<1, BLOCK_SIZE>>>(
@@ -750,22 +764,27 @@ bool nimcp_gpu_dfs(
         d_visit_count,
         max_depth,
         num_nodes);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    if (cudaGetLastError() != cudaSuccess) goto dfs_cleanup;
+    if (cudaDeviceSynchronize() != cudaSuccess) goto dfs_cleanup;
 
-    // Get visit count
-    uint32_t visit_count = 0;
-    CUDA_CHECK(cudaMemcpy(&visit_count, d_visit_count, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    {
+        // Get visit count
+        uint32_t visit_count = 0;
+        if (cudaMemcpy(&visit_count, d_visit_count, sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto dfs_cleanup;
 
-    result->num_visited = visit_count + 1;  // +1 for source
-    result->max_depth = max_depth >= 0 ? max_depth : num_nodes;
+        result->num_visited = visit_count + 1;  // +1 for source
+        result->max_depth = max_depth >= 0 ? max_depth : num_nodes;
+    }
 
+    success = true;
+
+dfs_cleanup:
     cudaFree(d_stack);
     cudaFree(d_stack_ptr);
     cudaFree(d_visit_order);
     cudaFree(d_visit_count);
 
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1006,7 +1025,9 @@ bool nimcp_gpu_node_similarity(
     }
 
     float* d_similarity = NULL;
-    CUDA_CHECK(cudaMalloc(&d_similarity, sizeof(float)));
+    bool success = false;
+
+    if (cudaMalloc(&d_similarity, sizeof(float)) != cudaSuccess) goto node_sim_cleanup;
 
     kernel_cosine_similarity_single<<<1, BLOCK_SIZE>>>(
         (const float*)graph->node_embeddings->data,
@@ -1014,12 +1035,16 @@ bool nimcp_gpu_node_similarity(
         node_b,
         graph->embed_dim,
         d_similarity);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto node_sim_cleanup;
 
-    CUDA_CHECK(cudaMemcpy(similarity, d_similarity, sizeof(float), cudaMemcpyDeviceToHost));
+    if (cudaMemcpy(similarity, d_similarity, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto node_sim_cleanup;
+
+    success = true;
+
+node_sim_cleanup:
     cudaFree(d_similarity);
 
-    return true;
+    return success;
 }
 
 bool nimcp_gpu_pairwise_similarity(
@@ -1044,22 +1069,29 @@ bool nimcp_gpu_pairwise_similarity(
 
     // Copy node indices to device
     uint32_t* d_indices = NULL;
-    CUDA_CHECK(cudaMalloc(&d_indices, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemcpy(d_indices, node_indices, num_nodes * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    bool success = false;
 
-    dim3 block(32);
-    dim3 grid((num_nodes + 31) / 32, num_nodes);
+    if (cudaMalloc(&d_indices, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto pairwise_sim_cleanup;
+    if (cudaMemcpy(d_indices, node_indices, num_nodes * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto pairwise_sim_cleanup;
 
-    kernel_pairwise_similarity<<<grid, block>>>(
-        (const float*)graph->node_embeddings->data,
-        d_indices,
-        num_nodes,
-        graph->embed_dim,
-        (float*)similarity_matrix->data);
-    CUDA_CHECK(cudaGetLastError());
+    {
+        dim3 block(32);
+        dim3 grid((num_nodes + 31) / 32, num_nodes);
 
+        kernel_pairwise_similarity<<<grid, block>>>(
+            (const float*)graph->node_embeddings->data,
+            d_indices,
+            num_nodes,
+            graph->embed_dim,
+            (float*)similarity_matrix->data);
+        if (cudaGetLastError() != cudaSuccess) goto pairwise_sim_cleanup;
+    }
+
+    success = true;
+
+pairwise_sim_cleanup:
     cudaFree(d_indices);
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -1173,7 +1205,9 @@ bool nimcp_gpu_knn_similarity(
 
     // Allocate similarity buffer
     float* d_similarities = NULL;
-    CUDA_CHECK(cudaMalloc(&d_similarities, graph->num_nodes * sizeof(float)));
+    bool success = false;
+
+    if (cudaMalloc(&d_similarities, graph->num_nodes * sizeof(float)) != cudaSuccess) goto knn_sim_cleanup;
 
     // Compute similarities
     kernel_compute_all_similarities<<<GRID_SIZE(graph->num_nodes), BLOCK_SIZE>>>(
@@ -1182,31 +1216,36 @@ bool nimcp_gpu_knn_similarity(
         graph->num_nodes,
         graph->embed_dim,
         d_similarities);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto knn_sim_cleanup;
 
-    // Create result tensors
-    size_t k_dims[] = {k};
-    result->indices = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_UINT32);
-    result->scores = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_FP32);
-    result->k = k;
+    {
+        // Create result tensors
+        size_t k_dims[] = {k};
+        result->indices = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+        result->scores = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        result->k = k;
 
-    if (!result->indices || !result->scores) {
-        cudaFree(d_similarities);
-        nimcp_similarity_result_destroy(result);
-        return false;
+        if (!result->indices || !result->scores) {
+            cudaFree(d_similarities);
+            nimcp_similarity_result_destroy(result);
+            return false;
+        }
+
+        // Top-k selection
+        kernel_top_k_select<<<1, 1>>>(
+            d_similarities,
+            graph->num_nodes,
+            k,
+            (uint32_t*)result->indices->data,
+            (float*)result->scores->data);
+        if (cudaGetLastError() != cudaSuccess) goto knn_sim_cleanup;
     }
 
-    // Top-k selection
-    kernel_top_k_select<<<1, 1>>>(
-        d_similarities,
-        graph->num_nodes,
-        k,
-        (uint32_t*)result->indices->data,
-        (float*)result->scores->data);
-    CUDA_CHECK(cudaGetLastError());
+    success = true;
 
+knn_sim_cleanup:
     cudaFree(d_similarities);
-    return true;
+    return success;
 }
 
 bool nimcp_gpu_knn_similarity_embedding(
@@ -1233,12 +1272,14 @@ bool nimcp_gpu_knn_similarity_embedding(
 
     // Copy query embedding to device
     float* d_query = NULL;
-    CUDA_CHECK(cudaMalloc(&d_query, graph->embed_dim * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_query, query_embedding, graph->embed_dim * sizeof(float), cudaMemcpyHostToDevice));
+    float* d_similarities = NULL;
+    bool success = false;
+
+    if (cudaMalloc(&d_query, graph->embed_dim * sizeof(float)) != cudaSuccess) goto knn_emb_cleanup;
+    if (cudaMemcpy(d_query, query_embedding, graph->embed_dim * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) goto knn_emb_cleanup;
 
     // Allocate similarity buffer
-    float* d_similarities = NULL;
-    CUDA_CHECK(cudaMalloc(&d_similarities, graph->num_nodes * sizeof(float)));
+    if (cudaMalloc(&d_similarities, graph->num_nodes * sizeof(float)) != cudaSuccess) goto knn_emb_cleanup;
 
     // Compute similarities
     kernel_compute_all_similarities<<<GRID_SIZE(graph->num_nodes), BLOCK_SIZE>>>(
@@ -1247,33 +1288,38 @@ bool nimcp_gpu_knn_similarity_embedding(
         graph->num_nodes,
         graph->embed_dim,
         d_similarities);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto knn_emb_cleanup;
 
-    // Create result tensors
-    size_t k_dims[] = {k};
-    result->indices = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_UINT32);
-    result->scores = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_FP32);
-    result->k = k;
+    {
+        // Create result tensors
+        size_t k_dims[] = {k};
+        result->indices = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+        result->scores = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        result->k = k;
 
-    if (!result->indices || !result->scores) {
-        cudaFree(d_query);
-        cudaFree(d_similarities);
-        nimcp_similarity_result_destroy(result);
-        return false;
+        if (!result->indices || !result->scores) {
+            cudaFree(d_query);
+            cudaFree(d_similarities);
+            nimcp_similarity_result_destroy(result);
+            return false;
+        }
+
+        // Top-k selection
+        kernel_top_k_select<<<1, 1>>>(
+            d_similarities,
+            graph->num_nodes,
+            k,
+            (uint32_t*)result->indices->data,
+            (float*)result->scores->data);
+        if (cudaGetLastError() != cudaSuccess) goto knn_emb_cleanup;
     }
 
-    // Top-k selection
-    kernel_top_k_select<<<1, 1>>>(
-        d_similarities,
-        graph->num_nodes,
-        k,
-        (uint32_t*)result->indices->data,
-        (float*)result->scores->data);
-    CUDA_CHECK(cudaGetLastError());
+    success = true;
 
+knn_emb_cleanup:
     cudaFree(d_query);
     cudaFree(d_similarities);
-    return true;
+    return success;
 }
 
 void nimcp_similarity_result_destroy(nimcp_similarity_result_t* result)
@@ -1408,15 +1454,17 @@ bool nimcp_gpu_triplet_loss(
     uint32_t* d_positives = NULL;
     uint32_t* d_negatives = NULL;
     float* d_losses = NULL;
+    float* h_losses = NULL;
+    bool success = false;
 
-    CUDA_CHECK(cudaMalloc(&d_anchors, batch_size * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_positives, batch_size * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_negatives, batch_size * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_losses, batch_size * sizeof(float)));
+    if (cudaMalloc(&d_anchors, batch_size * sizeof(uint32_t)) != cudaSuccess) goto triplet_cleanup;
+    if (cudaMalloc(&d_positives, batch_size * sizeof(uint32_t)) != cudaSuccess) goto triplet_cleanup;
+    if (cudaMalloc(&d_negatives, batch_size * sizeof(uint32_t)) != cudaSuccess) goto triplet_cleanup;
+    if (cudaMalloc(&d_losses, batch_size * sizeof(float)) != cudaSuccess) goto triplet_cleanup;
 
-    CUDA_CHECK(cudaMemcpy(d_anchors, anchors, batch_size * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_positives, positives, batch_size * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_negatives, negatives, batch_size * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    if (cudaMemcpy(d_anchors, anchors, batch_size * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto triplet_cleanup;
+    if (cudaMemcpy(d_positives, positives, batch_size * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto triplet_cleanup;
+    if (cudaMemcpy(d_negatives, negatives, batch_size * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto triplet_cleanup;
 
     kernel_triplet_loss<<<GRID_SIZE(batch_size), BLOCK_SIZE>>>(
         (const float*)graph->node_embeddings->data,
@@ -1427,25 +1475,31 @@ bool nimcp_gpu_triplet_loss(
         graph->embed_dim,
         margin,
         d_losses);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto triplet_cleanup;
 
     // Sum losses on host
-    float* h_losses = (float*)malloc(batch_size * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_losses, d_losses, batch_size * sizeof(float), cudaMemcpyDeviceToHost));
+    h_losses = (float*)malloc(batch_size * sizeof(float));
+    if (!h_losses) goto triplet_cleanup;
+    if (cudaMemcpy(h_losses, d_losses, batch_size * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto triplet_cleanup;
 
-    float total_loss = 0.0f;
-    for (uint32_t i = 0; i < batch_size; i++) {
-        total_loss += h_losses[i];
+    {
+        float total_loss = 0.0f;
+        for (uint32_t i = 0; i < batch_size; i++) {
+            total_loss += h_losses[i];
+        }
+        *loss_out = total_loss / batch_size;
     }
-    *loss_out = total_loss / batch_size;
 
+    success = true;
+
+triplet_cleanup:
     free(h_losses);
     cudaFree(d_anchors);
     cudaFree(d_positives);
     cudaFree(d_negatives);
     cudaFree(d_losses);
 
-    return true;
+    return success;
 }
 
 /**
@@ -2088,7 +2142,9 @@ bool nimcp_gpu_hyperbolic_distance(
     }
 
     float* d_distance = NULL;
-    CUDA_CHECK(cudaMalloc(&d_distance, sizeof(float)));
+    bool success = false;
+
+    if (cudaMalloc(&d_distance, sizeof(float)) != cudaSuccess) goto hyp_dist_cleanup;
 
     kernel_hyperbolic_distance_single<<<1, 1>>>(
         (const float*)graph->node_embeddings->data,
@@ -2096,12 +2152,16 @@ bool nimcp_gpu_hyperbolic_distance(
         node_b,
         graph->embed_dim,
         d_distance);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto hyp_dist_cleanup;
 
-    CUDA_CHECK(cudaMemcpy(distance, d_distance, sizeof(float), cudaMemcpyDeviceToHost));
+    if (cudaMemcpy(distance, d_distance, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto hyp_dist_cleanup;
+
+    success = true;
+
+hyp_dist_cleanup:
     cudaFree(d_distance);
 
-    return true;
+    return success;
 }
 
 /**
@@ -2149,22 +2209,29 @@ bool nimcp_gpu_hyperbolic_pairwise_distance(
     }
 
     uint32_t* d_indices = NULL;
-    CUDA_CHECK(cudaMalloc(&d_indices, num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemcpy(d_indices, node_indices, num_nodes * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    bool success = false;
 
-    dim3 block(32);
-    dim3 grid((num_nodes + 31) / 32, num_nodes);
+    if (cudaMalloc(&d_indices, num_nodes * sizeof(uint32_t)) != cudaSuccess) goto hyp_pairwise_cleanup;
+    if (cudaMemcpy(d_indices, node_indices, num_nodes * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto hyp_pairwise_cleanup;
 
-    kernel_hyperbolic_pairwise<<<grid, block>>>(
-        (const float*)graph->node_embeddings->data,
-        d_indices,
-        num_nodes,
-        graph->embed_dim,
-        (float*)distance_matrix->data);
-    CUDA_CHECK(cudaGetLastError());
+    {
+        dim3 block(32);
+        dim3 grid((num_nodes + 31) / 32, num_nodes);
 
+        kernel_hyperbolic_pairwise<<<grid, block>>>(
+            (const float*)graph->node_embeddings->data,
+            d_indices,
+            num_nodes,
+            graph->embed_dim,
+            (float*)distance_matrix->data);
+        if (cudaGetLastError() != cudaSuccess) goto hyp_pairwise_cleanup;
+    }
+
+    success = true;
+
+hyp_pairwise_cleanup:
     cudaFree(d_indices);
-    return true;
+    return success;
 }
 
 /**
@@ -2404,7 +2471,12 @@ bool nimcp_gpu_hyperbolic_knn(
 
     // Allocate distance buffer
     float* d_distances = NULL;
-    CUDA_CHECK(cudaMalloc(&d_distances, graph->num_nodes * sizeof(float)));
+    float* h_distances = NULL;
+    uint32_t* h_indices = NULL;
+    float* h_scores = NULL;
+    bool success = false;
+
+    if (cudaMalloc(&d_distances, graph->num_nodes * sizeof(float)) != cudaSuccess) goto hyp_knn_cleanup;
 
     // Compute all hyperbolic distances
     kernel_hyperbolic_all_distances<<<GRID_SIZE(graph->num_nodes), BLOCK_SIZE>>>(
@@ -2413,30 +2485,32 @@ bool nimcp_gpu_hyperbolic_knn(
         graph->num_nodes,
         graph->embed_dim,
         d_distances);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto hyp_knn_cleanup;
 
-    // Create result tensors
-    size_t k_dims[] = {k};
-    result->indices = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_UINT32);
-    result->scores = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_FP32);
-    result->k = k;
+    {
+        // Create result tensors
+        size_t k_dims[] = {k};
+        result->indices = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+        result->scores = nimcp_gpu_tensor_create(graph->ctx, k_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        result->k = k;
 
-    if (!result->indices || !result->scores) {
-        cudaFree(d_distances);
-        nimcp_similarity_result_destroy(result);
-        return false;
+        if (!result->indices || !result->scores) {
+            cudaFree(d_distances);
+            nimcp_similarity_result_destroy(result);
+            return false;
+        }
     }
 
     // Top-k selection (smallest distances)
-    // Negate distances so we can reuse the max-based top_k kernel
-    // Or use a separate min-based kernel
-
     // For now, copy to host and do selection there
-    float* h_distances = (float*)malloc(graph->num_nodes * sizeof(float));
-    CUDA_CHECK(cudaMemcpy(h_distances, d_distances, graph->num_nodes * sizeof(float), cudaMemcpyDeviceToHost));
+    h_distances = (float*)malloc(graph->num_nodes * sizeof(float));
+    if (!h_distances) goto hyp_knn_cleanup;
+    if (cudaMemcpy(h_distances, d_distances, graph->num_nodes * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto hyp_knn_cleanup;
 
-    uint32_t* h_indices = (uint32_t*)malloc(k * sizeof(uint32_t));
-    float* h_scores = (float*)malloc(k * sizeof(float));
+    h_indices = (uint32_t*)malloc(k * sizeof(uint32_t));
+    if (!h_indices) goto hyp_knn_cleanup;
+    h_scores = (float*)malloc(k * sizeof(float));
+    if (!h_scores) goto hyp_knn_cleanup;
 
     // Initialize with worst values
     for (uint32_t i = 0; i < k; i++) {
@@ -2466,15 +2540,18 @@ bool nimcp_gpu_hyperbolic_knn(
         }
     }
 
-    CUDA_CHECK(cudaMemcpy(result->indices->data, h_indices, k * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(result->scores->data, h_scores, k * sizeof(float), cudaMemcpyHostToDevice));
+    if (cudaMemcpy(result->indices->data, h_indices, k * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto hyp_knn_cleanup;
+    if (cudaMemcpy(result->scores->data, h_scores, k * sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) goto hyp_knn_cleanup;
 
+    success = true;
+
+hyp_knn_cleanup:
     free(h_distances);
     free(h_indices);
     free(h_scores);
     cudaFree(d_distances);
 
-    return true;
+    return success;
 }
 
 //=============================================================================
@@ -2517,19 +2594,21 @@ bool nimcp_gpu_knowledge_graph_stats(
     // Compute degree statistics
     uint32_t* d_degrees = NULL;
     uint32_t* d_max_degree = NULL;
-    CUDA_CHECK(cudaMalloc(&d_degrees, graph->num_nodes * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMalloc(&d_max_degree, sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemset(d_max_degree, 0, sizeof(uint32_t)));
+    bool success = false;
+
+    if (cudaMalloc(&d_degrees, graph->num_nodes * sizeof(uint32_t)) != cudaSuccess) goto stats_cleanup;
+    if (cudaMalloc(&d_max_degree, sizeof(uint32_t)) != cudaSuccess) goto stats_cleanup;
+    if (cudaMemset(d_max_degree, 0, sizeof(uint32_t)) != cudaSuccess) goto stats_cleanup;
 
     kernel_compute_degrees<<<GRID_SIZE(graph->num_nodes), BLOCK_SIZE>>>(
         (const uint32_t*)graph->row_offsets->data,
         graph->num_nodes,
         d_degrees,
         d_max_degree);
-    CUDA_CHECK(cudaGetLastError());
+    if (cudaGetLastError() != cudaSuccess) goto stats_cleanup;
 
     // Get max degree
-    CUDA_CHECK(cudaMemcpy(max_degree, d_max_degree, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    if (cudaMemcpy(max_degree, d_max_degree, sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto stats_cleanup;
 
     // Compute average degree
     *avg_degree = (float)graph->num_edges / (float)graph->num_nodes;
@@ -2537,9 +2616,13 @@ bool nimcp_gpu_knowledge_graph_stats(
     // Compute average embedding norm if embeddings exist
     if (graph->node_embeddings && embedding_norm) {
         float* h_embeddings = (float*)malloc(graph->num_nodes * graph->embed_dim * sizeof(float));
-        CUDA_CHECK(cudaMemcpy(h_embeddings, graph->node_embeddings->data,
+        if (!h_embeddings) goto stats_cleanup;
+        if (cudaMemcpy(h_embeddings, graph->node_embeddings->data,
                               graph->num_nodes * graph->embed_dim * sizeof(float),
-                              cudaMemcpyDeviceToHost));
+                              cudaMemcpyDeviceToHost) != cudaSuccess) {
+            free(h_embeddings);
+            goto stats_cleanup;
+        }
 
         float total_norm = 0.0f;
         for (uint32_t n = 0; n < graph->num_nodes; n++) {
@@ -2557,10 +2640,13 @@ bool nimcp_gpu_knowledge_graph_stats(
         *embedding_norm = 0.0f;
     }
 
+    success = true;
+
+stats_cleanup:
     cudaFree(d_degrees);
     cudaFree(d_max_degree);
 
-    return true;
+    return success;
 }
 
 bool nimcp_gpu_knowledge_graph_is_valid(const nimcp_gpu_knowledge_graph_t* graph)
@@ -2999,6 +3085,7 @@ static int dao_create_embedding_impl(nimcp_knowledge_embedding_dao_t* self, int 
 
     // Check if already exists
     int* h_valid = (int*)malloc(sizeof(int));
+    if (!h_valid) return -1;
     cudaMemcpy(h_valid, self->d_entity_valid + entity_id, sizeof(int), cudaMemcpyDeviceToHost);
     if (*h_valid) {
         free(h_valid);
@@ -3089,12 +3176,17 @@ static int dao_find_similar_impl(nimcp_knowledge_embedding_dao_t* self, const fl
 
     // Copy query to device
     float* d_query;
-    cudaMalloc(&d_query, self->embedding_dim * sizeof(float));
+    if (cudaMalloc(&d_query, self->embedding_dim * sizeof(float)) != cudaSuccess) {
+        return -1;
+    }
     cudaMemcpy(d_query, query, self->embedding_dim * sizeof(float), cudaMemcpyHostToDevice);
 
     // Allocate scores buffer
     float* d_scores;
-    cudaMalloc(&d_scores, self->max_entities * sizeof(float));
+    if (cudaMalloc(&d_scores, self->max_entities * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_query);
+        return -1;
+    }
 
     // Compute similarities
     kernel_kg_cosine_similarity<<<GRID_SIZE(self->max_entities), BLOCK_SIZE>>>(
@@ -3108,6 +3200,11 @@ static int dao_find_similar_impl(nimcp_knowledge_embedding_dao_t* self, const fl
 
     // Get top-k (for now, copy to host and do selection there)
     float* h_scores = (float*)malloc(self->max_entities * sizeof(float));
+    if (!h_scores) {
+        cudaFree(d_query);
+        cudaFree(d_scores);
+        return -1;
+    }
     cudaMemcpy(h_scores, d_scores, self->max_entities * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Initialize results
@@ -3314,6 +3411,12 @@ int nimcp_kg_find_path(
     // Compute embedding similarity as a proxy for path likelihood
     float* source_emb = (float*)malloc(dao->embedding_dim * sizeof(float));
     float* target_emb = (float*)malloc(dao->embedding_dim * sizeof(float));
+    if (!source_emb || !target_emb) {
+        free(source_emb);
+        free(target_emb);
+        nimcp_kg_result_destroy(result);
+        return -1;
+    }
 
     if (dao->read_embedding(dao, source_entity, source_emb) != 0 ||
         dao->read_embedding(dao, target_entity, target_emb) != 0) {
@@ -3407,24 +3510,28 @@ int nimcp_kg_train_step(
     int dim = dao->embedding_dim;
     size_t emb_batch_size = batch_size * dim * sizeof(float);
 
-    // Allocate device memory for batch embeddings
-    float *d_head, *d_rel, *d_tail, *d_neg_tail;
-    float *d_grad_head, *d_grad_rel, *d_grad_tail, *d_grad_neg;
+    // Allocate device memory for batch embeddings - pre-init all to NULL for cleanup
+    float *d_head = NULL, *d_rel = NULL, *d_tail = NULL, *d_neg_tail = NULL;
+    float *d_grad_head = NULL, *d_grad_rel = NULL, *d_grad_tail = NULL, *d_grad_neg = NULL;
+    int *d_head_idx = NULL, *d_rel_idx = NULL, *d_tail_idx = NULL;
+    int *d_neg_idx = NULL;
+    int* neg_tail_idx = NULL;
+    float lr = 0.0f;
+    float reg = 0.0f;
 
-    cudaMalloc(&d_head, emb_batch_size);
-    cudaMalloc(&d_rel, emb_batch_size);
-    cudaMalloc(&d_tail, emb_batch_size);
-    cudaMalloc(&d_neg_tail, emb_batch_size);
-    cudaMalloc(&d_grad_head, emb_batch_size);
-    cudaMalloc(&d_grad_rel, emb_batch_size);
-    cudaMalloc(&d_grad_tail, emb_batch_size);
-    cudaMalloc(&d_grad_neg, emb_batch_size);
+    if (cudaMalloc(&d_head, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_rel, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_tail, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_neg_tail, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_grad_head, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_grad_rel, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_grad_tail, emb_batch_size) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_grad_neg, emb_batch_size) != cudaSuccess) goto train_cleanup;
 
     // Copy indices to device for lookup
-    int* d_head_idx, *d_rel_idx, *d_tail_idx;
-    cudaMalloc(&d_head_idx, batch_size * sizeof(int));
-    cudaMalloc(&d_rel_idx, batch_size * sizeof(int));
-    cudaMalloc(&d_tail_idx, batch_size * sizeof(int));
+    if (cudaMalloc(&d_head_idx, batch_size * sizeof(int)) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_rel_idx, batch_size * sizeof(int)) != cudaSuccess) goto train_cleanup;
+    if (cudaMalloc(&d_tail_idx, batch_size * sizeof(int)) != cudaSuccess) goto train_cleanup;
 
     cudaMemcpy(d_head_idx, head_entities, batch_size * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_rel_idx, relations, batch_size * sizeof(int), cudaMemcpyHostToDevice);
@@ -3440,13 +3547,16 @@ int nimcp_kg_train_step(
 
     // Generate negative samples (for simplicity, use random valid entities)
     // In a full implementation, this would sample corrupted triples
-    int* neg_tail_idx = (int*)malloc(batch_size * sizeof(int));
+    neg_tail_idx = (int*)malloc(batch_size * sizeof(int));
+    if (!neg_tail_idx) goto train_cleanup;
     for (int i = 0; i < batch_size; i++) {
         // Simple corruption: shift tail by 1
         neg_tail_idx[i] = (tail_entities[i] + 1) % dao->max_entities;
     }
-    int* d_neg_idx;
-    cudaMalloc(&d_neg_idx, batch_size * sizeof(int));
+    if (cudaMalloc(&d_neg_idx, batch_size * sizeof(int)) != cudaSuccess) {
+        free(neg_tail_idx);
+        goto train_cleanup;
+    }
     cudaMemcpy(d_neg_idx, neg_tail_idx, batch_size * sizeof(int), cudaMemcpyHostToDevice);
     free(neg_tail_idx);
 
@@ -3465,8 +3575,8 @@ int nimcp_kg_train_step(
 
     // Update embeddings via scatter-add
     // This is simplified - a full implementation would use atomics or segment reduction
-    float lr = config->learning_rate;
-    float reg = config->regularization;
+    lr = config->learning_rate;
+    reg = config->regularization;
 
     // Update entity embeddings (head, tail, neg_tail)
     kernel_kg_embedding_update<<<GRID_SIZE(dao->max_entities * dim), BLOCK_SIZE>>>(
@@ -3486,12 +3596,18 @@ int nimcp_kg_train_step(
 
     cudaDeviceSynchronize();
 
-    // Cleanup
+    // Success cleanup
     cudaFree(d_head); cudaFree(d_rel); cudaFree(d_tail); cudaFree(d_neg_tail);
     cudaFree(d_grad_head); cudaFree(d_grad_rel); cudaFree(d_grad_tail); cudaFree(d_grad_neg);
     cudaFree(d_head_idx); cudaFree(d_rel_idx); cudaFree(d_tail_idx); cudaFree(d_neg_idx);
 
     return 0;
+
+train_cleanup:
+    cudaFree(d_head); cudaFree(d_rel); cudaFree(d_tail); cudaFree(d_neg_tail);
+    cudaFree(d_grad_head); cudaFree(d_grad_rel); cudaFree(d_grad_tail); cudaFree(d_grad_neg);
+    cudaFree(d_head_idx); cudaFree(d_rel_idx); cudaFree(d_tail_idx); cudaFree(d_neg_idx);
+    return -1;
 }
 
 int nimcp_kg_transe_score(
@@ -3513,6 +3629,12 @@ int nimcp_kg_transe_score(
     float* h_emb = (float*)malloc(dim * sizeof(float));
     float* r_emb = (float*)malloc(dim * sizeof(float));
     float* t_emb = (float*)malloc(dim * sizeof(float));
+    if (!h_emb || !r_emb || !t_emb) {
+        free(h_emb);
+        free(r_emb);
+        free(t_emb);
+        return -1;
+    }
 
     cudaMemcpy(h_emb, dao->d_entity_embeddings + head * dim, dim * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(r_emb, dao->d_relation_embeddings + relation * dim, dim * sizeof(float), cudaMemcpyDeviceToHost);
@@ -3548,6 +3670,12 @@ int nimcp_kg_predict_tail(
     float* h_emb = (float*)malloc(dim * sizeof(float));
     float* r_emb = (float*)malloc(dim * sizeof(float));
     float* query = (float*)malloc(dim * sizeof(float));
+    if (!h_emb || !r_emb || !query) {
+        free(h_emb);
+        free(r_emb);
+        free(query);
+        return -1;
+    }
 
     cudaMemcpy(h_emb, dao->d_entity_embeddings + head * dim, dim * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(r_emb, dao->d_relation_embeddings + relation * dim, dim * sizeof(float), cudaMemcpyDeviceToHost);
@@ -3589,6 +3717,12 @@ int nimcp_kg_predict_head(
     float* t_emb = (float*)malloc(dim * sizeof(float));
     float* r_emb = (float*)malloc(dim * sizeof(float));
     float* query = (float*)malloc(dim * sizeof(float));
+    if (!t_emb || !r_emb || !query) {
+        free(t_emb);
+        free(r_emb);
+        free(query);
+        return -1;
+    }
 
     cudaMemcpy(t_emb, dao->d_entity_embeddings + tail * dim, dim * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(r_emb, dao->d_relation_embeddings + relation * dim, dim * sizeof(float), cudaMemcpyDeviceToHost);

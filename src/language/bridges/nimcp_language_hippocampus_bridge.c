@@ -411,8 +411,7 @@ int language_hippocampus_strengthen_memory(language_hippocampus_bridge_t* bridge
 
     word_memory_entry_t* entry = find_memory_by_id(bridge, memory_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_strengthen_memory: entry is NULL");
-        return -1;
+        return -1;  /* Entry not found by id - normal lookup miss */
     }
 
     entry->memory.strength = fminf(1.0f, entry->memory.strength + strength_boost);
@@ -502,14 +501,13 @@ int language_hippocampus_retrieve_by_word(language_hippocampus_bridge_t* bridge,
     const char* word, word_memory_t* memory)
 {
     if (!bridge || !word || !memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_retrieve_by_word: required parameter is NULL (bridge, word, memory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve_by_word: required parameter is NULL (bridge, word, memory)");
         return -1;
     }
 
     word_memory_entry_t* entry = find_memory_by_word(bridge, word);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve_by_word: entry is NULL");
-        return -1;
+        return -1;  /* Entry not found by word - normal lookup miss */
     }
 
     *memory = entry->memory;
@@ -642,7 +640,7 @@ int language_hippocampus_get_memory(const language_hippocampus_bridge_t* bridge,
     uint32_t memory_id, word_memory_t* memory)
 {
     if (!bridge || !memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_get_memory: required parameter is NULL (bridge, memory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_get_memory: required parameter is NULL (bridge, memory)");
         return -1;
     }
 

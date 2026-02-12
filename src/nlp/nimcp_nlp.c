@@ -541,8 +541,7 @@ bool nlp_network_forward(
     nimcp_free(sequence_embeddings);
 
     if (!attention_success) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_forward: attention forward pass failed");
-        return false;
+        return false;  /* Already reported by first throw above */
     }
 
     // Store sequence length for context

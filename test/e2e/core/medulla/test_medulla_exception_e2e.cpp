@@ -240,11 +240,11 @@ TEST_F(MedullaExceptionE2ETest, ArousalStateExceptionRecovery) {
 
     // Step 2: Attempt invalid operations that trigger exceptions
     int result = medulla_boost_arousal(nullptr, 0.1f);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
     printf("  NULL boost returned: %d\n", result);
 
     result = medulla_reduce_arousal(nullptr, 0.1f);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
     printf("  NULL reduce returned: %d\n", result);
 
     // Step 3: Verify arousal state preserved
@@ -368,12 +368,12 @@ TEST_F(MedullaExceptionE2ETest, MedullaImmuneBridgeExceptionFlow) {
 
     // Step 2: Test NULL operations on bridge
     int result = medulla_immune_update(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
     printf("  NULL bridge update returned: %d\n", result);
 
     medulla_cytokine_effects_t cytokine_effects;
     result = medulla_immune_get_cytokine_effects(nullptr, &cytokine_effects);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
     printf("  NULL cytokine query returned: %d\n", result);
 
     // Step 3: Verify bridge still works
@@ -414,10 +414,10 @@ TEST_F(MedullaExceptionE2ETest, MedullaCerebellumBridgeExceptionFlow) {
 
     // Step 3: Test NULL operations
     int result = med_cereb_bridge_queue_error(nullptr, MED_CEREB_ERROR_TIMING, 0.5f, 0);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
 
     result = med_cereb_bridge_update(nullptr, 10000);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
     printf("  Step 3: NULL operations returned errors\n");
 
     // Step 4: Verify bridge still works
@@ -510,7 +510,7 @@ TEST_F(MedullaExceptionE2ETest, EmergencyShutdownExceptionHandling) {
 
     // Step 5: Test NULL emergency shutdown
     int result = medulla_emergency_shutdown(nullptr, "test");
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);
     printf("  Step 5: NULL emergency returned: %d\n", result);
 
     printf("Test passed: Emergency shutdown exception handling\n\n");

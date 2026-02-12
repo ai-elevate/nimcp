@@ -308,8 +308,7 @@ int bgv_unregister_action(bgv_system_t* system, uint32_t action_id) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "bg_vigor: error condition");
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_ERROR_NOT_FOUND;  /* Action not found - normal lookup miss */
 }
 
 //=============================================================================

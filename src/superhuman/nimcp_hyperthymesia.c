@@ -691,7 +691,6 @@ bool hyperthymesia_add_sensory_trace(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_add_sensory_trace: entry is NULL");
         return false;
     }
 
@@ -826,7 +825,6 @@ bool hyperthymesia_link_memories(
 
     if (!entry1 || !entry2) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_link_memories: required parameter is NULL (entry1, entry2)");
         return false;
     }
 
@@ -906,7 +904,6 @@ bool hyperthymesia_retrieve_by_date(
 
     if (!module->config.enable_date_indexing || !module->year_index) {
         set_error(module, HYPERTHYMESIA_ERROR_RETRIEVAL_FAILED);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_retrieve_by_date: required parameter is NULL (module->config, module->year_index)");
         return false;
     }
 
@@ -1172,7 +1169,6 @@ bool hyperthymesia_reexperience(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_reexperience: entry is NULL");
         return false;
     }
 
@@ -1286,7 +1282,6 @@ bool hyperthymesia_reexperience_modality(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_reexperience_modality: entry is NULL");
         return false;
     }
 
@@ -1312,7 +1307,6 @@ bool hyperthymesia_reexperience_modality(
     }
 
     set_error(module, HYPERTHYMESIA_ERROR_REEXPERIENCE_FAILED);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hyperthymesia_reexperience_modality: operation failed");
     return false;
 }
 
@@ -1340,7 +1334,6 @@ bool hyperthymesia_reexperience_emotion(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_reexperience_emotion: entry is NULL");
         return false;
     }
 
@@ -1647,7 +1640,6 @@ bool hyperthymesia_update_vividness(
     }
 
     set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hyperthymesia_update_vividness: validation failed");
     return false;
 }
 

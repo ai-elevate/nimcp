@@ -178,13 +178,24 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
             // Grow arrays if needed
             if (node->num_neighbors >= node->capacity) {
                 node->capacity *= 2;
-                node->neighbors = nimcp_realloc(node->neighbors, node->capacity * sizeof(uint32_t));
-                node->weights = nimcp_realloc(node->weights, node->capacity * sizeof(float));
-                if (!node->neighbors || !node->weights) {
+                uint32_t* new_neighbors = nimcp_realloc(node->neighbors, node->capacity * sizeof(uint32_t));
+                float* new_weights = nimcp_realloc(node->weights, node->capacity * sizeof(float));
+                if (!new_neighbors || !new_weights) {
+                    if (new_neighbors) node->neighbors = new_neighbors;
+                    if (new_weights) node->weights = new_weights;
                     set_error("Failed to reallocate neighbor arrays");
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_list: required parameter is NULL (node->neighbors, node->weights)");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_list: realloc failed");
+                    // Cleanup already-built graph
+                    for (uint32_t cleanup = 0; cleanup <= i; cleanup++) {
+                        nimcp_free(graph->nodes[cleanup].neighbors);
+                        nimcp_free(graph->nodes[cleanup].weights);
+                    }
+                    nimcp_free(graph->nodes);
+                    nimcp_free(graph);
                     return NULL;
                 }
+                node->neighbors = new_neighbors;
+                node->weights = new_weights;
             }
 
             node->neighbors[node->num_neighbors] = target_id;

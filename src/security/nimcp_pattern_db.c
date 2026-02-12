@@ -208,8 +208,7 @@ static bool is_regex_safe(const char* pattern) {
     if (len > PATTERN_DB_MAX_PATTERN_LENGTH) {
         LOG_MODULE_WARN("pattern_db", "Pattern rejected: length %zu exceeds maximum %d",
                         len, PATTERN_DB_MAX_PATTERN_LENGTH);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
-        return false;
+        return false;  /* Rejection is normal validation behavior */
     }
 
     /* Empty patterns are safe but useless */
@@ -395,8 +394,7 @@ static bool is_regex_safe(const char* pattern) {
     if (max_depth > PATTERN_DB_MAX_QUANTIFIER_NESTING) {
         LOG_MODULE_WARN("pattern_db", "Pattern rejected: max nesting depth %d exceeds limit %d",
                         max_depth, PATTERN_DB_MAX_QUANTIFIER_NESTING);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
-        return false;
+        return false;  /* Rejection is anti-ReDoS defense working correctly */
     }
 
     return true;
@@ -453,8 +451,7 @@ static pattern_slot_t* find_pattern(nimcp_pattern_db_t db, nimcp_pattern_id_t id
             return &db->patterns[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: validation failed");
-    return NULL;
+    return NULL;  /* Pattern not found by ID */
 }
 
 /**
@@ -1662,6 +1659,7 @@ nimcp_error_t nimcp_pattern_db_rollback(
     for (size_t i = 0; i < snapshot->capacity; i++) {
         if (snapshot->patterns[i].is_compiled) {
             db->patterns[i] = snapshot->patterns[i];
+            db->patterns[i].is_compiled = false;  /* Reset before re-compile to avoid regfree on uninitialized regex */
             compile_pattern(&db->patterns[i]);
         }
     }

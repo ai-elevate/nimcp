@@ -413,46 +413,46 @@ bool nimcp_gpu_lnn_rk4_step_batched(
     nimcp_gpu_tensor_t* x_temp = cache->x_temp;
 
     // Save original state
-    NIMCP_CUDA_RECOVER(cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
-                          n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
+                          n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // k1 = f(t, x)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // x_temp = x + 0.5 * dt * k1
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k1->data,
         0.5f * dt, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // k2 = f(t + dt/2, x + dt/2 * k1)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // x_temp = x + 0.5 * dt * k2
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k2->data,
         0.5f * dt, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // k3 = f(t + dt/2, x + dt/2 * k2)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // x_temp = x + dt * k3
     kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)cache->x_checkpoint->data, (const float*)k3->data,
         dt, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // k4 = f(t + dt, x + dt * k3)
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) return false;
 
     // x_new = x + (dt/6) * (k1 + 2*k2 + 2*k3 + k4)
     kernel_rk4_combine_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -461,7 +461,7 @@ bool nimcp_gpu_lnn_rk4_step_batched(
         (const float*)k3->data, (const float*)k4->data,
         dt, (float*)batch_state->x->data, n);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) return false;
     batch_state->current_time += dt;
 
     return true;
@@ -632,98 +632,101 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
     nimcp_gpu_tensor_t* k7 = cache->k_stages[6];
     nimcp_gpu_tensor_t* x_temp = cache->x_temp;
 
+    float* d_max_error = NULL;
+    bool success = false;
+
     // Save original state
-    NIMCP_CUDA_RECOVER(cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
-                          n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(cache->x_checkpoint->data, batch_state->x->data,
+                          n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
     // DOPRI5 coefficients (Butcher tableau)
-    const float c2 = 1.0f/5.0f, c3 = 3.0f/10.0f, c4 = 4.0f/5.0f, c5 = 8.0f/9.0f;
-    const float a21 = 1.0f/5.0f;
-    const float a31 = 3.0f/40.0f, a32 = 9.0f/40.0f;
-    const float a41 = 44.0f/45.0f, a42 = -56.0f/15.0f, a43 = 32.0f/9.0f;
-    const float a51 = 19372.0f/6561.0f, a52 = -25360.0f/2187.0f, a53 = 64448.0f/6561.0f, a54 = -212.0f/729.0f;
-    const float a61 = 9017.0f/3168.0f, a62 = -355.0f/33.0f, a63 = 46732.0f/5247.0f, a64 = 49.0f/176.0f, a65 = -5103.0f/18656.0f;
+    {
+        const float a21 = 1.0f/5.0f;
+        const float a31 = 3.0f/40.0f, a32 = 9.0f/40.0f;
+        const float a41 = 44.0f/45.0f, a42 = -56.0f/15.0f, a43 = 32.0f/9.0f;
+        const float a51 = 19372.0f/6561.0f, a52 = -25360.0f/2187.0f, a53 = 64448.0f/6561.0f, a54 = -212.0f/729.0f;
+        const float a61 = 9017.0f/3168.0f, a62 = -355.0f/33.0f, a63 = 46732.0f/5247.0f, a64 = 49.0f/176.0f, a65 = -5103.0f/18656.0f;
 
-    // k1 = f(t, x)
-    nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
-    nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+        // k1 = f(t, x)
+        nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
+        nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
+        if (cudaMemcpy(k1->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
-    // k2 = f(t + c2*dt, x + dt*a21*k1)
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)cache->x_checkpoint->data, (const float*)k1->data,
-        dt * a21, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
-    nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
-    nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+        // k2 = f(t + c2*dt, x + dt*a21*k1)
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)cache->x_checkpoint->data, (const float*)k1->data,
+            dt * a21, (float*)x_temp->data, n);
+        if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
+        nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
+        nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
+        if (cudaMemcpy(k2->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
-    // k3 = f(t + c3*dt, x + dt*(a31*k1 + a32*k2))
-    // x_temp = x + dt*(a31*k1 + a32*k2)
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)cache->x_checkpoint->data, (const float*)k1->data,
-        dt * a31, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k2->data,
-        dt * a32, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
-    nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
-    nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+        // k3 = f(t + c3*dt, x + dt*(a31*k1 + a32*k2))
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)cache->x_checkpoint->data, (const float*)k1->data,
+            dt * a31, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k2->data,
+            dt * a32, (float*)x_temp->data, n);
+        if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
+        nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
+        nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
+        if (cudaMemcpy(k3->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
-    // k4 = f(t + c4*dt, x + dt*(a41*k1 + a42*k2 + a43*k3))
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)cache->x_checkpoint->data, (const float*)k1->data,
-        dt * a41, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k2->data,
-        dt * a42, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k3->data,
-        dt * a43, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
-    nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
-    nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+        // k4 = f(t + c4*dt, x + dt*(a41*k1 + a42*k2 + a43*k3))
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)cache->x_checkpoint->data, (const float*)k1->data,
+            dt * a41, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k2->data,
+            dt * a42, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k3->data,
+            dt * a43, (float*)x_temp->data, n);
+        if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
+        nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
+        nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
+        if (cudaMemcpy(k4->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
-    // k5 = f(t + c5*dt, x + dt*(a51*k1 + a52*k2 + a53*k3 + a54*k4))
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)cache->x_checkpoint->data, (const float*)k1->data,
-        dt * a51, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k2->data,
-        dt * a52, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k3->data,
-        dt * a53, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k4->data,
-        dt * a54, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
-    nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
-    nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k5->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+        // k5 = f(t + c5*dt, x + dt*(a51*k1 + a52*k2 + a53*k3 + a54*k4))
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)cache->x_checkpoint->data, (const float*)k1->data,
+            dt * a51, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k2->data,
+            dt * a52, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k3->data,
+            dt * a53, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k4->data,
+            dt * a54, (float*)x_temp->data, n);
+        if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
+        nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
+        nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
+        if (cudaMemcpy(k5->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
-    // k6 = f(t + dt, x + dt*(a61*k1 + a62*k2 + a63*k3 + a64*k4 + a65*k5))
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)cache->x_checkpoint->data, (const float*)k1->data,
-        dt * a61, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k2->data,
-        dt * a62, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k3->data,
-        dt * a63, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k4->data,
-        dt * a64, (float*)x_temp->data, n);
-    kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)x_temp->data, (const float*)k5->data,
-        dt * a65, (float*)x_temp->data, n);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
-    nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
-    nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k6->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+        // k6 = f(t + dt, x + dt*(a61*k1 + a62*k2 + a63*k3 + a64*k4 + a65*k5))
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)cache->x_checkpoint->data, (const float*)k1->data,
+            dt * a61, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k2->data,
+            dt * a62, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k3->data,
+            dt * a63, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k4->data,
+            dt * a64, (float*)x_temp->data, n);
+        kernel_add_scaled_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (const float*)x_temp->data, (const float*)k5->data,
+            dt * a65, (float*)x_temp->data, n);
+        if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
+        nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
+        nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
+        if (cudaMemcpy(k6->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
+    }
 
     // Compute 5th order solution
     kernel_dopri5_solution_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -733,10 +736,10 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
         dt, (float*)x_temp->data, n);
 
     // k7 = f(t + dt, x_5th) for FSAL
-    NIMCP_CUDA_RECOVER(cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(batch_state->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
     nimcp_gpu_lnn_update_tau_batched(ctx, layer, input, batch_state, LNN_TAU_MIN_DEFAULT, LNN_TAU_MAX_DEFAULT);
     nimcp_gpu_lnn_compute_ltc_derivative_batched(ctx, layer, input, batch_state, layer->activation);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(k7->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(k7->data, batch_state->dx_dt->data, n * sizeof(float), cudaMemcpyDeviceToDevice) != cudaSuccess) goto rk45_cleanup;
 
     // Compute error estimate
     kernel_dopri5_error_batched<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -745,8 +748,7 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
         dt, (float*)batch_state->error->data, n);
 
     // Compute max error per sample
-    float* d_max_error;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_max_error, batch_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_max_error, batch_size * sizeof(float)) != cudaSuccess) goto rk45_cleanup;
 
     kernel_max_error_per_sample<<<batch_size, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)batch_state->error->data, d_max_error, batch_size, n_neurons);
@@ -762,11 +764,14 @@ bool nimcp_gpu_lnn_rk45_adaptive_batched(
             batch_size);
     }
 
-    cudaFree(d_max_error);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) goto rk45_cleanup;
     batch_state->current_time += dt;
 
-    return true;
+    success = true;
+
+rk45_cleanup:
+    cudaFree(d_max_error);
+    return success;
 }
 
 //=============================================================================
@@ -1061,6 +1066,11 @@ bool nimcp_gpu_lnn_reservoir_propagate_sequence(
         return false;
     }
 
+    if (!input_sequence->dims || input_sequence->ndim < 2) {
+        LOG_ERROR("Invalid input_sequence dimensions for reservoir propagation");
+        return false;
+    }
+
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);
     }
@@ -1253,33 +1263,41 @@ uint32_t nimcp_gpu_lnn_generate_wiring(
     uint32_t expected_edges = (uint32_t)(target_density * n_neurons * n_neurons);
 
     // Allocate temporary for nnz per row
-    uint32_t* d_row_nnz;
-    cudaMalloc(&d_row_nnz, n_neurons * sizeof(uint32_t));
+    uint32_t* d_row_nnz = NULL;
+    uint32_t* h_row_nnz = NULL;
+    uint32_t* h_row_ptr = NULL;
+    uint32_t* h_col_idx = NULL;
+    uint32_t total_edges = 0;
+
+    if (cudaMalloc(&d_row_nnz, n_neurons * sizeof(uint32_t)) != cudaSuccess) goto wiring_cleanup;
 
     kernel_generate_random_edges<<<GRID_SIZE(n_neurons), BLOCK_SIZE>>>(
         d_row_nnz, n_neurons, target_density, seed);
 
     // Compute prefix sum for row_ptr (simplified CPU version)
-    uint32_t* h_row_nnz = (uint32_t*)malloc(n_neurons * sizeof(uint32_t));
-    uint32_t* h_row_ptr = (uint32_t*)malloc((n_neurons + 1) * sizeof(uint32_t));
+    h_row_nnz = (uint32_t*)malloc(n_neurons * sizeof(uint32_t));
+    if (!h_row_nnz) goto wiring_cleanup;
+    h_row_ptr = (uint32_t*)malloc((n_neurons + 1) * sizeof(uint32_t));
+    if (!h_row_ptr) goto wiring_cleanup;
 
-    cudaMemcpy(h_row_nnz, d_row_nnz, n_neurons * sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    if (cudaMemcpy(h_row_nnz, d_row_nnz, n_neurons * sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto wiring_cleanup;
 
     h_row_ptr[0] = 0;
     for (uint32_t i = 0; i < n_neurons; i++) {
         h_row_ptr[i + 1] = h_row_ptr[i] + h_row_nnz[i];
     }
-    uint32_t total_edges = h_row_ptr[n_neurons];
+    total_edges = h_row_ptr[n_neurons];
 
-    cudaMemcpy(row_ptr->data, h_row_ptr, (n_neurons + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    if (cudaMemcpy(row_ptr->data, h_row_ptr, (n_neurons + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto wiring_cleanup;
 
     // Generate column indices (simplified: random selection)
-    uint32_t* h_col_idx = (uint32_t*)malloc(total_edges * sizeof(uint32_t));
+    h_col_idx = (uint32_t*)malloc(total_edges * sizeof(uint32_t));
+    if (!h_col_idx) goto wiring_cleanup;
     srand((unsigned int)seed);
     for (uint32_t i = 0; i < total_edges; i++) {
         h_col_idx[i] = rand() % n_neurons;
     }
-    cudaMemcpy(col_idx->data, h_col_idx, total_edges * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    if (cudaMemcpy(col_idx->data, h_col_idx, total_edges * sizeof(uint32_t), cudaMemcpyHostToDevice) != cudaSuccess) goto wiring_cleanup;
 
     // Initialize values if provided
     if (values) {
@@ -1296,6 +1314,13 @@ uint32_t nimcp_gpu_lnn_generate_wiring(
 
     LOG_DEBUG("Generated wiring with %u edges (density %.3f)", total_edges, target_density);
     return total_edges;
+
+wiring_cleanup:
+    cudaFree(d_row_nnz);
+    free(h_row_nnz);
+    free(h_row_ptr);
+    free(h_col_idx);
+    return 0;
 }
 
 /**
@@ -1378,8 +1403,12 @@ bool nimcp_gpu_lnn_compute_spectral_radius(
     // Initialize with random vector
     nimcp_gpu_fill(ctx, v, 1.0f / sqrtf((float)n));
 
-    float* d_norm;
-    cudaMalloc(&d_norm, sizeof(float));
+    float* d_norm = NULL;
+    if (cudaMalloc(&d_norm, sizeof(float)) != cudaSuccess) {
+        nimcp_gpu_tensor_destroy(v);
+        nimcp_gpu_tensor_destroy(v_new);
+        return false;
+    }
 
     float prev_eigenvalue = 0.0f;
     float eigenvalue = 0.0f;
@@ -1676,38 +1705,45 @@ bool nimcp_gpu_lnn_check_stability(
 
     uint32_t n = batch_state->batch_size * batch_state->n_neurons;
 
-    uint32_t* d_has_nan;
-    uint32_t* d_has_inf;
-    float* d_max_abs;
+    uint32_t* d_has_nan = NULL;
+    uint32_t* d_has_inf = NULL;
+    float* d_max_abs = NULL;
+    bool success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_has_nan, sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_has_inf, sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_max_abs, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_has_nan, sizeof(uint32_t)) != cudaSuccess) goto stability_cleanup;
+    if (cudaMalloc(&d_has_inf, sizeof(uint32_t)) != cudaSuccess) goto stability_cleanup;
+    if (cudaMalloc(&d_max_abs, sizeof(float)) != cudaSuccess) goto stability_cleanup;
 
-    NIMCP_CUDA_RECOVER(cudaMemset(d_has_nan, 0, sizeof(uint32_t)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_has_inf, 0, sizeof(uint32_t)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_max_abs, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemset(d_has_nan, 0, sizeof(uint32_t)) != cudaSuccess) goto stability_cleanup;
+    if (cudaMemset(d_has_inf, 0, sizeof(uint32_t)) != cudaSuccess) goto stability_cleanup;
+    if (cudaMemset(d_max_abs, 0, sizeof(float)) != cudaSuccess) goto stability_cleanup;
 
     kernel_check_numerical_issues<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)batch_state->x->data, d_has_nan, d_has_inf, d_max_abs, n);
 
-    uint32_t h_has_nan, h_has_inf;
-    float h_max_abs;
+    {
+        uint32_t h_has_nan, h_has_inf;
+        float h_max_abs;
 
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_has_nan, d_has_nan, sizeof(uint32_t), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_has_inf, d_has_inf, sizeof(uint32_t), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_max_abs, d_max_abs, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+        if (cudaMemcpy(&h_has_nan, d_has_nan, sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto stability_cleanup;
+        if (cudaMemcpy(&h_has_inf, d_has_inf, sizeof(uint32_t), cudaMemcpyDeviceToHost) != cudaSuccess) goto stability_cleanup;
+        if (cudaMemcpy(&h_max_abs, d_max_abs, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto stability_cleanup;
 
-    *has_nan = (h_has_nan > 0);
-    *has_inf = (h_has_inf > 0);
-    *max_norm = h_max_abs;
+        *has_nan = (h_has_nan > 0);
+        *has_inf = (h_has_inf > 0);
+        *max_norm = h_max_abs;
+    }
 
+    if (cudaGetLastError() != cudaSuccess) goto stability_cleanup;
+
+    success = true;
+
+stability_cleanup:
     cudaFree(d_has_nan);
     cudaFree(d_has_inf);
     cudaFree(d_max_abs);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 /**
@@ -1775,45 +1811,56 @@ bool nimcp_gpu_lnn_compute_state_stats(
 
     uint32_t n = batch_state->batch_size * batch_state->n_neurons;
 
-    float* d_sum;
-    float* d_sum_sq;
-    float* d_min;
-    float* d_max;
+    float* d_sum = NULL;
+    float* d_sum_sq = NULL;
+    float* d_min = NULL;
+    float* d_max = NULL;
+    bool success = false;
 
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum_sq, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_min, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_max, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_sum, sizeof(float)) != cudaSuccess) goto state_stats_cleanup;
+    if (cudaMalloc(&d_sum_sq, sizeof(float)) != cudaSuccess) goto state_stats_cleanup;
+    if (cudaMalloc(&d_min, sizeof(float)) != cudaSuccess) goto state_stats_cleanup;
+    if (cudaMalloc(&d_max, sizeof(float)) != cudaSuccess) goto state_stats_cleanup;
 
-    NIMCP_CUDA_RECOVER(cudaMemset(d_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemset(d_sum_sq, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
-    float init_min = FLT_MAX, init_max = -FLT_MAX;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_min, &init_min, sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(d_max, &init_max, sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemset(d_sum, 0, sizeof(float)) != cudaSuccess) goto state_stats_cleanup;
+    if (cudaMemset(d_sum_sq, 0, sizeof(float)) != cudaSuccess) goto state_stats_cleanup;
+    {
+        float init_min = FLT_MAX, init_max = -FLT_MAX;
+        if (cudaMemcpy(d_min, &init_min, sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) goto state_stats_cleanup;
+        if (cudaMemcpy(d_max, &init_max, sizeof(float), cudaMemcpyHostToDevice) != cudaSuccess) goto state_stats_cleanup;
+    }
 
-    size_t shared_mem = 4 * BLOCK_SIZE * sizeof(float);
-    kernel_compute_stats_phase1<<<GRID_SIZE(n), BLOCK_SIZE, shared_mem>>>(
-        (const float*)batch_state->x->data, d_sum, d_sum_sq, d_min, d_max, n);
+    {
+        size_t shared_mem = 4 * BLOCK_SIZE * sizeof(float);
+        kernel_compute_stats_phase1<<<GRID_SIZE(n), BLOCK_SIZE, shared_mem>>>(
+            (const float*)batch_state->x->data, d_sum, d_sum_sq, d_min, d_max, n);
+    }
 
-    float h_sum, h_sum_sq, h_min, h_max;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum_sq, d_sum_sq, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    {
+        float h_sum, h_sum_sq, h_min, h_max;
+        if (cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto state_stats_cleanup;
+        if (cudaMemcpy(&h_sum_sq, d_sum_sq, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto state_stats_cleanup;
+        if (cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto state_stats_cleanup;
+        if (cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) goto state_stats_cleanup;
 
-    *mean = h_sum / (float)n;
-    float variance = (h_sum_sq / (float)n) - (*mean * *mean);
-    *std = sqrtf(fmaxf(0.0f, variance));
-    *min_val = h_min;
-    *max_val = h_max;
+        *mean = h_sum / (float)n;
+        float variance = (h_sum_sq / (float)n) - (*mean * *mean);
+        *std = sqrtf(fmaxf(0.0f, variance));
+        *min_val = h_min;
+        *max_val = h_max;
+    }
 
+    if (cudaGetLastError() != cudaSuccess) goto state_stats_cleanup;
+
+    success = true;
+
+state_stats_cleanup:
     cudaFree(d_sum);
     cudaFree(d_sum_sq);
     cudaFree(d_min);
     cudaFree(d_max);
 
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
-    return true;
+    return success;
 }
 
 //=============================================================================

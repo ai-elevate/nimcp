@@ -356,9 +356,8 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
     }
 
     if (found_idx == (size_t)-1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_remove_synapse: synapse not found");
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_ERROR_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAM;  /* Synapse not found */
     }
 
     /* Destroy and free heap-allocated mutex */
@@ -699,9 +698,8 @@ int hetero_apply_depression(
 
     hetero_synapse_t* potentiated = hetero_get_synapse_unlocked(system, potentiated_id);
     if (!potentiated) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_apply_depression: potentiated synapse not found");
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_ERROR_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAM;  /* Synapse not found */
     }
 
     /* Update potentiation tracking */

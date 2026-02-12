@@ -804,9 +804,8 @@ int dragonfly_lock_target(dragonfly_system_t* system, uint32_t target_id) {
 
     target_entry_t* target = find_target(system, target_id);
     if (!target) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_lock_target: target not found");
         nimcp_mutex_unlock(system->mutex);
-        return -1;
+        return -1;  /* Target not found */
     }
 
     system->primary_target_id = target_id;

@@ -162,6 +162,7 @@ bg_outcome_deval_t* bgod_create(const bgod_config_t* config) {
 
     /* Create mutex */
     deval->mutex = nimcp_mutex_create(NULL);
+    if (!deval->mutex) goto cleanup;
 
     return deval;
 

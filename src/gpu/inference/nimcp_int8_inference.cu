@@ -918,10 +918,15 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_create(
         return NULL;
     }
 
-    // Calculate total elements and copy dims
+    // Calculate total elements and copy dims (with overflow check)
     tensor->numel = 1;
     for (size_t i = 0; i < rank; i++) {
         tensor->dims[i] = dims[i];
+        if (dims[i] != 0 && tensor->numel > SIZE_MAX / dims[i]) {
+            free(tensor->dims);
+            free(tensor);
+            return NULL;
+        }
         tensor->numel *= dims[i];
     }
 
@@ -955,8 +960,33 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_from_fp32(
     );
     if (!tensor) return NULL;
 
-    // Copy quantization params
+    // Copy quantization params (deep copy pointer fields)
     memcpy(&tensor->params, params, sizeof(nimcp_int8_quant_params_t));
+    tensor->params.channel_scales = NULL;
+    tensor->params.channel_zero_points = NULL;
+    tensor->params.group_scales = NULL;
+    tensor->params.group_zero_points = NULL;
+
+    if (params->channel_scales && params->num_channels > 0) {
+        tensor->params.channel_scales = (float*)malloc(params->num_channels * sizeof(float));
+        if (tensor->params.channel_scales)
+            memcpy(tensor->params.channel_scales, params->channel_scales, params->num_channels * sizeof(float));
+    }
+    if (params->channel_zero_points && params->num_channels > 0) {
+        tensor->params.channel_zero_points = (int32_t*)malloc(params->num_channels * sizeof(int32_t));
+        if (tensor->params.channel_zero_points)
+            memcpy(tensor->params.channel_zero_points, params->channel_zero_points, params->num_channels * sizeof(int32_t));
+    }
+    if (params->group_scales && params->num_groups > 0) {
+        tensor->params.group_scales = (float*)malloc(params->num_groups * sizeof(float));
+        if (tensor->params.group_scales)
+            memcpy(tensor->params.group_scales, params->group_scales, params->num_groups * sizeof(float));
+    }
+    if (params->group_zero_points && params->num_groups > 0) {
+        tensor->params.group_zero_points = (int32_t*)malloc(params->num_groups * sizeof(int32_t));
+        if (tensor->params.group_zero_points)
+            memcpy(tensor->params.group_zero_points, params->group_zero_points, params->num_groups * sizeof(int32_t));
+    }
 
     // Quantize
     int threads = 256;
@@ -1047,8 +1077,33 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_clone(const nimcp_int8_tensor_t* tensor) 
     cudaMemcpy(clone->data, tensor->data, tensor->numel * sizeof(int8_t),
                cudaMemcpyDeviceToDevice);
 
-    // Copy params
+    // Copy params (deep copy pointer fields to avoid double-free)
     memcpy(&clone->params, &tensor->params, sizeof(nimcp_int8_quant_params_t));
+    clone->params.channel_scales = NULL;
+    clone->params.channel_zero_points = NULL;
+    clone->params.group_scales = NULL;
+    clone->params.group_zero_points = NULL;
+
+    if (tensor->params.channel_scales && tensor->params.num_channels > 0) {
+        clone->params.channel_scales = (float*)malloc(tensor->params.num_channels * sizeof(float));
+        if (clone->params.channel_scales)
+            memcpy(clone->params.channel_scales, tensor->params.channel_scales, tensor->params.num_channels * sizeof(float));
+    }
+    if (tensor->params.channel_zero_points && tensor->params.num_channels > 0) {
+        clone->params.channel_zero_points = (int32_t*)malloc(tensor->params.num_channels * sizeof(int32_t));
+        if (clone->params.channel_zero_points)
+            memcpy(clone->params.channel_zero_points, tensor->params.channel_zero_points, tensor->params.num_channels * sizeof(int32_t));
+    }
+    if (tensor->params.group_scales && tensor->params.num_groups > 0) {
+        clone->params.group_scales = (float*)malloc(tensor->params.num_groups * sizeof(float));
+        if (clone->params.group_scales)
+            memcpy(clone->params.group_scales, tensor->params.group_scales, tensor->params.num_groups * sizeof(float));
+    }
+    if (tensor->params.group_zero_points && tensor->params.num_groups > 0) {
+        clone->params.group_zero_points = (int32_t*)malloc(tensor->params.num_groups * sizeof(int32_t));
+        if (clone->params.group_zero_points)
+            memcpy(clone->params.group_zero_points, tensor->params.group_zero_points, tensor->params.num_groups * sizeof(int32_t));
+    }
 
     return clone;
 }
@@ -1283,6 +1338,11 @@ int nimcp_int8_calibrator_compute_entropy(
 
         float* ref_dist = (float*)calloc(threshold_bin, sizeof(float));
         float* quant_dist = (float*)calloc(128, sizeof(float));
+        if (!ref_dist || !quant_dist) {
+            free(ref_dist);
+            free(quant_dist);
+            continue;
+        }
 
         // Normalize reference
         float ref_sum = 0;
@@ -1304,6 +1364,11 @@ int nimcp_int8_calibrator_compute_entropy(
 
         // Expand quantized distribution back
         float* expanded = (float*)calloc(threshold_bin, sizeof(float));
+        if (!expanded) {
+            free(ref_dist);
+            free(quant_dist);
+            continue;
+        }
         for (int i = 0; i < threshold_bin; i++) {
             int quant_bin = (int)(i / bin_ratio);
             if (quant_bin >= 128) quant_bin = 127;
@@ -1460,34 +1525,40 @@ int nimcp_int8_quantize_per_channel(
     if (params->granularity != INT8_GRANULARITY_CHANNEL) return -1;
     if (!params->channel_scales || !params->channel_zero_points) return -1;
 
+    bool success = false;
+    float* d_scales = NULL;
+    int32_t* d_zps = NULL;
+
     // Copy scales and zero_points to device
-    float* d_scales;
-    int32_t* d_zps;
-    CUDA_CHECK(cudaMalloc(&d_scales, C * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_zps, C * sizeof(int32_t)));
-    CUDA_CHECK(cudaMemcpy(d_scales, params->channel_scales, C * sizeof(float),
-                          cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_zps, params->channel_zero_points, C * sizeof(int32_t),
-                          cudaMemcpyHostToDevice));
+    if (cudaMalloc(&d_scales, C * sizeof(float)) != cudaSuccess) goto cleanup;
+    if (cudaMalloc(&d_zps, C * sizeof(int32_t)) != cudaSuccess) goto cleanup;
+    if (cudaMemcpy(d_scales, params->channel_scales, C * sizeof(float),
+                   cudaMemcpyHostToDevice) != cudaSuccess) goto cleanup;
+    if (cudaMemcpy(d_zps, params->channel_zero_points, C * sizeof(int32_t),
+                   cudaMemcpyHostToDevice) != cudaSuccess) goto cleanup;
 
-    size_t total = (size_t)N * C * HW;
-    int threads = 256;
-    int blocks = (total + threads - 1) / threads;
+    {
+        size_t total = (size_t)N * C * HW;
+        int threads = 256;
+        int blocks = (total + threads - 1) / threads;
 
-    kernel_quantize_int8_per_channel<<<blocks, threads, 0, ctx->compute_stream>>>(
-        input,
-        output,
-        d_scales,
-        d_zps,
-        N, C, HW
-    );
+        kernel_quantize_int8_per_channel<<<blocks, threads, 0, ctx->compute_stream>>>(
+            input,
+            output,
+            d_scales,
+            d_zps,
+            N, C, HW
+        );
 
-    cudaError_t err = cudaGetLastError();
-    cudaFree(d_scales);
-    cudaFree(d_zps);
+        if (cudaGetLastError() != cudaSuccess) goto cleanup;
+    }
 
-    if (err != cudaSuccess) return -1;
-    return 0;
+    success = true;
+
+cleanup:
+    if (d_scales) cudaFree(d_scales);
+    if (d_zps) cudaFree(d_zps);
+    return success ? 0 : -1;
 }
 
 int nimcp_int8_dequantize(
@@ -1543,33 +1614,39 @@ int nimcp_int8_dequantize_per_channel(
     if (params->granularity != INT8_GRANULARITY_CHANNEL) return -1;
     if (!params->channel_scales || !params->channel_zero_points) return -1;
 
-    float* d_scales;
-    int32_t* d_zps;
-    CUDA_CHECK(cudaMalloc(&d_scales, C * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_zps, C * sizeof(int32_t)));
-    CUDA_CHECK(cudaMemcpy(d_scales, params->channel_scales, C * sizeof(float),
-                          cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_zps, params->channel_zero_points, C * sizeof(int32_t),
-                          cudaMemcpyHostToDevice));
+    bool success = false;
+    float* d_scales = NULL;
+    int32_t* d_zps = NULL;
 
-    size_t total = (size_t)N * C * HW;
-    int threads = 256;
-    int blocks = (total + threads - 1) / threads;
+    if (cudaMalloc(&d_scales, C * sizeof(float)) != cudaSuccess) goto cleanup;
+    if (cudaMalloc(&d_zps, C * sizeof(int32_t)) != cudaSuccess) goto cleanup;
+    if (cudaMemcpy(d_scales, params->channel_scales, C * sizeof(float),
+                   cudaMemcpyHostToDevice) != cudaSuccess) goto cleanup;
+    if (cudaMemcpy(d_zps, params->channel_zero_points, C * sizeof(int32_t),
+                   cudaMemcpyHostToDevice) != cudaSuccess) goto cleanup;
 
-    kernel_dequantize_int8_per_channel<<<blocks, threads, 0, ctx->compute_stream>>>(
-        input,
-        output,
-        d_scales,
-        d_zps,
-        N, C, HW
-    );
+    {
+        size_t total = (size_t)N * C * HW;
+        int threads = 256;
+        int blocks = (total + threads - 1) / threads;
 
-    cudaError_t err = cudaGetLastError();
-    cudaFree(d_scales);
-    cudaFree(d_zps);
+        kernel_dequantize_int8_per_channel<<<blocks, threads, 0, ctx->compute_stream>>>(
+            input,
+            output,
+            d_scales,
+            d_zps,
+            N, C, HW
+        );
 
-    if (err != cudaSuccess) return -1;
-    return 0;
+        if (cudaGetLastError() != cudaSuccess) goto cleanup;
+    }
+
+    success = true;
+
+cleanup:
+    if (d_scales) cudaFree(d_scales);
+    if (d_zps) cudaFree(d_zps);
+    return success ? 0 : -1;
 }
 
 int nimcp_int8_fake_quantize(
@@ -1974,7 +2051,12 @@ int nimcp_int8_model_allocate_workspace(nimcp_int8_model_t* model, int max_batch
 
     // Allocate workspace (4x for intermediate results)
     model->workspace_size = max_size * 4 * sizeof(float);
-    CUDA_CHECK(cudaMalloc(&model->workspace, model->workspace_size));
+    model->workspace = NULL;
+    if (cudaMalloc(&model->workspace, model->workspace_size) != cudaSuccess) {
+        LOG_ERROR("Failed to allocate INT8 model workspace (%zu bytes)", model->workspace_size);
+        model->workspace_size = 0;
+        return -1;
+    }
 
     return 0;
 }
@@ -2023,7 +2105,7 @@ float nimcp_int8_compute_mse(
     if (!ctx || !original || !int8_data || !params || numel == 0) return -1.0f;
 
     float* d_mse;
-    cudaMalloc(&d_mse, sizeof(float));
+    if (cudaMalloc(&d_mse, sizeof(float)) != cudaSuccess) return -1.0f;
     cudaMemset(d_mse, 0, sizeof(float));
 
     int threads = 256;

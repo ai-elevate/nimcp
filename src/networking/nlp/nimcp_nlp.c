@@ -1889,7 +1889,6 @@ static void* nlp_recv_thread(void* arg) {
     }
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Receive thread stopped");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_recv_thread: operation failed");
     return NULL;
 }
 
@@ -1936,7 +1935,6 @@ static void* networking_nlp_heartbeat_thread(void* arg) {
     }
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Heartbeat thread stopped");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "networking_nlp_heartbeat_thread: operation failed");
     return NULL;
 }
 

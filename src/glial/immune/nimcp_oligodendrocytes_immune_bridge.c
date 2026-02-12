@@ -139,7 +139,7 @@ oligo_immune_bridge_t* oligo_immune_create(
     if (bridge_base_init(&bridge->base, 0, "oligodendrocytes_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oligo_immune_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "oligo_immune_create: bridge->base is NULL");
         return NULL;
     }
 

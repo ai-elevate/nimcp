@@ -149,7 +149,6 @@ static void compute_model_hash(
  */
 static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
     if (!h1 || !h2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_equals: required parameter is NULL (h1, h2)");
         return false;
     }
     return memcmp(h1, h2, SECURITY_TRAINING_HASH_SIZE) == 0;
@@ -163,7 +162,6 @@ static int find_data_source(
     const char* source_name)
 {
     if (!bridge || !source_name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_data_source: required parameter is NULL (bridge, source_name)");
         return -1;
     }
 

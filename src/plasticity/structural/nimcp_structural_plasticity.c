@@ -454,8 +454,7 @@ bool structural_plasticity_should_prune(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "structural_plasticity_should_prune: validation failed");
-    return false;
+    return false;  /* No pruning criteria met - normal behavior */
 }
 
 /* ============================================================================

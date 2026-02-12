@@ -54,9 +54,7 @@ bool nimcp_aes_available(void)
 {
     LOG_DEBUG("Entering nimcp_aes_available");
     // AES not yet implemented - using XOR fallback
-    LOG_ERROR("nimcp_aes_available failed: returning error");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_aes_available: operation failed");
-    return false;
+    return false;  /* Not available - normal query result */
 }
 
 //=============================================================================

@@ -133,8 +133,7 @@ static void init_articulators(language_motor_bridge_t* bridge)
 static bool queue_command(language_motor_bridge_t* bridge, const articulator_command_t* cmd)
 {
     if (bridge->queue_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_command: capacity exceeded");
-        return false;
+        return false;  /* Queue full - normal backpressure */
     }
 
     bridge->command_queue[bridge->queue_tail].command = *cmd;

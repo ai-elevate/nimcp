@@ -848,9 +848,12 @@ access_check_done:
         }
     }
 
-    /* Audit if configured */
-    if (bridge->config.enable_audit &&
-        (bridge->config.audit_all_access || !access_granted)) {
+    /* Audit if configured - capture decision under lock, call audit after unlock
+     * to avoid holding two locks (audit function acquires its own BRIDGE_LOCK) */
+    bool needs_audit = bridge->config.enable_audit &&
+                       (bridge->config.audit_all_access || !access_granted);
+
+    if (needs_audit) {
         BRIDGE_UNLOCK(bridge);
         security_memory_audit_access(bridge, subject_id, memory_type, operation,
                                      data_classification, access_granted, NULL);

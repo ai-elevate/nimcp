@@ -185,6 +185,7 @@ striatal_interneurons_t* sint_create(const sint_config_t* config) {
 
     /* Create mutex */
     sint->mutex = nimcp_mutex_create(NULL);
+    if (!sint->mutex) goto cleanup;
 
     return sint;
 

@@ -375,7 +375,7 @@ astro_sleep_bridge_t astro_sleep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for astrocyte-sleep bridge");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astro_sleep_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "astro_sleep_create: bridge->base is NULL");
         return NULL;
     }
 

@@ -203,29 +203,24 @@ static bool matches_query(const autobiographical_memory_entry_t* mem,
 {
     // Time range filter
     if (query->start_time_ms > 0 && mem->timestamp_ms < query->start_time_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
     if (query->end_time_ms > 0 && mem->timestamp_ms > query->end_time_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Type filter
     if (query->filter_by_type && mem->type != query->type_filter) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Valence filter
     if (query->filter_by_valence && mem->valence != query->valence_filter) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Importance filter
     if (query->filter_by_importance && mem->importance < query->min_importance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 

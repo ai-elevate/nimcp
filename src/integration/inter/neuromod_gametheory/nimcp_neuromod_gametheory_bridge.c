@@ -447,8 +447,7 @@ bool neuromod_gametheory_should_cooperate(neuromod_gametheory_bridge_t* bridge,
         return true;
     } else {
         bridge->stats.competitive_choices++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_gametheory_evaluate_offer: validation failed");
-        return false;
+        return false;  /* Non-cooperative choice - normal game theory outcome */
     }
 }
 

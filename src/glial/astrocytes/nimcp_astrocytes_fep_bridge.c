@@ -43,7 +43,7 @@ astrocytes_fep_bridge_t* astrocytes_fep_create(
 {
     if (!config || !astrocyte_network || !fep_system) {
         NIMCP_LOGGING_ERROR("astrocytes_fep_create: NULL parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astrocytes_fep_create: required parameter is NULL (config, astrocyte_network, fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocytes_fep_create: required parameter is NULL (config, astrocyte_network, fep_system)");
         return NULL;
     }
 

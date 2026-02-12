@@ -218,6 +218,7 @@ bg_model_based_t* bg_mb_create(const bg_mb_config_t* config) {
 
     /* Create mutex */
     mb->mutex = nimcp_mutex_create(NULL);
+    if (!mb->mutex) goto cleanup;
 
     /* Initialize thread-safe RNG seed */
     mb->rand_seed = mc_seed_from_time();

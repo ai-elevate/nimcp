@@ -497,14 +497,12 @@ int sec_hippo_fep_update(sec_hippo_fep_bridge_t* bridge, uint64_t delta_ms) {
     /* Suppress unused parameter warning */
     (void)delta_ms;
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Compute FEP effects on security */
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    /* Compute FEP effects on security (handles its own locking internally) */
     int result = sec_hippo_fep_compute_effects(bridge);
     if (result != 0) {
         return result;
     }
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Apply precision modulation if enabled */

@@ -395,6 +395,13 @@ void nlp_crypto_shutdown(nlp_node_t node)
     // Free crypto state
     nimcp_free(node->crypto);
     node->crypto = NULL;
+
+    // Reset bio-async registration so re-initialization works
+    if (g_crypto_bio_ctx) {
+        bio_router_unregister_module(g_crypto_bio_ctx);
+        g_crypto_bio_ctx = NULL;
+    }
+    g_crypto_bio_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
 }
 
 //=============================================================================

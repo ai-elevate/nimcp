@@ -276,7 +276,7 @@ portia_deception_t portia_deception_init(
         LOG_ERROR("Invalid default_emission_level: %.2f",
                   config->default_emission_level);
         deception_set_error("Invalid emission level (must be 0.0-1.0)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_deception_init: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_deception_init: operation failed");
         return NULL;
     }
 
@@ -288,7 +288,7 @@ portia_deception_t portia_deception_init(
     if (!deception) {
         LOG_ERROR("Failed to allocate deception system");
         deception_set_error("Memory allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deception is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deception is NULL");
 
         return NULL;
     }

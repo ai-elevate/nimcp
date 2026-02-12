@@ -867,8 +867,9 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_from_host(
     uint32_t ndim,
     nimcp_gpu_precision_t precision)
 {
+    if (!host_data) return NULL;
     nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, ndim, precision);
-    if (!tensor || !host_data) return tensor;
+    if (!tensor) return NULL;
 
     memcpy(tensor->data, host_data, tensor->numel * tensor->elem_size);
     return tensor;
@@ -1206,7 +1207,8 @@ bool nimcp_gpu_div(
     float* ov = (float*)out->data;
 
     for (size_t i = 0; i < out->numel; i++) {
-        ov[i] = av[i % a->numel] / bv[i % b->numel];
+        float divisor = bv[i % b->numel];
+        ov[i] = av[i % a->numel] / (divisor + ((divisor >= 0.0f) ? 1e-7f : -1e-7f));
     }
     return true;
 }
@@ -1546,7 +1548,7 @@ bool nimcp_gpu_log(
     float* ov = (float*)out->data;
 
     for (size_t i = 0; i < out->numel; i++) {
-        ov[i] = logf(xv[i]);
+        ov[i] = logf(fmaxf(xv[i], 1e-7f));
     }
     return true;
 }
@@ -1570,7 +1572,7 @@ bool nimcp_gpu_sqrt(
     float* ov = (float*)out->data;
 
     for (size_t i = 0; i < out->numel; i++) {
-        ov[i] = sqrtf(xv[i]);
+        ov[i] = sqrtf(fmaxf(xv[i], 0.0f));
     }
     return true;
 }

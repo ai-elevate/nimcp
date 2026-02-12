@@ -97,7 +97,7 @@ nucleus_accumbens_t* nac_create(const nac_config_t* config) {
     nac->dopamine = NAC_DA_BASELINE;
     nac->state = NAC_STATE_NEUTRAL;
     nac->mutex = nimcp_mutex_create(NULL);
-    if (!nac->core_activity || !nac->shell_activity) { nac_destroy(nac); return NULL; }
+    if (!nac->core_activity || !nac->shell_activity || !nac->mutex) { nac_destroy(nac); return NULL; }
     return nac;
 }
 

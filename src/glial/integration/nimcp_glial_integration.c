@@ -700,9 +700,12 @@ float glial_integration_get_myelination_factor(glial_integration_t* gi, uint32_t
 
 bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pre_neuron_id,
                                             uint32_t post_neuron_id) {
-    if (!gi || !gi->enable_microglia_pruning) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_should_prune_synapse: required parameter is NULL (gi, gi->enable_microglia_pruning)");
+    if (!gi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_should_prune_synapse: gi is NULL");
         return false;
+    }
+    if (!gi->enable_microglia_pruning) {
+        return false;  /* Pruning disabled - normal config */
     }
 
     uint32_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
@@ -730,8 +733,7 @@ bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pr
     }
 
     nimcp_mutex_unlock(&gi->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_integration_should_prune_synapse: operation failed");
-    return false;
+    return false;  /* No microglia found for synapse - normal search miss */
 }
 
 // ============================================================================

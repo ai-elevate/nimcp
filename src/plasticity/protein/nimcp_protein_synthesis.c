@@ -71,11 +71,7 @@ static int find_tag_index(
     uint32_t synapse_id
 ) {
     if (!system) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
-
         return -1;
-
     }
 
     for (uint32_t i = 0; i < system->num_tags; i++) {
@@ -604,7 +600,6 @@ bool protein_synthesis_can_consolidate(
     uint32_t synapse_id
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_can_consolidate: system is NULL");
         return false;
     }
 

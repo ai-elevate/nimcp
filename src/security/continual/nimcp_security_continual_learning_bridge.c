@@ -144,7 +144,6 @@ static void compute_buffer_hash(
  */
 static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
     if (!h1 || !h2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_equals: required parameter is NULL (h1, h2)");
         return false;
     }
     return memcmp(h1, h2, SECURITY_CL_HASH_SIZE) == 0;
@@ -155,11 +154,7 @@ static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
  */
 static int find_task(const security_cl_bridge_t* bridge, uint32_t task_id) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
     for (uint32_t i = 0; i < bridge->num_tasks; i++) {
         if (bridge->tasks[i].task_id == task_id) {
@@ -178,11 +173,7 @@ static int find_replay_buffer(
     uint32_t buffer_id)
 {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return -1;
-
     }
     for (uint32_t i = 0; i < bridge->num_replay_buffers; i++) {
         if (bridge->replay_buffers[i].buffer_id == buffer_id) {
@@ -282,7 +273,7 @@ security_cl_bridge_t* security_cl_bridge_create(
     security_cl_bridge_t* bridge = nimcp_malloc(alloc_size);
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-CL bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_cl_bridge_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -292,7 +283,7 @@ security_cl_bridge_t* security_cl_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY,
                          SECURITY_CL_MODULE_NAME) != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_bridge_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_cl_bridge_create: bridge_base_init failed");
         return NULL;
     }
 

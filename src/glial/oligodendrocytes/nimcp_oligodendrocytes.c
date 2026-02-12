@@ -643,7 +643,7 @@ oligodendrocyte_t* oligodendrocyte_create(uint32_t id, float x, float y, float z
     oligodendrocyte_t* oligo = (oligodendrocyte_t*)nimcp_malloc(sizeof(oligodendrocyte_t));
     if (!oligo) {
         LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to allocate oligodendrocyte structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_internodes: oligo is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_internodes: oligo is NULL");
         return NULL;
     }
 
@@ -817,7 +817,7 @@ oligodendrocyte_network_config_t oligodendrocyte_network_default_config(void) {
 oligodendrocyte_network_t* oligodendrocyte_network_create_enhanced(
     const oligodendrocyte_network_config_t* config) {
     if (!config || config->capacity == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oligodendrocyte_network_default_config: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligodendrocyte_network_default_config: config is NULL");
         return NULL;
     }
 
@@ -2179,7 +2179,6 @@ myelinated_axon_t* oligo_axon_pool_alloc(oligo_axon_pool_t* pool) {
     }
 
     nimcp_spinlock_unlock(&pool->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_axon_pool_alloc: operation failed");
     return NULL; // Pool exhausted
 }
 
@@ -2309,7 +2308,6 @@ internode_segment_t* oligo_internode_pool_alloc(oligo_internode_pool_t* pool) {
     }
 
     nimcp_spinlock_unlock(&pool->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_internode_pool_alloc: operation failed");
     return NULL; // Pool exhausted
 }
 

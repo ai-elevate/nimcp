@@ -407,7 +407,6 @@ int plasticity_coordinator_unregister_mechanism(
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(coordinator->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Mechanism %u not found", mechanism_id);
         NIMCP_LOGGING_WARN("Mechanism %u not found", mechanism_id);
         return -1;
     }

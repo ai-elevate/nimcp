@@ -830,7 +830,7 @@ __global__ void kernel_optical_flow_lk(
 
     // Confidence based on eigenvalues of structure tensor
     float trace = sum_Ix2 + sum_Iy2;
-    float lambda_min = 0.5f * (trace - sqrtf(trace * trace - 4.0f * det));
+    float lambda_min = 0.5f * (trace - sqrtf(fmaxf(0.0f, trace * trace - 4.0f * det)));
     float conf = fminf(1.0f, lambda_min / 100.0f);
 
     flow_u[y * width + x] = u;
@@ -1557,33 +1557,46 @@ bool dfv_gpu_compute_ttc(
         nimcp_gpu_recovery_init(NULL);
     }
 
+    bool success = false;
+    float* dummy_flow = NULL;
+
     uint32_t height = (uint32_t)depth_map->dims[0];
     uint32_t width = (uint32_t)depth_map->dims[1];
-
-    dim3 block(BLOCK_SIZE_2D, BLOCK_SIZE_2D);
-    dim3 grid(GRID_SIZE_2D(width), GRID_SIZE_2D(height));
 
     // Need flow_u and flow_v from optical_flow tensor
     // Assuming optical_flow is [H, W, 2] or we get them separately
     // For now, use zeros
     size_t zeros_size = width * height * sizeof(float);
-    float* dummy_flow;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&dummy_flow, zeros_size), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemset(dummy_flow, 0, zeros_size), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&dummy_flow, zeros_size) != cudaSuccess) {
+        goto cleanup;
+    }
+    if (cudaMemset(dummy_flow, 0, zeros_size) != cudaSuccess) {
+        goto cleanup;
+    }
 
-    kernel_compute_ttc<<<grid, block>>>(
-        (const float*)depth_map->data,
-        dummy_flow,  // flow_u
-        dummy_flow,  // flow_v
-        (float*)state->ttc_map->data,
-        (float*)state->obstacle_mask->data,
-        state->min_ttc_threshold,
-        width, height);
+    {
+        dim3 block(BLOCK_SIZE_2D, BLOCK_SIZE_2D);
+        dim3 grid(GRID_SIZE_2D(width), GRID_SIZE_2D(height));
 
-    NIMCP_CUDA_RECOVER(cudaFree(dummy_flow), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+        kernel_compute_ttc<<<grid, block>>>(
+            (const float*)depth_map->data,
+            dummy_flow,  // flow_u
+            dummy_flow,  // flow_v
+            (float*)state->ttc_map->data,
+            (float*)state->obstacle_mask->data,
+            state->min_ttc_threshold,
+            width, height);
 
-    return true;
+        if (cudaGetLastError() != cudaSuccess) {
+            goto cleanup;
+        }
+    }
+
+    success = true;
+
+cleanup:
+    if (dummy_flow) cudaFree(dummy_flow);
+    return success;
 }
 
 /**
@@ -1947,12 +1960,12 @@ bool dfv_gpu_get_primary_target(
     float h_state[DFV_MAX_TARGETS * 6];
     float h_confidence[DFV_MAX_TARGETS];
 
-    cudaMemcpy(h_priority, ctx->targets->priority->data,
-               ctx->targets->n_targets * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_state, ctx->targets->state->data,
-               ctx->targets->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_confidence, ctx->targets->confidence->data,
-               ctx->targets->n_targets * sizeof(float), cudaMemcpyDeviceToHost);
+    if (cudaMemcpy(h_priority, ctx->targets->priority->data,
+               ctx->targets->n_targets * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) return false;
+    if (cudaMemcpy(h_state, ctx->targets->state->data,
+               ctx->targets->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) return false;
+    if (cudaMemcpy(h_confidence, ctx->targets->confidence->data,
+               ctx->targets->n_targets * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess) return false;
 
     float max_priority = -FLT_MAX;
     int best_idx = 0;
@@ -2103,6 +2116,7 @@ bool dfv_gpu_data_association(
     if (n_detections == 0 || state->n_targets == 0) {
         // All detections are new tracks
         int* h_assoc = (int*)malloc(n_detections * sizeof(int));
+        if (!h_assoc) return false;
         for (uint32_t i = 0; i < n_detections; i++) {
             h_assoc[i] = -1;
         }
@@ -2131,6 +2145,12 @@ bool dfv_gpu_data_association(
     // State is [n, 6], we want [n, 3]
     float* h_state = (float*)malloc(state->n_targets * 6 * sizeof(float));
     float* h_pred = (float*)malloc(state->n_targets * 3 * sizeof(float));
+    if (!h_state || !h_pred) {
+        free(h_state); free(h_pred);
+        nimcp_gpu_tensor_destroy(predictions);
+        nimcp_gpu_tensor_destroy(cost_matrix);
+        return false;
+    }
 
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_state, state->state->data,
                           state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
@@ -2197,16 +2217,19 @@ bool dfv_gpu_track_management(
 
     // Read association results
     int* h_assoc = (int*)malloc(n_detections * sizeof(int));
+    if (!h_assoc) return false;
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_assoc, association->data,
                           n_detections * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Read detections
     float* h_dets = (float*)malloc(n_detections * 3 * sizeof(float));
+    if (!h_dets) { free(h_assoc); return false; }
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_dets, detections->data,
                           n_detections * 3 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Read current state
     float* h_state = (float*)malloc(state->max_targets * 6 * sizeof(float));
+    if (!h_state) { free(h_assoc); free(h_dets); return false; }
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_state, state->state->data,
                           state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
@@ -2263,12 +2286,14 @@ bool dfv_gpu_detect_targets(
 
     // Copy detection map to host for analysis
     float* h_detection = (float*)malloc(width * height * sizeof(float));
+    if (!h_detection) return false;
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_detection, ctx->stmd->detection_map->data,
                           width * height * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Find local maxima in detection map
     float* h_dets = (float*)malloc(DFV_MAX_TARGETS * 3 * sizeof(float));
     float* h_scores = (float*)malloc(DFV_MAX_TARGETS * sizeof(float));
+    if (!h_dets || !h_scores) { free(h_detection); free(h_dets); free(h_scores); return false; }
     uint32_t det_count = 0;
 
     float threshold = 0.5f;

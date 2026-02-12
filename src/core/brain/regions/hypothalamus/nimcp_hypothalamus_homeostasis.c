@@ -340,9 +340,11 @@ hypo_homeostasis_handle_t* hypo_homeostasis_create(
     /* Create mutex */
     mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_RECURSIVE};
     system->mutex = nimcp_mutex_create(&mutex_attr);
-    if (system->mutex) {
-        system->mutex_owned = true;
+    if (!system->mutex) {
+        nimcp_free(system);
+        return NULL;
     }
+    system->mutex_owned = true;
 
     /* Initialize all homeostatic variables */
     for (int i = 0; i < HYPO_VAR_COUNT; i++) {

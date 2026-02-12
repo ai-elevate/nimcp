@@ -194,7 +194,7 @@ microglia_immune_bridge_t* microglia_immune_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("microglia_immune_bridge_create: mutex creation failed");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_immune_bridge_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "microglia_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 

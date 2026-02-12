@@ -630,7 +630,6 @@ bool axon_spike_arrived(axon_t* axon, uint64_t current_time)
         return false;
     }
     if (axon->state != AXON_STATE_ACTIVE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_arrived: validation failed");
         return false;
     }
 
@@ -1049,7 +1048,6 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
     // Check if queue is empty
     if (queue->count == 0) {
         nimcp_mutex_unlock(&queue->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_queue_pop: queue->count is zero");
         return false;
     }
 
@@ -1059,7 +1057,6 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
     // HOW:  Compare root arrival_time with current_time
     if (queue->events[0].arrival_time > current_time) {
         nimcp_mutex_unlock(&queue->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_queue_pop: validation failed");
         return false;
     }
 
@@ -1874,12 +1871,15 @@ void axon_cow_release(axon_t* axon)
         nimcp_mutex_unlock(&axon->cow_original->lock);
     }
 
+    // Check if we should free this CoW copy while still holding the lock
+    bool should_free = (axon->cow_ref_count == 0 && axon->cow_original);
+    bool is_modified = axon->cow_modified;
     nimcp_mutex_unlock(&axon->lock);
 
-    // If reference count is 0 and this is a CoW copy, free
-    if (axon->cow_ref_count == 0 && axon->cow_original) {
+    // Free outside lock to avoid holding lock during deallocation
+    if (should_free) {
         // Only free segments if we own them (modified)
-        if (axon->cow_modified && axon->segments) {
+        if (is_modified && axon->segments) {
             nimcp_free(axon->segments);
         }
         if (axon->segment_pool) {

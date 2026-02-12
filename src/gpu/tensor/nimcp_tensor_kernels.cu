@@ -122,6 +122,16 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
         return NULL;
     }
 
+    // Check for overflow before computing strides
+    size_t safe_numel = compute_numel(dims, ndim);
+    if (safe_numel == 0 && ndim > 0) {
+        LOG_ERROR("Dimension overflow in tensor creation");
+        free(tensor->dims);
+        free(tensor->strides);
+        free(tensor);
+        return NULL;
+    }
+
     // Copy dimensions and compute strides (row-major)
     tensor->numel = 1;
     for (int i = ndim - 1; i >= 0; i--) {
@@ -202,7 +212,10 @@ bool nimcp_gpu_tensor_to_host(const nimcp_gpu_tensor_t* tensor, void* host_data)
     }
 
     size_t data_size = tensor->numel * tensor->elem_size;
-    NIMCP_CUDA_RECOVER(cudaMemcpy(host_data, tensor->data, data_size, cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMemcpy(host_data, tensor->data, data_size, cudaMemcpyDeviceToHost) != cudaSuccess) {
+        LOG_ERROR("Failed to copy tensor data to host");
+        return false;
+    }
     return true;
 }
 
@@ -1930,7 +1943,7 @@ bool nimcp_gpu_transpose(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, 
         CUBLAS_OP_T, CUBLAS_OP_N,
         rows, cols,
         &alpha, (const float*)x->data, cols,
-        &beta, NULL, rows,
+        &beta, (const float*)out->data, rows,
         (float*)out->data, rows));
 
     return true;

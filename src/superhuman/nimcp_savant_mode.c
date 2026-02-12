@@ -136,12 +136,10 @@ static uint64_t compute_pattern_hash(const float* data, uint32_t length) {
  */
 bool savant_is_leap_year(int32_t year) {
     if (year % 4 != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "savant_is_leap_year: validation failed");
         return false;
     }
     if (year % 100 != 0) return true;
     if (year % 400 != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "savant_is_leap_year: validation failed");
         return false;
     }
     return true;

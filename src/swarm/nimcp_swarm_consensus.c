@@ -1041,7 +1041,6 @@ static bool is_byzantine_fault(
 {
     /* Need at least 3 votes for statistical analysis */
     if (vote->vote_count < 3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_byzantine_fault: validation failed");
         return false;
     }
 
@@ -1082,7 +1081,6 @@ static bool is_byzantine_fault(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_byzantine_fault: validation failed");
     return false;
 }
 

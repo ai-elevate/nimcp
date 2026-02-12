@@ -670,14 +670,14 @@ microglia_network_t* microglia_network_create_enhanced(
     const microglia_network_config_t* config)
 {
     if (!config || config->capacity == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_network_create_enhanced: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_network_create_enhanced: config is NULL");
         return NULL;
     }
 
     microglia_network_t* network = (microglia_network_t*)nimcp_malloc(
         sizeof(microglia_network_t));
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network is NULL");
 
         return NULL;
     }
@@ -1839,7 +1839,6 @@ monitored_synapse_t* microglia_synapse_pool_alloc(microglia_synapse_pool_t* pool
     }
 
     nimcp_spinlock_unlock(&pool->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_synapse_pool_alloc: operation failed");
     return NULL;  // Pool exhausted
 }
 

@@ -185,6 +185,10 @@ superior_colliculus_t* sc_create(const sc_config_t* config) {
 
     /* Create mutex */
     sc->mutex = nimcp_mutex_create(NULL);
+    if (!sc->mutex) {
+        sc_destroy(sc);
+        return NULL;
+    }
 
     return sc;
 }

@@ -172,7 +172,6 @@ myelin_sheath_t* myelin_sheath_pool_alloc(myelin_sheath_pool_t* pool)
     }
 
     nimcp_spinlock_unlock(&pool->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_sheath_pool_alloc: operation failed");
     return NULL;  // Pool exhausted
 }
 
@@ -287,8 +286,7 @@ myelin_segment_t* myelin_segment_pool_alloc(myelin_segment_pool_t* pool)
     }
 
     nimcp_spinlock_unlock(&pool->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_segment_pool_alloc: operation failed");
-    return NULL;
+    return NULL;  // Pool exhausted
 }
 
 void myelin_segment_pool_free(myelin_segment_pool_t* pool, myelin_segment_t* segment)

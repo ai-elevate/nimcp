@@ -222,8 +222,7 @@ static bool should_trigger_correction(language_cingulate_bridge_t* bridge,
                                        const speech_error_event_t* error)
 {
     if (!bridge->config.enable_self_correction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_trigger_correction: bridge->config is NULL");
-        return false;
+        return false;  /* Self-correction disabled - normal config */
     }
 
     /* Trigger correction if error severity exceeds threshold */

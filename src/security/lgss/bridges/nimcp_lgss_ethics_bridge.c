@@ -442,10 +442,7 @@ int lgss_ethics_bridge_set_lgss_enabled(
 
 bool lgss_ethics_bridge_is_lgss_enabled(const lgss_ethics_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_ethics_bridge_is_lgss_enabled: bridge is NULL");
-        return false;
-    }
+    if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) { return false; }
     return bridge->lgss_enabled;
 }
 
@@ -466,10 +463,7 @@ int lgss_ethics_bridge_set_ethics_enabled(
 
 bool lgss_ethics_bridge_is_ethics_enabled(const lgss_ethics_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_ethics_bridge_is_ethics_enabled: bridge is NULL");
-        return false;
-    }
+    if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) { return false; }
     return bridge->ethics_enabled;
 }
 

@@ -442,8 +442,7 @@ static bool validation_cache_lookup(const char* input, nimcp_input_validation_t*
     }
 
     validation_cache.misses++;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validation_cache_lookup: validation failed");
-    return false;
+    return false;  /* Cache miss is normal - input needs full validation */
 }
 
 /**
@@ -738,8 +737,7 @@ static bool ac_search(const char* text)
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ac_search: validation failed");
-    return false;  // No patterns found
+    return false;  /* No injection patterns found - input is clean */
 }
 
 /**
@@ -776,8 +774,7 @@ static bool contains_pattern(const char* text, const char* pattern)
         text_pos++;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_pattern: validation failed");
-    return false;
+    return false;  /* Pattern not found in text */
 }
 
 //=============================================================================
@@ -989,7 +986,7 @@ nimcp_result_t nimcp_directive_lock(nimcp_directive_system_t* system)
 bool nimcp_directive_verify(nimcp_directive_system_t* system, uint32_t directive_index)
 {
     if (!system || directive_index >= system->num_directives) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_verify: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_verify: invalid system or directive_index out of range");
         return false;
     }
 
@@ -1050,7 +1047,7 @@ bool nimcp_directive_verify_all(nimcp_directive_system_t* system)
      */
     for (uint32_t i = 0; i < system->num_directives; i++) {
         if (!nimcp_directive_verify(system, i)) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_directive_verify_all: nimcp_directive_verify is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_directive_verify_all: directive integrity check failed");
             return false;
         }
     }
@@ -1074,7 +1071,7 @@ bool nimcp_directive_verify_all(nimcp_directive_system_t* system)
 const char* nimcp_directive_get(nimcp_directive_system_t* system, uint32_t directive_index)
 {
     if (!system || directive_index >= system->num_directives) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_get: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_get: invalid system or directive_index out of range");
         return NULL;
     }
 
@@ -1083,7 +1080,7 @@ const char* nimcp_directive_get(nimcp_directive_system_t* system, uint32_t direc
      *       If verification fails, returns NULL to prevent use.
      */
     if (!nimcp_directive_verify(system, directive_index)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_get: nimcp_directive_verify is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_get: directive integrity verification failed");
         return NULL;
     }
 

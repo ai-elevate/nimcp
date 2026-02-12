@@ -482,7 +482,6 @@ bool synesthesia_get_grapheme_color(
 
     if (module->inhibited) {
         module->stats.inhibited_activations++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_grapheme_color: validation failed");
         return false;
     }
 
@@ -503,7 +502,6 @@ bool synesthesia_get_grapheme_color(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_grapheme_color: validation failed");
     return false;
 }
 
@@ -636,7 +634,6 @@ bool synesthesia_get_sound_shape(
 
     if (module->inhibited) {
         module->stats.inhibited_activations++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_sound_shape: validation failed");
         return false;
     }
 
@@ -667,7 +664,6 @@ bool synesthesia_get_sound_shape(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_sound_shape: validation failed");
     return false;
 }
 
@@ -756,7 +752,6 @@ bool synesthesia_get_taste_touch(
 
     if (module->inhibited) {
         module->stats.inhibited_activations++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_taste_touch: validation failed");
         return false;
     }
 
@@ -777,7 +772,6 @@ bool synesthesia_get_taste_touch(
         synesthesia_free_experience(&experience);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_taste_touch: validation failed");
     return false;
 }
 
@@ -925,8 +919,6 @@ bool synesthesia_trigger_experience(
     }
 
     if (module->inhibited) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
-                              "synesthesia_trigger_experience: Module is inhibited");
         set_error(module, SYNESTHESIA_ERROR_INHIBITION_ACTIVE);
         module->stats.inhibited_activations++;
         return false;
@@ -1084,7 +1076,6 @@ bool synesthesia_get_association(
         entry = entry->hash_next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_association: operation failed");
     return false;
 }
 
@@ -1126,7 +1117,6 @@ bool synesthesia_update_strength(
     }
 
     set_error(module, SYNESTHESIA_ERROR_ASSOCIATION_NOT_FOUND);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_update_strength: operation failed");
     return false;
 }
 
@@ -1163,7 +1153,6 @@ bool synesthesia_remove_association(
     }
 
     set_error(module, SYNESTHESIA_ERROR_ASSOCIATION_NOT_FOUND);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_remove_association: operation failed");
     return false;
 }
 

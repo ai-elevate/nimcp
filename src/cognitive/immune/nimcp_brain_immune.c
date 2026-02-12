@@ -323,8 +323,7 @@ static brain_inflammation_site_t* find_inflammation_by_id(brain_immune_system_t*
             return &system->inflammation_sites[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_inflammation_by_id: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 /**

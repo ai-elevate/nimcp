@@ -625,7 +625,7 @@ __global__ void kernel_compute_drawdown_series(
             }
         }
         if (peak) peak[i] = max_so_far;
-        drawdown[i] = (prices[i] - max_so_far) / max_so_far;  // Negative if below peak
+        drawdown[i] = (max_so_far > 1e-10f) ? (prices[i] - max_so_far) / max_so_far : 0.0f;  // Negative if below peak
     }
 }
 
@@ -1101,6 +1101,8 @@ bool fin_risk_gpu_compute(
             err = cudaMalloc(&d_returns, n * sizeof(float));
         }
         if (err != cudaSuccess) {
+            cudaEventDestroy(start_event);
+            cudaEventDestroy(end_event);
             set_risk_error("Failed to allocate returns");
             NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate returns");
             return false;
@@ -1114,6 +1116,8 @@ bool fin_risk_gpu_compute(
             err = cudaMalloc(&d_sorted, n * sizeof(float));
         }
         if (err != cudaSuccess) {
+            cudaEventDestroy(start_event);
+            cudaEventDestroy(end_event);
             cudaFree(d_returns);
             set_risk_error("Failed to allocate sorted array");
             NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate sorted array");
@@ -1128,6 +1132,8 @@ bool fin_risk_gpu_compute(
             err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
         }
         if (err != cudaSuccess) {
+            cudaEventDestroy(start_event);
+            cudaEventDestroy(end_event);
             cudaFree(d_returns);
             cudaFree(d_sorted);
             set_risk_error("Failed to allocate partial sums");
@@ -1145,6 +1151,15 @@ bool fin_risk_gpu_compute(
         d_returns, d_partial, n);
 
     float* h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    if (!h_partial) {
+        cudaEventDestroy(start_event);
+        cudaEventDestroy(end_event);
+        cudaFree(d_returns);
+        cudaFree(d_sorted);
+        cudaFree(d_partial);
+        set_risk_error("Failed to allocate h_partial");
+        return false;
+    }
     cudaMemcpy(h_partial, d_partial, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
 
     float sum = 0.0f;
@@ -1180,7 +1195,16 @@ bool fin_risk_gpu_compute(
 
     // Compute CVaR (average of worst returns)
     float* d_cvar = NULL;
-    cudaMalloc(&d_cvar, sizeof(float));
+    if (cudaMalloc(&d_cvar, sizeof(float)) != cudaSuccess) {
+        free(h_partial);
+        cudaEventDestroy(start_event);
+        cudaEventDestroy(end_event);
+        cudaFree(d_returns);
+        cudaFree(d_sorted);
+        cudaFree(d_partial);
+        set_risk_error("Failed to allocate d_cvar");
+        return false;
+    }
 
     kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
         d_sorted, d_cvar, n, params->confidence_level);
@@ -1258,23 +1282,30 @@ bool fin_risk_gpu_compute(
 
     // Compute Sortino ratio (downside deviation)
     float* h_returns = (float*)malloc(n * sizeof(float));
-    cudaMemcpy(h_returns, d_returns, n * sizeof(float), cudaMemcpyDeviceToHost);
+    if (!h_returns) {
+        // Fall back to using std_dev for downside deviation
+        result->downside_deviation = std_dev;
+        result->sortino_ratio = (std_dev > 1e-10f) ?
+            (excess_mean / std_dev) * sqrtf(252.0f) : 0.0f;
+    } else {
+        cudaMemcpy(h_returns, d_returns, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    float downside_sum = 0.0f;
-    uint32_t downside_count = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        if (h_returns[i] < daily_rf) {
-            float diff = h_returns[i] - daily_rf;
-            downside_sum += diff * diff;
-            downside_count++;
+        float downside_sum = 0.0f;
+        uint32_t downside_count = 0;
+        for (uint32_t i = 0; i < n; i++) {
+            if (h_returns[i] < daily_rf) {
+                float diff = h_returns[i] - daily_rf;
+                downside_sum += diff * diff;
+                downside_count++;
+            }
         }
-    }
-    float downside_dev = (downside_count > 0) ? sqrtf(downside_sum / downside_count) : std_dev;
-    result->downside_deviation = downside_dev;
-    result->sortino_ratio = (downside_dev > 1e-10f) ?
-        (excess_mean / downside_dev) * sqrtf(252.0f) : 0.0f;
+        float downside_dev = (downside_count > 0) ? sqrtf(downside_sum / downside_count) : std_dev;
+        result->downside_deviation = downside_dev;
+        result->sortino_ratio = (downside_dev > 1e-10f) ?
+            (excess_mean / downside_dev) * sqrtf(252.0f) : 0.0f;
 
-    free(h_returns);
+        free(h_returns);
+    }
 
     // Record timing
     cudaEventRecord(end_event, stream);
@@ -1356,6 +1387,10 @@ bool fin_risk_gpu_volatility(
                 d_returns, d_partial, ret_n);
 
             float* h_partial = (float*)malloc(ret_reduce * sizeof(float));
+            if (!h_partial) {
+                set_risk_error("Failed to allocate h_partial");
+                goto cleanup_vol;
+            }
             cudaMemcpy(h_partial, d_partial, ret_reduce * sizeof(float), cudaMemcpyDeviceToHost);
 
             float sum = 0.0f;
@@ -1377,7 +1412,10 @@ bool fin_risk_gpu_volatility(
 
         case FIN_VOL_EWMA: {
             float* d_var_out = NULL;
-            cudaMalloc(&d_var_out, sizeof(float));
+            if (cudaMalloc(&d_var_out, sizeof(float)) != cudaSuccess) {
+                set_risk_error("Failed to allocate d_var_out");
+                goto cleanup_vol;
+            }
 
             float lambda = 0.94f;  // RiskMetrics default
             float init_var = 0.0004f;  // Initial variance guess (2% daily vol)
@@ -1508,9 +1546,16 @@ bool fin_risk_gpu_volatility_ohlc(
             float* d_oc = NULL;
             float* d_rs = NULL;
 
-            cudaMalloc(&d_overnight, reduce_blocks * sizeof(float));
-            cudaMalloc(&d_oc, reduce_blocks * sizeof(float));
-            cudaMalloc(&d_rs, reduce_blocks * sizeof(float));
+            if (cudaMalloc(&d_overnight, reduce_blocks * sizeof(float)) != cudaSuccess ||
+                cudaMalloc(&d_oc, reduce_blocks * sizeof(float)) != cudaSuccess ||
+                cudaMalloc(&d_rs, reduce_blocks * sizeof(float)) != cudaSuccess) {
+                cudaFree(d_overnight);
+                cudaFree(d_oc);
+                cudaFree(d_rs);
+                set_risk_error("Failed to allocate Yang-Zhang GPU buffers");
+                free(h_partial);
+                goto cleanup_ohlc;
+            }
 
             kernel_yang_zhang_components<<<reduce_blocks, block_size,
                                            3 * block_size * sizeof(float), stream>>>(
@@ -1519,6 +1564,18 @@ bool fin_risk_gpu_volatility_ohlc(
             float* h_overnight = (float*)malloc(reduce_blocks * sizeof(float));
             float* h_oc = (float*)malloc(reduce_blocks * sizeof(float));
             float* h_rs = (float*)malloc(reduce_blocks * sizeof(float));
+
+            if (!h_overnight || !h_oc || !h_rs) {
+                free(h_overnight);
+                free(h_oc);
+                free(h_rs);
+                cudaFree(d_overnight);
+                cudaFree(d_oc);
+                cudaFree(d_rs);
+                set_risk_error("Failed to allocate Yang-Zhang host buffers");
+                free(h_partial);
+                goto cleanup_ohlc;
+            }
 
             cudaMemcpy(h_overnight, d_overnight, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
             cudaMemcpy(h_oc, d_oc, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
@@ -1688,12 +1745,24 @@ bool fin_risk_gpu_rolling(
     // Allocate output arrays if needed
     if (params->compute_var && !result->var_series) {
         result->var_series = (float*)malloc(num_points * sizeof(float));
+        if (!result->var_series) {
+            set_risk_error("Failed to allocate var_series");
+            return false;
+        }
     }
     if (params->compute_cvar && !result->cvar_series) {
         result->cvar_series = (float*)malloc(num_points * sizeof(float));
+        if (!result->cvar_series) {
+            set_risk_error("Failed to allocate cvar_series");
+            return false;
+        }
     }
     if (params->compute_volatility && !result->vol_series) {
         result->vol_series = (float*)malloc(num_points * sizeof(float));
+        if (!result->vol_series) {
+            set_risk_error("Failed to allocate vol_series");
+            return false;
+        }
     }
 
     // Use internal helper for volatility
@@ -1929,36 +1998,41 @@ bool fin_risk_gpu_extended(
 
     // CVaR computation
     float* d_cvar = NULL;
-    cudaMalloc(&d_cvar, sizeof(float));
+    if (cudaMalloc(&d_cvar, sizeof(float)) != cudaSuccess) {
+        result->base.cvar_95 = result->base.var_95;
+        result->base.cvar_99 = result->base.var_99;
+    } else {
+        kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
+            d_sorted, d_cvar, n, 0.95f);
+        float h_cvar_95;
+        cudaMemcpy(&h_cvar_95, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
+        result->base.cvar_95 = -h_cvar_95;
 
-    kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
-        d_sorted, d_cvar, n, 0.95f);
-    float h_cvar_95;
-    cudaMemcpy(&h_cvar_95, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
-    result->base.cvar_95 = -h_cvar_95;
+        kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
+            d_sorted, d_cvar, n, 0.99f);
+        float h_cvar_99;
+        cudaMemcpy(&h_cvar_99, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
+        result->base.cvar_99 = -h_cvar_99;
 
-    kernel_compute_cvar<<<1, block_size, block_size * sizeof(float), stream>>>(
-        d_sorted, d_cvar, n, 0.99f);
-    float h_cvar_99;
-    cudaMemcpy(&h_cvar_99, d_cvar, sizeof(float), cudaMemcpyDeviceToHost);
-    result->base.cvar_99 = -h_cvar_99;
-
-    cudaFree(d_cvar);
+        cudaFree(d_cvar);
+    }
 
     // EWMA volatility
     if (params->vol_method == FIN_VOL_EWMA) {
         float* d_var_out = NULL;
-        cudaMalloc(&d_var_out, sizeof(float));
+        if (cudaMalloc(&d_var_out, sizeof(float)) != cudaSuccess) {
+            result->vol_ewma = std_dev;
+        } else {
+            float init_var = variance;  // Use sample variance as initial
+            kernel_ewma_volatility<<<1, 1, 0, stream>>>(
+                d_returns, d_var_out, params->ewma_lambda, init_var, n);
 
-        float init_var = variance;  // Use sample variance as initial
-        kernel_ewma_volatility<<<1, 1, 0, stream>>>(
-            d_returns, d_var_out, params->ewma_lambda, init_var, n);
+            float h_ewma_var;
+            cudaMemcpy(&h_ewma_var, d_var_out, sizeof(float), cudaMemcpyDeviceToHost);
+            result->vol_ewma = sqrtf(h_ewma_var);
 
-        float h_ewma_var;
-        cudaMemcpy(&h_ewma_var, d_var_out, sizeof(float), cudaMemcpyDeviceToHost);
-        result->vol_ewma = sqrtf(h_ewma_var);
-
-        cudaFree(d_var_out);
+            cudaFree(d_var_out);
+        }
     } else {
         result->vol_ewma = std_dev;
     }
@@ -1972,22 +2046,29 @@ bool fin_risk_gpu_extended(
 
     // Compute Sortino ratio (using downside deviation)
     float* h_returns = (float*)malloc(n * sizeof(float));
-    cudaMemcpy(h_returns, d_returns, n * sizeof(float), cudaMemcpyDeviceToHost);
+    if (!h_returns) {
+        // Fall back to using std_dev for downside deviation
+        result->base.downside_deviation = std_dev;
+        result->base.sortino_ratio = (std_dev > 1e-10f) ? excess_return / std_dev : 0.0f;
+    } else {
+        cudaMemcpy(h_returns, d_returns, n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    float downside_sum = 0.0f;
-    uint32_t downside_count = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        if (h_returns[i] < risk_free_daily) {
-            float diff = h_returns[i] - risk_free_daily;
-            downside_sum += diff * diff;
-            downside_count++;
+        float downside_sum = 0.0f;
+        uint32_t downside_count = 0;
+        for (uint32_t i = 0; i < n; i++) {
+            if (h_returns[i] < risk_free_daily) {
+                float diff = h_returns[i] - risk_free_daily;
+                downside_sum += diff * diff;
+                downside_count++;
+            }
         }
-    }
-    float downside_dev = (downside_count > 0) ? sqrtf(downside_sum / downside_count) : std_dev;
-    result->base.downside_deviation = downside_dev;
-    result->base.sortino_ratio = (downside_dev > 1e-10f) ? excess_return / downside_dev : 0.0f;
+        float downside_dev = (downside_count > 0) ? sqrtf(downside_sum / downside_count) : std_dev;
+        result->base.downside_deviation = downside_dev;
+        result->base.sortino_ratio = (downside_dev > 1e-10f) ? excess_return / downside_dev : 0.0f;
 
-    free(h_returns);
+        free(h_returns);
+    }
+
     cudaFree(d_returns);
     cudaFree(d_sorted);
 
@@ -2314,8 +2395,17 @@ float fin_risk_gpu_max_drawdown(
     uint32_t reduce_blocks = (num_prices + block_size - 1) / block_size;
     float* d_partial_min = NULL;
     uint32_t* d_partial_idx = NULL;
-    cudaMalloc(&d_partial_min, reduce_blocks * sizeof(float));
-    cudaMalloc(&d_partial_idx, reduce_blocks * sizeof(uint32_t));
+    if (cudaMalloc(&d_partial_min, reduce_blocks * sizeof(float)) != cudaSuccess ||
+        cudaMalloc(&d_partial_idx, reduce_blocks * sizeof(uint32_t)) != cudaSuccess) {
+        cudaFree(d_partial_min);
+        cudaFree(d_partial_idx);
+        cudaFree(d_prices);
+        cudaFree(d_drawdown);
+        cudaFree(d_peak);
+        if (out_start) *out_start = 0;
+        if (out_end) *out_end = 0;
+        return 0.0f;
+    }
 
     kernel_find_max_drawdown<<<reduce_blocks, block_size,
         block_size * (sizeof(float) + sizeof(uint32_t)), stream>>>(
@@ -2323,6 +2413,19 @@ float fin_risk_gpu_max_drawdown(
 
     float* h_partial_min = (float*)malloc(reduce_blocks * sizeof(float));
     uint32_t* h_partial_idx = (uint32_t*)malloc(reduce_blocks * sizeof(uint32_t));
+
+    if (!h_partial_min || !h_partial_idx) {
+        free(h_partial_min);
+        free(h_partial_idx);
+        cudaFree(d_prices);
+        cudaFree(d_drawdown);
+        cudaFree(d_peak);
+        cudaFree(d_partial_min);
+        cudaFree(d_partial_idx);
+        if (out_start) *out_start = 0;
+        if (out_end) *out_end = 0;
+        return 0.0f;
+    }
 
     cudaMemcpy(h_partial_min, d_partial_min, reduce_blocks * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(h_partial_idx, d_partial_idx, reduce_blocks * sizeof(uint32_t), cudaMemcpyDeviceToHost);
@@ -2338,22 +2441,27 @@ float fin_risk_gpu_max_drawdown(
 
     // Find start of drawdown (last peak before max_dd_end)
     float* h_peak = (float*)malloc(num_prices * sizeof(float));
-    cudaMemcpy(h_peak, d_peak, num_prices * sizeof(float), cudaMemcpyDeviceToHost);
+    if (!h_peak) {
+        if (out_start) *out_start = 0;
+        if (out_end) *out_end = max_dd_end;
+    } else {
+        cudaMemcpy(h_peak, d_peak, num_prices * sizeof(float), cudaMemcpyDeviceToHost);
 
-    uint32_t max_dd_start = 0;
-    for (uint32_t i = max_dd_end; i > 0; i--) {
-        if (h_peak[i] > h_peak[i - 1]) {
-            max_dd_start = i;
-            break;
+        uint32_t max_dd_start = 0;
+        for (uint32_t i = max_dd_end; i > 0; i--) {
+            if (h_peak[i] > h_peak[i - 1]) {
+                max_dd_start = i;
+                break;
+            }
         }
-    }
 
-    if (out_start) *out_start = max_dd_start;
-    if (out_end) *out_end = max_dd_end;
+        if (out_start) *out_start = max_dd_start;
+        if (out_end) *out_end = max_dd_end;
+        free(h_peak);
+    }
 
     free(h_partial_min);
     free(h_partial_idx);
-    free(h_peak);
     cudaFree(d_prices);
     cudaFree(d_drawdown);
     cudaFree(d_peak);
@@ -2568,6 +2676,16 @@ bool fin_risk_gpu_batch(
     // Copy results back
     float* h_means = (float*)malloc(num_portfolios * sizeof(float));
     float* h_variances = (float*)malloc(num_portfolios * sizeof(float));
+
+    if (!h_means || !h_variances) {
+        free(h_means);
+        free(h_variances);
+        cudaFree(d_returns);
+        cudaFree(d_means);
+        cudaFree(d_variances);
+        set_risk_error("Failed to allocate host buffers");
+        return false;
+    }
 
     cudaMemcpy(h_means, d_means, num_portfolios * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(h_variances, d_variances, num_portfolios * sizeof(float), cudaMemcpyDeviceToHost);

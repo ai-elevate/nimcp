@@ -3207,7 +3207,7 @@ hemispheric_brain_t* genius_hemispheric_brain_create_ex(genius_type_t type, bool
 
     const genius_profile_t* profile = genius_profile_get(type);
     if (!profile) {
-        NIMCP_THROW_TO_IMMUNE(GENIUS_ERROR_INVALID_TYPE, "Profile not found for hemispheric brain");
+        set_error("genius_create_hemispheric_brain: profile not found for type %d", (int)type);
         return NULL;
     }
 

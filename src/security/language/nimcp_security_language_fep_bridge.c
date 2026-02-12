@@ -347,7 +347,6 @@ int sec_lang_fep_compute_effects(sec_lang_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -1242,12 +1241,10 @@ int sec_lang_fep_broadcast_threat(
     sec_lang_fep_threat_category_t category
 ) {
     if (!bridge || !bridge->base.bio_async_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_broadcast_threat: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 
     if (!bridge->base.bio_ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_broadcast_threat: bridge->base is NULL");
         return -1;
     }
 

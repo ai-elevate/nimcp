@@ -327,7 +327,7 @@ cortical_column_pool_t* cortical_column_pool_create(
         memory_pool_destroy(pool->minicolumn_pool);
         nimcp_platform_mutex_destroy(&pool->mutex);
         nimcp_free(pool);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_column_pool_create: pool->activation_pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_pool_create: pool->activation_pool is NULL");
         return NULL;
     }
 
@@ -446,7 +446,7 @@ minicolumn_t* minicolumn_create(
     }
 
     if (!validate_minicolumn_config(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minicolumn_create: validate_minicolumn_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "minicolumn_create: validate_minicolumn_config is NULL");
         return NULL;
     }
 
@@ -574,7 +574,7 @@ static bool validate_hypercolumn_config(const hypercolumn_config_t* config) {
 
     if (config->feature_space_min >= config->feature_space_max) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: Invalid feature space range");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_hypercolumn_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_hypercolumn_config: capacity exceeded");
         return false;
     }
 

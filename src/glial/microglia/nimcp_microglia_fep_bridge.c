@@ -34,7 +34,7 @@ microglia_fep_bridge_t* microglia_fep_create(
 {
     if (!config || !microglia_network || !fep_system) {
         NIMCP_LOGGING_ERROR("microglia_fep_create: NULL parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_fep_create: required parameter is NULL (config, microglia_network, fep_system)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_fep_create: required parameter is NULL (config, microglia_network, fep_system)");
         return NULL;
     }
 

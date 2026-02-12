@@ -255,7 +255,6 @@ int language_parietal_process_spatial_word(
     spatial_vector[2] = 0.0f;
     bridge->state = LP_STATE_IDLE;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_parietal_process_spatial_word: operation failed");
     return -1;  /* Word not in spatial vocabulary */
 }
 
@@ -394,7 +393,6 @@ int language_parietal_word_to_number(
     }
 
     bridge->state = LP_STATE_IDLE;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_parietal_word_to_number: operation failed");
     return -1;  /* Word not recognized as number */
 }
 

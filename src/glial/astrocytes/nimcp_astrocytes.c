@@ -448,14 +448,14 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float
     /* Validate spatial coordinates are finite (not NaN or Inf) */
     if (!isfinite(x) || !isfinite(y) || !isfinite(z)) {
         LOG_MODULE_ERROR("ASTROCYTE", "Invalid spatial coordinates: (%.2f, %.2f, %.2f)", x, y, z);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astrocyte_create: required parameter is NULL (isfinite, isfinite, isfinite)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_create: required parameter is NULL (isfinite, isfinite, isfinite)");
         return NULL;
     }
 
     /* Validate coverage radius is positive and finite */
     if (coverage_radius < 0.0F || !isfinite(coverage_radius)) {
         LOG_MODULE_ERROR("ASTROCYTE", "Invalid coverage radius: %.2f", coverage_radius);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astrocyte_create: isfinite is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_create: isfinite is NULL");
         return NULL;
     }
 
@@ -1174,7 +1174,7 @@ astrocyte_t* astrocyte_network_find_nearest(astrocyte_network_t* network, const 
     }
     /* Validate spatial coordinates are finite */
     if (!isfinite(point[0]) || !isfinite(point[1]) || !isfinite(point[2])) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astrocyte_network_find_nearest: required parameter is NULL (isfinite, isfinite, isfinite)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_find_nearest: required parameter is NULL (isfinite, isfinite, isfinite)");
         return NULL;
     }
     /* Bounds check: num_astrocytes should not exceed capacity */
@@ -1469,9 +1469,9 @@ void astrocyte_network_get_stats(astrocyte_network_t* network,
         }
     }
 
-    if (avg_calcium) *avg_calcium = sum_ca / network->num_astrocytes;
+    if (avg_calcium) *avg_calcium = (network->num_astrocytes > 0) ? sum_ca / network->num_astrocytes : 0.0F;
     if (max_calcium) *max_calcium = max_ca;
-    if (avg_glutamate) *avg_glutamate = sum_glu / network->num_astrocytes;
+    if (avg_glutamate) *avg_glutamate = (network->num_astrocytes > 0) ? sum_glu / network->num_astrocytes : 0.0F;
 }
 
 /* ============================================================================

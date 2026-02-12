@@ -58,8 +58,7 @@ static bool attention_init_gpu_mc(void) {
     g_attention_gpu_init_attempted = true;
 
     if (!qmc_gpu_is_available()) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_init_gpu_mc: qmc_gpu_is_available is NULL");
-        return false;
+        return false;  /* GPU unavailable - normal fallback to CPU */
     }
 
     g_attention_gpu_ctx = nimcp_gpu_context_create_auto();
@@ -1183,7 +1182,7 @@ bool multihead_attention_forward(multihead_attention_t mha,
     if (!head_outputs || !attention_weights) {
         free_attention_buffer(head_outputs);
         free_attention_buffer(attention_weights);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_forward: allocation failed (head_outputs, attention_weights)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multihead_attention_forward: allocation failed (head_outputs, attention_weights)");
         return false;
     }
 
@@ -1756,7 +1755,7 @@ attention_head_t attention_head_create_cow(const attention_head_config_t* config
 {
     if (!config) {
         NIMCP_LOGGING_ERROR("COW attention head config is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create_cow: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_create_cow: config is NULL");
         return NULL;
     }
 

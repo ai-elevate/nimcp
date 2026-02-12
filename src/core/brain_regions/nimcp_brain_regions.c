@@ -223,7 +223,7 @@ brain_module_t* brain_module_create(uint32_t max_regions) {
     brain_module_t* brain = (brain_module_t*)nimcp_calloc(1, sizeof(brain_module_t));
     if (!brain) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain is NULL");
 
         return NULL;
 
@@ -338,7 +338,7 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
     brain_region_t* region = (brain_region_t*)nimcp_calloc(1, sizeof(brain_region_t));
     if (!region) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "region is NULL");
 
         return NULL;
 

@@ -502,13 +502,13 @@ static network_segment_t* find_cached_segment(
     for (uint32_t i = 0; i < state->num_cached_segments; i++) {
         network_segment_t* seg = state->cached_segments[i];
         if (seg->start_neuron_id == start_neuron && seg->num_neurons == num_neurons) {
-            state->cache_hits++;
+            __atomic_fetch_add(&state->cache_hits, 1, __ATOMIC_RELAXED);
             nimcp_platform_rwlock_rdunlock(&state->cache_lock);
             return seg;
         }
     }
 
-    state->cache_misses++;
+    __atomic_fetch_add(&state->cache_misses, 1, __ATOMIC_RELAXED);
     nimcp_platform_rwlock_rdunlock(&state->cache_lock);
     return NULL;  /* Cache miss - normal path */
 }
@@ -776,7 +776,7 @@ static distributed_cow_state_t* find_distributed_cow_state(brain_t brain) {
     }
 
     nimcp_platform_mutex_unlock(&g_registry_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_distributed_cow_state: validation failed");
+    /* Not found - normal for non-distributed brains */
     return NULL;
 }
 

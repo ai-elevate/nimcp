@@ -54,7 +54,10 @@ static void serialization_security_init(void) {
 
 /**
  * @brief Cleanup security subsystem
+ * WHY: __attribute__((destructor)) ensures cleanup on library unload,
+ *      since this static function would otherwise never be called.
  */
+__attribute__((destructor))
 static void serialization_security_cleanup(void) {
     if (g_bbb_system) {
         bbb_system_destroy(g_bbb_system);
@@ -86,8 +89,7 @@ static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed)
     if (bytes_needed == 0) return true;
     if (serializer->position + bytes_needed > serializer->length) {
         serializer->has_error = true;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_check_read: capacity exceeded");
-        return false;
+        return false;  /* Bounds check failure is normal validation */
     }
     return true;
 }
@@ -110,8 +112,7 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
     // This allows tests to verify error handling with fixed-size buffers
     if (serializer->capacity < NIMCP_SERIALIZER_INITIAL_SIZE && required > serializer->capacity) {
         serializer->has_error = true;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ensure_capacity: validation failed");
-        return false;
+        return false;  /* Small buffer can't grow - normal for fixed-size test buffers */
     }
 
     // Check for overflow before doubling capacity

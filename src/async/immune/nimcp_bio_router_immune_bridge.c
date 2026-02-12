@@ -147,11 +147,7 @@ static quarantined_node_state_t* find_quarantined_node(
     uint32_t node_id
 ) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
-
     }
 
     for (size_t i = 0; i < bridge->quarantine_count; i++) {
@@ -159,7 +155,7 @@ static quarantined_node_state_t* find_quarantined_node(
             return &bridge->quarantined_nodes[i];
         }
     }
-    return NULL;
+    return NULL;  /* Not found - normal search behavior */
 }
 
 /**
@@ -170,11 +166,7 @@ static inflammation_routing_impact_t* find_inflammation_impact(
     uint32_t region_id
 ) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
-
     }
 
     for (size_t i = 0; i < bridge->inflammation_count; i++) {
@@ -182,7 +174,7 @@ static inflammation_routing_impact_t* find_inflammation_impact(
             return &bridge->inflammation_impacts[i];
         }
     }
-    return NULL;
+    return NULL;  /* Not found - normal search behavior */
 }
 
 /* ============================================================================
@@ -304,7 +296,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         nimcp_free(bridge->inflammation_impacts);
         nimcp_free(bridge->cytokine_states);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_create: bridge->recent_anomalies is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->recent_anomalies allocation failed");
         return NULL;
     }
 

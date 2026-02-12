@@ -210,7 +210,6 @@ static registered_encoding_t* find_encoding(
 )
 {
     if (!internal) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_encoding: internal is NULL");
         return NULL;
     }
 
@@ -803,9 +802,12 @@ int security_hippocampus_verify_all_consolidations(
             sec_hippo_consolidation_status_t status;
             float confidence;
 
+            /* Copy memory_id under lock to avoid TOCTOU race after unlock */
+            uint64_t memory_id = bridge->consolidation_events[i].memory_id;
+
             BRIDGE_UNLOCK(bridge);
             int result = security_hippocampus_verify_consolidation(
-                bridge, bridge->consolidation_events[i].memory_id,
+                bridge, memory_id,
                 &status, &confidence);
             BRIDGE_LOCK(bridge);
 
@@ -876,7 +878,6 @@ bool security_hippocampus_detect_injection(
 )
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_hippocampus_detect_injection: bridge is NULL");
         return false;
     }
 
@@ -1200,7 +1201,7 @@ int security_hippocampus_reject_replay(
 }
 
 int security_hippocampus_get_replay_info(
-    const sec_hippo_bridge_t* bridge,
+    sec_hippo_bridge_t* bridge,
     uint64_t sequence_id,
     sec_hippo_replay_sequence_t* sequence_out
 )
@@ -1208,12 +1209,17 @@ int security_hippocampus_get_replay_info(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(sequence_out, NIMCP_ERROR_NULL_POINTER, "sequence_out is NULL");
 
+    BRIDGE_LOCK(bridge);
+
     for (uint32_t i = 0; i < bridge->num_replay_sequences; i++) {
         if (bridge->replay_sequences[i].sequence_id == sequence_id) {
             *sequence_out = bridge->replay_sequences[i];
+            BRIDGE_UNLOCK(bridge);
             return 0;
         }
     }
+
+    BRIDGE_UNLOCK(bridge);
 
     NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "replay sequence not found");
     return 0; /* unreachable */

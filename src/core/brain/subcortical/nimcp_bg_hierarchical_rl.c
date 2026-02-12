@@ -185,6 +185,10 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
 
     /* Create mutex */
     system->mutex = nimcp_mutex_create(NULL);
+    if (!system->mutex) {
+        bg_hrl_destroy(system);
+        return NULL;
+    }
 
     return system;
 }

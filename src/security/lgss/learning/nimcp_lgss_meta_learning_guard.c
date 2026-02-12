@@ -299,10 +299,7 @@ static meta_stability_state_t assess_stability(stability_tracker_t* tracker, flo
  * Find parameter by ID
  */
 static param_registry_entry_t* find_param(struct meta_learning_guard_internal* g, uint32_t param_id) {
-    if (param_id >= g->param_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_param: capacity exceeded");
-        return NULL;
-    }
+    if (param_id >= g->param_capacity) { return NULL; }
     if (!g->params[param_id].registered) {
         return NULL;
     }

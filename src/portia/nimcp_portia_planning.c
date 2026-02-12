@@ -230,14 +230,14 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
     if (!bbb_validate_range(config->max_waypoints, 2, 1024,
                              "portia_planning_init")) {
         portia_set_error("Invalid max_waypoints: %u", config->max_waypoints);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_init: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_planning_init: config is NULL");
         return NULL;
     }
 
     if (!bbb_validate_range(config->max_plans, 1, 256,
                              "portia_planning_init")) {
         portia_set_error("Invalid max_plans: %u", config->max_plans);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_init: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_planning_init: operation failed");
         return NULL;
     }
 

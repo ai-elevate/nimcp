@@ -1209,7 +1209,6 @@ int sec_epist_fep_execute_restoration(
     /* Rate limit restorations */
     if (now - bridge->last_restoration_time < MIN_RESTORATION_INTERVAL_MS) {
         BRIDGE_UNLOCK(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_epist_fep_execute_restoration: validation failed");
         return -1;  /* Rate limited - too many restorations */
     }
 

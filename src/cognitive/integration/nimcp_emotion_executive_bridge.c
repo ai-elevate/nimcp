@@ -399,7 +399,6 @@ int emotion_executive_on_decision(
     decision_record_t* record = find_decision_unlocked(bridge, decision_id);
     if (!record) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_on_decision: record is NULL");
         return -1;
     }
 

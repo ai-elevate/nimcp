@@ -67,7 +67,10 @@ typedef struct brain_struct* brain_t;
 #endif
 
 // Conditional CUDA support
-#ifdef NIMCP_ENABLE_CUDA
+// Note: Only include cuda_runtime.h when compiling with nvcc (__CUDACC__).
+// Including it from gcc/g++ inside extern "C" blocks causes C++ template
+// linkage errors because CUDA headers contain C++ template specializations.
+#ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define NIMCP_DEVICE __device__
 #define NIMCP_HOST __host__

@@ -123,7 +123,6 @@ static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
         }
     }
     nimcp_mutex_unlock(&g_training_states_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_training_state: validation failed");
     return NULL;  // No space
 }
 

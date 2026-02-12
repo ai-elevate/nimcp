@@ -524,8 +524,7 @@ int glial_bio_async_unsubscribe_module(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_bio_async_unsubscribe_module: validation failed");
-    return -1;
+    return -1;  /* Module not found - normal lookup miss */
 }
 
 uint32_t glial_bio_async_get_subscriber_count(

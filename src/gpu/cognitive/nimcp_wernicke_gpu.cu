@@ -820,50 +820,64 @@ extern "C" bool wernicke_gpu_compute_posteriors(
     }
     if (ctx->num_phonemes == 0) return false;
 
+    bool success = false;
+    float* d_spectral = NULL;
+
     const uint32_t feature_dim = WERNICKE_SPECTRAL_FEATURE_DIM;
     const uint32_t frame_stride = (uint32_t)(sizeof(wernicke_gpu_spectral_frame_t) / sizeof(float));
     size_t frames_size = num_frames * sizeof(wernicke_gpu_spectral_frame_t);
 
-    float* d_spectral;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectral, frames_size), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_spectral, frames, frames_size,
-                               cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
+    if (cudaMalloc(&d_spectral, frames_size) != cudaSuccess) {
+        goto cleanup;
+    }
+    if (cudaMemcpyAsync(d_spectral, frames, frames_size,
+                        cudaMemcpyHostToDevice, ctx->stream) != cudaSuccess) {
+        goto cleanup;
+    }
 
-    // Compute similarities
-    dim3 grid(num_frames, 1, 1);
-    /* P1-14: Clamp block size to CUDA max threads per block (1024) */
-    uint32_t phoneme_block = (ctx->num_phonemes > 1024) ? 1024 : ctx->num_phonemes;
-    dim3 block(phoneme_block, 1, 1);
+    {
+        // Compute similarities
+        dim3 grid(num_frames, 1, 1);
+        /* P1-14: Clamp block size to CUDA max threads per block (1024) */
+        uint32_t phoneme_block = (ctx->num_phonemes > 1024) ? 1024 : ctx->num_phonemes;
+        dim3 block(phoneme_block, 1, 1);
 
-    kernel_compute_phoneme_similarity<<<grid, block, 0, ctx->stream>>>(
-        d_spectral,
-        feature_dim,
-        frame_stride,
-        ctx->d_phoneme_embeddings,
-        ctx->num_phonemes,
-        ctx->phoneme_embed_dim,
-        num_frames,
-        ctx->d_temp_posteriors
-    );
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+        kernel_compute_phoneme_similarity<<<grid, block, 0, ctx->stream>>>(
+            d_spectral,
+            feature_dim,
+            frame_stride,
+            ctx->d_phoneme_embeddings,
+            ctx->num_phonemes,
+            ctx->phoneme_embed_dim,
+            num_frames,
+            ctx->d_temp_posteriors
+        );
+        if (cudaGetLastError() != cudaSuccess) goto cleanup;
 
-    // Softmax
-    kernel_softmax_phonemes<<<GRID_SIZE(num_frames), BLOCK_SIZE, 0, ctx->stream>>>(
-        ctx->d_temp_posteriors,
-        ctx->num_phonemes,
-        num_frames
-    );
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+        // Softmax
+        kernel_softmax_phonemes<<<GRID_SIZE(num_frames), BLOCK_SIZE, 0, ctx->stream>>>(
+            ctx->d_temp_posteriors,
+            ctx->num_phonemes,
+            num_frames
+        );
+        if (cudaGetLastError() != cudaSuccess) goto cleanup;
 
-    // Copy back
-    size_t post_size = num_frames * ctx->num_phonemes * sizeof(float);
-    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(posteriors, ctx->d_temp_posteriors, post_size,
-                               cudaMemcpyDeviceToHost, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
-    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
+        // Copy back
+        size_t post_size = num_frames * ctx->num_phonemes * sizeof(float);
+        if (cudaMemcpyAsync(posteriors, ctx->d_temp_posteriors, post_size,
+                            cudaMemcpyDeviceToHost, ctx->stream) != cudaSuccess) {
+            goto cleanup;
+        }
+        if (cudaStreamSynchronize(ctx->stream) != cudaSuccess) {
+            goto cleanup;
+        }
+    }
 
-    cudaFree(d_spectral);
+    success = true;
 
-    return true;
+cleanup:
+    if (d_spectral) cudaFree(d_spectral);
+    return success;
 }
 
 //=============================================================================
@@ -1147,22 +1161,38 @@ extern "C" bool wernicke_gpu_upload_semantic_network(
     if (!ctx->d_adjacency_matrix || ctx->max_neighbors < max_neighbors) {
         if (ctx->d_adjacency_matrix) cudaFree(ctx->d_adjacency_matrix);
         if (ctx->d_adjacency_weights) cudaFree(ctx->d_adjacency_weights);
+        ctx->d_adjacency_matrix = NULL;
+        ctx->d_adjacency_weights = NULL;
 
         size_t adj_size = num_concepts * max_neighbors;
-        NIMCP_CUDA_RECOVER(cudaMalloc(&ctx->d_adjacency_matrix, adj_size * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
-        NIMCP_CUDA_RECOVER(cudaMalloc(&ctx->d_adjacency_weights, adj_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        if (cudaMalloc(&ctx->d_adjacency_matrix, adj_size * sizeof(uint32_t)) != cudaSuccess) {
+            LOG_ERROR("Failed to allocate adjacency matrix on GPU");
+            return false;
+        }
+        if (cudaMalloc(&ctx->d_adjacency_weights, adj_size * sizeof(float)) != cudaSuccess) {
+            cudaFree(ctx->d_adjacency_matrix);
+            ctx->d_adjacency_matrix = NULL;
+            LOG_ERROR("Failed to allocate adjacency weights on GPU");
+            return false;
+        }
         ctx->max_neighbors = max_neighbors;
     }
 
     // Upload if provided
     if (adjacency_matrix && weights) {
         size_t adj_size = num_concepts * max_neighbors;
-        NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->d_adjacency_matrix, adjacency_matrix,
-                                   adj_size * sizeof(uint32_t),
-                                   cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
-        NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->d_adjacency_weights, weights,
-                                   adj_size * sizeof(float),
-                                   cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
+        if (cudaMemcpyAsync(ctx->d_adjacency_matrix, adjacency_matrix,
+                            adj_size * sizeof(uint32_t),
+                            cudaMemcpyHostToDevice, ctx->stream) != cudaSuccess) {
+            LOG_ERROR("Failed to upload adjacency matrix");
+            return false;
+        }
+        if (cudaMemcpyAsync(ctx->d_adjacency_weights, weights,
+                            adj_size * sizeof(float),
+                            cudaMemcpyHostToDevice, ctx->stream) != cudaSuccess) {
+            LOG_ERROR("Failed to upload adjacency weights");
+            return false;
+        }
     }
 
     ctx->num_concepts = num_concepts;
@@ -1237,10 +1267,19 @@ extern "C" bool wernicke_gpu_spread_activation(
     }
 
     // Upload seeds
-    uint32_t* d_seeds;
-    float* d_seed_acts;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_seeds, num_seeds * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_seed_acts, num_seeds * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    uint32_t* d_seeds = NULL;
+    float* d_seed_acts = NULL;
+    float* d_new_activations = NULL;
+
+    if (cudaMalloc(&d_seeds, num_seeds * sizeof(uint32_t)) != cudaSuccess) {
+        if (num_results) *num_results = 0;
+        return false;
+    }
+    if (cudaMalloc(&d_seed_acts, num_seeds * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_seeds);
+        if (num_results) *num_results = 0;
+        return false;
+    }
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_seeds, seed_concepts, num_seeds * sizeof(uint32_t),
                                cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_seed_acts, seed_activations, num_seeds * sizeof(float),
@@ -1257,8 +1296,12 @@ extern "C" bool wernicke_gpu_spread_activation(
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Allocate second buffer for ping-pong
-    float* d_new_activations;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_new_activations, ctx->num_concepts * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    if (cudaMalloc(&d_new_activations, ctx->num_concepts * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_seeds);
+        cudaFree(d_seed_acts);
+        if (num_results) *num_results = 0;
+        return false;
+    }
 
     // Spreading iterations
     float* current = ctx->d_concept_activations;
@@ -1560,6 +1603,7 @@ extern "C" bool wernicke_gpu_wm_rehearse(wernicke_gpu_context_t* ctx) {
         ctx->wm_count,
         WERNICKE_WM_REFRESH_AMOUNT
     );
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     ctx->stats.wm_operations++;
     return true;
@@ -1575,8 +1619,12 @@ extern "C" bool wernicke_gpu_wm_apply_decay(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    uint8_t* d_remove;
-    NIMCP_CUDA_RECOVER(cudaMalloc(&d_remove, ctx->wm_count * sizeof(uint8_t)), GPU_ERROR_OUT_OF_MEMORY);
+    bool success = false;
+    uint8_t* d_remove = NULL;
+
+    if (cudaMalloc(&d_remove, ctx->wm_count * sizeof(uint8_t)) != cudaSuccess) {
+        goto cleanup;
+    }
 
     kernel_wm_decay<<<GRID_SIZE(ctx->wm_count), BLOCK_SIZE, 0, ctx->stream>>>(
         ctx->d_wm_activations,
@@ -1585,15 +1633,17 @@ extern "C" bool wernicke_gpu_wm_apply_decay(
         threshold,
         d_remove
     );
-    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    if (cudaGetLastError() != cudaSuccess) goto cleanup;
 
     // For simplicity, we don't compact here - just mark as decayed
     // A proper implementation would compact the arrays
 
-    cudaFree(d_remove);
     ctx->stats.wm_operations++;
+    success = true;
 
-    return true;
+cleanup:
+    if (d_remove) cudaFree(d_remove);
+    return success;
 }
 
 extern "C" bool wernicke_gpu_wm_clear(wernicke_gpu_context_t* ctx) {
@@ -1918,6 +1968,11 @@ extern "C" bool wernicke_cpu_spread_activation(
 
     float* current = (float*)calloc(num_concepts, sizeof(float));
     float* next = (float*)calloc(num_concepts, sizeof(float));
+    if (!current || !next) {
+        free(current);
+        free(next);
+        return false;
+    }
 
     // Initialize seeds
     for (uint32_t s = 0; s < num_seeds; s++) {

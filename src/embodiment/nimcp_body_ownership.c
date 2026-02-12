@@ -111,7 +111,6 @@ static nimcp_body_part_t* find_part(
             return &ctx->parts[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_part: validation failed");
     return NULL;
 }
 
@@ -127,7 +126,6 @@ static nimcp_external_object_t* find_external_object(
             return &ctx->external_objects[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_external_object: validation failed");
     return NULL;
 }
 

@@ -217,7 +217,6 @@ subscription_handle_t subscriber_subscribe(subscriber_manager_t manager,
 
 bool subscriber_unsubscribe(subscriber_manager_t manager, subscription_handle_t handle) {
     if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_unsubscribe: manager is NULL");
         return false;
     }
 
@@ -250,7 +249,6 @@ bool subscriber_unsubscribe(subscriber_manager_t manager, subscription_handle_t 
 
 bool subscriber_pause(subscriber_manager_t manager, subscription_handle_t handle) {
     if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_pause: manager is NULL");
         return false;
     }
 
@@ -272,7 +270,6 @@ bool subscriber_pause(subscriber_manager_t manager, subscription_handle_t handle
 
 bool subscriber_resume(subscriber_manager_t manager, subscription_handle_t handle) {
     if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_resume: manager is NULL");
         return false;
     }
 

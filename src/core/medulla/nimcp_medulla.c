@@ -818,7 +818,6 @@ int medulla_update(medulla_t medulla, float dt) {
 
     if (medulla->state != MEDULLA_STATE_RUNNING) {
         nimcp_platform_mutex_unlock(medulla->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_update: validation failed");
         return -1;
     }
 
@@ -1433,22 +1432,8 @@ int medulla_test_set_arousal(medulla_t medulla, float level) {
     /* Set current arousal directly */
     medulla->current_arousal = level;
 
-    /* Update arousal level enum based on level */
-    if (level < 0.05f) {
-        medulla->arousal_level = AROUSAL_LEVEL_COMA;
-    } else if (level < 0.15f) {
-        medulla->arousal_level = AROUSAL_LEVEL_DEEP_SLEEP;
-    } else if (level < 0.30f) {
-        medulla->arousal_level = AROUSAL_LEVEL_LIGHT_SLEEP;
-    } else if (level < 0.45f) {
-        medulla->arousal_level = AROUSAL_LEVEL_DROWSY;
-    } else if (level < 0.65f) {
-        medulla->arousal_level = AROUSAL_LEVEL_AWAKE;
-    } else if (level < 0.85f) {
-        medulla->arousal_level = AROUSAL_LEVEL_ALERT;
-    } else {
-        medulla->arousal_level = AROUSAL_LEVEL_HYPERAROUSAL;
-    }
+    /* Update arousal level enum using the same thresholds as normal operation */
+    medulla->arousal_level = classify_arousal_level(level);
 
     /* Also update stats for test visibility */
     medulla->stats.arousal_level = medulla->arousal_level;
@@ -1503,6 +1488,7 @@ int medulla_test_set_circadian(medulla_t medulla, circadian_phase_t phase) {
     nimcp_platform_mutex_lock(medulla->mutex);
     medulla->circadian_phase = phase;
     medulla->current_circadian_time = phase_time;
+    medulla->stats.circadian_phase = phase;
     nimcp_platform_mutex_unlock(medulla->mutex);
     return 0;
 }

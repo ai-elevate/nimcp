@@ -150,7 +150,7 @@ security_imagination_bridge_t* security_imagination_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-imagination bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_imagination_bridge_create: failed to allocate bridge");
 
         return NULL;
     }
@@ -159,7 +159,7 @@ security_imagination_bridge_t* security_imagination_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_IMAGINATION_BRIDGE,
                          "security_imagination_bridge") != 0) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_bridge_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_imagination_bridge_create: bridge_base_init failed");
         return NULL;
     }
 

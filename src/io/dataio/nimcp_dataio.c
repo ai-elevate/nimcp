@@ -1871,8 +1871,7 @@ static void* producer_thread_func(void* arg)
 
     // Signal producer completion
     ctx->producer_done = true;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "producer_thread_func: validation failed");
-    return NULL;
+    return NULL;  /* Normal thread exit */
 }
 
 /**
@@ -1950,8 +1949,7 @@ static void* consumer_thread_func(void* arg)
         nimcp_free(batch);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consumer_thread_func: operation failed");
-    return NULL;
+    return NULL;  /* Normal thread exit */
 }
 
 //=============================================================================

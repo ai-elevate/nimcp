@@ -55,7 +55,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
 
     if (lnn_config_validate(config) != LNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Invalid config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_network_create: validation failed");
         return NULL;
     }
 
@@ -177,7 +177,7 @@ lnn_network_t* lnn_network_create_ncp(
     // Guard: Validate inputs
     if (n_inputs == 0 || n_inter == 0 || n_command == 0 || n_outputs == 0) {
         NIMCP_LOGGING_ERROR("lnn_network_create_ncp: Invalid dimensions");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create_ncp: n_inputs is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_network_create_ncp: n_inputs is zero");
         return NULL;
     }
 

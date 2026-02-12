@@ -1457,19 +1457,27 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
         return -1.0F;
     }
 
+    // Lock buffer to prevent data races on activity_buffer/spectrum/power_spectrum
+    if (analyzer->buffer_mutex) {
+        nimcp_mutex_lock(analyzer->buffer_mutex);
+    }
+
     // Check buffer is full
     if (analyzer->samples_recorded < analyzer->min_samples) {
+        if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
         return -1.0F;
     }
 
     // Compute FFT and power spectrum if not already done
     if (!fft_execute_real(analyzer->fft_plan, analyzer->activity_buffer,
                           analyzer->spectrum)) {
+        if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
         return -1.0F;
     }
 
     if (!fft_power_spectrum(analyzer->spectrum, analyzer->power_spectrum,
                             analyzer->spectrum_size)) {
+        if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
         return -1.0F;
     }
 
@@ -1519,6 +1527,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
     if (!spectrum1 || !spectrum2) {
         nimcp_free(spectrum1);
         nimcp_free(spectrum2);
+        if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
         // Fallback to spectral concentration only
         return spectral_concentration;
     }
@@ -1528,6 +1537,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
     if (!plan) {
         nimcp_free(spectrum1);
         nimcp_free(spectrum2);
+        if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
         return spectral_concentration;
     }
 
@@ -1542,6 +1552,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
     if (!success1 || !success2) {
         nimcp_free(spectrum1);
         nimcp_free(spectrum2);
+        if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
         return spectral_concentration;
     }
 
@@ -1591,6 +1602,7 @@ float brain_oscillation_compute_coherence(brain_oscillation_analyzer_t* analyzer
         combined_coherence = 1.0F;
     }
 
+    if (analyzer->buffer_mutex) nimcp_mutex_unlock(analyzer->buffer_mutex);
     return combined_coherence;
 }
 

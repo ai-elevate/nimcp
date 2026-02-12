@@ -437,7 +437,7 @@ int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
      * We track the previous capacity and only send updates on significant change
      * to avoid flooding the message system.
      */
-    static float s_prev_imagination_capacity = 1.0f;
+    static _Thread_local float s_prev_imagination_capacity = 1.0f;
     float current_capacity = compute_imagination_capacity_modifier(substrate);
     float delta_capacity = current_capacity - s_prev_imagination_capacity;
 

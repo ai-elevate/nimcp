@@ -197,6 +197,10 @@ bg_cerebellar_coord_t* bgcb_create(const bgcb_config_t* config) {
 
     /* Create mutex */
     coord->mutex = nimcp_mutex_create(NULL);
+    if (!coord->mutex) {
+        bgcb_destroy(coord);
+        return NULL;
+    }
 
     return coord;
 }

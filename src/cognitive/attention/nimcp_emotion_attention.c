@@ -202,7 +202,6 @@ static bool is_emotion_congruent(emotion_primary_t current, emotion_primary_t st
     /* WHY:  Prevent undefined behavior from invalid enum values */
     if ((int)current < 0 || (int)current > 7 ||
         (int)stimulus < 0 || (int)stimulus > 7) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_emotion_congruent: validation failed");
         return false;
     }
 

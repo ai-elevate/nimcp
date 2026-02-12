@@ -402,7 +402,6 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
     LOG_ERROR("Handle tracker full (%d entries) - cannot track allocation at %p "
               "(overflow count: %u, consider increasing BIO_MAX_TRACKED_HANDLES)",
               BIO_MAX_TRACKED_HANDLES, ptr, overflow_count);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_tracker_register: operation failed");
     return false;
 }
 
@@ -822,18 +821,14 @@ static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
     nimcp_error_t error = (state == BIO_FUTURE_FAILED) ? shared->error : NIMCP_SUCCESS;
     const void* result = (state == BIO_FUTURE_COMPLETED) ? shared->result : NULL;
 
-    /* Copy callback list under lock to avoid invoking callbacks while holding mutex.
-     * This prevents deadlock if callbacks try to acquire other locks.
-     * We use a fixed-size array for simplicity; BIO_MAX_CALLBACKS limits the count. */
+    /* Copy callback list under lock, then invoke outside lock.
+     * Callers unlock before calling this function (P1-24 fix), so we must
+     * re-acquire the mutex to safely traverse the callback linked list. */
     bio_callback_node_t* callbacks_copy[BIO_MAX_CALLBACKS];
     void* userdata_copy[BIO_MAX_CALLBACKS];
     uint32_t callback_count = 0;
 
-    /* Mutex should already be held by caller, but re-acquire for safety during copy.
-     * Note: The caller (nimcp_bio_promise_complete, etc.) already holds the mutex,
-     * so we need to be careful. Actually, looking at the callers, they lock before
-     * calling this. We should NOT lock here - just copy under existing lock. */
-
+    nimcp_mutex_lock(&shared->mutex);
     bio_callback_node_t* cb = shared->callbacks;
     while (cb && callback_count < BIO_MAX_CALLBACKS) {
         if (cb->callback) {
@@ -843,10 +838,9 @@ static void shared_state_invoke_callbacks(nimcp_bio_shared_state_t* shared) {
         }
         cb = cb->next;
     }
+    nimcp_mutex_unlock(&shared->mutex);
 
-    /* Now invoke callbacks outside the lock.
-     * The caller should unlock after this function returns if they want callbacks
-     * to run without the lock. However, for now we keep the existing call pattern. */
+    /* Invoke callbacks outside the lock to prevent deadlock */
     for (uint32_t i = 0; i < callback_count; i++) {
         callbacks_copy[i]->callback(result, confidence, error, userdata_copy[i]);
     }
@@ -1635,7 +1629,6 @@ bool nimcp_bio_future_cancel(nimcp_bio_future_t future) {
     uint32_t expected = BIO_FUTURE_PENDING;
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_CANCELLED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_bio_future_cancel: shared is NULL");
         return false;
     }
 

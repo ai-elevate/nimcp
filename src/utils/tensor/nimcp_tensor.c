@@ -666,9 +666,22 @@ nimcp_tensor_t* nimcp_tensor_arange(
 
     }
 
-    float* data = (float*)t->data;
-    for (uint32_t i = 0; i < n; i++) {
-        data[i] = (float)(start + i * step);
+    switch (dtype) {
+        case NIMCP_DTYPE_F64: {
+            double* d = (double*)t->data;
+            for (uint32_t i = 0; i < n; i++) d[i] = start + i * step;
+            break;
+        }
+        case NIMCP_DTYPE_I32: {
+            int32_t* d = (int32_t*)t->data;
+            for (uint32_t i = 0; i < n; i++) d[i] = (int32_t)(start + i * step);
+            break;
+        }
+        default: { /* F32 and others */
+            float* d = (float*)t->data;
+            for (uint32_t i = 0; i < n; i++) d[i] = (float)(start + i * step);
+            break;
+        }
     }
 
     return t;
@@ -695,10 +708,23 @@ nimcp_tensor_t* nimcp_tensor_linspace(
 
     }
 
-    float* data = (float*)t->data;
     double step = (num > 1) ? (stop - start) / (num - 1) : 0;
-    for (uint32_t i = 0; i < num; i++) {
-        data[i] = (float)(start + i * step);
+    switch (dtype) {
+        case NIMCP_DTYPE_F64: {
+            double* d = (double*)t->data;
+            for (uint32_t i = 0; i < num; i++) d[i] = start + i * step;
+            break;
+        }
+        case NIMCP_DTYPE_I32: {
+            int32_t* d = (int32_t*)t->data;
+            for (uint32_t i = 0; i < num; i++) d[i] = (int32_t)(start + i * step);
+            break;
+        }
+        default: { /* F32 and others */
+            float* d = (float*)t->data;
+            for (uint32_t i = 0; i < num; i++) d[i] = (float)(start + i * step);
+            break;
+        }
     }
 
     return t;

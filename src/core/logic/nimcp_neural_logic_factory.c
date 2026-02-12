@@ -205,14 +205,14 @@ neural_logic_network_t create_neural_logic_with_config(
     // Guard: NULL config
     if (!nimcp_validate_pointer(config, "config")) {
         LOG_ERROR("create_neural_logic_with_config: NULL config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_neural_logic_with_config: nimcp_validate_pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_neural_logic_with_config: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     // Validate configuration
     if (!validate_config(config)) {
         LOG_ERROR("create_neural_logic_with_config: invalid configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_neural_logic_with_config: validate_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_neural_logic_with_config: validate_config is NULL");
         return NULL;
     }
 
@@ -247,7 +247,7 @@ bool create_and_attach_neural_logic(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("create_and_attach_neural_logic: NULL brain");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_and_attach_neural_logic: nimcp_validate_pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_and_attach_neural_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 

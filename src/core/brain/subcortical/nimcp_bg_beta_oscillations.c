@@ -241,6 +241,10 @@ bg_beta_system_t* bg_beta_create(const bg_beta_config_t* config) {
 
     /* Create mutex */
     system->mutex = nimcp_mutex_create(NULL);
+    if (!system->mutex) {
+        bg_beta_destroy(system);
+        return NULL;
+    }
 
     return system;
 }

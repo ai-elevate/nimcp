@@ -801,6 +801,10 @@ extern "C" int nimcp_radix_sort_keys(
 
         // Sum across all blocks
         unsigned int* h_hist = (unsigned int*)malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+        if (!h_hist) {
+            LOG_ERROR("Failed to allocate histogram buffer");
+            return false;
+        }
         cudaMemcpy(h_hist, ctx->d_histogram, GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
         for (size_t b = 0; b < (size_t)GRID_SIZE(n); b++) {
@@ -870,6 +874,10 @@ extern "C" int nimcp_radix_sort_pairs(
         unsigned int h_counts[RADIX_SIZE] = {0};
         unsigned int h_prefix[RADIX_SIZE + 1];
         unsigned int* h_hist = (unsigned int*)malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+        if (!h_hist) {
+            LOG_ERROR("Failed to allocate histogram buffer");
+            return false;
+        }
         cudaMemcpy(h_hist, ctx->d_histogram, GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
         for (size_t b = 0; b < (size_t)GRID_SIZE(n); b++) {
@@ -935,6 +943,12 @@ extern "C" int nimcp_radix_sort_floats(
     // For now, do on host (production would use kernel)
     float* h_keys = (float*)malloc(n * sizeof(float));
     unsigned int* h_indices = (unsigned int*)malloc(n * sizeof(unsigned int));
+
+    if (!h_keys || !h_indices) {
+        free(h_keys);
+        free(h_indices);
+        return -1;
+    }
 
     cudaMemcpy(h_keys, keys, n * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -1840,6 +1854,10 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
 
     // Generate random values on host and copy (simple approach)
     float* host_random = (float*)malloc(batch_size * sizeof(float));
+    if (!host_random) {
+        LOG_ERROR("Failed to allocate random values buffer");
+        return false;
+    }
     for (size_t i = 0; i < batch_size; i++) {
         host_random[i] = (float)rand() / RAND_MAX;
     }
@@ -1863,6 +1881,10 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
     } else {
         // Uniform random sampling
         int* host_indices = (int*)malloc(batch_size * sizeof(int));
+        if (!host_indices) {
+            LOG_ERROR("Failed to allocate host indices buffer");
+            return false;
+        }
         for (size_t i = 0; i < batch_size; i++) {
             host_indices[i] = rand() % buf->current_size;
         }
@@ -2221,6 +2243,13 @@ extern "C" bool nimcp_swarm_memory_gpu_sws_replay(
 
     float* host_importance = (float*)malloc(num_memories * sizeof(float));
     int* host_order = (int*)malloc(replay_count * sizeof(int));
+
+    if (!host_importance || !host_order) {
+        free(host_importance);
+        free(host_order);
+        LOG_ERROR("Failed to allocate host buffers for replay selection");
+        return false;
+    }
 
     nimcp_gpu_memcpy(ctx, host_importance, importance_scores->data,
                      num_memories * sizeof(float), GPU_MEMCPY_DEVICE_TO_HOST);

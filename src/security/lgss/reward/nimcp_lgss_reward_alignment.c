@@ -130,13 +130,7 @@ static const aligned_goal_t* find_goal(
     const reward_alignment_monitor_t* monitor,
     uint32_t goal_id)
 {
-    if (!monitor) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
-
-        return NULL;
-
-    }
+    if (!monitor) { return NULL; }
 
     for (uint32_t i = 0; i < monitor->num_aligned_goals; i++) {
         if (monitor->aligned_goals[i].goal_id == goal_id &&
@@ -414,14 +408,8 @@ bool reward_alignment_detect_hacking(
     reward_alignment_monitor_t* monitor,
     reward_hack_detection_t* detection)
 {
-    if (!monitor || !detection) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reward_alignment_detect_hacking: required parameter is NULL (monitor, detection)");
-        return false;
-    }
-    if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_detect_hacking: validation failed");
-        return false;
-    }
+    if (!monitor || !detection) { return false; }
+    if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) { return false; }
 
     memset(detection, 0, sizeof(reward_hack_detection_t));
     detection->timestamp = get_timestamp_us();
@@ -500,10 +488,7 @@ bool reward_alignment_verify_external_cause(
     reward_alignment_monitor_t* monitor,
     const reward_signal_t* signal)
 {
-    if (!monitor || !signal) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reward_alignment_verify_external_cause: required parameter is NULL (monitor, signal)");
-        return false;
-    }
+    if (!monitor || !signal) { return false; }
 
     /* Self-generated signals never have external cause */
     if (signal->source == REWARD_SOURCE_SELF_GENERATED) {
@@ -599,7 +584,6 @@ int reward_alignment_unregister_goal(
 
     /* Pathway protection check */
     if (monitor->pathway_locked) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "reward_alignment_unregister_goal: validation failed");
         return -1;  /* Cannot modify when locked */
     }
 

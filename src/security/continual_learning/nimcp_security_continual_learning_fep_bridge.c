@@ -220,7 +220,7 @@ security_cl_fep_bridge_t* security_cl_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security CL FEP bridge: mutex creation failed");
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_create: bridge->base is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_cl_fep_create: mutex creation failed");
         return NULL;
     }
 
@@ -340,7 +340,6 @@ int security_cl_fep_set_config(
 
 int security_cl_fep_compute_effects(security_cl_fep_bridge_t* bridge) {
     if (!bridge || !bridge->state.active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_compute_effects: required parameter is NULL (bridge, bridge->state)");
         return -1;
     }
 
@@ -352,7 +351,6 @@ int security_cl_fep_compute_effects(security_cl_fep_bridge_t* bridge) {
     cl_security_effects_t cl_effects;
     if (security_cl_get_cl_effects(bridge->security_cl, &cl_effects) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_cl_fep_compute_effects: validation failed");
         return -1;
     }
 
@@ -703,7 +701,6 @@ bool security_cl_fep_detect_attack(
     if (!bridge || !bridge->fep_effects.valid) {
         if (severity) *severity = SECURITY_CL_FEP_SEVERITY_NONE;
         if (confidence) *confidence = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_cl_fep_detect_attack: validation failed");
         return false;
     }
 

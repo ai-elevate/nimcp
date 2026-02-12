@@ -170,7 +170,6 @@ static voxel_entry_t* get_or_create_voxel(
     const grid_index_t* idx
 ) {
     if (!is_index_valid(system, idx)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_voxel: is_index_valid is NULL");
         return NULL;
     }
 

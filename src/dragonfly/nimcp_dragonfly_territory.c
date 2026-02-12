@@ -670,7 +670,6 @@ int dragonfly_territory_get_response(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)territory->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_territory_get_response: intruder not found");
     return -1;  /* Intruder not found */
 }
 

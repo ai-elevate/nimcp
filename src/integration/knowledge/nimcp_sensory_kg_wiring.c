@@ -683,8 +683,7 @@ int sensory_kg_remove_edge(sensory_kg_wiring_t* wiring, uint32_t edge_id) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_remove_edge: validation failed");
-    return -1;
+    return -1;  /* Edge not found */
 }
 
 int sensory_kg_update_edge_weight(sensory_kg_wiring_t* wiring, uint32_t edge_id, float new_weight) {
@@ -700,8 +699,7 @@ int sensory_kg_update_edge_weight(sensory_kg_wiring_t* wiring, uint32_t edge_id,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_update_edge_weight: validation failed");
-    return -1;
+    return -1;  /* Edge not found */
 }
 
 /* ============================================================================

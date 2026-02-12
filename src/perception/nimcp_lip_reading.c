@@ -681,8 +681,7 @@ bool lip_reading_extract_mouth_roi(
 
     if (src_w <= 0 || src_h <= 0) {
         system->last_error = LIP_READING_ERROR_INVALID_INPUT;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_extract_mouth_roi: validation failed");
-        return false;
+        return false;  /* Invalid mouth region dimensions - normal detection failure */
     }
 
     /* Simple bilinear resize */

@@ -479,7 +479,6 @@ int training_hub_unregister_module(training_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_hub_destroy: mod is NULL");
         return -1;
     }
 
@@ -529,7 +528,6 @@ int training_hub_subscribe(training_integration_hub_t hub,
     /* Check subscriber is registered */
     if (!find_module_unlocked(hub, subscriber_id)) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "training_hub_destroy: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -595,7 +593,6 @@ int training_hub_unsubscribe(training_integration_hub_t hub,
     subscription_t* sub = find_subscription_unlocked(hub, subscriber_id, event_type);
     if (!sub) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: sub is NULL");
         return -1;
     }
 
@@ -629,7 +626,6 @@ int training_hub_publish(training_integration_hub_t hub,
     /* Check publisher is registered */
     if (!find_module_unlocked(hub, publisher_id)) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -682,7 +678,6 @@ int training_hub_query_module(training_integration_hub_t hub,
     if (!find_module_unlocked(hub, requester_id)) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -691,7 +686,6 @@ int training_hub_query_module(training_integration_hub_t hub,
     if (!target) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: target is NULL");
         return -1;
     }
 
@@ -699,7 +693,6 @@ int training_hub_query_module(training_integration_hub_t hub,
     if (!target->info.is_active) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: target->info is NULL");
         return -1;
     }
 
@@ -707,7 +700,6 @@ int training_hub_query_module(training_integration_hub_t hub,
     if (!target->query_handler) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: target->query_handler is NULL");
         return -1;
     }
 
@@ -722,7 +714,6 @@ int training_hub_query_module(training_integration_hub_t hub,
     int handler_result = handler(query, result, context);
     if (handler_result != 0) {
         hub->stats.queries_failed++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -742,7 +733,6 @@ int training_hub_get_module_info(training_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: mod is NULL");
         return -1;
     }
 
@@ -769,7 +759,6 @@ int training_hub_register_query_handler(training_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: mod is NULL");
         return -1;
     }
 
@@ -796,7 +785,6 @@ int training_hub_set_module_active(training_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: mod is NULL");
         return -1;
     }
 
@@ -908,7 +896,6 @@ int training_hub_publish_to_category(training_integration_hub_t hub,
     /* Check publisher is registered */
     if (!find_module_unlocked(hub, publisher_id)) {
         nimcp_mutex_unlock(hub->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "training_hub_reset_stats: find_module_unlocked is NULL");
         return -1;
     }
 

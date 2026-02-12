@@ -139,7 +139,6 @@ static nimcp_sim_instance_t* find_simulation(
             return &ctx->simulations[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_simulation: validation failed");
     return NULL;
 }
 
@@ -155,7 +154,6 @@ static nimcp_effector_state_t* find_effector(
             return &sim->effectors[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_effector: validation failed");
     return NULL;
 }
 
@@ -171,7 +169,6 @@ static nimcp_sim_object_t* find_object(
             return &sim->objects[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_object: validation failed");
     return NULL;
 }
 

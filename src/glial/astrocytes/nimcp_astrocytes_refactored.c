@@ -399,8 +399,6 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro, astrocyte_network_t* n
         return;
     }
 
-    nimcp_spinlock_lock(&astro->lock);
-
     float coupling_decay = network->coupling_decay_rate * dt;
 
     // Propagate to each coupled neighbor
@@ -419,16 +417,26 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro, astrocyte_network_t* n
 
         if (!neighbor) continue;
 
+        // Lock both astrocytes in address order to prevent AB-BA deadlock
+        astrocyte_t* first = (astro < neighbor) ? astro : neighbor;
+        astrocyte_t* second = (astro < neighbor) ? neighbor : astro;
+        nimcp_spinlock_lock(&first->lock);
+        if (first != second) {
+            nimcp_spinlock_lock(&second->lock);
+        }
+
         // Calculate diffusion flux
         float delta_ca = astro->calcium_concentration - neighbor->calcium_concentration;
         float flux = coupling_strength * coupling_decay * delta_ca;
 
-        // Update neighbor's calcium (thread-safe)
-        nimcp_spinlock_lock(&neighbor->lock);
+        // Update neighbor's calcium
         neighbor->calcium_concentration += flux;
         neighbor->calcium_concentration = fmaxf(neighbor->calcium_baseline,
                                                fminf(10.0f, neighbor->calcium_concentration));
-        nimcp_spinlock_unlock(&neighbor->lock);
+        if (first != second) {
+            nimcp_spinlock_unlock(&second->lock);
+        }
+        nimcp_spinlock_unlock(&first->lock);
 
         if (fabsf(flux) > 0.01f) {
             LOG_MODULE_TRACE(ASTROCYTE_MODULE_NAME,
@@ -436,8 +444,6 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro, astrocyte_network_t* n
                 astro->id, neighbor_id, flux, delta_ca);
         }
     }
-
-    nimcp_spinlock_unlock(&astro->lock);
 }
 
 //=============================================================================
