@@ -115,8 +115,7 @@ int kg_analytics_get_hot_nodes(
     /* Get access patterns and filter for hot nodes */
     kg_access_pattern_t* patterns = nimcp_calloc(max, sizeof(kg_access_pattern_t));
     if (!patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "patterns is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_analytics_get_hot_nodes: allocation failed");
         return -1;
     }
 
@@ -155,8 +154,7 @@ int kg_analytics_get_cold_nodes(
     /* Get access patterns and filter for cold nodes */
     kg_access_pattern_t* patterns = nimcp_calloc(max, sizeof(kg_access_pattern_t));
     if (!patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "patterns is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_analytics_get_cold_nodes: allocation failed");
         return -1;
     }
 

@@ -117,7 +117,7 @@ static bool modules_connected_direct(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "modules_connected_direct: operation failed");
+    /* Modules not directly connected - normal query result */
     return false;
 }
 

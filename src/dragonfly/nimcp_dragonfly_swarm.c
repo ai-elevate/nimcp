@@ -995,7 +995,6 @@ int dragonfly_swarm_get_individual(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_swarm_get_individual: operation failed");
     return -1;  /* Not found */
 }
 

@@ -1334,16 +1334,14 @@ bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
             if (syn->protected_by_centrality &&
                 syn->centrality_score >= NIMCP_CENTRALITY_PROTECTION_MIN &&
                 syn->complement.tag != COMPLEMENT_C3) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_should_prune_synapse: capacity exceeded");
-                return false;  // Protected by centrality
+                return false;  // Protected by centrality - normal decision
             }
 
             return true;  // Should prune
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_should_prune_synapse: operation failed");
-    return false;  // Not found
+    return false;  // Synapse not found - don't prune
 }
 
 //=============================================================================

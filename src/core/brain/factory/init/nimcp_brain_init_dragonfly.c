@@ -295,7 +295,7 @@ int brain_dragonfly_get_command(brain_t brain, float* heading_rad,
     dragonfly_motor_cmd_t cmd;
     int result = dragonfly_get_motor_command(brain->dragonfly, &cmd);
     if (result != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_dragonfly: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_dragonfly_get_command: motor command failed");
         return -1;
     }
 

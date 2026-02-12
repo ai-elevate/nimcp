@@ -171,7 +171,7 @@ static int find_mapping_by_name(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_mapping_by_name: operation failed");
+    /* Mapping not found - normal lookup result */
     return -1;
 }
 
@@ -185,7 +185,7 @@ static int find_mapping_by_id(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_mapping_by_id: operation failed");
+    /* Mapping not found - normal lookup result */
     return -1;
 }
 

@@ -125,8 +125,7 @@ bool mesh_gpu_cuda_available(void) {
     cudaError_t err = cudaGetDeviceCount(&count);
     return err == cudaSuccess && count > 0;
 #else
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_cuda_available: operation failed");
-    return false;
+    return false;  /* CUDA not compiled in */
 #endif
 }
 

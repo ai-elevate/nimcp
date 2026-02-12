@@ -763,6 +763,8 @@ int language_immune_bridge_update(
     }
     if (!bridge->active) return 0;
 
+    /* Save previous update time for delta calculation before overwriting */
+    uint64_t prev_update_time_ms = bridge->stats.last_update_time_ms;
     bridge->stats.last_update_time_ms = current_time_ms;
     bridge->cytokines.last_update_ms = current_time_ms;
 
@@ -802,7 +804,7 @@ int language_immune_bridge_update(
 
     /* Update statistics */
     if (bridge->cytokines.composite_inflammatory > LANGUAGE_IMMUNE_MILD_THRESHOLD) {
-        bridge->stats.time_inflamed_ms += (current_time_ms - bridge->stats.last_update_time_ms);
+        bridge->stats.time_inflamed_ms += (current_time_ms - prev_update_time_ms);
     }
 
     if (bridge->wernicke_effects.inflammation.inflammation_level > bridge->stats.max_wernicke_inflammation) {

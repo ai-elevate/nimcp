@@ -182,7 +182,7 @@ reward_alignment_monitor_t* reward_alignment_create(
 {
     reward_alignment_monitor_t* monitor = nimcp_calloc(1, sizeof(reward_alignment_monitor_t));
     if (!monitor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reward_alignment_create: allocation failed");
 
         return NULL;
     }

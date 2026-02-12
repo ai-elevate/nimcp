@@ -825,8 +825,7 @@ int dragonfly_multi_target_get_backup(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)mt->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_get_backup: operation failed");
-    return -1;
+    return -1;  /* No suitable backup target found */
 }
 
 //=============================================================================

@@ -882,7 +882,7 @@ int kg_get_node_community(
     }
 
     kg_community_free(communities, count);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_get_node_community: validation failed");
+    /* Node not found in any community - normal query result */
     return -1;
 }
 

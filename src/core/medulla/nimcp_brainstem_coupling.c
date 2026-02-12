@@ -127,10 +127,7 @@ static int compare_signal_priority(const void* a, const void* b) {
     /* Invalid entries sort to end */
     if (!sa->valid && !sb->valid) return 0;
     if (!sa->valid) return 1;
-    if (!sb->valid) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compare_signal_priority: sb->valid is NULL");
-        return -1;
-    }
+    if (!sb->valid) return -1;
 
     /* Higher priority first */
     if (sa->payload.priority != sb->payload.priority) {
@@ -138,10 +135,7 @@ static int compare_signal_priority(const void* a, const void* b) {
     }
 
     /* Same priority: earlier delivery time first */
-    if (sa->delivery_time < sb->delivery_time) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_signal_priority: validation failed");
-        return -1;
-    }
+    if (sa->delivery_time < sb->delivery_time) return -1;
     if (sa->delivery_time > sb->delivery_time) return 1;
     return 0;
 }
@@ -486,7 +480,6 @@ int brainstem_coupling_unregister_module(
 
     nimcp_platform_mutex_unlock(coupling->mutex);
     NIMCP_LOGGING_WARN("Module %u not found", module_id);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_coupling_unregister_module: operation failed");
     return -1;
 }
 

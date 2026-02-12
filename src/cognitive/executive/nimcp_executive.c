@@ -57,8 +57,7 @@ static bool exec_init_gpu_mc(void) {
     if (g_exec_gpu_init_attempted) return g_exec_gpu_rng != NULL;
     g_exec_gpu_init_attempted = true;
     if (!qmc_gpu_is_available()) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "exec_init_gpu_mc: qmc_gpu_is_available is NULL");
-        return false;
+        return false;  /* GPU not available - not an error */
     }
     g_exec_gpu_ctx = nimcp_gpu_context_create_auto();
     if (!g_exec_gpu_ctx) {
@@ -790,7 +789,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     // Guard: NULL config check
     if (!config) {
         set_error("NULL config provided to executive_create_custom");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_custom: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_create_custom: config is NULL");
         return NULL;
     }
 
@@ -801,7 +800,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
 
     if (config->max_tasks == 0 || config->max_tasks > 1024) {
         set_error("Invalid max_tasks: %u (must be 1-1024)", config->max_tasks);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_custom: config->max_tasks is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_create_custom: invalid max_tasks");
         return NULL;
     }
 

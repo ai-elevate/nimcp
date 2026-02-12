@@ -766,10 +766,7 @@ void feature_hypercolumn_softmax(
 static int compare_activations_desc(const void* a, const void* b) {
     float fa = *(const float*)a;
     float fb = *(const float*)b;
-    if (fa > fb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_activations_desc: validation failed");
-        return -1;
-    }
+    if (fa > fb) return -1;
     if (fa < fb) return 1;
     return 0;
 }
@@ -1063,10 +1060,7 @@ static int compare_pairs_desc(const void* a, const void* b) {
     const index_activation_pair_t* pa = (const index_activation_pair_t*)a;
     const index_activation_pair_t* pb = (const index_activation_pair_t*)b;
 
-    if (pa->activation > pb->activation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_pairs_desc: validation failed");
-        return -1;
-    }
+    if (pa->activation > pb->activation) return -1;
     if (pa->activation < pb->activation) return 1;
     return 0;
 }

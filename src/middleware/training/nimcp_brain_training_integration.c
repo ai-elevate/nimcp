@@ -635,7 +635,7 @@ static int find_free_loss_slot(nimcp_brain_training_ctx_t* ctx)
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_loss_slot: ctx->loss_slots is NULL");
+    /* All slots occupied - not an error, just no free slot */
     return -1;
 }
 

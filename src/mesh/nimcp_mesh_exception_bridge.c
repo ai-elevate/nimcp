@@ -210,7 +210,7 @@ static debounce_entry_t* find_debounce_entry(
         return entry;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_debounce_entry: operation failed");
+    /* No matching entry and no space for new entry */
     return NULL;
 }
 

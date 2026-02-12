@@ -135,14 +135,13 @@ bool phase_buffer_store(phase_coded_buffer_t* buffer,
                         float amplitude,
                         double timestamp_ms) {
     if (!buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_store: buffer is NULL");
         return false;
     }
 
     // Check capacity
     if (buffer->count >= buffer->config.capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phase_buffer_destroy: capacity exceeded");
-        return false;  // Buffer full
+        return false;  // Buffer full - not an error
     }
 
     float phase;
@@ -166,14 +165,13 @@ bool phase_buffer_store_with_phase(phase_coded_buffer_t* buffer,
                                     float amplitude,
                                     double timestamp_ms) {
     if (!buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_store_with_phase: buffer is NULL");
         return false;
     }
 
     // Check capacity
     if (buffer->count >= buffer->config.capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phase_buffer_destroy: capacity exceeded");
-        return false;
+        return false;  // Buffer full - not an error
     }
 
     // Store item
@@ -196,7 +194,7 @@ bool phase_buffer_retrieve_ordered(const phase_coded_buffer_t* buffer,
                                     uint32_t max_items,
                                     uint32_t* num_retrieved) {
     if (!buffer || !items || !num_retrieved) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: required parameter is NULL (buffer, items, num_retrieved)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_retrieve_ordered: required parameter is NULL (buffer, items, num_retrieved)");
         return false;
     }
 
@@ -221,7 +219,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
                                  float min_coherence,
                                  phase_pattern_match_t* result) {
     if (!buffer || !pattern_phases || !result || pattern_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: required parameter is NULL (buffer, pattern_phases, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_pattern_match: required parameter is NULL (buffer, pattern_phases, result)");
         return false;
     }
 
@@ -236,7 +234,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
     neural_phasor_t* pattern_phasors = (neural_phasor_t*)nimcp_malloc(
         pattern_count * sizeof(neural_phasor_t));
     if (!pattern_phasors) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phase_buffer_destroy: pattern_phasors is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phase_buffer_pattern_match: pattern_phasors allocation failed");
         return false;
     }
 
@@ -255,7 +253,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
         nimcp_free(pattern_phasors);
         nimcp_free(temp_indices);
         nimcp_free(temp_coherences);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: required parameter is NULL (temp_indices, temp_coherences)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phase_buffer_pattern_match: temp arrays allocation failed");
         return false;
     }
 

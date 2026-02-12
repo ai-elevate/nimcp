@@ -1376,7 +1376,6 @@ static nimcp_tensor_t* binary_op(
     nimcp_tensor_shape_t result_shape;
     if (!can_broadcast(&a->shape, &b->shape, &result_shape)) {
         LOG_ERROR(LOG_MODULE, "Cannot broadcast shapes");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "binary_op: can_broadcast is NULL");
         return NULL;
     }
 

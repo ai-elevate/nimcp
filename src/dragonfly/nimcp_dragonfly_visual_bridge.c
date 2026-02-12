@@ -128,8 +128,7 @@ int visual_cortex_extract_features(
 const attention_map_t* visual_cortex_get_attention_map(visual_cortex_t* cortex) {
     /* TODO: Return attention map from visual cortex when available */
     (void)cortex;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_attention_map: operation failed");
-    return NULL;
+    return NULL;  /* Not yet implemented */
 }
 
 //=============================================================================
