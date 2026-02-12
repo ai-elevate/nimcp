@@ -160,8 +160,7 @@ static cognitive_extension_t* find_extension(
             return &em->extensions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_extension: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static cognitive_extension_t* find_free_extension_slot(extended_mind_t* em) {
@@ -176,8 +175,7 @@ static cognitive_extension_t* find_free_extension_slot(extended_mind_t* em) {
             return &em->extensions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_free_extension_slot: .extension_id is zero");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 static cognitive_extension_t* find_best_extension_of_type(
@@ -236,8 +234,7 @@ static pending_query_t* find_query(
             return &em->queries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_query: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static pending_query_t* find_free_query_slot(extended_mind_t* em) {
@@ -252,8 +249,7 @@ static pending_query_t* find_free_query_slot(extended_mind_t* em) {
             return &em->queries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_query_slot: em->queries is NULL");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 /*=============================================================================
@@ -275,8 +271,7 @@ static pending_offload_t* find_offload(
             return &em->offloads[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_offload: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static pending_offload_t* find_free_offload_slot(extended_mind_t* em) {
@@ -291,8 +286,7 @@ static pending_offload_t* find_free_offload_slot(extended_mind_t* em) {
             return &em->offloads[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_offload_slot: em->offloads is NULL");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 /*=============================================================================

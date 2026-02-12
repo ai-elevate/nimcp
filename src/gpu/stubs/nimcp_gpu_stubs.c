@@ -83,7 +83,7 @@ wernicke_gpu_context_t* wernicke_gpu_create(
     wernicke_gpu_context_t* ctx = nimcp_calloc(1, sizeof(wernicke_gpu_context_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_create: allocation failed");
 
         return NULL;
 
@@ -797,7 +797,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     nimcp_gpu_tensor_t* tensor = nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
     if (!tensor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_tensor_create: allocation failed");
 
         return NULL;
 
@@ -911,7 +911,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_clone(const nimcp_gpu_tensor_t* tensor) {
         tensor->ctx, tensor->dims, tensor->ndim, tensor->precision);
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_tensor_clone: allocation failed");
 
         return NULL;
 
@@ -1722,7 +1722,7 @@ static bool create_cpu_layer(
     size_t weight_dims[2] = { out_dim, in_dim };
     layer->weights = nimcp_gpu_tensor_create(NULL, weight_dims, 2, NIMCP_GPU_PRECISION_FP32);
     if (!layer->weights) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_cpu_layer: layer->weights is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_cpu_layer: weights allocation failed");
         return false;
     }
 
@@ -1732,7 +1732,7 @@ static bool create_cpu_layer(
     if (!layer->bias) {
         nimcp_gpu_tensor_destroy(layer->weights);
         layer->weights = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_cpu_layer: layer->bias is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_cpu_layer: bias allocation failed");
         return false;
     }
 
@@ -1771,7 +1771,7 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     nimcp_jepa_gpu_predictor_t* pred = nimcp_calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
     if (!pred) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_jepa_gpu_predictor_create: allocation failed");
 
         return NULL;
 
@@ -2043,7 +2043,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     nimcp_jepa_gpu_inverse_t* inv = nimcp_calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
     if (!inv) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inv is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_jepa_gpu_inverse_create: allocation failed");
 
         return NULL;
 
@@ -2411,7 +2411,7 @@ broca_gpu_context_t* broca_gpu_create(
     broca_gpu_context_t* ctx = nimcp_calloc(1, sizeof(broca_gpu_context_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_gpu_create: allocation failed");
 
         return NULL;
 
@@ -2437,7 +2437,7 @@ broca_gpu_context_t* broca_gpu_create(
         nimcp_free(ctx->wm_word_ids);
         nimcp_free(ctx->wm_activations);
         nimcp_free(ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_create: required parameter is NULL (ctx->wm_word_ids, ctx->wm_activations)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_gpu_create: working memory allocation failed");
         return NULL;
     }
 

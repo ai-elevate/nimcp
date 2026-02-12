@@ -166,8 +166,7 @@ static registered_instance_t* find_instance(
             return &cc->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static registered_instance_t* find_free_slot(collective_cognition_t* cc) {
@@ -182,8 +181,7 @@ static registered_instance_t* find_free_slot(collective_cognition_t* cc) {
             return &cc->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: cc->instances is NULL");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 static int find_instance_index(
@@ -201,8 +199,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
-    return -1;
+    return -1;  /* Not found is normal */
 }
 
 /*=============================================================================

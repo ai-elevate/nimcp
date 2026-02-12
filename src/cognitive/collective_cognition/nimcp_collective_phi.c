@@ -165,8 +165,7 @@ static phi_instance_t* find_instance(
             return &cps->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static phi_instance_t* find_free_instance_slot(collective_phi_system_t* cps) {
@@ -181,8 +180,7 @@ static phi_instance_t* find_free_instance_slot(collective_phi_system_t* cps) {
             return &cps->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_instance_slot: cps->instances is NULL");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 static int find_instance_index(
@@ -200,8 +198,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
-    return -1;
+    return -1;  /* Not found is normal */
 }
 
 /*=============================================================================
@@ -226,8 +223,7 @@ static flow_entry_t* find_flow(
             return &cps->flows[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_flow: operation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static flow_entry_t* get_or_create_flow(

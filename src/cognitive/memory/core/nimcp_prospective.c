@@ -198,8 +198,7 @@ static prospective_intention_t* find_free_slot(prospective_memory_t pm) {
         return &pm->intentions[pm->num_intentions++];
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: validation failed");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 /**

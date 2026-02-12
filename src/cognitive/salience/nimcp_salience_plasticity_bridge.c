@@ -141,8 +141,7 @@ static salience_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static salience_feature_learning_t* find_feature(

@@ -1511,8 +1511,7 @@ static int find_node_index(const quantum_mcts_t* qmcts, uint32_t node_id)
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_node_index: validation failed");
-    return -1;
+    return -1;  /* Not found is normal */
 }
 
 static float random_float(uint32_t* seed)

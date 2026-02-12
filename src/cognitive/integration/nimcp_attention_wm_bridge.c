@@ -200,8 +200,7 @@ static int find_free_slot_unlocked(const attention_wm_bridge_t* bridge) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot_unlocked: bridge->items is NULL");
-    return -1;
+    return -1;  /* All slots occupied is normal */
 }
 
 /**

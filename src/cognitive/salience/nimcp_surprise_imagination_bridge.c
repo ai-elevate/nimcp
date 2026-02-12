@@ -150,8 +150,7 @@ static surprise_imagination_scenario_t* find_free_slot(
             return &bridge->scenarios[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: operation failed");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 static uint32_t count_active(surprise_imagination_bridge_t* bridge) {

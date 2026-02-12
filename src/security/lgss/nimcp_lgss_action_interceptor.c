@@ -827,7 +827,7 @@ action_interceptor_t aix_create(const aix_config_t* config) {
     action_interceptor_t aix = nimcp_calloc(1, sizeof(struct action_interceptor_impl));
     if (!aix) {
         LOG_ERROR("%s: Failed to allocate action interceptor", MODULE_NAME);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "aix is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "aix_create: allocation failed");
 
         return NULL;
     }

@@ -271,8 +271,7 @@ static subscriber_shannon_state_t* find_subscriber(
             return &state->subscribers[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscriber: operation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 /**

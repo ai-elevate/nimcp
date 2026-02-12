@@ -233,8 +233,7 @@ static hyperscanning_instance_t* find_instance(
             return &hs->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static int find_instance_index(
@@ -266,8 +265,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
-    return -1;
+    return -1;  /* Not found is normal */
 }
 
 static hyperscanning_instance_t* find_free_slot(hyperscanning_t* hs) {
@@ -282,8 +280,7 @@ static hyperscanning_instance_t* find_free_slot(hyperscanning_t* hs) {
             return &hs->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: hs->instances is NULL");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 /**

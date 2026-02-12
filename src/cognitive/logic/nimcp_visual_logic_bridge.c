@@ -242,8 +242,7 @@ static int find_free_slot(visual_logic_bridge_t* bridge) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->grounded is NULL");
-    return -1;
+    return -1;  /* All slots occupied is normal */
 }
 
 //=============================================================================

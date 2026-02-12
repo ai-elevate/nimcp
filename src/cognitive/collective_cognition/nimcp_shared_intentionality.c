@@ -150,8 +150,7 @@ static si_instance_t* find_instance(
             return &si->instances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static si_instance_t* find_free_instance_slot(shared_intentionality_t* si) {

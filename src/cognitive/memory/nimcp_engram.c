@@ -290,8 +290,7 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
     // Need to expand
     uint32_t old_capacity = system->capacity;
     if (!expand_engram_array(system)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: expand_engram_array is NULL");
-        return NULL;
+        return NULL;  /* All slots occupied is normal */
     }
 
     // Return first slot in new space

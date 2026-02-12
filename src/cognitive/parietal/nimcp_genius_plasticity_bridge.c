@@ -143,8 +143,7 @@ static genius_plasticity_synapse_t* find_synapse(genius_plasticity_bridge_t* bri
             return &bridge->synapses[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static float compute_stdp_weight_change(const genius_plasticity_config_t* config,

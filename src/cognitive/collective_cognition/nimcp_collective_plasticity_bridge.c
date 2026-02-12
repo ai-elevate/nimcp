@@ -137,8 +137,7 @@ static synapse_entry_t* find_synapse(collective_plasticity_bridge_t* bridge, uin
             return &bridge->synapses[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static synapse_entry_t* find_free_slot(collective_plasticity_bridge_t* bridge) {
@@ -153,8 +152,7 @@ static synapse_entry_t* find_free_slot(collective_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
-    return NULL;
+    return NULL;  /* All slots occupied is normal */
 }
 
 static bool is_protected_type(collective_synapse_type_t type) {
