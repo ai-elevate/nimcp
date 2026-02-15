@@ -571,23 +571,19 @@ nimcp_error_t mesh_brain_integration_register_module(
     return NIMCP_SUCCESS;
 }
 
-nimcp_error_t mesh_brain_integration_unregister_module(
+/**
+ * @brief Internal unlocked version of unregister_module
+ *
+ * WHAT: Unregister a module without acquiring the mutex
+ * WHY:  Called from unregister_brain which already holds the mutex,
+ *       preventing self-deadlock on non-recursive mutex
+ * PRECONDITION: Caller must hold integration->mutex
+ */
+static nimcp_error_t unregister_module_unlocked(
     mesh_brain_integration_t* integration,
     mesh_brain_region_t region
 ) {
-    if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (region <= MESH_BRAIN_REGION_UNKNOWN || region >= MESH_BRAIN_REGION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    nimcp_mutex_lock(integration->mutex);
-
     if (!integration->region_registered[region]) {
-        nimcp_mutex_unlock(integration->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_brain_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
@@ -608,13 +604,33 @@ nimcp_error_t mesh_brain_integration_unregister_module(
     /* Update statistics */
     update_stats_for_region(&integration->stats, region, false);
 
-    nimcp_mutex_unlock(integration->mutex);
-
     if (integration->config.verbose_logging) {
         LOG_DEBUG("Unregistered brain module '%s' (region=%d)", name, region);
     }
 
     return NIMCP_SUCCESS;
+}
+
+nimcp_error_t mesh_brain_integration_unregister_module(
+    mesh_brain_integration_t* integration,
+    mesh_brain_region_t region
+) {
+    if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (region <= MESH_BRAIN_REGION_UNKNOWN || region >= MESH_BRAIN_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration: invalid parameter");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(integration->mutex);
+
+    nimcp_error_t result = unregister_module_unlocked(integration, region);
+
+    nimcp_mutex_unlock(integration->mutex);
+
+    return result;
 }
 
 /* ============================================================================
@@ -858,10 +874,11 @@ nimcp_error_t mesh_brain_integration_unregister_brain(
 
     nimcp_mutex_lock(integration->mutex);
 
-    /* Unregister all registered regions */
+    /* Unregister all registered regions using unlocked variant
+     * to avoid self-deadlock (we already hold integration->mutex) */
     for (int i = 1; i < MESH_BRAIN_REGION_COUNT; i++) {
         if (integration->region_registered[i]) {
-            mesh_brain_integration_unregister_module(
+            unregister_module_unlocked(
                 integration, (mesh_brain_region_t)i);
         }
     }

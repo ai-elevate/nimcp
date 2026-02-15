@@ -295,7 +295,8 @@ mesh_ordering_service_t* mesh_ordering_create(
         for (size_t i = 0; i < config->channel_count && i < service->channel_capacity; i++) {
             service->channels[i] = config->channels[i];
         }
-        service->channel_count = config->channel_count;
+        service->channel_count = (config->channel_count < service->channel_capacity) ?
+            config->channel_count : service->channel_capacity;
     }
 
     /* Initialize timing */
@@ -471,7 +472,12 @@ bool mesh_ordering_is_pending(
 }
 
 size_t mesh_ordering_get_pending_count(const mesh_ordering_service_t* service) {
-    return service ? service->pending_count : 0;
+    if (!service) return 0;
+    /* P1: Lock mutex to prevent torn read while submit/batch modifies pending_count */
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    size_t count = service->pending_count;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return count;
 }
 
 /* ============================================================================
@@ -576,6 +582,9 @@ nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
         new_entry->index = service->raft.log_size;
         service->raft.log_size++;
         service->stats.log_entries = service->raft.log_size;
+    } else {
+        /* Log full - free allocated tx_ids to prevent leak */
+        nimcp_free(entry.tx_ids);
     }
 
     service->stats.transactions_ordered += service->current_batch->count;
@@ -648,6 +657,14 @@ mesh_ordered_block_t* mesh_ordering_create_block(
         if (new_blocks) {
             service->blocks = new_blocks;
             service->block_capacity = new_capacity;
+        } else {
+            /* Realloc failed - free block to prevent leak */
+            NIMCP_LOGGING_WARNING("mesh_ordering_create_block: realloc failed, block leaked");
+            nimcp_free(block->tx_ids);
+            nimcp_free(block);
+            nimcp_mutex_unlock(service->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering_create_block: realloc failed");
+            return NULL;
         }
     }
     if (service->block_count < service->block_capacity) {
@@ -930,21 +947,38 @@ nimcp_error_t mesh_ordering_send_heartbeat(mesh_ordering_service_t* service) {
 }
 
 raft_role_t mesh_ordering_get_role(const mesh_ordering_service_t* service) {
-    return service ? service->raft.role : RAFT_ROLE_FOLLOWER;
+    if (!service) return RAFT_ROLE_FOLLOWER;
+    /* P1: Lock mutex for consistent Raft state reads */
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    raft_role_t role = service->raft.role;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return role;
 }
 
 uint64_t mesh_ordering_get_term(const mesh_ordering_service_t* service) {
-    return service ? service->raft.current_term : 0;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    uint64_t term = service->raft.current_term;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return term;
 }
 
 mesh_participant_id_t mesh_ordering_get_leader(
     const mesh_ordering_service_t* service
 ) {
-    return service ? service->raft.leader_id : 0;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    mesh_participant_id_t leader = service->raft.leader_id;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return leader;
 }
 
 bool mesh_ordering_is_leader(const mesh_ordering_service_t* service) {
-    return service && service->raft.role == RAFT_ROLE_LEADER;
+    if (!service) return false;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    bool is_leader = (service->raft.role == RAFT_ROLE_LEADER);
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return is_leader;
 }
 
 bool mesh_ordering_has_quorum(const mesh_ordering_service_t* service) {

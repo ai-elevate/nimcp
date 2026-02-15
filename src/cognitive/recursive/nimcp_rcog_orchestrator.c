@@ -318,8 +318,7 @@ static bool detect_cycle_dfs(
 
     if (in_stack[idx]) return true;  /* Cycle detected */
     if (visited[idx]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_dfs: validation failed");
-        return false;
+        return false;  /* Already visited, no cycle through this node */
     }
 
     visited[idx] = true;
@@ -342,8 +341,7 @@ static bool detect_cycle_dfs(
     }
 
     in_stack[idx] = false;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_dfs: validation failed");
-    return false;
+    return false;  /* No cycle found from this node */
 }
 
 /**

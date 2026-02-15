@@ -662,7 +662,7 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
 
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
-        return 0.0F;  /* Cannot analyze without base network */
+        return false;  /* Cannot analyze without base network */
     }
 
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
@@ -804,8 +804,7 @@ static void* consolidation_thread_fn(void* arg)
         nimcp_mutex_unlock(&handle->lock);
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_thread_fn: operation failed");
-    return NULL;
+    return NULL;  /* Normal consolidation thread exit */
 }
 
 //=============================================================================

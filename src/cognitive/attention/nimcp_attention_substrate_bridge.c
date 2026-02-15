@@ -190,6 +190,7 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_substrate_bridge_create: failed to initialize mutex");
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -515,8 +516,11 @@ float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t*
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
-    return bridge->effects.focus_capacity;
+    /* P1: Lock mutex to prevent torn reads while update() writes under lock */
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    float result = bridge->effects.focus_capacity;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float attention_substrate_get_shifting_efficiency(const attention_substrate_bridge_t* bridge)
@@ -527,8 +531,10 @@ float attention_substrate_get_shifting_efficiency(const attention_substrate_brid
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
-    return bridge->effects.shifting_efficiency;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    float result = bridge->effects.shifting_efficiency;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float attention_substrate_get_filter_strength(const attention_substrate_bridge_t* bridge)
@@ -539,8 +545,10 @@ float attention_substrate_get_filter_strength(const attention_substrate_bridge_t
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
-    return bridge->effects.filter_strength;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    float result = bridge->effects.filter_strength;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 float attention_substrate_get_vigilance(const attention_substrate_bridge_t* bridge)
@@ -551,8 +559,10 @@ float attention_substrate_get_vigilance(const attention_substrate_bridge_t* brid
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
-    return bridge->effects.vigilance_factor;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    float result = bridge->effects.vigilance_factor;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 int attention_substrate_get_effects(
@@ -564,11 +574,12 @@ int attention_substrate_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    *effects = bridge->effects;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -580,8 +591,10 @@ bool attention_substrate_is_impaired(const attention_substrate_bridge_t* bridge)
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
-    return bridge->effects.is_impaired;
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    bool result = bridge->effects.is_impaired;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    return result;
 }
 
 int attention_substrate_get_stats(
@@ -593,11 +606,12 @@ int attention_substrate_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
 
-
+    nimcp_platform_mutex_lock(bridge->base.mutex);
+    *stats = bridge->stats;
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

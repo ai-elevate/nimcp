@@ -41,6 +41,7 @@
 #include <math.h>
 #include <string.h>
 #include <float.h>
+#include <stdatomic.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -180,6 +181,8 @@ typedef struct {
     shannon_workspace_state_t* state;
 } shannon_workspace_mapping_t;
 
+/* TODO: g_shannon_mappings and g_num_mappings need mutex for thread safety -
+ * atomic counter alone insufficient since array access + counter form compound operation */
 static shannon_workspace_mapping_t g_shannon_mappings[MAX_SHANNON_WORKSPACES];
 static uint32_t g_num_mappings = 0;
 
@@ -232,8 +235,8 @@ static shannon_workspace_state_t* get_shannon_state(const global_workspace_t* wo
  */
 static uint64_t get_current_time_ms(void) {
     /* Simple implementation - could use nimcp_time if available */
-    static uint64_t counter = 0;
-    return counter++;  /* Placeholder - integrate with actual time source */
+    static _Atomic uint64_t counter = 0;
+    return atomic_fetch_add(&counter, 1);
 }
 
 /**

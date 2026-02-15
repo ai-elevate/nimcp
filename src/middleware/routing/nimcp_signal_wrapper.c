@@ -192,9 +192,12 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
     new_wrapper->signal_size = wrapper->signal_size;
     new_wrapper->is_owner = false;  // Not owner, just a reference
 
-    // Share CoW managers (don't destroy on release)
-    new_wrapper->dest_ids_manager = wrapper->dest_ids_manager;
-    new_wrapper->signal_data_manager = wrapper->signal_data_manager;
+    // Non-owner does NOT store manager pointers to avoid use-after-free
+    // if the owner is released first. The CoW handles are sufficient for
+    // read/write operations. Manager pointers are only needed for
+    // owner cleanup and stats queries (refcount/is_shared).
+    new_wrapper->dest_ids_manager = NULL;
+    new_wrapper->signal_data_manager = NULL;
 
     // Acquire new CoW handles (refcount++)
     new_wrapper->dest_ids_handle = cow_acquire(wrapper->dest_ids_manager);

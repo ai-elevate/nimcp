@@ -1884,23 +1884,62 @@ uint32_t p2p_node_reconnect_unhealthy(p2p_node_t node)
         return 0;
     }
 
-    uint32_t reconnect_attempts = 0;
+    // Collect unhealthy peer info while holding lock, then release
+    // before calling attempt_peer_reconnect (which calls
+    // p2p_node_connect_peer, which also locks node->lock).
+    // This avoids a self-deadlock on non-recursive mutex.
+    typedef struct { char ip[16]; uint16_t port; uint32_t index; } unhealthy_info_t;
+    unhealthy_info_t unhealthy[64];  // Max peers we'll try
+    uint32_t unhealthy_count = 0;
 
-    // Single-pass iteration through peers
-    for (uint32_t i = 0; i < node->peer_count; i++) {
+    for (uint32_t i = 0; i < node->peer_count && unhealthy_count < 64; i++) {
         peer_info_t* peer = &node->peers[i];
 
         // Guard clause: Skip healthy/disconnected peers
         if (!peer->connected || peer->healthy)
             continue;
 
-        // Attempt reconnection
-        if (attempt_peer_reconnect(node, peer)) {
-            reconnect_attempts++;
-        }
+        strncpy(unhealthy[unhealthy_count].ip, peer->ip, sizeof(peer->ip));
+        unhealthy[unhealthy_count].ip[15] = '\0';
+        unhealthy[unhealthy_count].port = peer->port;
+        unhealthy[unhealthy_count].index = i;
+        unhealthy_count++;
     }
 
     nimcp_mutex_unlock(&node->lock);
+
+    // Now attempt reconnections without holding the lock
+    uint32_t reconnect_attempts = 0;
+    for (uint32_t i = 0; i < unhealthy_count; i++) {
+        LOG_INFO(LOG_MODULE, "Attempting to reconnect to unhealthy peer %s:%u",
+                 unhealthy[i].ip, unhealthy[i].port);
+
+        bool reconnected = p2p_node_connect_peer(node, unhealthy[i].ip, unhealthy[i].port);
+
+        if (reconnected) {
+            // Update health metrics under lock
+            nimcp_mutex_lock(&node->lock);
+            // Re-validate the peer is still there at the same index
+            if (unhealthy[i].index < node->peer_count) {
+                peer_info_t* peer = &node->peers[unhealthy[i].index];
+                if (strcmp(peer->ip, unhealthy[i].ip) == 0 && peer->port == unhealthy[i].port) {
+                    uint64_t now = nimcp_time_get_us();
+                    peer->last_ping_sent = now;
+                    peer->last_pong_received = now;
+                    peer->missed_pings = 0;
+                    peer->healthy = true;
+                    LOG_INFO(LOG_MODULE, "Successfully reconnected to peer %s:%u",
+                             unhealthy[i].ip, unhealthy[i].port);
+                }
+            }
+            nimcp_mutex_unlock(&node->lock);
+            reconnect_attempts++;
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to reconnect to peer %s:%u",
+                     unhealthy[i].ip, unhealthy[i].port);
+        }
+    }
+
     return reconnect_attempts;
 }
 

@@ -194,7 +194,7 @@ static float compute_distance(const float* a, const float* b, uint32_t count) {
         float diff = a[i] - b[i];
         sum += diff * diff;
     }
-    return sqrtf(sum / count);
+    return (count > 0) ? sqrtf(sum / count) : 0.0f;
 }
 
 //=============================================================================
@@ -602,6 +602,7 @@ int salience_snn_simulate(salience_snn_bridge_t* bridge, float duration_ms) {
     bridge->state = SALIENCE_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
+    if (dt <= 0.0f) dt = 1.0f;
     int steps = (int)(duration_ms / dt);
 
     for (int step = 0; step < steps; step++) {
@@ -657,8 +658,8 @@ int salience_snn_step(salience_snn_bridge_t* bridge) {
             membrane_activity += bridge->channel_neurons[c][n].input_current * 0.4f;
         }
         // Combine spike and membrane activity
-        float spike_rate = channel_activity / bridge->config.neurons_per_dim;
-        membrane_activity /= bridge->config.neurons_per_dim;
+        float spike_rate = (bridge->config.neurons_per_dim > 0) ? (channel_activity / bridge->config.neurons_per_dim) : 0.0f;
+        if (bridge->config.neurons_per_dim > 0) membrane_activity /= bridge->config.neurons_per_dim;
         bridge->channel_activations[c] = clamp(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
     }
 
@@ -700,6 +701,7 @@ int salience_snn_forward(
     salience_snn_bridge_heartbeat("salience_snn_salience_snn_forward", 0.0f);
 
 
+    if (bridge->num_channels == 0) return -1;
     uint32_t per_channel = input_count / bridge->num_channels;
     for (uint32_t c = 0; c < bridge->num_channels && c * per_channel < input_count; c++) {
         float sum = 0.0f;
@@ -997,7 +999,7 @@ int salience_snn_get_channel_state(
         total_spikes += bridge->channel_neurons[channel][n].spike_count;
     }
     state->spike_count = total_spikes;
-    state->spike_rate = (float)total_spikes / bridge->config.neurons_per_dim;
+    state->spike_rate = (bridge->config.neurons_per_dim > 0) ? ((float)total_spikes / bridge->config.neurons_per_dim) : 0.0f;
     state->confidence = bridge->last_output.confidence;
 
     return 0;

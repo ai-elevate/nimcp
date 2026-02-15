@@ -431,11 +431,8 @@ int vae_decoder_init_weights(vae_decoder_t* decoder, uint64_t seed) {
 
     vae_decoder_heartbeat("vae_decoder_init_weights", 0.0f);
 
-    if (seed != 0) {
-        srand((unsigned int)seed);
-    } else {
-        srand((unsigned int)time(NULL));
-    }
+    /* srand() removed: xavier_init() uses thread-safe nimcp_tl_rand() */
+    (void)seed;  /* seed parameter preserved for API compat */
 
     /* Initialize hidden layer weights */
     for (uint32_t i = 0; i < decoder->num_layers; i++) {

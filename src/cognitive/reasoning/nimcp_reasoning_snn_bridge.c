@@ -465,7 +465,7 @@ int reasoning_snn_encode_state(
         conflict_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
     }
-    conflict_magnitude = sqrtf(conflict_magnitude / num_dims);
+    conflict_magnitude = (num_dims > 0) ? sqrtf(conflict_magnitude / num_dims) : 0.0f;
 
     if (conflict_magnitude > bridge->config.conflict_threshold) {
         bridge->last_inference.conflict_detected = true;
@@ -581,6 +581,7 @@ int reasoning_snn_simulate(reasoning_snn_bridge_t* bridge, float duration_ms) {
     bridge->state = REASONING_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
+    if (dt <= 0.0f) dt = 1.0f;
     uint32_t steps = (uint32_t)(duration_ms / dt);
 
     /* Set inputs before simulation */

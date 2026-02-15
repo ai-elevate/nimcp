@@ -731,7 +731,7 @@ static float predictor_compute_surprise(predictor_t* pred, const float* features
         total_error += fabsf(features[i] - pred->prediction[i]);
     }
 
-    float mae = total_error / safe_count;
+    float mae = (safe_count > 0) ? (total_error / safe_count) : 0.0f;
 
     nimcp_mutex_unlock(&pred->lock);
 

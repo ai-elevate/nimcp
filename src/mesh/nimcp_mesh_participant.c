@@ -158,8 +158,7 @@ static participant_entry_t* find_entry_by_id(
             return &registry->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_by_id: required parameter is NULL (registry, registry->entries)");
-    return NULL;
+    return NULL;  /* Not found - normal lookup miss */
 }
 
 /**
@@ -180,8 +179,7 @@ static participant_entry_t* find_entry_by_name(
             return &registry->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_by_name: required parameter is NULL (registry, registry->entries, name)");
-    return NULL;
+    return NULL;  /* Not found - normal lookup miss */
 }
 
 /**

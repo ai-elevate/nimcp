@@ -137,6 +137,7 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_substrate_bridge_create: validation failed");
         return NULL;

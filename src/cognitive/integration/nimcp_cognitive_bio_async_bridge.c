@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -701,11 +702,11 @@ int cognitive_bio_bridge_update(
         bridge->stats.max_update_time_us = elapsed;
     }
 
-    /* Calculate running average */
-    static uint64_t update_count = 0;
-    update_count++;
+    /* Calculate running average (atomic counter for thread safety) */
+    static _Atomic uint64_t update_count = 0;
+    uint64_t count = atomic_fetch_add(&update_count, 1) + 1;
     bridge->stats.avg_update_time_us =
-        (bridge->stats.avg_update_time_us * (update_count - 1) + (float)elapsed) / update_count;
+        (bridge->stats.avg_update_time_us * (count - 1) + (float)elapsed) / count;
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

@@ -558,6 +558,7 @@ dynsys_error_t dynsys_bifurcation_scan(dynsys_bifurcation_t bif, const float* in
     dynsys_system_t sys = bif->sys;
     uint32_t dim = sys->config.state_dim;
     uint32_t num_points = bif->config.num_points;
+    if (num_points < 2) return DYNSYS_ERR_INVALID_DIM;
     uint32_t samples_per_point = bif->config.sample_steps;
 
     memset(result, 0, sizeof(dynsys_bifurcation_result_t));
@@ -670,7 +671,12 @@ dynsys_error_t dynsys_attractor_reconstruct(dynsys_attractor_t attr, const float
 
     uint32_t embed_dim = attr->config.embedding_dim;
     uint32_t delay = attr->config.time_delay;
-    uint32_t num_points = series_length - (embed_dim - 1) * delay;
+
+    /* Guard against uint32_t underflow: (embed_dim - 1) * delay may exceed series_length */
+    uint32_t product = (embed_dim > 0) ? (embed_dim - 1) * delay : 0;
+    if (product >= series_length) return DYNSYS_ERR_INVALID_DIM;
+
+    uint32_t num_points = series_length - product;
 
     if (num_points < 10) return DYNSYS_ERR_INVALID_DIM;
 

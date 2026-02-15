@@ -289,6 +289,9 @@ static void update_matrix(
     // Guard clauses
     if (!matrix || !input || !target || !predicted || dim == 0) return;
 
+    // Prevent VLA stack overflow for large dimensions
+    if (dim > 4096) return;
+
     // Compute error
     float error[dim];
     for (uint32_t i = 0; i < dim; i++) {
@@ -470,6 +473,13 @@ int dialect_learn_from_pairs(
         return -1;
     }
 
+    // Prevent VLA stack overflow for large signal sizes
+    if (signal_size > 4096) {
+        set_error("Signal size too large for stack allocation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_learn_from_pairs: signal_size too large");
+        return -1;
+    }
+
     nimcp_mutex_lock(&dl->lock);
 
     // Find or create dialect entry
@@ -561,6 +571,13 @@ int dialect_update_online(
     if (!dl || !source_signal || !target_signal || signal_size == 0) {
         set_error("Invalid parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_update_online: required parameter is NULL (dl, source_signal, target_signal)");
+        return -1;
+    }
+
+    // Prevent VLA stack overflow for large signal sizes
+    if (signal_size > 4096) {
+        set_error("Signal size too large for stack allocation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_update_online: signal_size too large");
         return -1;
     }
 
@@ -874,6 +891,13 @@ int dialect_translate_path(
     if (!dl || !path || !signal || !translated || !translated_size || path_len < 2) {
         set_error("Invalid parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_translate_path: required parameter is NULL (dl, path, signal, translated, translated_size)");
+        return -1;
+    }
+
+    // Prevent VLA stack overflow for large signal sizes
+    if (signal_size > 4096) {
+        set_error("Signal size too large for stack allocation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_translate_path: signal_size too large");
         return -1;
     }
 

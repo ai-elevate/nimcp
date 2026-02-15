@@ -169,7 +169,7 @@ static float compute_stdp_weight_change(
     } else if (dt_ms < 0) {
         /* Post before pre -> LTD */
         dw = -config->stdp_a_minus * expf(dt_ms / config->stdp_tau_minus);
-        dw *= (1.0f / attention_mod) * config->unfocused_ltd_boost;
+        dw *= (attention_mod > 0.0f ? (1.0f / attention_mod) : 1.0f) * config->unfocused_ltd_boost;
     }
 
     return dw;
@@ -458,6 +458,13 @@ int attention_plasticity_register_synapse(
         return -1;  /* Full */
     }
 
+    /* Bounds check head_idx */
+    if (head_idx >= bridge->num_heads) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_register_synapse: head_idx out of bounds");
+        return -1;
+    }
+
     /* Add synapse */
     attention_plasticity_synapse_t* synapse = &bridge->synapses[bridge->synapse_count];
     synapse->synapse_id = synapse_id;
@@ -740,6 +747,12 @@ int attention_plasticity_salience(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
+
+    if (sequence_length == 0) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_salience: sequence_length is 0");
+        return -1;
+    }
 
     /* Compute average salience */
     float avg_salience = 0.0f;

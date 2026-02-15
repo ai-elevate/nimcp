@@ -301,8 +301,8 @@ int thermo_qmc_free_energy_landscape(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "thermo_qmc_free_energy_landscape: state not initialized");
         return -1;
     }
-    if (num_points == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thermo_qmc_free_energy_landscape: num_points is 0");
+    if (num_points < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thermo_qmc_free_energy_landscape: num_points must be >= 2");
         return -1;
     }
 

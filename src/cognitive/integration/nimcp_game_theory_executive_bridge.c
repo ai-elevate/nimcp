@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -678,8 +679,14 @@ int game_theory_executive_analyze_options(
         nimcp_free(bridge->current_utilities);
     }
 
-    /* Allocate and copy utilities */
-    size_t utilities_size = num_actions * num_outcomes * sizeof(float);
+    /* Allocate and copy utilities - check for integer overflow */
+    if (num_actions > 0 && num_outcomes > SIZE_MAX / sizeof(float) / num_actions) {
+        bridge->state = GT_EXEC_STATE_ERROR;
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_executive_analyze_options: utilities_size overflow");
+        return -1;
+    }
+    size_t utilities_size = (size_t)num_actions * (size_t)num_outcomes * sizeof(float);
     bridge->current_utilities = nimcp_malloc(utilities_size);
     if (!bridge->current_utilities) {
         bridge->state = GT_EXEC_STATE_ERROR;
@@ -785,9 +792,9 @@ int game_theory_executive_get_recommendation(
         strategy_type = GT_STRATEGY_MIXED;
     }
 
-    /* Fill recommendation */
-    static uint64_t rec_id_counter = 0;
-    recommendation_out->recommendation_id = ++rec_id_counter;
+    /* Fill recommendation (atomic counter for thread safety) */
+    static _Atomic uint64_t rec_id_counter = 0;
+    recommendation_out->recommendation_id = atomic_fetch_add(&rec_id_counter, 1) + 1;
     recommendation_out->strategy_type = strategy_type;
     recommendation_out->expected_utility = clamp_float(best_utility, 0.0f, 1.0f);
     recommendation_out->confidence = confidence;

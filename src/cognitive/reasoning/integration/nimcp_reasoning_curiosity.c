@@ -247,8 +247,12 @@ void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
     }
     
     if (curiosity_boost >= integration->config.min_curiosity_threshold) {
-        float total = integration->stats.avg_curiosity_boost * (integration->stats.exploration_triggers - 1);
-        integration->stats.avg_curiosity_boost = (total + curiosity_boost) / integration->stats.exploration_triggers;
+        if (integration->stats.exploration_triggers > 0) {
+            float total = integration->stats.avg_curiosity_boost * (integration->stats.exploration_triggers - 1);
+            integration->stats.avg_curiosity_boost = (total + curiosity_boost) / integration->stats.exploration_triggers;
+        } else {
+            integration->stats.avg_curiosity_boost = curiosity_boost;
+        }
     }
     
     uint64_t elapsed = get_time_us() - start;

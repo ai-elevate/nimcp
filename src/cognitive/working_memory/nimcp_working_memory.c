@@ -1910,6 +1910,7 @@ bool working_memory_encode_positions(working_memory_t* wm) {
         float* item_data = wm->items[pos];
         uint32_t item_size = wm->item_sizes[pos];
 
+        if (wm->pe_embedding_dim == 0) continue;
         for (uint32_t j = 0; j < item_size; j++) {
             // Cycle through PE dimensions if item is larger
             uint32_t pe_idx = j % wm->pe_embedding_dim;

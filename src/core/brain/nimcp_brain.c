@@ -498,7 +498,7 @@ static task_strategy_t* strategy_create(brain_task_t task)
     task_strategy_t* strategy = nimcp_calloc(1, sizeof(task_strategy_t));
     if (!strategy) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strategy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "strategy allocation failed");
 
         return NULL;
 
@@ -831,7 +831,8 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->task = task;
     config->num_inputs = num_inputs;
     config->num_outputs = num_outputs;
-    config->learning_rate = strategy->get_learning_rate();
+    config->learning_rate = (strategy && strategy->get_learning_rate)
+                            ? strategy->get_learning_rate() : 0.01f;
     config->sparsity_target = get_default_sparsity(size);
     config->enable_explanations = true;
     strncpy(config->task_name, task_name, sizeof(config->task_name) - 1);
@@ -3806,7 +3807,9 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // Apply task-specific output transformation
-    brain->strategy->transform_output(decision->output_vector, decision->output_size);
+    if (brain->strategy && brain->strategy->transform_output) {
+        brain->strategy->transform_output(decision->output_vector, decision->output_size);
+    }
 
     // ========================================================================
     // STAGE 3.5: Apply Sleep-Induced Noise (REM creativity)

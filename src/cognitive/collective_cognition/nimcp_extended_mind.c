@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdatomic.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -137,8 +138,8 @@ struct extended_mind {
  *===========================================================================*/
 
 static uint64_t get_timestamp_us(void) {
-    static uint64_t counter = 0;
-    return counter++;
+    static _Atomic uint64_t counter = 0;
+    return atomic_fetch_add(&counter, 1);
 }
 
 /*=============================================================================

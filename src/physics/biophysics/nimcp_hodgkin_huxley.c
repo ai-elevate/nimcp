@@ -1134,7 +1134,7 @@ nimcp_error_t nimcp_hh_compute_fi_curve(nimcp_hh_neuron_t* neuron,
     NIMCP_CHECK_THROW(currents, NIMCP_ERROR_NULL_POINTER, "currents is NULL");
     NIMCP_CHECK_THROW(rates, NIMCP_ERROR_NULL_POINTER, "rates is NULL");
     NIMCP_CHECK_THROW(neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
-    NIMCP_CHECK_THROW(num_points > 0, NIMCP_ERROR_INVALID_PARAMETER, "num_points must be > 0");
+    NIMCP_CHECK_THROW(num_points > 1, NIMCP_ERROR_INVALID_PARAMETER, "num_points must be > 1");
 
     float step = (I_max - I_min) / (float)(num_points - 1);
     float sim_time = 500.0f;  /* ms per current level */

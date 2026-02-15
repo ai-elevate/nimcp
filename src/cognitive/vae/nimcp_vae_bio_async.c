@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdatomic.h>
 
 /* ============================================================================
  * Module Constants
@@ -669,13 +670,14 @@ int vae_bio_async_periodic_update(vae_bio_async_bridge_t* bridge)
         vae_bio_async_send_heartbeat(bridge);
     }
 
-    /* Send metrics if enabled and interval elapsed */
+    /* Send metrics if enabled and interval elapsed (atomic for thread safety) */
     if (bridge->config.enable_metrics_reporting) {
-        static uint64_t last_metrics_us = 0;
-        uint64_t metrics_elapsed = (now - last_metrics_us) / 1000;
+        static _Atomic uint64_t last_metrics_us = 0;
+        uint64_t prev_metrics = atomic_load(&last_metrics_us);
+        uint64_t metrics_elapsed = (now - prev_metrics) / 1000;
         if (metrics_elapsed >= bridge->config.metrics_interval_ms) {
             vae_bio_async_send_metrics(bridge);
-            last_metrics_us = now;
+            atomic_store(&last_metrics_us, now);
         }
     }
 

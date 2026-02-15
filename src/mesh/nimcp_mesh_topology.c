@@ -575,6 +575,9 @@ nimcp_error_t mesh_topology_remove_participant(
 nimcp_error_t mesh_topology_clear(mesh_topology_ctx_t ctx) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P1: Lock mutex to prevent concurrent reads during clear */
+    nimcp_mutex_lock(ctx->mutex);
+
     for (size_t i = 0; i < ctx->node_capacity; i++) {
         if (ctx->nodes[i].valid) {
             free_adj_list(ctx->nodes[i].neighbors);
@@ -589,6 +592,8 @@ nimcp_error_t mesh_topology_clear(mesh_topology_ctx_t ctx) {
     ctx->metrics_valid = false;
     ctx->clusters_computed = false;
 
+    nimcp_mutex_unlock(ctx->mutex);
+
     return NIMCP_SUCCESS;
 }
 
@@ -601,7 +606,14 @@ nimcp_error_t mesh_topology_compute_metrics(
     mesh_topology_metrics_t* metrics
 ) {
     if (!ctx || !metrics) return NIMCP_ERROR_INVALID_PARAM;
-    if (ctx->node_count == 0) return NIMCP_ERROR_INVALID_STATE;
+
+    /* P1: Lock mutex to get consistent snapshot of topology state */
+    nimcp_mutex_lock(ctx->mutex);
+
+    if (ctx->node_count == 0) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     memset(metrics, 0, sizeof(mesh_topology_metrics_t));
 
@@ -684,6 +696,8 @@ nimcp_error_t mesh_topology_compute_metrics(
     /* Cache and return */
     ctx->cached_metrics = *metrics;
     ctx->metrics_valid = true;
+
+    nimcp_mutex_unlock(ctx->mutex);
 
     return NIMCP_SUCCESS;
 }

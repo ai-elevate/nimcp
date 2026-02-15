@@ -447,11 +447,8 @@ int vae_encoder_init_weights(vae_encoder_t* encoder, uint64_t seed) {
 
     vae_encoder_heartbeat("vae_encoder_init_weights", 0.0f);
 
-    if (seed != 0) {
-        srand((unsigned int)seed);
-    } else {
-        srand((unsigned int)time(NULL));
-    }
+    /* srand() removed: xavier_init() uses thread-safe nimcp_tl_rand() */
+    (void)seed;  /* seed parameter preserved for API compat */
 
     /* Initialize hidden layer weights */
     for (uint32_t i = 0; i < encoder->num_layers; i++) {

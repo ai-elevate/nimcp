@@ -494,6 +494,11 @@ static void step_adam(
         }
     }
 
+    /* Guard: if allocation failed, cannot proceed */
+    if (!state->m || !state->v) {
+        return;
+    }
+
     state->t++;
 
     /* Compute bias correction with clamping to prevent underflow/overflow
@@ -597,6 +602,11 @@ static void step_adamw(
         }
     }
 
+    /* Guard: if allocation failed, cannot proceed */
+    if (!state->m || !state->v) {
+        return;
+    }
+
     state->t++;
 
     /* Compute bias correction with clamping to prevent underflow/overflow */
@@ -688,6 +698,11 @@ static void step_nadam(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
+    }
+
+    /* Guard: if allocation failed, cannot proceed */
+    if (!state->m || !state->v) {
+        return;
     }
 
     state->t++;
@@ -791,6 +806,11 @@ static void step_rmsprop(
         }
     }
 
+    /* Guard: if allocation failed, cannot proceed */
+    if (!state->square_avg) {
+        return;
+    }
+
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
@@ -869,6 +889,11 @@ static void step_adagrad(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
+    }
+
+    /* Guard: if allocation failed, cannot proceed */
+    if (!state->sum) {
+        return;
     }
 
     state->step++;

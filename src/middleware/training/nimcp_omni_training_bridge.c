@@ -357,13 +357,13 @@ int omni_training_get_pe_gradients(const omni_training_bridge_t* bridge,
     NIMCP_CHECK_THROW(bridge && gradients, NIMCP_ERROR_INVALID_PARAM,
                       "omni_training_get_pe_gradients: NULL argument");
 
-    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->base.mutex);
 
     if (bridge->pred_hier) {
         pred_hier_get_error(bridge->pred_hier, level, gradients);
     }
 
-    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -431,9 +431,9 @@ int omni_training_get_omni_effects(const omni_training_bridge_t* bridge,
                                     omni_to_training_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM,
                       "omni_training_get_omni_effects: NULL argument");
-    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_training_effects_t));
-    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -441,9 +441,9 @@ int omni_training_get_training_effects(const omni_training_bridge_t* bridge,
                                         training_to_omni_effects_t* effects) {
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM,
                       "omni_training_get_training_effects: NULL argument");
-    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->base.mutex);
     memcpy(effects, &bridge->training_effects, sizeof(training_to_omni_effects_t));
-    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -451,9 +451,9 @@ int omni_training_get_stats(const omni_training_bridge_t* bridge,
                              omni_training_stats_t* stats) {
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM,
                       "omni_training_get_stats: NULL argument");
-    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_training_stats_t));
-    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->base.mutex);
     return NIMCP_SUCCESS;
 }
 

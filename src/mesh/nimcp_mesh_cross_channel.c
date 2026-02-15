@@ -50,6 +50,8 @@ typedef struct cross_tx_entry {
 /**
  * @brief Internal system coordinator
  */
+/* TODO: mesh_system_coordinator and mesh_cross_router need mutex for thread safety -
+ * all channel/pending state is unprotected against concurrent access */
 struct mesh_system_coordinator_internal {
     mesh_system_coord_config_t config;
 
@@ -592,8 +594,7 @@ bool mesh_cross_transactions_conflict(
     /* Also conflict if they're trying to modify the same world state key */
     /* Would check payload for actual conflict detection */
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cross_transactions_conflict: operation failed");
-    return false;
+    return false;  /* No conflict detected - normal path */
 }
 
 /* ============================================================================

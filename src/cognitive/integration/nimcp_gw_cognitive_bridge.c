@@ -31,6 +31,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -154,8 +155,8 @@ struct gw_cognitive_bridge {
  */
 static uint64_t get_timestamp_ms(void) {
     /* Use a simple counter for now; could be replaced with actual time */
-    static uint64_t counter = 0;
-    return ++counter;
+    static _Atomic uint64_t counter = 0;
+    return atomic_fetch_add(&counter, 1) + 1;
 }
 
 /**

@@ -115,6 +115,9 @@ struct attention_snn_bridge {
     float current_gate_mod;
     float current_competition_strength;
 
+    /* Attention shift tracking (per-instance, not static) */
+    float prev_focus;
+
     /* Bio-async */
     bool bio_async_connected;
 
@@ -930,6 +933,13 @@ int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
 
     bridge->state = ATTENTION_SNN_STATE_SIMULATING;
 
+    if (bridge->config.dt_ms <= 0.0f) {
+        bridge->state = ATTENTION_SNN_STATE_IDLE;
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_snn_simulate: dt_ms is zero or negative");
+        return -1;
+    }
+
     int steps = (int)(duration_ms / bridge->config.dt_ms);
     for (int s = 0; s < steps; s++) {
         /* Phase 8: Loop progress heartbeat */
@@ -986,6 +996,13 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_COMPETING;
+
+    if (bridge->config.dt_ms <= 0.0f) {
+        bridge->state = ATTENTION_SNN_STATE_IDLE;
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_snn_compete: dt_ms is zero or negative");
+        return -1;
+    }
 
     /* Run competition simulation */
     int steps = (int)(duration_ms / bridge->config.dt_ms);
@@ -1086,6 +1103,7 @@ int attention_snn_get_weights(
     /* Normalize firing rates to [0, 1] */
     float max_rate = bridge->config.max_rate_hz;
     float min_rate = bridge->config.baseline_rate_hz;
+    float rate_range = max_rate - min_rate;
     for (uint32_t h = 0; h < n; h++) {
         /* Phase 8: Loop progress heartbeat */
         if ((h & 0xFF) == 0 && n > 256) {
@@ -1093,7 +1111,11 @@ int attention_snn_get_weights(
                              (float)(h + 1) / (float)n);
         }
 
-        weights[h] = (weights[h] - min_rate) / (max_rate - min_rate);
+        if (rate_range > 0.0f) {
+            weights[h] = (weights[h] - min_rate) / rate_range;
+        } else {
+            weights[h] = 0.5f;  /* All rates equal - use neutral weight */
+        }
         weights[h] = clamp_f(weights[h], 0.0f, 1.0f);
     }
 
@@ -1274,12 +1296,11 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
 
     bridge->attention.focus_strength = focus;
 
-    /* Track attention shifts */
-    static float prev_focus = 0.0f;
-    if (fabsf(focus - prev_focus) > 0.2f) {
+    /* Track attention shifts (per-instance to avoid cross-bridge race) */
+    if (fabsf(focus - bridge->prev_focus) > 0.2f) {
         bridge->stats.attention_shifts++;
     }
-    prev_focus = focus;
+    bridge->prev_focus = focus;
 
     return focus;
 }

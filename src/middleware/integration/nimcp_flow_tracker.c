@@ -635,7 +635,14 @@ void flow_tracker_reset(
 
         nimcp_mutex_lock(&path->mutex);
 
+        /* Save the mutex before zeroing - memset would destroy it */
+        nimcp_mutex_t saved_mutex = path->mutex;
+
         memset(path, 0, sizeof(path_flow_state_t));
+
+        /* Restore the mutex */
+        path->mutex = saved_mutex;
+
         path->measurement_window_start_us = now_us;
         path->last_update_time_us = now_us;
         path->min_latency_us = INFINITY;

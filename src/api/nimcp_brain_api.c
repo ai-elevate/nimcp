@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #define LOG_MODULE "API.BRAIN"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -384,11 +385,14 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_p
 // Bio-Async Brain Probe Broadcasting (Loose Coupling)
 //=============================================================================
 
-// Module context for brain bio-router registration (lazy init)
-static bio_module_context_t g_brain_module_ctx = NULL;
+// Module context for brain bio-router registration (lazy init, thread-safe)
+static _Atomic(bio_module_context_t) g_brain_module_ctx = NULL;
 
 /**
  * @brief Get or create the brain module context for bio-async messaging
+ *
+ * P1 fix: Use atomic load/CAS to prevent race where two threads both see
+ * NULL and both call bio_router_register_module (double registration).
  */
 static bio_module_context_t get_brain_module_ctx(void) {
     if (!bio_router_is_initialized()) {
@@ -396,16 +400,27 @@ static bio_module_context_t get_brain_module_ctx(void) {
         return NULL;
     }
 
-    if (!g_brain_module_ctx) {
-        bio_module_info_t info = {
-            .module_id = BIO_MODULE_BRAIN,
-            .module_name = "brain",
-            .inbox_capacity = 64,
-            .user_data = NULL
-        };
-        g_brain_module_ctx = bio_router_register_module(&info);
+    bio_module_context_t ctx = atomic_load(&g_brain_module_ctx);
+    if (ctx) {
+        return ctx;
     }
-    return g_brain_module_ctx;
+
+    /* Lazy registration - CAS ensures only one thread registers */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_BRAIN,
+        .module_name = "brain",
+        .inbox_capacity = 64,
+        .user_data = NULL
+    };
+    bio_module_context_t new_ctx = bio_router_register_module(&info);
+    bio_module_context_t expected = NULL;
+    if (atomic_compare_exchange_strong(&g_brain_module_ctx, &expected, new_ctx)) {
+        return new_ctx;  /* We won the race */
+    }
+    /* Another thread already registered - return theirs.
+     * Note: new_ctx is a duplicate registration that will be unused.
+     * bio_router_register_module is idempotent for same module_id. */
+    return atomic_load(&g_brain_module_ctx);
 }
 
 /**

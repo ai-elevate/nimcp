@@ -697,7 +697,11 @@ nimcp_error_t mesh_channel_get_top_world_state_items(
 
 float mesh_channel_get_world_state_coherence(const mesh_channel_t* channel) {
     if (!validate_channel(channel) || !channel->world_state) return 0.0f;
-    return collective_workspace_get_coherence(channel->world_state);
+    /* P1: Lock mutex to prevent torn read while update modifies world_state */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+    float coherence = collective_workspace_get_coherence(channel->world_state);
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
+    return coherence;
 }
 
 size_t mesh_channel_prune_world_state(
@@ -1150,12 +1154,17 @@ nimcp_error_t mesh_channel_get_consensus_beliefs(
     if (!validate_channel(channel)) return NIMCP_ERROR_INVALID_PARAM;
     if (!beliefs_out || !count_out) return NIMCP_ERROR_NULL_POINTER;
 
+    /* P1: Lock mutex to prevent torn reads of beliefs array while update modifies it */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+
     size_t count = channel->belief_count < max_beliefs ?
                    channel->belief_count : max_beliefs;
 
     /* Return beliefs sorted by certainty (already high certainty = consensus) */
     memcpy(beliefs_out, channel->beliefs, count * sizeof(mesh_belief_t));
     *count_out = count;
+
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
 
     return NIMCP_SUCCESS;
 }

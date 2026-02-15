@@ -269,8 +269,7 @@ static int queue_push(kg_io_queue_t* queue, const kg_io_request_t* request) {
 
     uint32_t count = atomic_load(&queue->count);
     if (count >= queue->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "queue_push: capacity exceeded");
-        return -1;  /* Queue full */
+        return -1;  /* Queue full - normal backpressure */
     }
 
     kg_io_queue_entry_t* entry = nimcp_calloc(1, sizeof(kg_io_queue_entry_t));

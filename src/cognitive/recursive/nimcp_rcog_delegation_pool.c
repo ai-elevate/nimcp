@@ -424,8 +424,7 @@ static rcog_task_node_t* steal_task(rcog_worker_queue_t* queue) {
     /* Steal from tail (lowest priority) */
     if (!queue->head || !queue->head->next) {
         nimcp_mutex_unlock(queue->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "steal_task: required parameter is NULL (queue->head, queue->head->next)");
-        return NULL;
+        return NULL;  /* Nothing to steal - normal condition */
     }
 
     /* Find second-to-last node */
@@ -2292,8 +2291,7 @@ static void* worker_thread_func(void* arg) {
     }
 
     worker->state = RCOG_WORKER_STOPPED;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "worker_thread_func: validation failed");
-    return NULL;
+    return NULL;  /* Normal worker thread exit */
 }
 
 /* ============================================================================
