@@ -52,7 +52,7 @@ static void swarm_identity_value_destructor(void* value_ptr, size_t value_size) 
 static hash_table_t* swarm_hash_table_create_ex(size_t buckets, bool with_destructor) {
     hash_table_config_t config = {
         .initial_buckets = buckets,
-        .key_type = HASH_KEY_UINT32,  /* Use uint32 for now - will truncate uint64 */
+        .key_type = HASH_KEY_UINT64,
         .hash_algorithm = HASH_ALG_MURMUR3,
         .value_destructor = with_destructor ? swarm_identity_value_destructor : NULL,
         .case_insensitive = false,
@@ -66,21 +66,21 @@ static hash_table_t* swarm_hash_table_create(size_t buckets) {
     return swarm_hash_table_create_ex(buckets, false);
 }
 
-/* Wrapper to insert with uint64 key (truncated to uint32) */
+/* Wrapper to insert with uint64 key (full 64-bit, no truncation) */
 static bool swarm_hash_table_insert(hash_table_t* table, uint64_t key, void* value) {
     /* Store the pointer value itself - pass address of the pointer so it copies the pointer bytes */
-    return hash_table_insert_uint32(table, (uint32_t)key, &value, sizeof(void*));
+    return hash_table_insert_uint64(table, key, &value, sizeof(void*));
 }
 
-/* Wrapper to lookup with uint64 key (truncated to uint32) */
+/* Wrapper to lookup with uint64 key (full 64-bit, no truncation) */
 static void* swarm_hash_table_lookup(hash_table_t* table, uint64_t key) {
-    void** result = (void**)hash_table_lookup_uint32(table, (uint32_t)key);
+    void** result = (void**)hash_table_lookup_uint64(table, key);
     return result ? *result : NULL;
 }
 
-/* Wrapper to remove with uint64 key (truncated to uint32) */
+/* Wrapper to remove with uint64 key (full 64-bit, no truncation) */
 static bool swarm_hash_table_remove(hash_table_t* table, uint64_t key) {
-    return hash_table_remove_uint32(table, (uint32_t)key);
+    return hash_table_remove_uint64(table, key);
 }
 
 /* ============================================================================
@@ -761,14 +761,8 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     void* brain,
     bio_router_t* router
 ) {
-    if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_multi_swarm_create: brain is NULL");
-        return NULL;
-    }
-    if (!router) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_multi_swarm_create: router is NULL");
-        return NULL;
-    }
+    /* brain and router are optional - coordinator can operate in standalone mode
+     * for conflict resolution and swarm management without brain/router context */
 
     LOG_INFO("Creating multi-swarm coordinator");
 

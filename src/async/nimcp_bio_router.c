@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 #include <stddef.h>  /* for NULL */
 // Global BBB system accessor (defined in nimcp_brain_init.c)
@@ -178,20 +179,35 @@ static struct bio_async_orchestrator* g_router_orchestrator = NULL;
 /* Brain KG reference for Phase 7: Runtime Message Orchestration */
 static struct brain_kg* g_router_brain_kg = NULL;
 static nimcp_platform_mutex_t g_router_brain_kg_mutex;
-static bool g_router_brain_kg_mutex_initialized = false;
+static atomic_bool g_router_brain_kg_mutex_initialized = false;
 
 /* Forward declaration for Phase 7: KG dispatch */
 static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uint32_t timeout_ms);
 
 /**
  * @brief Thread-safe accessor for brain KG pointer
+ *
+ * TOCTOU FIX: Use atomic_load for the initialized flag to ensure we read
+ * a consistent value. The flag is set atomically in init_router_mutex_once()
+ * and cleared atomically in bio_router_shutdown(). The atomic_load with
+ * memory_order_acquire ensures the mutex init is visible before we lock it.
+ * We also re-check the flag after acquiring the lock to handle the case where
+ * shutdown runs between our check and our lock acquisition.
  */
 static struct brain_kg* get_router_brain_kg_safe(void) {
-    if (!g_router_brain_kg_mutex_initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_router_brain_kg_safe: g_router_brain_kg_mutex_initialized is NULL");
+    if (!atomic_load_explicit(&g_router_brain_kg_mutex_initialized, memory_order_acquire)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_router_brain_kg_safe: mutex not initialized");
         return NULL;
     }
     nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
+    /* TOCTOU FIX: Re-check after acquiring lock. If shutdown cleared the flag
+     * between our check above and the lock acquisition, we must bail out.
+     * The mutex is still valid here because shutdown destroys it AFTER setting
+     * the flag to false, and we hold the lock so shutdown is blocked. */
+    if (!atomic_load_explicit(&g_router_brain_kg_mutex_initialized, memory_order_acquire)) {
+        nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
+        return NULL;
+    }
     struct brain_kg* kg = g_router_brain_kg;
     nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
     return kg;
@@ -205,7 +221,9 @@ static struct brain_kg* get_router_brain_kg_safe(void) {
 static void init_router_mutex_once(void) {
     nimcp_platform_mutex_init(&g_router_init_mutex, false);
     nimcp_platform_mutex_init(&g_router_brain_kg_mutex, false);
-    g_router_brain_kg_mutex_initialized = true;
+    /* TOCTOU FIX: Use atomic store with release ordering to ensure the mutex
+     * initialization is visible to all threads before they see initialized=true. */
+    atomic_store_explicit(&g_router_brain_kg_mutex_initialized, true, memory_order_release);
 }
 
 /*=============================================================================
@@ -389,11 +407,22 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
     NIMCP_CHECK_THROW(queue && msg && msg_size > 0, NIMCP_ERROR_INVALID_PARAM,
                       "bio_msg_queue_enqueue: invalid queue, msg, or msg_size");
 
-    // DEADLOCK FIX: Early check for shutdown before acquiring any locks
-    NIMCP_CHECK_THROW(!(g_router && g_router->shutdown_requested), NIMCP_ERROR_CANCELLED,
-                      "bio_msg_queue_enqueue: shutdown requested");
-
+    /* TOCTOU FIX: Acquire the queue lock FIRST, then check the shutdown flag.
+     * The previous code checked shutdown_requested without holding any lock,
+     * creating a race where shutdown could begin between the check and the
+     * lock acquisition, potentially enqueuing a message during teardown.
+     * By checking inside the lock, we ensure atomicity of the check-and-enqueue
+     * sequence. The shutdown path acquires queue->mutex before broadcasting
+     * wakeups, so holding this lock prevents the shutdown from progressing
+     * past our check. */
     nimcp_platform_mutex_lock(&queue->mutex);
+
+    // Check shutdown after acquiring lock (TOCTOU-safe)
+    if (g_router && g_router->shutdown_requested) {
+        nimcp_platform_mutex_unlock(&queue->mutex);
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_CANCELLED,
+                          "bio_msg_queue_enqueue: shutdown requested");
+    }
 
     // Handle full queue - try to grow or wait
     while (queue->count >= queue->capacity) {
@@ -483,11 +512,17 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
     NIMCP_CHECK_THROW(queue && out_msg && out_size, NIMCP_ERROR_INVALID_PARAM,
                       "bio_msg_queue_dequeue: invalid queue or output params");
 
-    // DEADLOCK FIX: Early check for shutdown before acquiring any locks
-    NIMCP_CHECK_THROW(!(g_router && g_router->shutdown_requested), NIMCP_ERROR_CANCELLED,
-                      "bio_msg_queue_dequeue: shutdown requested");
-
+    /* TOCTOU FIX: Acquire the queue lock FIRST, then check the shutdown flag.
+     * Same fix as bio_msg_queue_enqueue - checking shutdown_requested outside
+     * the lock creates a race where shutdown can progress between check and lock. */
     nimcp_platform_mutex_lock(&queue->mutex);
+
+    // Check shutdown after acquiring lock (TOCTOU-safe)
+    if (g_router && g_router->shutdown_requested) {
+        nimcp_platform_mutex_unlock(&queue->mutex);
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_CANCELLED,
+                          "bio_msg_queue_dequeue: shutdown requested");
+    }
 
     // Wait for message if empty
     while (queue->count == 0) {
@@ -799,10 +834,18 @@ void bio_router_shutdown(void) {
     // Clear brain KG reference
     g_router_brain_kg = NULL;
 
-    /* P1-8 fix: Destroy brain KG mutex before shutdown completes */
-    if (g_router_brain_kg_mutex_initialized) {
+    /* P1-8 fix: Destroy brain KG mutex before shutdown completes.
+     * TOCTOU FIX: Set the atomic flag to false BEFORE destroying the mutex.
+     * This ensures concurrent get_router_brain_kg_safe() calls see the flag
+     * as false and bail out before attempting to lock the (soon-destroyed) mutex.
+     * Use release ordering so the flag write is visible before mutex destroy. */
+    if (atomic_load_explicit(&g_router_brain_kg_mutex_initialized, memory_order_acquire)) {
+        /* Lock the mutex first to drain any concurrent users, then clear flag
+         * while holding the lock so no new users can enter. */
+        nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
+        atomic_store_explicit(&g_router_brain_kg_mutex_initialized, false, memory_order_release);
+        nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
         nimcp_platform_mutex_destroy(&g_router_brain_kg_mutex);
-        g_router_brain_kg_mutex_initialized = false;
     }
 
     /* P1-1 fix: Reset subsystem once-flags so they re-initialize after shutdown */
@@ -1354,7 +1397,8 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
-            NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "KG dispatch requested but brain_kg not set");
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_INITIALIZED,
+                              "KG dispatch requested but brain_kg not set");
         }
 
         int dispatched = bio_router_kg_dispatch_internal(msg, msg_size, timeout_ms);

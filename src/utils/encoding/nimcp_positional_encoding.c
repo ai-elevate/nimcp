@@ -282,7 +282,7 @@ static float* compute_alibi_slopes(uint32_t num_heads, float slope_base)
     }
 
     float ratio = powf(slope_base, 1.0F / (float)num_heads);
-    float slope = 1.0F;
+    float slope = ratio;  /* Start at ratio, not 1.0: slope[h] = slope_base^((h+1)/n) */
 
     for (uint32_t h = 0; h < num_heads; h++) {
         slopes[h] = slope;

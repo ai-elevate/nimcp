@@ -373,13 +373,11 @@ bool nimcp_recovery_cache_signatures_equal(
 
     /* Fast path: compare hashes */
     if (sig1->hash != sig2->hash) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_signatures_equal: validation failed");
         return false;
     }
 
     /* Slow path: compare raw data (hash collision check) */
     if (sig1->size != sig2->size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_signatures_equal: validation failed");
         return false;
     }
 

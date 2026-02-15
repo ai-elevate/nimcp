@@ -260,6 +260,7 @@ set_tests_properties(regression_exception_api_compatibility
     PROPERTIES
     LABELS "regression;exception;api;compatibility"
     TIMEOUT 300
+    RESOURCE_LOCK "brain_heavy"
 )
 
 # =============================================================================
@@ -329,6 +330,7 @@ set_tests_properties(regression_exception_performance_regression
     PROPERTIES
     LABELS "regression;exception;performance;overhead"
     TIMEOUT 300
+    RESOURCE_LOCK "brain_heavy"
 )
 
 # =============================================================================

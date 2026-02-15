@@ -27,27 +27,32 @@ extern "C" {
 
 class ExceptionAPICompatibilityTest : public ::testing::Test {
 protected:
-    nimcp_brain_t brain_ = nullptr;
-    nimcp_network_t network_ = nullptr;
-    nimcp_ethics_t ethics_ = nullptr;
-    nimcp_knowledge_t knowledge_ = nullptr;
+    static nimcp_brain_t brain_;
+    static nimcp_network_t network_;
+    static nimcp_ethics_t ethics_;
+    static nimcp_knowledge_t knowledge_;
 
-    void SetUp() override {
+    static void SetUpTestSuite() {
         ASSERT_EQ(nimcp_init(), NIMCP_OK);
-        brain_ = nimcp_brain_create("test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 10, 2);
+        brain_ = nimcp_brain_create("test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 10, 2);
         network_ = nimcp_network_create(10, 2, 20, 0.01f);
         ethics_ = nimcp_ethics_create();
         knowledge_ = nimcp_knowledge_create();
     }
 
-    void TearDown() override {
-        if (brain_) nimcp_brain_destroy(brain_);
-        if (network_) nimcp_network_destroy(network_);
-        if (ethics_) nimcp_ethics_destroy(ethics_);
-        if (knowledge_) nimcp_knowledge_destroy(knowledge_);
+    static void TearDownTestSuite() {
+        if (brain_) { nimcp_brain_destroy(brain_); brain_ = nullptr; }
+        if (network_) { nimcp_network_destroy(network_); network_ = nullptr; }
+        if (ethics_) { nimcp_ethics_destroy(ethics_); ethics_ = nullptr; }
+        if (knowledge_) { nimcp_knowledge_destroy(knowledge_); knowledge_ = nullptr; }
         nimcp_shutdown();
     }
 };
+
+nimcp_brain_t ExceptionAPICompatibilityTest::brain_ = nullptr;
+nimcp_network_t ExceptionAPICompatibilityTest::network_ = nullptr;
+nimcp_ethics_t ExceptionAPICompatibilityTest::ethics_ = nullptr;
+nimcp_knowledge_t ExceptionAPICompatibilityTest::knowledge_ = nullptr;
 
 //=============================================================================
 // Core Brain API - NULL Pointer Tests

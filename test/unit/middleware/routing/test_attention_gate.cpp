@@ -129,15 +129,17 @@ TEST_F(AttentionGateTest, SetWeight_Failure_InvalidWeight) {
     attention_gate_destroy(gate);
 }
 
-TEST_F(AttentionGateTest, GetWeight_NonExistentTarget_ReturnsZero) {
+TEST_F(AttentionGateTest, GetWeight_NonExistentTarget_ReturnsPassThrough) {
     attention_gate_config_t config = attention_gate_default_config();
     attention_gate_t* gate = attention_gate_create(&config);
     ASSERT_NE(gate, nullptr);
 
+    // Non-existent targets return 1.0 (pass-through / unmodulated)
+    // This ensures signals to unregistered routes are not blocked
     float weight = 99.9f;
     bool result = attention_gate_get_weight(gate, 1, 999, &weight);
     EXPECT_TRUE(result);
-    EXPECT_FLOAT_EQ(weight, 0.0f);
+    EXPECT_FLOAT_EQ(weight, 1.0f);
 
     attention_gate_destroy(gate);
 }

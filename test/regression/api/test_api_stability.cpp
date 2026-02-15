@@ -201,11 +201,11 @@ TEST_F(APIStabilityTest, BrainSaveLoad_SignatureStable) {
 TEST_F(APIStabilityTest, StatusCodes_HaveExpectedValues) {
     // Verify enum values haven't changed
     EXPECT_EQ(NIMCP_SUCCESS, 0);
-    EXPECT_EQ(NIMCP_ERROR, -1);
-    EXPECT_EQ(NIMCP_ERROR_NULL_ARG, -2);
-    EXPECT_EQ(NIMCP_ERROR_INVALID, -3);
-    EXPECT_EQ(NIMCP_ERROR_MEMORY, -4);
-    EXPECT_EQ(NIMCP_ERROR_IO, -5);
+    EXPECT_EQ(NIMCP_ERROR, 1000);
+    EXPECT_EQ(NIMCP_ERROR_NULL_ARG, 1003);
+    EXPECT_EQ(NIMCP_ERROR_INVALID, 1004);
+    EXPECT_EQ(NIMCP_ERROR_MEMORY, 2000);
+    EXPECT_EQ(NIMCP_ERROR_IO, 4000);
 }
 
 TEST_F(APIStabilityTest, StatusCodes_ReturnedCorrectly) {

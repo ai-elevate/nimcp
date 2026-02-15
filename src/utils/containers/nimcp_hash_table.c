@@ -746,6 +746,26 @@ bool hash_table_remove_uint32(hash_table_t* table, uint32_t key)
 }
 
 //=============================================================================
+// Integer Key Operations (uint64_t)
+//=============================================================================
+
+bool hash_table_insert_uint64(hash_table_t* table, uint64_t key, const void* value,
+                              size_t value_size)
+{
+    return hash_table_insert_generic(table, &key, sizeof(uint64_t), value, value_size);
+}
+
+void* hash_table_lookup_uint64(hash_table_t* table, uint64_t key)
+{
+    return hash_table_lookup_generic(table, &key, sizeof(uint64_t));
+}
+
+bool hash_table_remove_uint64(hash_table_t* table, uint64_t key)
+{
+    return hash_table_remove_generic(table, &key, sizeof(uint64_t));
+}
+
+//=============================================================================
 // Iteration
 //=============================================================================
 

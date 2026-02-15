@@ -30,4 +30,5 @@ set_tests_properties(regression_core_axon_performance
     PROPERTIES
         TIMEOUT 180
         LABELS "regression;core;axon;performance"
+        RESOURCE_LOCK "brain_heavy"
 )

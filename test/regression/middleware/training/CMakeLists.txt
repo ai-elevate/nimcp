@@ -241,7 +241,8 @@ add_test(NAME regression_middleware_training_test_training_logic_bridge_regressi
 set_tests_properties(regression_middleware_training_test_training_logic_bridge_regression
     PROPERTIES
         LABELS "regression;middleware;training;logic_bridge"
-        TIMEOUT 300)
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy")
 
 # Cognitive-Training Bridge Regression Tests (Phase CTB-1)
 add_executable(regression_middleware_training_test_cognitive_training_bridge_regression

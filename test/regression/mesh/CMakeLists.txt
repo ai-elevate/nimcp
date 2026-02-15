@@ -141,6 +141,9 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mesh_cycle_coordinator_regression.cpp
     regression
 )
+set_tests_properties(test_mesh_cycle_coordinator_regression PROPERTIES
+    TIMEOUT 120 RESOURCE_LOCK "brain_heavy"
+)
 
 # ============================================================================
 # Walkthrough Fix Verification Tests

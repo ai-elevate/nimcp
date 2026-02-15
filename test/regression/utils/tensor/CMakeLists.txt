@@ -26,3 +26,6 @@ endmacro()
 
 # Performance regression tests
 add_tensor_regression_test(test_tensor_performance)
+
+# Tensor pool regression tests (Opt 4)
+add_tensor_regression_test(test_tensor_pool_regression)

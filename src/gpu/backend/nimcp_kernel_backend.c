@@ -49,6 +49,25 @@ static bool g_backend_initialized = false;
 //=============================================================================
 // CPU Backend Implementation - Tensor Operations
 //=============================================================================
+//
+// RETURN TYPE CONVENTION:
+// =======================
+// All kernel backend operations (tensor, training, SNN, CNN, LNN, inference)
+// return nimcp_kernel_error_t:
+//   NIMCP_KERNEL_SUCCESS (0)         - Operation completed successfully
+//   NIMCP_KERNEL_ERROR_NULL_PTR (-1) - Required pointer parameter was NULL
+//   NIMCP_KERNEL_ERROR_INVALID_SIZE (-2) - Size/dimension mismatch
+//   NIMCP_KERNEL_ERROR_DEVICE (-3)   - Device error (GPU-specific)
+//   NIMCP_KERNEL_ERROR_NOT_IMPLEMENTED (-4) - Operation not available
+//   NIMCP_KERNEL_ERROR_MEMORY (-5)   - Memory allocation failure
+//
+// This is DISTINCT from:
+//   - GPU context functions: return int (0 success, -1 error)
+//   - GPU stub bool functions: return bool (true success, false error)
+//   - nimcp_error_t codes: NIMCP_OK (0), NIMCP_ERROR_* (positive values)
+//
+// Do NOT mix these return types. Backend ops always use nimcp_kernel_error_t.
+//=============================================================================
 
 static nimcp_kernel_error_t cpu_tensor_add(
     nimcp_gpu_context_t* ctx,
@@ -265,27 +284,54 @@ static nimcp_kernel_error_t cpu_tensor_softmax(
 {
     (void)ctx;
     if (!input || !output) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    if (!input->data || !output->data) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    if (input->numel == 0) return NIMCP_KERNEL_ERROR_INVALID_SIZE;
 
     float* in_data = (float*)input->data;
     float* out_data = (float*)output->data;
     size_t n = input->numel;
 
-    // Find max for numerical stability
+    // Find max for numerical stability (subtract max before exp)
     float max_val = in_data[0];
     for (size_t i = 1; i < n; i++) {
         if (in_data[i] > max_val) max_val = in_data[i];
     }
 
-    // Compute exp and sum
+    // Guard against all-NaN or all-inf input
+    if (isnan(max_val) || isinf(max_val)) {
+        // Fall back to uniform distribution
+        float uniform = 1.0f / (float)n;
+        for (size_t i = 0; i < n; i++) {
+            out_data[i] = uniform;
+        }
+        return NIMCP_KERNEL_SUCCESS;
+    }
+
+    // Compute exp(x - max) and sum with clamping to prevent underflow issues
+    // After subtracting max, exponents are in range (-inf, 0], so expf won't overflow.
+    // Clamp very negative values to avoid prolonged underflow computation.
     float sum = 0.0f;
     for (size_t i = 0; i < n; i++) {
-        out_data[i] = expf(in_data[i] - max_val);
+        float shifted = in_data[i] - max_val;
+        // Clamp to prevent extreme underflow (expf(-88) ~ 0 in float32)
+        if (shifted < -87.0f) shifted = -87.0f;
+        out_data[i] = expf(shifted);
         sum += out_data[i];
     }
 
+    // Guard against zero sum (all values underflowed)
+    if (sum <= 0.0f || isnan(sum)) {
+        float uniform = 1.0f / (float)n;
+        for (size_t i = 0; i < n; i++) {
+            out_data[i] = uniform;
+        }
+        return NIMCP_KERNEL_SUCCESS;
+    }
+
     // Normalize
+    float inv_sum = 1.0f / sum;
     for (size_t i = 0; i < n; i++) {
-        out_data[i] /= sum;
+        out_data[i] *= inv_sum;
     }
 
     return NIMCP_KERNEL_SUCCESS;
@@ -1244,6 +1290,11 @@ static void init_opencl_backend(void)
  * WHY:  Part of GPU-first fallback chain
  * HOW:  Calls backend-specific init, checks if it succeeded
  *
+ * NOTE: Failing to initialize a GPU backend is NORMAL when the hardware
+ * or drivers are not available. This is NOT an error condition - the
+ * system will gracefully fall back to CPU. No immune throws on normal
+ * "GPU not available" paths.
+ *
  * @param type Backend type to try
  * @return true if backend initialized successfully
  */
@@ -1258,7 +1309,7 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
                 return true;
             }
             LOG_DEBUG("CUDA backend initialization failed, trying next...");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
+            /* Not an error - GPU not available is normal on CPU-only systems */
             return false;
 
         case NIMCP_BACKEND_ROCM:
@@ -1269,7 +1320,7 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
                 return true;
             }
             LOG_DEBUG("ROCm backend initialization failed, trying next...");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
+            /* Not an error - GPU not available is normal */
             return false;
 
         case NIMCP_BACKEND_OPENCL:
@@ -1280,17 +1331,34 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
                 return true;
             }
             LOG_DEBUG("OpenCL backend initialization failed, trying next...");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
+            /* Not an error - GPU not available is normal */
             return false;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
+            LOG_WARN("try_init_gpu_backend: unknown backend type %d", (int)type);
             return false;
     }
 }
 
 //=============================================================================
 // Backend API Implementation
+//=============================================================================
+//
+// RETURN TYPE CONVENTION - Backend API:
+// =====================================
+// nimcp_kernel_backend_init()        -> bool  (true=success, false=failure)
+// nimcp_kernel_backend_init_default()-> bool  (true=success, always succeeds)
+// nimcp_kernel_backend_shutdown()    -> void
+// nimcp_get_kernel_backend()         -> ptr   (never NULL after init)
+// nimcp_cuda_backend_available()     -> bool  (true=CUDA available)
+// nimcp_get_backend_type()           -> enum  (nimcp_backend_type_t)
+// nimcp_switch_backend()             -> bool  (true=switch succeeded)
+// nimcp_backend_type_name()          -> const char*
+//
+// NOTE: Backend API functions return bool for success/failure.
+// Internal kernel operations return nimcp_kernel_error_t (0/-negative).
+// GPU context operations return int (0/-1).
+// GPU stub convenience functions return bool.
 //=============================================================================
 
 bool nimcp_kernel_backend_init(nimcp_backend_type_t preferred)

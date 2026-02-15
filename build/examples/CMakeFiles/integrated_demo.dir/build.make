@@ -92,7 +92,7 @@ integrated_demo_EXTERNAL_OBJECTS =
 
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/build.make
-examples/integrated_demo: lib/libnimcp.so.2.6.2
+examples/integrated_demo: lib/libnimcp.so.2.6.3
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcufft.so

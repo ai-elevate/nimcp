@@ -50,9 +50,9 @@ protected:
     // Helper: Create brain exactly as before attention integration
     brain_t create_legacy_brain() {
         brain_config_t config = {};
-        config.size = BRAIN_SIZE_SMALL;
+        config.size = BRAIN_SIZE_TINY;
         config.task = BRAIN_TASK_CLASSIFICATION;
-        config.num_inputs = 128;
+        config.num_inputs = 16;
         config.num_outputs = 10;
         config.enable_multihead_attention = false;  // DISABLED
 
@@ -88,10 +88,10 @@ TEST_F(AttentionRegressionTest, BackwardCompat_InferenceUnchanged) {
     brain = create_legacy_brain();
     ASSERT_NE(brain, nullptr);
 
-    auto input_data = create_input(128);
+    auto input_data = create_input(16);
 
     // Use direct brain_decide API (traditional inference path)
-    brain_decision_t* decision = brain_decide(brain, input_data.data(), 128);
+    brain_decision_t* decision = brain_decide(brain, input_data.data(), 16);
 
     ASSERT_NE(decision, nullptr);
     EXPECT_GE(decision->confidence, 0.0f);
@@ -124,9 +124,9 @@ TEST_F(AttentionRegressionTest, DefaultBehavior_AttentionOffByDefault) {
     // HOW:  Create brain with zeroed config, verify works
 
     brain_config_t config = {};
-    config.size = BRAIN_SIZE_SMALL;
+    config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
-    config.num_inputs = 128;
+    config.num_inputs = 16;
     config.num_outputs = 10;
     // enable_multihead_attention defaults to false
 
@@ -145,10 +145,10 @@ TEST_F(AttentionRegressionTest, DefaultBehavior_NoPerformanceRegression) {
     brain = create_legacy_brain();
     ASSERT_NE(brain, nullptr);
 
-    auto input_data = create_input(128);
+    auto input_data = create_input(16);
     brain_multimodal_input_t input = {};
     input.direct_data = input_data.data();
-    input.direct_dim = 128;
+    input.direct_dim = 16;
 
     brain_multimodal_output_t output = {};
     output.output_vector = new float[10];
@@ -204,9 +204,9 @@ TEST_F(AttentionRegressionTest, ConfigStruct_ExistingFieldsIntact) {
 TEST_F(AttentionRegressionTest, Memory_NoLeaksWithAttentionDisabled) {
     // WHAT: Verify no memory leaks when attention disabled
     // WHY:  Memory management regression check
-    // HOW:  Create/destroy 100 times, check for leaks
+    // HOW:  Create/destroy multiple times, check for leaks
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         brain = create_legacy_brain();
         ASSERT_NE(brain, nullptr) << "Failed on iteration " << i;
         brain_destroy(brain);
@@ -223,9 +223,9 @@ TEST_F(AttentionRegressionTest, Memory_UsageReasonableWithAttention) {
     // HOW:  Create brain with attention, verify reasonable size
 
     brain_config_t config = {};
-    config.size = BRAIN_SIZE_SMALL;
+    config.size = BRAIN_SIZE_TINY;
     config.task = BRAIN_TASK_CLASSIFICATION;
-    config.num_inputs = 128;
+    config.num_inputs = 16;
     config.num_outputs = 10;
     config.enable_multihead_attention = true;
     config.num_attention_heads = 8;
@@ -284,10 +284,10 @@ TEST_F(AttentionRegressionTest, Multimodal_ExistingPipelineWorks) {
     ASSERT_NE(brain, nullptr);
 
     // Create input
-    auto input_data = create_input(128);
+    auto input_data = create_input(16);
 
     // Use direct brain_decide (proven working path)
-    brain_decision_t* decision = brain_decide(brain, input_data.data(), 128);
+    brain_decision_t* decision = brain_decide(brain, input_data.data(), 16);
 
     ASSERT_NE(decision, nullptr);
     EXPECT_GE(decision->confidence, 0.0f);

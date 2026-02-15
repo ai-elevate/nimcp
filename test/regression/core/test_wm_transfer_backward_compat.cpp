@@ -65,7 +65,7 @@ TEST_F(WMTransferRegressionTest, BrainCreation_StillWorks) {
     brain_destroy(brain);
 
     // SMALL brain
-    brain = brain_create("test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
+    brain = brain_create("test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr) << "SMALL brain creation should succeed";
     brain_destroy(brain);
 
@@ -192,7 +192,7 @@ TEST_F(WMTransferRegressionTest, NoPerformanceRegression) {
      * WHY:  Performance should remain within acceptable limits
      * HOW:  Benchmark learning and inference times
      */
-    brain = brain_create("test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 10, 5);
+    brain = brain_create("test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 10, 5);
     ASSERT_NE(brain, nullptr);
 
     float features[10];
@@ -238,8 +238,8 @@ TEST_F(WMTransferRegressionTest, ConsolidationStable_ExtendedUse) {
 
     float features[4] = {0.6f, 0.4f, 0.7f, 0.3f};
 
-    // Extended use (1000 cycles)
-    for (int i = 0; i < 1000; i++) {
+    // Extended use (200 cycles)
+    for (int i = 0; i < 200; i++) {
         brain_decision_t* decision = brain_decide(brain, features, 4);
         ASSERT_NE(decision, nullptr) << "Cycle " << i << " should succeed";
         brain_free_decision(decision);
@@ -318,7 +318,7 @@ TEST_F(WMTransferRegressionTest, MemoryEncoding_Reliable) {
      * WHY:  Phase M3 should not interfere with encoding
      * HOW:  Learn diverse patterns, verify all can be learned
      */
-    brain = brain_create("test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 8, 4);
+    brain = brain_create("test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 8, 4);
     ASSERT_NE(brain, nullptr);
 
     // Learn diverse patterns
@@ -450,7 +450,7 @@ TEST_F(WMTransferRegressionTest, MultiPatternLearning_StillWorks) {
      * WHY:  Phase M3 should not interfere with diverse learning
      * HOW:  Learn many different patterns
      */
-    brain = brain_create("test", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 8, 4);
+    brain = brain_create("test", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 8, 4);
     ASSERT_NE(brain, nullptr);
 
     // Learn 20 diverse patterns

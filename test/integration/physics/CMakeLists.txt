@@ -133,8 +133,10 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_physics_thread_pool_integration.cpp)
         nimcp GTest::gtest GTest::gtest_main m Threads::Threads
     )
     gtest_discover_tests(integration_physics_thread_pool_test
-        PROPERTIES LABELS "integration;physics;thread_pool" TIMEOUT 120
+        PROPERTIES LABELS "integration;physics;thread_pool;flaky" TIMEOUT 120
     )
+    # FLAKY: PhysicsThreadPoolIntegrationTest.ParallelSpeedup is CPU-load sensitive
+    #        and can fail under parallel ctest (-j4) due to contention
 endif()
 
 # ============================================================================

@@ -48,8 +48,8 @@
 #define REGRESSION_MAX_FE_COMPUTE_TIME_US     100     /* 100us max for FE computation */
 
 /* Memory baselines */
-#define REGRESSION_MAX_ITERATIONS             3000    /* Iterations for memory test */
-#define REGRESSION_CYCLES_PER_CHECK           300     /* Check state every N cycles */
+#define REGRESSION_MAX_ITERATIONS             300     /* Iterations for memory test */
+#define REGRESSION_CYCLES_PER_CHECK           30      /* Check state every N cycles */
 
 /* Numerical accuracy */
 #define REGRESSION_FLOAT_EPSILON              1e-5f   /* Float comparison tolerance */
@@ -267,10 +267,10 @@ protected:
     hypo_drive_system_handle_t* drive_system = nullptr;
 
     void SetUp() override {
-        /* Create FEP system */
+        /* Create FEP system - observation_dim must match HYPO_GT_FEP_DRIVE_DIM (4) */
         fep_config_t fep_config;
         fep_default_config(&fep_config);
-        fep_system = fep_create(&fep_config, 32, 16);
+        fep_system = fep_create(&fep_config, HYPO_GT_FEP_DRIVE_DIM, HYPO_GT_FEP_STRATEGY_DIM);
         ASSERT_NE(fep_system, nullptr);
 
         /* Create drive system */

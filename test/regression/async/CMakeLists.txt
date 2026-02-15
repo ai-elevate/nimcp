@@ -283,3 +283,34 @@ gtest_discover_tests(regression_async_test_middleware_pass3_fixes
         TIMEOUT 120
 )
 endif()
+
+# =============================================================================
+# Bio-Router TOCTOU Race Condition Regression Tests
+# =============================================================================
+add_executable(regression_async_test_bio_router_toctou
+    test_bio_router_toctou_regression.cpp
+)
+
+target_link_libraries(regression_async_test_bio_router_toctou
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_async_test_bio_router_toctou
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_async_test_bio_router_toctou PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_async_test_bio_router_toctou
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;async;router;toctou;thread-safety"
+        TIMEOUT 120
+)

@@ -26,6 +26,7 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm.h"
+#include "plasticity/nimcp_plasticity_constants.h"
 #include "plasticity/bcm/nimcp_bcm_sleep_bridge.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -204,7 +205,7 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
     if (exp_arg < -20.0F) exp_arg = -20.0F;
     float exp_result = expf(exp_arg);
     /* Validate exponential result and flush denormals */
-    if (isnan(exp_result) || exp_result < 1e-9F) {
+    if (isnan(exp_result) || exp_result < NIMCP_DENORMAL_EXP_THRESHOLD) {
         exp_result = 0.0F;
     }
     float decay = 1.0F - exp_result;
@@ -232,7 +233,7 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
     float activity_exp_arg = -dt / activity_tau;
     if (activity_exp_arg < -20.0F) activity_exp_arg = -20.0F;
     float activity_exp_result = expf(activity_exp_arg);
-    if (isnan(activity_exp_result) || activity_exp_result < 1e-9F) {
+    if (isnan(activity_exp_result) || activity_exp_result < NIMCP_DENORMAL_EXP_THRESHOLD) {
         activity_exp_result = 0.0F;
     }
     float activity_decay = 1.0F - activity_exp_result;

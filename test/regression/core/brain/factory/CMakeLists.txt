@@ -19,7 +19,13 @@ target_include_directories(regression_core_brain_factory_test_factory_regression
 )
 add_test(NAME regression_core_brain_factory_test_factory_regression
          COMMAND regression_core_brain_factory_test_factory_regression)
-set_tests_properties(regression_core_brain_factory_test_factory_regression PROPERTIES LABELS "regression")
+# FLAKY: factory_regression - OOM-killed under parallel ctest (-j4) due to
+#        large brain allocations (10-60GB) competing for memory
+set_tests_properties(regression_core_brain_factory_test_factory_regression PROPERTIES
+    LABELS "regression;flaky"
+    TIMEOUT 600
+    RESOURCE_LOCK "brain_heavy"
+)
 
 # Test 2: Brain Init Hypothalamus Regression - Hypothalamus initialization stability
 add_executable(regression_core_brain_factory_test_brain_init_hypothalamus

@@ -46,3 +46,6 @@ add_memory_test(test_unified_memory)
 
 # P2 Audit: Memory wrapper tests
 add_memory_test(test_nimcp_memory_wrapper)
+
+# Atomic recursion guard tests
+add_memory_test(test_memory_recursion_guard)

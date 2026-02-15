@@ -98,7 +98,8 @@ add_test(NAME regression_subthalamic_test
          COMMAND regression_subthalamic_test)
 set_tests_properties(regression_subthalamic_test PROPERTIES
     LABELS "regression"
-    TIMEOUT 180
+    TIMEOUT 300
+    RESOURCE_LOCK "brain_heavy"
 )
 
 gtest_discover_tests(regression_subthalamic_test)

@@ -115,3 +115,22 @@ target_include_directories(unit_core_brain_factory_init_hypothalamus
 add_test(NAME unit_core_brain_factory_init_hypothalamus
          COMMAND unit_core_brain_factory_init_hypothalamus)
 set_tests_properties(unit_core_brain_factory_init_hypothalamus PROPERTIES LABELS "unit")
+
+# Test: Brain Tier Config (Opt 2, 3, 6 - enable/lazy flags)
+add_executable(unit_core_brain_factory_test_brain_tier_config
+    test_brain_tier_config.cpp
+)
+target_link_libraries(unit_core_brain_factory_test_brain_tier_config
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_core_brain_factory_test_brain_tier_config
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME unit_core_brain_factory_test_brain_tier_config
+         COMMAND unit_core_brain_factory_test_brain_tier_config)
+set_tests_properties(unit_core_brain_factory_test_brain_tier_config PROPERTIES LABELS "unit" TIMEOUT 90)

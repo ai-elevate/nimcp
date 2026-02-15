@@ -7,6 +7,7 @@
  */
 
 #include "plasticity/stdp/nimcp_triplet_stdp.h"
+#include "plasticity/nimcp_plasticity_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.h"
 #include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
@@ -280,10 +281,10 @@ int triplet_stdp_update_traces(triplet_stdp_synapse_t* synapse, float dt) {
     /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
      * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
      */
-    if (synapse->r1_pre < 1e-10f) synapse->r1_pre = 0.0f;
-    if (synapse->r2_pre < 1e-10f) synapse->r2_pre = 0.0f;
-    if (synapse->o1_post < 1e-10f) synapse->o1_post = 0.0f;
-    if (synapse->o2_post < 1e-10f) synapse->o2_post = 0.0f;
+    if (synapse->r1_pre < NIMCP_DENORMAL_THRESHOLD) synapse->r1_pre = 0.0f;
+    if (synapse->r2_pre < NIMCP_DENORMAL_THRESHOLD) synapse->r2_pre = 0.0f;
+    if (synapse->o1_post < NIMCP_DENORMAL_THRESHOLD) synapse->o1_post = 0.0f;
+    if (synapse->o2_post < NIMCP_DENORMAL_THRESHOLD) synapse->o2_post = 0.0f;
 
     nimcp_spinlock_unlock(&synapse->lock);
 
@@ -320,8 +321,8 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
             /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
              * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
              */
-            if (synapse->r1_pre < 1e-10f) synapse->r1_pre = 0.0f;
-            if (synapse->r2_pre < 1e-10f) synapse->r2_pre = 0.0f;
+            if (synapse->r1_pre < NIMCP_DENORMAL_THRESHOLD) synapse->r1_pre = 0.0f;
+            if (synapse->r2_pre < NIMCP_DENORMAL_THRESHOLD) synapse->r2_pre = 0.0f;
         }
     }
 
@@ -421,8 +422,8 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
             /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
              * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
              */
-            if (synapse->o1_post < 1e-10f) synapse->o1_post = 0.0f;
-            if (synapse->o2_post < 1e-10f) synapse->o2_post = 0.0f;
+            if (synapse->o1_post < NIMCP_DENORMAL_THRESHOLD) synapse->o1_post = 0.0f;
+            if (synapse->o2_post < NIMCP_DENORMAL_THRESHOLD) synapse->o2_post = 0.0f;
         }
     }
 

@@ -144,3 +144,32 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_kg_full_e2e.cpp)
     )
     message(STATUS "    Added: e2e_test_kg_full (GTest)")
 endif()
+
+# ============================================================================
+# Memory Footprint Optimization E2E Test (All 8 Opts)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_memory_footprint_e2e.cpp)
+    add_executable(e2e_test_memory_footprint
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_memory_footprint_e2e.cpp
+    )
+    target_include_directories(e2e_test_memory_footprint PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_link_libraries(e2e_test_memory_footprint PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_definitions(e2e_test_memory_footprint PRIVATE
+        NIMCP_TESTING
+        NIMCP_E2E_TESTING
+    )
+    gtest_discover_tests(e2e_test_memory_footprint
+        PROPERTIES LABELS "e2e;core;brain;memory_footprint"
+        TIMEOUT 300
+    )
+    message(STATUS "    Added: e2e_test_memory_footprint (GTest)")
+endif()

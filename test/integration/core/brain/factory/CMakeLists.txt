@@ -56,3 +56,6 @@ set_tests_properties(integration_core_brain_factory_test_factory_integration PRO
 
 # Test 2: Hypothalamus initialization integration
 add_brain_factory_integration_test(test_brain_init_hypothalamus_integration)
+
+# Test 3: Memory Optimization Integration (Opt 2+3+4+6)
+add_brain_factory_integration_test(test_brain_memory_opt_integration)

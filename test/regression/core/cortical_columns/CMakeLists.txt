@@ -203,6 +203,9 @@ set_tests_properties(regression_cortical_columns_performance
 
         # Test must pass
         WILL_FAIL FALSE
+
+        # Serialize with brain_heavy to prevent CPU contention in perf tests
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # ============================================================================

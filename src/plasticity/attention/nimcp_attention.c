@@ -15,6 +15,7 @@
  */
 
 #include "plasticity/attention/nimcp_attention.h"
+#include "plasticity/nimcp_plasticity_constants.h"
 #include "cognitive/attention/nimcp_attention_snn_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
@@ -112,6 +113,37 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(attention)
 #include <stdatomic.h>
 
 //=============================================================================
+// Deferred Callback Buffer (bounded, overflow-safe)
+//=============================================================================
+
+/**
+ * WHAT: Maximum number of registered callback subscribers
+ * WHY:  Bounded to prevent unbounded growth of subscriber list
+ */
+#define ATTENTION_MAX_SUBSCRIBERS 16
+
+/**
+ * WHAT: Single deferred callback entry queued during forward pass
+ * WHY:  Store event data for invocation after computation completes
+ * HOW:  Populated during forward pass, invoked after critical section
+ */
+typedef struct {
+    attention_event_type_t event_type;
+    uint32_t head_index;
+    float value;
+} deferred_attention_event_t;
+
+/**
+ * WHAT: Subscriber registration entry
+ * WHY:  Track registered callback functions with their user data
+ */
+typedef struct {
+    attention_deferred_callback_t callback;
+    void* user_data;
+    bool active;
+} attention_subscriber_t;
+
+//=============================================================================
 // Memory Pool for Attention Workspace (Phase MP)
 //=============================================================================
 
@@ -125,38 +157,81 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(attention)
 #define ATTENTION_POOL_BLOCK_SIZE 16384  // 16KB - fits 4096 floats
 #define ATTENTION_POOL_NUM_BLOCKS 128    // 128 concurrent buffers
 
+/**
+ * Pool initialization states for lock-free state machine
+ *
+ * WHAT: Three-state atomic flag for pool initialization
+ * WHY:  atomic_flag spinlock had a race: the flag_clear (release) could reorder
+ *       with atomic_store of the pool pointer, allowing a thread to see the pool
+ *       as non-NULL before the underlying memory was fully visible. Using explicit
+ *       memory ordering on a three-state atomic eliminates this.
+ * HOW:  UNINIT -> INITIALIZING (CAS) -> READY (store with release)
+ *       Waiters spin on state == INITIALIZING with acquire loads
+ */
+#define POOL_STATE_UNINIT       0
+#define POOL_STATE_INITIALIZING 1
+#define POOL_STATE_READY        2
+
 static _Atomic(memory_pool_t) g_attention_pool = NULL;
-static atomic_flag g_pool_init_flag = ATOMIC_FLAG_INIT;
+static atomic_int g_pool_init_state = POOL_STATE_UNINIT;
 
 /**
  * @brief Get or create the attention memory pool
  *
- * P1 fix: Use atomic compare-exchange for thread-safe lazy initialization
+ * WHAT: Thread-safe lazy initialization of global attention memory pool
  * WHY:  Prevents race condition where two threads both create pools,
- *       causing memory leak from first pool being orphaned
+ *       causing memory leak from first pool being orphaned. Also prevents
+ *       use of partially-initialized pool via proper memory ordering.
+ * HOW:  Three-state atomic CAS pattern with explicit acquire/release ordering:
+ *       1. Fast path: acquire-load pool pointer (non-NULL = ready)
+ *       2. Slow path: CAS state UNINIT -> INITIALIZING (only one winner)
+ *       3. Winner creates pool, stores with release ordering
+ *       4. Losers spin until state transitions to READY
+ *
+ * MEMORY ORDERING:
+ * - atomic_load_explicit(&g_attention_pool, memory_order_acquire) ensures
+ *   all writes from the initializing thread are visible when pool != NULL
+ * - atomic_store_explicit(&g_attention_pool, pool, memory_order_release) ensures
+ *   pool internals are fully written before pointer becomes visible
+ * - CAS uses memory_order_acq_rel for both the state transition and visibility
  */
 static memory_pool_t get_attention_pool(void) {
-    memory_pool_t pool = atomic_load(&g_attention_pool);
+    /* Fast path: pool already initialized - acquire ensures we see all init writes */
+    memory_pool_t pool = atomic_load_explicit(&g_attention_pool, memory_order_acquire);
     if (pool != NULL) {
         return pool;
     }
 
-    /* Use spinlock to ensure only one thread creates the pool */
-    while (atomic_flag_test_and_set(&g_pool_init_flag)) {
-        /* Another thread is initializing - wait */
-    }
-
-    /* Double-check after acquiring lock */
-    pool = atomic_load(&g_attention_pool);
-    if (pool == NULL) {
+    /* Slow path: try to become the initializer */
+    int expected = POOL_STATE_UNINIT;
+    if (atomic_compare_exchange_strong_explicit(
+            &g_pool_init_state, &expected, POOL_STATE_INITIALIZING,
+            memory_order_acq_rel, memory_order_acquire)) {
+        /* We won the CAS - we are the initializer */
         memory_pool_config_t config = memory_pool_default_config(
             ATTENTION_POOL_BLOCK_SIZE, ATTENTION_POOL_NUM_BLOCKS);
         pool = memory_pool_create(&config);
-        atomic_store(&g_attention_pool, pool);
+
+        /* Release-store the pool pointer so other threads see fully-init'd pool */
+        atomic_store_explicit(&g_attention_pool, pool, memory_order_release);
+
+        /* Mark state as READY so spinning threads can proceed */
+        atomic_store_explicit(&g_pool_init_state, POOL_STATE_READY, memory_order_release);
+        return pool;
     }
 
-    atomic_flag_clear(&g_pool_init_flag);
-    return pool;
+    /* Another thread is initializing - spin until ready */
+    while (atomic_load_explicit(&g_pool_init_state, memory_order_acquire) != POOL_STATE_READY) {
+        /* Yield CPU to avoid burning cycles in tight spin */
+#if defined(__x86_64__) || defined(__i386__)
+        __asm__ volatile("pause" ::: "memory");
+#elif defined(__aarch64__)
+        __asm__ volatile("yield" ::: "memory");
+#endif
+    }
+
+    /* Acquire-load the now-initialized pool */
+    return atomic_load_explicit(&g_attention_pool, memory_order_acquire);
 }
 
 /**
@@ -180,11 +255,11 @@ static void* alloc_attention_buffer(size_t size) {
 /**
  * @brief Free workspace buffer to pool or heap
  *
- * P1 fix: Uses atomic load for thread-safe pool access
+ * P1 fix: Uses atomic acquire-load for thread-safe pool access
  */
 static void free_attention_buffer(void* buf) {
     if (!buf) return;
-    memory_pool_t pool = atomic_load(&g_attention_pool);
+    memory_pool_t pool = atomic_load_explicit(&g_attention_pool, memory_order_acquire);
     if (pool && memory_pool_owns(pool, buf)) {
         memory_pool_release(pool, buf);
     } else {
@@ -269,6 +344,17 @@ struct multihead_attention_struct {
     attention_snn_bridge_t* snn_bridge;
     attention_plasticity_bridge_t* plasticity_bridge;
     bool bridges_enabled;
+
+    /* WHAT: Deferred callback buffer (bounded, overflow-safe)
+     * WHY:  Queue attention events during forward pass, invoke after completion
+     * HOW:  Fixed-size buffer with overflow counter; excess events are dropped
+     *       and counted rather than causing buffer overflow
+     */
+    attention_subscriber_t subscribers[ATTENTION_MAX_SUBSCRIBERS];
+    uint32_t num_subscribers;
+    deferred_attention_event_t deferred_events[ATTENTION_MAX_DEFERRED_CALLBACKS];
+    uint32_t num_deferred;
+    atomic_uint_fast64_t deferred_drop_count;  // Overflow counter (thread-safe)
 };
 
 //=============================================================================
@@ -606,6 +692,90 @@ static void apply_thalamic_gate(float* output,
      * WHY:  Gate controls information flow (like thalamus)
      */
     scale_vector(output, gate_signal, output_dim);
+}
+
+//=============================================================================
+// Deferred Callback Buffer Helpers
+//=============================================================================
+
+/**
+ * WHAT: Queue a deferred attention event for post-forward-pass invocation
+ * WHY:  Avoid invoking user callbacks during critical computation paths
+ * HOW:  Append to bounded buffer; if full, increment drop counter instead
+ *
+ * @param mha Multihead attention system
+ * @param event_type Type of attention event
+ * @param head_index Index of the triggering head
+ * @param value Event-specific value
+ * @return 0 on success, -1 if buffer is full (event dropped)
+ *
+ * THREAD_SAFETY: Not thread-safe, called only from forward pass (single-threaded)
+ */
+static int attention_defer_event(struct multihead_attention_struct* mha,
+                                 attention_event_type_t event_type,
+                                 uint32_t head_index,
+                                 float value)
+{
+    if (!mha) {
+        return -1;
+    }
+
+    /* WHAT: Check buffer capacity before writing
+     * WHY:  Prevent buffer overflow - drop event if full
+     */
+    if (mha->num_deferred >= ATTENTION_MAX_DEFERRED_CALLBACKS) {
+        atomic_fetch_add(&mha->deferred_drop_count, 1);
+        NIMCP_LOGGING_WARN("Deferred callback buffer full (%u/%u), dropping event type=%d head=%u",
+                           mha->num_deferred, (uint32_t)ATTENTION_MAX_DEFERRED_CALLBACKS,
+                           (int)event_type, head_index);
+        return -1;
+    }
+
+    /* WHAT: Append event to deferred buffer
+     * WHY:  Will be invoked after forward pass completes
+     */
+    mha->deferred_events[mha->num_deferred].event_type = event_type;
+    mha->deferred_events[mha->num_deferred].head_index = head_index;
+    mha->deferred_events[mha->num_deferred].value = value;
+    mha->num_deferred++;
+
+    return 0;
+}
+
+/**
+ * WHAT: Invoke all deferred callbacks and clear buffer
+ * WHY:  Process queued events after forward pass completes
+ * HOW:  Iterate events, dispatch to all active subscribers, clear buffer
+ *
+ * @param mha Multihead attention system
+ *
+ * THREAD_SAFETY: Not thread-safe, called after forward pass completes
+ */
+static void attention_flush_deferred(struct multihead_attention_struct* mha)
+{
+    if (!mha || mha->num_deferred == 0) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < mha->num_deferred; i++) {
+        const deferred_attention_event_t* evt = &mha->deferred_events[i];
+
+        for (uint32_t s = 0; s < mha->num_subscribers; s++) {
+            if (mha->subscribers[s].active && mha->subscribers[s].callback) {
+                mha->subscribers[s].callback(
+                    evt->event_type,
+                    evt->head_index,
+                    evt->value,
+                    mha->subscribers[s].user_data
+                );
+            }
+        }
+    }
+
+    /* WHAT: Clear deferred buffer after all events dispatched
+     * WHY:  Ready for next forward pass
+     */
+    mha->num_deferred = 0;
 }
 
 //=============================================================================
@@ -1006,6 +1176,14 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
     atomic_init(&mha->avg_entropy_scaled, 0);
     atomic_init(&mha->gate_signal, (uint32_t)(config->gate_bias * 1000.0F));
 
+    /* WHAT: Initialize deferred callback buffer
+     * WHY:  Start with empty buffer and no subscribers
+     */
+    memset(mha->subscribers, 0, sizeof(mha->subscribers));
+    mha->num_subscribers = 0;
+    mha->num_deferred = 0;
+    atomic_init(&mha->deferred_drop_count, 0);
+
     /* WHAT: Initialize positional encoder to NULL
      * WHY:  Created on-demand via multihead_attention_set_pe_type()
      */
@@ -1272,11 +1450,30 @@ bool multihead_attention_forward(multihead_attention_t mha,
      */
     atomic_fetch_add(&mha->forward_calls, 1);
 
+    /* WHAT: Queue deferred events if subscribers exist
+     * WHY:  Notify external modules of attention state changes
+     * HOW:  Check conditions, queue events, flush after buffers freed
+     */
+    if (mha->num_subscribers > 0) {
+        /* Reset deferred buffer for this forward pass */
+        mha->num_deferred = 0;
+
+        /* Queue entropy spike event if entropy exceeds threshold (2.0) */
+        if (entropy > 2.0F) {
+            attention_defer_event(mha, ATTENTION_EVENT_ENTROPY_SPIKE, 0, entropy);
+        }
+    }
+
     /* WHAT: Free temporary buffers
      * WHY:  Prevent memory leaks
      */
     free_attention_buffer(head_outputs);
     free_attention_buffer(attention_weights);
+
+    /* WHAT: Flush deferred callbacks after buffers freed
+     * WHY:  User callbacks may allocate memory; invoke outside critical path
+     */
+    attention_flush_deferred(mha);
 
     return true;
 }
@@ -1349,6 +1546,64 @@ void multihead_attention_reset_stats(multihead_attention_t mha)
 }
 
 //=============================================================================
+// Deferred Callback Public API
+//=============================================================================
+
+/**
+ * WHAT: Register a callback subscriber for attention events
+ * WHY:  Allow external modules to subscribe to attention state changes
+ * HOW:  Find free slot in subscriber array, register callback and user_data
+ */
+int multihead_attention_register_callback(multihead_attention_t mha,
+                                          attention_deferred_callback_t callback,
+                                          void* user_data)
+{
+    if (!mha || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "multihead_attention_register_callback: mha or callback is NULL");
+        return -1;
+    }
+
+    if (mha->num_subscribers >= ATTENTION_MAX_SUBSCRIBERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "multihead_attention_register_callback: max subscribers reached (%u)",
+            (unsigned)ATTENTION_MAX_SUBSCRIBERS);
+        return -1;
+    }
+
+    mha->subscribers[mha->num_subscribers].callback = callback;
+    mha->subscribers[mha->num_subscribers].user_data = user_data;
+    mha->subscribers[mha->num_subscribers].active = true;
+    mha->num_subscribers++;
+
+    return 0;
+}
+
+/**
+ * WHAT: Get number of deferred callbacks dropped due to buffer overflow
+ * WHY:  Monitor if the deferred buffer size is sufficient
+ */
+uint64_t attention_get_deferred_drop_count(multihead_attention_t mha)
+{
+    if (!mha) {
+        return 0;
+    }
+    return atomic_load(&mha->deferred_drop_count);
+}
+
+/**
+ * WHAT: Reset the deferred callback drop counter
+ * WHY:  Allow periodic monitoring of drop rate
+ */
+void attention_reset_deferred_drop_count(multihead_attention_t mha)
+{
+    if (!mha) {
+        return;
+    }
+    atomic_store(&mha->deferred_drop_count, 0);
+}
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 
@@ -1369,10 +1624,10 @@ float attention_compute_entropy(const float* attention_weights, uint32_t sequenc
     for (uint32_t i = 0; i < sequence_length; i++) {
         const float p = attention_weights[i];
 
-        /* WHAT: Skip zero probabilities
-         * WHY:  Avoid log(0) = -inf
+        /* WHAT: Skip zero/negligible probabilities
+         * WHY:  Avoid log(0) = -inf and denormal performance degradation
          */
-        if (p > 1e-10F) {
+        if (p > NIMCP_DENORMAL_THRESHOLD) {
             entropy -= p * logf(p);
         }
     }

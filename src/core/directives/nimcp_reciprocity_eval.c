@@ -246,9 +246,10 @@ void reciprocity_eval_destroy(reciprocity_evaluator_t evaluator) {
         reciprocity_eval_disconnect_bio_async(evaluator);
     }
 
-    /* Destroy mutex */
+    /* Destroy and free mutex */
     if (evaluator->mutex) {
         nimcp_mutex_destroy(evaluator->mutex);
+        nimcp_free(evaluator->mutex);
     }
 
     /* Free evaluator */

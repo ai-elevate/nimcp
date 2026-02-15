@@ -15,6 +15,11 @@ target_link_libraries(regression_core_brain_oscillation_backward_compat
     )
 add_test(NAME regression_core_brain_oscillation_backward_compat
          COMMAND regression_core_brain_oscillation_backward_compat)
+# FLAKY: OscillationDetectorCompatTest is pre-existing flaky in middleware;
+#        timing-sensitive oscillation detection varies with system load
+set_tests_properties(regression_core_brain_oscillation_backward_compat PROPERTIES
+    LABELS "regression;flaky"
+)
 
 # Brain JSON Regression Test
 add_executable(regression_core_brain_json_regression
@@ -145,6 +150,30 @@ endif()
 # Add thalamic subdirectory (thalamus, thalamic router, subthalamic nucleus)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thalamic")
     add_subdirectory(thalamic)
+endif()
+
+# Brain Memory Optimization Regression Test (Opt 2+3+6+8)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_memory_opt_regression.cpp")
+    add_executable(regression_core_brain_memory_opt
+        test_brain_memory_opt_regression.cpp
+    )
+    target_link_libraries(regression_core_brain_memory_opt
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            Threads::Threads
+    )
+    target_include_directories(regression_core_brain_memory_opt
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+    add_test(NAME regression_core_brain_memory_opt
+             COMMAND regression_core_brain_memory_opt)
+    set_tests_properties(regression_core_brain_memory_opt PROPERTIES
+        LABELS "regression"
+        TIMEOUT 300)
 endif()
 
 # Add language subdirectory (Broca's region, Wernicke's region, language pathway)

@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_dynamics.h"
+#include "plasticity/nimcp_plasticity_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -346,7 +347,7 @@ int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
         if (exp_arg < -20.0f) exp_arg = -20.0f;
         float decay_factor = expf(exp_arg);
         /* Validate result and flush denormals */
-        if (isnan(decay_factor) || decay_factor < 1e-9f) {
+        if (isnan(decay_factor) || decay_factor < NIMCP_DENORMAL_EXP_THRESHOLD) {
             decay_factor = 0.0f;  /* Complete decay */
         }
         ca = baseline + (ca - baseline) * decay_factor;

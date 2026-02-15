@@ -101,3 +101,22 @@ target_link_libraries(unit_lc_test_adapter
 
 add_test(NAME unit_lc_test_adapter
          COMMAND unit_lc_test_adapter)
+
+# LC Math Fix test (approach_target delta bug)
+add_executable(unit_lc_test_math
+    test_locus_coeruleus_math.cpp
+)
+
+target_include_directories(unit_lc_test_math PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(unit_lc_test_math
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME unit_lc_test_math
+         COMMAND unit_lc_test_math)

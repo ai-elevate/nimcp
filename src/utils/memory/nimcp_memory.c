@@ -225,6 +225,7 @@
 #undef free
 
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -238,21 +239,30 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory)
 // Recursion-Safe Throw for Memory Module
 //=============================================================================
 /**
- * WHAT: Thread-local guard preventing infinite recursion when throwing
+ * WHAT: Thread-local atomic guard preventing infinite recursion when throwing
  * WHY:  NIMCP_THROW_TO_IMMUNE -> nimcp_exception_create -> nimcp_calloc -> throw -> ...
  *       The guard breaks this cycle: the first failure reports to immune,
  *       but recursive calls during exception allocation skip the throw.
- * HOW:  _Thread_local flag set before throw, cleared after. If already set,
+ * HOW:  _Thread_local _Atomic flag set before throw, cleared after. If already set,
  *       we're in a recursive call from the exception system - skip the throw.
+ *
+ * WHY _Atomic + _Thread_local:
+ *   _Thread_local ensures each thread has its own copy (no cross-thread interference).
+ *   _Atomic prevents compiler reordering of the flag set/clear operations, which is
+ *   critical if NIMCP_THROW_TO_IMMUNE triggers a longjmp - without atomic semantics,
+ *   the compiler could cache the flag in a register and never write it back before the
+ *   throw, leaving the flag permanently set (silently suppressing all future throws).
+ *   memory_order_relaxed is sufficient because we only access within a single thread.
  */
-static _Thread_local bool g_memory_throw_active = false;
+static _Thread_local _Atomic bool g_memory_throw_active = false;
 
 #define MEMORY_SAFE_THROW(code, fmt, ...)                                \
     do {                                                                  \
-        if (!g_memory_throw_active && nimcp_exception_system_is_initialized()) { \
-            g_memory_throw_active = true;                                \
+        if (!atomic_load_explicit(&g_memory_throw_active, memory_order_relaxed) \
+            && nimcp_exception_system_is_initialized()) {                 \
+            atomic_store_explicit(&g_memory_throw_active, true, memory_order_relaxed); \
             NIMCP_THROW_TO_IMMUNE(code, fmt, ##__VA_ARGS__);             \
-            g_memory_throw_active = false;                               \
+            atomic_store_explicit(&g_memory_throw_active, false, memory_order_relaxed); \
         }                                                                \
     } while (0)
 
@@ -488,10 +498,12 @@ static void init_if_needed(void)
 {
     /* Recursion guard: prevent infinite recursion during UMM initialization
      * WHY: UMM create calls nimcp_calloc, which calls init_if_needed again
-     * HOW: Use thread-local flag to track per-thread initialization state
+     * HOW: Use thread-local atomic flag to track per-thread initialization state
      * THREAD SAFETY: _Thread_local ensures each thread has its own flag
+     * WHY _Atomic: Prevents compiler from caching flag in register across calls
+     *   that may involve longjmp or complex control flow
      */
-    static _Thread_local bool g_umm_initializing = false;
+    static _Thread_local _Atomic bool g_umm_initializing = false;
 
     if (!g_memory_state.initialized) {
         nimcp_mutex_init(&g_memory_state.lock, NULL);
@@ -509,7 +521,7 @@ static void init_if_needed(void)
      * and set BEFORE starting UMM creation, to prevent recursive calls from
      * re-entering during nimcp_calloc calls made by unified_mem_create.
      */
-    if (g_umm_initializing) {
+    if (atomic_load_explicit(&g_umm_initializing, memory_order_relaxed)) {
         // Already initializing on this thread - return early to prevent recursion
         // The caller (nimcp_malloc/nimcp_calloc) will fall back to direct malloc
         return;
@@ -523,7 +535,7 @@ static void init_if_needed(void)
         nimcp_mutex_lock(&g_memory_state.lock);
         /* Double-check under lock to prevent TOCTOU race */
         if (!g_unified_initialized && !g_unified_manager) {
-            g_umm_initializing = true;  // Set guard BEFORE creating UMM (critical!)
+            atomic_store_explicit(&g_umm_initializing, true, memory_order_relaxed);  // Set guard BEFORE creating UMM (critical!)
             nimcp_mutex_unlock(&g_memory_state.lock);  // Unlock during create to avoid deadlock
 
             unified_mem_config_t config = unified_mem_default_config();
@@ -543,7 +555,7 @@ static void init_if_needed(void)
                     nimcp_mutex_lock(&g_memory_state.lock);
                 }
             }
-            g_umm_initializing = false;  // Clear flag after UMM is created
+            atomic_store_explicit(&g_umm_initializing, false, memory_order_relaxed);  // Clear flag after UMM is created
         }
         nimcp_mutex_unlock(&g_memory_state.lock);
     }

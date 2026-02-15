@@ -458,8 +458,8 @@ TEST_F(ParietalFEPRegressionTest, StatisticsConsistencyRegression) {
     /* Verify averages are reasonable */
     EXPECT_GE(stats.avg_free_energy, 0.0f);
     EXPECT_LE(stats.avg_free_energy, FREE_ENERGY_MAX_EXPECTED);
-    EXPECT_GE(stats.peak_free_energy, stats.avg_free_energy)
-        << "Peak should be >= average";
+    EXPECT_GE(stats.peak_free_energy + 1e-6f, stats.avg_free_energy)
+        << "Peak should be >= average (with float tolerance)";
 }
 
 /* ============================================================================

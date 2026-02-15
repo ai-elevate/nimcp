@@ -54,7 +54,9 @@ TEST_F(MemorySNNRegressionTest, ZeroFeaturesDoNotCrash) {
     int spikes = wm_snn_encode_item(bridge, 0, features, WM_SNN_SLOT_DIM, 0.5f);
     EXPECT_GE(spikes, 0);
 
-    EXPECT_EQ(wm_snn_simulate(bridge, 10.0f), 0);
+    // wm_snn_simulate returns spike count (>= 0) on success, -1 on failure
+    int sim_result = wm_snn_simulate(bridge, 10.0f);
+    EXPECT_GE(sim_result, 0);
 
     wm_slot_state_t slot_state;
     EXPECT_EQ(wm_snn_get_slot_state(bridge, 0, &slot_state), 0);
@@ -68,7 +70,9 @@ TEST_F(MemorySNNRegressionTest, MaxFeaturesDoNotCrash) {
     int spikes = wm_snn_encode_item(bridge, 0, features, WM_SNN_SLOT_DIM, 1.0f);
     EXPECT_GE(spikes, 0);
 
-    EXPECT_EQ(wm_snn_simulate(bridge, 10.0f), 0);
+    // wm_snn_simulate returns spike count (>= 0) on success, -1 on failure
+    int sim_result = wm_snn_simulate(bridge, 10.0f);
+    EXPECT_GE(sim_result, 0);
 
     float activity = wm_snn_get_total_activity(bridge);
     EXPECT_GE(activity, 0.0f);
@@ -88,20 +92,33 @@ TEST_F(MemorySNNRegressionTest, OutOfRangeFeaturesClamped) {
 }
 
 TEST_F(MemorySNNRegressionTest, AllSlotsUsable) {
+    // Default config uses max_slots=8, which may be less than WM_SNN_MAX_SLOTS(16).
+    // Create a bridge configured for all slots to test full capacity.
+    wm_snn_config_t config = wm_snn_config_default();
+    config.max_slots = WM_SNN_MAX_SLOTS;
+    config.enable_bio_async = false;
+
+    wm_snn_bridge_t* full_bridge = wm_snn_create(&config);
+    ASSERT_NE(full_bridge, nullptr);
+
     for (uint32_t slot = 0; slot < WM_SNN_MAX_SLOTS; slot++) {
         float features[WM_SNN_SLOT_DIM];
         for (int i = 0; i < WM_SNN_SLOT_DIM; i++) {
             features[i] = (float)slot / WM_SNN_MAX_SLOTS;
         }
-        int spikes = wm_snn_encode_item(bridge, slot, features, WM_SNN_SLOT_DIM, 0.5f);
+        int spikes = wm_snn_encode_item(full_bridge, slot, features, WM_SNN_SLOT_DIM, 0.5f);
         EXPECT_GE(spikes, 0);
     }
 
-    wm_snn_simulate(bridge, 20.0f);
+    // wm_snn_simulate returns spike count (>= 0), not error code
+    int sim_result = wm_snn_simulate(full_bridge, 20.0f);
+    EXPECT_GE(sim_result, 0);
 
     wm_snn_bridge_state_t state;
-    wm_snn_get_state(bridge, &state);
+    wm_snn_get_state(full_bridge, &state);
     EXPECT_EQ(state.active_slots, WM_SNN_MAX_SLOTS);
+
+    wm_snn_destroy(full_bridge);
 }
 
 TEST_F(MemorySNNRegressionTest, RepeatedEncodingStable) {
@@ -127,17 +144,19 @@ TEST_F(MemorySNNRegressionTest, RepeatedEncodingStable) {
 TEST_F(MemorySNNRegressionTest, StatsAccurateAfterManyOperations) {
     const int NUM_ENCODINGS = 30;
     const int NUM_RETRIEVALS = 20;
+    // Default bridge has max_slots=8, use that for slot indexing
+    const uint32_t MAX_SLOTS = 8;
 
     for (int i = 0; i < NUM_ENCODINGS; i++) {
         float features[WM_SNN_SLOT_DIM] = {0.5f};
-        wm_snn_encode_item(bridge, i % WM_SNN_MAX_SLOTS, features, 1, 0.5f);
+        wm_snn_encode_item(bridge, i % MAX_SLOTS, features, 1, 0.5f);
     }
 
     wm_snn_simulate(bridge, 50.0f);
 
     float output[WM_SNN_SLOT_DIM];
     for (int i = 0; i < NUM_RETRIEVALS; i++) {
-        wm_snn_retrieve_item(bridge, i % WM_SNN_MAX_SLOTS, output, WM_SNN_SLOT_DIM);
+        wm_snn_retrieve_item(bridge, i % MAX_SLOTS, output, WM_SNN_SLOT_DIM);
     }
 
     wm_snn_stats_t stats;
@@ -270,11 +289,15 @@ TEST_F(MemoryPlasticityRegressionTest, MaintenanceLearning) {
 
     wm_plasticity_register_synapse(maint_bridge, 1, WM_SYNAPSE_MAINTENANCE, 0, 0.5f);
 
+    // Slot must be occupied before maintenance can operate on it.
+    // wm_plasticity_maintain returns early (no-op) if slot is not occupied.
+    wm_plasticity_encode(maint_bridge, 0, 0.8f, 0);
+
     wm_plasticity_synapse_t initial;
     wm_plasticity_get_synapse(maint_bridge, 1, &initial);
 
     for (int i = 0; i < 50; i++) {
-        wm_plasticity_maintain(maint_bridge, 0, 0.8f, i * 10000);
+        wm_plasticity_maintain(maint_bridge, 0, 0.8f, (i + 1) * 10000);
         wm_plasticity_update(maint_bridge, 10.0f);
     }
 
@@ -432,13 +455,16 @@ protected:
 };
 
 TEST_F(MemoryCombinedRegressionTest, LongRunningStability) {
-    for (int i = 0; i < WM_SNN_MAX_SLOTS; i++) {
+    // Default SNN bridge has max_slots=8, use that for slot indexing
+    const uint32_t SNN_SLOTS = 8;
+
+    for (uint32_t i = 0; i < SNN_SLOTS; i++) {
         wm_plasticity_register_synapse(plasticity, i, WM_SYNAPSE_ENCODING, i, 0.5f);
     }
 
     const int ITERATIONS = 200;
     for (int iter = 0; iter < ITERATIONS; iter++) {
-        uint32_t slot = iter % WM_SNN_MAX_SLOTS;
+        uint32_t slot = iter % SNN_SLOTS;
         float features[WM_SNN_SLOT_DIM];
         for (int j = 0; j < WM_SNN_SLOT_DIM; j++) {
             features[j] = sinf(iter * 0.1f + j * 0.01f) * 0.5f + 0.5f;
@@ -467,7 +493,7 @@ TEST_F(MemoryCombinedRegressionTest, LongRunningStability) {
     EXPECT_EQ(plasticity_stats.total_encodings, (uint64_t)ITERATIONS);
     EXPECT_EQ(plasticity_stats.total_maintenance_cycles, (uint64_t)ITERATIONS);
 
-    for (int i = 0; i < WM_SNN_MAX_SLOTS; i++) {
+    for (uint32_t i = 0; i < SNN_SLOTS; i++) {
         wm_plasticity_synapse_t syn;
         wm_plasticity_get_synapse(plasticity, i, &syn);
         EXPECT_GE(syn.weight, 0.0f);

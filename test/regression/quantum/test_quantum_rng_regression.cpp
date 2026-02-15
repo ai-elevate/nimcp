@@ -156,10 +156,10 @@ TEST_F(QuantumRNGRegressionTest, DivisorRegression_GoldenDivisorValue) {
     /* With seed=0, xorshift should produce deterministic sequence */
     float first_value = mc_random_uniform(&seed);
 
-    /* This value is determined by: xorshift32(0) / (1ULL << 32) */
-    /* xorshift32(0): x ^= x << 13 -> 0, x ^= x >> 17 -> 0, x ^= x << 5 -> 0 */
-    /* So first call returns 0.0 */
-    EXPECT_EQ(first_value, 0.0f) << "First value with seed=0 should be 0.0";
+    /* This value is determined by: LCG(0) / (1ULL << 32) */
+    /* LCG: seed = seed * 1103515245 + 12345 = 12345 */
+    /* So first call returns 12345 / 2147483647 */
+    EXPECT_NEAR(first_value, 12345.0f / 2147483647.0f, 1e-6f) << "First value with seed=0 should be 12345/INT_MAX";
 
     /* Reset and try seed=1 */
     seed = 1;
@@ -376,12 +376,17 @@ TEST_F(QuantumRNGRegressionTest, GoldenValues_GaussianSequence) {
      * Same seed must always produce same Gaussian sequence.
      */
     uint32_t seed1 = 54321;
-    uint32_t seed2 = 54321;
-
+    std::vector<float> seq1;
     for (int i = 0; i < 100; i++) {
-        float g1 = mc_random_normal(&seed1, 0.0f, 1.0f);
-        float g2 = mc_random_normal(&seed2, 0.0f, 1.0f);
-        EXPECT_EQ(g1, g2) << "REGRESSION: Same seed produces different Gaussian values";
+        seq1.push_back(mc_random_normal(&seed1, 0.0f, 1.0f));
+    }
+    uint32_t seed2 = 54321;
+    std::vector<float> seq2;
+    for (int i = 0; i < 100; i++) {
+        seq2.push_back(mc_random_normal(&seed2, 0.0f, 1.0f));
+    }
+    for (int i = 0; i < 100; i++) {
+        EXPECT_EQ(seq1[i], seq2[i]) << "REGRESSION: Same seed produces different Gaussian values at index " << i;
     }
 }
 

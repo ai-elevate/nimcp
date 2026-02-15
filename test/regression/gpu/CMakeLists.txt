@@ -6,14 +6,6 @@
 # HOW:  Test specific bug scenarios and backward compatibility
 # ============================================================================
 
-# Guard: CUDA toolkit required for GPU regression tests
-if(NOT CUDAToolkit_FOUND)
-    message(STATUS "  Skipping GPU regression tests (CUDA toolkit not found)")
-    return()
-endif()
-
-message(STATUS "  Building GPU regression tests (CUDA toolkit found)")
-
 # Helper macro for adding GPU regression tests
 macro(add_gpu_regression_test TEST_NAME)
     add_executable(regression_gpu_${TEST_NAME}
@@ -39,6 +31,36 @@ macro(add_gpu_regression_test TEST_NAME)
 endmacro()
 
 # =============================================================================
+# GPU Stub Regression Tests (no CUDA required)
+# =============================================================================
+# WHAT: Regression tests for GPU stub behavior on CPU-only systems
+# WHY:  Prevent reintroduction of false positive throws and ensure
+#        consistent error handling when CUDA is not available
+# HOW:  Test stub return values, backend fallback, and error types
+add_gpu_regression_test(test_gpu_stub_regression)
+
+# =============================================================================
+# GPU Recovery Validation Regression Tests (no CUDA required)
+# =============================================================================
+# WHAT: Regression tests for GPU recovery callback validation
+# WHY:  Prevent reintroduction of unchecked recovery results
+# HOW:  Test recovery config, context lifecycle, parameter correction
+add_gpu_regression_test(test_gpu_recovery_validation_regression)
+
+# Guard: CUDA toolkit required for remaining GPU regression tests
+if(NOT CUDAToolkit_FOUND)
+    message(STATUS "  Skipping CUDA GPU regression tests (CUDA toolkit not found)")
+
+    # Include recovery subdirectory (may have non-CUDA tests)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/recovery/CMakeLists.txt)
+        add_subdirectory(recovery)
+    endif()
+    return()
+endif()
+
+message(STATUS "  Building GPU regression tests (CUDA toolkit found)")
+
+# =============================================================================
 # GPU Neuron Regression Tests
 # =============================================================================
 add_gpu_regression_test(test_gpu_neuron_backward_compat)
@@ -56,6 +78,9 @@ add_gpu_regression_test(test_gpu_bounds_regression)
 # GPU Spike Event Regression Tests
 # =============================================================================
 add_gpu_regression_test(test_gpu_spike_event_backward_compat)
+set_tests_properties(regression_gpu_test_gpu_spike_event_backward_compat PROPERTIES
+    RESOURCE_LOCK "brain_heavy"
+)
 
 # =============================================================================
 # GPU Execution Mode Regression Tests

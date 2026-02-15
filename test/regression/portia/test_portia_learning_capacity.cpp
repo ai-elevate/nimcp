@@ -17,12 +17,15 @@
 
 // Headers have their own extern "C" guards
 #include "portia/nimcp_portia_learning.h"
+#include "security/nimcp_bbb_helpers.h"
 
 namespace {
 
 class PortiaLearningCapacityTest : public ::testing::Test {
 protected:
     void SetUp() override {
+        bbb_helpers_init();
+
         config.allowed_modes = LEARNING_MODE_FULL;
         config.max_habituation_entries = 100;
         config.max_association_entries = 100;
@@ -40,6 +43,7 @@ protected:
         if (state) {
             portia_learning_destroy(state);
         }
+        bbb_helpers_shutdown();
     }
 
     portia_learning_config_t config;

@@ -431,10 +431,10 @@ int hypo_gt_fep_select_strategy(
         return -1;
     }
 
-    nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Update first to get latest state */
+    /* Update first to get latest state (unlocked - update handles its own locking) */
     hypo_gt_fep_update(bridge);
+
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     *strategy = bridge->fep_effects.recommended_strategy;
     if (confidence) {

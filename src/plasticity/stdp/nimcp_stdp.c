@@ -7,6 +7,7 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp.h"
+#include "plasticity/nimcp_plasticity_constants.h"
 #include <stddef.h>  /* for NULL */
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
@@ -174,11 +175,12 @@ void stdp_update_traces(stdp_synapse_t* synapse, float dt) {
 
     /* NUMERICAL STABILITY: Flush subnormal traces to zero to prevent denormal slowdown.
      * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation on most CPUs.
-     *       This is the same fix applied in triplet_stdp.c for consistency.
-     * HOW:  Threshold at 1e-10f which is well above denormal range but small enough
-     *       that trace contribution to plasticity is negligible. */
-    if (synapse->pre_trace < 1e-10F) synapse->pre_trace = 0.0F;
-    if (synapse->post_trace < 1e-10F) synapse->post_trace = 0.0F;
+     *       Uses standardized threshold from nimcp_plasticity_constants.h for consistency
+     *       across all plasticity modules (STDP, triplet STDP, BCM, calcium).
+     * HOW:  Threshold at NIMCP_DENORMAL_THRESHOLD which is well above denormal range
+     *       but small enough that trace contribution to plasticity is negligible. */
+    if (synapse->pre_trace < NIMCP_DENORMAL_THRESHOLD) synapse->pre_trace = 0.0F;
+    if (synapse->post_trace < NIMCP_DENORMAL_THRESHOLD) synapse->post_trace = 0.0F;
 }
 
 /* ============================================================================

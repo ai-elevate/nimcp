@@ -36,7 +36,7 @@ protected:
     brain_stream_t stream;
 
     void SetUp() override {
-        brain = brain_create("test_stream", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 5, 3);
+        brain = brain_create("test_stream", BRAIN_SIZE_TINY, BRAIN_TASK_CLASSIFICATION, 5, 3);
         ASSERT_NE(brain, nullptr);
 
         stream = nullptr;  // Created per test
@@ -519,7 +519,7 @@ TEST_F(StreamRegressionTest, InputFeedThroughput) {
     }
 
     float features[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
-    const int num_inputs = 10000;
+    const int num_inputs = 1000;
 
     auto start = std::chrono::high_resolution_clock::now();
 

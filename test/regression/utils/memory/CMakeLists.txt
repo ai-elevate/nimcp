@@ -29,6 +29,9 @@ target_link_libraries(regression_utils_memory_test_layer_pools_regression
 )
 add_test(NAME regression_utils_memory_test_layer_pools_regression
          COMMAND regression_utils_memory_test_layer_pools_regression)
+set_tests_properties(regression_utils_memory_test_layer_pools_regression PROPERTIES
+    TIMEOUT 120 RESOURCE_LOCK "brain_heavy"
+)
 
 # Unified Memory Regression Tests
 add_executable(regression_utils_memory_test_unified_memory_regression
@@ -85,4 +88,25 @@ target_include_directories(regression_utils_memory_test_p1p3_regression
 add_test(NAME regression_utils_memory_test_p1p3_regression
          COMMAND regression_utils_memory_test_p1p3_regression)
 set_tests_properties(regression_utils_memory_test_p1p3_regression
+                     PROPERTIES TIMEOUT 120 LABELS "regression")
+
+# Atomic Recursion Guard Regression Tests
+add_executable(regression_utils_memory_test_memory_recursion_atomic_regression
+    test_memory_recursion_atomic_regression.cpp
+)
+target_link_libraries(regression_utils_memory_test_memory_recursion_atomic_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(regression_utils_memory_test_memory_recursion_atomic_regression
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME regression_utils_memory_test_memory_recursion_atomic_regression
+         COMMAND regression_utils_memory_test_memory_recursion_atomic_regression)
+set_tests_properties(regression_utils_memory_test_memory_recursion_atomic_regression
                      PROPERTIES TIMEOUT 120 LABELS "regression")

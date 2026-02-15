@@ -152,9 +152,10 @@ void action_history_destroy(action_history_t* history) {
         action_history_disconnect_bio_async(history);
     }
 
-    /* Destroy mutex */
+    /* Destroy and free mutex */
     if (history->mutex) {
         nimcp_platform_mutex_destroy(history->mutex);
+        nimcp_free(history->mutex);
     }
 
     /* Free circular buffer */

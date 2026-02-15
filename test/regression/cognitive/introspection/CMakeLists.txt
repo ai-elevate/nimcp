@@ -91,7 +91,9 @@ target_include_directories(regression_cognitive_introspection_ensemble_uncertain
 )
 add_test(NAME regression_cognitive_introspection_ensemble_uncertainty
          COMMAND regression_cognitive_introspection_ensemble_uncertainty)
-set_tests_properties(regression_cognitive_introspection_ensemble_uncertainty PROPERTIES LABELS "regression")
+set_tests_properties(regression_cognitive_introspection_ensemble_uncertainty PROPERTIES
+    LABELS "regression" TIMEOUT 180 RESOURCE_LOCK "brain_heavy"
+)
 
 # Temporal Patterns Regression Tests
 add_executable(regression_cognitive_introspection_temporal_patterns

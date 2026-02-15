@@ -209,8 +209,7 @@ static int find_empty_percept_slot(const nimcp_claustrum_t* claustrum) {
             return i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_percept_slot: claustrum->percepts is NULL");
-    return -1;
+    return -1;  /* No empty slot found - normal "not found" return, not an error */
 }
 
 /**
@@ -222,8 +221,7 @@ static int find_percept_by_id(const nimcp_claustrum_t* claustrum, uint32_t id) {
             return i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_percept_by_id: validation failed");
-    return -1;
+    return -1;  /* Percept not found - normal "not found" return, not an error */
 }
 
 /**

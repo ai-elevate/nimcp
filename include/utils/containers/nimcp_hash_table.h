@@ -322,6 +322,46 @@ void* hash_table_lookup_uint32(hash_table_t* table, uint32_t key);
 bool hash_table_remove_uint32(hash_table_t* table, uint32_t key);
 
 //=============================================================================
+// Integer Key Operations (uint64_t)
+//=============================================================================
+
+/**
+ * WHAT: Insert or update uint64_t key entry
+ * WHY: Store value with 64-bit integer key without truncation
+ * HOW: Hash key, find/create entry, copy value
+ *
+ * @param table Hash table (should be created with HASH_KEY_UINT64)
+ * @param key 64-bit unsigned integer key
+ * @param value Pointer to value data to store (will be copied)
+ * @param value_size Size of value in bytes
+ * @return true on success, false on allocation failure
+ */
+bool hash_table_insert_uint64(hash_table_t* table, uint64_t key, const void* value,
+                              size_t value_size);
+
+/**
+ * WHAT: Lookup value by uint64_t key
+ * WHY: Retrieve stored value using full 64-bit key
+ * HOW: Hash key, traverse chain, compare keys
+ *
+ * @param table Hash table
+ * @param key 64-bit unsigned integer key
+ * @return Pointer to stored value, or NULL if not found
+ */
+void* hash_table_lookup_uint64(hash_table_t* table, uint64_t key);
+
+/**
+ * WHAT: Remove entry by uint64_t key
+ * WHY: Delete entry from table using full 64-bit key
+ * HOW: Hash key, find entry, unlink from chain, free
+ *
+ * @param table Hash table
+ * @param key 64-bit unsigned integer key
+ * @return true if entry was found and removed, false if not found
+ */
+bool hash_table_remove_uint64(hash_table_t* table, uint64_t key);
+
+//=============================================================================
 // Iteration
 //=============================================================================
 

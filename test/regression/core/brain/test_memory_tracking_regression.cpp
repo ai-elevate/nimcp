@@ -65,7 +65,7 @@ TEST_F(MemoryTrackingRegressionTest, TinyBrainMemoryBaseline) {
     EXPECT_LE(measured_memory, expected_max);
 
     // Calculate accuracy
-    double accuracy = calculate_accuracy(measured_memory, expected_min);
+    double accuracy = calculate_accuracy(measured_memory, (expected_min + expected_max) / 2);
     EXPECT_GT(accuracy, 0.0);  // Should be positive
 
     // Log for regression tracking
@@ -101,7 +101,7 @@ TEST_F(MemoryTrackingRegressionTest, SmallBrainMemoryBaseline) {
     EXPECT_LE(measured_memory, expected_max);
 
     // Accuracy should be good for small brains
-    double accuracy = calculate_accuracy(measured_memory, expected_min);
+    double accuracy = calculate_accuracy(measured_memory, (expected_min + expected_max) / 2);
 
     std::cout << "Small Brain Memory: " << measured_memory << " bytes\n";
     std::cout << "Expected Range: " << expected_min << " - " << expected_max << " bytes\n";
@@ -134,7 +134,7 @@ TEST_F(MemoryTrackingRegressionTest, MediumBrainMemoryBaseline) {
     EXPECT_GE(measured_memory, expected_min);
     EXPECT_LE(measured_memory, expected_max);
 
-    double accuracy = calculate_accuracy(measured_memory, expected_min);
+    double accuracy = calculate_accuracy(measured_memory, (expected_min + expected_max) / 2);
 
     std::cout << "Medium Brain Memory: " << measured_memory << " bytes\n";
     std::cout << "Expected Range: " << expected_min << " - " << expected_max << " bytes\n";

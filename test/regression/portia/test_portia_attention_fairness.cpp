@@ -24,6 +24,7 @@
 
 // Headers have their own extern "C" guards
 #include "portia/nimcp_portia_attention.h"
+#include "security/nimcp_bbb_helpers.h"
 
 namespace {
 
@@ -34,6 +35,8 @@ namespace {
 class PortiaAttentionFairnessTest : public ::testing::Test {
 protected:
     void SetUp() override {
+        bbb_helpers_init();
+
         config = portia_attention_default_config();
         config.enable_preemption = true;
         config.preemption_threshold = 0.3f;
@@ -48,6 +51,7 @@ protected:
             portia_attention_destroy(state);
             state = nullptr;
         }
+        bbb_helpers_shutdown();
     }
 
     // Helper: Calculate allocation fairness (0=unfair, 1=perfectly fair)

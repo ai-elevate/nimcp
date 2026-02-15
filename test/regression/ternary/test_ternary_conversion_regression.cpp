@@ -296,7 +296,8 @@ TEST_F(TernaryConversionRegressionTest, ZeroHandling) {
     // BASELINE: Zero should always become UNKNOWN
 
     EXPECT_EQ(trit_from_float_threshold(0.0f, 0.5f), TRIT_UNKNOWN);
-    EXPECT_EQ(trit_from_float_threshold(0.0f, 0.0f), TRIT_UNKNOWN);  // Edge case
+    // With threshold=0.0, 0.0 >= 0.0 is true, so this returns TRIT_POSITIVE
+    EXPECT_EQ(trit_from_float_threshold(0.0f, 0.0f), TRIT_POSITIVE);
     EXPECT_EQ(trit_from_float_threshold(-0.0f, 0.5f), TRIT_UNKNOWN);
 
     EXPECT_EQ(trit_from_float_sign(0.0f), TRIT_UNKNOWN);

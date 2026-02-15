@@ -23,3 +23,6 @@ add_tensor_test(test_tensor)
 
 # Tensor error handling tests
 add_tensor_test(test_tensor_errors)
+
+# Tensor pool tests (Opt 4: tensor struct pooling)
+add_tensor_test(test_tensor_pool)

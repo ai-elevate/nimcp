@@ -26,6 +26,12 @@ add_gpu_test(test_spike_event)
 # Multi-GPU bounds validation tests (P2-13 fix)
 add_gpu_test(test_multigpu_bounds)
 
+# GPU stub false positive throw tests (no CUDA required)
+add_gpu_test(test_gpu_stub_no_false_throws)
+
+# Softmax numerical stability tests (CPU backend, no CUDA required)
+add_gpu_test(test_softmax_numerical_stability)
+
 # CUDA Kernel tests - only built when CUDA toolkit is available
 # These tests require actual CUDA kernel implementations
 if(CUDAToolkit_FOUND)

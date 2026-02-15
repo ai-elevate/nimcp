@@ -555,8 +555,8 @@ fast_recovery_result_t fast_recovery_execute(fast_recovery_type_t type, brain_t 
     }
 
     // Check timeout (should never happen for truly fast operations, but track it)
-    // Allow up to 5ms for operations like GC which can be slower
-    if (latency_us >= 5000) {  // 5ms = 5000μs
+    // Allow up to 50ms for operations like GC which can be much slower under load
+    if (latency_us >= 50000) {  // 50ms = 50000μs
         __atomic_add_fetch(&g_stats.timeouts, 1, __ATOMIC_RELAXED);
         status = FAST_RECOVERY_TIMEOUT;
     }

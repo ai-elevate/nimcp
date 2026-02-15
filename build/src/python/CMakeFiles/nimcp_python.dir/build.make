@@ -108,7 +108,7 @@ nimcp_python_EXTERNAL_OBJECTS =
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/build.make
-lib/python/nimcp.so: lib/libnimcp.so.2.6.2
+lib/python/nimcp.so: lib/libnimcp.so.2.6.3
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcudart.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcufft.so

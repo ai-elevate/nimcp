@@ -186,6 +186,24 @@ add_test_binary(
 )
 
 # ============================================================================
+# Bug Fix Tests (2026-02-15)
+# ============================================================================
+
+# Test: Narrative Cleanup (Memory Leak Fix)
+add_test_binary(
+    test_swarm_narrative_cleanup
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_narrative_cleanup.cpp
+    unit
+)
+
+# Test: 64-bit Drone/Swarm ID Hash (Truncation Fix)
+add_test_binary(
+    test_swarm_drone_id_hash
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_drone_id_hash.cpp
+    unit
+)
+
+# ============================================================================
 # Subdirectories
 # ============================================================================
 

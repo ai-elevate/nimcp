@@ -1099,8 +1099,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
 bool signal_handler_uninstall(void)
 {
     if (!g_installed) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_handler_uninstall: g_installed is NULL");
-        return false;
+        return true;  // Nothing to uninstall - safe no-op
     }
 
     /* Process any remaining exceptions before shutdown */

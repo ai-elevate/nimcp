@@ -439,12 +439,13 @@ TEST_F(PEStabilityTest, ALiBi_SlopeGeometry) {
 
 TEST_F(PEStabilityTest, ALiBi_BiasLinearGrowth) {
     // WHAT: Verify ALiBi bias grows linearly with distance
-    // WHY:  bias[i][j] = -slope * |i - j|
-    // HOW:  Check bias values match formula
+    // WHY:  bias[i][j] = -slope * |i - j| (symmetric mode)
+    // HOW:  Check bias values match formula using symmetric config
 
     nimcp_pos_config_t config = {};
     config.type = NIMCP_POS_ALIBI;
     config.config.alibi = nimcp_pos_alibi_default_config();
+    config.config.alibi.use_symmetric = true;  // Must be symmetric for |i-j| formula
 
     encoder = nimcp_pos_encoder_create(&config);
     ASSERT_NE(encoder, nullptr);
@@ -648,11 +649,13 @@ TEST_F(PEStabilityTest, API_NullHandling) {
 TEST_F(PEStabilityTest, API_BoundaryPositions) {
     // WHAT: Verify API handles boundary position values
     // WHY:  Edge cases must work correctly
-    // HOW:  Test position 0, max position, beyond max
+    // HOW:  Test position 0, max position within encoder limits, beyond max
 
     nimcp_pos_config_t config = {};
     config.type = NIMCP_POS_SINUSOIDAL;
     config.config.sinusoidal = nimcp_pos_sinusoidal_default_config();
+    // Default sinusoidal max_seq_length is 8192, use that as the boundary
+    uint32_t encoder_max = config.config.sinusoidal.base.max_seq_length;
 
     encoder = nimcp_pos_encoder_create(&config);
     ASSERT_NE(encoder, nullptr);
@@ -663,12 +666,12 @@ TEST_F(PEStabilityTest, API_BoundaryPositions) {
     int result = nimcp_pos_encode_position(encoder, 0, output.data());
     EXPECT_EQ(result, NIMCP_POS_SUCCESS);
 
-    // Max position
-    result = nimcp_pos_encode_position(encoder, NIMCP_POS_MAX_SEQ_LENGTH - 1, output.data());
+    // Max position within encoder's configured limit
+    result = nimcp_pos_encode_position(encoder, encoder_max - 1, output.data());
     EXPECT_EQ(result, NIMCP_POS_SUCCESS);
 
-    // Beyond max (should fail or clip)
-    result = nimcp_pos_encode_position(encoder, NIMCP_POS_MAX_SEQ_LENGTH, output.data());
+    // Beyond encoder's max (should fail or clip)
+    result = nimcp_pos_encode_position(encoder, encoder_max, output.data());
     // Implementation may handle this differently - just verify no crash
 }
 

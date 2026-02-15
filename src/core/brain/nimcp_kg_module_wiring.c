@@ -546,8 +546,7 @@ bool kg_module_wiring_has_input(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_has_input: msg_type is NULL");
-    return false;
+    return false;  /* Not found is normal behavior, not an error */
 }
 
 bool kg_module_wiring_has_output(
@@ -565,8 +564,7 @@ bool kg_module_wiring_has_output(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_has_output: validation failed");
-    return false;
+    return false;  /* Not found is normal behavior, not an error */
 }
 
 bool kg_module_wiring_has_handler(
@@ -584,8 +582,7 @@ bool kg_module_wiring_has_handler(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_has_handler: validation failed");
-    return false;
+    return false;  /* Not found is normal behavior, not an error */
 }
 
 uint32_t kg_module_wiring_get_handler_priority(

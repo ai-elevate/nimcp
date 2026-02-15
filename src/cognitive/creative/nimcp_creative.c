@@ -494,6 +494,13 @@ visual_image_t* visual_image_create(uint32_t width, uint32_t height,
     }
     size_t data_size = pixel_count * channels;
 
+    /* Guard against unreasonable allocations that would OOM-kill the process.
+     * data_size * sizeof(float) must fit in available memory. Cap at 1GB. */
+    if (data_size > (size_t)(256 * 1024 * 1024)) {  /* 256M floats = 1GB */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_image_create: image too large");
+        return NULL;
+    }
+
     visual_image_t* image = nimcp_calloc(1, sizeof(visual_image_t));
     if (!image) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_image_create: image allocation failed");

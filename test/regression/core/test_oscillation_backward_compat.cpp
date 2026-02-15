@@ -66,8 +66,8 @@ protected:
 
     void SetUp() override {
         // Create brain with default configuration (complex disabled)
-        brain = brain_create("compat_test", BRAIN_SIZE_SMALL,
-                           BRAIN_TASK_CLASSIFICATION, 128, 20);
+        brain = brain_create("compat_test", BRAIN_SIZE_TINY,
+                           BRAIN_TASK_CLASSIFICATION, 16, 4);
         ASSERT_NE(brain, nullptr);
 
         // Create analyzer with default config (no complex features)
@@ -114,6 +114,9 @@ TEST_F(OscillationBackwardCompatTest, DefaultConfigComplexDisabled) {
     // the analyzer would have different internal state
 
     // Verify basic functionality works (real-only mode)
+    // Must record some data before analysis - analyzer needs samples to work with
+    generateSineWave(10.0f, 1.0f, SAMPLING_RATE_HZ);
+
     oscillation_analysis_t result;
     bool success = brain_oscillation_analyze(analyzer, &result);
     EXPECT_TRUE(success) << "Basic analysis should succeed in default mode";
@@ -148,7 +151,7 @@ TEST_F(OscillationBackwardCompatTest, ExistingAPIStillWorks) {
     // HOW:  Call all API functions and verify success
 
     // Record values
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < SAMPLING_RATE_HZ; i++) {
         brain_oscillation_record_value(analyzer, sinf(i * 0.1f));
     }
 
@@ -209,7 +212,7 @@ TEST_F(OscillationBackwardCompatTest, ReturnValuesUnchanged) {
     // HOW:  Test various scenarios and verify return codes
 
     // Valid operations return true/valid values
-    generateSineWave(10.0f, 1.0f, 100);
+    generateSineWave(10.0f, 1.0f, SAMPLING_RATE_HZ);
 
     oscillation_analysis_t result;
     EXPECT_TRUE(brain_oscillation_analyze(analyzer, &result));
@@ -442,7 +445,7 @@ TEST_F(OscillationBackwardCompatTest, MultipleAnalyzersIndependent) {
     ASSERT_NE(analyzer2, nullptr);
 
     // Feed different signals
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < SAMPLING_RATE_HZ; i++) {
         brain_oscillation_record_value(analyzer, sinf(i * 0.1f));
         brain_oscillation_record_value(analyzer2, cosf(i * 0.2f));
     }

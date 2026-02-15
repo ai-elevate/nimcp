@@ -64,3 +64,16 @@ target_link_libraries(unit_middleware_routing_thalamic_immune_integration
     )
 add_test(NAME unit_middleware_routing_thalamic_immune_integration
          COMMAND unit_middleware_routing_thalamic_immune_integration)
+# Test Attention Gate Error Messages
+add_executable(unit_middleware_routing_attention_gate_error_messages
+    test_attention_gate_error_messages.cpp
+)
+target_link_libraries(unit_middleware_routing_attention_gate_error_messages
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME unit_middleware_routing_attention_gate_error_messages
+         COMMAND unit_middleware_routing_attention_gate_error_messages)

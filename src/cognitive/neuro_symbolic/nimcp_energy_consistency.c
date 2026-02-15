@@ -1367,7 +1367,7 @@ static bool check_circular_dependency(
     }
 
     in_stack[current_step] = false;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_circular_dependency: operation failed");
+    /* Normal return: no circular dependency found from this node */
     return false;
 }
 

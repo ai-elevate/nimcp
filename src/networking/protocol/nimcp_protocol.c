@@ -134,6 +134,7 @@ static void init_header(msg_header_t* header, msg_type_t type, uint32_t payload_
     if (!header)
         return;
 
+    memset(header, 0, sizeof(*header));
     header->magic = PROTOCOL_MAGIC;
     header->version = PROTOCOL_VERSION;
     header->type = type;

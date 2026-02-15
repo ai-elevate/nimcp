@@ -50,8 +50,9 @@ bool nimcp_gpu_context_is_valid(const nimcp_gpu_context_t* ctx) {
 
 int nimcp_gpu_context_set_device(nimcp_gpu_context_t* ctx) {
     (void)ctx;
-    // Present to immune if called in production (indicates missing CUDA)
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "GPU context set_device called but CUDA not available");
+    /* In stub builds, returning -1 is normal "no GPU" behavior.
+     * Removed NIMCP_THROW_TO_IMMUNE to avoid false-positive immune alerts
+     * when callers gracefully handle the error return. */
     return -1; // No GPU
 }
 
@@ -74,7 +75,8 @@ const char* nimcp_gpu_context_get_error(const nimcp_gpu_context_t* ctx) {
 void* nimcp_gpu_malloc(nimcp_gpu_context_t* ctx, size_t size_bytes) {
     (void)ctx;
     (void)size_bytes;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_malloc: operation failed");
+    /* Returning NULL on non-CUDA build is normal behavior, not an error.
+     * Removed NIMCP_THROW_TO_IMMUNE to avoid false-positive immune alerts. */
     return NULL; // No GPU memory available
 }
 
@@ -118,7 +120,10 @@ int nimcp_gpu_memset(nimcp_gpu_context_t* ctx,
         memset(dev_ptr, value, size_bytes);
         return 0;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_memset: validation failed");
+    /* In stub mode, dev_ptr==NULL with a valid ctx could be a normal
+     * "no GPU allocation" path. Only throw for genuine misuse where
+     * the caller explicitly passed NULL. Since we cannot distinguish
+     * the two cases, return -1 without throwing to avoid false positives. */
     return -1;
 }
 

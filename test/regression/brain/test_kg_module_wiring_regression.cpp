@@ -21,6 +21,7 @@
 
 extern "C" {
 #include "core/brain/nimcp_kg_module_wiring.h"
+#include "core/brain/nimcp_kg_wiring_exception.h"
 }
 
 //=============================================================================
@@ -32,6 +33,7 @@ protected:
     kg_module_wiring_t* wiring_ = nullptr;
 
     void SetUp() override {
+        kg_wiring_disable_exceptions();  // Prevent slow immune dispatch in tests
         wiring_ = kg_module_wiring_create("regression_test_module", "TEST");
         ASSERT_NE(wiring_, nullptr);
     }

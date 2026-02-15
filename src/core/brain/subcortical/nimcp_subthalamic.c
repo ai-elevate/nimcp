@@ -81,9 +81,7 @@ void subthalamic_default_config(subthalamic_config_t* config) {
 
 subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
     if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config for subthalamic nucleus");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_create: config is NULL");
         return NULL;
     }
 
@@ -239,6 +237,9 @@ int subthalamic_reset(subthalamic_nucleus_t* stn) {
                stn->indirect_delay_samples * stn->num_actions * sizeof(float));
     }
     stn->buffer_index = 0;
+
+    /* Reset statistics */
+    memset(&stn->stats, 0, sizeof(stn->stats));
 
     nimcp_mutex_unlock(stn->mutex);
 
@@ -427,6 +428,12 @@ int subthalamic_process(subthalamic_nucleus_t* stn) {
 
     /* Update statistics */
     stn->stats.avg_firing_rate = stn->global_output * max_rate;
+
+    /* Track max firing rate across process calls */
+    float current_max = stn->global_output * max_rate;
+    if (current_max > stn->stats.max_firing_rate) {
+        stn->stats.max_firing_rate = current_max;
+    }
 
     nimcp_mutex_unlock(stn->mutex);
 

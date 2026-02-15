@@ -96,6 +96,58 @@ static void generate_narrative_id(char* buffer, size_t size, uint32_t id);
 static nimcp_result_t send_narrative_message(swarm_narrative_t* sn,
     const narrative_t* narrative, uint32_t target_agent);
 static nimcp_result_t handle_narrative_shared(swarm_narrative_t* sn, const void* msg);
+static void free_narrative(narrative_t* narrative);
+
+/* ============================================================================
+ * Internal Cleanup Helpers
+ * ============================================================================ */
+
+/**
+ * @brief Free a single narrative and all its owned resources
+ *
+ * WHAT: Frees event encodings, event array, and narrative struct
+ * WHY:  Each narrative owns heap-allocated event_encoding arrays
+ * HOW:  Walk events, free each encoding, then free events array, then struct
+ */
+static void free_narrative(narrative_t* narrative)
+{
+    if (!narrative) {
+        return;
+    }
+
+    if (narrative->events) {
+        for (uint32_t i = 0; i < narrative->num_events; i++) {
+            if (narrative->events[i].event_encoding) {
+                nimcp_free(narrative->events[i].event_encoding);
+                narrative->events[i].event_encoding = NULL;
+            }
+        }
+        nimcp_free(narrative->events);
+        narrative->events = NULL;
+    }
+
+    nimcp_free(narrative);
+}
+
+/**
+ * @brief Hash table iterator that frees each narrative
+ *
+ * WHAT: Callback for hash_table_iterate to free narrative values
+ * WHY:  The hash table stores pointers to narratives that need deep cleanup
+ * HOW:  Extracts narrative_t* from stored value and calls free_narrative
+ */
+static bool narrative_cleanup_iterator(const void* key, size_t key_size, void* value,
+                                        size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size; (void)user_data;
+
+    if (value && value_size >= sizeof(void*)) {
+        narrative_t* narrative = *(narrative_t**)value;
+        free_narrative(narrative);
+    }
+
+    return true; /* continue iteration */
+}
 
 /* ============================================================================
  * Core API Implementation
@@ -188,12 +240,15 @@ void swarm_narrative_destroy(swarm_narrative_t* sn)
         nimcp_platform_mutex_lock(sn->mutex);
     }
 
-    /* Free narratives (TODO: implement narrative cleanup iteration) */
+    /* Free all narratives in the main table */
     if (sn->narratives) {
+        hash_table_iterate(sn->narratives, narrative_cleanup_iterator, NULL);
         hash_table_destroy(sn->narratives);
     }
 
+    /* Free all pending narratives (not yet finalized) */
     if (sn->pending_narratives) {
+        hash_table_iterate(sn->pending_narratives, narrative_cleanup_iterator, NULL);
         hash_table_destroy(sn->pending_narratives);
     }
 

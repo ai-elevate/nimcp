@@ -662,6 +662,33 @@ gtest_discover_tests(unit_plasticity_eligibility_utils_quantum_bridge
 )
 
 # ============================================================================
+# Denormal Threshold Consistency Tests
+# ============================================================================
+# WHAT: Unit tests for standardized NIMCP_DENORMAL_THRESHOLD across plasticity
+# WHY:  Verify all learning rules (STDP, BCM, triplet STDP, calcium, attention)
+#       use the same denormal threshold constant from nimcp_plasticity_constants.h
+# HOW:  Test threshold value, trace flushing behavior, cross-module consistency
+# ============================================================================
+
+add_executable(unit_plasticity_denormal_threshold
+    test_denormal_threshold_consistency.cpp
+)
+target_link_libraries(unit_plasticity_denormal_threshold
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_denormal_threshold PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_denormal_threshold
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;plasticity;denormal;threshold;consistency"
+)
+
+# ============================================================================
 # Exception Handling Tests
 # ============================================================================
 # WHAT: Unit tests for plasticity exception handling

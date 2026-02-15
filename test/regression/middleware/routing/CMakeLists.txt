@@ -38,3 +38,16 @@ target_link_libraries(regression_middleware_routing_thalamic_router
     )
 add_test(NAME regression_middleware_routing_thalamic_router
          COMMAND regression_middleware_routing_thalamic_router)
+# Test Attention Gate Error Message Regression
+add_executable(regression_middleware_routing_attention_gate_error_msg
+    test_attention_gate_error_msg_regression.cpp
+)
+target_link_libraries(regression_middleware_routing_attention_gate_error_msg
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+    )
+add_test(NAME regression_middleware_routing_attention_gate_error_msg
+         COMMAND regression_middleware_routing_attention_gate_error_msg)

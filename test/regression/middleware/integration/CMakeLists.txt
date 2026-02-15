@@ -39,7 +39,9 @@ target_include_directories(regression_middleware_bio_async PRIVATE
 add_test(NAME regression_middleware_bio_async
     COMMAND regression_middleware_bio_async)
 
+# FLAKY: MiddlewareBioAsyncRegressionTest - timeout-prone under load,
+#        bio-async timing-sensitive operations can exceed timeout limits
 set_tests_properties(regression_middleware_bio_async PROPERTIES
     TIMEOUT 120
-    LABELS "regression;middleware;bio_async;performance"
+    LABELS "regression;middleware;bio_async;performance;flaky"
 )

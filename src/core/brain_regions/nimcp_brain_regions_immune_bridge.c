@@ -1031,55 +1031,66 @@ int brain_regions_immune_bridge_update(
         return -1;
     }
 
+    /* Update duration tracking (inline - needs its own lock) */
     nimcp_platform_mutex_lock(bridge->base.mutex);
-
-    /* Update duration tracking */
     for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
         if (bridge->inflammation_states[i].level > REGION_INFLAMMATION_NONE) {
             bridge->inflammation_states[i].duration_sec += delta_ms / 1000.0f;
         }
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
-    /* Apply immune effects to regions */
+    /* Apply immune effects to regions (self-locking) */
     brain_regions_immune_apply_effects(bridge);
 
-    /* Propagate inflammation */
+    /* Propagate inflammation (self-locking) */
     brain_regions_immune_propagate_inflammation(bridge);
 
-    /* Apply layer effects */
+    /* Apply layer effects (inline - needs its own lock) */
     if (bridge->config.enable_layer_effects) {
+        nimcp_platform_mutex_lock(bridge->base.mutex);
         for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
             brain_regions_immune_apply_layer_effects(
                 bridge, bridge->inflammation_states[i].region_id
             );
         }
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
     }
 
-    /* Detect abnormalities */
+    /* Detect abnormalities (self-locking) */
     brain_regions_immune_detect_abnormalities(bridge);
 
-    /* Trigger immune responses for persistent abnormalities */
+    /* Trigger immune responses for persistent abnormalities (inline) */
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     for (uint32_t i = 0; i < bridge->abnormality_state_count; i++) {
         region_abnormality_state_t* state = &bridge->abnormality_states[i];
         if (state->abnormality_type != REGION_ABNORMALITY_NONE &&
             state->consecutive_abnormal >= bridge->config.persistence_threshold &&
             !state->immune_triggered) {
+            /* Unlock before calling trigger_response to avoid potential deadlock
+             * with immune system mutex */
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             brain_regions_immune_trigger_response(bridge, state->region_id);
+            nimcp_platform_mutex_lock(bridge->base.mutex);
         }
     }
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     /* Apply IL-10 recovery if available */
     if (bridge->config.enable_il10_recovery && bridge->immune_system) {
         float il10 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL10);
         if (il10 > 0.1f) {
+            nimcp_platform_mutex_lock(bridge->base.mutex);
             for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
                 brain_regions_immune_restore_region(
                     bridge, bridge->inflammation_states[i].region_id, il10
                 );
             }
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
         }
     }
 
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.total_updates++;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 

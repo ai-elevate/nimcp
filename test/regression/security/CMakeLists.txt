@@ -138,6 +138,7 @@ add_test(NAME regression_security_test_validation_performance
 set_tests_properties(regression_security_test_validation_performance PROPERTIES
     LABELS "regression;security;performance"
     TIMEOUT 300
+    RESOURCE_LOCK "brain_heavy"
 )
 
 # ============================================================================
@@ -247,7 +248,7 @@ add_executable(regression_security_test_anomaly_detector test_anomaly_detector_r
 target_link_libraries(regression_security_test_anomaly_detector PRIVATE GTest::GTest GTest::Main nimcp pthread)
 target_include_directories(regression_security_test_anomaly_detector PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME regression_security_test_anomaly_detector COMMAND regression_security_test_anomaly_detector)
-set_tests_properties(regression_security_test_anomaly_detector PROPERTIES LABELS "regression;security" TIMEOUT 180)
+set_tests_properties(regression_security_test_anomaly_detector PROPERTIES LABELS "regression;security" TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # Pattern Database Regression Tests
 add_executable(regression_security_test_pattern_db test_pattern_db_regression.cpp)

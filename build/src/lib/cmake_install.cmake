@@ -12,7 +12,7 @@ if(NOT DEFINED CMAKE_INSTALL_CONFIG_NAME)
     string(REGEX REPLACE "^[^A-Za-z0-9_]+" ""
            CMAKE_INSTALL_CONFIG_NAME "${BUILD_TYPE}")
   else()
-    set(CMAKE_INSTALL_CONFIG_NAME "Debug")
+    set(CMAKE_INSTALL_CONFIG_NAME "Release")
   endif()
   message(STATUS "Install configuration: \"${CMAKE_INSTALL_CONFIG_NAME}\"")
 endif()
@@ -44,7 +44,7 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   foreach(file
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.6.2"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.6.3"
       "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2"
       )
     if(EXISTS "${file}" AND
@@ -55,11 +55,11 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     endif()
   endforeach()
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE SHARED_LIBRARY FILES
-    "/home/bbrelin/nimcp/build/lib/libnimcp.so.2.6.2"
+    "/home/bbrelin/nimcp/build/lib/libnimcp.so.2.6.3"
     "/home/bbrelin/nimcp/build/lib/libnimcp.so.2"
     )
   foreach(file
-      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.6.2"
+      "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2.6.3"
       "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libnimcp.so.2"
       )
     if(EXISTS "${file}" AND

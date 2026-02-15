@@ -46,6 +46,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/exception/nimcp_exception.h"
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -61,20 +62,29 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(unified_memory)
 // Recursion-Safe Throw for Unified Memory Module
 //=============================================================================
 /**
- * WHAT: Thread-local guard preventing infinite recursion when throwing
+ * WHAT: Thread-local atomic guard preventing infinite recursion when throwing
  * WHY:  NIMCP_THROW_TO_IMMUNE -> nimcp_exception_create -> nimcp_calloc ->
  *       unified_mem_alloc -> throw -> ... infinite loop
  *       The guard breaks this cycle: the first failure reports to immune,
  *       but recursive calls during exception allocation skip the throw.
+ *
+ * WHY _Atomic + _Thread_local:
+ *   _Thread_local ensures each thread has its own copy (no cross-thread interference).
+ *   _Atomic prevents compiler reordering of the flag set/clear operations, which is
+ *   critical if NIMCP_THROW_TO_IMMUNE triggers a longjmp - without atomic semantics,
+ *   the compiler could cache the flag in a register and never write it back before the
+ *   throw, leaving the flag permanently set (silently suppressing all future throws).
+ *   memory_order_relaxed is sufficient because we only access within a single thread.
  */
-static _Thread_local bool g_umm_throw_active = false;
+static _Thread_local _Atomic bool g_umm_throw_active = false;
 
 #define UMM_SAFE_THROW(code, fmt, ...)                                   \
     do {                                                                  \
-        if (!g_umm_throw_active && nimcp_exception_system_is_initialized()) { \
-            g_umm_throw_active = true;                                   \
+        if (!atomic_load_explicit(&g_umm_throw_active, memory_order_relaxed) \
+            && nimcp_exception_system_is_initialized()) {                 \
+            atomic_store_explicit(&g_umm_throw_active, true, memory_order_relaxed); \
             NIMCP_THROW_TO_IMMUNE(code, fmt, ##__VA_ARGS__);             \
-            g_umm_throw_active = false;                                  \
+            atomic_store_explicit(&g_umm_throw_active, false, memory_order_relaxed); \
         }                                                                \
     } while (0)
 

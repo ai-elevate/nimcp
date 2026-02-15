@@ -203,12 +203,11 @@ TEST_F(PlasticityModuleExceptionRegressionTest, MultiheadAttentionCreateReturnsN
 
     reset();
 
-    // NULL config test - multihead_attention_create checks config validity internally
-    // and returns INVALID_PARAM because its internal validation fails
+    // NULL config test - multihead_attention_create detects NULL config
+    // and throws NIMCP_ERROR_NULL_POINTER before reaching parameter validation
     EXPECT_EQ(multihead_attention_create(nullptr), nullptr);
     EXPECT_GE(exception_count.load(), 1);
-    // multihead_attention_create validates config internally and returns INVALID_PARAM for NULL
-    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_INVALID_PARAM);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
 
     reset();
 
@@ -262,8 +261,8 @@ TEST_F(PlasticityModuleExceptionRegressionTest, StdpPrBridgeReturnsNegativeOneOn
     EXPECT_EQ(stdp_pr_notify_ltp(nullptr, 1, 2, 0.1f, nullptr), -1);
     EXPECT_EQ(stdp_pr_notify_ltd(nullptr, 1, 2, -0.1f, nullptr), -1);
     EXPECT_EQ(stdp_pr_notify_burst(nullptr, 1, 2, 0.1f, true, nullptr), -1);
-    // stdp_pr_notify_batch returns 0 (number of events processed) on NULL bridge
-    EXPECT_EQ(stdp_pr_notify_batch(nullptr, events, 1), 0);
+    // stdp_pr_notify_batch returns -1 on NULL bridge (throws exception)
+    EXPECT_EQ(stdp_pr_notify_batch(nullptr, events, 1), -1);
 
     stdp_pr_backward_effect_t effect;
     EXPECT_EQ(stdp_pr_get_modulation(nullptr, 1, &effect), -1);
@@ -280,7 +279,7 @@ TEST_F(PlasticityModuleExceptionRegressionTest, StdpPrBridgeReturnsNegativeOneOn
     EXPECT_EQ(stdp_pr_bridge_reset_stats(nullptr), -1);
     EXPECT_EQ(stdp_pr_bridge_update(nullptr, 1.0f), -1);
 
-    // 10 functions that return -1, plus batch which returns 0 but still throws
+    // 10 functions that return -1 on NULL (including batch)
     EXPECT_GE(exception_count.load(), 10);
 }
 

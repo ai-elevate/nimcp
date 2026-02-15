@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(NIMCP VERSION 2.6.2 LANGUAGES C CXX)
+project(NIMCP VERSION 2.6.3 LANGUAGES C CXX)
 
 # Set prefix path for locally installed packages
 set(CMAKE_PREFIX_PATH $ENV{HOME}/.local ${CMAKE_PREFIX_PATH})

@@ -154,6 +154,26 @@ gtest_discover_tests(regression_plasticity_attention_test
     PROPERTIES
         TIMEOUT 600
         LABELS "regression;plasticity;attention"
+        RESOURCE_LOCK "brain_heavy"
+)
+
+# Attention deferred callback buffer overflow regression tests
+add_executable(regression_plasticity_attention_deferred_test
+    attention/test_attention_deferred_regression.cpp
+)
+target_link_libraries(regression_plasticity_attention_deferred_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_attention_deferred_test PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_attention_deferred_test
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "regression;plasticity;attention;deferred_callbacks"
 )
 
 # Heterosynaptic plasticity subdirectory
@@ -384,6 +404,58 @@ gtest_discover_tests(regression_plasticity_eligibility_utils_quantum
     PROPERTIES
         TIMEOUT 600
         LABELS "regression;plasticity;eligibility;utils;quantum"
+)
+
+# ============================================================================
+# Attention Pool Init Regression Tests
+# ============================================================================
+# WHAT: Regression tests for attention pool CAS-based initialization
+# WHY:  Verify fix for double-checked locking race condition does not regress
+# HOW:  Concurrent init, consistent pool, rapid cycles, denormal edge cases
+# ============================================================================
+
+add_executable(regression_plasticity_attention_pool_init
+    attention/test_attention_pool_init_regression.cpp
+)
+target_link_libraries(regression_plasticity_attention_pool_init
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_attention_pool_init PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_attention_pool_init
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;attention;pool;thread_safety"
+)
+
+# ============================================================================
+# Denormal Threshold Regression Tests
+# ============================================================================
+# WHAT: Regression tests for denormal threshold standardization
+# WHY:  Ensure BCM 1e-9->1e-10 change does not affect learning dynamics
+# HOW:  Extended STDP/BCM/triplet simulations, convergence, performance
+# ============================================================================
+
+add_executable(regression_plasticity_denormal_threshold
+    test_denormal_threshold_regression.cpp
+)
+target_link_libraries(regression_plasticity_denormal_threshold
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_denormal_threshold PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_denormal_threshold
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;denormal;threshold"
 )
 
 # ============================================================================

@@ -27,6 +27,8 @@ add_ft_regression_test(test_checkpoint_format)
 add_ft_regression_test(test_diagnostics_regression)
 add_ft_regression_test(test_fast_recovery_regression)
 add_ft_regression_test(test_fault_event_bus_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_fault_event_bus_regression
+                     PROPERTIES TIMEOUT 180 RESOURCE_LOCK "brain_heavy")
 add_ft_regression_test(test_lockfree_metrics_regression)
 add_ft_regression_test(test_recovery_cache_regression)
 add_ft_regression_test(test_recovery_pool_regression)

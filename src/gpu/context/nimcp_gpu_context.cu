@@ -278,9 +278,10 @@ void* nimcp_gpu_malloc(nimcp_gpu_context_t* ctx, size_t size_bytes) {
     void* dev_ptr = NULL;
     cudaError_t err = cudaMalloc(&dev_ptr, size_bytes);
     if (err != cudaSuccess) {
-        // Try recovery for OOM
+        // Try recovery for OOM - validate result before retrying
         nimcp_gpu_recovery_result_t result = {0};
-        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)
+            && result.success) {
             err = cudaMalloc(&dev_ptr, size_bytes);
         }
         if (!check_cuda_error(ctx, err, "cudaMalloc")) {
@@ -339,9 +340,10 @@ int nimcp_gpu_memcpy(nimcp_gpu_context_t* ctx,
 
     cudaError_t err = cudaMemcpy(dst, src, size_bytes, cuda_kind);
     if (err != cudaSuccess) {
-        // Try recovery
+        // Try recovery - validate result before retrying
         nimcp_gpu_recovery_result_t result = {0};
-        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)
+            && result.success) {
             err = cudaMemcpy(dst, src, size_bytes, cuda_kind);
         }
         if (!check_cuda_error(ctx, err, "cudaMemcpy")) {
@@ -377,9 +379,10 @@ int nimcp_gpu_memcpy_async(nimcp_gpu_context_t* ctx,
     cudaStream_t stream = use_transfer_stream ? ctx->transfer_stream : ctx->compute_stream;
     cudaError_t err = cudaMemcpyAsync(dst, src, size_bytes, cuda_kind, stream);
     if (err != cudaSuccess) {
-        // Try recovery
+        // Try recovery - validate result before retrying
         nimcp_gpu_recovery_result_t result = {0};
-        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)
+            && result.success) {
             err = cudaMemcpyAsync(dst, src, size_bytes, cuda_kind, stream);
         }
         if (!check_cuda_error(ctx, err, "cudaMemcpyAsync")) {
@@ -403,9 +406,10 @@ int nimcp_gpu_memset(nimcp_gpu_context_t* ctx,
 
     cudaError_t err = cudaMemset(dev_ptr, value, size_bytes);
     if (err != cudaSuccess) {
-        // Try recovery
+        // Try recovery - validate result before retrying
         nimcp_gpu_recovery_result_t result = {0};
-        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)
+            && result.success) {
             err = cudaMemset(dev_ptr, value, size_bytes);
         }
         if (!check_cuda_error(ctx, err, "cudaMemset")) {

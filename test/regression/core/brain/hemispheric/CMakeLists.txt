@@ -24,7 +24,7 @@ set_tests_properties(regression_hemispheric_brain_regression
     PROPERTIES
         LABELS "regression"
         TIMEOUT 600
-        RESOURCE_LOCK "hemispheric_brain_heavy"
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # Corpus Callosum Regression Test
@@ -50,6 +50,7 @@ set_tests_properties(regression_corpus_callosum_regression
     PROPERTIES
         LABELS "regression"
         TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # Lateralization Regression Test
@@ -100,4 +101,30 @@ set_tests_properties(regression_contralateral_mapping_regression
     PROPERTIES
         LABELS "regression"
         TIMEOUT 180
+)
+
+# Hemispheric Memory Optimization Regression Test (Opt 5+7)
+add_executable(regression_hemispheric_memory_opt
+    test_hemispheric_memory_opt_regression.cpp
+)
+target_link_libraries(regression_hemispheric_memory_opt
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(regression_hemispheric_memory_opt
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+add_test(NAME regression_hemispheric_memory_opt
+         COMMAND regression_hemispheric_memory_opt)
+set_tests_properties(regression_hemispheric_memory_opt
+    PROPERTIES
+        LABELS "regression"
+        TIMEOUT 600
+        RESOURCE_LOCK "brain_heavy"
 )

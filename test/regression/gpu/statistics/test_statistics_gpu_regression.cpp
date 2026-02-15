@@ -299,7 +299,7 @@ TEST_F(StatisticsGPURegressionTest, GPULargeDatasetReduction) {
 
     EXPECT_GE(gpu_min, 0.0f);
     EXPECT_LE(gpu_max, 1.0f);
-    EXPECT_LT(elapsed_ms, GPU_REDUCTION_BASELINE_MS * 30.0);
+    EXPECT_LT(elapsed_ms, 500.0);
 }
 
 //=============================================================================

@@ -706,25 +706,17 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
 bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
                           size_t expected_size, bbb_validation_result_t* result)
 {
-    /* Require valid result pointer */
-    if (!result) {
-        return false;
-    }
-    bbb_validation_result_t* res = result;
+    /* Use local result when caller passes NULL */
+    bbb_validation_result_t local_result;
+    bbb_validation_result_t* res = result ? result : &local_result;
 
     /* Initialize result */
     memset(res, 0, sizeof(bbb_validation_result_t));
     res->valid = true;
 
-    /* Guard: NULL system */
-    if (!system) {
-        res->valid = false;
-        res->threat = BBB_THREAT_UNAUTHORIZED_ACCESS;
-        res->severity = BBB_SEVERITY_MEDIUM;
-        snprintf(res->reason, sizeof(res->reason),
-                 "NULL BBB system - pointer validation requires system context");
-        return false;
-    }
+    /* When system is NULL, still validate the pointer basics (NULL, low
+       address, alignment) but skip system-specific tracking.  Many callers
+       (e.g. Portia module) pass NULL when no BBB system is available. */
 
     /* NULL pointer check */
     if (!ptr) {

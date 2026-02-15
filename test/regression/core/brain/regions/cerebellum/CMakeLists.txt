@@ -18,3 +18,7 @@ endmacro()
 
 # Cerebellum regression tests
 add_cerebellum_regression_test(test_cerebellum_regression)
+set_tests_properties(regression_core_brain_regions_cerebellum_test_cerebellum_regression PROPERTIES
+    TIMEOUT 300
+    RESOURCE_LOCK "brain_heavy"
+)

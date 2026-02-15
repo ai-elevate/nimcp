@@ -44,10 +44,10 @@ protected:
 
 TEST_F(APIMemorySafetyTest, NoLeaks_BrainCreateDestroy) {
     // Create and destroy brains multiple times
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_brain_t brain = nimcp_brain_create(
             "leak_test",
-            NIMCP_BRAIN_SMALL,
+            NIMCP_BRAIN_TINY,
             NIMCP_TASK_CLASSIFICATION,
             10,
             2
@@ -62,7 +62,7 @@ TEST_F(APIMemorySafetyTest, NoLeaks_BrainCreateDestroy) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_NetworkCreateDestroy) {
     // Create and destroy networks multiple times
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_network_t network = nimcp_network_create(10, 2, 50, 0.01f);
         ASSERT_NE(network, nullptr);
         nimcp_network_destroy(network);
@@ -71,7 +71,7 @@ TEST_F(APIMemorySafetyTest, NoLeaks_NetworkCreateDestroy) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_EthicsCreateDestroy) {
     // Create and destroy ethics modules multiple times
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_ethics_t ethics = nimcp_ethics_create();
         ASSERT_NE(ethics, nullptr);
         nimcp_ethics_destroy(ethics);
@@ -80,7 +80,7 @@ TEST_F(APIMemorySafetyTest, NoLeaks_EthicsCreateDestroy) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_KnowledgeCreateDestroy) {
     // Create and destroy knowledge graphs multiple times
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_knowledge_t knowledge = nimcp_knowledge_create();
         ASSERT_NE(knowledge, nullptr);
         nimcp_knowledge_destroy(knowledge);
@@ -89,8 +89,8 @@ TEST_F(APIMemorySafetyTest, NoLeaks_KnowledgeCreateDestroy) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_AllModuleTypes) {
     // Create and destroy all module types together
-    for (int i = 0; i < 50; i++) {
-        nimcp_brain_t brain = nimcp_brain_create("test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    for (int i = 0; i < 10; i++) {
+        nimcp_brain_t brain = nimcp_brain_create("test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
         nimcp_network_t network = nimcp_network_create(5, 2, 20, 0.01f);
         nimcp_ethics_t ethics = nimcp_ethics_create();
         nimcp_knowledge_t knowledge = nimcp_knowledge_create();
@@ -122,8 +122,8 @@ TEST_F(APIMemorySafetyTest, NoLeaks_AllModuleTypes) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_BrainWithOperations) {
     // Create, use, and destroy brains with operations
-    for (int i = 0; i < 50; i++) {
-        nimcp_brain_t brain = nimcp_brain_create("ops_test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    for (int i = 0; i < 10; i++) {
+        nimcp_brain_t brain = nimcp_brain_create("ops_test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
         ASSERT_NE(brain, nullptr);
 
         float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
@@ -141,8 +141,8 @@ TEST_F(APIMemorySafetyTest, NoLeaks_BrainWithOperations) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_COWClones) {
     // Test COW clones don't leak
-    for (int i = 0; i < 20; i++) {
-        nimcp_brain_t original = nimcp_brain_create("original", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    for (int i = 0; i < 5; i++) {
+        nimcp_brain_t original = nimcp_brain_create("original", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
         ASSERT_NE(original, nullptr);
 
         // Train original
@@ -171,8 +171,8 @@ TEST_F(APIMemorySafetyTest, NoLeaks_COWClones) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_Snapshots) {
     // Test snapshots don't leak
-    for (int i = 0; i < 20; i++) {
-        nimcp_brain_t brain = nimcp_brain_create("snap_test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    for (int i = 0; i < 5; i++) {
+        nimcp_brain_t brain = nimcp_brain_create("snap_test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
         ASSERT_NE(brain, nullptr);
 
         float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
@@ -201,11 +201,11 @@ TEST_F(APIMemorySafetyTest, NoLeaks_Snapshots) {
 //=============================================================================
 
 TEST_F(APIMemorySafetyTest, NoLeaks_AfterNullArgumentErrors) {
-    nimcp_brain_t brain = nimcp_brain_create("error_test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    nimcp_brain_t brain = nimcp_brain_create("error_test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(brain, nullptr);
 
     // Cause multiple NULL argument errors
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_brain_learn_example(brain, nullptr, 0, nullptr, 1.0f);
         nimcp_brain_predict(brain, nullptr, 0, nullptr, nullptr);
         nimcp_brain_infer(brain, nullptr, 0, nullptr, 0);
@@ -215,7 +215,7 @@ TEST_F(APIMemorySafetyTest, NoLeaks_AfterNullArgumentErrors) {
 }
 
 TEST_F(APIMemorySafetyTest, NoLeaks_AfterInvalidOperations) {
-    nimcp_brain_t brain = nimcp_brain_create("invalid_test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    nimcp_brain_t brain = nimcp_brain_create("invalid_test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(brain, nullptr);
 
     // Cause multiple invalid operations
@@ -223,7 +223,7 @@ TEST_F(APIMemorySafetyTest, NoLeaks_AfterInvalidOperations) {
     char label[64];
     float confidence;
 
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_brain_predict(brain, features, 3, label, &confidence);  // Wrong feature count
     }
 
@@ -231,11 +231,11 @@ TEST_F(APIMemorySafetyTest, NoLeaks_AfterInvalidOperations) {
 }
 
 TEST_F(APIMemorySafetyTest, NoLeaks_AfterFailedSave) {
-    nimcp_brain_t brain = nimcp_brain_create("save_fail", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    nimcp_brain_t brain = nimcp_brain_create("save_fail", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(brain, nullptr);
 
     // Try to save to invalid paths multiple times
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 5; i++) {
         nimcp_brain_save(brain, "/invalid/path/brain.nimcp");
     }
 
@@ -244,7 +244,7 @@ TEST_F(APIMemorySafetyTest, NoLeaks_AfterFailedSave) {
 
 TEST_F(APIMemorySafetyTest, NoLeaks_AfterFailedLoad) {
     // Try to load from invalid paths multiple times
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_brain_t brain = nimcp_brain_load("/nonexistent/brain.nimcp");
         EXPECT_EQ(brain, nullptr);
     }
@@ -258,9 +258,9 @@ TEST_F(APIMemorySafetyTest, NoLeaks_AfterFailedLoad) {
 
 TEST_F(APIMemorySafetyTest, Cleanup_AfterPartialConstruction) {
     // Test cleanup when construction fails partway
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         // NULL name should cause failure
-        nimcp_brain_t brain = nimcp_brain_create(nullptr, NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+        nimcp_brain_t brain = nimcp_brain_create(nullptr, NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
         EXPECT_EQ(brain, nullptr);
     }
 }
@@ -270,7 +270,7 @@ TEST_F(APIMemorySafetyTest, Cleanup_NetworkAfterErrors) {
     ASSERT_NE(network, nullptr);
 
     // Cause multiple errors
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_network_forward(network, nullptr, 0, nullptr, 0);
         nimcp_network_train(network, nullptr, 0, nullptr, 0);
     }
@@ -283,7 +283,7 @@ TEST_F(APIMemorySafetyTest, Cleanup_EthicsAfterErrors) {
     ASSERT_NE(ethics, nullptr);
 
     // Cause multiple errors
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         float score;
         nimcp_ethics_check(ethics, nullptr, 0, &score);
         nimcp_ethics_check(ethics, nullptr, 0, nullptr);
@@ -297,7 +297,7 @@ TEST_F(APIMemorySafetyTest, Cleanup_KnowledgeAfterErrors) {
     ASSERT_NE(knowledge, nullptr);
 
     // Cause multiple errors
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
         nimcp_knowledge_add_fact(knowledge, nullptr, nullptr, nullptr);
         char result[1024];
         nimcp_knowledge_query(knowledge, nullptr, result, 1024);
@@ -311,7 +311,7 @@ TEST_F(APIMemorySafetyTest, Cleanup_KnowledgeAfterErrors) {
 //=============================================================================
 
 TEST_F(APIMemorySafetyTest, DoubleFree_BrainDestroy) {
-    nimcp_brain_t brain = nimcp_brain_create("double_free", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    nimcp_brain_t brain = nimcp_brain_create("double_free", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(brain, nullptr);
 
     // First destroy (valid)
@@ -335,7 +335,7 @@ TEST_F(APIMemorySafetyTest, DoubleFree_NullDestroy) {
 }
 
 TEST_F(APIMemorySafetyTest, DoubleFree_SnapshotDestroy) {
-    nimcp_brain_t brain = nimcp_brain_create("snap_double", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    nimcp_brain_t brain = nimcp_brain_create("snap_double", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(brain, nullptr);
 
     float features[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
@@ -368,7 +368,7 @@ TEST_F(APIMemorySafetyTest, NullSafety_BrainOperations) {
     EXPECT_EQ(nimcp_brain_infer(nullptr, features, 5, outputs, 2), NIMCP_ERROR_NULL_ARG);
     EXPECT_EQ(nimcp_brain_save(nullptr, "/tmp/test.nimcp"), NIMCP_ERROR_NULL_ARG);
 
-    nimcp_brain_t brain = nimcp_brain_create("null_test", NIMCP_BRAIN_SMALL, NIMCP_TASK_CLASSIFICATION, 5, 2);
+    nimcp_brain_t brain = nimcp_brain_create("null_test", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 5, 2);
     ASSERT_NE(brain, nullptr);
 
     // NULL feature array
@@ -466,7 +466,7 @@ TEST_F(APIMemorySafetyTest, NullSafety_UtilityFunctions) {
 }
 
 TEST_F(APIMemorySafetyTest, NullSafety_WorkingMemory) {
-    nimcp_brain_t brain = nimcp_brain_create("wm_null", NIMCP_BRAIN_MEDIUM, NIMCP_TASK_CLASSIFICATION, 256, 10);
+    nimcp_brain_t brain = nimcp_brain_create("wm_null", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 256, 10);
     ASSERT_NE(brain, nullptr);
 
     float data[256] = {0};
@@ -490,7 +490,7 @@ TEST_F(APIMemorySafetyTest, NullSafety_WorkingMemory) {
 }
 
 TEST_F(APIMemorySafetyTest, NullSafety_GlobalWorkspace) {
-    nimcp_brain_t brain = nimcp_brain_create("gw_null", NIMCP_BRAIN_MEDIUM, NIMCP_TASK_CLASSIFICATION, 256, 10);
+    nimcp_brain_t brain = nimcp_brain_create("gw_null", NIMCP_BRAIN_TINY, NIMCP_TASK_CLASSIFICATION, 256, 10);
     ASSERT_NE(brain, nullptr);
 
     float content[256] = {0};

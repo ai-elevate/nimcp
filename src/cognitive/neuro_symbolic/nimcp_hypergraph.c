@@ -203,9 +203,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
     /* Create mutex if thread safety enabled */
     if (hg->config.enable_thread_safety) {
         mutex_attr_t mutex_attr = {
-            .type = MUTEX_TYPE_RECURSIVE,
-            
-            
+            .type = MUTEX_TYPE_RECURSIVE
         };
         hg->mutex = nimcp_mutex_create(&mutex_attr);
         if (!hg->mutex) {

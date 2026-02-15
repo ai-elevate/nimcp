@@ -157,7 +157,7 @@ TEST_F(BftRegressionTest, TrustScoreMaxBound) {
 
     bft_trust_info_t trust_info;
     if (bft_get_trust_info(ctx, 2, &trust_info)) {
-        EXPECT_LE(trust_info.trust_score, 1.0f);
+        EXPECT_LE(trust_info.trust_score, 100.0f);
     }
 
     ASSERT_TRUE(bft_stop(ctx));

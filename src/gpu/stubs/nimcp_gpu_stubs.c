@@ -1435,6 +1435,7 @@ bool nimcp_gpu_softmax(
 
     /* Compute softmax along last dimension */
     size_t last_dim = (x->ndim > 0) ? x->dims[x->ndim - 1] : x->numel;
+    if (last_dim == 0) return false;
     size_t num_rows = x->numel / last_dim;
 
     for (size_t row = 0; row < num_rows; row++) {
@@ -1447,16 +1448,39 @@ bool nimcp_gpu_softmax(
             if (row_in[i] > max_val) max_val = row_in[i];
         }
 
-        /* Compute exp and sum */
+        /* Guard against all-NaN or all-inf input */
+        if (isnan(max_val) || isinf(max_val)) {
+            float uniform = 1.0f / (float)last_dim;
+            for (size_t i = 0; i < last_dim; i++) {
+                row_out[i] = uniform;
+            }
+            continue;
+        }
+
+        /* Compute exp(x - max) and sum with clamping.
+         * After subtracting max, exponents are in (-inf, 0], so expf won't
+         * overflow. Clamp very negative values to avoid prolonged underflow. */
         float sum = 0.0f;
         for (size_t i = 0; i < last_dim; i++) {
-            row_out[i] = expf(row_in[i] - max_val);
+            float shifted = row_in[i] - max_val;
+            if (shifted < -87.0f) shifted = -87.0f;  /* expf(-88) ~ 0 in fp32 */
+            row_out[i] = expf(shifted);
             sum += row_out[i];
         }
 
+        /* Guard against zero sum (all values underflowed) */
+        if (sum <= 0.0f || isnan(sum)) {
+            float uniform = 1.0f / (float)last_dim;
+            for (size_t i = 0; i < last_dim; i++) {
+                row_out[i] = uniform;
+            }
+            continue;
+        }
+
         /* Normalize */
+        float inv_sum = 1.0f / sum;
         for (size_t i = 0; i < last_dim; i++) {
-            row_out[i] /= sum;
+            row_out[i] *= inv_sum;
         }
     }
     return true;

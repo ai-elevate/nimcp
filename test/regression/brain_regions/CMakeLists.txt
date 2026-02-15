@@ -47,6 +47,9 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_region_api_stability.cpp
     regression
 )
+set_tests_properties(regression_brain_regions_test_region_api_stability PROPERTIES
+    TIMEOUT 180 RESOURCE_LOCK "brain_heavy"
+)
 
 # Sensory Processing Regression Tests (Phase 6: Somatosensory, Olfactory, Gustatory)
 add_test_binary(
@@ -81,6 +84,9 @@ add_test_binary(
     regression_brain_regions_test_entorhinal_signal_regression
     ${CMAKE_CURRENT_SOURCE_DIR}/test_entorhinal_signal_regression.cpp
     regression
+)
+set_tests_properties(regression_brain_regions_test_entorhinal_signal_regression PROPERTIES
+    TIMEOUT 30
 )
 
 # Perirhinal Cortex Backward Compatibility Test

@@ -67,7 +67,7 @@ static float exponential_decay(float value, float tau, float dt) {
 static float approach_target(float current, float target, float tau, float dt) {
     if (tau <= 0.0f) return target;
     float alpha = 1.0f - expf(-dt / tau);
-    return current + alpha * (target - target);
+    return current + alpha * (target - current);
 }
 
 static uint32_t compute_input_hash(const float* input, uint32_t size) {

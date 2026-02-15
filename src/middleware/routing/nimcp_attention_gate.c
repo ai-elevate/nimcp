@@ -294,7 +294,7 @@ bool attention_gate_set_weight(attention_gate_t* gate,
                                 uint32_t target_id,
                                 float weight) {
     if (!gate || weight < 0.0F || weight > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_destroy: gate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_set_weight: gate is NULL or weight out of range");
         return false;
     }
 
@@ -306,7 +306,7 @@ bool attention_gate_set_weight(attention_gate_t* gate,
     if (!entry) {
         if (!add_entry(gate, source_id, target_id)) {
             nimcp_mutex_unlock(gate->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_destroy: add_entry is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "attention_gate_set_weight: capacity exceeded");
             return false;
         }
         entry = find_entry(gate, source_id, target_id);
@@ -314,7 +314,7 @@ bool attention_gate_set_weight(attention_gate_t* gate,
 
     if (!entry) {
         nimcp_mutex_unlock(gate->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_destroy: entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_set_weight: entry is NULL");
         return false;
     }
 
@@ -343,7 +343,7 @@ bool attention_gate_get_weight(const attention_gate_t* gate,
                                 uint32_t target_id,
                                 float* weight) {
     if (!gate || !weight) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_destroy: required parameter is NULL (gate, weight)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_get_weight: required parameter is NULL (gate, weight)");
         return false;
     }
 
@@ -367,7 +367,7 @@ bool attention_gate_update_salience(attention_gate_t* gate,
                                      uint32_t target_id,
                                      float salience) {
     if (!gate || salience < 0.0F || salience > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_destroy: gate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_update_salience: gate is NULL or salience out of range");
         return false;
     }
 
@@ -389,7 +389,7 @@ bool attention_gate_update_salience(attention_gate_t* gate,
     if (!updated) {
         if (!add_entry(gate, 0, target_id)) {
             nimcp_mutex_unlock(gate->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_destroy: add_entry is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "attention_gate_update_salience: capacity exceeded");
             return false;
         }
 
@@ -463,7 +463,7 @@ bool attention_gate_update_spotlight(attention_gate_t* gate,
                                       uint32_t* spotlight_ids,
                                       uint32_t* num_in_spotlight) {
     if (!gate) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_apply_wta: gate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_update_spotlight: gate is NULL");
         return false;
     }
 
@@ -474,7 +474,7 @@ bool attention_gate_update_spotlight(attention_gate_t* gate,
     weighted_target_t* targets = (weighted_target_t*)memory_pool_acquire(gate->sort_buffer_pool);
     if (!targets) {
         nimcp_mutex_unlock(gate->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_gate_apply_wta: targets is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_gate_update_spotlight: targets is NULL");
         return false;
     }
 
@@ -539,7 +539,7 @@ bool attention_gate_get_shifts(const attention_gate_t* gate,
                                 uint32_t max_shifts,
                                 uint32_t* num_shifts) {
     if (!gate || !shifts || !num_shifts) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_apply_wta: required parameter is NULL (gate, shifts, num_shifts)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_get_shifts: required parameter is NULL (gate, shifts, num_shifts)");
         return false;
     }
 
@@ -581,7 +581,7 @@ bool attention_gate_get_stats(const attention_gate_t* gate,
                                uint32_t* num_in_spotlight,
                                uint64_t* total_shifts) {
     if (!gate) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_reset: gate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_get_stats: gate is NULL");
         return false;
     }
 
@@ -608,7 +608,7 @@ bool attention_gate_set_ternary_state(attention_gate_t* gate,
                                        uint32_t target_id,
                                        trit_t state) {
     if (!gate) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_reset: gate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_set_ternary_state: gate is NULL");
         return false;
     }
 
@@ -617,7 +617,7 @@ bool attention_gate_set_ternary_state(attention_gate_t* gate,
     attention_entry_t* entry = find_entry(gate, source_id, target_id);
     if (!entry) {
         nimcp_mutex_unlock(gate->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_reset: entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_set_ternary_state: entry is NULL");
         return false;
     }
 
@@ -636,7 +636,7 @@ bool attention_gate_get_ternary_state(const attention_gate_t* gate,
                                        uint32_t target_id,
                                        trit_t* state) {
     if (!gate || !state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_reset: required parameter is NULL (gate, state)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_get_ternary_state: required parameter is NULL (gate, state)");
         return false;
     }
 
@@ -645,7 +645,7 @@ bool attention_gate_get_ternary_state(const attention_gate_t* gate,
     attention_entry_t* entry = find_entry(gate, source_id, target_id);
     if (!entry) {
         nimcp_mutex_unlock(gate->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_reset: entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_get_ternary_state: entry is NULL");
         return false;
     }
 

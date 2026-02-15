@@ -484,6 +484,132 @@ if(TARGET unit_cognitive_analysis_test_network_analyzer_integration)
 endif()
 
 # ============================================================================
+# Auto-Discovered Regression Test Overrides (TIMEOUT + RESOURCE_LOCK)
+# ============================================================================
+# Tests auto-discovered by discover_category_tests() need explicit TIMEOUT
+# and RESOURCE_LOCK to prevent OOM/timeout in parallel ctest runs.
+# Each brain_create allocates 10-60GB globally; parallel brain tests OOM-kill.
+
+if(TARGET regression_core_test_wm_transfer_backward_compat)
+  set_tests_properties(regression_core_test_wm_transfer_backward_compat
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_io_test_stream_regression)
+  set_tests_properties(regression_io_test_stream_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_information_test_shannon_backward_compat)
+  set_tests_properties(regression_information_test_shannon_backward_compat
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_api_test_api_memory_safety)
+  set_tests_properties(regression_api_test_api_memory_safety
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_core_test_core_immune_regression)
+  set_tests_properties(regression_core_test_core_immune_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_swarm_test_swarm_scalability_regression)
+  set_tests_properties(regression_swarm_test_swarm_scalability_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_cognitive_introspection_ensemble_uncertainty)
+  set_tests_properties(regression_cognitive_introspection_ensemble_uncertainty
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET test_mesh_cycle_coordinator_regression)
+  set_tests_properties(test_mesh_cycle_coordinator_regression
+    PROPERTIES TIMEOUT 120)
+endif()
+if(TARGET test_ternary_conversion_regression)
+  set_tests_properties(test_ternary_conversion_regression
+    PROPERTIES TIMEOUT 60)
+endif()
+if(TARGET regression_core_integration_test_integration_regression)
+  set_tests_properties(regression_core_integration_test_integration_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_brain_factory)
+  set_tests_properties(regression_brain_factory
+    PROPERTIES TIMEOUT 600 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_core_brain_factory_test_factory_regression)
+  set_tests_properties(regression_core_brain_factory_test_factory_regression
+    PROPERTIES TIMEOUT 600 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_core_brain_regions_cerebellum_test_cerebellum_regression)
+  set_tests_properties(regression_core_brain_regions_cerebellum_test_cerebellum_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression)
+  set_tests_properties(regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_test_kg_module_wiring)
+  set_tests_properties(regression_test_kg_module_wiring
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_networking_nlp_test_nlp_stability)
+  set_tests_properties(regression_networking_nlp_test_nlp_stability
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_bridges_test_bridge_memory_leaks)
+  set_tests_properties(regression_bridges_test_bridge_memory_leaks
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_core_test_oscillation_backward_compat)
+  # FLAKY: OscillationDetectorCompatTest - timing-sensitive, pre-existing flaky
+  set_tests_properties(regression_core_test_oscillation_backward_compat
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy" LABELS "regression;flaky")
+endif()
+if(TARGET regression_core_brain_oscillation_backward_compat)
+  # FLAKY: OscillationDetectorCompatTest - timing-sensitive, pre-existing flaky
+  set_tests_properties(regression_core_brain_oscillation_backward_compat
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy" LABELS "regression;flaky")
+endif()
+if(TARGET regression_subthalamic_test)
+  set_tests_properties(regression_subthalamic_test
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_middleware_training_test_security_registration_regression)
+  set_tests_properties(regression_middleware_training_test_security_registration_regression
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_utils_fault_tolerance_test_fault_tolerance_exception_regression)
+  set_tests_properties(regression_utils_fault_tolerance_test_fault_tolerance_exception_regression
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat)
+  set_tests_properties(regression_plasticity_neuromodulators_test_phasic_tonic_backward_compat
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_hemispheric_brain_regression)
+  set_tests_properties(regression_hemispheric_brain_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET test_swarm_memory_regression)
+  set_tests_properties(test_swarm_memory_regression
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_brain_regions_test_entorhinal_signal_regression)
+  set_tests_properties(regression_brain_regions_test_entorhinal_signal_regression
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_exception_performance_regression)
+  set_tests_properties(regression_exception_performance_regression
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TARGET regression_networking_nlp_test_nlp_performance)
+  set_tests_properties(regression_networking_nlp_test_nlp_performance
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
+if(TEST regression_io_test_encryption_regression)
+  set_tests_properties(regression_io_test_encryption_regression
+    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+endif()
+
+# ============================================================================
 # Test Execution Instructions
 # ============================================================================
 

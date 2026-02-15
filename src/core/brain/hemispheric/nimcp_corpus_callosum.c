@@ -638,6 +638,9 @@ int callosum_send(
         }
         cc->stats.total_bytes_transferred += size;
         cc->stats.channel_messages[channel]++;
+    } else if (result == 1) {
+        /* Queue overflow - message was dropped */
+        cc->stats.messages_dropped++;
     }
 
     nimcp_mutex_unlock(cc->mutex);

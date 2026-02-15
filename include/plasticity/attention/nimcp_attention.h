@@ -217,6 +217,78 @@ bool multihead_attention_get_stats(multihead_attention_t mha, attention_stats_t*
 void multihead_attention_reset_stats(multihead_attention_t mha);
 
 //=============================================================================
+// Deferred Callback API
+//=============================================================================
+
+/**
+ * WHAT: Attention event types for deferred callback notifications
+ * WHY:  Enable post-forward-pass event notification without mutex contention
+ */
+typedef enum {
+    ATTENTION_EVENT_FOCUS_SHIFT = 0,     /**< Attention focus changed significantly */
+    ATTENTION_EVENT_GATE_CHANGE = 1,     /**< Thalamic gate state changed */
+    ATTENTION_EVENT_ENTROPY_SPIKE = 2,   /**< Attention entropy exceeded threshold */
+    ATTENTION_EVENT_HEAD_SATURATED = 3,  /**< Attention head reached saturation */
+    ATTENTION_EVENT_COUNT = 4            /**< Number of event types */
+} attention_event_type_t;
+
+/**
+ * WHAT: Callback function type for deferred attention events
+ * WHY:  Allow external modules to react to attention state changes
+ * @param event_type Type of attention event
+ * @param head_index Index of the attention head that triggered the event
+ * @param value Event-specific value (e.g., entropy, gate signal)
+ * @param user_data User-provided context pointer
+ */
+typedef void (*attention_deferred_callback_t)(
+    attention_event_type_t event_type,
+    uint32_t head_index,
+    float value,
+    void* user_data
+);
+
+/**
+ * WHAT: Maximum number of deferred callbacks in the buffer
+ * WHY:  Bounded buffer prevents unbounded growth during high-frequency events
+ *
+ * NOTE: If more than ATTENTION_MAX_DEFERRED_CALLBACKS events are generated
+ *       in a single forward pass, excess events are dropped with a warning.
+ *       Use attention_get_deferred_drop_count() to monitor drops.
+ */
+#define ATTENTION_MAX_DEFERRED_CALLBACKS 48
+
+/**
+ * WHAT: Register a callback for deferred attention events
+ * WHY:  Enable external modules to subscribe to attention state changes
+ * @param mha Multihead attention system
+ * @param callback Function to call when event occurs
+ * @param user_data User context passed to callback
+ * @return 0 on success, -1 on error (NULL params or max subscribers reached)
+ *
+ * THREAD_SAFETY: Not thread-safe, register before starting forward passes
+ */
+int multihead_attention_register_callback(multihead_attention_t mha,
+                                          attention_deferred_callback_t callback,
+                                          void* user_data);
+
+/**
+ * WHAT: Get number of deferred callbacks dropped due to buffer overflow
+ * WHY:  Monitor if the deferred buffer size is sufficient
+ * @param mha Multihead attention system
+ * @return Number of dropped callbacks since last reset, or 0 on error
+ *
+ * THREAD_SAFETY: Thread-safe read operation
+ */
+uint64_t attention_get_deferred_drop_count(multihead_attention_t mha);
+
+/**
+ * WHAT: Reset the deferred callback drop counter
+ * WHY:  Allow periodic monitoring of drop rate
+ * @param mha Multihead attention system
+ */
+void attention_reset_deferred_drop_count(multihead_attention_t mha);
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

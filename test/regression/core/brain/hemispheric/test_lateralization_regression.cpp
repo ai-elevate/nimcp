@@ -120,11 +120,14 @@ TEST_F(LateralizationRegressionTest, DominanceThresholdCorrect) {
 TEST_F(LateralizationRegressionTest, PlasticityShiftPositive) {
     ASSERT_TRUE(profile.enable_plasticity);
 
-    float initial = profile.language_dominance;
-    lateralization_shift_dominance(&profile, COGNITIVE_DOMAIN_LANGUAGE, 0.05f);
+    /* Use spatial domain (0.20) which has room to shift positive,
+     * since language_dominance (0.95) == max_dominance (0.95) and
+     * cannot shift further positive. */
+    float initial = profile.spatial_dominance;
+    lateralization_shift_dominance(&profile, COGNITIVE_DOMAIN_SPATIAL, 0.05f);
 
-    EXPECT_GT(profile.language_dominance, initial);
-    EXPECT_LE(profile.language_dominance, profile.max_dominance);
+    EXPECT_GT(profile.spatial_dominance, initial);
+    EXPECT_LE(profile.spatial_dominance, profile.max_dominance);
 }
 
 TEST_F(LateralizationRegressionTest, PlasticityShiftNegative) {
@@ -333,11 +336,11 @@ TEST_F(LateralizationRegressionTest, DefaultProfileValuesStable) {
 TEST_F(LateralizationRegressionTest, DomainNamesStable) {
     EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_LANGUAGE), "Language");
     EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_SPATIAL), "Spatial");
-    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_MOTOR_FINE), "Motor Fine");
-    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_MOTOR_GROSS), "Motor Gross");
-    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_EMOTION), "Emotion");
-    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_ATTENTION_GLOBAL), "Attention Global");
-    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_ATTENTION_LOCAL), "Attention Local");
+    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_MOTOR_FINE), "Fine Motor");
+    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_MOTOR_GROSS), "Gross Motor");
+    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_EMOTION), "Emotion Processing");
+    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_ATTENTION_GLOBAL), "Global Attention");
+    EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_ATTENTION_LOCAL), "Local Attention");
     EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_FACE_RECOGNITION), "Face Recognition");
     EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_LOGICAL_REASONING), "Logical Reasoning");
     EXPECT_STREQ(cognitive_domain_name(COGNITIVE_DOMAIN_CREATIVE_THINKING), "Creative Thinking");
@@ -349,8 +352,8 @@ TEST_F(LateralizationRegressionTest, HemisphereNamesStable) {
 }
 
 TEST_F(LateralizationRegressionTest, HandednessNamesStable) {
-    EXPECT_STREQ(handedness_name(HANDEDNESS_RIGHT), "Right");
-    EXPECT_STREQ(handedness_name(HANDEDNESS_LEFT), "Left");
+    EXPECT_STREQ(handedness_name(HANDEDNESS_RIGHT), "Right-handed");
+    EXPECT_STREQ(handedness_name(HANDEDNESS_LEFT), "Left-handed");
     EXPECT_STREQ(handedness_name(HANDEDNESS_AMBIDEXTROUS), "Ambidextrous");
 }
 

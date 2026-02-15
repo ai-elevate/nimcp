@@ -8,6 +8,9 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_memory_regression.cpp
     regression
 )
+set_tests_properties(test_swarm_memory_regression PROPERTIES
+    TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
+)
 
 # Test 2: Latency Regression
 add_test_binary(
@@ -42,6 +45,9 @@ add_test_binary(
     test_swarm_consciousness_regression
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_consciousness_regression.cpp
     regression
+)
+set_tests_properties(test_swarm_consciousness_regression PROPERTIES
+    TIMEOUT 120 RESOURCE_LOCK "brain_heavy"
 )
 
 # Test 7: Enhanced Swarm Consciousness Regression (Peer Callbacks, Remote Phi, Dynamics)
@@ -95,5 +101,23 @@ add_test_binary(
 add_test_binary(
     test_swarm_struct_member_regression
     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_struct_member_regression.cpp
+    regression
+)
+
+# ============================================================================
+# Bug Fix Regression Tests (2026-02-15)
+# ============================================================================
+
+# Regression: Narrative Memory Leak (cleanup iteration not implemented)
+add_test_binary(
+    test_swarm_narrative_leak_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_narrative_leak_regression.cpp
+    regression
+)
+
+# Regression: 64-bit Drone/Swarm ID Truncation to uint32_t
+add_test_binary(
+    test_swarm_drone_id_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_drone_id_regression.cpp
     regression
 )

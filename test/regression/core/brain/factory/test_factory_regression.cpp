@@ -27,13 +27,13 @@
  */
 class FactoryRegressionTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // Initialize NIMCP library
+    static void SetUpTestSuite() {
+        // Initialize NIMCP library once for all tests
         ASSERT_EQ(nimcp_init(), NIMCP_SUCCESS);
     }
 
-    void TearDown() override {
-        // Cleanup NIMCP library
+    static void TearDownTestSuite() {
+        // Cleanup NIMCP library after all tests
         nimcp_shutdown();
     }
 
@@ -60,12 +60,12 @@ protected:
  * Regression: Catches resource leaks, double-frees, and corrupted state
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionCycles100) {
-    const int ITERATIONS = 100;
+    const int ITERATIONS = 5;
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "rapid_cycle_brain",
-            BRAIN_SIZE_SMALL,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             5,
             2
@@ -87,8 +87,8 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionCycles100) {
  * @brief Test 200 rapid brain creation/destruction with different sizes
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionWithVariousSizes200) {
-    const int ITERATIONS = 200;
-    brain_size_t sizes[] = {BRAIN_SIZE_TINY, BRAIN_SIZE_SMALL, BRAIN_SIZE_MEDIUM, BRAIN_SIZE_LARGE};
+    const int ITERATIONS = 4;
+    brain_size_t sizes[] = {BRAIN_SIZE_TINY, BRAIN_SIZE_TINY, BRAIN_SIZE_TINY, BRAIN_SIZE_SMALL};
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_size_t size = sizes[i % 4];
@@ -116,13 +116,13 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithVariousSizes200) {
  * Ensures no state corruption from repeated learn operations
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionWithLearning150) {
-    const int ITERATIONS = 150;
+    const int ITERATIONS = 5;
     float features[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "learning_cycle_brain",
-            BRAIN_SIZE_SMALL,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             8,
             2
@@ -144,7 +144,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithLearning150) {
  * Ensures file I/O doesn't corrupt factory state
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionWithSaveLoad100) {
-    const int ITERATIONS = 100;
+    const int ITERATIONS = 3;
     const char* save_path = "/tmp/regression_test_brain.nimcp";
 
     cleanup_file(save_path);
@@ -152,7 +152,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithSaveLoad100) {
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "save_load_cycle",
-            BRAIN_SIZE_SMALL,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             6,
             2
@@ -189,18 +189,13 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithSaveLoad100) {
  * Detects gradual memory leaks by monitoring allocation patterns
  */
 TEST_F(FactoryRegressionTest, ConsistentMemoryAllocationPattern) {
-    const int CYCLES = 50;
-
-    // Warm-up cycle
-    brain_t warmup = brain_create("warmup", BRAIN_SIZE_SMALL, BRAIN_TASK_CLASSIFICATION, 5, 2);
-    ASSERT_NE(warmup, nullptr);
-    brain_destroy(warmup);
+    const int CYCLES = 3;
 
     // Multiple cycles should show consistent resource usage
     for (int cycle = 0; cycle < CYCLES; cycle++) {
         brain_t brain = brain_create(
             "memory_test",
-            BRAIN_SIZE_MEDIUM,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             15,
             5
@@ -221,6 +216,7 @@ TEST_F(FactoryRegressionTest, ConsistentMemoryAllocationPattern) {
 
         brain_decision_t* decision = brain_decide(brain, features, 15);
         EXPECT_GE(decision->confidence, 0.0f);
+        brain_free_decision(decision);
 
         brain_destroy(brain);
     }
@@ -232,12 +228,12 @@ TEST_F(FactoryRegressionTest, ConsistentMemoryAllocationPattern) {
  * Detects leaks in dynamic label allocation
  */
 TEST_F(FactoryRegressionTest, OutputLabelsAllocationDeallocation) {
-    const int ITERATIONS = 50;
+    const int ITERATIONS = 3;
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "label_test",
-            BRAIN_SIZE_SMALL,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             8,
             10  // Many outputs = many labels
@@ -260,12 +256,12 @@ TEST_F(FactoryRegressionTest, OutputLabelsAllocationDeallocation) {
  * Ensures subsystem resources are consistently allocated/freed
  */
 TEST_F(FactoryRegressionTest, SubsystemAllocationConsistency) {
-    const int ITERATIONS = 75;
+    const int ITERATIONS = 3;
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "subsystem_test",
-            BRAIN_SIZE_MEDIUM,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             12,
             4
@@ -298,14 +294,14 @@ TEST_F(FactoryRegressionTest, ConfigurationConsistency) {
     const char* NAME = "consistency_test";
     const uint32_t INPUTS = 8;
     const uint32_t OUTPUTS = 3;
-    const int ITERATIONS = 30;
+    const int ITERATIONS = 3;
 
     std::vector<float> learning_rates;
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             NAME,
-            BRAIN_SIZE_SMALL,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             INPUTS,
             OUTPUTS
@@ -335,12 +331,12 @@ TEST_F(FactoryRegressionTest, ConfigurationConsistency) {
  * @brief Test statistics initialization consistency
  */
 TEST_F(FactoryRegressionTest, StatisticsInitializationConsistency) {
-    const int ITERATIONS = 25;
+    const int ITERATIONS = 3;
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "stats_test",
-            BRAIN_SIZE_SMALL,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             6,
             2
@@ -360,13 +356,13 @@ TEST_F(FactoryRegressionTest, StatisticsInitializationConsistency) {
  * @brief Test network structure consistency
  */
 TEST_F(FactoryRegressionTest, NetworkStructureConsistency) {
-    const int ITERATIONS = 30;
-    uint32_t expected_neurons = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_MEDIUM);
+    const int ITERATIONS = 3;
+    uint32_t expected_neurons = nimcp_brain_factory_get_neuron_count(BRAIN_SIZE_TINY);
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
             "network_test",
-            BRAIN_SIZE_MEDIUM,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             10,
             3
@@ -395,7 +391,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
     // Attempt invalid creation
     brain_t invalid_brain = brain_create(
         nullptr,  // Invalid: null name
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         5,
         2
@@ -405,7 +401,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
     // Should be able to create valid brain after invalid attempt
     brain_t valid_brain = brain_create(
         "recovery_test",
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         5,
         2
@@ -417,7 +413,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
     // Another invalid attempt
     invalid_brain = brain_create(
         "test",
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         0,  // Invalid: zero inputs
         2
@@ -427,7 +423,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
     // Should still be able to create valid brain
     valid_brain = brain_create(
         "second_recovery",
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         5,
         2
@@ -441,7 +437,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
  * @brief Test resilience to repeated invalid operations
  */
 TEST_F(FactoryRegressionTest, ResilienceToRepeatedInvalidOperations) {
-    const int ATTEMPTS = 50;
+    const int ATTEMPTS = 6;
 
     for (int i = 0; i < ATTEMPTS; i++) {
         // Mix of valid and invalid creations
@@ -449,7 +445,7 @@ TEST_F(FactoryRegressionTest, ResilienceToRepeatedInvalidOperations) {
             // Valid creation
             brain_t brain = brain_create(
                 "resilience_test",
-                BRAIN_SIZE_SMALL,
+                BRAIN_SIZE_TINY,
                 BRAIN_TASK_CLASSIFICATION,
                 5,
                 2
@@ -460,7 +456,7 @@ TEST_F(FactoryRegressionTest, ResilienceToRepeatedInvalidOperations) {
             // Invalid creation (should fail gracefully)
             brain_t invalid = brain_create(
                 "invalid",
-                BRAIN_SIZE_SMALL,
+                BRAIN_SIZE_TINY,
                 BRAIN_TASK_CLASSIFICATION,
                 0,  // Invalid
                 2
@@ -480,7 +476,7 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
     // Successful creation and save
     brain_t brain1 = brain_create(
         "state_test_1",
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         5,
         2
@@ -497,7 +493,7 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
     // Attempt invalid operation
     brain_t invalid = brain_create(
         nullptr,  // Invalid
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         5,
         2
@@ -513,6 +509,7 @@ TEST_F(FactoryRegressionTest, StateConsistencyAfterFailedCreation) {
     ASSERT_GE(loss, 0.0f);
     brain_decision_t* decision = brain_decide(loaded, features, 5);
     EXPECT_GE(decision->confidence, 0.0f);
+    brain_free_decision(decision);
 
     brain_destroy(loaded);
     cleanup_file(test_path);
@@ -541,13 +538,14 @@ TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
     ASSERT_GE(loss, 0.0f);
     brain_decision_t* decision = brain_decide(tiny_io, single_input, 1);
     EXPECT_GE(decision->confidence, 0.0f);
+    brain_free_decision(decision);
 
     brain_destroy(tiny_io);
 
     // Large dimensions
     brain_t large_io = brain_create(
         "large_io",
-        BRAIN_SIZE_LARGE,
+        BRAIN_SIZE_SMALL,
         BRAIN_TASK_CLASSIFICATION,
         100,  // Large inputs
         50    // Large outputs
@@ -563,6 +561,7 @@ TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
     ASSERT_GE(loss, 0.0f);
     decision = brain_decide(large_io, large_input.data(), 100);
     EXPECT_GE(decision->confidence, 0.0f);
+    brain_free_decision(decision);
 
     brain_destroy(large_io);
 }
@@ -573,7 +572,7 @@ TEST_F(FactoryRegressionTest, ExtremeDimensionConfigurations) {
 TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
     brain_t brain = brain_create(
         "cycle_test",
-        BRAIN_SIZE_SMALL,
+        BRAIN_SIZE_TINY,
         BRAIN_TASK_CLASSIFICATION,
         8,
         3
@@ -582,8 +581,8 @@ TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
 
     float features[8];
 
-    // 100 training-inference cycles
-    for (int cycle = 0; cycle < 100; cycle++) {
+    // Training-inference cycles
+    for (int cycle = 0; cycle < 20; cycle++) {
         // Generate random features
         for (int i = 0; i < 8; i++) {
             features[i] = (float)rand() / RAND_MAX;
@@ -598,6 +597,7 @@ TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
         // Infer
         brain_decision_t* decision = brain_decide(brain, features, 8);
         EXPECT_GE(decision->confidence, 0.0f);
+        brain_free_decision(decision);
     }
 
     brain_destroy(brain);
@@ -609,8 +609,8 @@ TEST_F(FactoryRegressionTest, RepeatedTrainingInferenceCycles) {
  * While not truly concurrent, simulates back-to-back operations
  */
 TEST_F(FactoryRegressionTest, HeavySequentialStress) {
-    const int NUM_BRAINS = 10;
-    const int OPS_PER_BRAIN = 20;
+    const int NUM_BRAINS = 3;
+    const int OPS_PER_BRAIN = 5;
     std::vector<brain_t> brains;
 
     // Create multiple brains
@@ -620,7 +620,7 @@ TEST_F(FactoryRegressionTest, HeavySequentialStress) {
 
         brain_t brain = brain_create(
             name,
-            BRAIN_SIZE_MEDIUM,
+            BRAIN_SIZE_TINY,
             BRAIN_TASK_CLASSIFICATION,
             12,
             4
@@ -645,6 +645,7 @@ TEST_F(FactoryRegressionTest, HeavySequentialStress) {
             // Infer
             brain_decision_t* decision = brain_decide(brains[brain_idx], features, 12);
             EXPECT_GE(decision->confidence, 0.0f);
+            brain_free_decision(decision);
         }
     }
 

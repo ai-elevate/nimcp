@@ -75,3 +75,14 @@ add_test_binary(
     unit
 )
 set_tests_properties(unit_core_brain_split_brain_test PROPERTIES TIMEOUT 300)
+
+# Test: Hemispheric Memory Optimization Tests (Opt 5, 7)
+add_test_binary(
+    unit_core_brain_hemispheric_memory_opt_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_memory_opt.cpp
+    unit
+)
+set_tests_properties(unit_core_brain_hemispheric_memory_opt_test PROPERTIES
+    TIMEOUT 300
+    RESOURCE_LOCK "hemispheric_brain_heavy"
+)

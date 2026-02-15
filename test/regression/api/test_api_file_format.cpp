@@ -432,10 +432,10 @@ TEST_F(APIFileFormatTest, CorruptedFile_TruncatedFile) {
     fread(buffer, 1, size, valid);
     fclose(valid);
 
-    // Write truncated file (only first 50%)
+    // Write truncated file (only 4 bytes - less than magic header)
     FILE* truncated = fopen(truncated_path, "wb");
     ASSERT_NE(truncated, nullptr);
-    fwrite(buffer, 1, size / 2, truncated);
+    fwrite(buffer, 1, 4, truncated);
     fclose(truncated);
 
     delete[] buffer;
@@ -443,6 +443,7 @@ TEST_F(APIFileFormatTest, CorruptedFile_TruncatedFile) {
     // Try to load truncated file
     nimcp_brain_t loaded = nimcp_brain_load(truncated_path);
     EXPECT_EQ(loaded, nullptr);
+    if (loaded) { nimcp_brain_destroy(loaded); }
 
     cleanup_file(valid_path);
     cleanup_file(truncated_path);

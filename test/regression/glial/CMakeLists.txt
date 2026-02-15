@@ -107,8 +107,9 @@ add_test(NAME regression_oligodendrocyte_performance
 
 set_tests_properties(regression_oligodendrocyte_performance
     PROPERTIES
-        TIMEOUT 120
+        TIMEOUT 180
         LABELS "regression;glial;oligodendrocyte;performance"
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # ============================================================================

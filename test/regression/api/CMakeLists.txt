@@ -39,6 +39,9 @@ target_link_libraries(regression_api_test_api_memory_safety
     )
 add_test(NAME regression_api_test_api_memory_safety
          COMMAND regression_api_test_api_memory_safety)
+set_tests_properties(regression_api_test_api_memory_safety PROPERTIES
+    TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
+)
 
 add_executable(regression_api_test_api_file_format
     test_api_file_format.cpp
