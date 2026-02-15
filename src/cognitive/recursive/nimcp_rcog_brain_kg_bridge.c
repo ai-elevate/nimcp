@@ -745,7 +745,6 @@ bool rcog_brain_kg_bridge_has_capability(
     const char* capability_name
 ) {
     if (!bridge || !capability_name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_brain_kg_bridge_has_capability: required parameter is NULL (bridge, capability_name)");
         return false;
     }
 
@@ -772,7 +771,6 @@ bool rcog_brain_kg_bridge_has_capability(
     }
 
     nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_brain_kg_bridge_has_capability: operation failed");
     return false;
 }
 

@@ -134,54 +134,42 @@ bool energy_validate_config(const energy_config_t* config) {
     }
 
     if (config->max_energy_j <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->reserve_fraction < 0.0f || config->reserve_fraction > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
 
     if (config->rest_power_w < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->hover_power_w < config->rest_power_w) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->patrol_power_w < config->hover_power_w) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->pursuit_power_w < config->patrol_power_w) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->max_power_w < config->pursuit_power_w) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
 
     if (config->small_prey_value_j < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->medium_prey_value_j < config->small_prey_value_j) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->large_prey_value_j < config->medium_prey_value_j) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
 
     if (config->min_roi_threshold < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
     if (config->recovery_rate_w < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
         return false;
     }
 
@@ -572,7 +560,6 @@ bool dragonfly_energy_can_afford(
     float estimated_cost_j
 ) {
     if (!energy) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_can_afford: energy is NULL");
         return false;
     }
 

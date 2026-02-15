@@ -253,7 +253,6 @@ static void log_alignment_access(hypo_drive_system_handle_t* system,
  */
 static bool can_modify_setpoint(const hypo_drive_system_handle_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "can_modify_setpoint: system is NULL");
         return false;
     }
 
@@ -266,7 +265,6 @@ static bool can_modify_setpoint(const hypo_drive_system_handle_t* system) {
  */
 static bool can_modify_alignment(const hypo_drive_system_handle_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "can_modify_alignment: system is NULL");
         return false;
     }
 
@@ -1095,7 +1093,6 @@ bool hypo_drive_check_alignment(const hypo_drive_system_handle_t* system,
                                  float* alignment_score) {
     if (!system) {
         if (alignment_score) *alignment_score = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 

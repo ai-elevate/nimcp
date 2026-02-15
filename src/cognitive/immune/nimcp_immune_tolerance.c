@@ -82,6 +82,7 @@ static inline void immune_tolerance_heartbeat_instance(
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
     nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* ============================================================================
@@ -791,7 +792,6 @@ bool tolerance_is_anergic(
     bool is_b_cell
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_is_anergic: system is NULL");
         return false;
     }
 
@@ -1194,7 +1194,7 @@ static int add_anergic_cell(
     /* Check capacity */
     if (sys->anergic_cell_count >= sys->anergic_cell_capacity) {
         NIMCP_LOGGING_ERROR("Anergic cell records full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_anergic_cell: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_anergic_cell: capacity exceeded");
         return -1;
     }
 

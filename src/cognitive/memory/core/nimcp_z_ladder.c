@@ -442,7 +442,7 @@ static size_t tier_storage_add(z_tier_storage_t* tier, pr_memory_node_t* node) {
  */
 static bool tier_storage_remove(z_tier_storage_t* tier, size_t index) {
     if (index >= tier->count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "tier_storage_remove: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "tier_storage_remove: capacity exceeded");
         return false;
     }
 
@@ -869,7 +869,6 @@ static z_ladder_error_t evict_unlocked(z_ladder_t ladder, pr_memory_tier_t tier,
  */
 static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* node) {
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_promotion_unlocked: node is NULL");
         return false;
     }
 
@@ -886,20 +885,17 @@ static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* 
 
     // Check minimum age
     if (age_ms < config->min_age_for_promotion_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
         return false;
     }
 
     // Check minimum access count
     uint64_t access_count = atomic_load(&node->access_count);
     if (access_count < config->min_access_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
         return false;
     }
 
     // Check strength threshold
     if (node->current_strength < config->promotion_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
         return false;
     }
 
@@ -908,7 +904,6 @@ static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* 
         case PR_MEMORY_TIER_Z0:
             // Z0->Z1: Check salience
             if (node->state.y < config->min_salience) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
                 return false;
             }
             break;
@@ -916,7 +911,6 @@ static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* 
         case PR_MEMORY_TIER_Z1:
             // Z1->Z2: Check consolidation
             if (node->state.w < config->min_consolidation) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
                 return false;
             }
             break;
@@ -924,17 +918,14 @@ static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* 
         case PR_MEMORY_TIER_Z2:
             // Z2->Z3: Check consolidation and entanglement
             if (node->state.w < config->min_consolidation) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
                 return false;
             }
             if (atomic_load(&node->entanglement_count) < (uint32_t)config->min_entanglement) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
                 return false;
             }
             break;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_promotion_unlocked: validation failed");
             return false;
     }
 
@@ -946,7 +937,6 @@ static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* 
  */
 static bool check_demotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* node) {
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_demotion_unlocked: node is NULL");
         return false;
     }
 
@@ -1084,17 +1074,14 @@ bool z_ladder_config_validate(const z_ladder_config_t* config) {
 
         // Decay rate must be non-negative
         if (tc->decay_rate < 0.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "z_ladder_config_validate: validation failed");
             return false;
         }
 
         // Thresholds must be in [0, 1]
         if (tc->promotion_threshold < 0.0f || tc->promotion_threshold > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "z_ladder_config_validate: validation failed");
             return false;
         }
         if (tc->demotion_threshold < 0.0f || tc->demotion_threshold > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "z_ladder_config_validate: validation failed");
             return false;
         }
     }
@@ -1464,7 +1451,6 @@ z_ladder_error_t z_ladder_move(z_ladder_t ladder, uint64_t node_id,
 
 bool z_ladder_check_promotion(z_ladder_t ladder, const pr_memory_node_t* node) {
     if (!ladder || !node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "z_ladder_check_promotion: required parameter is NULL (ladder, node)");
         return false;
     }
 
@@ -1483,7 +1469,6 @@ bool z_ladder_check_promotion(z_ladder_t ladder, const pr_memory_node_t* node) {
 
 bool z_ladder_check_demotion(z_ladder_t ladder, const pr_memory_node_t* node) {
     if (!ladder || !node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "z_ladder_check_demotion: required parameter is NULL (ladder, node)");
         return false;
     }
 

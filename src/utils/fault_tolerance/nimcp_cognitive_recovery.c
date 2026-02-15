@@ -871,13 +871,11 @@ bool cognitive_recovery_get_health(
 
 bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t coordinator) {
     if (!coordinator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_is_needed: coordinator is NULL");
         return false;
     }
 
     health_status_snapshot_t health;
     if (!cognitive_recovery_get_health(coordinator, &health)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_is_needed: cognitive_recovery_get_health is NULL");
         return false;
     }
 
@@ -895,13 +893,11 @@ bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t coordinator) 
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_is_needed: operation failed");
     return false;
 }
 
 bool cognitive_recovery_is_ready(cognitive_recovery_coordinator_t coordinator) {
     if (!coordinator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_is_ready: coordinator is NULL");
         return false;
     }
 

@@ -304,7 +304,6 @@ float metabolic_sleep_get_cost_factor(const metabolic_sleep_bridge_t bridge) {
 
 bool metabolic_sleep_is_deep_restoration(const metabolic_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_is_deep_restoration: bridge is NULL");
         return false;
     }
     return bridge->effects.deep_restoration_active;
@@ -328,11 +327,9 @@ float metabolic_sleep_get_sleep_pressure(const metabolic_sleep_bridge_t bridge) 
 
 bool metabolic_sleep_is_critical_need(const metabolic_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_is_critical_need: bridge is NULL");
         return false;
     }
     if (!bridge->metabolic) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_is_critical_need: bridge->metabolic is NULL");
         return false;
     }
 

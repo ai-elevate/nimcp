@@ -1068,7 +1068,7 @@ nlp_peer_t* nlp_peer_add(nlp_node_t node, uint32_t peer_id,
     if (node->peer_count >= NLP_MAX_PEERS) {
         NIMCP_LOG_ERROR("nlp_peer_add: Peer table full (%u peers)", node->peer_count);
         nimcp_mutex_unlock(&node->peer_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nlp_session_key_rotation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nlp_session_key_rotation: capacity exceeded");
         return NULL;
     }
 

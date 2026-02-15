@@ -547,7 +547,6 @@ bool kg_reader_is_modified(const kg_reader_t* reader) {
 
     struct stat st;
     if (stat(reader->file_path, &st) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_reader_is_modified: validation failed");
         return false;
     }
 
@@ -995,7 +994,7 @@ const char** kg_reader_get_module_names(const kg_reader_t* reader, uint32_t* out
     if (!names) {
         kg_entity_list_destroy(modules);
         if (out_count) *out_count = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_module_names: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_module_names: validation failed");
         return NULL;
     }
 

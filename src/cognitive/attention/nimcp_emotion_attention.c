@@ -1034,7 +1034,7 @@ bool emotion_attention_get_priority_embedding(
         EA_LOG_ERROR("Priority rank %u exceeds max %u",
                      priority_rank, system->config.max_temporal_sequence);
         pthread_rwlock_unlock(&system->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_attention_get_priority_embedding: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_attention_get_priority_embedding: capacity exceeded");
         return false;
     }
 

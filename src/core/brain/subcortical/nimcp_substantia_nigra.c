@@ -96,11 +96,15 @@ substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* con
 
         return NULL;
     }
+    if (config->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substantia_nigra_create: num_neurons is zero");
+        return NULL;
+    }
 
     substantia_nigra_t* sn = nimcp_malloc(sizeof(substantia_nigra_t));
     if (!sn) {
         NIMCP_LOGGING_ERROR("Failed to allocate substantia nigra");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sn is NULL");
 
         return NULL;
     }
@@ -143,6 +147,12 @@ substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* con
         }
 
         /* Initialize SNr neurons */
+        if (config->num_actions == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substantia_nigra_create: num_actions is zero");
+            nimcp_free(sn->snr_neurons);
+            nimcp_free(sn);
+            return NULL;
+        }
         uint32_t neurons_per_action = config->num_neurons / config->num_actions;
         for (uint32_t i = 0; i < config->num_neurons; i++) {
             sn->snr_neurons[i].id = i;
@@ -307,11 +317,17 @@ int snc_update_reward(substantia_nigra_t* sn, float reward, float expected) {
     for (uint32_t i = 0; i < sn->num_neurons; i++) {
         avg_firing += sn->da_neurons[i].firing_rate;
     }
-    avg_firing /= sn->num_neurons;
+    if (sn->num_neurons > 0) {
+        avg_firing /= sn->num_neurons;
+    }
 
     /* Normalize to [0, 1] range */
     float da_range = sn->config.burst_firing_rate - sn->config.pause_firing_rate;
-    sn->dopamine_level = (avg_firing - sn->config.pause_firing_rate) / da_range;
+    if (fabsf(da_range) > 0.001f) {
+        sn->dopamine_level = (avg_firing - sn->config.pause_firing_rate) / da_range;
+    } else {
+        sn->dopamine_level = 0.5f;  /* Default baseline when range is zero */
+    }
     sn->dopamine_level = fmaxf(0.0f, fminf(1.0f, sn->dopamine_level));
 
     /* Update statistics */
@@ -391,7 +407,9 @@ int snc_step(substantia_nigra_t* sn, float dt) {
     for (uint32_t i = 0; i < sn->num_neurons; i++) {
         avg_firing += sn->da_neurons[i].firing_rate;
     }
-    avg_firing /= sn->num_neurons;
+    if (sn->num_neurons > 0) {
+        avg_firing /= sn->num_neurons;
+    }
 
     if (fabsf(avg_firing - sn->config.tonic_firing_rate) < 0.5f) {
         sn->da_state = DA_STATE_TONIC;
@@ -399,7 +417,11 @@ int snc_step(substantia_nigra_t* sn, float dt) {
 
     /* Update dopamine level */
     float da_range = sn->config.burst_firing_rate - sn->config.pause_firing_rate;
-    sn->dopamine_level = (avg_firing - sn->config.pause_firing_rate) / da_range;
+    if (fabsf(da_range) > 0.001f) {
+        sn->dopamine_level = (avg_firing - sn->config.pause_firing_rate) / da_range;
+    } else {
+        sn->dopamine_level = 0.5f;  /* Default baseline when range is zero */
+    }
     sn->dopamine_level = fmaxf(0.0f, fminf(1.0f, sn->dopamine_level));
 
     nimcp_mutex_unlock(sn->mutex);

@@ -324,7 +324,7 @@ int mtl_register_task(mtl_ctx_t* ctx, const mtl_task_def_t* task) {
 
     if (ctx->num_tasks >= MTL_MAX_TASKS) {
         nimcp_mutex_unlock(ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_register_task: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mtl_register_task: capacity exceeded");
         return -1;
     }
 
@@ -1382,32 +1382,30 @@ int mtl_validate_config(const mtl_config_t* config) {
     }
 
     if (config->architecture >= MTL_ARCH_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->weighting >= MTL_WEIGHT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->gradient_method >= MTL_GRAD_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->sampling >= MTL_SAMPLE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->gradnorm.alpha < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_validate_config: validation failed");
         return -1;
     }
 
     if (config->temperature <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_validate_config: validation failed");
         return -1;
     }
 

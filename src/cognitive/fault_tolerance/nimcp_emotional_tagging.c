@@ -151,7 +151,6 @@ struct nimcp_emotional_tagger {
  */
 static bool is_critical_error(const char* error_type) {
     if (!error_type) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_critical_error: error_type is NULL");
         return false;
     }
 

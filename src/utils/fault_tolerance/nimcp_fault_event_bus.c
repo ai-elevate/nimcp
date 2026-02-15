@@ -330,7 +330,7 @@ static bool event_queue_enqueue(event_queue_t* queue, const fault_event_t* event
     // Check if full
     if (queue->count >= queue->max_size) {
         nimcp_mutex_unlock(&queue->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "event_queue_enqueue: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "event_queue_enqueue: capacity exceeded");
         return false;
     }
 
@@ -611,7 +611,6 @@ bool event_bus_stop(fault_event_bus_t bus, bool drain_queue) {
  */
 bool event_bus_is_running(fault_event_bus_t bus) {
     if (!bus) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_is_running: bus is NULL");
         return false;
     }
 

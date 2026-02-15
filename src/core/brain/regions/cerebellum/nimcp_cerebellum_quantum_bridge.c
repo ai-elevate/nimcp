@@ -120,7 +120,7 @@ cerebellum_quantum_bridge_t* cerebellum_quantum_bridge_create(
     cerebellum_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(cerebellum_quantum_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -156,7 +156,7 @@ cerebellum_quantum_bridge_t* cerebellum_quantum_bridge_create(
     if (!bridge->timing_candidates || !bridge->trajectory_candidates ||
         !bridge->gain_candidates) {
         cerebellum_quantum_bridge_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_bridge_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_quantum_bridge_create: operation failed");
         return NULL;
     }
 

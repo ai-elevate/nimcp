@@ -602,13 +602,11 @@ bool mesh_cross_transactions_conflict(
 
 bool mesh_system_coord_is_healthy(mesh_system_coordinator_t coord) {
     if (!coord) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_system_coord_is_healthy: coord is NULL");
         return false;
     }
 
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (!coord->channels[i].healthy) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_system_coord_is_healthy: coord->channels is NULL");
             return false;
         }
     }

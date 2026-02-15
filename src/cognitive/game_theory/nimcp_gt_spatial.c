@@ -1248,7 +1248,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     if (!ctx->node_strategy || !ctx->node_strategy_next || !ctx->node_fitness ||
         !ctx->frequencies || !ctx->fitness_per_strategy) {
         nimcp_spatial_destroy(ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_spatial_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_spatial_create: operation failed");
         return NULL;
     }
 
@@ -1269,7 +1269,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
         );
         if (!ctx->frequency_history) {
             nimcp_spatial_destroy(ctx);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_spatial_create: ctx->frequency_history is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_spatial_create: ctx->frequency_history is NULL");
             return NULL;
         }
     }
@@ -2276,7 +2276,6 @@ bool nimcp_spatial_is_ess(
     uint32_t strategy
 ) {
     if (!ctx || strategy >= ctx->config.num_strategies) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_spatial_is_ess: ctx is NULL");
         return false;
     }
 

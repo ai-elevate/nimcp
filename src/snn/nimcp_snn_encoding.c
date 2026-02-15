@@ -25,6 +25,7 @@
 #include <time.h>
 #include <float.h>  /* For FLT_MAX in softmax numerical stability */
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_encoding)
 
@@ -323,7 +324,7 @@ void snn_decoder_destroy(snn_decoder_t* decoder) {
  * @brief Random number in [0, 1]
  */
 static inline float randf(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)nimcp_tl_rand() / (float)RAND_MAX;
 }
 
 int snn_encode_rate(snn_encoder_t* encoder,

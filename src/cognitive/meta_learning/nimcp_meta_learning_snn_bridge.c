@@ -267,7 +267,7 @@ meta_learning_snn_bridge_t* meta_learning_snn_create(const meta_learning_snn_con
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->insight_buffer || !bridge->prev_state) {
         meta_learning_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_snn_create: operation failed");
         return NULL;
     }
 
@@ -759,7 +759,6 @@ bool meta_learning_snn_check_adaptation(
     float* adaptation_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_snn_check_adaptation: bridge is NULL");
         return false;
     }
 
@@ -783,7 +782,6 @@ bool meta_learning_snn_check_transfer(
     float* transfer_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_snn_check_transfer: bridge is NULL");
         return false;
     }
 
@@ -807,7 +805,6 @@ bool meta_learning_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1092,7 +1089,6 @@ int meta_learning_snn_bio_async_disconnect(meta_learning_snn_bridge_t* bridge) {
 
 bool meta_learning_snn_is_bio_async_connected(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

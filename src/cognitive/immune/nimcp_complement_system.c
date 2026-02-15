@@ -83,6 +83,7 @@ static inline void complement_system_heartbeat_instance(
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
     nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* ============================================================================
@@ -220,7 +221,7 @@ static int generate_c3b(complement_system_t* system, uint32_t target_id,
         return -1;
     }
     if (system->c3b_count >= system->c3b_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_mac_by_id: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_mac_by_id: capacity exceeded");
         return -1;
     }
 
@@ -254,7 +255,7 @@ static int generate_c5b(complement_system_t* system, uint32_t target_id,
         return -1;
     }
     if (system->c5b_count >= system->c5b_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_mac_by_id: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_mac_by_id: capacity exceeded");
         return -1;
     }
 
@@ -801,7 +802,6 @@ uint32_t complement_form_mac(complement_system_t* system, uint32_t target_id) {
  */
 bool complement_is_mac_complete(complement_system_t* system, uint32_t mac_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_is_mac_complete: system is NULL");
         return false;
     }
 
@@ -1055,7 +1055,6 @@ int complement_get_stats(complement_system_t* system, complement_stats_t* stats)
  */
 bool complement_is_opsonized(complement_system_t* system, uint32_t target_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_is_opsonized: system is NULL");
         return false;
     }
 

@@ -483,7 +483,6 @@ NIMCP_EXPORT bool bbb_system_is_enabled(bbb_system_t system)
 {
     /* Guard: Null system */
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system in bbb_system_is_enabled");
         return false;
     }
 
@@ -857,7 +856,6 @@ NIMCP_EXPORT void bbb_clear_threat_reports(bbb_system_t system)
 NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, size_t size)
 {
     if (!system || !address || size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_is_quarantined: required parameter is NULL (system, address)");
         return false;
     }
 
@@ -918,7 +916,6 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
 NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* address, size_t size, bool acquire_ref)
 {
     if (!system || !address || size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_is_quarantined_safe: required parameter is NULL (system, address)");
         return false;
     }
 
@@ -1080,7 +1077,7 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* Check if we have room */
     if (system->quarantine_count >= BBB_MAX_QUARANTINE_REGIONS) {
         nimcp_mutex_unlock(&system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Quarantine region limit exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Quarantine region limit exceeded");
         return false;
     }
 

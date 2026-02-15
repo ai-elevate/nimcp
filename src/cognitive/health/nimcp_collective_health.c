@@ -307,7 +307,6 @@ int collective_health_monitor_stop(collective_health_monitor_t* monitor) {
 
 bool collective_health_monitor_is_running(const collective_health_monitor_t* monitor) {
     if (!monitor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_monitor_is_running: monitor is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -457,7 +456,7 @@ int collective_health_propose_anomaly_async(
 
 
     if (monitor->num_pending_consensus >= COLLECTIVE_HEALTH_MAX_PENDING_CONSENSUS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_health_propose_anomaly_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collective_health_propose_anomaly_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -849,7 +848,7 @@ int collective_health_request_swarm_action_async(
 
 
     if (monitor->num_pending_swarm >= COLLECTIVE_HEALTH_MAX_PENDING_CONSENSUS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_health_request_swarm_action_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collective_health_request_swarm_action_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 

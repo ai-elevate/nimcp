@@ -933,7 +933,6 @@ int training_logic_signal_instability(
 
 bool training_logic_check_stability(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_check_stability: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -986,7 +985,6 @@ bool training_logic_needs_intervention(training_logic_bridge_t* bridge) {
 
 bool training_logic_can_increase_lr(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_can_increase_lr: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -1015,7 +1013,6 @@ bool training_logic_should_adjust_batch(
     bool* increase_batch)
 {
     if (!bridge || !bridge->logic_network || !increase_batch) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_should_adjust_batch: required parameter is NULL (bridge, bridge->logic_network, increase_batch)");
         return false;
     }
 
@@ -1039,7 +1036,6 @@ bool training_logic_should_adjust_batch(
 
 bool training_logic_should_checkpoint(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_should_checkpoint: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -1632,7 +1628,6 @@ int training_logic_disconnect_bio_async(training_logic_bridge_t* bridge) {
 
 bool training_logic_is_bio_async_connected(const training_logic_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

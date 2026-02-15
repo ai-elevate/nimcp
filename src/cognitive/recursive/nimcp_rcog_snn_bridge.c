@@ -316,7 +316,7 @@ rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->cognitive_buffer || !bridge->prev_state) {
         rcog_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_snn_create: operation failed");
         return NULL;
     }
 
@@ -854,7 +854,6 @@ bool rcog_snn_check_deep_recursion(
     float* depth_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_snn_check_deep_recursion: bridge is NULL");
         return false;
     }
 
@@ -878,7 +877,6 @@ bool rcog_snn_check_self_reference(
     float* intensity
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_snn_check_self_reference: bridge is NULL");
         return false;
     }
 
@@ -902,7 +900,6 @@ bool rcog_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1189,7 +1186,6 @@ int rcog_snn_bio_async_disconnect(rcog_snn_bridge_t* bridge) {
 
 bool rcog_snn_is_bio_async_connected(rcog_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

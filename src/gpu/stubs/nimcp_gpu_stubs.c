@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /*=============================================================================
  * Wernicke GPU Stubs (gpu/cognitive/nimcp_wernicke_gpu.h)
@@ -2107,7 +2108,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
         /* Initialize weights with small random values */
         float* weights = (float*)inv->layers[i].weights->data;
         for (size_t j = 0; j < inv->layers[i].weights->numel; j++) {
-            weights[j] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+            weights[j] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 0.1f;
         }
     }
 
@@ -2164,7 +2165,7 @@ bool nimcp_jepa_gpu_inverse_infer(
         nimcp_free(concat);
         nimcp_free(temp1);
         nimcp_free(temp2);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_inverse_infer: required parameter is NULL (concat, temp1, temp2)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_jepa_gpu_inverse_infer: required parameter is NULL (concat, temp1, temp2)");
         return false;
     }
 
@@ -2262,7 +2263,7 @@ bool nimcp_jepa_gpu_generate_block_mask(
     size_t blocks_to_mask = (size_t)(num_blocks * mask_ratio);
 
     for (size_t b = 0; b < blocks_to_mask; b++) {
-        size_t block_idx = (size_t)rand() % num_blocks;
+        size_t block_idx = (size_t)nimcp_tl_rand() % num_blocks;
         size_t start = block_idx * block_size;
         for (uint32_t j = 0; j < block_size && start + j < numel; j++) {
             m[start + j] = 0.0f;

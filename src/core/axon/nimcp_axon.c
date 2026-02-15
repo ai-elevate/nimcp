@@ -151,15 +151,12 @@ float axon_distance_3d(const float a[3], const float b[3])
 bool axon_validate_params(float length, float diameter)
 {
     if (length <= 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
     if (diameter < NIMCP_AXON_MIN_DIAMETER_UM) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
     if (diameter > NIMCP_AXON_MAX_DIAMETER_UM) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
     return true;
@@ -801,7 +798,6 @@ void axon_step(axon_t* axon, uint64_t current_time, float dt)
 bool axon_is_refractory(const axon_t* axon, uint64_t current_time)
 {
     if (!axon) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_is_refractory: axon is NULL");
         return false;
     }
     return (axon->state == AXON_STATE_REFRACTORY ||
@@ -1009,7 +1005,7 @@ bool axon_spike_queue_push(axon_spike_queue_t* queue,
         LOG_WARN(LOG_MODULE, "Spike queue full, dropping spike from axon=%u",
                  event->axon_id);
         nimcp_mutex_unlock(&queue->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "axon_spike_queue_push: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "axon_spike_queue_push: capacity exceeded");
         return false;
     }
 
@@ -1215,7 +1211,7 @@ bool axon_network_add(axon_network_t* network, axon_t* axon)
 
     if (network->count >= network->capacity) {
         nimcp_mutex_unlock(&network->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "axon_network_add: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "axon_network_add: capacity exceeded");
         return false;
     }
 
@@ -1893,7 +1889,6 @@ void axon_cow_release(axon_t* axon)
 bool axon_is_cow_copy(const axon_t* axon)
 {
     if (!axon) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_is_cow_copy: axon is NULL");
         return false;
     }
     return (axon->cow_original != NULL);

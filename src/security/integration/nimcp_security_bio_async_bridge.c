@@ -782,7 +782,7 @@ int security_bio_bridge_subscribe_module(
 
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "security_bio_bridge_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "security_bio_bridge_subscribe_module: capacity exceeded");
         return -1;  /* Full */
     }
 

@@ -102,31 +102,24 @@ int dragonfly_bio_async_bridge_validate_config(const dragonfly_bio_async_config_
     }
 
     if (config->dopamine_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->norepinephrine_threshold < 0.0f || config->norepinephrine_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->acetylcholine_focus_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->phase_coherence_threshold < 0.0f || config->phase_coherence_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->base_priority < 0.0f || config->base_priority > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->default_timeout_ms <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->default_phase > DRAGONFLY_PHASE_THETA) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
         return -1;
     }
 
@@ -239,7 +232,7 @@ dragonfly_bio_future_t* dragonfly_bio_async_start(
         return NULL;
     }
     if (bridge->num_futures >= DRAGONFLY_BIO_MAX_FUTURES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dragonfly_bio_async_start: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dragonfly_bio_async_start: capacity exceeded");
         return NULL;
     }
 
@@ -307,7 +300,6 @@ int dragonfly_bio_future_wait(
 
 bool dragonfly_bio_future_is_ready(const dragonfly_bio_future_t* future) {
     if (!future) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_future_is_ready: future is NULL");
         return false;
     }
     return future->ready;

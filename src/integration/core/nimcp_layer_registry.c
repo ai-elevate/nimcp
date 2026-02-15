@@ -112,7 +112,6 @@ nimcp_layer_error_t nimcp_layer_registry_unregister_layer(nimcp_layer_registry_t
 
 bool nimcp_layer_registry_is_layer_registered(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id) {
     if (!registry || layer_id >= NIMCP_LAYER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_layer_registry_is_layer_registered: registry is NULL");
         return false;
     }
     return registry->layers[layer_id].registered;
@@ -246,7 +245,7 @@ nimcp_layer_error_t nimcp_layer_registry_find_module_by_name(nimcp_layer_registr
 
 int nimcp_layer_registry_get_module_count(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id) {
     if (!registry || layer_id >= NIMCP_LAYER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_layer_registry_get_module_count: registry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_layer_registry_get_module_count: registry is NULL");
         return -1;
     }
     if (!registry->layers[layer_id].registered) {

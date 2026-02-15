@@ -168,7 +168,6 @@ bool swarm_validate_config(const swarm_config_t* config) {
     }
 
     if (config->cluster_distance_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
         return false;
     }
     if (config->min_cluster_size == 0) {
@@ -176,7 +175,6 @@ bool swarm_validate_config(const swarm_config_t* config) {
         return false;
     }
     if (config->isolation_threshold <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
         return false;
     }
 
@@ -184,7 +182,6 @@ bool swarm_validate_config(const swarm_config_t* config) {
     float weight_sum = config->isolation_weight + config->distance_weight +
                        config->size_weight + config->velocity_weight;
     if (weight_sum < 0.5f || weight_sum > 1.5f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
         return false;
     }
 
@@ -192,7 +189,6 @@ bool swarm_validate_config(const swarm_config_t* config) {
         config->danger_density_threshold > 1.0f) return false;
 
     if (config->analysis_interval_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
         return false;
     }
 
@@ -920,7 +916,6 @@ bool dragonfly_swarm_is_dangerous(
     uint32_t target_id
 ) {
     if (!detector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_is_dangerous: detector is NULL");
         return false;
     }
 

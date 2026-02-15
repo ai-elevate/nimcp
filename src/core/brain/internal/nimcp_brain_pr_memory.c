@@ -242,7 +242,6 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
 
 bool nimcp_brain_pr_memory_is_initialized(const struct brain_struct* brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_pr_memory_is_initialized: brain is NULL");
         return false;
     }
     return brain->pr_memory_enabled &&

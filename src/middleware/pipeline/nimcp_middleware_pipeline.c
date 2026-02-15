@@ -75,7 +75,7 @@ middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config
     middleware_pipeline_t pipeline = nimcp_calloc(1, sizeof(struct middleware_pipeline_struct));
     if (!pipeline) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate pipeline");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pipeline is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pipeline is NULL");
 
         return NULL;
     }

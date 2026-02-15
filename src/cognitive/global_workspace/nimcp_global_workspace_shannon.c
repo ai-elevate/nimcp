@@ -351,7 +351,7 @@ bool global_workspace_enable_shannon(
 
 
     if (g_num_mappings >= MAX_SHANNON_WORKSPACES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_enable_shannon: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "global_workspace_enable_shannon: capacity exceeded");
         return false;  /* Too many workspaces */
     }
 
@@ -836,7 +836,7 @@ bool global_workspace_set_subscriber_capacity(
 
     /* Add new subscriber */
     if (state->num_subscribers >= GLOBAL_WORKSPACE_MAX_SUBSCRIBERS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_set_subscriber_capacity: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "global_workspace_set_subscriber_capacity: capacity exceeded");
         return false;  /* Full */
     }
 

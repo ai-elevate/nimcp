@@ -591,7 +591,6 @@ mesh_participant_id_t mesh_hippocampus_get_participant_id(
 
 bool mesh_hippocampus_is_registered(const mesh_hippocampus_integration_t* integration) {
     if (!integration || integration->magic != MESH_HIPPOCAMPUS_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_hippocampus_is_registered: integration is NULL");
         return false;
     }
     return integration->registered;

@@ -163,7 +163,7 @@ kg_module_wiring_t* kg_module_wiring_create(const char* name, const char* type) 
         WIRING_LOG_ERROR("create: allocation failed for module '%s'", name);
         NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_CREATE, name, "create",
                               "Memory allocation failed for wiring descriptor");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wiring is NULL");
 
         return NULL;
     }
@@ -533,7 +533,6 @@ bool kg_module_wiring_has_input(
     const char* msg_type
 ) {
     if (!w || !source) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_module_wiring_has_input: required parameter is NULL (w, source)");
         return false;
     }
 
@@ -554,7 +553,6 @@ bool kg_module_wiring_has_output(
     const char* msg_type
 ) {
     if (!w || !msg_type) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_module_wiring_has_output: required parameter is NULL (w, msg_type)");
         return false;
     }
 
@@ -572,7 +570,6 @@ bool kg_module_wiring_has_handler(
     const char* msg_type
 ) {
     if (!w || !msg_type) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_module_wiring_has_handler: required parameter is NULL (w, msg_type)");
         return false;
     }
 
@@ -706,7 +703,6 @@ int kg_module_wiring_validate(
             if (error_buf && error_buf_size > 0) {
                 safe_strcpy(error_buf, "Weights pointer set but size is zero", error_buf_size);
             }
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_validate: validation failed");
             return -1;
         }
         if (!w->initial_weights && w->weights_size > 0) {
@@ -715,7 +711,6 @@ int kg_module_wiring_validate(
             if (error_buf && error_buf_size > 0) {
                 safe_strcpy(error_buf, "Weights size set but pointer is NULL", error_buf_size);
             }
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_validate: validation failed");
             return -1;
         }
     }
@@ -729,7 +724,6 @@ int kg_module_wiring_validate(
                 snprintf(error_buf, error_buf_size,
                          "Metadata entry %u has empty key", i);
             }
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_validate: validation failed");
             return -1;
         }
     }
@@ -745,7 +739,6 @@ int kg_module_wiring_validate(
                              "Duplicate metadata key: %s",
                              w->metadata.entries[i].key);
                 }
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_module_wiring_validate: validation failed");
                 return -1;
             }
         }

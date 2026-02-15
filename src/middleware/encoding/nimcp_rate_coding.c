@@ -588,7 +588,7 @@ bool spike_train_add_spike(spike_train_t* train, uint64_t spike_time) {
             new_capacity = RATE_CODING_MAX_SPIKE_HISTORY;
         }
         if (train->num_spikes >= new_capacity) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "spike_train_add_spike: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "spike_train_add_spike: capacity exceeded");
             return false;  // Already at max capacity
         }
 

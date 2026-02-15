@@ -11,6 +11,7 @@
 #include <string.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hh_quantum_bridge)
 
@@ -777,7 +778,7 @@ int hh_qmc_stochastic_simulation(
                     float open_frac = g_na / g_max;
                     float var = open_frac * (1.0f - open_frac) / (float)config->num_channels;
                     // Simple random (would use proper RNG in production)
-                    noise_na = sqrtf(var) * ((float)(rand() % 1000) / 500.0f - 1.0f);
+                    noise_na = sqrtf(var) * ((float)(nimcp_tl_rand() % 1000) / 500.0f - 1.0f);
                 }
             }
 

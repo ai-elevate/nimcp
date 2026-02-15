@@ -542,7 +542,6 @@ int imagination_fep_bridge_unregister(imagination_fep_bridge_t* bridge) {
 
 bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -824,7 +823,6 @@ imagination_fep_state_t imagination_fep_bridge_get_state(
 
 bool imagination_fep_bridge_is_degraded(const imagination_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 

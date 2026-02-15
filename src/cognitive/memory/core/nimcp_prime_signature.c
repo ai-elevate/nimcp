@@ -929,7 +929,6 @@ bool prime_sig_is_empty(const prime_signature_t* sig) {
         }
 
         if (sig->exponents[i] > 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prime_sig_is_empty: validation failed");
             return false;
         }
     }

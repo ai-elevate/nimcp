@@ -569,7 +569,7 @@ bool omni_sensory_are_bound(const omni_sensory_bridge_t* bridge,
         return false;
     }
     if (m1 >= OMNI_MODALITY_COUNT || m2 >= OMNI_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "omni_sensory_are_bound: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "omni_sensory_are_bound: capacity exceeded");
         return false;
     }
     if (m1 == m2) return true;
@@ -788,7 +788,6 @@ int omni_sensory_disconnect_bio_async(omni_sensory_bridge_t* bridge) {
 
 bool omni_sensory_is_bio_async_connected(const omni_sensory_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_sensory_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

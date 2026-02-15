@@ -151,7 +151,7 @@ static bool is_log_up_to_date(const raft_state_t* raft,
 
 nimcp_error_t mesh_ordering_default_config(mesh_ordering_config_t* config) {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_default_config: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -451,7 +451,6 @@ bool mesh_ordering_is_pending(
     const mesh_tx_id_t* tx_id
 ) {
     if (!service || !tx_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_is_pending: required parameter is NULL (service, tx_id)");
         return false;
     }
 
@@ -481,7 +480,7 @@ size_t mesh_ordering_get_pending_count(const mesh_ordering_service_t* service) {
 
 nimcp_error_t mesh_ordering_create_batch(mesh_ordering_service_t* service) {
     if (!service) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_create_batch: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -489,7 +488,7 @@ nimcp_error_t mesh_ordering_create_batch(mesh_ordering_service_t* service) {
 
     if (!service->current_batch) {
         nimcp_mutex_unlock(service->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_ordering: invalid state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_ordering_create_batch: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -525,7 +524,7 @@ nimcp_error_t mesh_ordering_create_batch(mesh_ordering_service_t* service) {
 
 nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
     if (!service) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_sequence_batch: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -534,7 +533,7 @@ nimcp_error_t mesh_ordering_sequence_batch(mesh_ordering_service_t* service) {
     /* Only leader can sequence - check role before batch state */
     if (service->raft.role != RAFT_ROLE_LEADER) {
         nimcp_mutex_unlock(service->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering: error condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering_sequence_batch: error condition");
         return NIMCP_ERROR_NOT_LEADER;
     }
 
@@ -704,7 +703,7 @@ uint64_t mesh_ordering_get_sequence(const mesh_ordering_service_t* service) {
 
 nimcp_error_t mesh_ordering_start_election(mesh_ordering_service_t* service) {
     if (!service) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_start_election: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -909,7 +908,7 @@ nimcp_error_t mesh_ordering_handle_append_entries(
 
 nimcp_error_t mesh_ordering_send_heartbeat(mesh_ordering_service_t* service) {
     if (!service) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_send_heartbeat: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -917,7 +916,7 @@ nimcp_error_t mesh_ordering_send_heartbeat(mesh_ordering_service_t* service) {
 
     if (service->raft.role != RAFT_ROLE_LEADER) {
         nimcp_mutex_unlock(service->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering: error condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_LEADER, "mesh_ordering_send_heartbeat: error condition");
         return NIMCP_ERROR_NOT_LEADER;
     }
 
@@ -950,7 +949,6 @@ bool mesh_ordering_is_leader(const mesh_ordering_service_t* service) {
 
 bool mesh_ordering_has_quorum(const mesh_ordering_service_t* service) {
     if (!service || !service->orderer_pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_has_quorum: required parameter is NULL (service, service->orderer_pool)");
         return false;
     }
 
@@ -1178,7 +1176,6 @@ bool mesh_ordering_has_channel(
     mesh_channel_id_t channel
 ) {
     if (!service) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_has_channel: service is NULL");
         return false;
     }
 
@@ -1323,7 +1320,6 @@ float mesh_ordering_get_utilization(const mesh_ordering_service_t* service) {
 
 bool mesh_ordering_is_backpressure_active(const mesh_ordering_service_t* service) {
     if (!service) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_is_backpressure_active: service is NULL");
         return false;
     }
     return mesh_ordering_get_utilization(service) > 0.8f;
@@ -1344,7 +1340,7 @@ void mesh_ordered_block_destroy(mesh_ordered_block_t* block) {
 
 nimcp_error_t mesh_ordered_block_compute_hash(mesh_ordered_block_t* block) {
     if (!block) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordered_block_compute_hash: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

@@ -508,7 +508,6 @@ int brain_regions_immune_disconnect_bio_async(brain_regions_immune_bridge_t* bri
 
 bool brain_regions_immune_is_bio_async_connected(const brain_regions_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -1178,7 +1177,6 @@ bool brain_regions_immune_is_region_modulated(
     uint32_t region_id
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_is_region_modulated: bridge is NULL");
         return false;
     }
 
@@ -1188,7 +1186,6 @@ bool brain_regions_immune_is_region_modulated(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_is_region_modulated: validation failed");
     return false;
 }
 

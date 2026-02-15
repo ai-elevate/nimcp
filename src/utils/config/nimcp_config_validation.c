@@ -354,7 +354,7 @@ bool config_schema_add_int(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_int: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_int: capacity exceeded");
             return false;
         }
 
@@ -439,7 +439,7 @@ bool config_schema_add_float(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_float: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_float: capacity exceeded");
             return false;
         }
 
@@ -506,7 +506,7 @@ bool config_schema_add_bool(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_bool: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_bool: capacity exceeded");
             return false;
         }
 
@@ -579,7 +579,7 @@ bool config_schema_add_string(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_string: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_string: capacity exceeded");
             return false;
         }
 
@@ -655,7 +655,7 @@ bool config_schema_add_validator(
     if (field->validator_count >= CONFIG_MAX_VALIDATORS_PER_FIELD) {
         LOG_ERROR("Max validators reached for field '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_validator: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_validator: capacity exceeded");
         return false;
     }
 
@@ -744,7 +744,7 @@ bool config_schema_add_dependency(
     if (field->dependency_count >= CONFIG_MAX_DEPENDENCIES_PER_FIELD) {
         LOG_ERROR("Max dependencies reached for field '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_dependency: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_dependency: capacity exceeded");
         return false;
     }
 
@@ -799,7 +799,7 @@ bool config_schema_add_dependency_with_constraint(
     if (field->dependency_count >= CONFIG_MAX_DEPENDENCIES_PER_FIELD) {
         LOG_ERROR("Max dependencies reached for field '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_dependency_with_constraint: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_schema_add_dependency_with_constraint: capacity exceeded");
         return false;
     }
 
@@ -875,7 +875,6 @@ bool config_schema_has_circular_dependencies(config_validation_schema_t schema) 
     // HOW:  DFS from each field
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_has_circular_dependencies: schema is NULL");
         return false;
     }
 
@@ -895,7 +894,6 @@ bool config_schema_has_circular_dependencies(config_validation_schema_t schema) 
     }
 
     nimcp_platform_rwlock_unlock(&schema->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_has_circular_dependencies: operation failed");
     return false;
 }
 
@@ -1151,7 +1149,6 @@ bool config_apply_defaults(config_validation_schema_t schema) {
 
 bool config_schema_has_field(config_validation_schema_t schema, const char* key) {
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_has_field: required parameter is NULL (schema, key)");
         return false;
     }
 
@@ -1186,7 +1183,6 @@ bool config_schema_get_field_type(
 
 bool config_schema_is_field_required(config_validation_schema_t schema, const char* key) {
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_is_field_required: required parameter is NULL (schema, key)");
         return false;
     }
 

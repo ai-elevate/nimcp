@@ -201,12 +201,10 @@ bool pr_predictive_bridge_config_validate(const pr_predictive_bridge_config_t* c
 
     if (config->pe_threshold_update <= 0.0f) {
         set_error("pe_threshold_update must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: validation failed");
         return false;
     }
     if (config->pe_threshold_new <= 0.0f) {
         set_error("pe_threshold_new must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: validation failed");
         return false;
     }
     if (config->pe_threshold_update >= config->pe_threshold_new) {
@@ -1684,7 +1682,6 @@ void pr_predictive_bridge_print_state(const pr_predictive_bridge_t* bridge) {
 
 bool pr_predictive_bridge_is_ready(const pr_predictive_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_predictive_bridge_is_ready: bridge is NULL");
         return false;
     }
 

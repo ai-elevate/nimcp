@@ -735,7 +735,7 @@ nimcp_error_t override_controller_request_override(
     if (controller->request_count >= controller->config.max_pending) {
         controller_unlock(controller);
         LOG_ERROR("%s: Request queue full", MODULE_NAME);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     // Validate authentication
@@ -1187,7 +1187,7 @@ nimcp_error_t override_request_add_capability(
     NIMCP_CHECK_THROW(level >= 0.0f && level <= 1.0f, NIMCP_ERROR_INVALID_PARAM,
                       "level must be in range [0.0, 1.0]");
     NIMCP_CHECK_THROW(request->capability_count < NIMCP_OVERRIDE_MAX_CAPABILITY_PARAMS,
-                      NIMCP_ERROR_BUFFER_OVERFLOW, "capability count exceeds maximum");
+                      NIMCP_ERROR_OUT_OF_RANGE, "capability count exceeds maximum");
 
     capability_reduction_t* cap = &request->capabilities[request->capability_count];
     cap->capability = capability;

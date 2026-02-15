@@ -158,6 +158,8 @@ void triplet_stdp_immune_bridge_destroy(triplet_stdp_immune_bridge_t bridge) {
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
         bridge->base.mutex = NULL;
     }
 
@@ -453,7 +455,6 @@ bool triplet_stdp_immune_is_plasticity_impaired(
     const triplet_stdp_immune_bridge_t bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_is_plasticity_impaired: bridge is NULL");
         return false;
     }
 
@@ -529,7 +530,6 @@ bool triplet_stdp_immune_is_bio_async_connected(
     const triplet_stdp_immune_bridge_t bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

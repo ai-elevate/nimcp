@@ -58,7 +58,7 @@ parietal_thalamic_bridge_t* parietal_thalamic_bridge_create(void* parietal,
 
     parietal_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(parietal_thalamic_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

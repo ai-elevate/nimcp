@@ -572,7 +572,6 @@ bool shannon_monitor_is_bottlenecked(
     const shannon_monitor_t* monitor
 ) {
     if (!monitor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shannon_monitor_is_bottlenecked: monitor is NULL");
         return false;
     }
     return monitor->metrics.bottleneck_detected;

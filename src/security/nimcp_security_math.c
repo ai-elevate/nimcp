@@ -267,7 +267,7 @@ nimcp_entropy_analyzer_t* nimcp_entropy_create(void)
     nimcp_entropy_analyzer_t* analyzer = nimcp_calloc(1, sizeof(*analyzer));
     if (!analyzer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analyzer is NULL");
 
         return NULL;
 
@@ -557,7 +557,7 @@ nimcp_trust_network_t* nimcp_trust_create(void)
     nimcp_trust_network_t* network = nimcp_calloc(1, sizeof(*network));
     if (!network) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network is NULL");
 
         return NULL;
 
@@ -826,7 +826,6 @@ bool nimcp_trust_is_trusted(
 {
     nimcp_trust_score_t score;
     if (nimcp_trust_get_score(network, entity_id, &score) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_trust_is_trusted: validation failed");
         return false;
     }
     return score.expected_trust >= threshold;
@@ -864,7 +863,7 @@ nimcp_dp_context_t* nimcp_dp_create(void)
     nimcp_dp_context_t* ctx = nimcp_calloc(1, sizeof(*ctx));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
 

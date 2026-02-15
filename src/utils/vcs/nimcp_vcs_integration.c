@@ -111,7 +111,7 @@ vcs_config_t vcs_default_config(void) {
 vcs_integration_t* vcs_create(const vcs_config_t* config) {
     vcs_integration_t* vcs = nimcp_calloc(1, sizeof(vcs_integration_t));
     if (!vcs) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vcs is NULL");
 
         return NULL;
     }
@@ -216,7 +216,6 @@ void vcs_destroy(vcs_integration_t* vcs) {
 
 bool vcs_is_ready(const vcs_integration_t* vcs) {
     if (!vcs || vcs->magic != VCS_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_is_ready: vcs is NULL");
         return false;
     }
     return vcs->ready;
@@ -902,12 +901,10 @@ int vcs_get_stats(const vcs_integration_t* vcs, vcs_stats_t* stats) {
 
 bool vcs_has_uncommitted_changes(vcs_integration_t* vcs, const char* file_path) {
     if (!vcs || !file_path) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs_has_uncommitted_changes: required parameter is NULL (vcs, file_path)");
         return false;
     }
 
     if (vcs->detected_type != VCS_TYPE_GIT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_has_uncommitted_changes: validation failed");
         return false;
     }
 
@@ -916,7 +913,6 @@ bool vcs_has_uncommitted_changes(vcs_integration_t* vcs, const char* file_path) 
     snprintf(cmd, sizeof(cmd), "git status --porcelain \"%s\"", file_path);
 
     if (execute_git_command(vcs, cmd, output, sizeof(output)) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_has_uncommitted_changes: validation failed");
         return false;
     }
 
@@ -935,7 +931,6 @@ bool vcs_is_repo_clean(vcs_integration_t* vcs) {
 
     char output[256];
     if (execute_git_command(vcs, "git status --porcelain", output, sizeof(output)) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_is_repo_clean: validation failed");
         return false;
     }
 

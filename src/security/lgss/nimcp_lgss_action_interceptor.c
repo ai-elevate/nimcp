@@ -697,7 +697,7 @@ static nimcp_error_t create_escalation_unlocked(
     // Check escalation queue capacity
     if (aix->escalation_count >= NIMCP_AIX_MAX_ESCALATIONS) {
         LOG_ERROR("%s: Escalation queue full", MODULE_NAME);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     // Allocate escalation entry
@@ -1035,7 +1035,7 @@ nimcp_error_t aix_evaluate_async(
     if (aix->pending_count >= aix->config.max_pending) {
         aix_unlock(aix);
         LOG_ERROR("%s: Pending queue full", MODULE_NAME);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     // Allocate pending entry

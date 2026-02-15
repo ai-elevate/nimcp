@@ -141,51 +141,40 @@ bool dragonfly_immune_validate_config(const dragonfly_immune_config_t* config) {
 
     /* Check threshold ordering */
     if (config->mild_impairment_threshold < config->moderate_impairment_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->moderate_impairment_threshold < config->severe_impairment_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->severe_impairment_threshold < config->critical_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
 
     /* Check thresholds in valid range */
     if (config->critical_threshold < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->mild_impairment_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
 
     /* Check positive values */
     if (config->failure_stress_increment < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->success_stress_decrement < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->stress_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->energy_per_pursuit_j < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->energy_recovery_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
     if (config->min_energy_for_hunt < 0.0f || config->min_energy_for_hunt > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_validate_config: validation failed");
         return false;
     }
 

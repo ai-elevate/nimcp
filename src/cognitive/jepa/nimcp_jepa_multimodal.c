@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_multimodal)
 //=============================================================================
@@ -1415,10 +1416,10 @@ static int projection_create(
         float scale2 = sqrtf(2.0f / (float)(config->hidden_dim + config->output_dim));
 
         for (uint32_t i = 0; i < config->input_dim * config->hidden_dim; i++) {
-            p->hidden_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale1;
+            p->hidden_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale1;
         }
         for (uint32_t i = 0; i < config->hidden_dim * config->output_dim; i++) {
-            p->weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale2;
+            p->weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale2;
         }
     } else {
         /* Linear projection */
@@ -1432,7 +1433,7 @@ static int projection_create(
 
         float scale = sqrtf(2.0f / (float)(config->input_dim + config->output_dim));
         for (uint32_t i = 0; i < config->input_dim * config->output_dim; i++) {
-            p->weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale;
+            p->weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale;
         }
     }
 

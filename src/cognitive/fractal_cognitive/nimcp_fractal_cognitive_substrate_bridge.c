@@ -162,6 +162,8 @@ void fractal_cognitive_substrate_bridge_destroy(fractal_cognitive_substrate_brid
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);

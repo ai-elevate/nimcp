@@ -398,7 +398,7 @@ static void* bg_mcts_clone_state(const void* state, void* user_data) {
         nimcp_free(clone->cortical_input);
         nimcp_free(clone->thalamic_values);
         nimcp_free(clone);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mcts_clone_state: required parameter is NULL (clone->cortical_input, clone->thalamic_values)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_mcts_clone_state: required parameter is NULL (clone->cortical_input, clone->thalamic_values)");
         return NULL;
     }
 
@@ -1193,7 +1193,6 @@ int basal_ganglia_strengthen_habit(basal_ganglia_t* bg, uint32_t habit_id,
 bool basal_ganglia_check_habit(const basal_ganglia_t* bg, uint32_t context,
                                 uint32_t* action_id) {
     if (!bg || !action_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_get_rpe: required parameter is NULL (bg, action_id)");
         return false;
     }
 
@@ -1209,7 +1208,6 @@ bool basal_ganglia_check_habit(const basal_ganglia_t* bg, uint32_t context,
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bg->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basal_ganglia_get_rpe: operation failed");
     return false;
 }
 
@@ -1240,7 +1238,6 @@ int basal_ganglia_set_habit_mode(basal_ganglia_t* bg, bool habitual) {
 
 bool basal_ganglia_is_habit_mode(const basal_ganglia_t* bg) {
     if (!bg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_is_habit_mode: bg is NULL");
         return false;
     }
 
@@ -1499,7 +1496,6 @@ int basal_ganglia_disconnect_bio_async(basal_ganglia_t* bg) {
 
 bool basal_ganglia_is_bio_async_connected(const basal_ganglia_t* bg) {
     if (!bg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_is_bio_async_connected: bg is NULL");
         return false;
     }
 

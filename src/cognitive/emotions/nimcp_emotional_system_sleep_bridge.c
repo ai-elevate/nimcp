@@ -326,7 +326,6 @@ float emotional_sleep_get_regulation_capacity(const emotional_sleep_bridge_t bri
 
 bool emotional_sleep_is_processing_active(const emotional_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_sleep_is_processing_active: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

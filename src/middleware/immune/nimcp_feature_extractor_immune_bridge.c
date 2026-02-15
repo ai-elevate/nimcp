@@ -694,7 +694,6 @@ float feature_immune_get_precision_factor(const feature_immune_bridge_t* bridge)
 
 bool feature_immune_is_threat_detected(const feature_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_is_threat_detected: bridge is NULL");
         return false;
     }
 
@@ -777,7 +776,6 @@ int feature_extractor_immune_disconnect_bio_async(feature_immune_bridge_t* bridg
  */
 bool feature_extractor_immune_is_bio_async_connected(const feature_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

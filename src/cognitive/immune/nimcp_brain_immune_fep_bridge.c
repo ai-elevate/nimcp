@@ -559,7 +559,6 @@ int brain_immune_fep_disconnect_bio_async(brain_immune_fep_bridge_t* bridge) {
 
 bool brain_immune_fep_is_bio_async_connected(const brain_immune_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_fep_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

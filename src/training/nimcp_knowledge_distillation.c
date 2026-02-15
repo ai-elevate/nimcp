@@ -301,7 +301,7 @@ int kd_register_teacher(kd_ctx_t* ctx, const kd_teacher_t* teacher) {
 
     if (ctx->num_teachers >= KD_MAX_TEACHERS) {
         nimcp_mutex_unlock(ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kd_register_teacher: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kd_register_teacher: capacity exceeded");
         return -1;
     }
 
@@ -953,25 +953,23 @@ int kd_validate_config(const kd_config_t* config) {
 
     /* Validate method */
     if (config->method >= KD_METHOD_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kd_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kd_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate temperature */
     if (config->response.temperature <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kd_validate_config: validation failed");
         return -1;
     }
 
     /* Validate alpha */
     if (config->response.alpha < 0.0f || config->response.alpha > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kd_validate_config: validation failed");
         return -1;
     }
 
     /* Validate loss type */
     if (config->response.loss_type >= KD_LOSS_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kd_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kd_validate_config: capacity exceeded");
         return -1;
     }
 

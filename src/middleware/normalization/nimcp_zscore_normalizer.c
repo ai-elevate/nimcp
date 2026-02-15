@@ -70,7 +70,7 @@ zscore_normalizer_t* zscore_normalizer_create(
     zscore_normalizer_t* norm = nimcp_calloc(1, sizeof(zscore_normalizer_t));
     if (!norm) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "norm is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "norm is NULL");
 
         return NULL;
 

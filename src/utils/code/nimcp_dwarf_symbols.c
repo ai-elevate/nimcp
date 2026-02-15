@@ -1267,7 +1267,6 @@ void dwarf_symbols_print_stats(dwarf_symbols_t syms) {
 
 bool dwarf_symbols_has_dwarf(dwarf_symbols_t syms) {
     if (!syms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_has_dwarf: syms is NULL");
         return false;
     }
     struct dwarf_symbols* s = (struct dwarf_symbols*)syms;
@@ -1275,7 +1274,6 @@ bool dwarf_symbols_has_dwarf(dwarf_symbols_t syms) {
     return s->dwarf_available;
 #else
     (void)s;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_has_dwarf: syms is NULL");
     return false;
 #endif
 }
@@ -1300,7 +1298,6 @@ bool dwarf_symbols_validate(dwarf_symbols_t syms) {
 
     if (s->magic != DWARF_SYMBOLS_MAGIC) {
         LOG_MODULE_ERROR(LOG_MODULE, "Validation failed: bad magic");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_validate: validation failed");
         return false;
     }
 
@@ -1318,7 +1315,6 @@ bool dwarf_symbols_validate(dwarf_symbols_t syms) {
 
     if (s->binary_path[0] == '\0') {
         LOG_MODULE_ERROR(LOG_MODULE, "Validation failed: no binary path");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_validate: validation failed");
         return false;
     }
 

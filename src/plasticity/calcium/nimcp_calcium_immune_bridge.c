@@ -601,7 +601,6 @@ int calcium_immune_get_instability_state(
 
 bool calcium_immune_is_dynamics_impaired(const calcium_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_is_dynamics_impaired: bridge is NULL");
         return false;
     }
 
@@ -674,7 +673,6 @@ int calcium_immune_disconnect_bio_async(calcium_immune_bridge_t* bridge) {
 
 bool calcium_immune_is_bio_async_connected(const calcium_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

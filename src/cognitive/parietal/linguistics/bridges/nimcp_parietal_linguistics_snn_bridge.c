@@ -1078,7 +1078,6 @@ const char* ling_snn_phoneme_class(ling_phoneme_t phoneme) {
 
 bool ling_snn_phoneme_is_voiced(ling_phoneme_t phoneme) {
     if (phoneme < 0 || phoneme >= LING_PHONEME_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ling_snn_phoneme_is_voiced: capacity exceeded");
         return false;
     }
     return PHONEME_VOICED[phoneme];

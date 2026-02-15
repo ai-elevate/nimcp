@@ -276,7 +276,7 @@ int ofc_present_option(nimcp_ofc_t* ofc, uint32_t stimulus_id,
         if (ofc->num_options >= ofc->max_options) {
             nimcp_mutex_unlock(ofc->mutex);
             NIMCP_LOG_WARN(OFC_LOG_TAG, "Max options reached");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ofc_reset: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ofc_reset: capacity exceeded");
             return -1;
         }
         slot = (int32_t)ofc->num_options++;

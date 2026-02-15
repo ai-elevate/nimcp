@@ -326,7 +326,6 @@ int bio_async_plasticity_bridge_disconnect(bio_async_plasticity_bridge_t* bridge
 
 bool bio_async_plasticity_bridge_is_connected(const bio_async_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_plasticity_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;

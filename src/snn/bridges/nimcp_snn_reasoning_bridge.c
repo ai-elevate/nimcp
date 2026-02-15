@@ -240,7 +240,6 @@ int snn_reasoning_compete_populations(
 
 bool snn_reasoning_check_decision_threshold(const snn_reasoning_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_check_decision_threshold: bridge is NULL");
         return false;
     }
     return bridge->state.evidence_accumulation >= bridge->config.decision_threshold;

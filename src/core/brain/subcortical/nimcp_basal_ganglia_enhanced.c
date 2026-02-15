@@ -132,7 +132,7 @@ bg_enhanced_t* bg_enhanced_create(const bg_enhanced_config_t* config) {
     bg_enhanced_t* bge = nimcp_calloc(1, sizeof(bg_enhanced_t));
     if (!bge) {
         NIMCP_LOGGING_ERROR("Failed to allocate enhanced BG");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bge is NULL");
 
         return NULL;
     }

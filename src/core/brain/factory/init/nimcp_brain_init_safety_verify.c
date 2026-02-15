@@ -211,7 +211,6 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
     lgss_status_t status = lgss_get_status(brain->lgss);
     if (status != LGSS_STATUS_ACTIVE && status != LGSS_STATUS_DEGRADED) {
         LOG_ERROR("FATAL: LGSS is not active (status=%s)", lgss_status_name(status));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_verify_safety: validation failed");
         return false;
     }
 
@@ -226,7 +225,6 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
     // Step 4: Verify integrity
     if (lgss_verify_integrity(brain->lgss) != 0) {
         LOG_ERROR("FATAL: Safety KB integrity verification failed!");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_verify_safety: validation failed");
         return false;
     }
     LOG_INFO("[PASS] Safety KB integrity verified");

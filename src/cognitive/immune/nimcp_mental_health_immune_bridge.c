@@ -811,7 +811,6 @@ int mental_health_immune_get_inflammation_state(
 
 bool mental_health_immune_is_cytokine_depression(const mental_health_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_is_cytokine_depression: bridge is NULL");
         return false;
     }
 
@@ -933,7 +932,6 @@ int mental_health_immune_disconnect_bio_async(mental_health_immune_bridge_t* bri
  */
 bool mental_health_immune_is_bio_async_connected(const mental_health_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

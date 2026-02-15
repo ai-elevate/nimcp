@@ -623,7 +623,6 @@ bool nimcp_fp16_scale_gradients(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* gr
 bool nimcp_fp16_check_inf_nan(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* data, int* found_inf) {
     (void)ctx;
     if (!data || !found_inf || !data->data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fp16_check_inf_nan: required parameter is NULL");
         return false;
     }
     *found_inf = 0;

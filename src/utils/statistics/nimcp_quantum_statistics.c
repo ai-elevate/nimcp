@@ -316,14 +316,12 @@ qstats_result_t qstats_pure_state_normalize(qstats_pure_state_t* state) {
 
 bool qstats_density_matrix_is_valid(const qstats_density_matrix_t* dm) {
     if (!dm || !dm->elements) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qstats_density_matrix_is_valid: required parameter is NULL (dm, dm->elements)");
         return false;
     }
 
     // Check trace = 1
     float trace = qstats_trace(dm);
     if (fabsf(trace - 1.0f) > 1e-4f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_density_matrix_is_valid: validation failed");
         return false;
     }
 
@@ -334,7 +332,6 @@ bool qstats_density_matrix_is_valid(const qstats_density_matrix_t* dm) {
             qstats_complex_t rho_ji = dm->elements[j * dm->dim + i];
             if (fabsf(rho_ij.real - rho_ji.real) > 1e-6f ||
                 fabsf(rho_ij.imag + rho_ji.imag) > 1e-6f) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_density_matrix_is_valid: validation failed");
                 return false;
             }
         }

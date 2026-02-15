@@ -440,7 +440,6 @@ float sleep_immune_compute_cytokine_sleep_pressure(const sleep_immune_bridge_t* 
 
 bool sleep_immune_is_sleep_fragmented(const sleep_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_immune_is_sleep_fragmented: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -787,7 +786,6 @@ int sleep_immune_get_deprivation_state(
 
 bool sleep_immune_is_sickness_sleep(const sleep_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_immune_is_sickness_sleep: bridge is NULL");
         return false;
     }
 
@@ -810,7 +808,6 @@ float sleep_immune_get_quality_impairment(const sleep_immune_bridge_t* bridge) {
 
 bool sleep_immune_is_sleep_deprived(const sleep_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_immune_is_sleep_deprived: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -907,7 +904,6 @@ int sleep_immune_disconnect_bio_async(sleep_immune_bridge_t* bridge) {
  */
 bool sleep_immune_is_bio_async_connected(const sleep_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

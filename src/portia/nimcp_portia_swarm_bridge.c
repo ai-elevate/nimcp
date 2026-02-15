@@ -254,7 +254,7 @@ portia_swarm_bridge_t* portia_swarm_bridge_create(
     portia_swarm_bridge_t* bridge = nimcp_malloc(sizeof(portia_swarm_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("portia_swarm_bridge_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -526,7 +526,6 @@ bool portia_swarm_is_bio_async_connected(const portia_swarm_bridge_t* bridge) {
      * HOW:  Return bio_async_enabled flag
      */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_swarm_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

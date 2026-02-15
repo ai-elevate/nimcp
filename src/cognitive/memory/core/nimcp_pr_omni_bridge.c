@@ -339,13 +339,11 @@ bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
 
     if (config->binding_threshold < 0.0f || config->binding_threshold > 1.0f) {
         set_error("binding_threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
     if (config->coherence_threshold < 0.0f || config->coherence_threshold > 1.0f) {
         set_error("coherence_threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -353,21 +351,18 @@ bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
     if (config->fusion_strategy < PR_OMNI_FUSION_UNION ||
         config->fusion_strategy > PR_OMNI_FUSION_DOMINANT) {
         set_error("Invalid fusion_strategy");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Validate SLERP parameter */
     if (config->slerp_base_t < 0.0f || config->slerp_base_t > 1.0f) {
         set_error("slerp_base_t must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Validate Kuramoto coupling */
     if (config->kuramoto_coupling < 0.0f || config->kuramoto_coupling > 2.0f) {
         set_error("kuramoto_coupling should be in [0, 2]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -1824,7 +1819,6 @@ void pr_omni_bridge_print_state(const pr_omni_bridge_t* bridge) {
 
 bool pr_omni_bridge_is_connected(const pr_omni_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_omni_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

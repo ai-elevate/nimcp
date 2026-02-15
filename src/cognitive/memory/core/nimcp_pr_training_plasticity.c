@@ -396,57 +396,47 @@ bool pr_training_plasticity_config_validate(
 
     /* Mode must be valid */
     if (config->mode >= PR_TRAINING_MODE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_training_plasticity_config_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_training_plasticity_config_validate: capacity exceeded");
         return false;
     }
 
     /* Weights must be valid */
     if (config->gradient_weight < 0.0f || config->gradient_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->plasticity_weight < 0.0f || config->plasticity_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->gradient_weight + config->plasticity_weight < PR_TRAIN_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
 
     /* Timing scale must be positive */
     if (config->timing_scale <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
 
     /* STDP delta range must be valid */
     if (config->min_stdp_delta < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->max_stdp_delta <= config->min_stdp_delta) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
 
     /* Pseudo learning rate must be positive */
     if (config->pseudo_learning_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
 
     /* Loss weights must be valid */
     if (config->supervised_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->unsupervised_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->supervised_weight + config->unsupervised_weight < PR_TRAIN_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
         return false;
     }
 
@@ -1872,7 +1862,7 @@ int pr_training_set_mode(
         return -1;
     }
     if (mode >= PR_TRAINING_MODE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_training_set_mode: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_training_set_mode: capacity exceeded");
         return -1;
     }
 

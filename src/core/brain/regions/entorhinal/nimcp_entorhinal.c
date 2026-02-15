@@ -391,7 +391,7 @@ nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
     nimcp_entorhinal_t* ec = nimcp_calloc(1, sizeof(nimcp_entorhinal_t));
     if (!ec) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ec is NULL");
 
         return NULL;
 
@@ -791,8 +791,18 @@ int entorhinal_init_perception_bridge(nimcp_entorhinal_t* ec,
     ec->perception_bridge.perception = perception;
     ec->perception_bridge.visual_dim = 256;
     ec->perception_bridge.visual_input = nimcp_calloc(ec->perception_bridge.visual_dim, sizeof(float));
+    if (!ec->perception_bridge.visual_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entorhinal_init_perception_bridge: visual_input alloc failed");
+        return -1;
+    }
     ec->perception_bridge.auditory_dim = 128;
     ec->perception_bridge.auditory_input = nimcp_calloc(ec->perception_bridge.auditory_dim, sizeof(float));
+    if (!ec->perception_bridge.auditory_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entorhinal_init_perception_bridge: auditory_input alloc failed");
+        nimcp_free(ec->perception_bridge.visual_input);
+        ec->perception_bridge.visual_input = NULL;
+        return -1;
+    }
     ec->perception_bridge.salience_signal = 0.0f;
 
     return 0;

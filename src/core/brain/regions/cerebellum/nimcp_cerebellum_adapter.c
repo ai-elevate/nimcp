@@ -447,7 +447,7 @@ static granule_layer_t* create_granule_layer(uint32_t num_cells, uint32_t num_mo
     granule_layer_t* layer = nimcp_calloc(1, sizeof(granule_layer_t));
     if (!layer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "layer is NULL");
 
         return NULL;
 
@@ -515,7 +515,7 @@ static purkinje_layer_t* create_purkinje_layer(uint32_t num_cells, uint32_t num_
     purkinje_layer_t* layer = nimcp_calloc(1, sizeof(purkinje_layer_t));
     if (!layer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "layer is NULL");
 
         return NULL;
 
@@ -588,7 +588,7 @@ static deep_nuclei_t* create_deep_nuclei(uint32_t num_dentate, uint32_t num_inte
     deep_nuclei_t* nuclei = nimcp_calloc(1, sizeof(deep_nuclei_t));
     if (!nuclei) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nuclei is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nuclei is NULL");
 
         return NULL;
 
@@ -713,7 +713,7 @@ static climbing_fiber_system_t* create_climbing_fibers(uint32_t num_fibers, uint
     climbing_fiber_system_t* cf = nimcp_calloc(1, sizeof(climbing_fiber_system_t));
     if (!cf) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cf is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cf is NULL");
 
         return NULL;
 
@@ -729,7 +729,7 @@ static climbing_fiber_system_t* create_climbing_fibers(uint32_t num_fibers, uint
         if (cf->error_signals) nimcp_free(cf->error_signals);
         if (cf->purkinje_targets) nimcp_free(cf->purkinje_targets);
         nimcp_free(cf);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_climbing_fibers: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_climbing_fibers: validation failed");
         return NULL;
     }
 
@@ -765,7 +765,7 @@ static glomerular_layer_t* create_glomerular_layer(uint32_t num_mossy,
     glomerular_layer_t* layer = nimcp_calloc(1, sizeof(glomerular_layer_t));
     if (!layer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "layer is NULL");
 
         return NULL;
 
@@ -859,7 +859,7 @@ static molecular_layer_interneurons_t* create_molecular_interneurons(
     molecular_layer_interneurons_t* layer = nimcp_calloc(1, sizeof(molecular_layer_interneurons_t));
     if (!layer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "layer is NULL");
 
         return NULL;
 
@@ -1001,7 +1001,7 @@ static golgi_cell_network_t* create_golgi_network(uint32_t num_golgi,
     golgi_cell_network_t* network = nimcp_calloc(1, sizeof(golgi_cell_network_t));
     if (!network) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network is NULL");
 
         return NULL;
 

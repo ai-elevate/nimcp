@@ -219,7 +219,6 @@ void nimcp_brain_qreason_destroy(brain_t brain) {
 
 bool nimcp_brain_qreason_is_enabled(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_is_enabled: brain is NULL");
         return false;
     }
     struct brain_struct* b = (struct brain_struct*)brain;

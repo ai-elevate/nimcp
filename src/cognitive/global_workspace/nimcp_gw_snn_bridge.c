@@ -266,7 +266,7 @@ gw_snn_bridge_t* gw_snn_create(const gw_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->access_buffer || !bridge->prev_state) {
         gw_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_snn_create: operation failed");
         return NULL;
     }
 
@@ -781,7 +781,6 @@ bool gw_snn_check_ignition(
     float* ignition_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_snn_check_ignition: bridge is NULL");
         return false;
     }
 
@@ -805,7 +804,6 @@ bool gw_snn_check_broadcast(
     float* broadcast_strength
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_snn_check_broadcast: bridge is NULL");
         return false;
     }
 
@@ -829,7 +827,6 @@ bool gw_snn_check_binding(
     float* binding_strength
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_snn_check_binding: bridge is NULL");
         return false;
     }
 
@@ -1103,7 +1100,6 @@ int gw_snn_bio_async_disconnect(gw_snn_bridge_t* bridge) {
 
 bool gw_snn_is_bio_async_connected(gw_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

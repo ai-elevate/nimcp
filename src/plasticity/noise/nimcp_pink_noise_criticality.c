@@ -16,6 +16,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_criticality)
 
@@ -418,7 +419,7 @@ int criticality_generate_avalanche(
     }
 
     // Generate power-law distributed size
-    float u = (float)rand() / (float)RAND_MAX;
+    float u = (float)nimcp_tl_rand() / (float)RAND_MAX;
     float size = powf(1.0f - u, -1.0f / ca->measured_tau);
     size = fminf(size, 100.0f);  // Cap size
 

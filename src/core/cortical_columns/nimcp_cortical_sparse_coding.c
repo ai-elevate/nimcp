@@ -369,6 +369,8 @@ void cortical_sparse_destroy(cortical_sparse_coding_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     /* Free arrays */
@@ -937,7 +939,6 @@ bool cortical_sparse_is_bio_async_connected(
 ) {
     /* Guard clause: validate parameter */
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_sparse_is_bio_async_connected: system is NULL");
         return false;
     }
 
@@ -1270,7 +1271,6 @@ bool cortical_sparse_is_ternary_mode(
     const cortical_sparse_coding_system_t* system
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_sparse_is_ternary_mode: system is NULL");
         return false;
     }
 

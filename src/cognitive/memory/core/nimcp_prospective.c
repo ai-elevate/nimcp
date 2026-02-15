@@ -286,7 +286,7 @@ static bool add_to_active_monitors(prospective_memory_t pm, prospective_intentio
         return false;
     }
     if (pm->num_active >= pm->max_active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_to_active_monitors: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_to_active_monitors: capacity exceeded");
         return false;
     }
 
@@ -364,11 +364,9 @@ static float compute_time_activation(prospective_intention_t* intent, float curr
 static bool check_time_trigger_internal(prospective_intention_t* intent, float current_time,
                                         float* strength_out) {
     if (!intent || intent->type != PROSP_TIME_BASED) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: intent is NULL");
         return false;
     }
     if (intent->status != PROSP_PENDING) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
 
@@ -393,7 +391,6 @@ static bool check_time_trigger_internal(prospective_intention_t* intent, float c
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -404,15 +401,12 @@ static bool check_event_trigger_internal(prospective_intention_t* intent,
                                          const prime_signature_t* context,
                                          float* strength_out) {
     if (!intent || !context) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_time_activation: required parameter is NULL (intent, context)");
         return false;
     }
     if (intent->type != PROSP_EVENT_BASED) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
     if (intent->status != PROSP_PENDING) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
 
@@ -426,7 +420,6 @@ static bool check_event_trigger_internal(prospective_intention_t* intent,
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -438,15 +431,12 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
                                             const char* activity_tag,
                                             float* strength_out) {
     if (!intent) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_time_activation: intent is NULL");
         return false;
     }
     if (intent->type != PROSP_ACTIVITY_BASED) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
     if (intent->status != PROSP_PENDING) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
 
@@ -457,7 +447,6 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
         // Trigger on any activity (possibly filtered by tag)
         if (trigger->activity_tag[0] != '\0' && activity_tag) {
             if (strstr(activity_tag, trigger->activity_tag) == NULL) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
                 return false;
             }
         }
@@ -471,7 +460,6 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -482,15 +470,12 @@ static bool check_location_trigger_internal(prospective_intention_t* intent,
                                             const prime_signature_t* location,
                                             float* strength_out) {
     if (!intent || !location) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_time_activation: required parameter is NULL (intent, location)");
         return false;
     }
     if (intent->type != PROSP_LOCATION_BASED) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
     if (intent->status != PROSP_PENDING) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
         return false;
     }
 
@@ -503,7 +488,6 @@ static bool check_location_trigger_internal(prospective_intention_t* intent,
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -590,19 +574,15 @@ NIMCP_EXPORT bool prospective_config_validate(const prospective_config_t* config
         return false;
     }
     if (config->default_importance < 0 || config->default_importance > 10) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
         return false;
     }
     if (config->default_urgency < 0 || config->default_urgency > 10) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
         return false;
     }
     if (config->activation_decay_rate < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
         return false;
     }
     if (config->similarity_threshold < 0 || config->similarity_threshold > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
         return false;
     }
 
@@ -2078,7 +2058,6 @@ NIMCP_EXPORT pr_memory_node_t* prospective_get_memory_node(
 
 NIMCP_EXPORT bool prospective_should_check_now(prospective_memory_t pm) {
     if (!pm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_should_check_now: pm is NULL");
         return false;
     }
 

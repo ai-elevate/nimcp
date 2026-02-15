@@ -368,7 +368,7 @@ static bool copy_value(
         dst->s = nimcp_strdup(src->s);
         if (!dst->s) {
             LOG_ERROR("Failed to duplicate string value");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_value: dst->s is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_value: dst->s is NULL");
             return false;
         }
     } else {
@@ -576,7 +576,7 @@ bool config_hash_set(
     size_t key_len = strlen(key);
     if (key_len >= CONFIG_HASH_MAX_KEY_LEN) {
         LOG_ERROR("Key too long: %zu >= %d", key_len, CONFIG_HASH_MAX_KEY_LEN);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_hash_set: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_hash_set: capacity exceeded");
         return false;
     }
 
@@ -637,7 +637,7 @@ bool config_hash_set(
         if (!entry->key) {
             LOG_ERROR("Failed to duplicate key");
             nimcp_platform_rwlock_unlock(&table->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_set: entry->key is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_hash_set: entry->key is NULL");
             return false;
         }
 

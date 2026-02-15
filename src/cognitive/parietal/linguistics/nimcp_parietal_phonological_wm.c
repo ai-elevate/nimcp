@@ -425,27 +425,21 @@ bool phonological_wm_validate_config(const phonological_wm_config_t* config) {
     }
 
     if (config->buffer_capacity < 1 || config->buffer_capacity > LINGUISTICS_PHONOLOGICAL_BUFFER_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
         return false;
     }
     if (config->decay_time_ms < 100) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
         return false;
     }
     if (config->rehearsal_rate < 0.1f || config->rehearsal_rate > 20.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
         return false;
     }
     if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
         return false;
     }
     if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
         return false;
     }
     if (config->arousal_sensitivity < 0.0f || config->arousal_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
         return false;
     }
 
@@ -460,7 +454,7 @@ phonological_wm_t* phonological_wm_create_custom(const phonological_wm_config_t*
     phonological_wm_t* pwm = (phonological_wm_t*)nimcp_calloc(1, sizeof(phonological_wm_t));
     if (!pwm) {
         set_last_error("Failed to allocate phonological working memory");
-        NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "phonological_wm_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "phonological_wm_create_custom: allocation failed");
         return NULL;
     }
 

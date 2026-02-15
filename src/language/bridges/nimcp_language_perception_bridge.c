@@ -762,7 +762,6 @@ bool language_perception_bridge_is_mcgurk_active(
     const language_perception_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_is_mcgurk_active: bridge is NULL");
         return false;
     }
     return bridge->multimodal_data.mcgurk_active;

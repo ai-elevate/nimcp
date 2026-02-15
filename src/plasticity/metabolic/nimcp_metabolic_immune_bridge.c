@@ -382,11 +382,9 @@ int metabolic_immune_update_atp_effects(metabolic_immune_bridge_t* bridge) {
 
 bool metabolic_immune_is_impaired_by_atp(const metabolic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_is_impaired_by_atp: bridge is NULL");
         return false;
     }
     if (!bridge->enable_atp_immune_feedback) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_is_impaired_by_atp: bridge->enable_atp_immune_feedback is NULL");
         return false;
     }
 
@@ -547,7 +545,6 @@ int metabolic_immune_disconnect_bio_async(metabolic_immune_bridge_t* bridge) {
 
 bool metabolic_immune_is_bio_async_connected(const metabolic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

@@ -626,7 +626,6 @@ int collective_cognition_fep_bridge_unregister(fep_orchestrator_t* orchestrator)
 
 bool collective_cognition_fep_is_registered(void) {
     if (!g_collective_fep_state.initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_cognition_fep_is_registered: g_collective_fep_state is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

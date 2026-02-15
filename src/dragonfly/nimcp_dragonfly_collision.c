@@ -175,50 +175,39 @@ bool collision_validate_config(const collision_config_t* config) {
     }
 
     if (config->detection_range_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collision_validate_config: validation failed");
         return false;
     }
     if (config->detection_cone_rad <= 0.0f || config->detection_cone_rad > M_PI) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
     if (config->peripheral_range_m < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collision_validate_config: validation failed");
         return false;
     }
 
     if (config->min_clearance_m < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
     if (config->ttc_warning_threshold_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
     if (config->ttc_critical_threshold_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
     if (config->ttc_critical_threshold_s > config->ttc_warning_threshold_s) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
 
     if (config->max_avoidance_angle_rad <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
     if (config->avoidance_aggression < 0.0f || config->avoidance_aggression > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
 
     if (config->prediction_horizon_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
     if (config->pursuit_vs_safety < 0.0f || config->pursuit_vs_safety > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
         return false;
     }
 

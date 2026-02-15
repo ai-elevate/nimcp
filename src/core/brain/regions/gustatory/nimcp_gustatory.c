@@ -96,7 +96,7 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
     /* Allocate receptors */
     gust->receptors = (taste_receptor_t*)nimcp_calloc(config->max_receptors, sizeof(taste_receptor_t));
     if (!gust->receptors) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gustatory_create: receptors allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_create: receptors allocation failed");
         nimcp_free(gust);
         return NULL;
     }
@@ -115,7 +115,7 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
     /* Allocate insula neurons */
     gust->insula_activation = (float*)nimcp_calloc(config->num_insula_neurons, sizeof(float));
     if (!gust->insula_activation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gustatory_create: insula_activation allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_create: insula_activation allocation failed");
         nimcp_free(gust->receptors);
         nimcp_free(gust);
         return NULL;
@@ -125,7 +125,7 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
     /* Allocate OFC neurons */
     gust->ofc_activation = (float*)nimcp_calloc(config->num_ofc_neurons, sizeof(float));
     if (!gust->ofc_activation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gustatory_create: ofc_activation allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_create: ofc_activation allocation failed");
         nimcp_free(gust->insula_activation);
         nimcp_free(gust->receptors);
         nimcp_free(gust);
@@ -353,7 +353,7 @@ int gust_compute_reward(nimcp_gustatory_t* gust, food_reward_t* reward) {
 
 int gust_learn_preference(nimcp_gustatory_t* gust, basic_taste_t taste, float preference_change) {
     if (!gust || taste >= TASTE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gust_learn_preference: gust is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gust_learn_preference: gust is NULL");
         return -1;
     }
     gust->learned_preferences[taste] += preference_change;
@@ -369,7 +369,6 @@ disgust_level_t gust_evaluate_disgust(nimcp_gustatory_t* gust) {
 
 bool gust_is_toxic_warning(nimcp_gustatory_t* gust) {
     if (!gust) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_is_toxic_warning: gust is NULL");
         return false;
     }
     return gust->current_perception.perceived_bitter > 0.8f;

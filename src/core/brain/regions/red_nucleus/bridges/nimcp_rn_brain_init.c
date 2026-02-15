@@ -406,7 +406,6 @@ int rn_init_immune(
 
 bool rn_is_initialized(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_is_initialized: brain is NULL");
         return false;
     }
 

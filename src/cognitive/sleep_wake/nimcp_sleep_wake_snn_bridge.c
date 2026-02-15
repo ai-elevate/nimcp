@@ -247,7 +247,7 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->arousal_buffer || !bridge->prev_state) {
         sleep_wake_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sleep_wake_snn_create: operation failed");
         return NULL;
     }
 
@@ -718,7 +718,6 @@ bool sleep_wake_snn_check_sleep_onset(
     float* sleep_pressure
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_check_sleep_onset: bridge is NULL");
         return false;
     }
 
@@ -738,7 +737,6 @@ bool sleep_wake_snn_check_high_arousal(
     float* arousal_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_check_high_arousal: bridge is NULL");
         return false;
     }
 
@@ -758,7 +756,6 @@ bool sleep_wake_snn_check_stage_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_check_stage_change: bridge is NULL");
         return false;
     }
 
@@ -979,7 +976,6 @@ int sleep_wake_snn_bio_async_disconnect(sleep_wake_snn_bridge_t* bridge) {
 
 bool sleep_wake_snn_is_bio_async_connected(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

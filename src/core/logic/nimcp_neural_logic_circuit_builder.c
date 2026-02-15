@@ -405,7 +405,7 @@ ast_node_t* parse_logic_expression(const char* expression) {
     // Guard: expression too long
     if (strlen(expression) >= MAX_EXPRESSION_LENGTH) {
         LOG_ERROR("parse_logic_expression: expression too long (max %d)", MAX_EXPRESSION_LENGTH);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parse_logic_expression: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parse_logic_expression: capacity exceeded");
         return NULL;
     }
 

@@ -677,7 +677,6 @@ int thalamic_immune_get_anomaly_state(
 
 bool thalamic_immune_is_hypervigilant(const thalamic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_is_hypervigilant: bridge is NULL");
         return false;
     }
 
@@ -781,7 +780,6 @@ int thalamic_immune_disconnect_bio_async(thalamic_immune_bridge_t* bridge) {
  */
 bool thalamic_immune_is_bio_async_connected(const thalamic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

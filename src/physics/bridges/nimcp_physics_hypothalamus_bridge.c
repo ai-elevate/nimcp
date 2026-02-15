@@ -701,7 +701,6 @@ int physics_hypo_get_stats(
 
 bool physics_hypo_is_connected(const physics_hypo_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_hypo_is_connected: bridge is NULL");
         return false;
     }
     bool has_physics = bridge->thermo || bridge->hh_pop;

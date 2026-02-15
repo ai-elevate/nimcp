@@ -704,7 +704,7 @@ int reticular_set_modulator_release(nimcp_reticular_t* reticular,
                                     reticular_modulator_t modulator,
                                     float rate) {
     if (!reticular || modulator >= RETICULAR_MODULATOR_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_wake: reticular is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reticular_wake: reticular is NULL");
         return -1;
     }
 
@@ -786,7 +786,7 @@ int reticular_stimulate_nucleus(nimcp_reticular_t* reticular,
                                 float excitation,
                                 float inhibition) {
     if (!reticular || nucleus >= RETICULAR_NUCLEUS_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_wake: reticular is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reticular_wake: reticular is NULL");
         return -1;
     }
 
@@ -872,7 +872,7 @@ int reticular_set_autonomic_setpoint(nimcp_reticular_t* reticular,
                                      reticular_autonomic_t function,
                                      float setpoint) {
     if (!reticular || function >= RETICULAR_AUTONOMIC_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_update_autonomic: reticular is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reticular_update_autonomic: reticular is NULL");
         return -1;
     }
 
@@ -943,7 +943,7 @@ int reticular_trigger_reflex(nimcp_reticular_t* reticular,
                              reticular_reflex_t reflex,
                              float stimulus) {
     if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_apply_parasympathetic_drive: reticular is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reticular_apply_parasympathetic_drive: reticular is NULL");
         return -1;
     }
 
@@ -977,7 +977,6 @@ int reticular_trigger_reflex(nimcp_reticular_t* reticular,
 bool reticular_is_reflex_active(const nimcp_reticular_t* reticular,
                                 reticular_reflex_t reflex) {
     if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_apply_parasympathetic_drive: reticular is NULL");
         return false;
     }
     return reticular->reflexes[reflex].active;
@@ -987,7 +986,7 @@ int reticular_set_reflex_threshold(nimcp_reticular_t* reticular,
                                    reticular_reflex_t reflex,
                                    float threshold) {
     if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_apply_parasympathetic_drive: reticular is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reticular_apply_parasympathetic_drive: reticular is NULL");
         return -1;
     }
 

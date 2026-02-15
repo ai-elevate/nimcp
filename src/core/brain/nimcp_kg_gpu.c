@@ -73,7 +73,7 @@ static uint64_t get_current_timestamp_ns(void) {
 kg_gpu_context_t* kg_gpu_create(kg_gpu_backend_t preferred_backend) {
     kg_gpu_context_t* gpu = nimcp_calloc(1, sizeof(kg_gpu_context_t));
     if (!gpu) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu is NULL");
 
         return NULL;
     }
@@ -151,7 +151,7 @@ int kg_gpu_enumerate_devices(
 
 int kg_gpu_select_device(kg_gpu_context_t* gpu, uint32_t device_id) {
     if (!gpu || device_id >= gpu->device_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_gpu_select_device: gpu is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_gpu_select_device: gpu is NULL");
         return -1;
     }
 

@@ -990,7 +990,6 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
 
 bool social_is_experiencing_love(const social_bond_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_is_experiencing_love: system is NULL");
         return false;
     }
     return system->emotion.experiencing_love;
@@ -998,7 +997,6 @@ bool social_is_experiencing_love(const social_bond_system_t* system) {
 
 bool social_is_lonely(const social_bond_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_is_lonely: system is NULL");
         return false;
     }
     return (system->emotion.loneliness > 0.4F);  // 0.4 threshold (~6-7 days isolation)
@@ -1007,7 +1005,6 @@ bool social_is_lonely(const social_bond_system_t* system) {
 bool social_is_loyal_to(const social_bond_system_t* system,
                        uint32_t relationship_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_is_lonely: system is NULL");
         return false;
     }
 

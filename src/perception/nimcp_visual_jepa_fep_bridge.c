@@ -71,7 +71,7 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
     visual_jepa_fep_bridge_t* bridge = nimcp_malloc(sizeof(visual_jepa_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -112,7 +112,7 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
         nimcp_free(bridge->precision.patch_precision);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_fep_bridge_default_config: bridge->effects is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_fep_bridge_default_config: bridge->effects is NULL");
         return NULL;
     }
     for (uint32_t i = 0; i < DEFAULT_NUM_PATCHES; i++) {
@@ -266,7 +266,6 @@ int visual_jepa_fep_bridge_connect_fep(
 
 bool visual_jepa_fep_bridge_is_connected(const visual_jepa_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_fep_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->visual_jepa != NULL && bridge->fep_system != NULL;

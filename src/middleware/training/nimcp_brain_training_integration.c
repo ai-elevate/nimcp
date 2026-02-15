@@ -1731,7 +1731,6 @@ bool nimcp_brain_training_check_early_stop(
     float current_loss)
 {
     if (!ctx || !ctx->config.enable_early_stopping) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_check_early_stop: required parameter is NULL (ctx, ctx->config)");
         return false;
     }
 
@@ -1769,7 +1768,6 @@ bool nimcp_brain_training_check_early_stop(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_training_check_early_stop: operation failed");
     return false;
 }
 
@@ -2494,7 +2492,6 @@ bool nimcp_brain_training_is_paused(
     const nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_is_paused: ctx is NULL");
         return false;
     }
 

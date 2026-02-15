@@ -282,16 +282,13 @@ bool tracking_validate_config(const tracking_config_t* config) {
     if (config->break_threshold < 0.0f ||
         config->break_threshold > 1.0f) return false;
     if (config->lock_threshold < config->acquisition_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "tracking_validate_config: validation failed");
         return false;
     }
     if (config->break_threshold > config->lock_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "tracking_validate_config: validation failed");
         return false;
     }
 
     if (config->prediction_horizon_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
         return false;
     }
     if (config->max_occlusion_ms == 0) {
@@ -302,25 +299,20 @@ bool tracking_validate_config(const tracking_config_t* config) {
     if (config->distractor_suppression < 0.0f ||
         config->distractor_suppression > 1.0f) return false;
     if (config->attention_radius <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
         return false;
     }
 
     if (config->process_noise < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
         return false;
     }
     if (config->measurement_noise < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
         return false;
     }
 
     if (config->min_target_size < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
         return false;
     }
     if (config->max_target_size < config->min_target_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
         return false;
     }
 
@@ -909,7 +901,6 @@ int dragonfly_tracker_reset_stats(dragonfly_tracker_t* tracker) {
 
 bool dragonfly_tracker_is_locked(const dragonfly_tracker_t* tracker) {
     if (!tracker) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_is_locked: tracker is NULL");
         return false;
     }
     return tracker->state == TRACK_STATE_LOCKED ||

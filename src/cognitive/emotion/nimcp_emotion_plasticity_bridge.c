@@ -454,7 +454,7 @@ int emotion_plasticity_register_synapse(
         return -1;
     }
     if (associated_emotion >= EMOTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -473,7 +473,7 @@ int emotion_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->n_synapses >= EMOTION_PLASTICITY_MAX_SYNAPSES) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -580,7 +580,7 @@ int emotion_plasticity_stimulus(
         return -1;
     }
     if (emotion >= EMOTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_stimulus: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_plasticity_stimulus: capacity exceeded");
         return -1;
     }
 
@@ -659,7 +659,7 @@ int emotion_plasticity_response(
         return -1;
     }
     if (emotion >= EMOTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_response: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_plasticity_response: capacity exceeded");
         return -1;
     }
 
@@ -765,7 +765,7 @@ int emotion_plasticity_extinction_trial(
         return -1;
     }
     if (emotion >= EMOTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_extinction_trial: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_plasticity_extinction_trial: capacity exceeded");
         return -1;
     }
     if (!bridge->config.enable_extinction) return 0;
@@ -992,7 +992,7 @@ int emotion_plasticity_get_response_modulation(
     }
     BRIDGE_BBB_VALIDATE(bridge, modulation, sizeof(*modulation));
     if (emotion >= EMOTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_get_response_modulation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_plasticity_get_response_modulation: capacity exceeded");
         return -1;
     }
 
@@ -1233,7 +1233,6 @@ int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge)
 
 bool emotion_plasticity_is_bio_async_connected(const emotion_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

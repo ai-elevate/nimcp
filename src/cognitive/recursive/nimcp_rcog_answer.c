@@ -807,7 +807,6 @@ bool rcog_answer_is_ready(
     const rcog_answer_state_t* state)
 {
     if (!refiner || !state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_is_ready: required parameter is NULL (refiner, state)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -822,7 +821,6 @@ bool rcog_answer_has_converged(
     const rcog_answer_state_t* state)
 {
     if (!refiner || !state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_has_converged: required parameter is NULL (refiner, state)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -838,7 +836,6 @@ bool rcog_answer_is_stalled(
     uint32_t window)
 {
     if (!refiner || !state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_is_stalled: required parameter is NULL (refiner, state)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

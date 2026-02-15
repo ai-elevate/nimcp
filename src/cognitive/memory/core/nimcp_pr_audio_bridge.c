@@ -229,37 +229,31 @@ NIMCP_EXPORT bool pr_audio_bridge_config_validate(
 
     /* Sample rate */
     if (config->sample_rate < 8000 || config->sample_rate > 96000) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* Frame size */
     if (config->frame_size < 64 || config->frame_size > 4096) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* MFCC count */
     if (config->num_mfcc < 1 || config->num_mfcc > PR_AUDIO_MAX_MFCC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* History lengths */
     if (config->mfcc_history_len < 1 ||
         config->mfcc_history_len > PR_AUDIO_MAX_HISTORY_FRAMES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* Thresholds */
     if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     if (config->retrieval_threshold < 0.0f || config->retrieval_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 

@@ -217,7 +217,6 @@ void temporal_quantum_bridge_destroy(temporal_quantum_bridge_t* bridge) {
 
 bool temporal_quantum_bridge_is_enabled(const temporal_quantum_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_bridge_is_enabled: bridge is NULL");
         return false;
     }
     return bridge->config.enabled;

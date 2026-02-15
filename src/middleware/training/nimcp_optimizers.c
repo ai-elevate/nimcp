@@ -1419,7 +1419,6 @@ nimcp_result_t nimcp_optimizer_validate_config(const nimcp_optimizer_config_t* c
 
 bool nimcp_optimizer_is_registered(const nimcp_optimizer_context_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_optimizer_is_registered: ctx is NULL");
         return false;
     }
     return ctx->security_registered;

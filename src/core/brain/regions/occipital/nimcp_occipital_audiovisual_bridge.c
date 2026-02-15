@@ -1027,7 +1027,6 @@ void occipital_av_bridge_reset_stats(occipital_audiovisual_bridge_t* bridge) {
 
 bool occipital_av_is_audio_connected(const occipital_audiovisual_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_is_audio_connected: bridge is NULL");
         return false;
     }
     return bridge->audio_cortex != NULL;
@@ -1035,7 +1034,6 @@ bool occipital_av_is_audio_connected(const occipital_audiovisual_bridge_t* bridg
 
 bool occipital_av_is_broca_connected(const occipital_audiovisual_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_is_broca_connected: bridge is NULL");
         return false;
     }
     return bridge->broca != NULL;

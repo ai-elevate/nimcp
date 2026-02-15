@@ -1871,7 +1871,6 @@ bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror)
 {
     // Guard: Validate mirror system
     if (!mirror) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_has_recent_observations: mirror is NULL");
         return false;
     }
 
@@ -2684,7 +2683,6 @@ bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
 bool mirror_neurons_has_substrate(mirror_neurons_t mirror)
 {
     if (!mirror) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_has_substrate: mirror is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -2896,7 +2894,6 @@ void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_str
 bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
 {
     if (!mirror) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_should_imitate: mirror is NULL");
         return false;
     }
     if (!mirror->resonance_enabled || !mirror->resonance_system) return false;
@@ -2909,7 +2906,6 @@ bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
     uint32_t channel_id = motor_resonance_find_channel(resonance, action_id);
 
     if (channel_id == UINT32_MAX) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_should_imitate: validation failed");
         return false;
     }
 

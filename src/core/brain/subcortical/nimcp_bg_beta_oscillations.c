@@ -13,6 +13,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bg_beta_oscillations)
 //=============================================================================
@@ -126,7 +127,7 @@ static float lerp_f(float a, float b, float t) {
 static float generate_oscillation(float phase, float amplitude, float noise_level) {
     float base = sinf(phase) * amplitude;
     /* Add slight noise for biological realism */
-    float noise = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * noise_level;
+    float noise = ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 2.0f * noise_level;
     return base + noise;
 }
 

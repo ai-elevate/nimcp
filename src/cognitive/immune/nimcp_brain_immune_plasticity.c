@@ -1007,7 +1007,6 @@ bool immune_plasticity_is_impaired(
      * HOW:  Compare global scale to threshold
      */
     if (!modulation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_is_impaired: modulation is NULL");
         return false;
     }
 

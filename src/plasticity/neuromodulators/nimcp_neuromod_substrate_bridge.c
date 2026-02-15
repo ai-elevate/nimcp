@@ -316,6 +316,8 @@ void neuromod_substrate_bridge_destroy(neuromod_substrate_bridge_t* bridge)
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -373,7 +375,6 @@ int neuromod_substrate_disconnect_bio_async(neuromod_substrate_bridge_t* bridge)
 bool neuromod_substrate_is_bio_async_connected(const neuromod_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -812,7 +813,6 @@ bool neuromod_substrate_is_limited(
 )
 {
     if (!bridge || neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neuromod_substrate_is_limited: bridge is NULL");
         return false;
     }
 
@@ -820,7 +820,6 @@ bool neuromod_substrate_is_limited(
         (neuromod_substrate_bridge_t*)bridge, neuromod_type);
 
     if (!effects) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_substrate_is_limited: effects is NULL");
         return false;
     }
 

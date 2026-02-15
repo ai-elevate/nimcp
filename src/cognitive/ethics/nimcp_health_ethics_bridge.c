@@ -225,7 +225,6 @@ bool health_ethics_check_asimov(
     health_asimov_law_t* required_by_law
 ) {
     if (!context) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_ethics_check_asimov: context is NULL");
         return false;
     }
 
@@ -243,7 +242,6 @@ bool health_ethics_check_asimov(
             context->proposed_action == HEALTH_RECOVERY_ACTION_LOG_ONLY) {
             /* Inaction when harm is imminent violates First Law */
             if (violated_law) *violated_law = ASIMOV_LAW_FIRST;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_ethics_check_asimov: validation failed");
             return false;
         }
         if (required_by_law) *required_by_law = ASIMOV_LAW_FIRST;
@@ -259,7 +257,6 @@ bool health_ethics_check_asimov(
     if (action_harm > prevented_harm && !context->is_emergency) {
         /* Action causes more harm than it prevents - violates First Law */
         if (violated_law) *violated_law = ASIMOV_LAW_FIRST;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_ethics_check_asimov: validation failed");
         return false;
     }
 
@@ -269,7 +266,6 @@ bool health_ethics_check_asimov(
         !context->is_emergency) {
         /* Large-scale aggressive action without emergency could harm whole system */
         if (violated_law) *violated_law = ASIMOV_LAW_ZEROTH;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_ethics_check_asimov: validation failed");
         return false;
     }
 

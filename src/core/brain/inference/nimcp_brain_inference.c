@@ -125,7 +125,7 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
     brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!decision) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decision is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "decision is NULL");
 
         return NULL;
 
@@ -169,7 +169,7 @@ static brain_decision_t* copy_decision(const brain_decision_t* source)
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!copy) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy is NULL");
 
         return NULL;
 
@@ -200,7 +200,7 @@ static brain_decision_t* copy_decision(const brain_decision_t* source)
             if (copy->output_vector)
                 nimcp_free(copy->output_vector);
             nimcp_free(copy);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_decision: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision: validation failed");
             return NULL;
         }
         memcpy(copy->active_neuron_ids, source->active_neuron_ids,

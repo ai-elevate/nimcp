@@ -863,17 +863,14 @@ static bool validate_agent(const nimcp_health_agent_t* agent) {
         return false;
     }
     if (agent->magic != HEALTH_AGENT_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_agent: validation failed");
         return false;
     }
 
     /* Check canaries against the expected randomized value */
     if (agent->canary_front != agent->expected_canary) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_agent: validation failed");
         return false;
     }
     if (agent->canary_back != agent->expected_canary) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_agent: validation failed");
         return false;
     }
     return true;
@@ -2081,7 +2078,6 @@ int nimcp_health_agent_request_emergency_checkpoint(nimcp_health_agent_t* agent,
 
 bool nimcp_health_agent_is_running(const nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_is_running: validate_agent is NULL");
         return false;
     }
     return atomic_load(&agent->running);
@@ -2813,7 +2809,6 @@ int nimcp_health_agent_configure_neural(
 
 bool nimcp_health_agent_is_neural_unhealthy(const nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_is_neural_unhealthy: validate_agent is NULL");
         return false;
     }
 
@@ -2991,7 +2986,6 @@ int nimcp_health_agent_configure_behavioral(
 
 bool nimcp_health_agent_is_behavioral_unhealthy(const nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_is_behavioral_unhealthy: validate_agent is NULL");
         return false;
     }
 
@@ -5200,7 +5194,6 @@ static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,
             if (msg->severity < HEALTH_SEVERITY_CRITICAL) {
                 nimcp_log(LOG_LEVEL_WARN, "Ethics (1st Law): blocking full reset for non-critical");
                 atomic_fetch_add(&agent->ethics_blocks, 1);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_run_cross_module_coordination: validation failed");
                 return false;
             }
         }
@@ -6700,7 +6693,6 @@ int nimcp_health_agent_use_consolidation_get_stats(
 static bool agent_check_reference_counts(nimcp_health_agent_t* agent,
                                           health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -6764,7 +6756,6 @@ static bool agent_check_reference_counts(nimcp_health_agent_t* agent,
 static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
                                          health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -6809,7 +6800,6 @@ static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
 static bool agent_check_struct_magic(nimcp_health_agent_t* agent,
                                        health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -6854,7 +6844,6 @@ static bool agent_check_struct_magic(nimcp_health_agent_t* agent,
 static bool agent_check_mutex_state(nimcp_health_agent_t* agent,
                                       health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -6919,7 +6908,6 @@ static bool agent_check_mutex_state(nimcp_health_agent_t* agent,
 static bool agent_check_circular_buffers(nimcp_health_agent_t* agent,
                                           health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -6999,7 +6987,6 @@ static bool agent_check_circular_buffers(nimcp_health_agent_t* agent,
 static bool agent_check_knowledge_graph(nimcp_health_agent_t* agent,
                                          health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -7029,7 +7016,6 @@ static bool agent_check_knowledge_graph(nimcp_health_agent_t* agent,
 static bool agent_check_neuron_values(nimcp_health_agent_t* agent,
                                        health_agent_consistency_result_t* result) {
     if (!agent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, result)");
         return false;
     }
 
@@ -7350,7 +7336,6 @@ bool nimcp_health_agent_validate_magic(const void* ptr, uint32_t expected_magic,
     if (actual_magic != expected_magic) {
         nimcp_log(LOG_LEVEL_ERROR, "Magic validation failed for '%s': expected 0x%X, got 0x%X",
                   struct_name ? struct_name : "unknown", expected_magic, actual_magic);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -7774,7 +7759,7 @@ int nimcp_health_agent_register_capacity_manager(
         nimcp_mutex_unlock(agent->capacity_mutex);
         nimcp_log(LOG_LEVEL_ERROR, "Max capacity managers reached (%u)",
                   HEALTH_AGENT_MAX_CAPACITY_MANAGERS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_register_capacity_manager: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_register_capacity_manager: capacity exceeded");
         return -1;
     }
 
@@ -7928,7 +7913,7 @@ bool nimcp_health_agent_capacity_needs_attention(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_capacity_needs_attention: capacity exceeded");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_capacity_needs_attention: capacity exceeded");
     return false;
 }
 
@@ -8008,7 +7993,7 @@ int nimcp_health_agent_connect_symbolic_logic(
     if (count >= HEALTH_AGENT_MAX_LOGIC_ENGINES) {
         nimcp_mutex_unlock(agent->logic_mutex);
         nimcp_log(LOG_LEVEL_WARN, "Max logic engines reached (%u)", HEALTH_AGENT_MAX_LOGIC_ENGINES);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_connect_symbolic_logic: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_connect_symbolic_logic: capacity exceeded");
         return -1;
     }
 
@@ -8261,7 +8246,7 @@ int nimcp_health_agent_logic_recovery(
     if (engine_index >= 0) {
         if ((uint32_t)engine_index >= count) {
             nimcp_log(LOG_LEVEL_WARN, "Invalid logic engine index: %d", engine_index);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_logic_recovery: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_logic_recovery: capacity exceeded");
             return -1;
         }
         start_idx = (uint32_t)engine_index;
@@ -8527,7 +8512,7 @@ int nimcp_health_agent_connect_substrate(
     if (count >= HEALTH_AGENT_MAX_NEURAL_SUBSTRATES) {
         nimcp_mutex_unlock(agent->substrate_mutex);
         nimcp_log(LOG_LEVEL_WARN, "Maximum neural substrates reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_connect_substrate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_connect_substrate: capacity exceeded");
         return -1;
     }
 
@@ -8794,7 +8779,7 @@ int nimcp_health_agent_substrate_recovery(
 
     if (substrate_index >= 0 && (uint32_t)substrate_index >= count) {
         nimcp_log(LOG_LEVEL_WARN, "Invalid substrate index: %d", substrate_index);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_substrate_recovery: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_substrate_recovery: capacity exceeded");
         return -1;
     }
 
@@ -9531,7 +9516,7 @@ int nimcp_health_agent_thalamic_recovery(
 
     if (start_idx >= count) {
         nimcp_log(LOG_LEVEL_ERROR, "Thalamic recovery: invalid bridge index %d", bridge_index);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_thalamic_recovery: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_thalamic_recovery: capacity exceeded");
         return -1;
     }
 
@@ -9661,7 +9646,7 @@ int nimcp_health_agent_middleware_recovery(
 
     if (start_idx >= count) {
         nimcp_log(LOG_LEVEL_ERROR, "Middleware recovery: invalid context index %d", context_index);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_middleware_recovery: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_middleware_recovery: capacity exceeded");
         return -1;
     }
 
@@ -11256,7 +11241,7 @@ int nimcp_health_agent_get_brain_probe_metrics(
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_monitored_brains);
     if (brain_index >= count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_get_brain_probe_metrics: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_get_brain_probe_metrics: capacity exceeded");
         return -1;
     }
 
@@ -11300,7 +11285,7 @@ int nimcp_health_agent_brain_probe_recovery(
     uint32_t end_idx = count;
     if (brain_index >= 0) {
         if ((uint32_t)brain_index >= count) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_brain_probe_recovery: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_health_agent_brain_probe_recovery: capacity exceeded");
             return -1;
         }
         start_idx = (uint32_t)brain_index;

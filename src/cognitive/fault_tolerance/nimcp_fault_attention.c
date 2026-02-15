@@ -151,7 +151,6 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
     if (fabsf(sum - 1.0F) > 0.01F) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Attention weights must sum to 1.0 (got %.3f)", sum);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config_internal: validation failed");
         return false;
     }
 
@@ -160,7 +159,6 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Learning rate must be in [0.0, 1.0] (got %.3f)",
                   config->learning_rate);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config_internal: validation failed");
         return false;
     }
 
@@ -671,7 +669,7 @@ bool fault_attention_get_weight(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault index %u out of bounds (count=%u)",
                   fault_index, attention->fault_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_attention_get_weight: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fault_attention_get_weight: capacity exceeded");
         return false;
     }
 
@@ -781,7 +779,7 @@ bool fault_attention_get_focused_fault(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Focused index %u out of bounds (count=%u)",
                   attention->focused_fault_idx, fault_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_attention_get_focused_fault: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fault_attention_get_focused_fault: capacity exceeded");
         return false;
     }
 
@@ -825,7 +823,7 @@ bool fault_attention_update_weights(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault index %u out of bounds in update_weights",
                   fault_index);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_attention_update_weights: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fault_attention_update_weights: capacity exceeded");
         return false;
     }
 

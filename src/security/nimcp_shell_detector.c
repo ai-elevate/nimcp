@@ -300,7 +300,6 @@ static bool check_patterns(const char* input, const char* patterns[],
                           size_t detected_cmd_size)
 {
     if (!input || !patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_patterns: required parameter is NULL (input, patterns)");
         return false;
     }
 
@@ -345,7 +344,6 @@ static uint32_t count_pattern_occurrences(const char* input,
 static bool check_exact_patterns(const char* input, const char* patterns[])
 {
     if (!input || !patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_exact_patterns: required parameter is NULL (input, patterns)");
         return false;
     }
 

@@ -297,7 +297,6 @@ int snn_audio_bridge_disconnect_bio_async(snn_audio_bridge_t* bridge) {
  */
 bool snn_audio_bridge_is_bio_async_connected(const snn_audio_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_audio_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -875,7 +874,6 @@ float snn_audio_bridge_get_spike_rate(
  */
 bool snn_audio_bridge_is_active(const snn_audio_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_audio_bridge_is_active: null bridge pointer");
         return false;
     }
     return bridge->connected;

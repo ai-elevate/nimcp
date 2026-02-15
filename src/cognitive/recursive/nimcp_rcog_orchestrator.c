@@ -1528,7 +1528,6 @@ bool rcog_orchestrator_is_answer_ready(
     const rcog_answer_state_t* answer
 ) {
     if (!orch || !answer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_orchestrator_is_answer_ready: required parameter is NULL (orch, answer)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

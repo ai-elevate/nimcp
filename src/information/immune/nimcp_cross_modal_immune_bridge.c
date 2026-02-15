@@ -523,7 +523,6 @@ int cross_modal_immune_get_inflammation_state(
 
 bool cross_modal_immune_has_binding_deficit(const cross_modal_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_immune_has_binding_deficit: bridge is NULL");
         return false;
     }
 
@@ -632,7 +631,6 @@ bool cross_modal_immune_is_bio_async_connected(const cross_modal_immune_bridge_t
      * HOW:  Return internal flag
      */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

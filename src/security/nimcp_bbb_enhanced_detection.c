@@ -250,7 +250,6 @@ bool bbb_validate_file_path(bbb_system_t system, const char* path,
         LOG_WARN(LOG_MODULE, "Path traversal detected: %s (pattern=%s)",
                  path, nimcp_path_pattern_name(path_result.pattern));
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_file_path: validation failed");
         return false;
     }
 
@@ -359,7 +358,6 @@ bool bbb_validate_command(bbb_system_t system, const char* input,
         LOG_WARN(LOG_MODULE, "Shell injection detected: %s (pattern=%s)",
                  input, nimcp_shell_pattern_name(shell_result.pattern));
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_command: validation failed");
         return false;
     }
 

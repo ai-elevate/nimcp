@@ -665,7 +665,6 @@ int physics_cog_get_stats(
 
 bool physics_cog_is_impaired(const physics_cog_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_is_impaired: bridge is NULL");
         return false;
     }
     return bridge->current_capacity.impaired;

@@ -217,7 +217,6 @@ static bool has_significant_change(
     if (fabsf(tensor->overall_valence - bridge->cached_valence) > threshold) return true;
     if (fabsf(tensor->overall_arousal - bridge->cached_arousal) > threshold) return true;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "has_significant_change: validation failed");
     return false;
 }
 

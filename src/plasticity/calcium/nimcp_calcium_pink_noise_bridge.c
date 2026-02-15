@@ -260,7 +260,6 @@ int calcium_pink_noise_disable(calcium_pink_noise_bridge_t* bridge) {
 
 bool calcium_pink_noise_is_enabled(const calcium_pink_noise_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_is_enabled: bridge is NULL");
         return false;
     }
     return bridge->noise_enabled;
@@ -603,7 +602,6 @@ bool calcium_pink_noise_is_bio_async_connected(
     const calcium_pink_noise_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -655,27 +653,24 @@ int calcium_pink_noise_validate_config(const calcium_pink_noise_config_t* config
     /* Validate pink noise parameters */
     if (config->pink_noise_alpha < 0.0f || config->pink_noise_alpha > 3.0f) {
         NIMCP_LOGGING_ERROR("Invalid alpha: %f (must be [0, 3])", config->pink_noise_alpha);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 
     if (config->pink_noise_amplitude <= 0.0f || config->pink_noise_amplitude > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid amplitude: %f (must be (0, 1])", config->pink_noise_amplitude);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 
     if (config->pink_noise_min_freq <= 0.0f || config->pink_noise_min_freq >= config->pink_noise_max_freq) {
         NIMCP_LOGGING_ERROR("Invalid frequency range: [%f, %f]",
             config->pink_noise_min_freq, config->pink_noise_max_freq);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "calcium_pink_noise_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "calcium_pink_noise_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->pink_noise_sample_rate < 2.0f * config->pink_noise_max_freq) {
         NIMCP_LOGGING_ERROR("Sample rate %f violates Nyquist (need >= %f)",
             config->pink_noise_sample_rate, 2.0f * config->pink_noise_max_freq);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 
@@ -683,21 +678,18 @@ int calcium_pink_noise_validate_config(const calcium_pink_noise_config_t* config
     if (config->influx_modulation_strength < 0.0f || config->influx_modulation_strength > 0.5f) {
         NIMCP_LOGGING_ERROR("Invalid influx modulation strength: %f (must be [0, 0.5])",
             config->influx_modulation_strength);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 
     if (config->transient_modulation_strength < 0.0f || config->transient_modulation_strength > 0.5f) {
         NIMCP_LOGGING_ERROR("Invalid transient modulation strength: %f (must be [0, 0.5])",
             config->transient_modulation_strength);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 
     if (config->decay_modulation_strength < 0.0f || config->decay_modulation_strength > 0.5f) {
         NIMCP_LOGGING_ERROR("Invalid decay modulation strength: %f (must be [0, 0.5])",
             config->decay_modulation_strength);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 
@@ -705,7 +697,6 @@ int calcium_pink_noise_validate_config(const calcium_pink_noise_config_t* config
     if (config->ca_low_scale <= 0.0f || config->ca_high_scale <= 0.0f) {
         NIMCP_LOGGING_ERROR("Invalid Ca scale factors: low=%f high=%f (must be > 0)",
             config->ca_low_scale, config->ca_high_scale);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_validate_config: validation failed");
         return -1;
     }
 

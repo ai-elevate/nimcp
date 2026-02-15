@@ -558,7 +558,6 @@ static bool postgres_validate_query(const char* query) {
     /* Query must start with SELECT (case-insensitive) */
     if (strncasecmp(query, "SELECT", 6) != 0) {
         dataio_set_error("Only SELECT queries are allowed for data loading");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
         return false;
     }
 
@@ -605,7 +604,6 @@ static bool postgres_validate_query(const char* query) {
             if (strchr(upper_query, ';') != NULL) {
                 nimcp_free(upper_query);
                 dataio_set_error("Multiple SQL statements not allowed (semicolon found)");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
                 return false;
             }
         }
@@ -614,7 +612,6 @@ static bool postgres_validate_query(const char* query) {
             if (strstr(upper_query, dangerous_patterns[i]) != NULL) {
                 nimcp_free(upper_query);
                 dataio_set_error("SQL comments not allowed in query");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
                 return false;
             }
         }
@@ -636,7 +633,6 @@ static bool postgres_validate_query(const char* query) {
                 if (word_start && word_end) {
                     nimcp_free(upper_query);
                     dataio_set_error("Dangerous SQL keyword '%s' not allowed", dangerous_patterns[i]);
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
                     return false;
                 }
                 found = strstr(found + 1, dangerous_patterns[i]);
@@ -1314,7 +1310,7 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
     if (ctx->queue_size >= ctx->max_queue_size) {
         ctx->samples_dropped++;
         nimcp_mutex_unlock(&ctx->queue_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stream_push_sample: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "stream_push_sample: capacity exceeded");
         return false;
     }
     stream_sample_t* sample = nimcp_calloc(1, sizeof(stream_sample_t));
@@ -1333,7 +1329,7 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
         nimcp_free(sample->features);
         nimcp_free(sample);
         nimcp_mutex_unlock(&ctx->queue_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_push_sample: sample->label is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream_push_sample: sample->label is NULL");
         return false;
     }
     sample->next = NULL;

@@ -661,7 +661,6 @@ int microglia_immune_get_inflammation_state(
 bool microglia_immune_has_storm_toxicity(const microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_immune_has_storm_toxicity: bridge is NULL");
         return false;
     }
 
@@ -746,7 +745,6 @@ int microglia_immune_disconnect_bio_async(microglia_immune_bridge_t* bridge) {
 bool microglia_immune_is_bio_async_connected(const microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

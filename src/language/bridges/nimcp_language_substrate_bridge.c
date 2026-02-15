@@ -301,7 +301,6 @@ bool language_substrate_bridge_is_impaired(
     const language_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_is_impaired: bridge is NULL");
         return false;
     }
 

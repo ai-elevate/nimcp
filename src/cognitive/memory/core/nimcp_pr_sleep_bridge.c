@@ -36,6 +36,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_sleep_bridge)
 //=============================================================================
@@ -1054,7 +1055,7 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
         memcpy(shuffled, node_ids, count * sizeof(uint64_t));
 
         for (size_t i = count - 1; i > 0; i--) {
-            size_t j = rand() % (i + 1);
+            size_t j = nimcp_tl_rand() % (i + 1);
             uint64_t temp = shuffled[i];
             shuffled[i] = shuffled[j];
             shuffled[j] = temp;

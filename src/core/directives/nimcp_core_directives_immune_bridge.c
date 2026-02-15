@@ -391,7 +391,6 @@ int directive_immune_bridge_get_stats(
 
 bool directive_immune_bridge_is_alert_active(const directive_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "directive_immune_bridge_is_alert_active: bridge is NULL");
         return false;
     }
 
@@ -489,7 +488,6 @@ int directive_immune_bridge_disconnect_bio_async(directive_immune_bridge_t* brid
 
 bool directive_immune_bridge_is_bio_async_connected(const directive_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "directive_immune_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

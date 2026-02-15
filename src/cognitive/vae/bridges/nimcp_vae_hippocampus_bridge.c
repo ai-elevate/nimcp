@@ -22,6 +22,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <float.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Internal Constants
@@ -1166,7 +1167,7 @@ int vae_hippo_generate_variation(vae_hippo_bridge_t* bridge,
     memcpy(z_data, episode->what_content, copy_dim * sizeof(float));
 
     for (uint32_t i = 0; i < bridge->vae_latent_dim; i++) {
-        float noise = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * variation_strength;
+        float noise = ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 2.0f * variation_strength;
         z_data[i] += noise;
     }
 

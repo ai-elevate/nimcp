@@ -198,7 +198,6 @@ static bool is_quantifier(char c) {
  */
 static bool is_regex_safe(const char* pattern) {
     if (!pattern) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_regex_safe: pattern is NULL");
         return false;
     }
 
@@ -268,7 +267,6 @@ static bool is_regex_safe(const char* pattern) {
                 if (group_depth >= 16) {
                     LOG_MODULE_WARN("pattern_db", "Pattern rejected: nesting depth %d exceeds maximum",
                                     group_depth);
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: capacity exceeded");
                     return false;
                 }
                 /* Reset alternation count for this depth */
@@ -294,7 +292,6 @@ static bool is_regex_safe(const char* pattern) {
                     if (alternations_at_depth[group_depth] > PATTERN_DB_MAX_ALTERNATIONS) {
                         LOG_MODULE_WARN("pattern_db", "Pattern rejected: too many alternations (%d) at depth %d",
                                         alternations_at_depth[group_depth], group_depth);
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                         return false;
                     }
                 }
@@ -307,7 +304,6 @@ static bool is_regex_safe(const char* pattern) {
                 /* REDOS CHECK 1: Consecutive quantifiers (a**, a*+, a++) */
                 if (prev_was_quantifier) {
                     LOG_MODULE_WARN("pattern_db", "Pattern rejected: consecutive quantifiers detected");
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                     return false;
                 }
 
@@ -355,14 +351,12 @@ static bool is_regex_safe(const char* pattern) {
                     /* REDOS CHECK 3: Nested quantifier with alternation */
                     if (has_alternation && (c == '*' || c == '+')) {
                         LOG_MODULE_WARN("pattern_db", "Pattern rejected: quantifier on group with alternation (ReDoS risk)");
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                         return false;
                     }
 
                     /* REDOS CHECK 4: Nested quantifiers (quantifier on group containing quantifier) */
                     if (has_nested_quantifier && (c == '*' || c == '+')) {
                         LOG_MODULE_WARN("pattern_db", "Pattern rejected: nested quantifiers (ReDoS risk)");
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                         return false;
                     }
                 }
@@ -374,7 +368,6 @@ static bool is_regex_safe(const char* pattern) {
                 /* Range quantifier - check for consecutive */
                 if (prev_was_quantifier) {
                     LOG_MODULE_WARN("pattern_db", "Pattern rejected: consecutive quantifiers detected (range)");
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                     return false;
                 }
                 /* Skip to closing brace */
@@ -1218,7 +1211,6 @@ static bool json_validate_basic_structure(const char* json, size_t len) {
                 case '}':
                     brace_depth--;
                     if (brace_depth < 0) {
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_validate_basic_structure: validation failed");
                         return false;
                     }
                     break;
@@ -1228,7 +1220,6 @@ static bool json_validate_basic_structure(const char* json, size_t len) {
                 case ']':
                     bracket_depth--;
                     if (bracket_depth < 0) {
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_validate_basic_structure: validation failed");
                         return false;
                     }
                     break;

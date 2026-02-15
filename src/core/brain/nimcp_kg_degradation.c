@@ -240,7 +240,7 @@ int kg_degradation_default_config(kg_degradation_config_t* config) {
 kg_degradation_ctx_t* kg_degradation_create(const kg_degradation_config_t* config) {
     kg_degradation_ctx_t* ctx = nimcp_calloc(1, sizeof(kg_degradation_ctx_t));
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -359,7 +359,6 @@ kg_circuit_state_t kg_degradation_get_circuit_state(const kg_degradation_ctx_t* 
 
 bool kg_degradation_can_write(const kg_degradation_ctx_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_can_write: ctx is NULL");
         return false;
     }
     return ctx->level == KG_DEGRADE_NONE;
@@ -367,7 +366,6 @@ bool kg_degradation_can_write(const kg_degradation_ctx_t* ctx) {
 
 bool kg_degradation_can_read(const kg_degradation_ctx_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_can_read: ctx is NULL");
         return false;
     }
     return ctx->level != KG_DEGRADE_OFFLINE;

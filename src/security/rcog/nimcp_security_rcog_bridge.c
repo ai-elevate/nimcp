@@ -141,7 +141,7 @@ security_rcog_bridge_t* security_rcog_bridge_create(
     security_rcog_bridge_t* bridge = nimcp_calloc(1, sizeof(security_rcog_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-rcog bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

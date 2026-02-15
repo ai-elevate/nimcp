@@ -142,15 +142,12 @@ int dragonfly_thalamic_bridge_validate_config(const dragonfly_thalamic_config_t*
         return -1;
     }
     if (config->lgn_attention_baseline < 0 || config->lgn_attention_baseline > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->pulvinar_gain < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->pulvinar_threshold < 0 || config->pulvinar_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->motor_channels == 0 || config->motor_channels > THAL_BRIDGE_MAX_MOTOR_CHANNELS) {
@@ -158,15 +155,12 @@ int dragonfly_thalamic_bridge_validate_config(const dragonfly_thalamic_config_t*
         return -1;
     }
     if (config->motor_gain < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->decision_threshold < 0 || config->decision_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->update_rate_hz <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
         return -1;
     }
 

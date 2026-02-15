@@ -244,7 +244,7 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
     wernicke_gpu_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_gpu_bio_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate GPU bio bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -274,7 +274,7 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
         !bridge->batch_words || !bridge->batch_activations) {
         LOG_ERROR("Failed to allocate batch buffers");
         wernicke_gpu_bio_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_bio_create: operation failed");
         return NULL;
     }
 

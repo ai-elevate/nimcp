@@ -1316,7 +1316,6 @@ uint32_t microglia_prune_weak_synapses(microglia_t* mg)
 bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
 {
     if (!mg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_should_prune_synapse: mg is NULL");
         return false;
     }
 
@@ -2022,7 +2021,6 @@ void microglia_cow_release(microglia_t* mg)
 bool microglia_is_cow_copy(const microglia_t* mg)
 {
     if (!mg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_is_cow_copy: mg is NULL");
         return false;
     }
     return (mg->cow_original != NULL);

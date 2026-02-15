@@ -278,7 +278,6 @@ bool reticular_security_check_access(
     reticular_security_op_t op
 ) {
     if (!bbb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_security_check_access: bbb is NULL");
         return false;
     }
 

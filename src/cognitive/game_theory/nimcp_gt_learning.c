@@ -598,7 +598,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: required parameter is NULL (learner->exp3_weights, learner->exp3_probabilities)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: required parameter is NULL (learner->exp3_weights, learner->exp3_probabilities)");
         return NULL;
     }
 
@@ -2339,7 +2339,6 @@ bool nimcp_gt_learner_has_converged(
     float threshold
 ) {
     if (!learner) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_has_converged: learner is NULL");
         return false;
     }
 

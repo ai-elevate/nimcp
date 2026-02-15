@@ -200,7 +200,6 @@ static bool is_protected_status(combatant_status_t status)
         case COMBATANT_STATUS_CHILD:
             return true;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_protected_status: operation failed");
             return false;
     }
 }

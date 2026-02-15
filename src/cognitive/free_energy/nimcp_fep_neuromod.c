@@ -194,6 +194,8 @@ void fep_neuromod_destroy(fep_neuromod_system_t* sys) {
 
     if (sys->mutex) {
         nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+        sys->mutex = NULL;
     }
 
     nimcp_free(sys);
@@ -615,7 +617,6 @@ int fep_neuromod_disconnect_bio_async(fep_neuromod_system_t* sys) {
 
 bool fep_neuromod_is_bio_async_connected(const fep_neuromod_system_t* sys) {
     if (!sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_neuromod_is_bio_async_connected: sys is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

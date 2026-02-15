@@ -20,6 +20,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -30,7 +31,6 @@
 #ifdef NIMCP_HAVE_ZLIB
 #include <zlib.h>
 #include "utils/memory/nimcp_unified_memory.h"
-#include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(serialization)

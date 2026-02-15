@@ -276,7 +276,7 @@ semantic_compressor_t* semantic_compressor_create(
     semantic_compressor_t* comp = nimcp_calloc(1, sizeof(semantic_compressor_t));
     if (!comp) {
         LOG_ERROR("Failed to allocate compressor");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "comp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "comp is NULL");
 
         return NULL;
     }
@@ -304,7 +304,7 @@ semantic_compressor_t* semantic_compressor_create(
             }
             nimcp_free(comp->primitives);
             nimcp_free(comp);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compressor_create: comp->primitives is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_compressor_create: comp->primitives is NULL");
             return NULL;
         }
     }

@@ -135,7 +135,6 @@ int snn_emotion_bridge_disconnect_bio_async(snn_emotion_bridge_t* bridge) {
 
 bool snn_emotion_bridge_is_bio_async_connected(const snn_emotion_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -294,7 +293,6 @@ float snn_emotion_get_decoded_arousal(const snn_emotion_bridge_t* bridge) {
 
 bool snn_emotion_is_theta_synchronized(const snn_emotion_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_is_theta_synchronized: null bridge pointer");
         return false;
     }
     return bridge->state.theta.is_synchronized;

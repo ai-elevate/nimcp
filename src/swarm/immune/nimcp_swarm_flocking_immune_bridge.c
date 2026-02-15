@@ -306,7 +306,6 @@ float swarm_flocking_immune_get_separation_factor(const swarm_flocking_immune_br
 bool swarm_flocking_immune_is_fragmented(const swarm_flocking_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_flocking_immune_is_fragmented: bridge is NULL");
         return false;
     }
 
@@ -374,7 +373,6 @@ int swarm_flocking_immune_disconnect_bio_async(swarm_flocking_immune_bridge_t* b
 bool swarm_flocking_immune_is_bio_async_connected(const swarm_flocking_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_flocking_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

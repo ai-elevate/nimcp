@@ -627,7 +627,6 @@ bool game_theory_executive_bridge_is_connected(
     const game_theory_executive_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

@@ -542,7 +542,7 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
         return -1;
     }
     if (repo->num_items >= repo->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "repository_add: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "repository_add: capacity exceeded");
         return -1;
     }
 
@@ -671,7 +671,6 @@ static bool should_skip_word(const char* word)
             return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip_word: validation failed");
     return false;
 }
 
@@ -847,7 +846,7 @@ static bool strategy_learn_narrative(void* system, const void* data)
         return false;
     }
     if (sys->num_narratives >= sys->narratives_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "strategy_learn_narrative: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "strategy_learn_narrative: capacity exceeded");
         return false;
     }
 
@@ -915,7 +914,7 @@ static bool strategy_learn_aesthetic(void* system, const void* data)
         return false;
     }
     if (sys->num_artworks >= sys->artworks_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "strategy_learn_aesthetic: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "strategy_learn_aesthetic: capacity exceeded");
         return false;
     }
 
@@ -978,7 +977,7 @@ static bool strategy_learn_historical(void* system, const void* data)
         return false;
     }
     if (sys->num_history >= sys->history_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "strategy_learn_historical: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "strategy_learn_historical: capacity exceeded");
         return false;
     }
 
@@ -1922,11 +1921,9 @@ static bool is_cross_domain_related(const knowledge_item_t* item1, const knowled
                                     const char* target_concept)
 {
     if (!item1 || !item2 || !target_concept) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_cross_domain_related: required parameter is NULL (item1, item2, target_concept)");
         return false;
     }
     if (item1->domain == item2->domain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_cross_domain_related: validation failed");
         return false;
     }
 

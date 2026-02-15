@@ -319,7 +319,7 @@ hemispheric_injury_system_t* hemispheric_injury_create(
     hemispheric_injury_system_t* system = nimcp_malloc(sizeof(hemispheric_injury_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("hemispheric_injury_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "system is NULL");
 
         return NULL;
     }
@@ -405,7 +405,7 @@ int hemispheric_injury_induce_lesion(
 
     if (system->num_lesions >= MAX_LESIONS) {
         NIMCP_LOGGING_ERROR("hemispheric_injury_induce_lesion: max lesions reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hemispheric_injury_induce_lesion: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hemispheric_injury_induce_lesion: capacity exceeded");
         return -1;
     }
 

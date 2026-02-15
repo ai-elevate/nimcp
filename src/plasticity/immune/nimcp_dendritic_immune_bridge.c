@@ -586,7 +586,6 @@ int dendritic_immune_get_inflammation_state(
 
 bool dendritic_immune_is_atrophy(const dendritic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_immune_is_atrophy: bridge is NULL");
         return false;
     }
 
@@ -669,7 +668,6 @@ int dendritic_immune_disconnect_bio_async(dendritic_immune_bridge_t* bridge) {
  */
 bool dendritic_immune_is_bio_async_connected(const dendritic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

@@ -19,6 +19,7 @@
 
 #define LOG_MODULE "swarm_energy_gossip"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_energy_gossip)
 
@@ -46,7 +47,7 @@ static float calculate_distance(const float pos1[3], const float pos2[3]) {
  * @brief Generate random float between 0 and 1
  */
 static float random_float(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)nimcp_tl_rand() / (float)RAND_MAX;
 }
 
 /**
@@ -363,6 +364,8 @@ void nimcp_energy_gossip_destroy(NimcpEnergyGossip* gossip) {
     /* Destroy mutex */
     if (gossip->mutex) {
         nimcp_platform_mutex_destroy(gossip->mutex);
+        nimcp_free(gossip->mutex);
+        gossip->mutex = NULL;
     }
 
     nimcp_free(gossip);

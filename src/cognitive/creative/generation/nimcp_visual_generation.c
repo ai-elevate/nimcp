@@ -333,7 +333,7 @@ int visual_generate(visual_generator_t* gen,
         nimcp_free(result->image.pixels);
         result->image.pixels = NULL;
         result->success = false;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_generate: required parameter is NULL (latent, noise)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_generate: required parameter is NULL (latent, noise)");
         return -1;
     }
 
@@ -917,7 +917,7 @@ int visual_apply_archetype(visual_generator_t* gen,
         return -1;
     }
     if ((int)archetype < 0 || archetype >= STYLE_VIS_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_apply_archetype: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "visual_apply_archetype: capacity exceeded");
         return -1;
     }
 

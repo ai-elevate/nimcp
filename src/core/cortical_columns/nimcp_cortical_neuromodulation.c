@@ -236,6 +236,8 @@ void cortical_neuromod_destroy(cortical_neuromod_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     /* Free system */
@@ -799,7 +801,6 @@ bool cortical_neuromod_is_bio_async_connected(
 ) {
     /* Guard clause */
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_is_bio_async_connected: system is NULL");
         return false;
     }
 

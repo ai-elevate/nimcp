@@ -657,7 +657,6 @@ bool brain_get_distributed_stats(
 bool brain_is_distributed(brain_t brain)
 {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_distributed: brain is NULL");
         return false;
     }
 

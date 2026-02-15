@@ -135,7 +135,7 @@ brain_t nimcp_brain_factory_allocate_brain(void)
     brain_t brain = nimcp_calloc(1, sizeof(struct brain_struct));
     if (!brain) {
         set_error("Failed to allocate brain structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain is NULL");
 
         return NULL;
     }

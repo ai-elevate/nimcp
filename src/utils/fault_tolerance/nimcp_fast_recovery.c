@@ -743,13 +743,11 @@ bool fast_recovery_validate_result(const fast_recovery_result_t* result)
     }
 
     if (result->status > FAST_RECOVERY_TIMEOUT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fast_recovery_validate_result: validation failed");
         return false;
     }
 
     // Validate latency is reasonable (<10ms for safety margin)
     if (result->latency_us > 10000) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fast_recovery_validate_result: validation failed");
         return false;
     }
 

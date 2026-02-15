@@ -357,7 +357,6 @@ int physics_percept_get_binding(
 
 bool physics_percept_is_binding_active(const physics_percept_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_is_binding_active: bridge is NULL");
         return false;
     }
     return bridge->binding.binding_active;

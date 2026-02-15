@@ -968,7 +968,6 @@ bool shadow_get_detected_in_other(const shadow_emotion_system_t* system,
 bool shadow_should_maintain_boundaries(const shadow_emotion_system_t* system,
                                        uint32_t person_id) {
     if (!system || !system->detected_in_others) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->detected_in_others)");
         return false;
     }
 
@@ -978,7 +977,6 @@ bool shadow_should_maintain_boundaries(const shadow_emotion_system_t* system,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -1002,7 +1000,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
         return false;
     }
     if (strategy >= SHADOW_INTERVENTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return false;
     }
 
@@ -1197,7 +1195,6 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
 bool shadow_is_active(const shadow_emotion_system_t* system,
                       shadow_emotion_type_t emotion) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
 

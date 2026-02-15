@@ -1086,23 +1086,23 @@ int gs_validate_config(const gs_config_t* config) {
     }
 
     if (config->method >= GS_METHOD_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gs_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->global_clip >= GS_CLIP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gs_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->adaptive.smoothing_factor <= 0 ||
         config->adaptive.smoothing_factor >= 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gs_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->surrogate.default_surrogate >= GS_SURROGATE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gs_validate_config: capacity exceeded");
         return -1;
     }
 

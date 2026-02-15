@@ -267,7 +267,6 @@ int personality_fep_bridge_disconnect_bio_async(personality_fep_bridge_t* bridge
 
 bool personality_fep_bridge_is_bio_async_connected(const personality_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -576,7 +576,6 @@ int medulla_immune_disconnect_bio_async(medulla_immune_bridge_t bridge) {
 
 bool medulla_immune_is_bio_async_connected(medulla_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

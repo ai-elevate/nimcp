@@ -38,14 +38,12 @@ static bool validate_config(const oscillations_pink_noise_config_t* config)
     /* Check alpha exponent */
     if (config->alpha_exponent < 0.5f || config->alpha_exponent > 2.0f) {
         NIMCP_LOGGING_ERROR("Invalid alpha exponent (must be 0.5-2.0)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
     /* Check global amplitude */
     if (config->global_amplitude < 0.0f || config->global_amplitude > 0.5f) {
         NIMCP_LOGGING_ERROR("Invalid global amplitude (must be 0-0.5)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
@@ -304,7 +302,6 @@ bool oscillations_pink_noise_is_enabled(const oscillations_pink_noise_bridge_t* 
      * HOW:  Return enabled flag
      */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_is_enabled: bridge is NULL");
         return false;
     }
 

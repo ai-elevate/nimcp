@@ -285,7 +285,6 @@ float swarm_quorum_immune_get_integration_factor(const swarm_quorum_immune_bridg
 bool swarm_quorum_immune_is_impaired(const swarm_quorum_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_quorum_immune_is_impaired: bridge is NULL");
         return false;
     }
 
@@ -353,7 +352,6 @@ int swarm_quorum_immune_disconnect_bio_async(swarm_quorum_immune_bridge_t* bridg
 bool swarm_quorum_immune_is_bio_async_connected(const swarm_quorum_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_quorum_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

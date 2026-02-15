@@ -375,7 +375,6 @@ int vae_bbb_bridge_disconnect(vae_bbb_bridge_t* bridge)
 bool vae_bbb_bridge_is_connected(const vae_bbb_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_is_connected: bridge is NULL");
         return false;
     }
     return (bridge->vae != NULL) && (bridge->bbb != NULL);

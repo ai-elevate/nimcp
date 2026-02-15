@@ -1270,7 +1270,6 @@ bool equation_is_constant(const expr_node_t* node) {
     if (!node) return true;
 
     if (node->type == EXPR_VARIABLE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "equation_is_constant: validation failed");
         return false;
     }
     if (node->type == EXPR_CONSTANT) return true;

@@ -612,7 +612,6 @@ bool astro_sleep_is_glymphatic_active(const astro_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_is_glymphatic_active: bridge is NULL");
         return false;
     }
 
@@ -673,7 +672,6 @@ bool astro_sleep_is_downscaling_active(const astro_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_is_downscaling_active: bridge is NULL");
         return false;
     }
 
@@ -876,7 +874,6 @@ bool astro_sleep_is_bio_async_connected(const astro_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

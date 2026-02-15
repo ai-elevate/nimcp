@@ -324,8 +324,8 @@ nimcp_error_t mesh_transaction_set_payload(
 
     if (size > 0) {
         if (size > MESH_MAX_PAYLOAD_SIZE) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_transaction: error condition");
-            return NIMCP_ERROR_BUFFER_OVERFLOW;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_transaction: error condition");
+            return NIMCP_ERROR_OUT_OF_RANGE;
         }
 
         tx->payload = nimcp_malloc(size);

@@ -129,7 +129,6 @@ static bool validate_state(portia_attention_state_t state) {
     if (state->magic != PORTIA_ATTENTION_MAGIC) {
         LOG_ERROR("Invalid magic number: 0x%08x (expected 0x%08x)",
                   state->magic, PORTIA_ATTENTION_MAGIC);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_state: validation failed");
         return false;
     }
 
@@ -353,7 +352,7 @@ int portia_attention_update_salience(
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d (max=%u)", target, state->resource_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_attention_destroy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_attention_destroy: capacity exceeded");
         return -1;
     }
 
@@ -643,7 +642,7 @@ int portia_attention_request(
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return -1;
     }
 
@@ -680,7 +679,7 @@ int portia_attention_release(
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return -1;
     }
 

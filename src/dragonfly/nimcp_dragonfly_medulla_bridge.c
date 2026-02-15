@@ -335,7 +335,6 @@ int dragonfly_medulla_bridge_disconnect(dragonfly_medulla_bridge_t bridge) {
 
 bool dragonfly_medulla_bridge_is_connected(const dragonfly_medulla_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;

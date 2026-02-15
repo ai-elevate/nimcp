@@ -1374,7 +1374,6 @@ bool brain_is_pattern_active(introspection_context_t context, const char* patter
     }
 
     if (context == NULL || pattern_name == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_is_pattern_active: validation failed");
         return false;
     }
 

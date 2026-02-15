@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parietal)
 //=============================================================================
@@ -301,7 +302,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
         /* Xavier initialization */
         float scale = sqrtf(2.0f / (float)(layer->input_size + layer->output_size));
         for (uint32_t j = 0; j < layer->input_size * layer->output_size; j++) {
-            nn->layers[i].weights[j] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f * scale;
+            nn->layers[i].weights[j] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 2.0f * scale;
         }
     }
 

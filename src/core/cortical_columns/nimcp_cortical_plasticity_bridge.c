@@ -633,7 +633,6 @@ bool cortical_plasticity_is_critical_period(
     const cortical_plasticity_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_is_critical_period: bridge is NULL");
         return false;
     }
     return bridge->config.in_critical_period;
@@ -818,7 +817,6 @@ bool cortical_plasticity_is_bio_async_connected(
     const cortical_plasticity_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

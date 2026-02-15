@@ -1150,7 +1150,6 @@ int fep_plasticity_bio_async_disconnect(fep_plasticity_bridge_t* bridge) {
 
 bool fep_plasticity_is_bio_async_connected(fep_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

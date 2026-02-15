@@ -212,33 +212,26 @@ bool metamem_config_validate(const metamem_config_t* config) {
 
     // Validate intervals
     if (config->monitor_interval_sec <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
     if (config->deep_scan_interval_sec <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
 
     // Validate thresholds (must be increasing)
     if (config->risk_threshold_low < 0.0f || config->risk_threshold_low > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
     if (config->risk_threshold_medium <= config->risk_threshold_low) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
     if (config->risk_threshold_high <= config->risk_threshold_medium) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
     if (config->risk_threshold_critical <= config->risk_threshold_high) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
     if (config->risk_threshold_critical > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
 
@@ -253,7 +246,6 @@ bool metamem_config_validate(const metamem_config_t* config) {
                        config->risk_weight_entanglement +
                        config->risk_weight_salience;
     if (weight_sum <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
         return false;
     }
 
@@ -1514,25 +1506,21 @@ bool metamem_monitor_validate(metamem_monitor_t monitor) {
 
 
     if (monitor->num_domains > monitor->max_domains) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
     // Check at-risk array
     if (monitor->num_at_risk > monitor->max_at_risk) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
     // Check history bounds
     if (monitor->history_len > monitor->history_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
     // Check metric ranges
     if (monitor->overall_health < 0.0f || monitor->overall_health > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 

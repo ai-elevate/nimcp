@@ -689,7 +689,6 @@ bool salience_attention_bridge_is_registered(
     const salience_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_is_registered: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

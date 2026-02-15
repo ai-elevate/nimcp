@@ -166,7 +166,7 @@ pag_bio_async_bridge_t* pag_bio_async_bridge_create(
                                                    sizeof(pag_bio_async_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -549,7 +549,7 @@ int pag_bio_async_subscribe_module(
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pag_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

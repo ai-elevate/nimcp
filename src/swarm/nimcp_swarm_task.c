@@ -173,7 +173,6 @@ static bool check_dependencies(
     for (uint32_t i = 0; i < task->dependency_count; i++) {
         task_node_t* dep_node = find_task_node(manager, task->depends_on[i]);
         if (!dep_node || dep_node->task.status != SWARM_TASK_STATUS_COMPLETED) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_dependencies: dep_node is NULL");
             return false;
         }
     }

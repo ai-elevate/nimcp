@@ -281,7 +281,7 @@ security_training_bridge_t* security_training_bridge_create(
     security_training_bridge_t* bridge = nimcp_malloc(alloc_size);
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-training bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

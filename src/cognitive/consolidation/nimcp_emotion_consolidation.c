@@ -425,13 +425,11 @@ bool emotion_consolidation_should_prioritize(
     const memory_emotion_tag_t* emotion_tag
 ) {
     if (!system || !emotion_tag) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_should_prioritize: required parameter is NULL (system, emotion_tag)");
         return false;
     }
 
     /* Guard: Prioritization disabled */
     if (!system->config.prioritize_emotional) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_should_prioritize: system->config is NULL");
         return false;
     }
 

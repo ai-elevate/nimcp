@@ -604,7 +604,6 @@ int parietal_fep_bridge_unregister(parietal_fep_bridge_t* bridge) {
 
 bool parietal_fep_bridge_is_registered(const parietal_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -923,7 +922,6 @@ parietal_fep_state_t parietal_fep_bridge_get_state(const parietal_fep_bridge_t* 
 
 bool parietal_fep_bridge_is_degraded(const parietal_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 

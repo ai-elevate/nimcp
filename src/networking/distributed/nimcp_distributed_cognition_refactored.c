@@ -286,7 +286,7 @@ static nimcp_future_t enqueue_message_async(distrib_cognition_t dc,
         LOG_MODULE_WARN(MODULE_NAME, "Message queue full (%u/%u), dropping message",
                        dc->queue_size, dc->config.max_message_queue);
         dc->stats.messages_dropped++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_message_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_message_async: capacity exceeded");
         return NULL;
     }
     nimcp_mutex_unlock(&dc->queue_mutex);
@@ -315,7 +315,7 @@ static nimcp_future_t enqueue_message_async(distrib_cognition_t dc,
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to allocate queue entry");
         nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entry is NULL");
 
         return NULL;
     }
@@ -488,7 +488,7 @@ distrib_cognition_t distrib_cognition_create(const distrib_cognition_config_t* c
     distrib_cognition_t dc = nimcp_calloc(1, sizeof(struct distrib_cognition_struct));
     if (!dc) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to allocate distrib_cognition structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dc is NULL");
 
         return NULL;
     }

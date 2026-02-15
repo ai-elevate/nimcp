@@ -260,7 +260,7 @@ static thalamic_reticular_nucleus_t* trn_create(uint32_t num_channels) {
     thalamic_reticular_nucleus_t* trn = nimcp_malloc(sizeof(thalamic_reticular_nucleus_t));
     if (!trn) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trn is NULL");
 
         return NULL;
 

@@ -973,7 +973,6 @@ bool vicarious_reward_is_schadenfreude(
     }
 
     if (!agent) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_is_schadenfreude: agent is NULL");
         return false;
     }
 
@@ -1014,7 +1013,6 @@ bool vicarious_reward_is_envy(
     }
 
     if (!agent) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_is_envy: agent is NULL");
         return false;
     }
 

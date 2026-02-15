@@ -21,6 +21,7 @@
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_atomic.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_gateway)
 
@@ -407,12 +408,12 @@ static void simulate_telemetry_reception(swarm_gateway_t* gateway) {
             telemetry.timestamp = current_time;
             telemetry.num_drones = swarm->num_drones_total;
             telemetry.num_responsive = swarm->num_drones_active;
-            telemetry.avg_battery_level = 75.0F + (rand() % 20);
-            telemetry.avg_cpu_usage = 40.0F + (rand() % 30);
-            telemetry.avg_memory_usage = 50.0F + (rand() % 20);
-            telemetry.formation_coherence = 0.8F + (rand() % 20) / 100.0F;
+            telemetry.avg_battery_level = 75.0F + (nimcp_tl_rand() % 20);
+            telemetry.avg_cpu_usage = 40.0F + (nimcp_tl_rand() % 30);
+            telemetry.avg_memory_usage = 50.0F + (nimcp_tl_rand() % 20);
+            telemetry.formation_coherence = 0.8F + (nimcp_tl_rand() % 20) / 100.0F;
             telemetry.mission_progress = 0.5F;
-            telemetry.communication_health = 85 + (rand() % 15);
+            telemetry.communication_health = 85 + (nimcp_tl_rand() % 15);
 
             update_telemetry(swarm, &telemetry);
             swarm->packets_received++;

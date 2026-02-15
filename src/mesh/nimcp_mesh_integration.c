@@ -963,14 +963,12 @@ size_t mesh_integration_process_transactions(mesh_integration_t* integration) {
 
 bool mesh_integration_has_converged(const mesh_integration_t* integration) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration_has_converged: integration is NULL");
         return false;
     }
     
     for (int i = 0; i < MESH_NUM_STANDARD_CHANNELS; i++) {
         if (integration->channels[i] && 
             !mesh_channel_has_converged(integration->channels[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_integration_has_converged: integration is NULL");
             return false;
         }
     }

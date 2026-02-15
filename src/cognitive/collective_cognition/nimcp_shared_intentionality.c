@@ -631,7 +631,7 @@ int shared_intentionality_commit_to_goal(
     goal_commitment_t* c = find_commitment(goal, instance_id);
     if (!c) {
         if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "shared_intentionality_commit_to_goal: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "shared_intentionality_commit_to_goal: capacity exceeded");
             return -1;
         }
         c = &goal->commitments[goal->commitment_count++];
@@ -925,7 +925,7 @@ int shared_intentionality_join_attention(
 
     /* Add to attending list */
     if (att->attending_count >= COLLECTIVE_MAX_INSTANCES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "shared_intentionality_join_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "shared_intentionality_join_attention: capacity exceeded");
         return -1;
     }
     att->attending_instances[att->attending_count++] = instance_id;
@@ -1074,7 +1074,7 @@ int shared_intentionality_assign_role(
     if (!c) {
         /* Auto-create commitment if assigning role before explicit commit */
         if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "shared_intentionality_assign_role: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "shared_intentionality_assign_role: capacity exceeded");
             return -1;
         }
         c = &goal->commitments[goal->commitment_count++];
@@ -1192,7 +1192,6 @@ bool shared_intentionality_is_we_mode_active(
     const shared_intentionality_t* si
 ) {
     if (!si) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_is_we_mode_active: si is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

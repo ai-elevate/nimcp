@@ -406,7 +406,6 @@ static bool validate_minicolumn_config(const minicolumn_config_t* config) {
 
     if (config->receptive_field.radius <= 0.0F) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: Invalid receptive field radius");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_minicolumn_config: validation failed");
         return false;
     }
 
@@ -417,7 +416,6 @@ static bool validate_minicolumn_config(const minicolumn_config_t* config) {
     if (layer_sum != config->num_neurons) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: Layer distribution sum (%u) != num_neurons (%u)",
             layer_sum, config->num_neurons);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_minicolumn_config: validation failed");
         return false;
     }
 

@@ -1158,7 +1158,6 @@ bool omni_wm_security_immune_bridge_is_connected(
     const omni_wm_security_immune_bridge_t* bridge) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

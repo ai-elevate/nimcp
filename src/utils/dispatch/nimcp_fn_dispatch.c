@@ -96,7 +96,7 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_create(void)
     fn_dispatch_table_t* table = nimcp_calloc(1, sizeof(fn_dispatch_table_t));
     if (!table) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate dispatch table");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "table is NULL");
 
         return NULL;
     }
@@ -762,7 +762,6 @@ NIMCP_EXPORT int fn_dispatch_get_stats(fn_dispatch_table_t* table,
 NIMCP_EXPORT bool fn_dispatch_is_valid(const fn_dispatch_table_t* table)
 {
     if (!table) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_is_valid: table is NULL");
         return false;
     }
     return table->magic == FN_DISPATCH_MAGIC;

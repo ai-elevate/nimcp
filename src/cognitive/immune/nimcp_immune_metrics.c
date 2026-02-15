@@ -384,7 +384,7 @@ immune_metrics_t* immune_metrics_create(const immune_metrics_config_t* config)
     immune_metrics_t* metrics = nimcp_calloc(1, sizeof(immune_metrics_t));
     if (metrics == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate metrics");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_metrics_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_metrics_create: validation failed");
         return NULL;
     }
 

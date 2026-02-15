@@ -13,6 +13,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(norepinephrine_release)
 //=============================================================================
@@ -387,7 +388,7 @@ int nimcp_ne_release_trigger(nimcp_ne_release_system_t* system, uint32_t num_spi
 
     for (uint32_t i = 0; i < num_spikes && system->vesicles.ready_pool > 0; i++) {
         /* Probabilistic release */
-        float rand_val = (float)rand() / RAND_MAX;
+        float rand_val = (float)nimcp_tl_rand() / RAND_MAX;
         if (rand_val < effective_release_prob) {
             /* Release one vesicle */
             system->vesicles.ready_pool--;

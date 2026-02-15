@@ -1007,7 +1007,7 @@ NIMCP_EXPORT bool kuramoto_add_sparse_coupling(kuramoto_system_t* system,
     /* Add new coupling */
     if (system->num_couplings >= system->max_couplings) {
         set_error("Sparse coupling array full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return false;
     }
 
@@ -1267,7 +1267,6 @@ NIMCP_EXPORT float kuramoto_coherence(const kuramoto_system_t* system,
 NIMCP_EXPORT bool kuramoto_is_synchronized(kuramoto_system_t* system,
                                             float threshold) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_get_mean_phase: system is NULL");
         return false;
     }
 

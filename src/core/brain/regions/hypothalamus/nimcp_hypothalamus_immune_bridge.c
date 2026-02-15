@@ -208,7 +208,7 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
     hypo_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_immune_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -648,7 +648,6 @@ int hypo_immune_bridge_apply_sickness_behavior(hypo_immune_bridge_t* bridge) {
 
 bool hypo_immune_bridge_is_cytokine_storm(const hypo_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_is_cytokine_storm: bridge is NULL");
         return false;
     }
     return bridge->sickness.cytokine_storm;
@@ -1271,7 +1270,6 @@ float hypo_immune_get_fever_signal(const hypo_immune_bridge_t* bridge)
 bool hypo_immune_is_sickness_behavior(const hypo_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_is_sickness_behavior: bridge is NULL");
         return false;
     }
     return bridge->sickness.level >= SICKNESS_MILD;

@@ -316,23 +316,18 @@ bool pr_cognitive_bridge_validate_config(const pr_cognitive_config_t* config) {
 
 
     if (config->attention_strength < 0.0f || config->attention_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
     }
     if (config->emotion_strength < 0.0f || config->emotion_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
     }
     if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
     }
     if (config->retrieval_threshold < 0.0f || config->retrieval_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
     }
     if (config->max_wm_slots > PR_COG_MAX_WM_SLOTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -1579,7 +1574,6 @@ pr_cognitive_error_t pr_cognitive_bridge_reset_stats(
 
 bool pr_cognitive_bridge_is_connected(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cognitive_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

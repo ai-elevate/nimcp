@@ -616,7 +616,7 @@ bool broca_add_lexical_entry(broca_adapter_t* adapter,
 
     /* Check capacity */
     if (adapter->lexicon_count >= adapter->lexicon_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "broca_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "broca_reset: capacity exceeded");
         return false;
     }
 
@@ -926,7 +926,7 @@ bool broca_get_next_command(broca_adapter_t* adapter,
     }
 
     if (adapter->output_head >= adapter->output_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "broca_add_word: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "broca_add_word: capacity exceeded");
         return false;  /* No more commands */
     }
 

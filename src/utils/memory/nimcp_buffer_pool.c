@@ -153,7 +153,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     buffer_pool_t pool = nimcp_calloc(1, sizeof(struct buffer_pool_struct));
     if (!pool) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool is NULL");
 
         return NULL;
 
@@ -326,7 +326,7 @@ NIMCP_EXPORT integration_buffer_t buffer_pool_acquire_integration_buffer(
     bool needs_private
 ) {
     if (!pool || channel_id >= pool->config.max_channels) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_pool_acquire_integration_buffer: pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_pool_acquire_integration_buffer: pool is NULL");
         return NULL;
     }
 
@@ -399,7 +399,7 @@ NIMCP_EXPORT sliding_window_t buffer_pool_acquire_sliding_window(
     bool needs_private
 ) {
     if (!pool || channel_id >= pool->config.max_channels) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_pool_acquire_sliding_window: pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_pool_acquire_sliding_window: pool is NULL");
         return NULL;
     }
 
@@ -460,7 +460,7 @@ NIMCP_EXPORT temporal_accumulator_t buffer_pool_acquire_temporal_accumulator(
     bool needs_private
 ) {
     if (!pool || channel_id >= pool->config.max_channels) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_pool_acquire_temporal_accumulator: pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_pool_acquire_temporal_accumulator: pool is NULL");
         return NULL;
     }
 
@@ -592,11 +592,9 @@ NIMCP_EXPORT bool buffer_pool_is_channel_shared(
     size_t channel_id
 ) {
     if (!pool || channel_id >= pool->num_channels) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_pool_is_channel_shared: pool is NULL");
         return false;
     }
     if (!pool->config.enable_cow) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_is_channel_shared: pool->config is NULL");
         return false;
     }
 

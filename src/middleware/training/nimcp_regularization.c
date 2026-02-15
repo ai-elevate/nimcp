@@ -592,7 +592,7 @@ nimcp_dropout_ctx_t* nimcp_dropout_create(const nimcp_dropout_config_t* config) 
 
     if (config->rate < NIMCP_DROPOUT_MIN || config->rate >= NIMCP_DROPOUT_MAX) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid dropout rate: %f", config->rate);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_dropout_create: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_dropout_create: capacity exceeded");
         return NULL;
     }
 

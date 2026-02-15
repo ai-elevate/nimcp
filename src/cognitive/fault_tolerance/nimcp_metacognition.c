@@ -404,7 +404,6 @@ bool metacognition_is_degraded(
 ) {
     // GUARD: NULL check
     if (!meta) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_is_degraded: meta is NULL");
         return false;
     }
 
@@ -415,7 +414,6 @@ bool metacognition_is_degraded(
 
     if (threshold < 0.0F || threshold > 1.0F) {
         LOG_WARNING("Invalid degradation threshold %.2f, expected [0,1]", threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metacognition_is_degraded: validation failed");
         return false;
     }
 
@@ -546,7 +544,6 @@ bool metacognition_has_high_uncertainty(
     float threshold
 ) {
     if (!meta) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_has_high_uncertainty: meta is NULL");
         return false;
     }
 
@@ -604,7 +601,6 @@ bool metacognition_get_current_health(
 
 bool metacognition_is_initialized(const metacognition_t* meta) {
     if (!meta) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_is_initialized: meta is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

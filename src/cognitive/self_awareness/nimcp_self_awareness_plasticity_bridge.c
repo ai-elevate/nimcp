@@ -958,7 +958,6 @@ int self_awareness_plasticity_bio_async_disconnect(self_awareness_plasticity_bri
 
 bool self_awareness_plasticity_is_bio_async_connected(self_awareness_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -157,7 +157,6 @@ static void calculate_stats_float(const float* data, size_t len,
  */
 static bool check_float_validity(const float* data, size_t len) {
     if (!data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_float_validity: data is NULL");
         return false;
     }
     for (size_t i = 0; i < len; i++) {
@@ -174,7 +173,6 @@ static bool check_float_validity(const float* data, size_t len) {
 static bool check_range_float(const float* data, size_t len,
                                float min_val, float max_val) {
     if (!data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_range_float: data is NULL");
         return false;
     }
     for (size_t i = 0; i < len; i++) {
@@ -253,7 +251,7 @@ lgss_input_validator_t* lgss_input_validator_create(
     lgss_input_validator_t* validator = nimcp_calloc(1, sizeof(*validator));
     if (!validator) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validator is NULL");
 
         return NULL;
 

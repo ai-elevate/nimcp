@@ -266,7 +266,7 @@ game_theory_snn_bridge_t* game_theory_snn_create(const game_theory_snn_config_t*
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->strategy_buffer || !bridge->prev_state) {
         game_theory_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "game_theory_snn_create: operation failed");
         return NULL;
     }
 
@@ -770,7 +770,6 @@ bool game_theory_snn_check_equilibrium(
     float* distance
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_snn_check_equilibrium: bridge is NULL");
         return false;
     }
 
@@ -794,7 +793,6 @@ bool game_theory_snn_check_cooperation(
     float* cooperation_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_snn_check_cooperation: bridge is NULL");
         return false;
     }
 
@@ -818,7 +816,6 @@ bool game_theory_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1105,7 +1102,6 @@ int game_theory_snn_bio_async_disconnect(game_theory_snn_bridge_t* bridge) {
 
 bool game_theory_snn_is_bio_async_connected(game_theory_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

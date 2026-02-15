@@ -150,7 +150,6 @@ static inline bool validate_pool(const sparse_synapse_pool_t pool) {
     // HOW: Early guard clause
     if (pool == NULL) {
         LOG_ERROR("Sparse synapse pool is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool: validation failed");
         return false;
     }
 
@@ -160,7 +159,6 @@ static inline bool validate_pool(const sparse_synapse_pool_t pool) {
     if (pool->magic != SPARSE_SYNAPSE_MAGIC) {
         LOG_ERROR("Sparse synapse pool has invalid magic number: 0x%X (expected 0x%X)",
                   pool->magic, SPARSE_SYNAPSE_MAGIC);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool: validation failed");
         return false;
     }
 
@@ -192,7 +190,6 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     // HOW: Early guard clause
     if (storage == NULL) {
         LOG_ERROR("Sparse synapse storage is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -202,7 +199,6 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     if (storage->embedded_count > SPARSE_SYNAPSE_EMBEDDED_CAPACITY) {
         LOG_ERROR("Embedded count %u exceeds capacity %u",
                   storage->embedded_count, SPARSE_SYNAPSE_EMBEDDED_CAPACITY);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -212,7 +208,6 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     if (storage->overflow_count > storage->overflow_capacity) {
         LOG_ERROR("Overflow count %u exceeds capacity %u",
                   storage->overflow_count, storage->overflow_capacity);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -222,7 +217,6 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     if (storage->overflow_capacity > 0 && storage->overflow == NULL) {
         LOG_ERROR("Overflow capacity %u but overflow pointer is NULL",
                   storage->overflow_capacity);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -301,7 +295,7 @@ static synapse_handle_t* allocate_overflow(sparse_synapse_pool_t pool, uint32_t 
             if (pool->config.enable_statistics) {
                 atomic_fetch_add(&pool->failed_allocations, 1);
             }
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_unlock: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool_unlock: validation failed");
             return NULL;
         }
         LOG_DEBUG("Overflow allocated via nimcp_malloc fallback (class %d exhausted)", class_idx);
@@ -952,7 +946,6 @@ synapse_handle_t* sparse_synapse_iterator_next(sparse_synapse_iterator_t* it) {
 
 bool sparse_synapse_iterator_has_next(const sparse_synapse_iterator_t* it) {
     if (it == NULL || it->storage == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_iterator_has_next: validation failed");
         return false;
     }
 

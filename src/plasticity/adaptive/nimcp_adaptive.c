@@ -869,23 +869,19 @@ static bool validate_network_config(const adaptive_network_config_t* config)
     // Guard clause: Validate spike parameters
     if (config->spike_params.k_factor <= 0.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid k_factor=%f\n", config->spike_params.k_factor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
     if (config->spike_params.min_threshold <= 0.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid min_threshold=%f\n", config->spike_params.min_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
     if (config->spike_params.max_threshold <= config->spike_params.min_threshold) {
         fprintf(stderr, "[ERROR] validate_network_config: max_threshold=%f <= min_threshold=%f\n",
                 config->spike_params.max_threshold, config->spike_params.min_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
     if (config->spike_params.sparsity_target < 0.0F || config->spike_params.sparsity_target > 1.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid sparsity_target=%f\n", config->spike_params.sparsity_target);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
 
@@ -933,7 +929,7 @@ static adaptive_neuron_state_t* allocate_neuron_states(uint32_t num_neurons,
     // Guard clause: Check allocation
     if (!states) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "states is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "states is NULL");
 
         return NULL;
 
@@ -1013,7 +1009,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
 
     // Guard clause: Check allocation
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network is NULL");
 
         return NULL;
     }
@@ -2209,7 +2205,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
         nimcp_free(analysis->active_neuron_ids);
         nimcp_free(analysis->activation_strengths);
         free_hot_buffer(output);  // Phase MP: Return to pool
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_analyze_activation: required parameter is NULL (analysis->active_neuron_ids, analysis->activation_strengths)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_analyze_activation: required parameter is NULL (analysis->active_neuron_ids, analysis->activation_strengths)");
         return false;
     }
 

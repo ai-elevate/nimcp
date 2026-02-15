@@ -801,7 +801,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_double_auction_create: required parameter is NULL (ctx->buy_orders, ctx->sell_orders)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_double_auction_create: required parameter is NULL (ctx->buy_orders, ctx->sell_orders)");
         return NULL;
     }
 

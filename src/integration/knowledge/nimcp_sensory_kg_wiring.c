@@ -970,13 +970,11 @@ int sensory_kg_set_security_level(sensory_kg_wiring_t* wiring, uint32_t node_id,
 
 bool sensory_kg_check_access(sensory_kg_wiring_t* wiring, uint32_t node_id, uint32_t requester_level) {
     if (!wiring) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_check_access: wiring is NULL");
         return false;
     }
 
     sensory_kg_node_t* node = find_node(wiring, node_id);
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_check_access: node is NULL");
         return false;
     }
 

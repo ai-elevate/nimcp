@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_neural_bridge)
 //=============================================================================
@@ -380,7 +381,7 @@ int neural_generate_image(creative_neural_bridge_t* bridge,
                 if (ret == 0) {
                     result->image = image;
                     result->success = true;
-                    result->seed_used = (seed != 0) ? seed : (uint64_t)rand();
+                    result->seed_used = (seed != 0) ? seed : (uint64_t)nimcp_tl_rand();
                 }
                 bridge->last_use_time[NEURAL_BACKEND_DIFFUSION_LOCAL] = get_time_ms();
             }
@@ -396,7 +397,7 @@ int neural_generate_image(creative_neural_bridge_t* bridge,
                 if (latent.data) {
                     /* Random latent vector */
                     for (uint32_t i = 0; i < 512; i++) {
-                        latent.data[i] = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+                        latent.data[i] = ((float)nimcp_tl_rand() / RAND_MAX) * 2.0f - 1.0f;
                     }
 
                     visual_image_t image = {0};

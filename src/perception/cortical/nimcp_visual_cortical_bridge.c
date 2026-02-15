@@ -509,7 +509,6 @@ int visual_cortical_disconnect_bio_async(visual_cortical_bridge_t* bridge)
 bool visual_cortical_is_bio_async_connected(const visual_cortical_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

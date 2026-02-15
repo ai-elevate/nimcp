@@ -1995,7 +1995,7 @@ static bool collect_resource_request_cb(const void* key, size_t key_size,
 
     resource_request_collect_ctx_t* ctx = (resource_request_collect_ctx_t*)user_data;
     if (!ctx || ctx->count >= ctx->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "calculate_conflict_severity: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "calculate_conflict_severity: ctx is NULL");
         return false;  /* Stop iteration if full */
     }
 

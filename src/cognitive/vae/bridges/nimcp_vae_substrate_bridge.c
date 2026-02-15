@@ -400,7 +400,6 @@ int vae_substrate_bridge_disconnect(vae_substrate_bridge_t* bridge)
 bool vae_substrate_bridge_is_connected(const vae_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_substrate_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->state == VAE_SUBSTRATE_STATE_CONNECTED ||
@@ -700,7 +699,6 @@ bool vae_substrate_can_afford(const vae_substrate_bridge_t* bridge,
                                vae_energy_category_t category)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_substrate_can_afford: bridge is NULL");
         return false;
     }
 

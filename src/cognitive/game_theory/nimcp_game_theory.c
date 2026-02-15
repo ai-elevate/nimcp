@@ -266,7 +266,6 @@ bool nimcp_is_pareto_optimal(const float* utilities, uint32_t n,
                               const float* feasible_utilities,
                               uint32_t num_feasible) {
     if (!utilities || !feasible_utilities || n == 0 || num_feasible == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_compute_fairness_index: required parameter is NULL (utilities, feasible_utilities)");
         return false;
     }
 
@@ -305,7 +304,6 @@ bool nimcp_is_pareto_optimal(const float* utilities, uint32_t n,
 
         // Other dominates current -> not Pareto optimal
         if (all_at_least_as_good && at_least_one_better) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_compute_fairness_index: validation failed");
             return false;
         }
     }

@@ -596,7 +596,6 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
     const pr_pink_bridge_config_t* config)
 {
     if (config == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -620,16 +619,13 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
 
         if (params[i]->amplitude < PR_PINK_MIN_AMPLITUDE ||
             params[i]->amplitude > PR_PINK_MAX_AMPLITUDE) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
             return false;
         }
         if (params[i]->correlation_time < PR_PINK_MIN_CORRELATION_TIME) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
             return false;
         }
         if (params[i]->spectral_exponent < PR_PINK_MIN_SPECTRAL_EXPONENT ||
             params[i]->spectral_exponent > PR_PINK_MAX_SPECTRAL_EXPONENT) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
             return false;
         }
     }
@@ -643,7 +639,6 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
 
     /* Validate sample rate */
     if (config->sample_rate_hz <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -682,7 +677,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     pr_pink_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_pink_bridge_struct));
     if (bridge == NULL) {
         pr_pink_bridge_set_error("Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: validation failed");
         return NULL;
     }
 
@@ -984,7 +979,6 @@ NIMCP_EXPORT bool pr_pink_should_consolidate_now(
     uint64_t current_time_ms)
 {
     if (!is_valid_bridge(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_should_consolidate_now: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1790,7 +1784,6 @@ NIMCP_EXPORT bool pr_pink_is_enabled(
     pr_pink_target_t target)
 {
     if (!is_valid_bridge(bridge) || !is_valid_target(target)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_is_enabled: required parameter is NULL (is_valid_bridge, is_valid_target)");
         return false;
     }
 
@@ -2250,21 +2243,18 @@ NIMCP_EXPORT bool pr_pink_bridge_validate(pr_pink_bridge_t bridge) {
 
         if (bridge->targets[i].initialized &&
             bridge->targets[i].generator == NULL) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: validation failed");
             return false;
         }
     }
 
     /* Check quaternion generator */
     if (bridge->quat_generators.quat_state == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: validation failed");
         return false;
     }
 
     /* Check fractal timers */
     if (bridge->consolidation_timer.timing == NULL ||
         bridge->promotion_timer.timing == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: validation failed");
         return false;
     }
 

@@ -158,39 +158,31 @@ bool territory_validate_config(const territory_config_t* config) {
     }
 
     if (config->default_radius_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
     if (config->patrol_speed_m_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
     if (config->waypoint_tolerance_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
     if (config->scan_time_s < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
 
     if (config->intruder_detect_radius_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
     if (config->chase_abandon_distance_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
     if (config->chase_max_duration_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
 
     if (config->perch_energy_threshold < 0.0f ||
         config->perch_energy_threshold > 1.0f) return false;
     if (config->perch_duration_s < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
         return false;
     }
 

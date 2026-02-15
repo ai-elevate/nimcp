@@ -352,7 +352,7 @@ nimcp_error_t mesh_bio_bridge_connect_router(
 
 nimcp_error_t mesh_bio_bridge_disconnect_router(mesh_bio_bridge_t* bridge) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge_disconnect_router: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -375,7 +375,6 @@ nimcp_error_t mesh_bio_bridge_disconnect_router(mesh_bio_bridge_t* bridge) {
 
 bool mesh_bio_bridge_is_connected(const mesh_bio_bridge_t* bridge) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;
@@ -786,7 +785,7 @@ nimcp_error_t mesh_bio_bridge_get_stats(
 
 nimcp_error_t mesh_bio_bridge_reset_stats(mesh_bio_bridge_t* bridge) {
     if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge_reset_stats: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

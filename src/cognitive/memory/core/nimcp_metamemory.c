@@ -456,11 +456,9 @@ NIMCP_EXPORT bool metamemory_config_validate(const metamemory_config_t* config) 
 
     // Validate weights
     if (config->jol_encoding_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_config_validate: validation failed");
         return false;
     }
     if (config->jol_accessibility_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_config_validate: validation failed");
         return false;
     }
 
@@ -726,7 +724,6 @@ NIMCP_EXPORT bool metamemory_check_familiarity(
 ) {
     if (!meta || !query_signature || !familiarity_out) {
         set_error("NULL parameter in check_familiarity");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_check_familiarity: required parameter is NULL (meta, query_signature, familiarity_out)");
         return false;
     }
 

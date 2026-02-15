@@ -1171,32 +1171,29 @@ int adv_validate_config(const adv_config_t* config) {
     }
 
     if (config->method >= ADV_TRAIN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "adv_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "adv_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->attack.type >= ADV_ATTACK_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "adv_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "adv_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->attack.norm >= ADV_NORM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "adv_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "adv_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->attack.epsilon < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_validate_config: validation failed");
         return -1;
     }
 
     if (config->attack.step_size <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_validate_config: validation failed");
         return -1;
     }
 
     if (config->trades.beta < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_validate_config: validation failed");
         return -1;
     }
 

@@ -162,6 +162,10 @@ void self_preservation_destroy(self_preservation_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     /* Free system */
@@ -561,7 +565,6 @@ bool self_preservation_is_bio_async_connected(
 ) {
     /* Guard clause: NULL check */
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_preservation_is_bio_async_connected: system is NULL");
         return false;
     }
 

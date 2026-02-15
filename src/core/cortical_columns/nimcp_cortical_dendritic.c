@@ -140,7 +140,6 @@ static bool check_coincidence(
     float window_ms
 ) {
     if (!cell) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_coincidence: cell is NULL");
         return false;
     }
 
@@ -791,7 +790,6 @@ bool cortical_dendritic_is_bio_async_connected(
     const cortical_dendritic_t* dend
 ) {
     if (!dend) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_dendritic_is_bio_async_connected: dend is NULL");
         return false;
     }
 

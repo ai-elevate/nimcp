@@ -117,7 +117,7 @@ execution_immune_bridge_t* execution_immune_create(
     execution_immune_bridge_t* bridge = nimcp_malloc(sizeof(execution_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("execution_immune_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -388,7 +388,6 @@ int execution_immune_get_error_state(
 
 bool execution_immune_is_mode_changed(const execution_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_immune_is_mode_changed: bridge is NULL");
         return false;
     }
 

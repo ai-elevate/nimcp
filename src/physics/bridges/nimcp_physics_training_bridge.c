@@ -215,7 +215,6 @@ int physics_train_report_feedback(
 
 bool physics_train_is_plasticity_enabled(const physics_train_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_train_is_plasticity_enabled: bridge is NULL");
         return false;
     }
     return bridge->current_modulation.plasticity_enabled;

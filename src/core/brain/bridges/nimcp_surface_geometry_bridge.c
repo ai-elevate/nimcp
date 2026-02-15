@@ -271,7 +271,7 @@ int surface_geometry_bridge_subscribe(
     BRIDGE_NULL_CHECK(bridge);
 
     if (msg_type >= SURFACE_BIO_MSG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_geometry_bridge_subscribe: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_geometry_bridge_subscribe: capacity exceeded");
         return -1;
     }
 
@@ -288,7 +288,7 @@ int surface_geometry_bridge_subscribe(
     /* Add subscription */
     if (bridge->num_subscriptions >= bridge->max_subscriptions) {
         BRIDGE_UNLOCK(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_geometry_bridge_subscribe: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_geometry_bridge_subscribe: capacity exceeded");
         return -1;  /* No room */
     }
 

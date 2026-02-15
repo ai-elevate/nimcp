@@ -560,7 +560,6 @@ bool rcog_immune_bridge_is_quarantined(
     const struct rcog_decomposition* decomposition
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_immune_bridge_is_quarantined: bridge is NULL");
         return false;
     }
 
@@ -588,7 +587,6 @@ bool rcog_immune_bridge_is_quarantined(
     }
 
     nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_immune_bridge_is_quarantined: operation failed");
     return false;
 }
 

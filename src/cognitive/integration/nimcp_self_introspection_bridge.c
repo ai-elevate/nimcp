@@ -397,6 +397,8 @@ void self_introspection_bridge_destroy(self_introspection_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -680,7 +682,7 @@ int self_introspection_trigger_reflection(
             /* Cannot add more queries - reflection fails */
             bridge->stats.reflection_failures++;
             nimcp_platform_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "self_introspection_trigger_reflection: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "self_introspection_trigger_reflection: capacity exceeded");
             return -1;
         }
 

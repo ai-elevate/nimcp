@@ -668,7 +668,6 @@ float emotion_tensor_get_compound(const emotion_tensor_system_t* system, emotion
 
 bool emotion_tensor_is_contradictory(const emotion_tensor_system_t* system, float threshold) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_is_contradictory: system is NULL");
         return false;
     }
 
@@ -746,7 +745,7 @@ bool emotion_tensor_set_channel(
 
 
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_set_channel: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_tensor_set_channel: capacity exceeded");
         return false;
     }
 
@@ -827,11 +826,11 @@ bool emotion_tensor_set_appraisal(
 
 
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_set_appraisal: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_tensor_set_appraisal: capacity exceeded");
         return false;
     }
     if (dimension < 0 || dimension >= APPRAISAL_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_set_appraisal: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_tensor_set_appraisal: capacity exceeded");
         return false;
     }
 
@@ -860,7 +859,7 @@ bool emotion_tensor_apply_stimulus(
 
 
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_apply_stimulus: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "emotion_tensor_apply_stimulus: capacity exceeded");
         return false;
     }
 

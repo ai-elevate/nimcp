@@ -23,6 +23,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sensory_swarm_bridge)
 //=============================================================================
@@ -99,7 +100,7 @@ static uint64_t get_timestamp(void) {
 }
 
 static float randf(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)nimcp_tl_rand() / (float)RAND_MAX;
 }
 
 static sensory_swarm_node_t* find_node(sensory_swarm_bridge_t* bridge, uint32_t node_id) {

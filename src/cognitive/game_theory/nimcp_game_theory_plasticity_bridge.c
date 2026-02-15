@@ -1128,7 +1128,6 @@ int game_theory_plasticity_bio_async_disconnect(game_theory_plasticity_bridge_t*
 
 bool game_theory_plasticity_is_bio_async_connected(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -413,7 +413,6 @@ bool mirror_neurons_sleep_is_replay_active(const mirror_neurons_sleep_bridge_t b
 {
     /* Guard clause: Handle NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_is_replay_active: bridge is NULL");
         return false;
     }
 
@@ -591,7 +590,6 @@ bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_brid
 {
     /* Guard clause: Handle NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -402,7 +402,7 @@ int capacity_manager_trigger_expand(capacity_manager_t* cm) {
         if (cap >= cm->config.max_capacity) {
             LOG_WARN("Capacity manager '%s': at max capacity %u",
                      cm->module_name, cm->config.max_capacity);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "capacity_manager_trigger_expand: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "capacity_manager_trigger_expand: capacity exceeded");
             return -1;
         }
         new_cap = cm->config.max_capacity;

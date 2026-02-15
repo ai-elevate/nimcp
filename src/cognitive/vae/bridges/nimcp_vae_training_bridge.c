@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Module Constants
@@ -541,7 +542,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
         float mu = result->latent_mu[i];
         float log_var = result->latent_log_var[i];
         float std = expf(0.5f * log_var);
-        float eps = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+        float eps = ((float)nimcp_tl_rand() / RAND_MAX) * 2.0f - 1.0f;
         result->latent_sample[i] = mu + std * eps;
     }
 
@@ -684,8 +685,8 @@ int vae_training_backward(vae_training_bridge_t* bridge,
 
     /* Simulate gradient values based on loss */
     for (uint32_t i = 0; i < grad_size; i++) {
-        result->vae_encoder_grads[i] = (loss->recon_loss * 0.1f) * ((float)rand() / RAND_MAX - 0.5f);
-        result->vae_decoder_grads[i] = (loss->recon_loss * 0.1f) * ((float)rand() / RAND_MAX - 0.5f);
+        result->vae_encoder_grads[i] = (loss->recon_loss * 0.1f) * ((float)nimcp_tl_rand() / RAND_MAX - 0.5f);
+        result->vae_decoder_grads[i] = (loss->recon_loss * 0.1f) * ((float)nimcp_tl_rand() / RAND_MAX - 0.5f);
     }
 
     /* Check for NaN */

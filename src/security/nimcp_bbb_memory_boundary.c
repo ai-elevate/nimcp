@@ -496,7 +496,6 @@ NIMCP_EXPORT bool bbb_check_memory_access(bbb_system_t system,
 
     /* Check if memory is quarantined (access denied if quarantined) */
     if (bbb_is_quarantined(system, address, size)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_memory_access: validation failed");
         return false;
     }
 
@@ -533,7 +532,6 @@ NIMCP_EXPORT bool bbb_check_memory_access(bbb_system_t system,
     }
 
     /* Access not within any registered region */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_memory_access: validation failed");
     return false;
 }
 
@@ -713,7 +711,6 @@ NIMCP_EXPORT bool bbb_verify_stack_canary(bbb_system_t system,
                 "Expected: 0x%016llx, Found: 0x%016llx\n",
                 (unsigned long long)expected_canary,
                 (unsigned long long)current_canary);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_stack_canary: validation failed");
         return false;
     }
 

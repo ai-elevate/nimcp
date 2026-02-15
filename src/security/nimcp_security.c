@@ -840,7 +840,7 @@ nimcp_result_t nimcp_directive_add(nimcp_directive_system_t* system, const char*
     }
 
     if (system->num_directives >= NIMCP_SECURITY_MAX_DIRECTIVES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Maximum directive count exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Maximum directive count exceeded");
         return NIMCP_BUFFER_TOO_SMALL;
     }
 
@@ -2191,13 +2191,11 @@ bool nimcp_security_validate_weight_change(
         security_stats.threats_detected++;
         LOG_WARN("Weight validation failed: NaN/Inf detected (old=%.3f, new=%.3f, max_delta=%.3f)",
                  old_weight, new_weight, max_delta);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_weight_change: validation failed");
         return false;
     }
 
     // Guard: Invalid delta
     if (max_delta <= 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_weight_change: validation failed");
         return false;
     }
 
@@ -2208,7 +2206,6 @@ bool nimcp_security_validate_weight_change(
     if (delta > max_delta) {
         // Suspicious weight change detected
         security_stats.threats_detected++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_weight_change: validation failed");
         return false;
     }
 
@@ -2240,7 +2237,6 @@ bool nimcp_security_validate_neuromodulator_change(
         security_stats.threats_detected++;
         LOG_WARN("Neuromodulator validation failed: NaN/Inf detected (old=%.3f, new=%.3f, max_rate=%.3f)",
                  old_level, new_level, max_rate);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: validation failed");
         return false;
     }
 
@@ -2253,7 +2249,6 @@ bool nimcp_security_validate_neuromodulator_change(
 
     // Guard: Invalid rate
     if (max_rate <= 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: validation failed");
         return false;
     }
 
@@ -2264,7 +2259,6 @@ bool nimcp_security_validate_neuromodulator_change(
     if (rate > max_rate) {
         // Suspicious neuromodulator hijacking detected
         security_stats.threats_detected++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: validation failed");
         return false;
     }
 

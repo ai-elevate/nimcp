@@ -751,7 +751,7 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     replication_cluster_t cluster = nimcp_calloc(1, sizeof(struct replication_cluster_struct));
     if (!cluster) {
         set_replication_error("Failed to allocate cluster structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cluster is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cluster is NULL");
 
         return NULL;
     }
@@ -1287,7 +1287,6 @@ uint32_t replication_get_lag(replication_cluster_t cluster, const char* brain_na
 bool replication_is_healthy(replication_cluster_t cluster)
 {
     if (!cluster) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "replication_is_healthy: cluster is NULL");
         return false;
     }
 
@@ -1295,7 +1294,6 @@ bool replication_is_healthy(replication_cluster_t cluster)
     uint32_t num_nodes = replication_get_cluster_status(cluster, nodes, 32);
 
     if (num_nodes == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "replication_is_healthy: num_nodes is zero");
         return false;
     }
 

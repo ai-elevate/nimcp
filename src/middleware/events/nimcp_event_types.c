@@ -256,7 +256,7 @@ bool event_copy(event_t* dest, const event_t* src) {
                 uint32_t* ids = nimcp_malloc(src->data.spike_burst.num_neurons * sizeof(uint32_t));
                 if (!ids) {
 
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
 
                             "if: ids is NULL");
 
@@ -274,7 +274,7 @@ bool event_copy(event_t* dest, const event_t* src) {
                 float* trace = nimcp_malloc(src->data.memory_formed.trace_size * sizeof(float));
                 if (!trace) {
 
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
 
                             "if: trace is NULL");
 
@@ -292,7 +292,7 @@ bool event_copy(event_t* dest, const event_t* src) {
                 float* vec = nimcp_malloc(src->data.decision_made.vector_size * sizeof(float));
                 if (!vec) {
 
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
 
                             "if: vec is NULL");
 
@@ -310,7 +310,7 @@ bool event_copy(event_t* dest, const event_t* src) {
                 void* data = nimcp_malloc(src->data.custom.data_size);
                 if (!data) {
 
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
 
                             "if: data is NULL");
 

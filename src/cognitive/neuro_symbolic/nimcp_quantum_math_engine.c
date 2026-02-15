@@ -1137,7 +1137,7 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
         nimcp_free(domain->lower_bounds);
         nimcp_free(domain->upper_bounds);
         nimcp_free(domain);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (domain->lower_bounds, domain->upper_bounds)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (domain->lower_bounds, domain->upper_bounds)");
         return NULL;
     }
 

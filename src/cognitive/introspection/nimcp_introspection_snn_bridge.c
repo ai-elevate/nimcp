@@ -758,7 +758,6 @@ bool introspection_snn_check_uncertainty(
     float* uncertainty_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_check_uncertainty: bridge is NULL");
         return false;
     }
 
@@ -782,7 +781,6 @@ bool introspection_snn_check_error(
     float* error_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_check_error: bridge is NULL");
         return false;
     }
 
@@ -806,7 +804,6 @@ bool introspection_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1091,7 +1088,6 @@ int introspection_snn_bio_async_disconnect(introspection_snn_bridge_t* bridge) {
 
 bool introspection_snn_is_bio_async_connected(introspection_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

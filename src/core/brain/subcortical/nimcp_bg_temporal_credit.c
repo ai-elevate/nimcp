@@ -124,7 +124,7 @@ bg_temporal_credit_t* bgtc_create(const bgtc_config_t* config) {
     bg_temporal_credit_t* tc = nimcp_calloc(1, sizeof(bg_temporal_credit_t));
     if (!tc) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tc is NULL");
 
         return NULL;
 

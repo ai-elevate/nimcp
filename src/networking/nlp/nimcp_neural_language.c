@@ -161,7 +161,7 @@ int nlang_expr_add(nlang_expression_t* expr, uint8_t primitive) {
 
     if (expr->primitive_count >= NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_WARN("nlang", "Expression full, cannot add primitive 0x%02X", primitive);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nlang_expr_add: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nlang_expr_add: capacity exceeded");
         return -1;
     }
 
@@ -442,28 +442,24 @@ bool nlang_expr_validate(const nlang_expression_t* expr) {
     // Version check
     if (expr->version != NLANG_VERSION) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid version: %u", expr->version);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
     // Primitive count check
     if (expr->primitive_count > NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid primitive count: %u", expr->primitive_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
     // Intent validation (must be in intent category)
     if ((expr->intent & 0xF0) != 0x80) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid intent: 0x%02X", expr->intent);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
     // Coordinate type validation
     if (expr->has_coord > NLANG_COORD_FULL) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid coord type: %u", expr->has_coord);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 

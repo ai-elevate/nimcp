@@ -1151,14 +1151,12 @@ nimcp_error_t nimcp_future_get_error(nimcp_future_t future)
 bool nimcp_future_is_ready(nimcp_future_t future)
 {
     if (!future || future->magic != FUTURE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_is_ready: future is NULL");
         return false;
     }
 
     // Bio-async backend: use bio-future ready check
     if (future->is_bio_mode) {
         if (!future->bio_future) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_is_ready: future->bio_future is NULL");
             return false;
         }
         return nimcp_bio_future_is_ready(future->bio_future);
@@ -1167,7 +1165,6 @@ bool nimcp_future_is_ready(nimcp_future_t future)
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_is_ready: shared is NULL");
         return false;
     }
 

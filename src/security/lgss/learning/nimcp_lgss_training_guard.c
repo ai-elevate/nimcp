@@ -284,7 +284,7 @@ static bool frozen_params_contains(frozen_params_t* f, uint32_t index) {
 
 static bool frozen_params_add(frozen_params_t* f, uint32_t index) {
     if (f->count >= f->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "frozen_params_add: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "frozen_params_add: capacity exceeded");
         return false;
     }
     if (frozen_params_contains(f, index)) {

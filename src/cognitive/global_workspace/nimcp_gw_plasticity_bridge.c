@@ -322,7 +322,7 @@ int gw_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->num_synapses >= bridge->max_synapses) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gw_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gw_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -1085,7 +1085,6 @@ int gw_plasticity_bio_async_disconnect(gw_plasticity_bridge_t* bridge) {
 
 bool gw_plasticity_is_bio_async_connected(gw_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

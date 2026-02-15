@@ -216,7 +216,7 @@ qat_ctx_t* qat_create(const qat_config_t* config) {
 
     qat_ctx_t* ctx = nimcp_calloc(1, sizeof(qat_ctx_t));
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -298,7 +298,7 @@ int qat_register_observer(
 
     if (ctx->num_observers >= QAT_MAX_OBSERVERS) {
         nimcp_mutex_unlock(ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_register_observer: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "qat_register_observer: capacity exceeded");
         return -1;
     }
 
@@ -963,31 +963,30 @@ int qat_validate_config(const qat_config_t* config) {
 
     /* Validate scheme */
     if (config->default_scheme >= QAT_SCHEME_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate granularity */
     if (config->default_granularity >= QAT_GRANULARITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate observer method */
     if (config->observer.method >= QAT_OBSERVER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate fake quant method */
     if (config->fake_quant.method >= QAT_FAKE_QUANT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate EMA decay */
     if (config->observer.ema_decay < 0.0f || config->observer.ema_decay > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_validate_config: validation failed");
         return -1;
     }
 

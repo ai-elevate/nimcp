@@ -196,13 +196,11 @@ bool scientific_validate_config(const scientific_config_t* config) {
 
     if (config->evidence_threshold < 0.0f || config->evidence_threshold > 1.0f) {
         set_scientific_error("Evidence threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_validate_config: validation failed");
         return false;
     }
 
     if (config->significance_level <= 0.0f || config->significance_level > 0.5f) {
         set_scientific_error("Significance level must be in (0, 0.5]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_validate_config: validation failed");
         return false;
     }
 
@@ -930,6 +928,11 @@ int scientific_learn_causal_structure(
 
     /* Phase 1: Compute correlation matrix and create skeleton */
     float** corr = nimcp_malloc(n * sizeof(float*));
+    if (!corr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: corr alloc failed");
+        nimcp_mutex_unlock(sr->lock);
+        return -1;
+    }
     for (uint32_t i = 0; i < n; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && n > 256) {
@@ -938,6 +941,13 @@ int scientific_learn_causal_structure(
         }
 
         corr[i] = nimcp_calloc(n, sizeof(float));
+        if (!corr[i]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: corr[i] alloc failed");
+            for (uint32_t k = 0; k < i; k++) nimcp_free(corr[k]);
+            nimcp_free(corr);
+            nimcp_mutex_unlock(sr->lock);
+            return -1;
+        }
     }
 
     /* Extract column data for correlation computation */
@@ -949,6 +959,13 @@ int scientific_learn_causal_structure(
         }
 
         float* col_i = nimcp_malloc(num_samples * sizeof(float));
+        if (!col_i) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: col_i alloc failed");
+            for (uint32_t k = 0; k < n; k++) nimcp_free(corr[k]);
+            nimcp_free(corr);
+            nimcp_mutex_unlock(sr->lock);
+            return -1;
+        }
         for (uint32_t s = 0; s < num_samples; s++) {
             /* Phase 8: Loop progress heartbeat */
             if ((s & 0xFF) == 0 && num_samples > 256) {
@@ -961,6 +978,14 @@ int scientific_learn_causal_structure(
 
         for (uint32_t j = i + 1; j < n; j++) {
             float* col_j = nimcp_malloc(num_samples * sizeof(float));
+            if (!col_j) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: col_j alloc failed");
+                nimcp_free(col_i);
+                for (uint32_t k = 0; k < n; k++) nimcp_free(corr[k]);
+                nimcp_free(corr);
+                nimcp_mutex_unlock(sr->lock);
+                return -1;
+            }
             for (uint32_t s = 0; s < num_samples; s++) {
                 /* Phase 8: Loop progress heartbeat */
                 if ((s & 0xFF) == 0 && num_samples > 256) {

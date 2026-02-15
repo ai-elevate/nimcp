@@ -125,7 +125,7 @@ int physics_swarm_register_partition(
         return -1;
     }
     if (bridge->num_partitions >= PHYSICS_SWARM_MAX_NODES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "physics_swarm_register_partition: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "physics_swarm_register_partition: capacity exceeded");
         return -1;
     }
 
@@ -192,7 +192,7 @@ int physics_swarm_receive_state(
         return -1;
     }
     if (source_node >= PHYSICS_SWARM_MAX_NODES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "physics_swarm_receive_state: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "physics_swarm_receive_state: capacity exceeded");
         return -1;
     }
 

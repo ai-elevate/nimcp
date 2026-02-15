@@ -506,7 +506,7 @@ int entorhinal_hypothalamus_update_spatial_value(
         /* Create new binding */
         if (bridge->value_map->num_bindings >= bridge->value_map->max_bindings) {
             /* Map is full, could implement replacement policy here */
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "entorhinal_hypothalamus_update_spatial_value: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "entorhinal_hypothalamus_update_spatial_value: capacity exceeded");
             return -1;
         }
 

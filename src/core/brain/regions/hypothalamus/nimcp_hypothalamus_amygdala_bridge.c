@@ -423,7 +423,6 @@ float hypo_amyg_bridge_get_stress_level(const hypo_amyg_bridge_t* bridge) {
 
 bool hypo_amyg_bridge_is_chronic_stress(const hypo_amyg_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_amyg_bridge_is_chronic_stress: bridge is NULL");
         return false;
     }
     return (bridge->chronic_stress_start_us > 0);

@@ -600,14 +600,12 @@ static bool is_version_older(const char* version_a, const char* version_b) {
     // Compare major version
     if (a_major < b_major) return true;
     if (a_major > b_major) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: validation failed");
         return false;
     }
 
     // Major versions equal, compare minor
     if (a_minor < b_minor) return true;
     if (a_minor > b_minor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: validation failed");
         return false;
     }
 
@@ -694,7 +692,6 @@ static bool check_model_version_update(const char* model_id,
                                        char* latest_version,
                                        size_t latest_version_size) {
     if (!model_id || !current_version || !latest_version) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_version_older: required parameter is NULL (model_id, current_version, latest_version)");
         return false;
     }
 

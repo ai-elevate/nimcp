@@ -1394,7 +1394,7 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
 
         if (!pred->components[k].mean || !pred->components[k].std) {
             omni_wm_mdn_destroy(pred);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_mdn_create: required parameter is NULL (pred->components, pred->components)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_mdn_create: required parameter is NULL (pred->components, pred->components)");
             return NULL;
         }
 
@@ -1931,6 +1931,88 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
     return NIMCP_SUCCESS;
 }
 
+nimcp_error_t omni_wm_generate_dream(omni_world_model_t* wm,
+                                      uint32_t dream_length,
+                                      float noise_scale,
+                                      omni_wm_rollout_t* rollout) {
+    omni_world_model_heartbeat("omni_world_m_omni_wm_generate_dr", 0.0f);
+
+    if (!wm) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!rollout) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Fall back to config dream_horizon when caller passes 0 */
+    if (dream_length == 0) {
+        dream_length = wm->config.dream_horizon;
+    }
+    if (dream_length > OMNI_WM_MAX_HORIZON) {
+        dream_length = OMNI_WM_MAX_HORIZON;
+    }
+
+    rollout->length = dream_length;
+    rollout->total_reward = 0.0f;
+    rollout->expected_free_energy = 0.0f;
+
+    /* Seed state: use current state if available, otherwise create one */
+    for (uint32_t i = 0; i < dream_length; i++) {
+        omni_wm_state_t* st = omni_wm_state_create(wm->config.state_dim);
+        if (!st) {
+            rollout->length = i;
+            return NIMCP_ERROR_NO_MEMORY;
+        }
+
+        if (i == 0) {
+            /* Seed from current state or initialise with small random values */
+            if (wm->current_state) {
+                uint32_t copy_dim = wm->current_state->dim < st->dim
+                                        ? wm->current_state->dim : st->dim;
+                memcpy(st->values, wm->current_state->values,
+                       copy_dim * sizeof(float));
+                st->uncertainty = wm->current_state->uncertainty;
+            } else {
+                for (uint32_t j = 0; j < st->dim; j++) {
+                    st->values[j] = randn(&wm->rand_seed) * 0.1f;
+                }
+                st->uncertainty = 0.5f;
+            }
+        } else {
+            /* Simple forward dynamics: tanh(prev + noise) */
+            omni_wm_state_t* prev = rollout->states[i - 1];
+            for (uint32_t j = 0; j < st->dim; j++) {
+                float noise = randn(&wm->rand_seed) * noise_scale;
+                st->values[j] = tanhf(prev->values[j] + noise);
+            }
+            st->uncertainty = prev->uncertainty * 1.05f;
+        }
+        rollout->states[i] = st;
+    }
+
+    /* Allocate actions for transitions 0..length-2 */
+    for (uint32_t i = 0; i + 1 < dream_length; i++) {
+        float* act = nimcp_calloc(wm->config.action_dim, sizeof(float));
+        if (!act) {
+            rollout->length = dream_length;
+            return NIMCP_ERROR_NO_MEMORY;
+        }
+        for (uint32_t j = 0; j < wm->config.action_dim; j++) {
+            act[j] = randn(&wm->rand_seed) * noise_scale;
+        }
+        rollout->actions[i] = act;
+
+        /* Simple reward: negative squared uncertainty growth */
+        float r = -0.01f * rollout->states[i + 1]->uncertainty;
+        rollout->rewards[i] = r;
+        rollout->total_reward += r;
+    }
+
+    rollout->expected_free_energy = rollout->total_reward * 0.5f;
+
+    return NIMCP_SUCCESS;
+}
+
 nimcp_error_t omni_wm_set_learning_rate(omni_world_model_t* wm, float learning_rate) {
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_set_learning", 0.0f);
@@ -2164,7 +2246,7 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
     if (!rollout->states || !rollout->actions ||
         !rollout->observations || !rollout->rewards) {
         omni_wm_rollout_destroy(rollout);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_cf_result_destroy: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_cf_result_destroy: operation failed");
         return NULL;
     }
 

@@ -242,7 +242,7 @@ static bool register_view(page_cow_view_t view) {
 
     if (g_page_cow.view_count >= PAGE_COW_MAX_REGIONS * 16) {
         spinlock_release(&g_page_cow.lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "register_view: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "register_view: capacity exceeded");
         return false;
     }
 
@@ -449,7 +449,7 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
     page_cow_region_t region = nimcp_calloc(1, sizeof(struct page_cow_region_struct));
     if (!region) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "region is NULL");
 
         return NULL;
 
@@ -578,7 +578,7 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
     page_cow_view_t view = nimcp_calloc(1, sizeof(struct page_cow_view_struct));
     if (!view) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "view is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "view is NULL");
 
         return NULL;
 
@@ -877,7 +877,7 @@ NIMCP_EXPORT page_cow_snapshot_t page_cow_snapshot_create(page_cow_view_t view) 
     page_cow_snapshot_t snap = nimcp_calloc(1, sizeof(struct page_cow_snapshot_struct));
     if (!snap) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snap is NULL");
 
         return NULL;
 

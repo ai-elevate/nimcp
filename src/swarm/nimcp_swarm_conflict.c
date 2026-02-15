@@ -136,7 +136,7 @@ swarm_conflict_resolver_t conflict_resolver_create(
     swarm_conflict_resolver_t resolver = nimcp_calloc(1, sizeof(*resolver));
     if (!resolver) {
         LOG_ERROR("Failed to allocate conflict resolver");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resolver is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resolver is NULL");
 
         return NULL;
     }

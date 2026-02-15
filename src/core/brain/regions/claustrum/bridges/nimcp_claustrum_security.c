@@ -269,7 +269,6 @@ bool claustrum_security_check_access(
     claustrum_security_op_t op
 ) {
     if (!bbb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_security_check_access: bbb is NULL");
         return false;
     }
 

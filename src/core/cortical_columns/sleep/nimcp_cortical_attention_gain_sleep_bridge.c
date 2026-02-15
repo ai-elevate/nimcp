@@ -150,7 +150,6 @@ float cortical_attention_gain_sleep_get_gain_factor(const cortical_attention_gai
 bool cortical_attention_gain_sleep_is_offline(const cortical_attention_gain_sleep_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_gain_sleep_is_offline: bridge is NULL");
         return false;
     }
     nimcp_mutex_lock(bridge->base.mutex);

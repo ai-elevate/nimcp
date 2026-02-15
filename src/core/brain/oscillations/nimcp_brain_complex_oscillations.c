@@ -520,7 +520,6 @@ uint32_t brain_complex_oscillation_get_num_neurons(
 bool brain_complex_oscillation_is_enabled(brain_t brain) {
     // Guard: NULL brain
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_is_enabled: brain is NULL");
         return false;
     }
 

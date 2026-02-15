@@ -248,7 +248,7 @@ static int rle_decompress(const uint8_t* input, size_t input_len,
         if (count == 0) {
             // Literal (escaped)
             if (out_pos >= output_max) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "compute_adler16: capacity exceeded");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "compute_adler16: capacity exceeded");
                 return -1;
             }
             output[out_pos++] = value;

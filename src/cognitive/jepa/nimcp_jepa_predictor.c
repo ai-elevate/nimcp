@@ -399,7 +399,7 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
             nimcp_free(mlp->pre_activations);
             bridge_base_cleanup(&pred->base);
             nimcp_free(pred);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_predictor_create: required parameter is NULL (mlp->activations, mlp->pre_activations)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_predictor_create: required parameter is NULL (mlp->activations, mlp->pre_activations)");
             return NULL;
         }
 
@@ -1282,7 +1282,7 @@ jepa_prediction_error_t* jepa_prediction_error_create(uint32_t dim) {
         nimcp_free(error->error);
         nimcp_free(error->weighted_error);
         nimcp_free(error);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_prediction_error_create: required parameter is NULL (error->error, error->weighted_error)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_prediction_error_create: required parameter is NULL (error->error, error->weighted_error)");
         return NULL;
     }
 

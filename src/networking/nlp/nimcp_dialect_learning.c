@@ -478,7 +478,7 @@ int dialect_learn_from_pairs(
         if (dl->dialect_count >= dl->config.max_dialects) {
             nimcp_mutex_unlock(&dl->lock);
             set_error("Maximum dialects reached");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dialect_learn_from_pairs: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dialect_learn_from_pairs: capacity exceeded");
             return -1;
         }
 

@@ -262,6 +262,8 @@ void wm_substrate_bridge_destroy(wm_substrate_bridge_t* bridge)
      */
     if ((bridge->base.mutex != NULL) && bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* WHAT: Free bridge structure
@@ -348,7 +350,6 @@ bool wm_substrate_is_bio_async_connected(const wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -668,7 +669,6 @@ bool wm_substrate_is_impaired(const wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

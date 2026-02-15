@@ -180,7 +180,7 @@ int predictive_regions_fep_bridge_map_region(
         return -1;
     }
     if (bridge->num_mappings >= PREDICTIVE_FEP_MAX_REGIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "predictive_regions_fep_bridge_map_region: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "predictive_regions_fep_bridge_map_region: capacity exceeded");
         return -1;
     }
 

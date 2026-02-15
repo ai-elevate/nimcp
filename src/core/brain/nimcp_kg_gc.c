@@ -282,7 +282,7 @@ int kg_gc_default_config(kg_gc_config_t* config) {
 kg_gc_context_t* kg_gc_create(brain_kg_t* kg, const kg_gc_config_t* config) {
     kg_gc_context_t* gc = nimcp_calloc(1, sizeof(kg_gc_context_t));
     if (!gc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gc is NULL");
 
         return NULL;
     }
@@ -697,7 +697,6 @@ int64_t kg_gc_estimate_reclaimable(
 
 bool kg_gc_is_running(const kg_gc_context_t* gc) {
     if (!gc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_is_running: gc is NULL");
         return false;
     }
     return gc->incremental.in_progress;
@@ -789,7 +788,6 @@ int kg_gc_disable_auto(kg_gc_context_t* gc) {
 
 bool kg_gc_is_auto_enabled(const kg_gc_context_t* gc) {
     if (!gc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_is_auto_enabled: gc is NULL");
         return false;
     }
     return gc->auto_gc_enabled;

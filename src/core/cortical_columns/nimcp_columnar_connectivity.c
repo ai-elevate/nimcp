@@ -167,7 +167,7 @@ static connection_hash_table_t* conn_hash_table_create(void) {
     connection_hash_table_t* table = nimcp_calloc(1, sizeof(connection_hash_table_t));
     if (!table) {
         LOG_ERROR("Failed to allocate hash table");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "table is NULL");
 
         return NULL;
     }
@@ -370,7 +370,7 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
     columnar_connectivity_t* conn = nimcp_calloc(1, sizeof(columnar_connectivity_t));
     if (!conn) {
         LOG_ERROR("Failed to allocate connectivity manager");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "conn is NULL");
 
         return NULL;
     }
@@ -1298,7 +1298,6 @@ float connectivity_compute_path_length(columnar_connectivity_t* conn) {
 bool connectivity_is_small_world(columnar_connectivity_t* conn) {
     // Guard: validate parameters
     if (!conn) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
         return false;
     }
 
@@ -1307,7 +1306,6 @@ bool connectivity_is_small_world(columnar_connectivity_t* conn) {
 
     // Guard: check validity
     if (C < 0.0F || L < 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connectivity_is_small_world: validation failed");
         return false;
     }
 

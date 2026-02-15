@@ -174,7 +174,7 @@ language_hippocampus_bridge_t* language_hippocampus_bridge_create(
     language_hippocampus_bridge_t* bridge = nimcp_calloc(1, sizeof(language_hippocampus_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -373,7 +373,7 @@ int language_hippocampus_encode_association(language_hippocampus_bridge_t* bridg
     uint32_t word_a_id, uint32_t word_b_id, float strength, const char* relation_type)
 {
     if (!bridge || bridge->association_count >= MAX_ASSOCIATIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_hippocampus_encode_association: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_hippocampus_encode_association: bridge is NULL");
         return -1;
     }
 
@@ -620,7 +620,6 @@ int language_hippocampus_trigger_replay(language_hippocampus_bridge_t* bridge,
 bool language_hippocampus_is_consolidated(const language_hippocampus_bridge_t* bridge, uint32_t memory_id)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_is_consolidated: bridge is NULL");
         return false;
     }
 

@@ -772,7 +772,6 @@ int oscillations_immune_get_trigger_state(
 
 bool oscillations_immune_is_modulated(const oscillations_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_is_modulated: bridge is NULL");
         return false;
     }
 
@@ -854,7 +853,6 @@ int oscillations_immune_disconnect_bio_async(oscillations_immune_bridge_t* bridg
 
 bool oscillations_immune_is_bio_async_connected(const oscillations_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

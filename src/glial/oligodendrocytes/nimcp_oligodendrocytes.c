@@ -2511,7 +2511,6 @@ void oligodendrocyte_cow_release(oligodendrocyte_t* oligo) {
 
 bool oligodendrocyte_is_cow_copy(const oligodendrocyte_t* oligo) {
     if (!oligo) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligodendrocyte_is_cow_copy: oligo is NULL");
         return false;
     }
     return oligo->cow_original != NULL;

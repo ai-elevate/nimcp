@@ -284,7 +284,6 @@ float swarm_immune_immune_get_detection_factor(const swarm_immune_immune_bridge_
 bool swarm_immune_immune_is_coordinated(const swarm_immune_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_immune_immune_is_coordinated: bridge is NULL");
         return false;
     }
 
@@ -352,7 +351,6 @@ int swarm_immune_immune_disconnect_bio_async(swarm_immune_immune_bridge_t* bridg
 bool swarm_immune_immune_is_bio_async_connected(const swarm_immune_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_immune_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

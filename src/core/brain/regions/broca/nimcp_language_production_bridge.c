@@ -347,7 +347,7 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
 
     language_production_bridge_t* bridge = nimcp_calloc(1, sizeof(language_production_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -917,7 +917,6 @@ bool lpb_set_self_monitoring(language_production_bridge_t* bridge, bool enable) 
 
 bool lpb_check_production(language_production_bridge_t* bridge, float* match_score) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_check_production: bridge is NULL");
         return false;
     }
 
@@ -935,7 +934,6 @@ bool lpb_check_production(language_production_bridge_t* bridge, float* match_sco
 
     if (!bridge->current_intent.semantic_vector || bridge->token_count == 0) {
         if (match_score) *match_score = 0.0F;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lpb_check_production: validation failed");
         return false;
     }
 

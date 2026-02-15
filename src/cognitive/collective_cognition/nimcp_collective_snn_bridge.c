@@ -268,7 +268,7 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->drive_buffer || !bridge->prev_state) {
         collective_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_snn_create: operation failed");
         return NULL;
     }
 
@@ -764,7 +764,6 @@ bool collective_snn_check_sync(
     float* sync_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_check_sync: bridge is NULL");
         return false;
     }
 
@@ -788,7 +787,6 @@ bool collective_snn_check_coordination(
     float* coordination_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_check_coordination: bridge is NULL");
         return false;
     }
 
@@ -812,7 +810,6 @@ bool collective_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1099,7 +1096,6 @@ int collective_snn_bio_async_disconnect(collective_snn_bridge_t* bridge) {
 
 bool collective_snn_is_bio_async_connected(collective_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

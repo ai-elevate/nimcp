@@ -384,19 +384,15 @@ bool prediction_validate_config(const prediction_config_t* config) {
         return false;
     }
     if (config->max_prediction_ms <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
         return false;
     }
     if (config->process_noise < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
         return false;
     }
     if (config->measurement_noise < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
         return false;
     }
     if (config->facilitation_width <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
         return false;
     }
     return true;

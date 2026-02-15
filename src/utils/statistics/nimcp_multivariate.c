@@ -17,6 +17,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -349,7 +350,7 @@ static nimcp_mv_result_t svd_power_iteration(
     for (uint32_t i = 0; i < k; i++) {
         // Initialize v randomly
         for (uint32_t j = 0; j < n; j++) {
-            v[j] = (float)rand() / (float)RAND_MAX - 0.5f;
+            v[j] = (float)nimcp_tl_rand() / (float)RAND_MAX - 0.5f;
         }
         vector_normalize(v, n);
 
@@ -1190,7 +1191,7 @@ nimcp_mv_result_t nimcp_ica_fit(
 
     srand(ica->random_state);
     for (uint32_t i = 0; i < n_comp * n_comp; i++) {
-        W[i] = (float)rand() / (float)RAND_MAX - 0.5f;
+        W[i] = (float)nimcp_tl_rand() / (float)RAND_MAX - 0.5f;
     }
 
     // Orthogonalize W using symmetric decorrelation: W = (W @ W^T)^(-1/2) @ W

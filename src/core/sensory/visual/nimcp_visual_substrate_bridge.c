@@ -63,7 +63,7 @@ visual_substrate_bridge_t* visual_substrate_bridge_create(void* visual,
 
     visual_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(visual_substrate_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_substrate_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_substrate_bridge_create: allocation failed");
         return NULL;
     }
 

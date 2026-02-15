@@ -436,7 +436,7 @@ int occipital_cognitive_connect_module(
 
     }
     if (type >= COG_MODULE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_cognitive_bridge_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_cognitive_bridge_reset: capacity exceeded");
         return -1;
     }
 
@@ -464,7 +464,7 @@ int occipital_cognitive_disconnect_module(
 
     }
     if (type >= COG_MODULE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_cognitive_bridge_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_cognitive_bridge_reset: capacity exceeded");
         return -1;
     }
 
@@ -537,7 +537,7 @@ int occipital_cognitive_send_event(
 
     cognitive_module_type_t target = event->target;
     if (target >= COG_MODULE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_cognitive_bridge_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_cognitive_bridge_reset: capacity exceeded");
         return -1;
     }
 
@@ -902,7 +902,6 @@ bool occipital_cognitive_is_module_connected(
     cognitive_module_type_t type) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_is_module_connected: bridge is NULL");
         return false;
     }
     if (type >= COG_MODULE_COUNT) return false;

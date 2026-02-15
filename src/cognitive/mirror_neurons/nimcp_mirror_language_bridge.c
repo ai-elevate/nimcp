@@ -960,7 +960,7 @@ int mirror_language_get_phoneme_activation(
 
 
     if (phoneme_id >= MAX_PHONEME_TEMPLATES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_language_get_phoneme_activation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_language_get_phoneme_activation: capacity exceeded");
         return -1;
     }
 
@@ -1304,7 +1304,7 @@ int mirror_language_create_binding(
 
 
     if (bridge->num_bindings >= bridge->config.binding_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_language_create_binding: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_language_create_binding: capacity exceeded");
         return -1;  /* At capacity */
     }
 
@@ -1451,7 +1451,7 @@ int mirror_language_register_phoneme(
 
 
     if (bridge->num_templates >= MAX_PHONEME_TEMPLATES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_language_register_phoneme: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_language_register_phoneme: capacity exceeded");
         return -1;
     }
 
@@ -1675,7 +1675,6 @@ int mirror_language_set_config(
 bool mirror_language_has_broca(const mirror_language_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_has_broca: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1688,7 +1687,6 @@ bool mirror_language_has_broca(const mirror_language_bridge_t* bridge)
 bool mirror_language_has_wernicke(const mirror_language_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_has_wernicke: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -156,7 +156,7 @@ static int add_module_state(
     cognitive_module_t module
 ) {
     if (ctx->num_modules >= MAX_GW_MODULES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_module_state: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_module_state: capacity exceeded");
         return -1;
     }
 

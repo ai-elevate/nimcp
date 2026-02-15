@@ -883,7 +883,6 @@ bool bias_get_detected_in_other(const bias_detection_system_t* system,
 
 bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_should_educate: system is NULL");
         return false;
     }
 
@@ -903,13 +902,11 @@ bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_should_educate: validation failed");
     return false;
 }
 
 bool bias_should_disengage(const bias_detection_system_t* system, uint32_t person_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_should_disengage: system is NULL");
         return false;
     }
 
@@ -929,7 +926,6 @@ bool bias_should_disengage(const bias_detection_system_t* system, uint32_t perso
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_should_disengage: validation failed");
     return false;
 }
 

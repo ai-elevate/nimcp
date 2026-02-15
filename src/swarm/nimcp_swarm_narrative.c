@@ -255,6 +255,8 @@ void swarm_narrative_destroy(swarm_narrative_t* sn)
     if (sn->mutex) {
         nimcp_platform_mutex_unlock(sn->mutex);
         nimcp_platform_mutex_destroy(sn->mutex);
+        nimcp_free(sn->mutex);
+        sn->mutex = NULL;
     }
 
     nimcp_free(sn);

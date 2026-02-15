@@ -358,7 +358,6 @@ static float compute_weight_saturation(neural_network_t network)
 static bool should_grow(const growth_metrics_t* metrics)
 {
     if (!metrics) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_grow: metrics is NULL");
         return false;
     }
 
@@ -390,7 +389,6 @@ static bool should_grow(const growth_metrics_t* metrics)
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_grow: validation failed");
     return false;
 }
 

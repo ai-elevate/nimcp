@@ -831,7 +831,6 @@ float sac_get_phi(const self_awareness_coordinator_t* coord) {
 
 bool sac_is_low_consciousness(const self_awareness_coordinator_t* coord) {
     if (!coord) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sac_is_low_consciousness: coord is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -938,7 +937,6 @@ int sac_disconnect_bio_async(self_awareness_coordinator_t* coord) {
 
 bool sac_is_bio_async_connected(const self_awareness_coordinator_t* coord) {
     if (!coord) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sac_is_bio_async_connected: coord is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

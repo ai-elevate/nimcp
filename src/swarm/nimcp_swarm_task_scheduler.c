@@ -998,7 +998,7 @@ int swarm_scheduler_set_algorithm(
     swarm_scheduler_algorithm_t algorithm)
 {
     if (!scheduler || algorithm >= SWARM_SCHEDULER_ALGORITHM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_scheduler_set_algorithm: scheduler is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "swarm_scheduler_set_algorithm: scheduler is NULL");
         return -1;
     }
 

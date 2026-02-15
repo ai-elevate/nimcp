@@ -316,7 +316,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_clone(const lnn_ternary_matrix_t* src) 
                 nimcp_free(dst->row_ptr);
                 if (dst->col_idx) nimcp_free(dst->col_idx);
                 nimcp_free(dst);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_matrix_clone: validation failed");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_clone: validation failed");
                 return NULL;
             }
             memcpy(dst->col_idx, src->col_idx, src->nnz * sizeof(uint32_t));
@@ -662,7 +662,6 @@ int lnn_ternary_config_validate(const lnn_ternary_config_t* config) {
 bool lnn_layer_is_ternary(const lnn_layer_t* layer) {
     /* TODO: Check layer's ternary config flag */
     (void)layer;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_layer_is_ternary: operation failed");
     return false;
 }
 

@@ -451,7 +451,6 @@ bool incremental_can_revise(
     uint32_t unit_id) {
 
     if (!processor || !processor->config.enable_revision) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incremental_free_output: required parameter is NULL (processor, processor->config)");
         return false;
     }
 
@@ -464,7 +463,6 @@ bool incremental_can_revise(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incremental_free_output: validation failed");
     return false;
 }
 

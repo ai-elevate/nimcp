@@ -144,7 +144,7 @@ olfact_bio_async_bridge_t* olfact_bio_async_bridge_create(const olfact_bio_async
     olfact_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(olfact_bio_async_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -534,7 +534,7 @@ int olfact_bio_async_subscribe_module(
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "olfact_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "olfact_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

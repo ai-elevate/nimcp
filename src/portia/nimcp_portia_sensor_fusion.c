@@ -165,7 +165,6 @@ static bool validate_fusion_ctx(const portia_fusion_ctx_t* ctx) {
     if (ctx->magic != FUSION_CTX_MAGIC) {
         LOG_ERROR("Invalid fusion context magic: 0x%08X", ctx->magic);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "invalid_magic", "invalid fusion context magic");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_fusion_ctx: validation failed");
         return false;
     }
 
@@ -299,7 +298,6 @@ static bool is_outlier(const portia_fusion_ctx_t* ctx, const sensor_reading_t* r
 
     // Need at least 3 samples to detect outliers
     if (history->sample_count < 3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_outlier: validation failed");
         return false;
     }
 
@@ -576,7 +574,7 @@ portia_fusion_ctx_t* portia_fusion_init(
     portia_fusion_ctx_t* ctx = nimcp_calloc(1, sizeof(portia_fusion_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate fusion context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -683,7 +681,7 @@ bool portia_fusion_update_sensor(
     if (reading->type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", reading->type);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor type");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_fusion_update_sensor: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_fusion_update_sensor: capacity exceeded");
         return false;
     }
 
@@ -825,7 +823,7 @@ bool portia_fusion_set_weight(
 
     if (type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", type);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_fusion_set_weight: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_fusion_set_weight: capacity exceeded");
         return false;
     }
 
@@ -860,7 +858,7 @@ bool portia_fusion_enable_sensor(
 
     if (type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", type);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_fusion_enable_sensor: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_fusion_enable_sensor: capacity exceeded");
         return false;
     }
 

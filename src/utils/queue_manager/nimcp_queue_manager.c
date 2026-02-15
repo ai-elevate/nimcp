@@ -1289,7 +1289,7 @@ bool nimcp_queue_manager_is_full(nimcp_queue_manager_handle_t manager, uint32_t 
                                  nimcp_queue_priority_t priority)
 {
     if (!is_valid_channel(manager, channel_id) || priority >= NIMCP_QUEUE_PRIORITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_queue_manager_is_full: is_valid_channel is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_queue_manager_is_full: is_valid_channel is NULL");
         return false;  // Cannot determine state of invalid queue
     }
 

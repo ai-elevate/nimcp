@@ -101,31 +101,24 @@ int dragonfly_ws_bridge_validate_config(const dragonfly_ws_config_t* config) {
     }
 
     if (config->ignition_threshold < 0.0f || config->ignition_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->base_salience < 0.0f || config->base_salience > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->target_detection_salience < 0.0f || config->target_detection_salience > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->pursuit_salience < 0.0f || config->pursuit_salience > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->broadcast_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->context_influence_weight < 0.0f || config->context_influence_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->subscribe_mode > WS_SUBSCRIBE_EXECUTIVE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
         return -1;
     }
 
@@ -361,7 +354,6 @@ int dragonfly_ws_unsubscribe(
 
 bool dragonfly_ws_has_broadcast(const dragonfly_workspace_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_has_broadcast: bridge is NULL");
         return false;
     }
     return bridge->queue_count > 0;

@@ -612,7 +612,6 @@ int security_cognitive_disconnect_cognitive(security_cognitive_bridge_t bridge)
 bool security_cognitive_is_connected(security_cognitive_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cognitive_is_connected: bridge is NULL");
         return false;
     }
 

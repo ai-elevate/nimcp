@@ -736,7 +736,7 @@ static void* walk_apply_action(const void* state, uint32_t action, void* user_da
     qmc_walk_state_t* new_state = nimcp_malloc(sizeof(qmc_walk_state_t));
     if (!new_state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_state is NULL");
 
         return NULL;
 
@@ -816,7 +816,6 @@ static bool walk_is_terminal(const void* state, void* user_data) {
 
     if (s->target_probability > 0.5f) return true;
     if (s->current_step >= ud->max_steps) return true;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "walk_is_terminal: capacity exceeded");
     return false;
 }
 
@@ -842,7 +841,7 @@ static void* walk_clone_state(const void* state, void* user_data) {
     qmc_walk_state_t* clone = nimcp_malloc(sizeof(qmc_walk_state_t));
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clone is NULL");
 
         return NULL;
 
@@ -1167,7 +1166,7 @@ static void* sat_apply_action(const void* state, uint32_t action, void* user_dat
     qmc_sat_state_t* new_state = nimcp_malloc(sizeof(qmc_sat_state_t));
     if (!new_state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_state is NULL");
 
         return NULL;
 
@@ -1223,7 +1222,6 @@ static bool sat_is_terminal(const void* state, void* user_data) {
     if (s->num_unsatisfied > 0) return true;
     if (s->num_assigned == s->num_variables) return true;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sat_is_terminal: validation failed");
     return false;
 }
 
@@ -1249,7 +1247,7 @@ static void* sat_clone_state(const void* state, void* user_data) {
     qmc_sat_state_t* clone = nimcp_malloc(sizeof(qmc_sat_state_t));
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clone is NULL");
 
         return NULL;
 

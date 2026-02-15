@@ -219,7 +219,7 @@ static trie_node_t* trie_traverse(trie_node_t* root, const uint8_t* phonemes,
     for (uint32_t i = 0; i < num_phonemes; i++) {
         uint8_t p = phonemes[i];
         if (p >= PHONEME_COUNT) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "trie_traverse: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "trie_traverse: capacity exceeded");
             return NULL;
         }
 
@@ -1257,7 +1257,7 @@ bool lexical_update_frequency(
     float delta)
 {
     if (!lex || word_id == 0 || word_id >= lex->entries_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "lexical_update_frequency: lex is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "lexical_update_frequency: lex is NULL");
         return false;
     }
 

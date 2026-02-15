@@ -755,7 +755,6 @@ int bcm_immune_get_abnormality_state(
 
 bool bcm_immune_is_healthy(const bcm_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_is_healthy: bridge is NULL");
         return false;
     }
 
@@ -847,7 +846,6 @@ int bcm_immune_disconnect_bio_async(bcm_immune_bridge_t* bridge) {
  */
 bool bcm_immune_is_bio_async_connected(const bcm_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

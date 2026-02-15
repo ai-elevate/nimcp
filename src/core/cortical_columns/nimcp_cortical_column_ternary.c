@@ -184,7 +184,7 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_clone(
     cc_ternary_connectivity_t* dst = nimcp_malloc(sizeof(cc_ternary_connectivity_t));
     if (!dst) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dst is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dst is NULL");
 
         return NULL;
 
@@ -307,7 +307,7 @@ cc_ternary_hypercolumn_t* cc_ternary_hypercolumn_create(
     cc_ternary_hypercolumn_t* thcol = nimcp_malloc(sizeof(cc_ternary_hypercolumn_t));
     if (!thcol) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thcol is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thcol is NULL");
 
         return NULL;
 

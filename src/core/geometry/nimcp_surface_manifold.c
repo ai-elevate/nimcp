@@ -263,7 +263,7 @@ surface_manifold_t* surface_manifold_create(
     surface_manifold_t* manifold = nimcp_malloc(sizeof(*manifold));
     if (!manifold) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manifold is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "manifold is NULL");
 
         return NULL;
 
@@ -288,7 +288,7 @@ surface_manifold_t* surface_manifold_create(
     if (!manifold->branch_points) {
         nimcp_free(manifold->charts);
         nimcp_free(manifold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_manifold_create: manifold->branch_points is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_manifold_create: manifold->branch_points is NULL");
         return NULL;
     }
     memset(manifold->branch_points, 0,
@@ -367,7 +367,7 @@ int surface_manifold_add_chart(
         return -1;
     }
     if (manifold->num_charts >= manifold->capacity_charts) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_manifold_add_chart: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_manifold_add_chart: capacity exceeded");
         return -1;
     }
 

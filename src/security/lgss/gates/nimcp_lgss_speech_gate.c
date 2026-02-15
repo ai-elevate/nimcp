@@ -755,7 +755,7 @@ nimcp_result_t speech_gate_add_filter_pattern(
         return NIMCP_ERROR_BUFFER_TOO_SMALL;
     }
     if (gate->pattern_count >= NIMCP_SPEECH_MAX_PATTERNS) {
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     /* Check for duplicate */

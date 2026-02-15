@@ -33,6 +33,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_continual_bridge)
 //=============================================================================
@@ -1217,7 +1218,7 @@ int pr_continual_replay_sample(
         /* Sample randomly from tier (simplified - full impl would use importance) */
         for (size_t s = 0; s < to_sample && total_sampled < batch_size && actual_count > 0; s++) {
             /* Random index in tier */
-            size_t idx = (size_t)(rand() % (int)actual_count);
+            size_t idx = (size_t)(nimcp_tl_rand() % (int)actual_count);
 
             /* Get node from tier */
             pr_memory_node_t* node = tier_nodes[idx];

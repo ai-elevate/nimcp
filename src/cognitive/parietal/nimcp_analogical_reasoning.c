@@ -394,7 +394,7 @@ analog_domain_t* analogical_create_domain(
         if (domain->entities) nimcp_free(domain->entities);
         if (domain->relations) nimcp_free(domain->relations);
         nimcp_free(domain);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_create_domain: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_create_domain: validation failed");
         return NULL;
     }
 
@@ -499,7 +499,7 @@ int analogical_register_domain(
 
     if (engine->num_cached_domains >= engine->config.max_domains_cache) {
         set_error("Domain cache full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "analogical_register_domain: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "analogical_register_domain: capacity exceeded");
         return -1;
     }
 

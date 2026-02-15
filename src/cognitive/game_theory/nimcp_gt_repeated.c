@@ -19,6 +19,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gt_repeated)
 //=============================================================================
@@ -236,7 +237,7 @@ static uint32_t compute_strategy_action_2p(
             }
             // With probability forgiveness_prob, cooperate even if opponent defected
             if (state->last_opponent_action == 1) {
-                float r = (float)rand() / (float)RAND_MAX;
+                float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
                 if (r < state->strategy.forgiveness_prob) {
                     return 0;  // Forgive
                 }
@@ -1076,10 +1077,10 @@ uint32_t nimcp_repeated_get_strategy_action(
     // Apply exploration if configured
     float explore = ctx->player_states[player].strategy.exploration_rate;
     if (explore > 0.0f) {
-        float r = (float)rand() / (float)RAND_MAX;
+        float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
         if (r < explore) {
             // Random action
-            action = (uint32_t)rand() % ctx->stage_game.num_actions[player];
+            action = (uint32_t)nimcp_tl_rand() % ctx->stage_game.num_actions[player];
         }
     }
 

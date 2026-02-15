@@ -466,7 +466,6 @@ int vae_fep_bridge_disconnect(vae_fep_bridge_t* bridge)
 bool vae_fep_bridge_is_connected(const vae_fep_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_is_connected: bridge is NULL");
         return false;
     }
     return (bridge->vae != NULL) && (bridge->fep != NULL);
@@ -1234,7 +1233,6 @@ int vae_fep_bridge_disconnect_bio_async(vae_fep_bridge_t* bridge)
 bool vae_fep_bridge_is_bio_async_connected(const vae_fep_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->config.enable_bio_async;

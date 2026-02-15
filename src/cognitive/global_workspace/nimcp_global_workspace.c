@@ -1516,7 +1516,7 @@ bool global_workspace_subscribe(
     if (ws->num_subscribers >= GLOBAL_WORKSPACE_MAX_SUBSCRIBERS) {
         LOG_WARN("Subscriber list full (%u max)", GLOBAL_WORKSPACE_MAX_SUBSCRIBERS);
         nimcp_platform_mutex_unlock(&ws->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_subscribe: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "global_workspace_subscribe: capacity exceeded");
         return false;
     }
 
@@ -1586,7 +1586,6 @@ bool global_workspace_unsubscribe(
 
 bool global_workspace_has_broadcast(const global_workspace_t* workspace) {
     if (workspace == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_has_broadcast: validation failed");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1682,7 +1681,6 @@ bool global_workspace_is_competing(
     cognitive_module_t module)
 {
     if (workspace == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_is_competing: validation failed");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

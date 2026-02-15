@@ -528,7 +528,6 @@ int mirror_snn_disconnect_bio_async(mirror_snn_bridge_t* bridge) {
 
 bool mirror_snn_is_bio_async_connected(const mirror_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

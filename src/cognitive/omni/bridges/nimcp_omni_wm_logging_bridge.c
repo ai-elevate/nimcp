@@ -381,12 +381,10 @@ static void free_buffers(omni_wm_logging_bridge_t* bridge) {
  */
 static bool should_sample_prediction(omni_wm_logging_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_sample_prediction: bridge is NULL");
         return false;
     }
     if (bridge->config.prediction_sample_rate >= 1.0f) return true;
     if (bridge->config.prediction_sample_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_sample_prediction: validation failed");
         return false;
     }
 
@@ -899,7 +897,6 @@ nimcp_error_t omni_wm_logging_bridge_connect_audit(
 
 bool omni_wm_logging_bridge_is_connected(const omni_wm_logging_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_logging_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

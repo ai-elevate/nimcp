@@ -1073,7 +1073,7 @@ NIMCP_EXPORT bool neural_logic_evaluate(
 
     if (gate_id >= network->neurons_count) {
         LOG_ERROR(LOG_MODULE, "Invalid gate_id: %u >= %u", gate_id, network->neurons_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_evaluate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_logic_evaluate: capacity exceeded");
         return false;
     }
 
@@ -1147,7 +1147,7 @@ NIMCP_EXPORT bool neural_logic_get_state(
     }
     
     if (neuron_id >= network->neurons_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_get_state: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_logic_get_state: capacity exceeded");
         return false;
     }
     
@@ -1248,7 +1248,7 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
     }
     
     if (variable_id >= network->variables_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_bind_variable: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_logic_bind_variable: capacity exceeded");
         return false;
     }
 
@@ -1304,7 +1304,7 @@ NIMCP_EXPORT bool neural_logic_query_variable(
     }
     
     if (variable_id >= network->variables_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_query_variable: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_logic_query_variable: capacity exceeded");
         return false;
     }
 
@@ -1365,7 +1365,7 @@ NIMCP_EXPORT bool neural_logic_connect(
     if (source_id >= network->neurons_count || target_id >= network->neurons_count) {
         LOG_ERROR(LOG_MODULE,"Invalid neuron IDs: source=%u, target=%u (max=%u)",
                            source_id, target_id, network->neurons_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_connect: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_logic_connect: capacity exceeded");
         return false;
     }
 
@@ -1571,7 +1571,6 @@ NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t networ
 NIMCP_EXPORT bool neural_logic_is_quantum_enabled(neural_logic_network_t network)
 {
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_logic_is_quantum_enabled: network is NULL");
         return false;
     }
     return network->quantum_enabled;

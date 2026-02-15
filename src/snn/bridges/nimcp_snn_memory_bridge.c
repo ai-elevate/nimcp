@@ -275,7 +275,6 @@ int snn_memory_bridge_disconnect_bio_async(snn_memory_bridge_t* bridge) {
  */
 bool snn_memory_bridge_is_bio_async_connected(const snn_memory_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -514,7 +513,6 @@ bool snn_memory_is_persistent(
     uint32_t population_id
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_is_persistent: null bridge pointer");
         return false;
     }
 
@@ -525,7 +523,6 @@ bool snn_memory_is_persistent(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_is_persistent: validation failed");
     return false;
 }
 
@@ -710,7 +707,6 @@ bool snn_memory_has_persistent_activity(
     uint32_t population_id
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_has_persistent_activity: null bridge pointer");
         return false;
     }
 
@@ -720,7 +716,6 @@ bool snn_memory_has_persistent_activity(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_has_persistent_activity: validation failed");
     return false;
 }
 

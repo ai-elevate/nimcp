@@ -230,7 +230,7 @@ cingulate_immune_bridge_t cingulate_immune_create(
     cingulate_immune_bridge_t bridge = nimcp_malloc(sizeof(struct cingulate_immune_bridge));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate cingulate-immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -706,7 +706,6 @@ int cingulate_immune_disconnect_bio_async(cingulate_immune_bridge_t bridge) {
 
 bool cingulate_immune_is_bio_async_connected(cingulate_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

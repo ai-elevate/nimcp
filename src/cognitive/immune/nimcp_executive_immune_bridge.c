@@ -876,7 +876,6 @@ int executive_immune_get_inflammation_state(
 
 bool executive_immune_is_cognitive_fog(const executive_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_is_cognitive_fog: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -897,7 +896,6 @@ float executive_immune_get_cognitive_fog_severity(const executive_immune_bridge_
 
 bool executive_immune_is_burnout(const executive_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_is_burnout: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -989,7 +987,6 @@ int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
  */
 bool executive_immune_is_bio_async_connected(const executive_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

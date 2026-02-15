@@ -696,7 +696,7 @@ bool introspection_register_pattern(introspection_context_t context,
         LOG_WARN("Pattern library full (%u patterns), cannot register '%s'",
                  ctx->library_size, pattern->name);
         nimcp_mutex_unlock(&ctx->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "introspection_register_pattern: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "introspection_register_pattern: capacity exceeded");
         return false;
     }
 

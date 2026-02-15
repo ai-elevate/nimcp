@@ -1103,7 +1103,6 @@ static bool validate_salience_config(const salience_config_t* config)
 
     if (config->history_size > 10000) {
         salience_set_error("History size too large (max 10000)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_salience_config: validation failed");
         return false;
     }
 
@@ -2230,7 +2229,7 @@ bool salience_register_modality(salience_evaluator_t evaluator, salience_modalit
 
     if (modality < 0 || modality >= SALIENCE_MODALITY_COUNT) {
         salience_set_error("Invalid modality: %d", modality);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "salience_register_modality: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "salience_register_modality: capacity exceeded");
         return false;
     }
 
@@ -2622,7 +2621,7 @@ bool salience_set_modality_weight(salience_evaluator_t evaluator, salience_modal
 
     if (modality < 0 || modality >= SALIENCE_MODALITY_COUNT) {
         salience_set_error("Invalid modality: %d", modality);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "salience_set_modality_weight: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "salience_set_modality_weight: capacity exceeded");
         return false;
     }
 

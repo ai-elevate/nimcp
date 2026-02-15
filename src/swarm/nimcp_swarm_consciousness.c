@@ -1115,7 +1115,6 @@ float swarm_brain_get_collective_phi(const swarm_brain_t* swarm) {
 bool swarm_brain_is_conscious(const swarm_brain_t* swarm, float threshold) {
     // Guard: Null check
     if (!swarm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_is_conscious: swarm is NULL");
         return false;
     }
 
@@ -1286,7 +1285,6 @@ bool swarm_consciousness_bbb_validate(const swarm_consciousness_metrics_t* metri
                        metrics->drone_count, SWARM_CONSCIOUSNESS_MAX_DRONES);
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_consciousness", "bbb_validate",
                      "Invalid drone count: %u", metrics->drone_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_bbb_validate: validation failed");
         return false;
     }
 
@@ -1305,21 +1303,18 @@ bool swarm_consciousness_bbb_validate(const swarm_consciousness_metrics_t* metri
         LOG_ERROR("NaN/Inf detected in collective phi");
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_consciousness", "bbb_validate",
                      "NaN/Inf in phi");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_bbb_validate: validation failed");
         return false;
     }
 
     // Validate network integration bounds [0, 1]
     if (metrics->network_integration < 0.0f || metrics->network_integration > 1.0f) {
         LOG_ERROR("Invalid network integration: %.3f", metrics->network_integration);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_bbb_validate: validation failed");
         return false;
     }
 
     // Validate workspace coherence bounds [0, 1]
     if (metrics->workspace_coherence < 0.0f || metrics->workspace_coherence > 1.0f) {
         LOG_ERROR("Invalid workspace coherence: %.3f", metrics->workspace_coherence);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_bbb_validate: validation failed");
         return false;
     }
 
@@ -1327,7 +1322,6 @@ bool swarm_consciousness_bbb_validate(const swarm_consciousness_metrics_t* metri
     if (metrics->consciousness_state < SWARM_CONSCIOUSNESS_DORMANT ||
         metrics->consciousness_state > SWARM_CONSCIOUSNESS_TRANSCENDENT) {
         LOG_ERROR("Invalid consciousness state: %d", metrics->consciousness_state);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_bbb_validate: validation failed");
         return false;
     }
 
@@ -1342,7 +1336,6 @@ bool swarm_consciousness_bbb_validate(const swarm_consciousness_metrics_t* metri
         }
         if (isnan(metrics->individual_phi[i]) || isinf(metrics->individual_phi[i])) {
             LOG_ERROR("NaN/Inf detected in individual phi[%u]", i);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_bbb_validate: validation failed");
             return false;
         }
     }

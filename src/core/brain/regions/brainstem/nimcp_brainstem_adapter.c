@@ -229,7 +229,7 @@ static midbrain_processor_t* midbrain_create(const midbrain_config_t* config) {
     midbrain_processor_t* mb = nimcp_calloc(1, sizeof(midbrain_processor_t));
     if (!mb) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mb is NULL");
 
         return NULL;
 
@@ -265,7 +265,7 @@ static pons_processor_t* pons_create(const pons_config_t* config) {
     pons_processor_t* pons = nimcp_calloc(1, sizeof(pons_processor_t));
     if (!pons) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pons is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pons is NULL");
 
         return NULL;
 
@@ -306,7 +306,7 @@ static reticular_formation_t* reticular_create(const reticular_config_t* config)
     reticular_formation_t* rf = nimcp_calloc(1, sizeof(reticular_formation_t));
     if (!rf) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rf is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rf is NULL");
 
         return NULL;
 
@@ -652,7 +652,7 @@ bool brainstem_register_reflex(brainstem_adapter_t* adapter,
 
     if (adapter->reflex_count >= adapter->reflex_capacity) {
         LOG_WARN("[%s] Reflex registry full", BRAINSTEM_LOG_MODULE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brainstem_reset: capacity exceeded");
         return false;
     }
 

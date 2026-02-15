@@ -290,7 +290,6 @@ float working_memory_sleep_get_capacity(const working_memory_sleep_bridge_t brid
 
 bool working_memory_sleep_is_offline(const working_memory_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_sleep_is_offline: bridge is NULL");
         return false;
     }
     nimcp_mutex_lock(bridge->base.mutex);

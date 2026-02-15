@@ -187,6 +187,8 @@ void metabolic_plasticity_destroy(metabolic_plasticity_t* metabolic) {
     /* Destroy mutex */
     if (metabolic->mutex) {
         nimcp_platform_mutex_destroy(metabolic->mutex);
+        nimcp_free(metabolic->mutex);
+        metabolic->mutex = NULL;
     }
 
     /* Free structure */
@@ -200,7 +202,6 @@ void metabolic_plasticity_destroy(metabolic_plasticity_t* metabolic) {
 
 bool metabolic_plasticity_can_ltp(const metabolic_plasticity_t* metabolic) {
     if (!metabolic) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_can_ltp: metabolic is NULL");
         return false;
     }
     if (!metabolic->config.enable_ltp_gating) return true;
@@ -209,7 +210,6 @@ bool metabolic_plasticity_can_ltp(const metabolic_plasticity_t* metabolic) {
 
 bool metabolic_plasticity_can_ltd(const metabolic_plasticity_t* metabolic) {
     if (!metabolic) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_can_ltd: metabolic is NULL");
         return false;
     }
     if (!metabolic->config.enable_ltd_gating) return true;

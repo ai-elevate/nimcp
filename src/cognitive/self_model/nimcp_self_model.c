@@ -340,7 +340,7 @@ bool self_model_add_belief(self_model_system_t system, const self_belief_t* beli
     // Guard: Check capacity
     if (system->model.num_beliefs >= SELF_MAX_BELIEFS) {
         nimcp_mutex_unlock(&system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "self_model_add_belief: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "self_model_add_belief: capacity exceeded");
         return false;
     }
 

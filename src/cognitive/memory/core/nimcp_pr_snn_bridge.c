@@ -334,39 +334,32 @@ NIMCP_EXPORT bool pr_snn_bridge_config_validate(const pr_snn_bridge_config_t* co
         return false;
     }
     if (config->population_size > PR_SNN_MAX_NEURONS_PER_POP) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Timing */
     if (config->simulation_dt_ms <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
     if (config->max_rate_hz <= 0.0f || config->max_rate_hz > 1000.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Latency */
     if (config->min_latency_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
     if (config->max_latency_ms <= config->min_latency_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Noise */
     if (config->noise_level < 0.0f || config->noise_level > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Encoding window */
     if (config->encoding_window_ms <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
         return false;
     }
 

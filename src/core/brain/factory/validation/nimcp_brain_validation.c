@@ -265,7 +265,6 @@ bool nimcp_brain_factory_validate_creation_params(const char* task_name, uint32_
 
     if (num_inputs > 10000) {
         set_error("num_inputs must be <= 10000");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_validate_creation_params: validation failed");
         return false;
     }
 
@@ -277,7 +276,6 @@ bool nimcp_brain_factory_validate_creation_params(const char* task_name, uint32_
 
     if (num_outputs > 10000) {
         set_error("num_outputs must be <= 10000");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_validate_creation_params: validation failed");
         return false;
     }
 

@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gt_mechanism)
 //=============================================================================
@@ -138,7 +139,7 @@ static const char* s_signal_equilibrium_names[] = {
  * @brief Simple random float in [0, 1]
  */
 static float random_float(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)nimcp_tl_rand() / (float)RAND_MAX;
 }
 
 /**

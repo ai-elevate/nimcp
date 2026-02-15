@@ -147,7 +147,7 @@ rsc_bio_async_router_t* rsc_bio_async_router_create(const rsc_bio_async_bridge_c
     rsc_bio_async_router_t* bridge = nimcp_calloc(1, sizeof(rsc_bio_async_router_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -578,7 +578,7 @@ int rsc_bio_async_subscribe_module(
     /* Check capacity */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rsc_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rsc_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

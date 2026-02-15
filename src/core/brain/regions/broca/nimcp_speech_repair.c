@@ -260,7 +260,6 @@ uint32_t speech_repair_detect_disfluencies(
 
 bool speech_repair_is_filler(const char* word) {
     if (!word) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_repair_is_filler: word is NULL");
         return false;
     }
 

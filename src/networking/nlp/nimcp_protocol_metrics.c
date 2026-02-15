@@ -173,7 +173,7 @@ static primitive_entry_t* find_or_create_primitive(
     /* Guard clause: max primitives reached */
     if (pm->primitive_count >= METRICS_MAX_PRIMITIVES) {
         LOG_WARN("Maximum primitives reached (%u)", METRICS_MAX_PRIMITIVES);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_primitive: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_or_create_primitive: capacity exceeded");
         return NULL;
     }
 

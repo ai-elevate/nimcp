@@ -330,6 +330,8 @@ void fep_orchestrator_destroy(fep_orchestrator_t* orchestrator) {
     /* Free resources */
     if (orchestrator->mutex) {
         nimcp_platform_mutex_destroy(orchestrator->mutex);
+        nimcp_free(orchestrator->mutex);
+        orchestrator->mutex = NULL;
     }
     if (orchestrator->bridges) {
         nimcp_free(orchestrator->bridges);

@@ -978,9 +978,9 @@ NIMCP_API nimcp_error_t energy_consistency_result_add_violation(
     }
 
     if (result->num_violations >= result->violation_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
             "energy_consistency_result_add_violation: violations array is full");
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     memcpy(&result->violations[result->num_violations], violation,

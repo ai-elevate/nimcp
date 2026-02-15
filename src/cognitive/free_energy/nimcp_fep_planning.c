@@ -238,6 +238,8 @@ void fep_planning_destroy(fep_planning_system_t* sys) {
 
     if (sys->mutex) {
         nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+        sys->mutex = NULL;
     }
 
     nimcp_free(sys);

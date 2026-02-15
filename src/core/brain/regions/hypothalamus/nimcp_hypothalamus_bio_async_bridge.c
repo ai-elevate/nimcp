@@ -236,7 +236,7 @@ hypo_bio_async_bridge_t* hypo_bio_async_bridge_create(
     hypo_bio_async_bridge_t* bridge = nimcp_malloc(sizeof(hypo_bio_async_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hypothalamus bio-async bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -387,7 +387,6 @@ int hypo_bio_async_disconnect(hypo_bio_async_bridge_t* bridge) {
 
 bool hypo_bio_async_is_connected(const hypo_bio_async_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected_to_router && bridge->connected_to_orch;
@@ -912,7 +911,7 @@ int hypo_bio_async_subscribe_module(
     /* Check capacity */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         BRIDGE_UNLOCK(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

@@ -525,7 +525,6 @@ nimcp_error_t nimcp_security_lock_level(nimcp_security_state_t state) {
 
 bool nimcp_security_is_locked(nimcp_security_state_t state) {
     if (!state || state->magic != NIMCP_SECURITY_STATE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_is_locked: state is NULL");
         return false;
     }
 
@@ -716,7 +715,7 @@ bool nimcp_security_feature_enabled(
     }
 
     if (feature >= NIMCP_SECURITY_FEATURE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_security_feature_enabled: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_security_feature_enabled: capacity exceeded");
         return false;
     }
 

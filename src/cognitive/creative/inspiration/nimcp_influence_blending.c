@@ -416,7 +416,7 @@ int influence_blender_add(influence_blender_t* blender,
 
     if (blender->num_current_influences >= blender->influences_capacity) {
         LOG_WARN(LOG_MODULE, "Influence capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "influence_blender_clear: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "influence_blender_clear: capacity exceeded");
         return -1;
     }
 
@@ -456,7 +456,7 @@ int influence_blender_add_negative(influence_blender_t* blender,
 
     if (blender->num_current_influences >= blender->influences_capacity) {
         LOG_WARN(LOG_MODULE, "Influence capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "influence_blender_clear: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "influence_blender_clear: capacity exceeded");
         return -1;
     }
 

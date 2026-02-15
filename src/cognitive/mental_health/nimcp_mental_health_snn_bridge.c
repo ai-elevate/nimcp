@@ -266,7 +266,7 @@ mental_health_snn_bridge_t* mental_health_snn_create(const mental_health_snn_con
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->mood_buffer || !bridge->prev_state) {
         mental_health_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_snn_create: operation failed");
         return NULL;
     }
 
@@ -809,7 +809,6 @@ bool mental_health_snn_check_anxiety(
     float* anxiety_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_snn_check_anxiety: bridge is NULL");
         return false;
     }
 
@@ -833,7 +832,6 @@ bool mental_health_snn_check_depression(
     float* depression_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_snn_check_depression: bridge is NULL");
         return false;
     }
 
@@ -857,7 +855,6 @@ bool mental_health_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1144,7 +1141,6 @@ int mental_health_snn_bio_async_disconnect(mental_health_snn_bridge_t* bridge) {
 
 bool mental_health_snn_is_bio_async_connected(mental_health_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lc_snn_bridge)
 //=============================================================================
@@ -299,7 +300,7 @@ int nimcp_lc_snn_encode_ne_state(nimcp_lc_snn_bridge_t* bridge) {
                                    bridge->config.tonic_baseline_hz);
                 /* Probability of spike in this timestep */
                 float spike_prob = rate * bridge->config.dt_ms / 1000.0f;
-                bridge->input_spikes[i] = (rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
+                bridge->input_spikes[i] = (nimcp_tl_rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
                 if (bridge->input_spikes[i] > 0) spikes_generated++;
             }
             break;
@@ -352,7 +353,7 @@ int nimcp_lc_snn_encode_burst(
 
     for (uint32_t i = 0; i < bridge->spike_buffer_size; i++) {
         float spike_prob = burst_rate * bridge->config.dt_ms / 1000.0f;
-        bridge->input_spikes[i] = (rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
+        bridge->input_spikes[i] = (nimcp_tl_rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
         if (bridge->input_spikes[i] > 0) spikes++;
     }
 

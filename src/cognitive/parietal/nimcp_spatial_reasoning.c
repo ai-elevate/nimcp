@@ -324,13 +324,11 @@ bool spatial_validate_config(const spatial_config_t* config) {
 
     if (config->rotation_rate_deg_ms <= 0.0f) {
         set_spatial_error("Rotation rate must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_validate_config: validation failed");
         return false;
     }
 
     if (config->matching_threshold < 0.0f || config->matching_threshold > 1.0f) {
         set_spatial_error("Matching threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_validate_config: validation failed");
         return false;
     }
 

@@ -83,7 +83,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(serialization)
 static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed)
 {
     if (!serializer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_check_read: serializer is NULL");
         return false;
     }
     if (bytes_needed == 0) return true;
@@ -165,7 +164,7 @@ NimcpSerializer* nimcp_serializer_create(size_t initial_capacity)
     if (!serializer) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(NimcpSerializer),
                           "Failed to allocate serializer structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serializer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "serializer is NULL");
 
         return NULL;
     }

@@ -485,7 +485,6 @@ int physics_immune_get_stats(
 
 bool physics_immune_is_connected(const physics_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_immune_is_connected: bridge is NULL");
         return false;
     }
     /* At least one physics module and immune must be connected */

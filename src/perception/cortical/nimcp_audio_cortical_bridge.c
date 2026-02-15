@@ -439,7 +439,6 @@ int audio_cortical_disconnect_bio_async(audio_cortical_bridge_t* bridge)
 bool audio_cortical_is_bio_async_connected(const audio_cortical_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

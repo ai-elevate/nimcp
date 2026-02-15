@@ -726,7 +726,6 @@ bool homeostatic_immune_is_homeostatic_failure(
     const homeostatic_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_is_homeostatic_failure: bridge is NULL");
         return false;
     }
 
@@ -850,7 +849,6 @@ int homeostatic_immune_disconnect_bio_async(homeostatic_immune_bridge_t* bridge)
  */
 bool homeostatic_immune_is_bio_async_connected(const homeostatic_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

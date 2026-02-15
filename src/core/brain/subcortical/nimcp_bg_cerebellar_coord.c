@@ -130,7 +130,7 @@ bg_cerebellar_coord_t* bgcb_create(const bgcb_config_t* config) {
     bg_cerebellar_coord_t* coord = nimcp_calloc(1, sizeof(bg_cerebellar_coord_t));
     if (!coord) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coord is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "coord is NULL");
 
         return NULL;
 
@@ -617,7 +617,7 @@ int bgcb_update_learning(bg_cerebellar_coord_t* coord,
                           bgcb_learn_type_t type,
                           float signal) {
     if (!coord || type >= BGCB_LEARN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgcb_get_stats: coord is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgcb_get_stats: coord is NULL");
         return -1;
     }
 

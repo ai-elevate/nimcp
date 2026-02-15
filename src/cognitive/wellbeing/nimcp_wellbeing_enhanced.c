@@ -1359,7 +1359,6 @@ bool enhanced_wellbeing_is_bio_async_connected(
     const enhanced_wellbeing_system_t* system
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_is_bio_async_connected: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

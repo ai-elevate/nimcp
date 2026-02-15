@@ -443,35 +443,31 @@ bool pink_noise_validate_config(const pink_noise_config_t* config) {
     // Guard: Invalid alpha
     if (config->alpha < 0.0F || config->alpha > 3.0F) {
         set_error("Alpha must be in [0, 3] range");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Guard: Invalid amplitude
     if (config->amplitude <= 0.0F) {
         set_error("Amplitude must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Guard: Invalid frequency range
     if (config->min_frequency <= 0.0F || config->min_frequency >= config->max_frequency) {
         set_error("Frequency range invalid: 0 < min_freq < max_freq");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pink_noise_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pink_noise_validate_config: capacity exceeded");
         return false;
     }
 
     // Guard: Nyquist violation
     if (config->sample_rate < 2.0F * config->max_frequency) {
         set_error("Sample rate must be >= 2*max_frequency (Nyquist)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Guard: Invalid method
     if (config->method < PINK_NOISE_FFT || config->method > PINK_NOISE_WHITE) {
         set_error("Invalid noise generation method");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
@@ -915,7 +911,6 @@ bool pink_noise_validate(const float* samples, uint32_t num_samples, float sampl
     // Guard: Invalid tolerance
     if (tolerance <= 0.0F) {
         set_error("Tolerance must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate: validation failed");
         return false;
     }
 
@@ -936,7 +931,6 @@ bool pink_noise_validate(const float* samples, uint32_t num_samples, float sampl
     // Guard: Alpha out of tolerance
     if (alpha_diff > tolerance) {
         set_error("Spectral exponent outside tolerance");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate: validation failed");
         return false;
     }
 

@@ -103,15 +103,13 @@ static bool validate_command(const command_t* cmd) {
         return false;
     }
     if (cmd->source >= COMMAND_SOURCE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_command: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "validate_command: capacity exceeded");
         return false;
     }
     if (cmd->priority < 0.0f || cmd->priority > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_command: validation failed");
         return false;
     }
     if (cmd->command_text[0] == '\0') {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_command: validation failed");
         return false;
     }
     return true;
@@ -140,7 +138,6 @@ static bool check_authorization(
 
     /* Unknown sources always rejected */
     if (cmd->source == COMMAND_SOURCE_UNKNOWN) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_authorization: validation failed");
         return false;
     }
 
@@ -178,7 +175,7 @@ static int add_to_pending_queue(
     if (system->pending_count >= COMMAND_MAX_PENDING) {
         NIMCP_LOGGING_WARN("Pending command queue full, dropping command %u",
                           cmd->command_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_to_pending_queue: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_to_pending_queue: capacity exceeded");
         return -1;
     }
 
@@ -605,7 +602,6 @@ bool command_compliance_is_bio_async_connected(
     const command_compliance_system_t* system
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_is_bio_async_connected: system is NULL");
         return false;
     }
 

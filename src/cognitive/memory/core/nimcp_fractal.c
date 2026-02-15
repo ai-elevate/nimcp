@@ -165,29 +165,24 @@ bool fractal_config_validate(const fractal_config_t* config) {
 
 
     if (config->min_scale < 4) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
     if (config->num_scales < 4) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
     /* Validate confidence threshold */
     if (config->confidence_threshold < 0.5f || config->confidence_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
     /* Validate DFA order */
     if (config->dfa_poly_order < 1 || config->dfa_poly_order > 3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
     /* Validate spectral overlap */
     if (config->spectral_overlap < 0.0f || config->spectral_overlap > 0.9f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
@@ -2016,7 +2011,6 @@ bool fractal_is_pink_noise(
 
     fractal_result_t result;
     if (fractal_dfa(samples, count, NULL, &result) != FRACTAL_OK) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_is_pink_noise: validation failed");
         return false;
     }
 
@@ -2050,7 +2044,6 @@ bool fractal_is_self_similar(
 
     fractal_result_t result;
     if (fractal_dfa(samples, count, &config, &result) != FRACTAL_OK) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_is_self_similar: validation failed");
         return false;
     }
 

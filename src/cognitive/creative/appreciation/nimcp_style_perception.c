@@ -657,7 +657,7 @@ int style_perception_start_evolution_tracking(style_perception_t* perc) {
         style_evolution_free(perc->current_evolution);
         nimcp_free(perc->current_evolution);
         perc->current_evolution = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_start_evolution_tracking: required parameter is NULL (perc->current_evolution->timeline, perc->current_evolution->timestamps)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_perception_start_evolution_tracking: required parameter is NULL (perc->current_evolution->timeline, perc->current_evolution->timestamps)");
         return -1;
     }
 
@@ -674,7 +674,7 @@ int style_perception_add_evolution_point(style_perception_t* perc,
 
     if (perc->current_evolution->num_points >= MAX_EVOLUTION_POINTS) {
         LOG_WARN(LOG_MODULE, "Evolution tracking full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "style_perception_start_evolution_tracking: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "style_perception_start_evolution_tracking: capacity exceeded");
         return -1;
     }
 
@@ -809,7 +809,7 @@ int style_perception_get_archetype(const style_perception_t* perc,
     }
 
     if (!archetypes || (uint32_t)archetype_id >= max_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "style_perception_stop_evolution_tracking: archetypes is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "style_perception_stop_evolution_tracking: archetypes is NULL");
         return -1;
     }
 

@@ -405,7 +405,7 @@ int rn_issue_command(nimcp_red_nucleus_t* rn, const rn_motor_command_t* cmd) {
     if (rn->queue_size >= rn->queue_capacity) {
         nimcp_mutex_unlock(rn->mutex);
         NIMCP_LOG_WARN(RN_LOG_TAG, "Command queue full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_issue_command: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rn_issue_command: capacity exceeded");
         return -1;
     }
 
@@ -746,7 +746,7 @@ int rn_set_learning_modulation(nimcp_red_nucleus_t* rn, float modulation) {
 
 int rn_reset_learning(nimcp_red_nucleus_t* rn, rn_effector_t effector) {
     if (!rn || effector >= RN_EFFECTOR_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_reset_learning: rn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rn_reset_learning: rn is NULL");
         return -1;
     }
 
@@ -921,7 +921,7 @@ int rn_set_cortical_input(nimcp_red_nucleus_t* rn,
                           rn_motor_cmd_type_t cmd_type,
                           float input) {
     if (!rn || cmd_type >= RN_CMD_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_reset_learning: rn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rn_reset_learning: rn is NULL");
         return -1;
     }
 

@@ -310,7 +310,6 @@ bool entorhinal_brain_init_check_dependencies(
     uint32_t required_deps)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_check_dependencies: bridge is NULL");
         return false;
     }
 
@@ -959,7 +958,6 @@ bool entorhinal_brain_init_is_ready(
     const entorhinal_brain_init_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_is_ready: bridge is NULL");
         return false;
     }
     return bridge->status.current_phase == ENTORHINAL_INIT_PHASE_READY;

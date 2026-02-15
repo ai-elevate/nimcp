@@ -438,6 +438,8 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
         bridge->base.mutex = NULL;
     }
 
@@ -516,7 +518,6 @@ int consolidation_substrate_disconnect_bio_async(consolidation_substrate_bridge_
 
 bool consolidation_substrate_is_bio_async_connected(const consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -712,7 +713,6 @@ consolidation_substrate_effects_t consolidation_substrate_get_effects(
 bool consolidation_substrate_is_impaired(const consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot check impairment on NULL bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

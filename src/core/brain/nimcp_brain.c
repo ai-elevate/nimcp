@@ -148,6 +148,11 @@
 #include "core/brain/factory/init/nimcp_brain_init.h"  // For nimcp_bbb_release_global_system
 
 //=============================================================================
+// Thread-local PRNG (thread-safe replacement for rand())
+//=============================================================================
+#include "utils/thread/nimcp_thread_rand.h"
+
+//=============================================================================
 // Bio-Async Module Registration
 //=============================================================================
 
@@ -3813,7 +3818,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         for (uint32_t i = 0; i < decision->output_size; i++) {
             // Add noise: random value in [-noise, +noise] range
             // NOLINTNEXTLINE(concurrency-mt-unsafe): noise generation, not security-critical
-            float noise = ((float)rand() / (float)RAND_MAX) * 2.0F - 1.0F;  // [-1, 1]
+            float noise = ((float)nimcp_tl_rand() / (float)RAND_MAX) * 2.0F - 1.0F;  // [-1, 1]
             noise *= sleep_noise_level;  // Scale to desired level
             decision->output_vector[i] += noise * decision->output_vector[i];  // Proportional noise
         }

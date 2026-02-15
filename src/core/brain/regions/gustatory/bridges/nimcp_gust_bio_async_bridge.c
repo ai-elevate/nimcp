@@ -257,7 +257,6 @@ int gust_bio_async_disconnect(gust_bio_async_bridge_t* bridge) {
 
 bool gust_bio_async_is_connected(const gust_bio_async_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_is_connected: bridge is NULL");
         return false;
     }
     return bridge->is_connected;
@@ -627,7 +626,7 @@ int gust_bio_async_subscribe_module(gust_bio_async_bridge_t* bridge, uint32_t mo
 
     /* Find free slot */
     if (bridge->num_subscriptions >= bridge->config.max_subscriptions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gust_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gust_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

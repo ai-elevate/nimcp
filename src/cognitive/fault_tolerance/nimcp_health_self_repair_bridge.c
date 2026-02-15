@@ -148,7 +148,6 @@ static bool should_trigger_by_policy(
 ) {
     switch (policy) {
         case HEALTH_TRIGGER_MANUAL:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_by_policy: operation failed");
             return false;
 
         case HEALTH_TRIGGER_FATAL_ONLY:
@@ -165,7 +164,6 @@ static bool should_trigger_by_policy(
             return severity >= DIAG_SEVERITY_ERROR;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_by_policy: operation failed");
             return false;
     }
 }
@@ -216,7 +214,6 @@ static bool check_and_update_rate_limit(
     bridge->window_repair_count++;
     bridge->stats.current_window_count = bridge->window_repair_count;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_and_update_rate_limit: operation failed");
     return false;
 }
 
@@ -1375,7 +1372,6 @@ const char* health_self_repair_bridge_version(void) {
 
 bool health_self_repair_bridge_is_ready(const health_self_repair_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

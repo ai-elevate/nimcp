@@ -765,11 +765,9 @@ bool mesh_brain_integration_is_registered(
     mesh_brain_region_t region
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration_is_registered: integration is NULL");
         return false;
     }
     if (region <= MESH_BRAIN_REGION_UNKNOWN || region >= MESH_BRAIN_REGION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration_is_registered: invalid region");
         return false;
     }
 

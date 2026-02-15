@@ -545,7 +545,7 @@ laminar_structure_t* laminar_structure_create(
     laminar_structure_t* ls = nimcp_calloc(1, sizeof(laminar_structure_t));
     if (!ls) {
         LOG_ERROR("Failed to allocate laminar structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ls is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ls is NULL");
 
         return NULL;
     }

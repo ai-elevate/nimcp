@@ -228,14 +228,12 @@ bool resonance_config_validate(resonance_config_t* config) {
                 config->weight_quaternion + config->weight_kuramoto;
     if (sum < RESONANCE_EPSILON) {
         set_error("At least one weight must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_config_validate: validation failed");
         return false;
     }
 
     // Check threshold range
     if (config->threshold < 0.0f || config->threshold > 1.0f) {
         set_error("Threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_config_validate: validation failed");
         return false;
     }
 

@@ -174,7 +174,7 @@ int kg_ratelimit_default_config(kg_ratelimit_config_t* config) {
 kg_ratelimiter_t* kg_ratelimit_create(const kg_ratelimit_config_t* config) {
     kg_ratelimiter_t* limiter = nimcp_calloc(1, sizeof(kg_ratelimiter_t));
     if (!limiter) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "limiter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "limiter is NULL");
 
         return NULL;
     }
@@ -453,7 +453,7 @@ int kg_quota_set(
     if (!entry) {
         if (limiter->quota_count >= KG_RATELIMIT_MAX_QUOTAS) {
             nimcp_mutex_unlock(limiter->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_quota_set: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_quota_set: capacity exceeded");
             return -1; /* Quota limit reached */
         }
 

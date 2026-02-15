@@ -186,7 +186,7 @@ perception_bio_bridge_t* perception_bio_async_bridge_create(
     perception_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(perception_bio_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -863,7 +863,7 @@ int perception_bio_async_broadcast_salience(
         return -1;
     }
     if (modality >= PERCEPT_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_salience: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_bio_async_broadcast_salience: capacity exceeded");
         return -1;
     }
 
@@ -908,7 +908,7 @@ int perception_bio_async_broadcast_novelty(
         return -1;
     }
     if (modality >= PERCEPT_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_novelty: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_bio_async_broadcast_novelty: capacity exceeded");
         return -1;
     }
 
@@ -947,11 +947,11 @@ int perception_bio_async_broadcast_cross_modal_attention(
         return -1;
     }
     if (source_modality >= PERCEPT_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_cross_modal_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_bio_async_broadcast_cross_modal_attention: capacity exceeded");
         return -1;
     }
     if (target_modality >= PERCEPT_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_cross_modal_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_bio_async_broadcast_cross_modal_attention: capacity exceeded");
         return -1;
     }
 

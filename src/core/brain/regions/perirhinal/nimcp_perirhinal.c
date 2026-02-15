@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(perirhinal)
 //=============================================================================
@@ -198,7 +199,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
         /* Random initialization of weights */
         for (uint32_t j = 0; j < pr->config.feature_dim; j++) {
             pr->object_cells[i].feature_weights[j] =
-                ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+                ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 0.1f;
         }
         pr->object_cells[i].learning_rate = pr->config.learning_rate;
     }

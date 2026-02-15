@@ -657,7 +657,6 @@ bool symbolic_logic_safety_lock(safety_kb_t* kb) {
 
 bool symbolic_logic_safety_is_locked(const safety_kb_t* kb) {
     if (!kb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_is_locked: kb is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -705,7 +704,6 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
     if (memcmp(computed_hash, kb->integrity_hash, SAFETY_HASH_SIZE) != 0) {
         LOG_ERROR("SAFETY KB INTEGRITY VERIFICATION FAILED - POSSIBLE TAMPERING");
         g_stats.integrity_failures++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_verify_integrity: validation failed");
         return false;
     }
 

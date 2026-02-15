@@ -50,6 +50,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_episodic_memory)
 //=============================================================================
@@ -326,7 +327,7 @@ static lsh_table_t* lsh_table_create(uint32_t num_buckets)
     }
 
     table->num_buckets = buckets_pow2;
-    table->hash_seed = (uint64_t)rand() * rand();  // Random seed
+    table->hash_seed = (uint64_t)nimcp_tl_rand() * nimcp_tl_rand();  // Random seed
 
     return table;
 }

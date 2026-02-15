@@ -213,7 +213,7 @@ myelin_segment_pool_t* myelin_segment_pool_create(uint32_t capacity)
 
     myelin_segment_pool_t* pool = nimcp_calloc(1, sizeof(myelin_segment_pool_t));
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool is NULL");
 
         return NULL;
     }
@@ -467,7 +467,7 @@ myelin_segment_t* myelin_sheath_add_segment(myelin_sheath_t* sheath,
     myelin_segment_t* segment = nimcp_calloc(1, sizeof(myelin_segment_t));
     if (!segment) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "segment is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "segment is NULL");
 
         return NULL;
 
@@ -1317,7 +1317,6 @@ void myelin_sheath_cow_release(myelin_sheath_t* sheath)
 bool myelin_sheath_is_cow_copy(const myelin_sheath_t* sheath)
 {
     if (!sheath) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_sheath_is_cow_copy: sheath is NULL");
         return false;
     }
     return (sheath->cow_original != NULL && !sheath->cow_modified);
@@ -1342,7 +1341,7 @@ myelin_sheath_network_t* myelin_network_create(const myelin_network_config_t* co
 
     myelin_sheath_network_t* network = nimcp_calloc(1, sizeof(myelin_sheath_network_t));
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network is NULL");
 
         return NULL;
     }

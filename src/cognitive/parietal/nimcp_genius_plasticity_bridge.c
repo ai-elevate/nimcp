@@ -386,7 +386,7 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_plasticity_link_genius: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "genius_plasticity_link_genius: capacity exceeded");
         return -1;
     }
 
@@ -1201,7 +1201,6 @@ int genius_plasticity_bio_async_disconnect(genius_plasticity_bridge_t* bridge) {
 
 bool genius_plasticity_is_bio_async_connected(genius_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

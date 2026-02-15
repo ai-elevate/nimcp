@@ -400,7 +400,7 @@ int collective_immune_bridge_report_threat(
     if (bridge->pending_threat_count >= MAX_PENDING_THREATS) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Collective immune bridge threat queue full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_immune_bridge_report_threat: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collective_immune_bridge_report_threat: capacity exceeded");
         return -1;
     }
 

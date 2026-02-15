@@ -123,29 +123,23 @@ bool ocelli_validate_config(const ocelli_config_t* config) {
         config->smoothing_factor > 1.0f) return false;
 
     if (config->pitch_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
         return false;
     }
     if (config->roll_gain < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
         return false;
     }
     if (config->rate_damping < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
         return false;
     }
 
     if (config->max_pitch_correction_rad <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
         return false;
     }
     if (config->max_roll_correction_rad <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
         return false;
     }
 
     if (config->prediction_horizon_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
         return false;
     }
 

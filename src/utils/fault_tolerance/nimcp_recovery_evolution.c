@@ -17,6 +17,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_evolution)
 
@@ -46,7 +47,7 @@ struct re_context {
 //=============================================================================
 
 static float re_random_float(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)nimcp_tl_rand() / (float)RAND_MAX;
 }
 
 static uint32_t re_random_uint(uint32_t max) {

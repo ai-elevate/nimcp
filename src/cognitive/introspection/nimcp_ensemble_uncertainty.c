@@ -321,7 +321,7 @@ bool ensemble_add_model(ensemble_context_t ensemble,
         nimcp_mutex_unlock(&ensemble->lock);
         LOG_WARN("Ensemble is full (%u/%u models)",
                 ensemble->num_models, ensemble->max_models);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ensemble_add_model: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ensemble_add_model: capacity exceeded");
         return false;
     }
 

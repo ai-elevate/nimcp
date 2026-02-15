@@ -1128,7 +1128,7 @@ nimcp_bio_promise_t nimcp_bio_promise_create(
 
     if (channel >= BIO_CHANNEL_COUNT) {
         LOG_ERROR("Invalid channel type: %d", channel);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_bio_promise_create: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_bio_promise_create: capacity exceeded");
         return NULL;
     }
 
@@ -2338,12 +2338,10 @@ float nimcp_glial_wave_get_level_at(nimcp_glial_wave_t wave, uint32_t region_id)
 
 bool nimcp_glial_wave_has_reached(nimcp_glial_wave_t wave, uint32_t region_id) {
     if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_glial_wave_has_reached: wave is NULL");
         return false;
     }
 
     if (region_id >= wave->num_regions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_glial_wave_has_reached: capacity exceeded");
         return false;
     }
 
@@ -2430,7 +2428,6 @@ float nimcp_glial_wave_get_radius(nimcp_glial_wave_t wave) {
 
 bool nimcp_glial_wave_is_active(nimcp_glial_wave_t wave) {
     if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_glial_wave_is_active: wave is NULL");
         return false;
     }
     return wave->active;

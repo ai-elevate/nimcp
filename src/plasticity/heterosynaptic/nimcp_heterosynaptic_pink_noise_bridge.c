@@ -220,6 +220,8 @@ void hetero_pink_noise_bridge_destroy(hetero_pink_noise_bridge_t* bridge) {
 
     /* Destroy mutex */
     nimcp_platform_mutex_destroy(bridge->base.mutex);
+    nimcp_free(bridge->base.mutex);
+    bridge->base.mutex = NULL;
 
     /* Free bridge */
     nimcp_free(bridge);

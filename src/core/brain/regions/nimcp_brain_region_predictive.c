@@ -98,7 +98,6 @@ void brain_region_predictive_mesh_unregister(void) {
  */
 static inline bool has_predictive_extension(brain_region_t* region) {
     if (!region) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "has_predictive_extension: region is NULL");
         return false;
     }
     // Assuming brain_region_t has a predictive_extension field

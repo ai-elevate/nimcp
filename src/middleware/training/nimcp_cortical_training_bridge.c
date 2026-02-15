@@ -1144,7 +1144,6 @@ bool cortical_training_is_bio_async_connected(
     const cortical_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

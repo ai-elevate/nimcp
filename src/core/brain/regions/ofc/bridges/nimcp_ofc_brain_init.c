@@ -353,7 +353,6 @@ bool ofc_init_immune_bridge(nimcp_ofc_t* ofc, brain_t brain) {
 
 bool ofc_is_initialized(nimcp_ofc_t* ofc) {
     if (!ofc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_is_initialized: ofc is NULL");
         return false;
     }
 

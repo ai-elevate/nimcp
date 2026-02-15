@@ -1153,7 +1153,6 @@ uint32_t dist_get_world_size(const dist_ctx_t* ctx) {
 
 bool dist_is_coordinator(const dist_ctx_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_is_coordinator: ctx is NULL");
         return false;
     }
     return ctx->config.worker.role == DIST_ROLE_COORDINATOR;
@@ -1168,26 +1167,26 @@ int dist_validate_config(const dist_config_t* config) {
 
     /* Validate strategy */
     if (config->strategy >= DIST_STRATEGY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate backend */
     if (config->backend >= DIST_BACKEND_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate worker config */
     if (config->worker.world_size == 0 ||
         config->worker.rank >= config->worker.world_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate compression */
     if (config->compression.method >= DIST_COMPRESS_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
@@ -1195,20 +1194,17 @@ int dist_validate_config(const dist_config_t* config) {
     if (config->strategy == DIST_STRATEGY_FEDERATED) {
         if (config->federated.local_epochs == 0 ||
             config->federated.num_rounds == 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_validate_config: validation failed");
             return -1;
         }
 
         if (config->federated.client_fraction <= 0.0f ||
             config->federated.client_fraction > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_validate_config: validation failed");
             return -1;
         }
 
         if (config->federated.differential_privacy) {
             if (config->federated.dp_epsilon <= 0.0f ||
                 config->federated.max_grad_norm <= 0.0f) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_validate_config: validation failed");
                 return -1;
             }
         }

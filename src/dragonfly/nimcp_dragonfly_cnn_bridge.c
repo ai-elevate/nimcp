@@ -99,7 +99,6 @@ int dragonfly_cnn_bridge_validate_config(const dragonfly_cnn_config_t* config) {
         return -1;
     }
     if (config->motion_history_frames > DRAGONFLY_CNN_MAX_FRAMES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->batch_size == 0) {
@@ -107,7 +106,6 @@ int dragonfly_cnn_bridge_validate_config(const dragonfly_cnn_config_t* config) {
         return -1;
     }
     if (config->learning_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: validation failed");
         return -1;
     }
     return 0;

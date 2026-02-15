@@ -280,7 +280,7 @@ int32_t nimcp_cfi_register_target(
     }
 
     if (cfi->num_targets >= NIMCP_CFI_MAX_TARGETS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_cfi_register_target: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_cfi_register_target: capacity exceeded");
         return -1;
     }
 
@@ -329,7 +329,7 @@ int32_t nimcp_cfi_register_call_site(
     }
 
     if (cfi->num_call_sites >= NIMCP_CFI_MAX_CALL_SITES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_cfi_register_call_site: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_cfi_register_call_site: capacity exceeded");
         return -1;
     }
 
@@ -435,7 +435,6 @@ nimcp_cfi_result_t nimcp_cfi_check_return(
 bool nimcp_cfi_is_valid_target(nimcp_cfi_context_t* cfi, void* target)
 {
     if (!cfi || !target) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cfi_is_valid_target: required parameter is NULL (cfi, target)");
         return false;
     }
 

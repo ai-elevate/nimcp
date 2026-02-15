@@ -26,6 +26,7 @@
 
 #define LOG_MODULE "swarm_quorum"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_quorum)
 
@@ -311,7 +312,7 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
     for (int i = 0; i < NIMCP_SIGNAL_COUNT; i++) {
         /* Add some variance to thresholds for diversity */
         double threshold = quorum->config.base_threshold +
-            (rand() / (double)RAND_MAX - 0.5) * quorum->config.threshold_variance;
+            (nimcp_tl_rand() / (double)RAND_MAX - 0.5) * quorum->config.threshold_variance;
         threshold = CLAMP(threshold, 0.5, 0.95);
 
         init_signal_molecule(
@@ -401,6 +402,8 @@ void nimcp_swarm_quorum_destroy(nimcp_swarm_quorum_t* quorum) {
 
     if (quorum->mutex) {
         nimcp_platform_mutex_destroy(quorum->mutex);
+        nimcp_free(quorum->mutex);
+        quorum->mutex = NULL;
     }
 
     nimcp_free(quorum->decisions);

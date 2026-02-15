@@ -738,7 +738,7 @@ surface_annealing_state_t* surface_annealing_state_create(
     surface_annealing_state_t* state = nimcp_malloc(sizeof(surface_annealing_state_t));
     if (!state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "state is NULL");
 
         return NULL;
 
@@ -1007,7 +1007,7 @@ int surface_mcts_apply_action(
     /* Add new branch point */
     uint32_t new_idx = state->num_branch_points;
     if (new_idx >= SURFACE_MAX_BRANCH_POINTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_mcts_apply_action: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_mcts_apply_action: capacity exceeded");
         return -1;
     }
 
@@ -1431,7 +1431,7 @@ int surface_create_initial_topology(
     } else if (num_terminals == 3) {
         /* Star topology: single bifurcation at centroid */
         if (*num_points >= max_points) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_create_initial_topology: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_create_initial_topology: capacity exceeded");
             return -1;
         }
 
@@ -1530,7 +1530,7 @@ int surface_create_initial_topology(
     } else {
         /* General case: star topology from centroid */
         if (*num_points >= max_points) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_create_initial_topology: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_create_initial_topology: capacity exceeded");
             return -1;
         }
 
@@ -1570,7 +1570,7 @@ surface_optimizer_t* surface_optimizer_create(
     surface_optimizer_t* opt = nimcp_malloc(sizeof(surface_optimizer_t));
     if (!opt) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "opt is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "opt is NULL");
 
         return NULL;
 

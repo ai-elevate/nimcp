@@ -460,7 +460,7 @@ int financial_investment_portfolio_add_asset(financial_investment_eng_t* fin,
 
     if (portfolio->asset_count >= FIN_MAX_PORTFOLIO_SIZE) {
         set_error("Portfolio full: %u assets", portfolio->asset_count);
-        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BUFFER_OVERFLOW, "financial_investment_portfolio_add_asset: Portfolio full");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_OUT_OF_RANGE, "financial_investment_portfolio_add_asset: Portfolio full");
         return FIN_ERR_PORTFOLIO_FULL;
     }
     if (weight < 0.0f || weight > 1.0f) {

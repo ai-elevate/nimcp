@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_training_bridge)
 
@@ -613,7 +614,7 @@ int snn_training_bridge_trigger_replay(snn_training_bridge_t* bridge) {
     }
 
     /* Check replay probability */
-    float rand_val = (float)rand() / (float)RAND_MAX;
+    float rand_val = (float)nimcp_tl_rand() / (float)RAND_MAX;
     if (rand_val > bridge->config.replay_probability) {
         return 0;  /* Skip replay this time */
     }

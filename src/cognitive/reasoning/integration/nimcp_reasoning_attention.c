@@ -158,19 +158,15 @@ bool reasoning_attention_validate_config(const reasoning_attention_config_t* con
 
     // Validate salience values [0.0, 1.0]
     if (config->novel_fact_salience < 0.0F || config->novel_fact_salience > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
         return false;
     }
     if (config->contradiction_salience < 0.0F || config->contradiction_salience > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
         return false;
     }
     if (config->proof_found_salience < 0.0F || config->proof_found_salience > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
         return false;
     }
     if (config->min_salience_threshold < 0.0F || config->min_salience_threshold > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
         return false;
     }
 

@@ -145,7 +145,7 @@ int kg_compliance_set_retention(const kg_retention_policy_t* policy) {
     if (!existing) {
         if (g_retention_registry.count >= MAX_RETENTION_POLICIES) {
             nimcp_mutex_unlock(g_retention_registry.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_compliance_set_retention: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_compliance_set_retention: capacity exceeded");
             return -1;
         }
         existing = &g_retention_registry.policies[g_retention_registry.count++];

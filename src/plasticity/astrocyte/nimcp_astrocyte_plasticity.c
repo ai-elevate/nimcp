@@ -249,6 +249,8 @@ void astrocyte_plasticity_destroy(astrocyte_plasticity_t astro) {
     /* Destroy mutex using platform-agnostic API */
     if (astro->mutex) {
         nimcp_platform_mutex_destroy(astro->mutex);
+        nimcp_free(astro->mutex);
+        astro->mutex = NULL;
     }
 
     /* Free states */
@@ -743,11 +745,9 @@ bool astrocyte_plasticity_is_calcium_wave_active(
     uint32_t astrocyte_id
 ) {
     if (!astro) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_is_calcium_wave_active: astro is NULL");
         return false;
     }
     if (astrocyte_id >= astro->num_astrocytes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_is_calcium_wave_active: astrocyte_id out of range");
         return false;
     }
 

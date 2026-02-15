@@ -361,13 +361,11 @@ bool prey_classifier_validate_config(const prey_classifier_config_t* config) {
     if (config->min_confidence_threshold < 0.0f ||
         config->min_confidence_threshold > 1.0f) return false;
     if (config->reclassification_interval_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prey_classifier_validate_config: validation failed");
         return false;
     }
 
     float weight_sum = config->size_weight + config->motion_weight + config->visual_weight;
     if (weight_sum < 0.5f || weight_sum > 1.5f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prey_classifier_validate_config: validation failed");
         return false;
     }
 
@@ -378,7 +376,6 @@ bool prey_classifier_validate_config(const prey_classifier_config_t* config) {
         config->abort_success_threshold > 1.0f) return false;
 
     if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prey_classifier_validate_config: validation failed");
         return false;
     }
 

@@ -709,7 +709,7 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
     if (!slot) {
         if (count >= hub->config.max_subscriptions) {
             nimcp_mutex_unlock(hub->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
             return -1;
         }
         slot = &subs[count];

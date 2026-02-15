@@ -269,7 +269,7 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->inference_buffer || !bridge->prev_state) {
         reasoning_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_snn_create: operation failed");
         return NULL;
     }
 
@@ -783,7 +783,6 @@ bool reasoning_snn_check_conflict(
     float* conflict_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_check_conflict: bridge is NULL");
         return false;
     }
 
@@ -807,7 +806,6 @@ bool reasoning_snn_check_conclusion(
     float* validity
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_check_conclusion: bridge is NULL");
         return false;
     }
 
@@ -831,7 +829,6 @@ bool reasoning_snn_check_causal(
     float* causal_strength
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_check_causal: bridge is NULL");
         return false;
     }
 
@@ -1108,7 +1105,6 @@ int reasoning_snn_bio_async_disconnect(reasoning_snn_bridge_t* bridge) {
 
 bool reasoning_snn_is_bio_async_connected(reasoning_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

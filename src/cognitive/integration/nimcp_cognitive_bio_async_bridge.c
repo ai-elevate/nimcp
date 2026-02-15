@@ -164,7 +164,7 @@ struct cognitive_bio_bridge {
  */
 static int get_module_index(cog_module_type_t type) {
     if (type >= COG_MODULE_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_module_index: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_module_index: capacity exceeded");
         return -1;
     }
     return (int)type;
@@ -474,7 +474,6 @@ int cognitive_bio_bridge_disconnect(cognitive_bio_bridge_t* bridge) {
 
 bool cognitive_bio_bridge_is_connected(const cognitive_bio_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_bio_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

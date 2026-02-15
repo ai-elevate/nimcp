@@ -263,7 +263,7 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
     if (pool->num_blocks > SIZE_MAX / pool->total_block_size) {
         LOG_ERROR("MEMORY_POOL", "Size overflow: num_blocks=%zu, total_block_size=%zu",
                   pool->num_blocks, pool->total_block_size);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Memory pool size overflow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Memory pool size overflow");
         nimcp_free(pool);
         return NULL;
     }

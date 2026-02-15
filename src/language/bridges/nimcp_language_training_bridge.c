@@ -451,11 +451,11 @@ int language_training_bridge_learn_word(
         return -1;
     }
     if (state->vocab_size >= state->max_vocab_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_learn_word: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_training_bridge_learn_word: capacity exceeded");
         return -1;
     }
     if (state->new_word_count >= state->new_word_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_learn_word: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_training_bridge_learn_word: capacity exceeded");
         return -1;
     }
 
@@ -665,7 +665,7 @@ int language_training_bridge_bind_word_concept(
         return -1;
     }
     if (state->num_updates >= state->update_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_bind_word_concept: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_training_bridge_bind_word_concept: capacity exceeded");
         return -1;
     }
 
@@ -709,7 +709,7 @@ int language_training_bridge_report_error(
 
     error_feedback_state_t* state = &bridge->error_state;
     if (state->error_count >= state->error_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_report_error: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_training_bridge_report_error: capacity exceeded");
         return -1;
     }
 

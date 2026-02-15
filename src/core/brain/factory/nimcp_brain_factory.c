@@ -319,7 +319,7 @@ personality_profile_t* create_personality(const brain_config_t* config)
     personality_profile_t* profile = nimcp_malloc(sizeof(personality_profile_t));
     if (!profile) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "profile is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "profile is NULL");
 
         return NULL;
 

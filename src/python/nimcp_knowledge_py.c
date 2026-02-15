@@ -117,7 +117,7 @@ static PyObject* KnowledgeItem_FromC(const knowledge_item_t* item)
     if (!obj->concept_name || !obj->definition || !obj->context) {
         Py_DECREF(obj);
         PyErr_NoMemory();
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeItem_FromC: required parameter is NULL (obj->concept_name, obj->definition, obj->context)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "KnowledgeItem_FromC: required parameter is NULL (obj->concept_name, obj->definition, obj->context)");
         return NULL;
     }
 

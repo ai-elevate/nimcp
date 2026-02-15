@@ -174,7 +174,7 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         if (qmutex) {
             nimcp_mutex_unlock(qmutex);
         }
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_signal: queue full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_signal: queue full");
         return false;
     }
 
@@ -1516,7 +1516,6 @@ bool thalamic_router_set_imagination_routing_enabled(thalamic_router_t* router,
  */
 bool thalamic_router_is_imagination_routing_enabled(const thalamic_router_t* router) {
     if (!router) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_is_imagination_routing_enabled: router is NULL");
         return false;
     }
     return router->imagination_routing_enabled;

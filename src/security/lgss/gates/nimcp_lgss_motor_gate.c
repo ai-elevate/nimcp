@@ -481,12 +481,12 @@ bool motor_gate_would_violate(
 
 nimcp_result_t motor_gate_emergency_stop(motor_gate_t* gate) {
     if (!validate_gate(gate)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_emergency_stop: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!gate->config.emergency_stop_enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_SUPPORTED, "lgss_motor_gate: error condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_SUPPORTED, "motor_gate_emergency_stop: error condition");
         return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
@@ -502,7 +502,7 @@ nimcp_result_t motor_gate_emergency_stop(motor_gate_t* gate) {
 
 nimcp_result_t motor_gate_release_emergency_stop(motor_gate_t* gate) {
     if (!validate_gate(gate)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_release_emergency_stop: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -518,11 +518,11 @@ nimcp_result_t motor_gate_release_emergency_stop(motor_gate_t* gate) {
 
 nimcp_result_t motor_gate_lock_region(motor_gate_t* gate, motor_region_t region) {
     if (!validate_gate(gate)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_lock_region: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!validate_region(region)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_lock_region: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -532,11 +532,11 @@ nimcp_result_t motor_gate_lock_region(motor_gate_t* gate, motor_region_t region)
 
 nimcp_result_t motor_gate_unlock_region(motor_gate_t* gate, motor_region_t region) {
     if (!validate_gate(gate)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_unlock_region: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!validate_region(region)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_unlock_region: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -563,7 +563,7 @@ nimcp_result_t motor_gate_get_stats(
 
 nimcp_result_t motor_gate_reset_stats(motor_gate_t* gate) {
     if (!validate_gate(gate)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_motor_gate: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_gate_reset_stats: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

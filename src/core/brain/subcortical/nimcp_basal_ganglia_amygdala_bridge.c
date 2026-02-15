@@ -237,7 +237,6 @@ int bga_bridge_connect_amygdala(bga_bridge_t* bridge, amygdala_t* amygdala) {
 
 bool bga_bridge_is_connected(const bga_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->bg != NULL && bridge->amygdala != NULL;
@@ -441,7 +440,6 @@ float bga_bridge_get_action_modulation(
 
 bool bga_bridge_is_frozen(const bga_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_is_frozen: bridge is NULL");
         return false;
     }
     return bridge->state.influence == BGA_INFLUENCE_FREEZE;

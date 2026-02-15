@@ -147,6 +147,8 @@ void self_awareness_ext_substrate_bridge_destroy(self_awareness_ext_substrate_br
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);

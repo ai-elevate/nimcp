@@ -136,7 +136,7 @@ rn_bio_bridge_t* rn_bio_bridge_create(const rn_bio_bridge_config_t* config) {
     rn_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(rn_bio_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -496,7 +496,7 @@ int rn_bio_bridge_subscribe_module(
 
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_bio_bridge_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rn_bio_bridge_subscribe_module: capacity exceeded");
         return -1;
     }
 

@@ -106,7 +106,6 @@ static uint64_t get_current_time_us(void) {
  */
 static bool check_isolation(const mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_isolation: bridge is NULL");
         return false;
     }
 

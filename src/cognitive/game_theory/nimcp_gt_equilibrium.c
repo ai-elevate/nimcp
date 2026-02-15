@@ -1435,7 +1435,6 @@ bool nimcp_equilibrium_is_nash(
     float epsilon
 ) {
     if (!ctx || !strategies) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_equilibrium_is_nash: required parameter is NULL (ctx, strategies)");
         return false;
     }
 
@@ -1446,7 +1445,6 @@ bool nimcp_equilibrium_is_nash(
     float regrets[NIMCP_GT_MAX_PLAYERS];
     nimcp_error_t err = nimcp_equilibrium_compute_regret(ctx, strategies, regrets);
     if (err != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_equilibrium_is_nash: validation failed");
         return false;
     }
 
@@ -1458,7 +1456,6 @@ bool nimcp_equilibrium_is_nash(
         }
 
         if (regrets[i] > epsilon) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_equilibrium_is_nash: validation failed");
             return false;
         }
     }

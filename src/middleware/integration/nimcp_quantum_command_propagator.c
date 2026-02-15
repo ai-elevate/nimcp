@@ -439,7 +439,7 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     quantum_command_propagator_t* qcp = nimcp_calloc(1, sizeof(quantum_command_propagator_t));
     if (!qcp) {
         LOG_ERROR("quantum_command_propagator_create_custom: Failed to allocate propagator");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qcp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qcp is NULL");
 
         return NULL;
     }

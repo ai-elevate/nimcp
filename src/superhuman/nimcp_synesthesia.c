@@ -799,7 +799,7 @@ uint64_t synesthesia_create_association(
     }
 
     if (module->association_count >= module->config.max_associations) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
                               "synesthesia_create_association: Max associations reached (%lu >= %u)",
                               (unsigned long)module->association_count, module->config.max_associations);
         set_error(module, SYNESTHESIA_ERROR_CAPACITY_EXCEEDED);
@@ -1325,7 +1325,6 @@ bool synesthesia_set_inhibition(synesthesia_module_t* module, bool inhibit) {
 
 bool synesthesia_is_inhibited(const synesthesia_module_t* module) {
     if (!module) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synesthesia_is_inhibited: module is NULL");
         return false;
     }
     return module->inhibited;

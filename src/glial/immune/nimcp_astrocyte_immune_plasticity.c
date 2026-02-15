@@ -379,7 +379,6 @@ int astro_plasticity_get_dysfunction(
 
 bool astro_plasticity_is_impaired(const astro_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_plasticity_is_impaired: bridge is NULL");
         return false;
     }
     return bridge->d_serine_factor < 1.0f || bridge->glu_uptake_factor < 1.0f;

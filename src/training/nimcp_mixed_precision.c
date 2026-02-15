@@ -228,19 +228,15 @@ int amp_validate_config(const amp_config_t* config) {
     /* Validate scaling config */
     if (config->scaling.mode != AMP_SCALING_NONE) {
         if (config->scaling.init_scale <= 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "amp_validate_config: validation failed");
             return -1;
         }
         if (config->scaling.min_scale <= 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_validate_config: validation failed");
             return -1;
         }
         if (config->scaling.max_scale <= config->scaling.min_scale) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_validate_config: validation failed");
             return -1;
         }
         if (config->scaling.growth_factor <= 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_validate_config: validation failed");
             return -1;
         }
         if (config->scaling.backoff_factor <= 0 ||
@@ -249,11 +245,11 @@ int amp_validate_config(const amp_config_t* config) {
 
     /* Validate dtype */
     if (config->autocast.compute_dtype >= AMP_DTYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "amp_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "amp_validate_config: capacity exceeded");
         return -1;
     }
     if (config->autocast.storage_dtype >= AMP_DTYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "amp_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "amp_validate_config: capacity exceeded");
         return -1;
     }
 
@@ -281,7 +277,7 @@ amp_ctx_t* amp_create(const amp_config_t* config) {
     if (!ctx) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(amp_ctx_t),
                           "amp_create: failed to allocate context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -393,7 +389,6 @@ int amp_autocast_exit(amp_ctx_t* ctx) {
 
 bool amp_is_autocasting(const amp_ctx_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_is_autocasting: ctx is NULL");
         return false;
     }
     return ctx->autocast_enabled && ctx->config.autocast.enabled;
@@ -597,7 +592,7 @@ float* amp_create_master_weights(amp_ctx_t* ctx,
     if (!master) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, count * sizeof(float),
                           "amp_create_master_weights: failed to allocate master weights");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "master is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "master is NULL");
 
         return NULL;
     }

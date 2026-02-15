@@ -273,7 +273,6 @@ static int find_category_index(const rcog_tool_router_t* router, const char* nam
 static bool check_tier_access(rcog_capability_tier_t caller, rcog_capability_tier_t required) {
     /* Root tier has NO tool access */
     if (caller == RCOG_TIER_ROOT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_tier_access: validation failed");
         return false;
     }
 
@@ -293,7 +292,6 @@ static bool check_rate_limit(rcog_tool_router_t* router, const rcog_tool_entry_t
         }
 
         if (router->calls_this_second >= router->config.access_policy.global_rate_limit) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rate_limit: capacity exceeded");
             return false;
         }
     }
@@ -302,7 +300,6 @@ static bool check_rate_limit(rcog_tool_router_t* router, const rcog_tool_entry_t
     if (tool->def.rate_limit_per_sec > 0) {
         /* Simplified: just check concurrent count as approximation */
         if (tool->current_invocations >= tool->def.rate_limit_per_sec) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rate_limit: capacity exceeded");
             return false;
         }
     }
@@ -690,7 +687,6 @@ bool rcog_tool_router_has_tool(
     const char* tool_name
 ) {
     if (!router || !tool_name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_tool_router_has_tool: required parameter is NULL (router, tool_name)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1065,7 +1061,6 @@ bool rcog_tool_router_can_access(
     rcog_capability_tier_t tier
 ) {
     if (!router || !tool_name) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_tool_router_can_access: required parameter is NULL (router, tool_name)");
         return false;
     }
 
@@ -1075,7 +1070,6 @@ bool rcog_tool_router_can_access(
 
     int idx = find_tool_index(router, tool_name);
     if (idx < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_tool_router_can_access: validation failed");
         return false;
     }
 

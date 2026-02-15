@@ -193,6 +193,8 @@ void circadian_destroy(circadian_rhythm_t* rhythm)
     /* Destroy mutex */
     if (rhythm->mutex) {
         nimcp_platform_mutex_destroy(rhythm->mutex);
+        nimcp_free(rhythm->mutex);
+        rhythm->mutex = NULL;
     }
 
     nimcp_free(rhythm);
@@ -548,7 +550,6 @@ bool circadian_is_bio_async_connected(const circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_is_bio_async_connected: rhythm is NULL");
         return false;
     }
 

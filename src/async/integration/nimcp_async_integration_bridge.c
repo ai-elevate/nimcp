@@ -387,7 +387,7 @@ static int priority_queue_enqueue(priority_queue_t* queue, uint64_t task_id)
         return -1;
     }
     if (queue->count >= queue->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "priority_queue_enqueue: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "priority_queue_enqueue: capacity exceeded");
         return -1;
     }
 
@@ -1142,7 +1142,7 @@ int async_integration_add_to_sync_group(
     /* Check capacity */
     if (group->future_count >= group->max_futures) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "async_integration_add_to_sync_group: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "async_integration_add_to_sync_group: capacity exceeded");
         return -1;
     }
 

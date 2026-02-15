@@ -101,7 +101,7 @@ static wm_item_t* create_wm_item(
         if (item->feature_vector) nimcp_free(item->feature_vector);
         if (item->population_rates) nimcp_free(item->population_rates);
         nimcp_free(item);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_wm_item: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_wm_item: validation failed");
         return NULL;
     }
 
@@ -222,7 +222,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
         nimcp_free(bridge->goals);
         nimcp_free(bridge->wm_items);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_create: bridge->accumulator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_prefrontal_bridge_create: bridge->accumulator is NULL");
         return NULL;
     }
     memset(bridge->accumulator, 0, sizeof(decision_accumulator_t));
@@ -365,7 +365,6 @@ int snn_prefrontal_bridge_disconnect_bio_async(snn_prefrontal_bridge_t* bridge) 
 
 bool snn_prefrontal_bridge_is_bio_async_connected(const snn_prefrontal_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -665,11 +664,9 @@ const goal_state_t* snn_prefrontal_get_active_goal(const snn_prefrontal_bridge_t
 
 bool snn_prefrontal_is_decision_made(const snn_prefrontal_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_is_decision_made: null bridge pointer");
         return false;
     }
     if (!bridge->accumulator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_is_decision_made: null accumulator");
         return false;
     }
     return bridge->accumulator->decision_made;

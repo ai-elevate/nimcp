@@ -179,7 +179,7 @@ static exploration_topic_t* find_or_create_topic_unlocked(
 
     /* Check capacity */
     if (bridge->topic_count >= bridge->topic_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_topic_unlocked: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_or_create_topic_unlocked: capacity exceeded");
         return NULL;  /* At capacity */
     }
 

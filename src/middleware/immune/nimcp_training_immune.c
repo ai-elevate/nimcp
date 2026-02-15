@@ -780,7 +780,7 @@ int training_immune_report_instability(
         return -1;
     }
     if (type >= TRAINING_INSTABILITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_immune_report_instability: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "training_immune_report_instability: capacity exceeded");
         return -1;
     }
 
@@ -789,7 +789,7 @@ int training_immune_report_instability(
     /* Check capacity */
     if (system->event_count >= system->event_capacity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_immune_report_instability: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "training_immune_report_instability: capacity exceeded");
         return -1;
     }
 

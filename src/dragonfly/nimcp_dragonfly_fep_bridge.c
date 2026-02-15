@@ -185,27 +185,21 @@ int dragonfly_fep_bridge_validate_config(const dragonfly_fep_config_t* config) {
     }
 
     if (config->default_model > FEP_MODEL_EVASIVE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->precision_mode > FEP_PRECISION_HIERARCHICAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->sensory_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->proprioceptive_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->prior_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->learning_rate <= 0.0f || config->learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->inference_steps == 0) {
@@ -213,7 +207,6 @@ int dragonfly_fep_bridge_validate_config(const dragonfly_fep_config_t* config) {
         return -1;
     }
     if (config->prediction_horizon_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_validate_config: validation failed");
         return -1;
     }
 

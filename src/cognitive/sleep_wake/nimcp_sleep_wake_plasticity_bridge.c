@@ -1016,7 +1016,6 @@ int sleep_wake_plasticity_bio_async_disconnect(sleep_wake_plasticity_bridge_t* b
 
 bool sleep_wake_plasticity_is_bio_async_connected(sleep_wake_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

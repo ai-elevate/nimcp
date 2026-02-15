@@ -80,7 +80,7 @@ swarm_signal_sleep_bridge_t swarm_signal_sleep_bridge_create(
     struct swarm_signal_sleep_bridge_struct* bridge = nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 

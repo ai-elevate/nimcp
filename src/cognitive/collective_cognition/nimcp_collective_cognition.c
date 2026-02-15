@@ -862,7 +862,6 @@ bool collective_cognition_has_instance(
     uint32_t instance_id
 ) {
     if (!cc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_has_instance: cc is NULL");
         return false;
     }
 

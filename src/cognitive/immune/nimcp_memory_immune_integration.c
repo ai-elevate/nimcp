@@ -386,6 +386,8 @@ void memory_immune_integration_destroy(memory_immune_integration_t* integration)
     /* Destroy mutex */
     if (integration->mutex) {
         nimcp_platform_mutex_destroy(integration->mutex);
+        nimcp_free(integration->mutex);
+        integration->mutex = NULL;
     }
 
     /* Free memory links */

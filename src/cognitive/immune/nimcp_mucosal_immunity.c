@@ -372,7 +372,7 @@ int mucosal_register_boundary(
         return -1;
     }
     if (system->site_count >= system->site_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_register_boundary: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mucosal_register_boundary: capacity exceeded");
         return -1;
     }
 
@@ -455,7 +455,7 @@ int mucosal_sample_antigen(
         return -1;
     }
     if (system->m_cell_sample_count >= system->m_cell_sample_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_sample_antigen: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mucosal_sample_antigen: capacity exceeded");
         return -1;
     }
 
@@ -601,7 +601,7 @@ int mucosal_produce_siga(
         return -1;
     }
     if (system->siga_count >= system->siga_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_produce_siga: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mucosal_produce_siga: capacity exceeded");
         return -1;
     }
 
@@ -712,7 +712,7 @@ int mucosal_induce_oral_tolerance(
         return -1;
     }
     if (system->tolerance_count >= system->tolerance_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_induce_oral_tolerance: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mucosal_induce_oral_tolerance: capacity exceeded");
         return -1;
     }
 

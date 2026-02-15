@@ -1125,7 +1125,6 @@ int mental_health_plasticity_bio_async_disconnect(mental_health_plasticity_bridg
 
 bool mental_health_plasticity_is_bio_async_connected(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -234,7 +234,7 @@ static cortical_memory_node_t* cortical_node_create(
         nimcp_free(node->neighbors);
         nimcp_free(node->neighbor_strengths);
         nimcp_free(node);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_node_create: required parameter is NULL (node->neighbors, node->neighbor_strengths)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_node_create: required parameter is NULL (node->neighbors, node->neighbor_strengths)");
         return NULL;
     }
 
@@ -350,7 +350,7 @@ static bool cortical_node_add_neighbor(
 
     // WHAT: Check capacity
     if (node->neighbor_count >= node->neighbor_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_node_add_neighbor: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cortical_node_add_neighbor: capacity exceeded");
         return false;  // Max neighbors reached
     }
 
@@ -593,7 +593,7 @@ bool systems_consolidation_schedule_replay(
 
 
     if (system->replay_queue_size >= system->replay_queue_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "systems_consolidation_schedule_replay: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "systems_consolidation_schedule_replay: capacity exceeded");
         return false;  // Queue full
     }
 

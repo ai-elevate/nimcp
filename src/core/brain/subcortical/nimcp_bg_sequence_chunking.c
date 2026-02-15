@@ -271,7 +271,7 @@ int bgsc_add_action(bgsc_system_t* system,
     if (chunk->sequence_length >= chunk->max_length) {
         NIMCP_LOGGING_WARN("Chunk %u sequence full", chunk_id);
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgsc_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgsc_reset: capacity exceeded");
         return -1;
     }
 
@@ -324,7 +324,6 @@ bool bgsc_check_trigger(bgsc_system_t* system,
                          uint32_t context,
                          uint32_t* chunk_id) {
     if (!system || !chunk_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_unregister_chunk: required parameter is NULL (system, chunk_id)");
         return false;
     }
 
@@ -342,7 +341,6 @@ bool bgsc_check_trigger(bgsc_system_t* system,
     }
 
     nimcp_mutex_unlock(system->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_unregister_chunk: operation failed");
     return false;
 }
 
@@ -535,7 +533,6 @@ int bgsc_abort(bgsc_system_t* system) {
 
 bool bgsc_is_executing(const bgsc_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_is_executing: system is NULL");
         return false;
     }
     return system->is_executing;
@@ -815,7 +812,6 @@ float bgsc_get_automaticity(const bgsc_system_t* system, uint32_t chunk_id) {
 
 bool bgsc_is_automatized(const bgsc_system_t* system, uint32_t chunk_id) {
     if (!system || chunk_id >= system->max_chunks) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgsc_is_automatized: system is NULL");
         return false;
     }
 
@@ -832,7 +828,7 @@ bool bgsc_is_automatized(const bgsc_system_t* system, uint32_t chunk_id) {
 
 const bgsc_chunk_t* bgsc_get_chunk(const bgsc_system_t* system, uint32_t chunk_id) {
     if (!system || chunk_id >= system->max_chunks) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgsc_get_chunk: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgsc_get_chunk: system is NULL");
         return NULL;
     }
     if (system->chunks[chunk_id].chunk_id == UINT32_MAX) {

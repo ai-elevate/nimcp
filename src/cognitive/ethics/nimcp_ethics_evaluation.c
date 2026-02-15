@@ -321,7 +321,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
         nimcp_free(network->states);
         nimcp_free(network->emotional_states);
         nimcp_free(network);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathy_network_create: required parameter is NULL (network->states, network->emotional_states)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "empathy_network_create: required parameter is NULL (network->states, network->emotional_states)");
         return NULL;
     }
 

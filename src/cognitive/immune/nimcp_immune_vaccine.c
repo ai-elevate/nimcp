@@ -83,6 +83,7 @@ static inline void immune_vaccine_heartbeat_instance(
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
     nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* ============================================================================
@@ -192,7 +193,7 @@ static int add_to_schedule(vaccine_system_t* system, uint32_t vaccine_id,
     }
     if (system->schedule_count >= system->schedule_capacity) {
         NIMCP_LOGGING_WARN("Schedule capacity exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_vaccine_by_id: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_vaccine_by_id: capacity exceeded");
         return -1;
     }
 
@@ -570,7 +571,7 @@ int vaccine_create_entry(vaccine_system_t* system, vaccine_type_t type,
         return -1;
     }
     if (system->vaccine_count >= system->vaccine_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vaccine_stop: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "vaccine_stop: capacity exceeded");
         return -1;
     }
 

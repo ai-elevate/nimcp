@@ -307,7 +307,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
     v1_processor_t* v1 = nimcp_calloc(1, sizeof(v1_processor_t));
     if (!v1) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v1 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v1 is NULL");
 
         return NULL;
 
@@ -477,7 +477,7 @@ static v2_processor_t* v2_create(uint32_t width, uint32_t height) {
     v2_processor_t* v2 = nimcp_calloc(1, sizeof(v2_processor_t));
     if (!v2) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v2 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v2 is NULL");
 
         return NULL;
 
@@ -491,7 +491,7 @@ static v2_processor_t* v2_create(uint32_t width, uint32_t height) {
         if (v2->contour_strength) nimcp_free(v2->contour_strength);
         if (v2->contours) nimcp_free(v2->contours);
         nimcp_free(v2);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v2_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v2_create: validation failed");
         return NULL;
     }
 
@@ -566,7 +566,7 @@ static v4_processor_t* v4_create(uint32_t width, uint32_t height, uint32_t color
     v4_processor_t* v4 = nimcp_calloc(1, sizeof(v4_processor_t));
     if (!v4) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v4 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v4 is NULL");
 
         return NULL;
 
@@ -583,7 +583,7 @@ static v4_processor_t* v4_create(uint32_t width, uint32_t height, uint32_t color
         if (v4->color_percepts) nimcp_free(v4->color_percepts);
         if (v4->complex_forms) nimcp_free(v4->complex_forms);
         nimcp_free(v4);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v4_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v4_create: validation failed");
         return NULL;
     }
 
@@ -666,7 +666,7 @@ static v5_mt_processor_t* v5_create(uint32_t width, uint32_t height, uint32_t nu
     v5_mt_processor_t* v5 = nimcp_calloc(1, sizeof(v5_mt_processor_t));
     if (!v5) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v5 is NULL");
 
         return NULL;
 
@@ -700,7 +700,7 @@ static v5_mt_processor_t* v5_create(uint32_t width, uint32_t height, uint32_t nu
             nimcp_free(v5->optic_flow_x);
             nimcp_free(v5->optic_flow_y);
             nimcp_free(v5);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5_create: v5->frame_buffer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "v5_create: v5->frame_buffer is NULL");
             return NULL;
         }
     }

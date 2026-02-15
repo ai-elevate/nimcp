@@ -271,7 +271,7 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->recall_buffer || !bridge->prev_state) {
         autobio_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_snn_create: operation failed");
         return NULL;
     }
 
@@ -774,7 +774,6 @@ bool autobio_snn_check_recall(
     float* recall_strength
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_check_recall: bridge is NULL");
         return false;
     }
 
@@ -798,7 +797,6 @@ bool autobio_snn_check_emotional(
     float* emotional_intensity
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_check_emotional: bridge is NULL");
         return false;
     }
 
@@ -822,7 +820,6 @@ bool autobio_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1109,7 +1106,6 @@ int autobio_snn_bio_async_disconnect(autobio_snn_bridge_t* bridge) {
 
 bool autobio_snn_is_bio_async_connected(autobio_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

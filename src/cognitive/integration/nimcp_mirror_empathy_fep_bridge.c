@@ -566,7 +566,6 @@ int me_fep_bridge_unregister(me_fep_bridge_t* bridge) {
 
 bool me_fep_bridge_is_registered(const me_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -923,7 +922,6 @@ me_fep_state_t me_fep_bridge_get_state(const me_fep_bridge_t* bridge) {
 
 bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 
@@ -940,7 +938,6 @@ bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge) {
 
 bool me_fep_bridge_is_high_resonance(const me_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_is_high_resonance: bridge is NULL");
         return false;
     }
 

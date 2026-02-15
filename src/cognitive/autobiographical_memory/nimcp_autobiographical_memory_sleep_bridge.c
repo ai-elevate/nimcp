@@ -323,7 +323,6 @@ float autobio_sleep_get_encoding_efficiency(const autobio_sleep_bridge_t bridge)
 
 bool autobio_sleep_is_consolidation_active(const autobio_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_sleep_is_consolidation_active: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

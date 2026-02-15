@@ -31,6 +31,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(physics_nn)
 //=============================================================================
@@ -252,8 +253,8 @@ static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out) {
     float scale = sqrtf(2.0f / (float)(fan_in + fan_out));
     for (uint32_t i = 0; i < fan_in * fan_out; i++) {
         /* Box-Muller for normal distribution */
-        float u1 = (float)rand() / (float)RAND_MAX;
-        float u2 = (float)rand() / (float)RAND_MAX;
+        float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+        float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
         if (u1 < 1e-10f) u1 = 1e-10f;
         float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
         weights[i] = z * scale;
@@ -885,7 +886,7 @@ int physics_nn_forward(physics_nn_t* nn, const float* state, float* derivative) 
 
             /* Add noise proportional to 1 - precision */
             float noise = (1.0f - nn->effective_precision) *
-                          ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
+                          ((float)nimcp_tl_rand() / (float)RAND_MAX - 0.5f) * 0.1f;
             derivative[i] *= (1.0f + noise);
         }
     }

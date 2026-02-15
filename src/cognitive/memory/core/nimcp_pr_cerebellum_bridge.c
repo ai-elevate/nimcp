@@ -356,23 +356,18 @@ NIMCP_EXPORT bool pr_cerebellum_config_validate(const pr_cerebellum_config_t* co
         return false;
     }
     if (config->timing_precision_ms < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
         return false;
     }
     if (config->max_timing_error_ms <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
         return false;
     }
     if (config->error_learning_rate < 0 || config->error_learning_rate > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
         return false;
     }
     if (config->ltd_factor < 0 || config->ltd_factor > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
         return false;
     }
     if (config->ltp_factor < 0 || config->ltp_factor > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
         return false;
     }
 
@@ -1740,12 +1735,10 @@ NIMCP_EXPORT bool pr_cerebellum_bridge_validate(const pr_cerebellum_bridge_t bri
         }
 
         if (bridge->sequences[i].length > bridge->sequences[i].capacity) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_bridge_validate: validation failed");
             return false;
         }
         if (bridge->sequences[i].consolidation < 0.0f ||
             bridge->sequences[i].consolidation > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_bridge_validate: validation failed");
             return false;
         }
     }

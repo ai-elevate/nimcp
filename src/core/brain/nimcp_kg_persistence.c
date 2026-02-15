@@ -491,7 +491,7 @@ int kg_persistence_default_encryption_config(kg_encryption_config_t* config) {
 kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
     kg_persistence_t* p = nimcp_calloc(1, sizeof(kg_persistence_t));
     if (!p) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "p is NULL");
 
         return NULL;
     }
@@ -845,7 +845,7 @@ int kg_persistence_create_checkpoint(kg_persistence_t* p, const char* label) {
 
     if (p->checkpoint_count >= PERSIST_MAX_CHECKPOINTS) {
         nimcp_mutex_unlock(p->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_persistence_create_checkpoint: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_persistence_create_checkpoint: capacity exceeded");
         return -1;  /* Too many checkpoints */
     }
 
@@ -1131,7 +1131,6 @@ int kg_persistence_hsm_import_key(kg_persistence_t* p, const void* key_material,
 
 bool kg_persistence_hsm_is_available(const kg_persistence_t* p) {
     if (!p || !p->hsm_initialized || !p->hsm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_hsm_is_available: required parameter is NULL (p, p->hsm_initialized, p->hsm)");
         return false;
     }
     return p->hsm->connected;
@@ -1199,7 +1198,7 @@ int kg_persistence_audit_log(kg_persistence_t* p, kg_audit_event_type_t event,
 
     kg_audit_entry_t* entry = nimcp_calloc(1, sizeof(kg_audit_entry_t));
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entry is NULL");
 
         return -1;
     }
@@ -1267,7 +1266,6 @@ int kg_persistence_audit_verify_chain(kg_persistence_t* p) {
         /* Verify prev_hash matches expected */
         if (memcmp(entry->prev_hash, expected_prev, PERSIST_HASH_SIZE) != 0) {
             nimcp_mutex_unlock(p->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_audit_verify_chain: validation failed");
             return -1;  /* Chain broken - tampering detected */
         }
 
@@ -1289,7 +1287,6 @@ int kg_persistence_audit_verify_chain(kg_persistence_t* p) {
 
         if (memcmp(entry->entry_hash, computed_hash, PERSIST_HASH_SIZE) != 0) {
             nimcp_mutex_unlock(p->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_audit_verify_chain: validation failed");
             return -1;  /* Entry hash mismatch */
         }
 

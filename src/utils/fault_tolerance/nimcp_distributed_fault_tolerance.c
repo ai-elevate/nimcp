@@ -320,7 +320,7 @@ bool dft_add_peer(dft_context_t* ctx, uint32_t node_id, void* user_data) {
     if (ctx->peer_count >= DFT_MAX_PEERS) {
         nimcp_mutex_unlock(&ctx->lock);
         LOG_ERROR("DFT", "Maximum peers reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dft_add_peer: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dft_add_peer: capacity exceeded");
         return false;
     }
 
@@ -719,7 +719,6 @@ bool dft_vote_recovery(dft_context_t* ctx, const dft_recovery_vote_t* vote) {
 bool dft_check_recovery_consensus(dft_context_t* ctx, uint32_t node_id, bool* quorum_reached, uint64_t* checkpoint_id) {
     // Guard: Validate inputs
     if (!ctx || !quorum_reached || !checkpoint_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_check_recovery_consensus: required parameter is NULL (ctx, quorum_reached, checkpoint_id)");
         return false;
     }
 
@@ -765,7 +764,6 @@ bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
 
 bool dft_has_quorum(dft_context_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_has_quorum: ctx is NULL");
         return false;
     }
 
@@ -831,7 +829,7 @@ bool dft_register_callback(dft_context_t* ctx, dft_event_callback_t callback, vo
 
     // Guard: Capacity check
     if (ctx->callback_count >= 8) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dft_register_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dft_register_callback: capacity exceeded");
         return false;
     }
 

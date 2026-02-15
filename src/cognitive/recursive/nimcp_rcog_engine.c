@@ -1769,7 +1769,6 @@ const char* rcog_engine_state_name(rcog_engine_state_t state) {
 
 bool rcog_engine_is_ready(const rcog_engine_t* engine) {
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_engine_is_ready: engine is NULL");
         return false;
     }
 
@@ -1784,12 +1783,10 @@ bool rcog_engine_is_ready(const rcog_engine_t* engine) {
 
 bool rcog_engine_has_capacity(const rcog_engine_t* engine) {
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_engine_has_capacity: engine is NULL");
         return false;
     }
 
     if (!rcog_engine_is_ready(engine)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_engine_has_capacity: rcog_engine_is_ready is NULL");
         return false;
     }
 

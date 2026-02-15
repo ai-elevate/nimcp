@@ -1103,7 +1103,6 @@ bool hypothalamus_quantum_is_available(
     const hypothalamus_quantum_bridge_t* bridge) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
     return bridge->config.mode != HYPOTHALAMUS_QUANTUM_MODE_DISABLED;

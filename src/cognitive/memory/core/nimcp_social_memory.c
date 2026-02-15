@@ -185,23 +185,19 @@ NIMCP_EXPORT bool social_memory_config_validate(const social_memory_config_t* co
     }
 
     if (config->initial_trust < 0.0f || config->initial_trust > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "social_memory_config_validate: validation failed");
         return false;
     }
 
     if (config->trust_decay_rate < 0.0f || config->trust_learning_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: validation failed");
         return false;
     }
 
     if (config->id_threshold < 0.0f || config->id_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: validation failed");
         return false;
     }
 
     float weight_sum = config->face_weight + config->voice_weight;
     if (weight_sum < SOCIAL_MEM_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: validation failed");
         return false;
     }
 
@@ -2557,7 +2553,6 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
 
     social_memory_internal_t* mem = (social_memory_internal_t*)social_mem;
     if (mem->magic != SOCIAL_MEM_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_validate: validation failed");
         return false;
     }
 
@@ -2578,7 +2573,6 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     }
 
     if (actual_persons != mem->num_persons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_validate: validation failed");
         return false;
     }
 
@@ -2599,7 +2593,6 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     }
 
     if (actual_episodes != mem->num_episodes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_validate: validation failed");
         return false;
     }
 

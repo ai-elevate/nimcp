@@ -362,11 +362,9 @@ static int brain_stats_validate(void* ctx)
 
     // Check for obviously invalid values
     if (brain->stats.num_neurons > 10000000) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stats_validate: validation failed");
         return -1;
     }
     if (brain->stats.num_synapses > 1000000000) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stats_validate: validation failed");
         return -1;
     }
 

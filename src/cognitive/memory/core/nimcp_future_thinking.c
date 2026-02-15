@@ -252,37 +252,31 @@ NIMCP_EXPORT bool future_thinking_config_validate(
 
     if (config->discount_rate < 0.0f) {
         set_error("discount_rate must be >= 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->temporal_horizon <= 0.0f) {
         set_error("temporal_horizon must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->resonance_threshold < 0.0f || config->resonance_threshold > 1.0f) {
         set_error("resonance_threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->min_spatial_coherence < 0.0f || config->min_spatial_coherence > 1.0f) {
         set_error("min_spatial_coherence must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->min_temporal_coherence < 0.0f || config->min_temporal_coherence > 1.0f) {
         set_error("min_temporal_coherence must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->min_causal_coherence < 0.0f || config->min_causal_coherence > 1.0f) {
         set_error("min_causal_coherence must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
@@ -369,7 +363,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
         nimcp_free(ft->fragment_pool);
         nimcp_free(ft->fragment_weights);
         nimcp_free(ft);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future_thinking_create: required parameter is NULL (ft->fragment_pool, ft->fragment_weights)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_thinking_create: required parameter is NULL (ft->fragment_pool, ft->fragment_weights)");
         return NULL;
     }
     ft->pool_size = cfg.fragment_pool_size;

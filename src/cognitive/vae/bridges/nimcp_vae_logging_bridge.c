@@ -59,7 +59,6 @@ static const char* event_to_string(vae_log_event_t event)
 static bool should_log(vae_logging_bridge_t* bridge, vae_log_verbosity_t level)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_log: bridge is NULL");
         return false;
     }
     return level <= bridge->config.verbosity;

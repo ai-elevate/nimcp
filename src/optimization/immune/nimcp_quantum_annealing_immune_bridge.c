@@ -581,7 +581,7 @@ int qa_immune_report_problem(
     if (bridge->event_count >= bridge->event_capacity) {
         NIMCP_LOGGING_WARN("Event buffer full, cannot record problem");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qa_immune_report_problem: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "qa_immune_report_problem: capacity exceeded");
         return -1;
     }
 

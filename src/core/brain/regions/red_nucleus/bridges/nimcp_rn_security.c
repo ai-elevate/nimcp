@@ -251,7 +251,6 @@ bool rn_security_check_access(
     rn_security_op_t op
 ) {
     if (!bbb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_security_check_access: bbb is NULL");
         return false;
     }
 
@@ -287,7 +286,6 @@ bool rn_security_has_capability(
     uint64_t capability
 ) {
     if (!state || !state->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_security_has_capability: required parameter is NULL (state, state->registered)");
         return false;
     }
 

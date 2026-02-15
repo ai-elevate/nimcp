@@ -460,7 +460,6 @@ bool oligo_sleep_is_synthesis_active(const oligo_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_is_synthesis_active: bridge is NULL");
         return false;
     }
 
@@ -564,7 +563,6 @@ bool oligo_sleep_is_repair_active(const oligo_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_is_repair_active: bridge is NULL");
         return false;
     }
 
@@ -728,7 +726,6 @@ bool oligo_sleep_is_bio_async_connected(const oligo_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

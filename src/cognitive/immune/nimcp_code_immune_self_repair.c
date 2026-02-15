@@ -193,7 +193,6 @@ static bool is_in_cooldown(
 ) {
     cooldown_entry_t* entry = find_cooldown_entry(bridge, epitope);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_in_cooldown: entry is NULL");
         return false;
     }
 
@@ -558,12 +557,10 @@ bool code_immune_should_auto_repair(
     const code_antigen_t* antigen
 ) {
     if (!bridge || !antigen || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_should_auto_repair: required parameter is NULL (bridge, antigen, bridge->initialized)");
         return false;
     }
 
     if (!bridge->config.enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_should_auto_repair: bridge->config is NULL");
         return false;
     }
 
@@ -573,19 +570,16 @@ bool code_immune_should_auto_repair(
 
 
     if (antigen->recurrence_count < bridge->config.min_crash_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
     /* Check severity threshold */
     if (antigen->severity < bridge->config.min_severity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
     /* Check confidence threshold */
     if (antigen->confidence < bridge->config.min_confidence) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
@@ -598,7 +592,6 @@ bool code_immune_should_auto_repair(
     nimcp_mutex_unlock(mutable_bridge->mutex);
 
     if (in_cooldown) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
@@ -974,7 +967,6 @@ bool code_immune_self_repair_is_ready(
     const code_immune_self_repair_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_self_repair_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

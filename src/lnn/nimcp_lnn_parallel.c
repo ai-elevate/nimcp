@@ -813,7 +813,6 @@ bool lnn_parallel_has_avx2(void) {
         return (ebx & (1 << 5)) != 0;  /* AVX2 */
     }
 #endif
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_parallel_has_avx2: validation failed");
     return false;
 }
 
@@ -824,6 +823,5 @@ bool lnn_parallel_has_avx512(void) {
         return (ebx & (1 << 16)) != 0;  /* AVX-512F */
     }
 #endif
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_parallel_has_avx512: validation failed");
     return false;
 }

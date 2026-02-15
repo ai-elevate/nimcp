@@ -800,7 +800,6 @@ bool self_repair_health_notify_is_ready(
     const self_repair_health_notify_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_health_notify_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

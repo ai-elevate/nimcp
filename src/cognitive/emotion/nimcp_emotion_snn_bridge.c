@@ -1040,7 +1040,6 @@ int emotion_snn_disconnect_bio_async(emotion_snn_bridge_t* bridge) {
 
 bool emotion_snn_is_bio_async_connected(const emotion_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

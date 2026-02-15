@@ -1188,7 +1188,7 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
         nimcp_free(model->adjacency);
         nimcp_free(model->has_edge);
         nimcp_free(model);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "causal_model_create: required parameter is NULL (model->adjacency, model->has_edge)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "causal_model_create: required parameter is NULL (model->adjacency, model->has_edge)");
         return NULL;
     }
 
@@ -1199,7 +1199,7 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
         nimcp_free(model->adjacency);
         nimcp_free(model->has_edge);
         nimcp_free(model);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "causal_model_create: model->topological_order is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "causal_model_create: model->topological_order is NULL");
         return NULL;
     }
 

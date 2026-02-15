@@ -114,35 +114,27 @@ int gw_imagination_validate_config(const gw_imagination_config_t* config) {
 
 
     if (config->attention_boost_factor < 1.0f || config->attention_boost_factor > 3.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->focus_decay_rate < 0.0f || config->focus_decay_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->ignition_threshold < 0.0f || config->ignition_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->salience_weight_novelty < 0.0f || config->salience_weight_novelty > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->salience_weight_emotional < 0.0f || config->salience_weight_emotional > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->salience_weight_goal < 0.0f || config->salience_weight_goal > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->auto_submit_threshold < 0.0f || config->auto_submit_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -374,7 +366,6 @@ int gw_imagination_disconnect_imagination(gw_imagination_bridge_t* bridge) {
 
 bool gw_imagination_is_connected(const gw_imagination_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -586,7 +577,7 @@ int gw_imagination_submit_for_broadcast(
     if (bridge->num_pending >= bridge->config.max_pending_submissions) {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("Pending submissions full, dropping request");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gw_imagination_submit_for_broadcast: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gw_imagination_submit_for_broadcast: capacity exceeded");
         return -1;
     }
 
@@ -696,7 +687,6 @@ int gw_imagination_clear_conscious_goal(gw_imagination_bridge_t* bridge) {
 
 bool gw_imagination_is_broadcasting(const gw_imagination_bridge_t* bridge) {
     if (!bridge || !bridge->global_workspace) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_broadcasting: required parameter is NULL (bridge, bridge->global_workspace)");
         return false;
     }
 
@@ -845,7 +835,6 @@ int gw_imagination_disconnect_bio_async(gw_imagination_bridge_t* bridge) {
 
 bool gw_imagination_is_bio_async_connected(const gw_imagination_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

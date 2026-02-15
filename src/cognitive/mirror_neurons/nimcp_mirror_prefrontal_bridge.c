@@ -1137,7 +1137,6 @@ bool mirror_prefrontal_is_bio_async_connected(
     const mirror_prefrontal_bridge_t bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

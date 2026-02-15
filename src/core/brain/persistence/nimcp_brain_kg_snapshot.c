@@ -38,6 +38,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_kg_snapshot)
 //=============================================================================
@@ -217,8 +218,8 @@ static void generate_snapshot_uuid(char* out)
 {
     // Simple UUID generation based on timestamp and random
     uint64_t ts = nimcp_platform_time_monotonic_ms();
-    uint32_t rand1 = (uint32_t)rand();
-    uint32_t rand2 = (uint32_t)rand();
+    uint32_t rand1 = (uint32_t)nimcp_tl_rand();
+    uint32_t rand2 = (uint32_t)nimcp_tl_rand();
 
     snprintf(out, KG_SNAPSHOT_MAX_ID_LEN,
              "%08lx-%04x-%04x-%04x-%08x%04x",

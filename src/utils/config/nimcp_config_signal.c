@@ -311,7 +311,7 @@ config_snapshot_t config_clone_snapshot(config_snapshot_t snap) {
             if (!clone->entries[i].value.string_val) {
                 LOG_ERROR("config_clone_snapshot: string duplication failed");
                 config_destroy_snapshot((config_snapshot_t)clone);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_clone_snapshot: clone->entries is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_clone_snapshot: clone->entries is NULL");
                 return NULL;
             }
         }

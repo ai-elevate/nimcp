@@ -197,7 +197,6 @@ int bge_bridge_connect_executive(
 
 bool bge_bridge_is_connected(const bge_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->bg != NULL && bridge->exec != NULL;
@@ -215,7 +214,7 @@ int bge_bridge_register_goal(
     uint32_t* goal_id
 ) {
     if (!bridge || bridge->num_goals >= BGE_MAX_ACTIVE_GOALS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bge_bridge_register_goal: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bge_bridge_register_goal: bridge is NULL");
         return -1;
     }
 
@@ -504,7 +503,6 @@ bool bge_bridge_is_inhibited(
     uint32_t action_id
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_is_inhibited: bridge is NULL");
         return false;
     }
     return bridge->inhibited_action == action_id && bridge->inhibition_level > 0.0f;

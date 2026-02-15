@@ -267,7 +267,7 @@ brain_pools_t brain_pools_create(const brain_pools_config_t* config) {
     struct brain_pools* pools = nimcp_calloc(1, sizeof(struct brain_pools));
     if (!pools) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pools is NULL");
 
         return NULL;
 
@@ -918,13 +918,11 @@ bool brain_pools_get_queuing_metrics(brain_pools_t pools, queuing_metrics_t* que
 
 bool brain_pools_is_performant(brain_pools_t pools) {
     if (!pools) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_is_performant: pools is NULL");
         return false;
     }
 
     brain_pools_metrics_t metrics;
     if (!brain_pools_get_metrics(pools, &metrics)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_pools_is_performant: brain_pools_get_metrics is NULL");
         return false;
     }
 

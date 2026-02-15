@@ -351,6 +351,8 @@ void synaptic_scaling_immune_bridge_destroy(synaptic_scaling_immune_bridge_t* br
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -760,7 +762,6 @@ bool synaptic_scaling_immune_check_runaway_excitation(
 ) {
     /* Guard: validate input */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_check_runaway_excitation: bridge is NULL");
         return false;
     }
 
@@ -772,7 +773,6 @@ bool synaptic_scaling_immune_check_global_silencing(
 ) {
     /* Guard: validate input */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_check_global_silencing: bridge is NULL");
         return false;
     }
 
@@ -879,7 +879,6 @@ bool synaptic_scaling_immune_is_aberrant(
 ) {
     /* Guard: validate input */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_is_aberrant: bridge is NULL");
         return false;
     }
 
@@ -986,7 +985,6 @@ int synaptic_scaling_immune_disconnect_bio_async(synaptic_scaling_immune_bridge_
  */
 bool synaptic_scaling_immune_is_bio_async_connected(const synaptic_scaling_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

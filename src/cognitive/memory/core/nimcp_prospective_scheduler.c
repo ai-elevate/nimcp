@@ -214,7 +214,7 @@ static void heap_sift_down(priority_heap_node_t* heap, size_t size, size_t index
  */
 static bool heap_insert(prospective_scheduler_t* scheduler, scheduled_intention_t* item) {
     if (scheduler->heap_size >= scheduler->heap_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heap_insert: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "heap_insert: capacity exceeded");
         return false;
     }
 
@@ -371,7 +371,7 @@ static scheduled_intention_t* find_scheduled_by_id(
  */
 static bool time_ordered_insert(prospective_scheduler_t* scheduler, scheduled_intention_t* item) {
     if (scheduler->num_time_ordered >= scheduler->time_ordered_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "time_ordered_insert: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "time_ordered_insert: capacity exceeded");
         return false;
     }
 
@@ -552,7 +552,6 @@ bool prospective_scheduler_config_validate(const prospective_scheduler_config_t*
 
     // Check time constants
     if (config->urgency_tau <= 0 || config->recency_tau <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_config_validate: validation failed");
         return false;
     }
 
@@ -1704,7 +1703,6 @@ bool prospective_scheduler_has_conflict(
     uint64_t intention_id
 ) {
     if (!scheduler) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_has_conflict: scheduler is NULL");
         return false;
     }
 
@@ -1715,7 +1713,6 @@ bool prospective_scheduler_has_conflict(
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
     if (!scheduled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_has_conflict: scheduled is NULL");
         return false;
     }
 
@@ -2086,7 +2083,6 @@ pr_sched_error_t prospective_scheduler_estimate_load(
 
 bool prospective_scheduler_has_capacity(const prospective_scheduler_t* scheduler) {
     if (!scheduler) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_has_capacity: scheduler is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -348,7 +348,6 @@ bool is_neuron_in_region(
     int region)
 {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_neuron_in_region: brain is NULL");
         return false;
     }
 
@@ -941,7 +940,6 @@ void brain_disable_connectivity_monitoring(brain_t brain)
 bool brain_is_connectivity_monitoring_enabled(brain_t brain)
 {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_connectivity_monitoring_enabled: brain is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

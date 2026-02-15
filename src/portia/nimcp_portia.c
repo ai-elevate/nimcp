@@ -551,7 +551,6 @@ bool portia_is_initialized(void) {
      */
     portia_context_t* ctx = atomic_load(&g_portia_ctx);
     if (ctx == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_is_initialized: validation failed");
         return false;
     }
     return ctx->initialized;

@@ -282,7 +282,6 @@ float swarm_consensus_immune_get_quorum_factor(const swarm_consensus_immune_brid
 bool swarm_consensus_immune_is_blocked(const swarm_consensus_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consensus_immune_is_blocked: bridge is NULL");
         return false;
     }
 
@@ -350,7 +349,6 @@ int swarm_consensus_immune_disconnect_bio_async(swarm_consensus_immune_bridge_t*
 bool swarm_consensus_immune_is_bio_async_connected(const swarm_consensus_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consensus_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

@@ -822,7 +822,6 @@ bool self_model_immune_is_aware_of_sickness(
     const self_model_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_is_aware_of_sickness: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -933,7 +932,6 @@ int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
  */
 bool self_model_immune_is_bio_async_connected(const self_model_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

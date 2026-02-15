@@ -701,7 +701,6 @@ float glial_integration_get_myelination_factor(glial_integration_t* gi, uint32_t
 bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pre_neuron_id,
                                             uint32_t post_neuron_id) {
     if (!gi) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_should_prune_synapse: gi is NULL");
         return false;
     }
     if (!gi->enable_microglia_pruning) {

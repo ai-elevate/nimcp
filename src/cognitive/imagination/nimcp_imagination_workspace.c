@@ -599,7 +599,6 @@ bool imagination_workspace_has_scenario(
     scenario_id_t id) {
 
     if (!workspace || id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_workspace_reset: workspace is NULL");
         return false;
     }
 

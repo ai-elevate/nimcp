@@ -1089,7 +1089,7 @@ int meta_validate_config(const meta_config_t* config) {
 
     /* Validate algorithm */
     if (config->algorithm >= META_ALG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "meta_validate_config: capacity exceeded");
         return -1;
     }
 
@@ -1101,7 +1101,6 @@ int meta_validate_config(const meta_config_t* config) {
 
     /* Validate learning rates */
     if (config->maml.inner_lr <= 0.0f || config->maml.outer_lr <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_validate_config: validation failed");
         return -1;
     }
 
@@ -1360,7 +1359,7 @@ int meta_compute_second_order_gradient(
     /* Step 1: Compute Hessian-vector product HVP = H_support * query_grad */
     float* hvp = nimcp_calloc(param_count, sizeof(float));
     if (!hvp) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hvp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hvp is NULL");
 
         return -1;
     }

@@ -146,24 +146,19 @@ bool environment_validate_config(const environment_config_t* config) {
     }
 
     if (config->max_hunting_wind_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
     if (config->wind_compensation_gain < 0.0f || config->wind_compensation_gain > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
     if (config->gust_safety_margin < 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
 
     if (config->min_hunting_light < 0.0f || config->min_hunting_light > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
     if (config->glare_sensitivity < 0.0f || config->glare_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
 
@@ -172,25 +167,20 @@ bool environment_validate_config(const environment_config_t* config) {
         return false;
     }
     if (config->optimal_temp_min_c < config->min_temp_c) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
     if (config->optimal_temp_max_c > config->max_temp_c) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
 
     if (config->min_altitude_margin_m < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
     if (config->water_surface_margin_m < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
 
     if (config->adaptation_rate < 0.0f || config->adaptation_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
         return false;
     }
 

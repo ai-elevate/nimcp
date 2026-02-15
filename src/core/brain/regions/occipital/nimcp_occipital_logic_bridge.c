@@ -220,7 +220,7 @@ static bool predicate_exists(const occipital_logic_bridge_t* bridge,
 static int add_predicate(occipital_logic_bridge_t* bridge,
                          const visual_predicate_t* pred) {
     if (bridge->predicate_count >= bridge->config.max_predicates) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_time_us: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_time_us: capacity exceeded");
         return -1;
     }
 
@@ -1110,7 +1110,6 @@ void occipital_logic_bridge_reset_stats(occipital_logic_bridge_t* bridge) {
 
 bool occipital_logic_is_brain_connected(const occipital_logic_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_is_brain_connected: bridge is NULL");
         return false;
     }
     return bridge->brain != NULL;

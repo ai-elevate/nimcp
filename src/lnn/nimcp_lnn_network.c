@@ -238,6 +238,8 @@ void lnn_network_destroy(lnn_network_t* network) {
     // Destroy mutex
     if (network->mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)network->mutex);
+        nimcp_free(network->mutex);
+        network->mutex = NULL;
         network->mutex = NULL;  // Prevent use-after-free
     }
 
@@ -762,7 +764,6 @@ void lnn_network_set_training(lnn_network_t* network, bool training) {
 bool lnn_network_is_training(const lnn_network_t* network) {
     // Guard: NULL-safe
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_is_training: network is NULL");
         return false;
     }
 

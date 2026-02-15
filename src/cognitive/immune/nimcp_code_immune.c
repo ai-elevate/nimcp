@@ -38,6 +38,7 @@
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
     nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* ============================================================================
@@ -845,7 +846,7 @@ int code_immune_present_crash(
 
     if (system->antigen_count >= system->antigen_capacity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_present_crash: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "code_immune_present_crash: capacity exceeded");
         return -1;
     }
 
@@ -943,7 +944,7 @@ int code_immune_present_crash_detailed(
 
     if (system->antigen_count >= system->antigen_capacity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_present_crash_detailed: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "code_immune_present_crash_detailed: capacity exceeded");
         return -1;
     }
 
@@ -1154,7 +1155,7 @@ int code_immune_create_b_cell(
 
     if (system->b_cell_count >= system->b_cell_capacity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_create_b_cell: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "code_immune_create_b_cell: capacity exceeded");
         return -1;
     }
 
@@ -1313,7 +1314,7 @@ int code_immune_produce_antibody(
 
     if (system->antibody_count >= system->antibody_capacity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_produce_antibody: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "code_immune_produce_antibody: capacity exceeded");
         return -1;
     }
 
@@ -1926,7 +1927,6 @@ bool code_immune_has_memory_for(
     code_crash_type_t crash_type
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_has_memory_for: system is NULL");
         return false;
     }
 
@@ -1952,7 +1952,6 @@ bool code_immune_has_memory_for(
     }
 
     nimcp_mutex_unlock(system->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_has_memory_for: operation failed");
     return false;
 }
 
@@ -2209,14 +2208,12 @@ static int validate_persist_counts(const code_immune_persist_counts_t* counts) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
             "B cell count %u exceeds max %u",
             counts->b_cell_count, CODE_IMMUNE_MAX_B_CELLS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_persist_counts: validation failed");
         return -1;
     }
     if (counts->antibody_count > CODE_IMMUNE_MAX_ANTIBODIES) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
             "Antibody count %u exceeds max %u",
             counts->antibody_count, CODE_IMMUNE_MAX_ANTIBODIES);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_persist_counts: validation failed");
         return -1;
     }
 
@@ -2331,7 +2328,7 @@ int code_immune_get_default_memory_path(char* path_out, bool create_dir) {
     int len = snprintf(path_out, CODE_IMMUNE_PERSIST_MAX_PATH,
                        "%s/.nimcp/%s", home, CODE_IMMUNE_PERSIST_DEFAULT_FILE);
     if (len < 0 || len >= CODE_IMMUNE_PERSIST_MAX_PATH) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_get_default_memory_path: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "code_immune_get_default_memory_path: capacity exceeded");
         return -1;
     }
 
@@ -2415,26 +2412,22 @@ int code_immune_validate_memory_file(const char* filepath, bool verify_checksum)
     code_immune_persist_header_t header;
     if (read_persist_header(file, &header) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
     if (validate_persist_header(&header) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
     code_immune_persist_counts_t counts;
     if (read_persist_counts(file, &counts) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
     if (validate_persist_counts(&counts) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
@@ -2446,7 +2439,6 @@ int code_immune_validate_memory_file(const char* filepath, bool verify_checksum)
                 "Checksum mismatch: expected 0x%08X, got 0x%08X",
                 header.checksum, computed);
             fclose(file);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
             return -1;
         }
     }
@@ -3251,7 +3243,6 @@ int code_immune_disconnect_self_repair(code_immune_system_t* system) {
  */
 bool code_immune_is_self_repair_connected(const code_immune_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_is_self_repair_connected: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -3368,15 +3359,12 @@ bool code_immune_check_auto_repair_eligible(
     uint64_t antigen_id
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: system is NULL");
         return false;
     }
     if (!system->config.auto_repair.enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: system->config is NULL");
         return false;
     }
     if (!system->self_repair) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: system->self_repair is NULL");
         return false;
     }
 
@@ -3389,7 +3377,6 @@ bool code_immune_check_auto_repair_eligible(
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: antigen is NULL");
         return false;
     }
 
@@ -3400,35 +3387,30 @@ bool code_immune_check_auto_repair_eligible(
     if (system->last_repair_trigger_ms > 0 &&
         (now - system->last_repair_trigger_ms) < cfg->cooldown_ms) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: operation failed");
         return false;
     }
 
     /* Check crash count */
     if (antigen->recurrence_count < cfg->min_crash_count) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
     /* Check severity */
     if (antigen->severity < cfg->min_severity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
     /* Check confidence */
     if (antigen->confidence < cfg->min_confidence) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
     /* Already neutralized? */
     if (antigen->neutralized) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 

@@ -333,7 +333,6 @@ nimcp_error_t vesicle_pink_noise_disconnect_pool(vesicle_pink_noise_bridge_t* br
  */
 bool vesicle_pink_noise_is_connected(const vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_is_connected: bridge is NULL");
         return false;
     }
 
@@ -599,7 +598,6 @@ nimcp_error_t vesicle_pink_noise_disable(vesicle_pink_noise_bridge_t* bridge) {
  */
 bool vesicle_pink_noise_is_enabled(const vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_is_enabled: bridge is NULL");
         return false;
     }
 
@@ -866,73 +864,61 @@ bool vesicle_pink_noise_validate_config(const vesicle_pink_noise_config_t* confi
 
     // Validate modulation strengths
     if (config->rrp_modulation_strength < 0.0f || config->rrp_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->pr_modulation_strength < 0.0f || config->pr_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->quantal_modulation_strength < 0.0f || config->quantal_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->refill_modulation_strength < 0.0f || config->refill_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Validate fraction ranges
     if (config->min_rrp_fraction < 0.0f || config->min_rrp_fraction > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->max_rrp_fraction < 0.0f || config->max_rrp_fraction > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->min_rrp_fraction >= config->max_rrp_fraction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vesicle_pink_noise_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "vesicle_pink_noise_validate_config: capacity exceeded");
         return false;
     }
 
     // Validate Pr ranges
     if (config->min_pr < 0.0f || config->min_pr > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->max_pr < 0.0f || config->max_pr > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->min_pr >= config->max_pr) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vesicle_pink_noise_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "vesicle_pink_noise_validate_config: capacity exceeded");
         return false;
     }
 
     // Validate quantal fraction ranges
     if (config->min_quantal_fraction <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->max_quantal_fraction <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
     if (config->min_quantal_fraction >= config->max_quantal_fraction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vesicle_pink_noise_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "vesicle_pink_noise_validate_config: capacity exceeded");
         return false;
     }
 
     // Validate update rate
     if (config->update_rate_hz <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Validate modulation targets
     if (config->modulation_targets & ~VESICLE_NOISE_ALL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_validate_config: validation failed");
         return false;
     }
 

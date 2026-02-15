@@ -1222,7 +1222,7 @@ nimcp_stream_cov_matrix_t nimcp_stream_cov_matrix_create(uint32_t n_dims)
         nimcp_free(cov->means);
         nimcp_free(cov->cov);
         nimcp_free(cov);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_cov_matrix_create: required parameter is NULL (cov->means, cov->cov)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_cov_matrix_create: required parameter is NULL (cov->means, cov->cov)");
         return NULL;
     }
 
@@ -1402,7 +1402,7 @@ nimcp_stream_pca_t nimcp_stream_pca_create(const nimcp_stream_pca_config_t* conf
         nimcp_free(pca->variance);
         nimcp_free(pca->singular_values);
         nimcp_free(pca);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_pca_create: required parameter is NULL (pca->components, pca->mean, pca->variance, pca->singular_values)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_pca_create: required parameter is NULL (pca->components, pca->mean, pca->variance, pca->singular_values)");
         return NULL;
     }
 
@@ -1622,7 +1622,7 @@ nimcp_stream_linreg_t nimcp_stream_linreg_create(
         nimcp_free(reg->coefficients);
         nimcp_free(reg->P);
         nimcp_free(reg);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_linreg_create: required parameter is NULL (reg->coefficients, reg->P)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_linreg_create: required parameter is NULL (reg->coefficients, reg->P)");
         return NULL;
     }
 
@@ -2085,7 +2085,7 @@ nimcp_cms_t nimcp_cms_create(uint32_t width, uint32_t depth)
         nimcp_free(cms->counters);
         nimcp_free(cms->hash_seeds);
         nimcp_free(cms);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cms_create: required parameter is NULL (cms->counters, cms->hash_seeds)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cms_create: required parameter is NULL (cms->counters, cms->hash_seeds)");
         return NULL;
     }
 

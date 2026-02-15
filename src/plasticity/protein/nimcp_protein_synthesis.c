@@ -252,6 +252,8 @@ void protein_synthesis_destroy(protein_synthesis_system_t system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     /* Free tags */
@@ -351,7 +353,6 @@ bool protein_synthesis_is_tagged(
     uint32_t synapse_id
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_is_tagged: system is NULL");
         return false;
     }
 

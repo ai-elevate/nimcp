@@ -48,51 +48,40 @@ static bool validate_config(const population_pink_config_t* config) {
 
     // Noise parameters
     if (config->alpha < 0.0f || config->alpha > 3.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->amplitude <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->min_frequency <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->max_frequency <= config->min_frequency) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->sample_rate < 2.0f * config->max_frequency) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
     // Strength parameters
     if (config->rate_modulation_strength < 0.0f || config->rate_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->tuning_modulation_strength < 0.0f || config->tuning_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->position_modulation_strength < 0.0f || config->position_modulation_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->correlation_factor < 0.0f || config->correlation_factor > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
     // Tuning limits
     if (config->min_tuning_width <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
     if (config->max_tuning_width <= config->min_tuning_width) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
@@ -604,7 +593,6 @@ int population_pink_bridge_disable(population_pink_bridge_t* bridge) {
 bool population_pink_bridge_is_enabled(const population_pink_bridge_t* bridge) {
     // Guard: validate input
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_is_enabled: bridge is NULL");
         return false;
     }
 

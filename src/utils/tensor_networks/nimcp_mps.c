@@ -928,7 +928,6 @@ bool mps_verify_structure(const mps_matrix_t* mps) {
     if (mps->sites[0].left_dim != 1) {
         printf("MPS verification failed: First site left_dim = %u (expected 1)\n",
                mps->sites[0].left_dim);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: validation failed");
         return false;
     }
 
@@ -937,7 +936,6 @@ bool mps_verify_structure(const mps_matrix_t* mps) {
     if (mps->sites[last].right_dim != mps->output_dim) {
         printf("MPS verification failed: Last site right_dim = %u (expected %u)\n",
                mps->sites[last].right_dim, mps->output_dim);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: validation failed");
         return false;
     }
 
@@ -947,7 +945,6 @@ bool mps_verify_structure(const mps_matrix_t* mps) {
             printf("MPS verification failed: Bond mismatch at site %u\n", i);
             printf("  Site %u right_dim = %u\n", i, mps->sites[i].right_dim);
             printf("  Site %u left_dim = %u\n", i+1, mps->sites[i+1].left_dim);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: validation failed");
             return false;
         }
     }

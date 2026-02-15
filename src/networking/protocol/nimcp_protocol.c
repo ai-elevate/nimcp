@@ -172,10 +172,14 @@ static bool validate_serialize_inputs(const uint8_t* buffer, uint32_t buffer_siz
 
         }
 
+    // Guard clause: Integer overflow check
+    if (payload_len > UINT32_MAX - (uint32_t)sizeof(msg_header_t)) {
+        return false;  // Would overflow uint32_t
+    }
+
     // Guard clause: Check buffer size
-    uint32_t required_size = sizeof(msg_header_t) + payload_len;
+    uint32_t required_size = (uint32_t)sizeof(msg_header_t) + payload_len;
     if (buffer_size < required_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_serialize_inputs: validation failed");
         return false;
     }
 
@@ -326,7 +330,6 @@ static bool validate_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_s
 
     // Guard clause: Check minimum buffer size
     if (buffer_size < sizeof(msg_header_t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_deserialize_inputs: validation failed");
         return false;
     }
 
@@ -838,10 +841,14 @@ static bool validate_event_serialize_inputs(const event_packet_t* packet, const 
 
         }
 
+    // Guard clause: Integer overflow check
+    if (packet->payload_length > UINT32_MAX - (uint32_t)sizeof(event_packet_t)) {
+        return false;  // Would overflow uint32_t
+    }
+
     // Guard clause: Check buffer size
-    uint32_t required = sizeof(event_packet_t) + packet->payload_length;
+    uint32_t required = (uint32_t)sizeof(event_packet_t) + packet->payload_length;
     if (buffer_size < required) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_event_serialize_inputs: validation failed");
         return false;
     }
 
@@ -948,7 +955,6 @@ static bool validate_event_deserialize_inputs(const uint8_t* buffer, uint32_t bu
 
     // Guard clause: Check buffer size
     if (buffer_size < sizeof(event_packet_t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_event_deserialize_inputs: validation failed");
         return false;
     }
 
@@ -1164,7 +1170,6 @@ bool event_packet_validate(const event_packet_t* packet)
 
     // Guard clause: Check payload length
     if (packet->payload_length > MAX_PAYLOAD_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_packet_validate: validation failed");
         return false;
     }
 
@@ -1227,7 +1232,6 @@ static bool validate_control_serialize_inputs(const control_message_t* msg, cons
 
     // Guard clause: Check buffer size
     if (buffer_size < required_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_control_serialize_inputs: validation failed");
         return false;
     }
 
@@ -1339,7 +1343,6 @@ static bool validate_control_deserialize_inputs(const uint8_t* buffer, uint32_t 
 
     // Guard clause: Check buffer size
     if (buffer_size < sizeof(control_message_t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_control_deserialize_inputs: validation failed");
         return false;
     }
 
@@ -1472,11 +1475,9 @@ static bool is_control_type_valid(uint8_t msg_type)
 static bool is_control_length_valid(uint32_t length)
 {
     if (length < sizeof(control_message_t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_control_length_valid: validation failed");
         return false;
     }
     if (length > MAX_PAYLOAD_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_control_length_valid: validation failed");
         return false;
     }
     return true;
@@ -1516,7 +1517,6 @@ bool control_message_validate(const control_message_t* msg)
 
     // Guard clause: Check version
     if (msg->version != PROTOCOL_VERSION) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "control_message_validate: validation failed");
         return false;
     }
 

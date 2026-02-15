@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(raphe_snn_bridge)
 //=============================================================================
@@ -172,7 +173,7 @@ int nimcp_raphe_snn_encode_ht_state(nimcp_raphe_snn_bridge_t* b) {
     float rate = b->config.tonic_baseline_hz * (1.0f + ht / 100.0f);
     for (uint32_t i = 0; i < b->spike_buffer_size; i++) {
         float prob = rate * b->config.dt_ms / 1000.0f;
-        b->input_spikes[i] = (rand() / (float)RAND_MAX) < prob ? 1.0f : 0.0f;
+        b->input_spikes[i] = (nimcp_tl_rand() / (float)RAND_MAX) < prob ? 1.0f : 0.0f;
         if (b->input_spikes[i] > 0) spikes++;
     }
     b->stats.total_spikes_generated += spikes;

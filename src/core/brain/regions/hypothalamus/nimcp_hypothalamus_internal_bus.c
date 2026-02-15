@@ -202,7 +202,7 @@ hypo_ibus_t hypo_ibus_create(const hypo_ibus_config_t* config) {
     struct hypo_internal_bus* bus = nimcp_calloc(1, sizeof(struct hypo_internal_bus));
     if (!bus) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bus is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bus is NULL");
 
         return NULL;
 
@@ -800,7 +800,6 @@ int hypo_ibus_reset_stats(hypo_ibus_t bus) {
 
 bool hypo_ibus_has_subscribers(hypo_ibus_t bus, hypo_internal_module_t module) {
     if (!bus || module >= HYPO_IMOD_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_ibus_has_subscribers: bus is NULL");
         return false;
     }
 

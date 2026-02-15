@@ -293,6 +293,8 @@ void topographic_map_destroy(topographic_map_t* map)
     /* Destroy mutex */
     if (map->mutex) {
         nimcp_platform_mutex_destroy(map->mutex);
+        nimcp_free(map->mutex);
+        map->mutex = NULL;
     }
 
     /* Free map structure */
@@ -1007,13 +1009,11 @@ bool topographic_map_validate_config(const topographic_map_config_t* config)
 
     /* Check ranges */
     if (config->input_range[1] <= config->input_range[0]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "topographic_map_validate_config: validation failed");
         return false;
     }
 
     if (config->cortical_range[1] <= config->cortical_range[0] ||
         config->cortical_range[3] <= config->cortical_range[2]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "topographic_map_validate_config: validation failed");
         return false;
     }
 

@@ -1477,7 +1477,6 @@ log_level_t nimcp_log_get_level(nimcp_logger_t logger) {
 bool nimcp_log_is_level_enabled(nimcp_logger_t logger, log_level_t level) {
     if (!logger) logger = g_global_logger;
     if (!logger || logger->magic != NIMCP_LOG_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_log_is_level_enabled: logger is NULL");
         return false;
     }
     return level >= logger->level && level < LOG_LEVEL_OFF;

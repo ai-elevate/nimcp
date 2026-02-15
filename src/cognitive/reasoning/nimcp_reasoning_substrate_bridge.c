@@ -393,6 +393,8 @@ void reasoning_substrate_bridge_destroy(reasoning_substrate_bridge_t* bridge)
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -470,7 +472,6 @@ int reasoning_substrate_disconnect_bio_async(reasoning_substrate_bridge_t* bridg
 bool reasoning_substrate_is_bio_async_connected(const reasoning_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -699,7 +700,6 @@ const reasoning_substrate_effects_t* reasoning_substrate_get_effects(
 bool reasoning_substrate_is_impaired(const reasoning_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

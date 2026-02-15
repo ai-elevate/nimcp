@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(free_energy_instance)
 
@@ -652,6 +653,8 @@ void fep_destroy(fep_system_t* fep) {
     /* Free mutex */
     if (fep->mutex) {
         nimcp_platform_mutex_destroy(fep->mutex);
+        nimcp_free(fep->mutex);
+        fep->mutex = NULL;
     }
 
     nimcp_free(fep);
@@ -1297,7 +1300,7 @@ int fep_select_action(
         case FEP_ACTION_THOMPSON:
         default: {
             /* Sample from policy distribution */
-            float r = (float)rand() / (float)RAND_MAX;
+            float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
             float cumsum = 0.0f;
             for (uint32_t i = 0; i < fep->num_policies; i++) {
                 /* Phase 8: Loop progress heartbeat */

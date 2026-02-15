@@ -257,7 +257,6 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
 
     if (config->base_lr <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid base_lr: %f (must be > 0)", config->base_lr);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -277,7 +276,6 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     // Check epsilon
     if (config->epsilon <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid epsilon: %f (must be > 0)", config->epsilon);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -285,7 +283,6 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->resonance_scale < 0.0f || config->resonance_scale > 10.0f) {
         NIMCP_LOGGING_WARN("Invalid resonance_scale: %f (should be in [0, 10])",
                           config->resonance_scale);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -293,7 +290,6 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->consolidation_gate < 0.0f || config->consolidation_gate > 1.0f) {
         NIMCP_LOGGING_WARN("Invalid consolidation_gate: %f (must be in [0, 1])",
                           config->consolidation_gate);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -308,7 +304,6 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
         if (config->tier_lr_scale[i] < 0.0f) {
             NIMCP_LOGGING_WARN("Invalid tier_lr_scale[%d]: %f (must be >= 0)",
                               i, config->tier_lr_scale[i]);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
             return false;
         }
     }
@@ -325,7 +320,6 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->max_grad_norm <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid max_grad_norm: %f (must be > 0)",
                           config->max_grad_norm);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -1557,7 +1551,6 @@ pr_optimizer_error_t pr_optimizer_disconnect_bio_async(
 
 bool pr_optimizer_is_bio_async_connected(pr_optimizer_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_optimizer_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

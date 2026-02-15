@@ -72,7 +72,7 @@ static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
     omni_phon_wm_t* wm = nimcp_calloc(1, sizeof(omni_phon_wm_t));
     if (!wm) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm is NULL");
 
         return NULL;
 
@@ -93,7 +93,7 @@ static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
             }
             nimcp_free(wm->slots);
             nimcp_free(wm);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_bridge_mesh_unregister: wm->slots is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_broca_bridge_mesh_unregister: wm->slots is NULL");
             return NULL;
         }
     }
@@ -171,7 +171,7 @@ omni_broca_bridge_t* omni_broca_bridge_create(
     omni_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_broca_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -478,7 +478,6 @@ int omni_broca_infer_syntax(omni_broca_bridge_t* bridge,
 
 bool omni_broca_has_syntax_violation(const omni_broca_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_has_syntax_violation: bridge is NULL");
         return false;
     }
     return bridge->broca_effects.syntax_violation;
@@ -752,7 +751,6 @@ int omni_broca_disconnect_bio_async(omni_broca_bridge_t* bridge) {
 
 bool omni_broca_is_bio_async_connected(const omni_broca_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

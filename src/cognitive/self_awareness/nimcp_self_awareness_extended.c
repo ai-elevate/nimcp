@@ -763,7 +763,6 @@ bool self_awareness_check_health(self_awareness_system_t system,
 {
     // Guard: NULL checks
     if (!system || !health_score || !issues || issues_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_check_health: required parameter is NULL (system, health_score, issues)");
         return false;
     }
 

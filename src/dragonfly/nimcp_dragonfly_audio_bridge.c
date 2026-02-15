@@ -141,47 +141,38 @@ bool audio_bridge_validate_config(const audio_bridge_config_t* config) {
     }
 
     if (config->min_intensity_db < 0 || config->min_intensity_db > 120.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->min_frequency_hz <= 0 || config->max_frequency_hz <= config->min_frequency_hz) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->detection_threshold < 0 || config->detection_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->loc_mode > AUDIO_LOC_SPECTRAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->ear_separation_m <= 0 || config->ear_separation_m > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->speed_of_sound_mps < 300.0f || config->speed_of_sound_mps > 400.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->correlation_threshold < 0 || config->correlation_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->max_angular_diff < 0 || config->max_angular_diff > M_PI) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 
     if (config->smoothing_alpha < 0 || config->smoothing_alpha > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
     }
 

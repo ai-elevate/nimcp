@@ -452,7 +452,7 @@ NIMCP_API uint32_t nimcp_hypergraph_add_vertex_with_data(
 
     /* Check limits */
     if (hg->vertex_count >= HYPERGRAPH_MAX_VERTICES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
             "Hypergraph vertex limit exceeded");
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
@@ -708,7 +708,7 @@ NIMCP_API uint32_t nimcp_hypergraph_add_edge_full(
 
     /* Check limits */
     if (hg->edge_count >= HYPERGRAPH_MAX_EDGES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
             "Hypergraph edge limit exceeded");
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
@@ -1171,9 +1171,9 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
             "nimcp_hypergraph_extend_edge: max edge vertices exceeded");
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     /* Grow if needed */
@@ -1889,9 +1889,9 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_to_tensor(
     /* For each pair of vertices, set 1 if they share an edge */
     uint32_t n = hg->vertex_count;
     if (tensor_size < n * n) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
             "nimcp_hypergraph_to_tensor: tensor_size too small");
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     for (uint32_t i = 0; i < hg->edge_count; i++) {
@@ -2033,7 +2033,6 @@ NIMCP_API bool nimcp_hypergraph_is_connected(const nimcp_hypergraph_t* hg)
     uint32_t* components = (uint32_t*)nimcp_malloc(
         hg->vertex_count * sizeof(uint32_t));
     if (!components) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_is_connected: components is NULL");
         return false;
     }
 

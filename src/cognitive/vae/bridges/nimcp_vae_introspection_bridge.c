@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Internal Helpers
@@ -330,14 +331,14 @@ int vae_intro_sample_state(vae_intro_bridge_t* bridge,
     /* For now, create simulated brain state */
 
     /* Global metrics - simulated values */
-    state->global_activity = 0.4f + 0.2f * ((float)rand() / RAND_MAX);
-    state->cognitive_load = 0.3f + 0.3f * ((float)rand() / RAND_MAX);
-    state->attention_level = 0.5f + 0.3f * ((float)rand() / RAND_MAX);
-    state->arousal_level = 0.4f + 0.2f * ((float)rand() / RAND_MAX);
+    state->global_activity = 0.4f + 0.2f * ((float)nimcp_tl_rand() / RAND_MAX);
+    state->cognitive_load = 0.3f + 0.3f * ((float)nimcp_tl_rand() / RAND_MAX);
+    state->attention_level = 0.5f + 0.3f * ((float)nimcp_tl_rand() / RAND_MAX);
+    state->arousal_level = 0.4f + 0.2f * ((float)nimcp_tl_rand() / RAND_MAX);
 
     /* Uncertainty estimates */
-    state->epistemic_uncertainty = 0.2f + 0.3f * ((float)rand() / RAND_MAX);
-    state->aleatoric_uncertainty = 0.1f + 0.2f * ((float)rand() / RAND_MAX);
+    state->epistemic_uncertainty = 0.2f + 0.3f * ((float)nimcp_tl_rand() / RAND_MAX);
+    state->aleatoric_uncertainty = 0.1f + 0.2f * ((float)nimcp_tl_rand() / RAND_MAX);
 
     /* Allocate and populate module states */
     uint32_t num_modules = 8;  /* Simulated */
@@ -347,10 +348,10 @@ int vae_intro_sample_state(vae_intro_bridge_t* bridge,
         for (uint32_t i = 0; i < num_modules; i++) {
             state->modules[i].module_id = i;
             state->modules[i].module_name = NULL;  /* Would be set from introspection */
-            state->modules[i].activity_level = 0.3f + 0.4f * ((float)rand() / RAND_MAX);
-            state->modules[i].resource_usage = 0.2f + 0.3f * ((float)rand() / RAND_MAX);
-            state->modules[i].active_neurons = 100 + (rand() % 900);
-            state->modules[i].avg_firing_rate = 10.0f + 20.0f * ((float)rand() / RAND_MAX);
+            state->modules[i].activity_level = 0.3f + 0.4f * ((float)nimcp_tl_rand() / RAND_MAX);
+            state->modules[i].resource_usage = 0.2f + 0.3f * ((float)nimcp_tl_rand() / RAND_MAX);
+            state->modules[i].active_neurons = 100 + (nimcp_tl_rand() % 900);
+            state->modules[i].avg_firing_rate = 10.0f + 20.0f * ((float)nimcp_tl_rand() / RAND_MAX);
         }
     }
 
@@ -362,9 +363,9 @@ int vae_intro_sample_state(vae_intro_bridge_t* bridge,
         for (uint32_t i = 0; i < num_patterns; i++) {
             state->patterns[i].pattern_id = i;
             state->patterns[i].pattern_name = NULL;
-            state->patterns[i].activation = ((float)rand() / RAND_MAX);
+            state->patterns[i].activation = ((float)nimcp_tl_rand() / RAND_MAX);
             state->patterns[i].is_active = state->patterns[i].activation > 0.5f;
-            state->patterns[i].last_active_time_us = get_time_us() - (rand() % 1000000);
+            state->patterns[i].last_active_time_us = get_time_us() - (nimcp_tl_rand() % 1000000);
         }
     }
 

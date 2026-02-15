@@ -657,7 +657,6 @@ int emotion_immune_get_inflammation_state(
 
 bool emotion_immune_is_sick_behavior(const emotion_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_is_sick_behavior: bridge is NULL");
         return false;
     }
 
@@ -759,7 +758,6 @@ int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
  */
 bool emotion_immune_is_bio_async_connected(const emotion_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

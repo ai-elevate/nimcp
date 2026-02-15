@@ -154,6 +154,8 @@ void metaplasticity_sleep_bridge_destroy(metaplasticity_sleep_bridge_t* bridge) 
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -372,7 +374,6 @@ int metaplasticity_sleep_compute_sleep_pressure(
 
 bool metaplasticity_sleep_is_reset_complete(const metaplasticity_sleep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_is_reset_complete: bridge is NULL");
         return false;
     }
     return bridge->effects.baseline_drift < (METAPLASTICITY_THRESHOLD_DRIFT_TOLERANCE * 0.1f);
@@ -465,7 +466,6 @@ int metaplasticity_sleep_get_drift_stats(
 
 bool metaplasticity_sleep_is_adaptation_frozen(const metaplasticity_sleep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_is_adaptation_frozen: bridge is NULL");
         return false;
     }
     return bridge->effects.adaptation_frozen;

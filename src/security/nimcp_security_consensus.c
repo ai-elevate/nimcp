@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_consensus)
 //=============================================================================
@@ -183,7 +184,7 @@ static uint64_t get_time_ms(void) {
  */
 static uint32_t generate_election_timeout(nimcp_security_consensus_t c) {
     uint32_t range = c->election_timeout_max_ms - c->election_timeout_min_ms;
-    return c->election_timeout_min_ms + (rand() % range);
+    return c->election_timeout_min_ms + (nimcp_tl_rand() % range);
 }
 
 /**

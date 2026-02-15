@@ -195,7 +195,7 @@ harm_prevention_system_t* harm_prevention_create(
     harm_prevention_system_t* system = nimcp_calloc(1, sizeof(*system));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate harm prevention system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "system is NULL");
 
         return NULL;
     }
@@ -689,7 +689,6 @@ bool harm_prevention_is_bio_async_connected(
 {
     /* Guard clause */
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_prevention_is_bio_async_connected: system is NULL");
         return false;
     }
 

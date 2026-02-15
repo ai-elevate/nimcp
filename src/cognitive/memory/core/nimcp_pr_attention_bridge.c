@@ -305,7 +305,6 @@ bool pr_attention_bridge_config_validate(const pr_attention_bridge_config_t* con
 
     // Balance must be in [0, 1]
     if (config->bu_td_balance < 0.0f || config->bu_td_balance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -313,7 +312,6 @@ bool pr_attention_bridge_config_validate(const pr_attention_bridge_config_t* con
     if (config->visual_weight < 0.0f || config->audio_weight < 0.0f ||
         config->speech_weight < 0.0f || config->omni_weight < 0.0f ||
         config->memory_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: validation failed");
         return false;
     }
 

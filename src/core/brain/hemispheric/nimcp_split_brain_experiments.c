@@ -143,25 +143,20 @@ bool split_brain_validate_config(const split_brain_session_config_t* config) {
     }
 
     if (config->stimulus_duration_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
     if (config->response_timeout_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
     if (config->inter_trial_interval_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
 
     if (config->callosal_strength < 0.0f || config->callosal_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
 
     if (config->cross_cue_threshold < 0.0f || config->cross_cue_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
 

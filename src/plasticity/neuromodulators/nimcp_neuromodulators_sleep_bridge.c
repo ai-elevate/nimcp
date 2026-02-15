@@ -466,7 +466,6 @@ float neuromod_sleep_get_factor(
  */
 bool neuromod_sleep_is_inhibited(const neuromod_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_is_inhibited: bridge is NULL");
         return false;
     }
 

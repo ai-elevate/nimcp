@@ -235,7 +235,7 @@ static void generate_credential_id(uint8_t* id_out) {
 
 nimcp_error_t mesh_msp_default_config(mesh_msp_config_t* config) {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_default_config: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -759,7 +759,6 @@ bool mesh_msp_has_channel_membership(
     mesh_channel_id_t channel_id
 ) {
     if (!msp) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_has_channel_membership: msp is NULL");
         return false;
     }
 
@@ -1279,7 +1278,6 @@ bool mesh_msp_is_quarantined(
     mesh_participant_id_t participant_id
 ) {
     if (!msp) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_is_quarantined: msp is NULL");
         return false;
     }
 

@@ -231,7 +231,7 @@ int kg_schema_register_migration(const kg_migration_script_t* migration) {
     }
 
     if (g_migration_registry.count >= KG_SCHEMA_MAX_MIGRATIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_schema_register_migration: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_schema_register_migration: capacity exceeded");
         return -1; /* Registry full */
     }
 
@@ -550,19 +550,16 @@ bool kg_schema_is_compatible(
     const kg_schema_version_t* actual
 ) {
     if (!required || !actual) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_is_compatible: required parameter is NULL (required, actual)");
         return false;
     }
 
     /* Same major version required */
     if (required->major != actual->major) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_is_compatible: validation failed");
         return false;
     }
 
     /* Actual minor must be >= required minor */
     if (actual->minor < required->minor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_is_compatible: validation failed");
         return false;
     }
 

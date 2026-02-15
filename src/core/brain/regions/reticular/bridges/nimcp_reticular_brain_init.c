@@ -386,7 +386,6 @@ bool reticular_init_immune_bridge(
 
 bool reticular_is_initialized(nimcp_reticular_t* reticular) {
     if (!reticular) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_is_initialized: reticular is NULL");
         return false;
     }
     return reticular->initialized;

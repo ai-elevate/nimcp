@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Internal Helpers
@@ -880,7 +881,7 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
 
     /* Estimate velocity (small random for demo) */
     for (uint32_t i = 0; i < latent_dim; i++) {
-        velocity[i] = 0.01f * ((float)rand() / RAND_MAX - 0.5f);
+        velocity[i] = 0.01f * ((float)nimcp_tl_rand() / RAND_MAX - 0.5f);
     }
 
     /* Generate predictions */
@@ -983,7 +984,7 @@ int vae_world_track_entities(vae_world_bridge_t* bridge,
 
     /* Simple entity extraction - use latent clusters */
     /* In full impl, would use slot attention or similar */
-    uint32_t num_entities = 1 + (rand() % 4);  /* 1-4 entities */
+    uint32_t num_entities = 1 + (nimcp_tl_rand() % 4);  /* 1-4 entities */
     if (num_entities > bridge->config.max_entities) {
         num_entities = bridge->config.max_entities;
     }

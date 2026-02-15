@@ -263,7 +263,7 @@ int buffer_immune_register_circular(
     }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_circular: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_immune_register_circular: capacity exceeded");
         return -1;
     }
 
@@ -307,7 +307,7 @@ int buffer_immune_register_integration(
     }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_integration: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_immune_register_integration: capacity exceeded");
         return -1;
     }
 
@@ -351,7 +351,7 @@ int buffer_immune_register_phase_coded(
     }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_phase_coded: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_immune_register_phase_coded: capacity exceeded");
         return -1;
     }
 
@@ -396,7 +396,7 @@ int buffer_immune_register_sliding_window(
     }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_sliding_window: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_immune_register_sliding_window: capacity exceeded");
         return -1;
     }
 
@@ -439,7 +439,7 @@ int buffer_immune_register_temporal_accumulator(
     }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_temporal_accumulator: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "buffer_immune_register_temporal_accumulator: capacity exceeded");
         return -1;
     }
 

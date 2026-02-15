@@ -99,7 +99,7 @@ omni_training_bridge_t* omni_training_bridge_create(
     omni_training_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_training_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -554,7 +554,6 @@ int omni_training_disconnect_bio_async(omni_training_bridge_t* bridge) {
 
 bool omni_training_is_bio_async_connected(const omni_training_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

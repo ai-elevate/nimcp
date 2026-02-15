@@ -945,7 +945,6 @@ int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
 
 bool hypo_cognitive_hub_is_connected(const hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

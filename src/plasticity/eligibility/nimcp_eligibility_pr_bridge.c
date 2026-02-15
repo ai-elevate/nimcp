@@ -120,7 +120,6 @@ bool elig_pr_bridge_validate_config(const elig_pr_bridge_config_t* config) {
     }
 
     if (config->resonance_elig_boost < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_pr_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -351,7 +350,7 @@ int elig_pr_get_tier_parameters(elig_pr_bridge_t bridge,
     }
 
     if (tier >= ELIG_PR_TIER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "elig_pr_bridge_is_connected: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "elig_pr_bridge_is_connected: capacity exceeded");
         return -1;
     }
 

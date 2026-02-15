@@ -698,7 +698,6 @@ int omni_occipital_disconnect_bio_async(omni_occipital_bridge_t* bridge) {
 
 bool omni_occipital_is_bio_async_connected(const omni_occipital_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_occipital_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

@@ -294,7 +294,6 @@ int swarm_emergence_immune_get_tier_penalty(const swarm_emergence_immune_bridge_
 bool swarm_emergence_immune_is_advancement_blocked(const swarm_emergence_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_emergence_immune_is_advancement_blocked: bridge is NULL");
         return false;
     }
 
@@ -362,7 +361,6 @@ int swarm_emergence_immune_disconnect_bio_async(swarm_emergence_immune_bridge_t*
 bool swarm_emergence_immune_is_bio_async_connected(const swarm_emergence_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_emergence_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

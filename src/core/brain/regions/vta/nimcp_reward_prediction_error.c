@@ -282,7 +282,7 @@ int nimcp_rpe_transition_state(
     }
 
     if (new_state >= RPE_MAX_STATES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_rpe_transition_state: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_rpe_transition_state: capacity exceeded");
         return -1;
     }
 
@@ -332,7 +332,7 @@ int nimcp_rpe_set_state_value(
     }
 
     if (state >= RPE_MAX_STATES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_rpe_set_state_value: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_rpe_set_state_value: capacity exceeded");
         return -1;
     }
 

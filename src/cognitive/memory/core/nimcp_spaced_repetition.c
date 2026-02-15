@@ -291,17 +291,15 @@ NIMCP_EXPORT bool sr_config_validate(const sr_config_t* config) {
     // Validate intervals
     if (config->max_interval_days <= 0.0f) {
         sr_set_error("Invalid max_interval_days: must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->min_interval_days < 0.0f) {
         sr_set_error("Invalid min_interval_days: must be non-negative");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->min_interval_days >= config->max_interval_days) {
         sr_set_error("min_interval_days must be less than max_interval_days");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sr_config_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sr_config_validate: capacity exceeded");
         return false;
     }
 
@@ -309,29 +307,24 @@ NIMCP_EXPORT bool sr_config_validate(const sr_config_t* config) {
     const sr_fsrs_params_t* p = &config->fsrs_params;
     if (p->param_a <= 0.0f || p->param_b < 0.0f || p->param_c < 0.0f || p->param_d < 0.0f) {
         sr_set_error("Invalid FSRS parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (p->initial_stability <= 0.0f) {
         sr_set_error("Invalid initial_stability: must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sr_config_validate: validation failed");
         return false;
     }
 
     // Validate modifiers
     if (config->easy_bonus < 1.0f) {
         sr_set_error("Invalid easy_bonus: must be >= 1.0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->hard_penalty <= 0.0f || config->hard_penalty > 1.0f) {
         sr_set_error("Invalid hard_penalty: must be in (0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->interval_modifier <= 0.0f) {
         sr_set_error("Invalid interval_modifier: must be positive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
 

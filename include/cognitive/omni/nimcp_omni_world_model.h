@@ -709,6 +709,24 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
                              uint32_t episode_length);
 
 /**
+ * @brief Generate a dream sequence into a rollout structure
+ *
+ * Produces a single imagined trajectory by rolling out the world model
+ * with stochastic noise injection.  If dream_length is 0, falls back
+ * to config.dream_horizon.
+ *
+ * @param wm World model
+ * @param dream_length Number of steps (0 = use config.dream_horizon)
+ * @param noise_scale  Noise amplitude for stochastic exploration
+ * @param rollout      Pre-allocated rollout (via omni_wm_rollout_create)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t omni_wm_generate_dream(omni_world_model_t* wm,
+                                      uint32_t dream_length,
+                                      float noise_scale,
+                                      omni_wm_rollout_t* rollout);
+
+/**
  * @brief Set learning rate
  * @param wm World model
  * @param learning_rate New learning rate

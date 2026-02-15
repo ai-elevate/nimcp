@@ -503,11 +503,9 @@ bool compartment_check_spike(compartment_state_t* state,
 
     /* Guard: Validate inputs */
     if (!state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compartment_check_spike: state is NULL");
         return false;
     }
     if (!params) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compartment_check_spike: params is NULL");
         return false;
     }
 
@@ -531,7 +529,6 @@ bool compartment_check_spike(compartment_state_t* state,
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compartment_state_init: operation failed");
     return false;
 }
 

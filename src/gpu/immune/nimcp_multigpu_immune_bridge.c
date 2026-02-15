@@ -133,7 +133,7 @@ multigpu_immune_bridge_t* multigpu_immune_create(
     multigpu_immune_bridge_t* bridge = nimcp_malloc(sizeof(multigpu_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("multigpu_immune_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -451,7 +451,6 @@ int multigpu_immune_get_error_state(
 
 bool multigpu_immune_is_gpu_count_reduced(const multigpu_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multigpu_immune_is_gpu_count_reduced: bridge is NULL");
         return false;
     }
 

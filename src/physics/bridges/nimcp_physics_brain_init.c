@@ -432,7 +432,6 @@ bool physics_init_immune_bridge(brain_t brain) {
 
 bool physics_is_initialized(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_is_initialized: brain is NULL");
         return false;
     }
 

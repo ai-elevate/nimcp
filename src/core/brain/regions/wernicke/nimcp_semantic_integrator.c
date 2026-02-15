@@ -216,7 +216,7 @@ static sense_entry_t* get_sense_entry(
     sense_bucket_t* new_bucket = nimcp_calloc(1, sizeof(sense_bucket_t));
     if (!new_bucket) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_bucket is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_bucket is NULL");
 
         return NULL;
 
@@ -380,7 +380,7 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
     semantic_integrator_t* sem = nimcp_calloc(1, sizeof(semantic_integrator_t));
     if (!sem) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sem is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sem is NULL");
 
         return NULL;
 
@@ -1102,7 +1102,7 @@ bool semantic_assign_role(
     thematic_role_t role
 ) {
     if (!sem || role >= ROLE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "semantic_assign_role: sem is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "semantic_assign_role: sem is NULL");
         return false;
     }
 

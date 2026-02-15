@@ -290,6 +290,8 @@ void fep_transition_learner_destroy(fep_transition_learner_t* learner) {
 
     if (learner->mutex) {
         nimcp_platform_mutex_destroy(learner->mutex);
+        nimcp_free(learner->mutex);
+        learner->mutex = NULL;
     }
 
     nimcp_free(learner);
@@ -426,6 +428,8 @@ void fep_likelihood_learner_destroy(fep_likelihood_learner_t* learner) {
 
     if (learner->mutex) {
         nimcp_platform_mutex_destroy(learner->mutex);
+        nimcp_free(learner->mutex);
+        learner->mutex = NULL;
     }
 
     nimcp_free(learner);

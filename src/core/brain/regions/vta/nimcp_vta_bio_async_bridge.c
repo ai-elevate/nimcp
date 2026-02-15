@@ -127,7 +127,7 @@ vta_bio_async_bridge_t* vta_bio_async_bridge_create(const vta_bio_async_config_t
     vta_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(vta_bio_async_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -420,7 +420,7 @@ int vta_bio_async_subscribe_module(vta_bio_async_bridge_t* bridge, uint32_t modu
         return 0;
     }
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vta_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "vta_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

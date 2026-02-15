@@ -313,7 +313,7 @@ static bool queue_push(pr_bio_bridge_t bridge, const pr_bio_queue_entry_t* entry
     if (bridge->queue_size >= bridge->queue_capacity) {
         /* Try to grow queue */
         if (bridge->queue_capacity >= bridge->config.max_pending_messages) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_push: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "queue_push: capacity exceeded");
             return false;  /* At max capacity */
         }
         size_t new_cap = bridge->queue_capacity * PR_BIO_QUEUE_GROWTH_FACTOR;
@@ -561,7 +561,6 @@ NIMCP_EXPORT pr_bio_bridge_error_t pr_bio_bridge_disconnect(pr_bio_bridge_t brid
 
 NIMCP_EXPORT bool pr_bio_bridge_is_connected(const pr_bio_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bio_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->is_connected;

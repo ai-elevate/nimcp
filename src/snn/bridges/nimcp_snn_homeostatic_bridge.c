@@ -157,7 +157,6 @@ int snn_homeostatic_bridge_disconnect_bio_async(snn_homeostatic_bridge_t* bridge
 
 bool snn_homeostatic_bridge_is_bio_async_connected(const snn_homeostatic_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -322,7 +321,6 @@ float snn_homeostatic_bridge_get_avg_rate(const snn_homeostatic_bridge_t* bridge
 
 bool snn_homeostatic_bridge_is_stable(const snn_homeostatic_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_is_stable: null bridge pointer");
         return false;
     }
     return bridge->effects.network_stable;

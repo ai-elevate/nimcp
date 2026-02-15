@@ -174,29 +174,23 @@ bool flashbulb_config_validate(const flashbulb_config_t* config) {
 
 
     if (config->arousal_threshold < 0.0f || config->arousal_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->trauma_arousal_threshold < 0.0f || config->trauma_arousal_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->min_vividness_threshold < 0.0f || config->min_vividness_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
 
     // Validate boost factors are positive
     if (config->arousal_boost < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->surprise_boost < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->significance_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
 
@@ -1076,12 +1070,10 @@ bool flashbulb_is_reconsolidating(
     uint64_t current_time_ms
 ) {
     if (!system || !flashbulb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_is_reconsolidating: required parameter is NULL (system, flashbulb)");
         return false;
     }
 
     if (!flashbulb->is_reconsolidating) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_is_reconsolidating: flashbulb->is_reconsolidating is NULL");
         return false;
     }
 
@@ -1744,7 +1736,6 @@ static bool should_trigger_reconsolidation(
 
     // Already reconsolidating
     if (fb->is_reconsolidating) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_reconsolidation: validation failed");
         return false;
     }
 

@@ -467,7 +467,6 @@ bool counterfactual_config_validate(const counterfactual_config_t* config) {
 
     if (config->min_causal_strength < 0.0f || config->min_causal_strength > 1.0f) {
         set_error("min_causal_strength must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "counterfactual_config_validate: validation failed");
         return false;
     }
 

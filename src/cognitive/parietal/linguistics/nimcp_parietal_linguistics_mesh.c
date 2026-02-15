@@ -1710,23 +1710,18 @@ bool linguistics_mesh_validate_config(const linguistics_mesh_config_t* config) {
     }
 
     if (config->agreement_threshold < 0.0f || config->agreement_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->belief_learning_rate <= 0.0f || config->belief_learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->precision_floor <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->precision_ceiling <= config->precision_floor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->gossip_probability < 0.0f || config->gossip_probability > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->max_iterations == 0) {
@@ -1734,11 +1729,11 @@ bool linguistics_mesh_validate_config(const linguistics_mesh_config_t* config) {
         return false;
     }
     if (config->algorithm >= LING_MESH_ALG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "linguistics_mesh_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "linguistics_mesh_validate_config: capacity exceeded");
         return false;
     }
     if (config->metric >= LING_MESH_METRIC_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "linguistics_mesh_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "linguistics_mesh_validate_config: capacity exceeded");
         return false;
     }
 

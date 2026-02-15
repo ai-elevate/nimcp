@@ -286,7 +286,7 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
         if (metrics->metric_count >= metrics->config.max_metrics) {
             LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
             nimcp_platform_mutex_unlock(&metrics->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protocol_metrics_record: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "protocol_metrics_record: capacity exceeded");
             return false;
         }
 
@@ -387,7 +387,7 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
         if (metrics->metric_count >= metrics->config.max_metrics) {
             LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
             nimcp_platform_mutex_unlock(&metrics->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protocol_metrics_observe: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "protocol_metrics_observe: capacity exceeded");
             return false;
         }
 

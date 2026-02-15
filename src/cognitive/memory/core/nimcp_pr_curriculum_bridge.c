@@ -542,37 +542,29 @@ bool pr_curriculum_config_validate(const pr_curriculum_config_t* config) {
 
     /* Weight validation */
     if (config->difficulty_scale < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
     if (config->novelty_weight < 0.0f || config->novelty_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
     if (config->resonance_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
     if (config->entanglement_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
     if (config->quaternion_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
 
     /* Pacing validation */
     if (config->consolidation_threshold < 0.0f || config->consolidation_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
     if (config->fast_pace_multiplier <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
     if (config->slow_pace_multiplier <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
 
@@ -582,17 +574,15 @@ bool pr_curriculum_config_validate(const pr_curriculum_config_t* config) {
         return false;
     }
     if (config->exploration_epsilon < 0.0f || config->exploration_epsilon > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
 
     /* Type validation */
     if (config->type >= PR_CURRICULUM_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_curriculum_config_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_curriculum_config_validate: capacity exceeded");
         return false;
     }
     if (config->difficulty_method > PR_DIFFICULTY_EXTERNAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
         return false;
     }
 
@@ -664,7 +654,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_bridge_create: validation failed");
         return NULL;
     }
     bridge->history_count = 0;
@@ -680,7 +670,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
             if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_create: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_bridge_create: validation failed");
             return NULL;
         }
         bridge->event_count = 0;
@@ -2151,7 +2141,7 @@ int pr_curriculum_set_strategy(
         return -1;
     }
     if (type >= PR_CURRICULUM_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_curriculum_set_strategy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_curriculum_set_strategy: capacity exceeded");
         return -1;
     }
 

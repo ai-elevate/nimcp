@@ -254,7 +254,7 @@ health_cognitive_bridge_t* health_cognitive_bridge_create(
         rcog_health_destroy(bridge->rcog_health);
         meta_health_destroy(bridge->meta_reflector);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_bridge_create: bridge->pending is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_cognitive_bridge_create: bridge->pending is NULL");
         return NULL;
     }
     bridge->num_pending = 0;
@@ -353,7 +353,6 @@ int health_cognitive_bridge_stop(health_cognitive_bridge_t* bridge) {
 
 bool health_cognitive_bridge_is_running(const health_cognitive_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_bridge_is_running: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -576,7 +575,7 @@ int health_cognitive_intelligent_handle_async(
     }
 
     if (bridge->num_pending >= bridge->max_pending) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "health_cognitive_intelligent_handle_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "health_cognitive_intelligent_handle_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 

@@ -372,7 +372,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
             if (wiring->neuron_type) nimcp_free(wiring->neuron_type);
             trit_matrix_destroy(wiring->adjacency);
             nimcp_free(wiring);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_create: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_create: validation failed");
             return NULL;
         }
     }
@@ -543,7 +543,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_clone(const lnn_ternary_wiring_t* src) 
             if (dst->neuron_type) nimcp_free(dst->neuron_type);
             trit_matrix_destroy(dst->adjacency);
             nimcp_free(dst);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_clone: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_clone: validation failed");
             return NULL;
         }
         memcpy(dst->roles, src->roles, src->n_neurons * sizeof(lnn_neuron_role_t));

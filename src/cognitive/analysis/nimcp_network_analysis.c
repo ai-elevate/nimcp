@@ -799,7 +799,6 @@ void network_analyzer_on_learning_event(network_analyzer_t* analyzer)
 bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
 {
     if (!analyzer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_check_new_community: analyzer is NULL");
         return false;
     }
 
@@ -808,7 +807,6 @@ bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
     network_analysis_heartbeat("network_anal_network_analyzer_che", 0.0f);
 
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_check_new_community: analyzer is NULL");
     return false;
 }
 

@@ -268,7 +268,7 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
     if (vertex_idx >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_remove_vertex failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_remove_vertex: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_graph_remove_vertex: capacity exceeded");
         return false;
     }
 
@@ -397,7 +397,7 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_remove_edge: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_graph_remove_edge: capacity exceeded");
         return false;
     }
 
@@ -445,7 +445,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&g->lock);
         LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_shortest_path: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_graph_shortest_path: capacity exceeded");
         return NULL;
     }
 
@@ -610,7 +610,7 @@ bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, floa
     // Guard clause: validate vertex index
     if (vertex_idx >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_update_coordinates: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_graph_update_coordinates: capacity exceeded");
         return false;
     }
 
@@ -738,7 +738,7 @@ bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_
     // Guard clauses: validate indices
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&g->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_get_edge_weight: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_graph_get_edge_weight: capacity exceeded");
         return false;
     }
 
@@ -851,7 +851,7 @@ NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t t
     // Validate indices
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_quantum_path: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_graph_quantum_path: capacity exceeded");
         return NULL;
     }
 

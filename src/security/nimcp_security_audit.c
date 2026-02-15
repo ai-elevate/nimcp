@@ -559,7 +559,6 @@ bool nimcp_audit_verify_chain(
             audit->stats.chain_failures++;
             if (first_broken) *first_broken = event->sequence;
             nimcp_mutex_unlock(&audit->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_verify_chain: validation failed");
             return false;
         }
 
@@ -574,7 +573,6 @@ bool nimcp_audit_verify_chain(
             if (first_broken) *first_broken = event->sequence;
             memcpy(event->hash, saved_hash, NIMCP_AUDIT_HASH_SIZE);  // Restore
             nimcp_mutex_unlock(&audit->lock);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_verify_chain: validation failed");
             return false;
         }
 
@@ -591,7 +589,6 @@ bool nimcp_audit_verify_event(
 ) {
     nimcp_audit_event_t event;
     if (nimcp_audit_get_by_sequence(audit, sequence, &event) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_verify_event: validation failed");
         return false;
     }
 

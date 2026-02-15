@@ -406,7 +406,6 @@ const char* nimcp_stats_gpu_get_last_error(void)
 
 bool nimcp_stats_gpu_is_available(void)
 {
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_is_available: operation failed");
     return false;
 }
 

@@ -196,7 +196,7 @@ reciprocity_evaluator_t reciprocity_eval_create(const reciprocity_config_t* conf
     reciprocity_evaluator_t eval = nimcp_malloc(sizeof(struct reciprocity_evaluator_struct));
     if (!eval) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_create: malloc failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "eval is NULL");
 
         return NULL;
     }
@@ -551,7 +551,6 @@ int reciprocity_eval_disconnect_bio_async(reciprocity_evaluator_t evaluator) {
 bool reciprocity_eval_is_bio_async_connected(reciprocity_evaluator_t evaluator) {
     /* Guard: validate input */
     if (!evaluator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_is_bio_async_connected: evaluator is NULL");
         return false;
     }
 

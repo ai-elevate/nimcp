@@ -935,7 +935,6 @@ bool consolidation_is_active(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_is_active: consolidation is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1028,7 +1027,6 @@ bool consolidation_is_background_running(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_is_background_running: consolidation is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

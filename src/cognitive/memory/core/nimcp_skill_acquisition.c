@@ -465,7 +465,6 @@ static void update_step_difficulty(skill_acquisition_state_t* state) {
 static bool check_plateau_condition(skill_acquisition_state_t* state,
                                     const skill_acquisition_config_t* config) {
     if (!state || state->history_count < config->min_trials_for_plateau) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_step_difficulty: state is NULL");
         return false;
     }
 
@@ -496,7 +495,6 @@ static bool check_plateau_condition(skill_acquisition_state_t* state,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_step_difficulty: validation failed");
     return false;
 }
 
@@ -732,15 +730,12 @@ NIMCP_EXPORT bool skill_acquisition_config_validate(const skill_acquisition_conf
     }
 
     if (config->default_initial_performance <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "skill_acquisition_config_validate: validation failed");
         return false;
     }
     if (config->default_learning_rate <= 0 || config->default_learning_rate > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
         return false;
     }
     if (config->default_asymptote < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
         return false;
     }
     if (config->default_history_len == 0) {
@@ -748,7 +743,6 @@ NIMCP_EXPORT bool skill_acquisition_config_validate(const skill_acquisition_conf
         return false;
     }
     if (config->plateau_threshold < 0 || config->plateau_threshold > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
         return false;
     }
     if (config->plateau_window == 0) {
@@ -756,7 +750,6 @@ NIMCP_EXPORT bool skill_acquisition_config_validate(const skill_acquisition_conf
         return false;
     }
     if (config->weak_point_threshold < 0 || config->weak_point_threshold > 1) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
         return false;
     }
 
@@ -764,7 +757,6 @@ NIMCP_EXPORT bool skill_acquisition_config_validate(const skill_acquisition_conf
     float weight_sum = config->element_weight + config->surface_weight +
                        config->structural_weight + config->signature_weight;
     if (fabsf(weight_sum - 1.0f) > 0.1f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
         return false;
     }
 

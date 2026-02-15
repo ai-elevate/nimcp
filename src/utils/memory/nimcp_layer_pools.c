@@ -345,7 +345,7 @@ layer_pools_t layer_pools_create(
     /* Allocate main structure */
     struct layer_pools* pools = nimcp_calloc(1, sizeof(struct layer_pools));
     if (!pools) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pools is NULL");
 
         return NULL;
     }
@@ -1135,7 +1135,6 @@ void layer_pools_reset_metrics(layer_pools_t pools)
 bool layer_pools_is_performant(layer_pools_t pools)
 {
     if (!pools) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_is_performant: pools is NULL");
         return false;
     }
 

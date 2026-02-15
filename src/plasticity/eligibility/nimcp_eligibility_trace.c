@@ -527,7 +527,6 @@ bool eligibility_is_in_burst(
     }
 
     // Neither condition met - not in burst
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_is_in_burst: capacity exceeded");
     return false;
 }
 

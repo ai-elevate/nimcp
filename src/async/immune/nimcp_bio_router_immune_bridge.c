@@ -399,7 +399,7 @@ int router_immune_prioritize_cytokine(
     }
     if (!bridge->enable_cytokine_priority_routing) return 0;
     if (bridge->cytokine_count >= bridge->cytokine_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "router_immune_prioritize_cytokine: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "router_immune_prioritize_cytokine: capacity exceeded");
         return -1;
     }
 
@@ -444,7 +444,7 @@ int router_immune_apply_inflammation_latency(
         /* Add new inflammation impact */
         if (bridge->inflammation_count >= bridge->inflammation_capacity) {
             nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "router_immune_apply_inflammation_latency: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "router_immune_apply_inflammation_latency: capacity exceeded");
             return -1;
         }
         impact = &bridge->inflammation_impacts[bridge->inflammation_count++];
@@ -497,7 +497,7 @@ int router_immune_quarantine_node(
     if (bridge->quarantine_count >= bridge->quarantine_capacity) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         LOG_MODULE_WARN("router_immune_bridge", "Quarantine capacity exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "router_immune_quarantine_node: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "router_immune_quarantine_node: capacity exceeded");
         return -1;
     }
 
@@ -957,7 +957,6 @@ bool router_immune_is_node_quarantined(
     uint32_t node_id
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_is_node_quarantined: bridge is NULL");
         return false;
     }
 

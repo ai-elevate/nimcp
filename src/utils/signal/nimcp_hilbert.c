@@ -73,7 +73,6 @@ hilbert_config_t hilbert_default_config(void) {
 
 bool hilbert_validate_config(const hilbert_config_t* config) {
     if (config == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_validate_config: validation failed");
         return false;
     }
     if (config->max_signal_length == 0 || config->max_signal_length > 1000000) {

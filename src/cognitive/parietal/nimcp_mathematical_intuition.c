@@ -154,7 +154,6 @@ static bool compute_ratios(const float* seq, uint32_t len, float* ratios) {
  */
 static bool is_constant(const float* arr, uint32_t len, float tolerance, float* value) {
     if (len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_constant: len is zero");
         return false;
     }
 
@@ -178,7 +177,6 @@ static bool is_constant(const float* arr, uint32_t len, float tolerance, float* 
         }
 
         if (fabsf(arr[i] - mean) > tolerance) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_constant: validation failed");
             return false;
         }
     }
@@ -386,14 +384,12 @@ bool math_intuition_validate_config(const math_intuition_config_t* config) {
 
     if (config->symmetry_tolerance <= 0.0f || config->symmetry_tolerance > 1.0f) {
         set_math_error("Symmetry tolerance must be in (0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "math_intuition_validate_config: validation failed");
         return false;
     }
 
     if (config->max_polynomial_degree == 0 ||
         config->max_polynomial_degree > MATH_MAX_POLYNOMIAL_DEGREE) {
         set_math_error("Invalid polynomial degree");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "math_intuition_validate_config: validation failed");
         return false;
     }
 

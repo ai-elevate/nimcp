@@ -227,7 +227,7 @@ bool multimodal_lang_add_gesture(
 
     if (plan->gesture_count >= processor->config.max_gestures) {
         processor->last_error = MULTIMODAL_ERROR_BUFFER_FULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "multimodal_lang_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "multimodal_lang_reset: capacity exceeded");
         return false;
     }
 
@@ -264,7 +264,7 @@ bool multimodal_lang_add_expression(
 
     if (plan->expression_count >= processor->config.max_expressions) {
         processor->last_error = MULTIMODAL_ERROR_BUFFER_FULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "multimodal_lang_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "multimodal_lang_reset: capacity exceeded");
         return false;
     }
 
@@ -301,7 +301,7 @@ bool multimodal_lang_add_gaze(
 
     if (plan->gaze_count >= 16) {
         processor->last_error = MULTIMODAL_ERROR_BUFFER_FULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "multimodal_lang_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "multimodal_lang_reset: capacity exceeded");
         return false;
     }
 

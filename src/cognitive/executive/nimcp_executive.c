@@ -1434,7 +1434,6 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
 bool executive_should_inhibit(executive_controller_t* exec, float response_salience, const char* reason)
 {
     if (!exec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_should_inhibit: exec is NULL");
         return false;
     }
 
@@ -2158,7 +2157,6 @@ bool executive_is_resource_aware(executive_controller_t* exec)
 {
     // Guard: Null check
     if (!exec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_is_resource_aware: exec is NULL");
         return false;
     }
 
@@ -2374,13 +2372,11 @@ bool executive_is_immune_impaired(executive_controller_t* exec)
 {
     // Guard: NULL check
     if (!exec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_is_immune_impaired: exec is NULL");
         return false;
     }
 
     // Guard: Immune integration not enabled
     if (!exec->immune_integration_enabled || !exec->immune_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_is_immune_impaired: required parameter is NULL (exec->immune_integration_enabled, exec->immune_system)");
         return false;
     }
 

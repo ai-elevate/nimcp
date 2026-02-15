@@ -477,7 +477,6 @@ bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_is_offline: bridge is NULL");
         return false;
     }
 
@@ -501,7 +500,6 @@ bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_is_consolidation_mode: bridge is NULL");
         return false;
     }
 
@@ -669,7 +667,6 @@ bool logic_sleep_is_bio_async_connected(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

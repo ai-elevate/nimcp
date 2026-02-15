@@ -368,7 +368,6 @@ bool nimcp_brain_is_medulla_emergency(brain_t brain) {
 
     medulla_stats_t stats;
     if (medulla_get_stats(brain->medulla, &stats) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_is_medulla_emergency: validation failed");
         return false;
     }
 

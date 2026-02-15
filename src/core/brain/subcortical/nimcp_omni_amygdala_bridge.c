@@ -146,7 +146,7 @@ omni_amygdala_bridge_t* omni_amygdala_bridge_create(
     omni_amygdala_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_amygdala_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -347,7 +347,6 @@ omni_emotional_mode_t omni_amygdala_get_emotional_mode(
 bool omni_amygdala_should_suppress_backward(
     const omni_amygdala_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_amygdala_apply_to_omni: bridge is NULL");
         return false;
     }
     return bridge->amygdala_effects.suppress_backward;
@@ -521,7 +520,6 @@ int omni_amygdala_disconnect_bio_async(omni_amygdala_bridge_t* bridge) {
 
 bool omni_amygdala_is_bio_async_connected(const omni_amygdala_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_amygdala_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

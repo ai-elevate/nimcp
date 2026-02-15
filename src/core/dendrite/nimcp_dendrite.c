@@ -1003,7 +1003,6 @@ void dendrite_update_structural_plasticity(dendrite_t* dendrite, uint64_t timest
 bool dendrite_is_in_plateau(dendrite_t* dendrite) {
     // Guard: NULL dendrite
     if (!dendrite) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_is_in_plateau: dendrite is NULL");
         return false;
     }
 
@@ -1190,7 +1189,7 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
         nimcp_mutex_unlock(&network->lock);
         LOG_ERROR(LOG_MODULE, "dendrite_network_add: Network full (%u/%u)",
                   network->num_dendrites, network->max_dendrites);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dendrite_network_add: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dendrite_network_add: capacity exceeded");
         return false;
     }
 
@@ -1399,11 +1398,9 @@ void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms) {
 bool dendrite_can_generate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id) {
     // Guard clauses
     if (!dendrite) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_can_generate_nmda_spike: dendrite is NULL");
         return false;
     }
     if (segment_id >= dendrite->num_segments) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: capacity exceeded");
         return false;
     }
 

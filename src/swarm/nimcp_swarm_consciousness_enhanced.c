@@ -1235,7 +1235,6 @@ bool swarm_consciousness_is_bound(
     float coherence_threshold)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_is_bound: ctx is NULL");
         return false;
     }
 
@@ -1550,7 +1549,6 @@ bool swarm_consciousness_enhanced_bbb_validate(
     // Validate binding bounds
     if (metrics->binding.phase_coherence < 0 || metrics->binding.phase_coherence > 1.0f) {
         LOG_ERROR("Invalid binding coherence: %.3f", metrics->binding.phase_coherence);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: validation failed");
         return false;
     }
 

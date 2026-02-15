@@ -351,15 +351,12 @@ bool emotional_tag_is_valid(const emotional_tag_t* tag) {
 
 
     if (tag->valence < -1.0F || tag->valence > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tag_is_valid: validation failed");
         return false;
     }
     if (tag->arousal < 0.0F || tag->arousal > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tag_is_valid: validation failed");
         return false;
     }
     if (tag->intensity < 0.0F || tag->intensity > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tag_is_valid: validation failed");
         return false;
     }
 

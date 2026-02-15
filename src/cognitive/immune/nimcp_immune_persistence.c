@@ -381,37 +381,31 @@ static int validate_counts(const immune_persistence_counts_t* counts) {
     if (counts->antigen_count > BRAIN_IMMUNE_MAX_ANTIGENS) {
         NIMCP_LOGGING_ERROR("Antigen count %u exceeds max %u",
             counts->antigen_count, BRAIN_IMMUNE_MAX_ANTIGENS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->b_cell_count > BRAIN_IMMUNE_MAX_B_CELLS) {
         NIMCP_LOGGING_ERROR("B cell count %u exceeds max %u",
             counts->b_cell_count, BRAIN_IMMUNE_MAX_B_CELLS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->t_cell_count > BRAIN_IMMUNE_MAX_T_CELLS) {
         NIMCP_LOGGING_ERROR("T cell count %u exceeds max %u",
             counts->t_cell_count, BRAIN_IMMUNE_MAX_T_CELLS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->antibody_count > BRAIN_IMMUNE_MAX_ANTIBODIES) {
         NIMCP_LOGGING_ERROR("Antibody count %u exceeds max %u",
             counts->antibody_count, BRAIN_IMMUNE_MAX_ANTIBODIES);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->cytokine_count > BRAIN_IMMUNE_MAX_CYTOKINES) {
         NIMCP_LOGGING_ERROR("Cytokine count %u exceeds max %u",
             counts->cytokine_count, BRAIN_IMMUNE_MAX_CYTOKINES);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->inflammation_count > BRAIN_IMMUNE_MAX_INFLAMMATION) {
         NIMCP_LOGGING_ERROR("Inflammation count %u exceeds max %u",
             counts->inflammation_count, BRAIN_IMMUNE_MAX_INFLAMMATION);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
 
@@ -905,26 +899,22 @@ int immune_persistence_validate_file(
     immune_persistence_header_t header;
     if (read_header(file, &header) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
     if (validate_header(&header) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
     immune_persistence_counts_t counts;
     if (read_counts(file, &counts) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
     if (validate_counts(&counts) != 0) {
         fclose(file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 

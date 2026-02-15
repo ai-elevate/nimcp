@@ -615,7 +615,6 @@ void* pr_memory_node_write(pr_memory_node_t* node) {
 
 bool pr_memory_node_is_shared(const pr_memory_node_t* node) {
     if (!node || !node->data_handle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_is_shared: required parameter is NULL (node, node->data_handle)");
         return false;
     }
 
@@ -1038,7 +1037,6 @@ float pr_memory_node_reinforce(pr_memory_node_t* node, float reinforcement) {
 
 bool pr_memory_node_check_eligibility(const pr_memory_node_t* node) {
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_check_eligibility: node is NULL");
         return false;
     }
 
@@ -1048,19 +1046,16 @@ bool pr_memory_node_check_eligibility(const pr_memory_node_t* node) {
 
 
     if (node->tier >= PR_MEMORY_TIER_Z3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_memory_node_check_eligibility: capacity exceeded");
         return false;
     }
 
     // Check promotion eligibility threshold
     if (node->promotion_eligibility < PR_NODE_PROMOTION_THRESHOLD) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_check_eligibility: validation failed");
         return false;
     }
 
     // Check minimum strength
     if (node->current_strength < PR_NODE_PROMOTION_STRENGTH_MIN) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_check_eligibility: validation failed");
         return false;
     }
 
@@ -1212,7 +1207,6 @@ uint32_t pr_memory_node_get_flags(const pr_memory_node_t* node) {
 
 bool pr_memory_node_has_flag(const pr_memory_node_t* node, pr_node_flags_t flag) {
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_has_flag: node is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

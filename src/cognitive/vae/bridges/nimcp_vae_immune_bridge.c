@@ -67,7 +67,6 @@ static void update_ema(float* avg, float value, float alpha)
 static bool check_rate_limit(vae_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_rate_limit: bridge is NULL");
         return false;
     }
 
@@ -81,13 +80,11 @@ static bool check_rate_limit(vae_immune_bridge_t* bridge)
 
     /* Check cooldown */
     if (now - bridge->last_report_time_us < bridge->config.cooldown_ms * 1000ULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rate_limit: validation failed");
         return false;
     }
 
     /* Check rate limit */
     if (bridge->reports_this_second >= bridge->config.max_reports_per_second) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "check_rate_limit: capacity exceeded");
         return false;
     }
 
@@ -441,7 +438,6 @@ int vae_immune_bridge_disconnect(vae_immune_bridge_t* bridge)
 bool vae_immune_bridge_is_connected(const vae_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_is_connected: bridge is NULL");
         return false;
     }
     return (bridge->vae != NULL) && (bridge->immune != NULL);
@@ -709,12 +705,10 @@ bool vae_immune_check_ood(vae_immune_bridge_t* bridge,
                            float* ood_score)
 {
     if (!bridge || !latent || !ood_score) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_check_ood: required parameter is NULL (bridge, latent, ood_score)");
         return false;
     }
     if (!bridge->baseline_established) {
         *ood_score = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_check_ood: bridge->baseline_established is NULL");
         return false;
     }
 
@@ -979,7 +973,6 @@ int vae_immune_reset_baseline(vae_immune_bridge_t* bridge)
 bool vae_immune_has_baseline(const vae_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_has_baseline: bridge is NULL");
         return false;
     }
     return bridge->baseline_established;

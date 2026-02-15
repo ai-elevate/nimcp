@@ -176,7 +176,7 @@ contralateral_system_t* contralateral_create(
     contralateral_system_t* system = nimcp_malloc(sizeof(contralateral_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("contralateral_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "system is NULL");
 
         return NULL;
     }

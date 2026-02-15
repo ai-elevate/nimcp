@@ -1122,7 +1122,6 @@ int curiosity_plasticity_bio_async_disconnect(curiosity_plasticity_bridge_t* bri
 
 bool curiosity_plasticity_is_bio_async_connected(curiosity_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

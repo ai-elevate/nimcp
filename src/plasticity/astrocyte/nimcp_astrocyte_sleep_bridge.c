@@ -373,7 +373,6 @@ float astrocyte_sleep_get_glutamate_uptake(const astrocyte_sleep_bridge_t bridge
 
 bool astrocyte_sleep_is_glymphatic_active(const astrocyte_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_sleep_is_glymphatic_active: bridge is NULL");
         return false;
     }
 

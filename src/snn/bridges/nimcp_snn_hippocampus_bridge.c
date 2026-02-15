@@ -189,7 +189,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
             }
             nimcp_free(bridge->place_cells);
             nimcp_free(bridge);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: cell is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_bridge_create: cell is NULL");
             return NULL;
         }
 
@@ -217,7 +217,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
         }
         nimcp_free(bridge->place_cells);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: bridge->episodes is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_bridge_create: bridge->episodes is NULL");
         return NULL;
     }
     memset(bridge->episodes, 0, bridge->max_episodes * sizeof(episodic_memory_t*));
@@ -233,7 +233,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
         }
         nimcp_free(bridge->place_cells);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: bridge->recent_ripples is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_bridge_create: bridge->recent_ripples is NULL");
         return NULL;
     }
     memset(bridge->recent_ripples, 0, bridge->max_ripples * sizeof(ripple_event_t));
@@ -337,7 +337,6 @@ int snn_hippocampus_bridge_disconnect_bio_async(snn_hippocampus_bridge_t* bridge
 
 bool snn_hippocampus_bridge_is_bio_async_connected(const snn_hippocampus_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -524,7 +523,7 @@ episodic_memory_t* snn_hippocampus_encode_episode(
         if (episode->spike_sequence) nimcp_free(episode->spike_sequence);
         if (episode->spike_times_relative) nimcp_free(episode->spike_times_relative);
         nimcp_free(episode);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_encode_episode: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_encode_episode: validation failed");
         return NULL;
     }
 

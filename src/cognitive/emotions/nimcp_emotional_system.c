@@ -676,7 +676,6 @@ bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* t
 bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion_id,
                               float threshold) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: system is NULL");
         return false;
     }
 

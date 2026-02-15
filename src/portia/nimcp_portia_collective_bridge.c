@@ -645,7 +645,7 @@ int portia_collective_handle_remote_tier(
         if (bridge->instance_count >= PORTIA_COLLECTIVE_MAX_INSTANCES) {
             LOG_WARNING("Cannot add instance %u: max instances reached", instance_id);
             nimcp_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_collective_handle_remote_tier: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_collective_handle_remote_tier: capacity exceeded");
             return -1;
         }
         idx = (int)bridge->instance_count++;
@@ -745,7 +745,6 @@ int portia_collective_request_offload(
 
 bool portia_collective_can_receive(const portia_collective_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_can_receive: bridge is NULL");
         return false;
     }
 
@@ -963,7 +962,6 @@ uint32_t portia_collective_get_local_id(const portia_collective_bridge_t* bridge
 
 bool portia_collective_is_leader(const portia_collective_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_is_leader: bridge is NULL");
         return false;
     }
 

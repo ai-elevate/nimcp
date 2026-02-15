@@ -86,7 +86,7 @@ nucleus_accumbens_t* nac_create(const nac_config_t* config) {
     nucleus_accumbens_t* nac = nimcp_calloc(1, sizeof(nucleus_accumbens_t));
     if (!nac) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nac is NULL");
 
         return NULL;
 

@@ -168,7 +168,7 @@ language_bio_bridge_t* language_bio_bridge_create(
     );
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_create: bridge->subscriptions is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bio_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 

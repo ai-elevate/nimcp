@@ -242,7 +242,7 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
     wernicke_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_quantum_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -269,7 +269,6 @@ void wernicke_quantum_bridge_destroy(wernicke_quantum_bridge_t* bridge) {
 
 bool wernicke_quantum_is_enabled(const wernicke_quantum_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_is_enabled: bridge is NULL");
         return false;
     }
     return bridge->enabled;

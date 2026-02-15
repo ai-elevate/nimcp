@@ -211,7 +211,7 @@ static int add_cleanup_tag_unlocked(
 {
     if (bridge->cleanup_count >= bridge->cleanup_capacity) {
         /* Queue full */
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_cleanup_tag_unlocked: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_cleanup_tag_unlocked: capacity exceeded");
         return -1;
     }
 
@@ -408,14 +408,12 @@ bool pr_immune_bridge_config_validate(const pr_immune_bridge_config_t* config) {
 
 
     if (config->cytokine_sensitivity < 0.0f || config->cytokine_sensitivity > 10.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Check threshold ranges */
     if (config->cleanup_strength_threshold < 0.0f ||
         config->cleanup_strength_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -758,7 +756,6 @@ bool pr_immune_bridge_is_tagged(
     uint64_t node_id)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_tagged: bridge is NULL");
         return false;
     }
 
@@ -960,7 +957,6 @@ pr_inflammation_impact_t pr_immune_bridge_get_inflammation_impact(
 
 bool pr_immune_bridge_is_chronic_inflammation(pr_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_chronic_inflammation: bridge is NULL");
         return false;
     }
 
@@ -1246,7 +1242,6 @@ int pr_immune_bridge_sync_sleep_phase(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_deep_sleep_consolidation(pr_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_deep_sleep_consolidation: bridge is NULL");
         return false;
     }
 
@@ -1264,7 +1259,6 @@ bool pr_immune_bridge_is_deep_sleep_consolidation(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_rem_cleanup_active(pr_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_rem_cleanup_active: bridge is NULL");
         return false;
     }
 
@@ -1336,36 +1330,30 @@ bool pr_immune_bridge_validate_quaternion(
 
     /* Check for NaN/Inf */
     if (isnan(quat.w) || isnan(quat.x) || isnan(quat.y) || isnan(quat.z)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_validate_quaternion: validation failed");
         return false;
     }
     if (isinf(quat.w) || isinf(quat.x) || isinf(quat.y) || isinf(quat.z)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_validate_quaternion: validation failed");
         return false;
     }
 
     /* Check component ranges for memory semantics */
     /* w (consolidation): [0, 1] */
     if (quat.w < -PR_IMMUNE_EPSILON || quat.w > 1.0f + PR_IMMUNE_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_validate_quaternion: validation failed");
         return false;
     }
 
     /* x (emotion): [-1, +1] */
     if (quat.x < -1.0f - PR_IMMUNE_EPSILON || quat.x > 1.0f + PR_IMMUNE_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_validate_quaternion: validation failed");
         return false;
     }
 
     /* y (salience): [0, 1] */
     if (quat.y < -PR_IMMUNE_EPSILON || quat.y > 1.0f + PR_IMMUNE_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_validate_quaternion: validation failed");
         return false;
     }
 
     /* z (accessibility): [0, 1] */
     if (quat.z < -PR_IMMUNE_EPSILON || quat.z > 1.0f + PR_IMMUNE_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_immune_bridge_validate_quaternion: validation failed");
         return false;
     }
 
@@ -1498,7 +1486,6 @@ uint32_t pr_immune_bridge_get_cleanup_queue_size(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_immune_connected(pr_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_immune_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1510,7 +1497,6 @@ bool pr_immune_bridge_is_immune_connected(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_sleep_connected(pr_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_sleep_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1553,7 +1539,6 @@ int pr_immune_bridge_disconnect_bio_async(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_bio_async_connected(pr_immune_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_immune_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -1062,7 +1062,6 @@ void training_batch_release(training_batch_t* batch) {
 
 bool training_pipeline_has_more(const training_pipeline_ctx_t* pipeline) {
     if (!pipeline) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_has_more: pipeline is NULL");
         return false;
     }
 
@@ -1141,7 +1140,7 @@ int training_pipeline_add_transform(
 
     if (pipeline->num_transforms >= TRAINING_PIPELINE_MAX_TRANSFORMS) {
         NIMCP_LOGGING_ERROR("Maximum transforms reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_pipeline_add_transform: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "training_pipeline_add_transform: capacity exceeded");
         return -1;
     }
 

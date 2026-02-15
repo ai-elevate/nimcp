@@ -114,7 +114,6 @@ static bool validate_switcher(portia_tier_switch_t switcher) {
     if (switcher->magic != PORTIA_TIER_SWITCH_MAGIC) {
         LOG_ERROR("[%s] Invalid switcher magic: 0x%08X", PORTIA_MODULE_NAME, switcher->magic);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "invalid_magic", "invalid switcher magic");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_switcher: validation failed");
         return false;
     }
 
@@ -124,7 +123,7 @@ static bool validate_switcher(portia_tier_switch_t switcher) {
 static bool validate_tier(platform_tier_t tier) {
     if (tier >= PLATFORM_TIER_COUNT) {
         LOG_ERROR("[%s] Invalid tier: %d", PORTIA_MODULE_NAME, tier);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_tier: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "validate_tier: capacity exceeded");
         return false;
     }
     return true;
@@ -140,13 +139,11 @@ static bool validate_config(const tier_switch_config_t* config) {
     // Validate threshold ranges
     if (config->memory_high_threshold < 0.0F || config->memory_high_threshold > 100.0F) {
         LOG_ERROR("[%s] Invalid memory_high_threshold: %.2f", PORTIA_MODULE_NAME, config->memory_high_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validate_config: validation failed");
         return false;
     }
 
     if (config->memory_low_threshold < 0.0F || config->memory_low_threshold > 100.0F) {
         LOG_ERROR("[%s] Invalid memory_low_threshold: %.2f", PORTIA_MODULE_NAME, config->memory_low_threshold);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validate_config: validation failed");
         return false;
     }
 
@@ -860,14 +857,12 @@ bool portia_tier_switch_can_upgrade(
     platform_tier_t target_tier)
 {
     if (!validate_switcher(switcher) || !validate_tier(target_tier)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_upgrade: required parameter is NULL (validate_switcher, validate_tier)");
         return false;
     }
 
     // Query system metrics
     if (!query_system_metrics(switcher)) {
         LOG_ERROR("[%s] Failed to query system metrics", PORTIA_MODULE_NAME);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_upgrade: query_system_metrics is NULL");
         return false;
     }
 
@@ -878,7 +873,6 @@ bool portia_tier_switch_can_upgrade(
     // Can't upgrade if already at target or higher
     if (current <= target_tier) {
         nimcp_platform_mutex_unlock(&switcher->state_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_upgrade: validation failed");
         return false;
     }
 
@@ -888,7 +882,6 @@ bool portia_tier_switch_can_upgrade(
     if (time_since_last < switcher->config.hysteresis_ms) {
         LOG_DEBUG("[%s] Hysteresis active, cannot upgrade yet", PORTIA_MODULE_NAME);
         nimcp_platform_mutex_unlock(&switcher->state_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_upgrade: validation failed");
         return false;
     }
 
@@ -927,21 +920,18 @@ bool portia_tier_switch_can_downgrade(
     tier_switch_trigger_t* trigger)
 {
     if (!validate_switcher(switcher)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_downgrade: validate_switcher is NULL");
         return false;
     }
 
     if (!bbb_validate_pointer(NULL, target_tier, sizeof(platform_tier_t), NULL) ||
         !bbb_validate_pointer(NULL, trigger, sizeof(tier_switch_trigger_t), NULL)) {
         LOG_ERROR("[%s] Invalid output parameters", PORTIA_MODULE_NAME);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_downgrade: bbb_validate_pointer is NULL");
         return false;
     }
 
     // Query system metrics
     if (!query_system_metrics(switcher)) {
         LOG_ERROR("[%s] Failed to query system metrics", PORTIA_MODULE_NAME);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_downgrade: query_system_metrics is NULL");
         return false;
     }
 
@@ -955,7 +945,6 @@ bool portia_tier_switch_can_downgrade(
     // Can't downgrade if already at minimum
     if (current == PLATFORM_TIER_MINIMAL) {
         nimcp_platform_mutex_unlock(&switcher->state_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_can_downgrade: validation failed");
         return false;
     }
 
@@ -1037,7 +1026,6 @@ platform_tier_t portia_tier_switch_get_current_tier(portia_tier_switch_t switche
 
 bool portia_tier_switch_is_transitioning(portia_tier_switch_t switcher) {
     if (!validate_switcher(switcher)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_tier_switch_is_transitioning: validate_switcher is NULL");
         return false;
     }
 

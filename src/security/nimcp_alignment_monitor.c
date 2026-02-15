@@ -369,7 +369,7 @@ alignment_monitor_t* alignment_monitor_create(
     alignment_monitor_t* monitor = nimcp_calloc(1, sizeof(alignment_monitor_t));
     if (monitor == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate alignment monitor");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "alignment_monitor_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alignment_monitor_create: validation failed");
         return NULL;
     }
 

@@ -246,6 +246,8 @@ void portia_learning_immune_destroy(portia_learning_immune_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -610,7 +612,6 @@ bool portia_learning_immune_has_learning_deficit(
 ) {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_has_learning_deficit: bridge is NULL");
         return false;
     }
 
@@ -675,7 +676,6 @@ bool portia_learning_immune_is_bio_async_connected(
 ) {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

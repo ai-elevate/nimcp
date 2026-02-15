@@ -1022,7 +1022,6 @@ int amygdala_disconnect_emotion_system(amygdala_t* amyg) {
 
 bool amygdala_is_emotion_system_connected(const amygdala_t* amyg) {
     if (!amyg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_is_emotion_system_connected: amyg is NULL");
         return false;
     }
     return amyg->emotion_system_connected;
@@ -1105,7 +1104,6 @@ int amygdala_disconnect_bio_async(amygdala_t* amyg) {
 
 bool amygdala_is_bio_async_connected(const amygdala_t* amyg) {
     if (!amyg) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_is_bio_async_connected: amyg is NULL");
         return false;
     }
     return amyg->bio_async_connected;

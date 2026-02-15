@@ -173,7 +173,7 @@ brain_recovery_context_t brain_recovery_init(brain_t brain) {
     brain_recovery_context_t ctx = nimcp_calloc(1, sizeof(struct brain_recovery_context_internal));
     if (!ctx) {
         LOG_ERROR("Failed to allocate brain recovery context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -249,7 +249,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
     brain_recovery_decision_t* decision = nimcp_calloc(1, sizeof(brain_recovery_decision_t));
     if (!decision) {
         LOG_ERROR("Failed to allocate brain decision");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decision is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "decision is NULL");
 
         return NULL;
     }

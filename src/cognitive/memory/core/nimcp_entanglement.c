@@ -62,6 +62,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(entanglement)
 //=============================================================================
@@ -2068,7 +2069,7 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
     }
 
     /* Sample from distribution */
-    float r = (float)rand() / (float)RAND_MAX;
+    float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
     float cumulative = 0.0f;
     size_t selected = 0;
 

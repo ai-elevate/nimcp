@@ -303,6 +303,8 @@ void plasticity_coordinator_destroy(plasticity_coordinator_t* coordinator) {
     /* Destroy mutex */
     if (coordinator->mutex) {
         nimcp_platform_mutex_destroy(coordinator->mutex);
+        nimcp_free(coordinator->mutex);
+        coordinator->mutex = NULL;
     }
 
     /* Free registry */
@@ -974,7 +976,6 @@ bool plasticity_coordinator_is_low_energy(
     const plasticity_coordinator_t* coordinator
 ) {
     if (!coordinator || !coordinator->config.enable_energy_tracking) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_coordinator_is_low_energy: required parameter is NULL (coordinator, coordinator->config)");
         return false;
     }
 

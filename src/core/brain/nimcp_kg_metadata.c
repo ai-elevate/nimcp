@@ -25,6 +25,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kg_metadata)
 //=============================================================================
@@ -855,13 +856,13 @@ int kg_metadata_generate_uuid(char* uuid_out) {
         if (read != 16) {
             /* Fallback to rand() if urandom fails */
             for (int i = 0; i < 16; i++) {
-                bytes[i] = (unsigned char)(rand() & 0xFF);
+                bytes[i] = (unsigned char)(nimcp_tl_rand() & 0xFF);
             }
         }
     } else {
         /* Fallback to rand() */
         for (int i = 0; i < 16; i++) {
-            bytes[i] = (unsigned char)(rand() & 0xFF);
+            bytes[i] = (unsigned char)(nimcp_tl_rand() & 0xFF);
         }
     }
 

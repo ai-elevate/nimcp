@@ -335,7 +335,6 @@ bool claustrum_init_immune_bridge(brain_t brain) {
 
 bool claustrum_is_initialized(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_is_initialized: brain is NULL");
         return false;
     }
 

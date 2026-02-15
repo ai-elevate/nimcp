@@ -663,7 +663,6 @@ bool brain_config_is_feature_enabled(const brain_config_t* config, const char* f
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_config_is_feature_enabled: validation failed");
     return false;
 }
 

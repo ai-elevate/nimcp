@@ -31,6 +31,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(corpus_callosum)
 //=============================================================================
@@ -99,7 +100,7 @@ static float random_latency(float min_ms, float max_ms) {
         return min_ms;
     }
     float range = max_ms - min_ms;
-    float r = (float)rand() / (float)RAND_MAX;
+    float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
     return min_ms + r * range;
 }
 
@@ -576,7 +577,7 @@ int callosum_send(
 
     // Apply connection strength (probabilistic drop)
     if (cc->connection_strength < 1.0f) {
-        float r = (float)rand() / (float)RAND_MAX;
+        float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
         if (r > cc->connection_strength) {
             cc->stats.messages_dropped++;
             nimcp_mutex_unlock(cc->mutex);

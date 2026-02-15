@@ -300,7 +300,6 @@ static float calculate_text_entropy(const char* text, size_t len) {
  */
 static bool has_base64_content(const char* text, size_t len) {
     if (!text) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "has_base64_content: text is NULL");
         return false;
     }
     if (len < 20) {
@@ -413,7 +412,7 @@ lgss_content_filter_t* lgss_content_filter_create(
     lgss_content_filter_t* filter = nimcp_calloc(1, sizeof(*filter));
     if (!filter) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "filter is NULL");
 
         return NULL;
 
@@ -835,13 +834,13 @@ nimcp_error_t lgss_content_filter_add_pattern(
 
     if (filter->num_custom_patterns >= LGSS_MAX_CUSTOM_PATTERNS) {
         nimcp_mutex_unlock(filter->mutex);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     size_t pattern_len = strlen(pattern);
     if (pattern_len >= LGSS_MAX_PATTERN_LENGTH) {
         nimcp_mutex_unlock(filter->mutex);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     custom_pattern_t* cp = &filter->custom_patterns[filter->num_custom_patterns];

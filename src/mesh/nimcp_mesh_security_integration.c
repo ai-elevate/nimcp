@@ -229,7 +229,7 @@ static int immune_action_to_msp_event(mesh_immune_action_t action) {
 
 nimcp_error_t mesh_security_default_config(mesh_security_config_t* config) {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_security_integration: NULL pointer parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_security_default_config: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

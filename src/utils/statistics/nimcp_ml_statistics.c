@@ -20,6 +20,7 @@
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 //=============================================================================
 // Module Constants
@@ -78,8 +79,8 @@ static float compute_squared_distance(const float* x1, const float* x2, uint32_t
 
 static float randn(void) {
     /* Box-Muller transform */
-    float u1 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
-    float u2 = (float)rand() / (float)RAND_MAX;
+    float u1 = ((float)nimcp_tl_rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
+    float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
     return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * PI_F * u2);
 }
 
@@ -193,7 +194,7 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
     srand((unsigned int)time(NULL));
 
     /* First centroid: random point */
-    uint32_t idx = rand() % n;
+    uint32_t idx = nimcp_tl_rand() % n;
     memcpy(gmm->means, &X[idx * d], d * sizeof(float));
 
     /* Remaining centroids: proportional to D^2 */
@@ -212,7 +213,7 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
             total_dist += min_dist;
         }
 
-        float target = ((float)rand() / (float)RAND_MAX) * total_dist;
+        float target = ((float)nimcp_tl_rand() / (float)RAND_MAX) * total_dist;
         float cum = 0.0f;
         for (uint32_t i = 0; i < n; i++) {
             cum += dists[i];
@@ -493,7 +494,7 @@ nimcp_ml_error_t nimcp_gmm_sample(const nimcp_gmm_t* gmm, uint32_t n_samples,
     uint32_t d = gmm->n_features;
 
     for (uint32_t i = 0; i < n_samples; i++) {
-        float u = (float)rand() / (float)RAND_MAX;
+        float u = (float)nimcp_tl_rand() / (float)RAND_MAX;
         float cum = 0.0f;
         uint32_t comp = k - 1;
         for (uint32_t c = 0; c < k; c++) {
@@ -1063,7 +1064,7 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
     /* Initialize emission means from data */
     srand((unsigned int)time(NULL));
     for (uint32_t i = 0; i < s; i++) {
-        uint32_t idx = rand() % total_len;
+        uint32_t idx = nimcp_tl_rand() % total_len;
         memcpy(&hmm->emission_means[i * d], &observations[idx * d], d * sizeof(float));
     }
 
@@ -1456,7 +1457,7 @@ nimcp_ml_error_t nimcp_hmm_sample(const nimcp_hmm_t* hmm, uint32_t length,
     uint32_t d = hmm->n_features;
 
     /* Sample initial state */
-    float u = (float)rand() / (float)RAND_MAX;
+    float u = (float)nimcp_tl_rand() / (float)RAND_MAX;
     float cum = 0.0f;
     states[0] = s - 1;
     for (uint32_t i = 0; i < s; i++) {
@@ -1475,7 +1476,7 @@ nimcp_ml_error_t nimcp_hmm_sample(const nimcp_hmm_t* hmm, uint32_t length,
     for (uint32_t t = 1; t < length; t++) {
         uint32_t prev = states[t-1];
 
-        u = (float)rand() / (float)RAND_MAX;
+        u = (float)nimcp_tl_rand() / (float)RAND_MAX;
         cum = 0.0f;
         states[t] = s - 1;
         for (uint32_t i = 0; i < s; i++) {
@@ -1690,7 +1691,7 @@ nimcp_ml_error_t nimcp_kde_sample(const nimcp_kde_t* kde, uint32_t n_samples, fl
 
     for (uint32_t i = 0; i < n_samples; i++) {
         /* Pick random data point */
-        uint32_t idx = rand() % n;
+        uint32_t idx = nimcp_tl_rand() % n;
 
         /* Add Gaussian noise */
         for (uint32_t j = 0; j < d; j++) {

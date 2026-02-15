@@ -305,7 +305,6 @@ int language_gpu_bridge_connect_gpu_context(
 
 bool language_gpu_bridge_is_available(const language_gpu_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_is_available: bridge is NULL");
         return false;
     }
     return bridge->gpu_available && bridge->active;
@@ -484,7 +483,7 @@ int language_gpu_bridge_submit_phoneme_batch(
     if (bridge->num_pending >= bridge->max_pending) {
         LOG_WARN(LOG_MODULE, "Pending ops queue full");
         bridge->stats.errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_phoneme_batch: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_gpu_bridge_submit_phoneme_batch: capacity exceeded");
         return -1;
     }
 
@@ -518,7 +517,7 @@ int language_gpu_bridge_submit_lexical_batch(
     if (bridge->num_pending >= bridge->max_pending) {
         LOG_WARN(LOG_MODULE, "Pending ops queue full");
         bridge->stats.errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_lexical_batch: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_gpu_bridge_submit_lexical_batch: capacity exceeded");
         return -1;
     }
 
@@ -549,7 +548,7 @@ int language_gpu_bridge_submit_semantic_spread(
 
     if (bridge->num_pending >= bridge->max_pending) {
         bridge->stats.errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_semantic_spread: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_gpu_bridge_submit_semantic_spread: capacity exceeded");
         return -1;
     }
 
@@ -579,7 +578,7 @@ int language_gpu_bridge_submit_embedding_batch(
 
     if (bridge->num_pending >= bridge->max_pending) {
         bridge->stats.errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_embedding_batch: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_gpu_bridge_submit_embedding_batch: capacity exceeded");
         return -1;
     }
 
@@ -609,7 +608,7 @@ int language_gpu_bridge_submit_attention_batch(
 
     if (bridge->num_pending >= bridge->max_pending) {
         bridge->stats.errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_attention_batch: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_gpu_bridge_submit_attention_batch: capacity exceeded");
         return -1;
     }
 

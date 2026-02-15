@@ -743,7 +743,7 @@ int32_t creative_pattern_db_add(creative_pattern_extractor_t* ext,
 
     if (ext->num_known_patterns >= ext->known_capacity) {
         LOG_WARN(LOG_MODULE, "Pattern database full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "creative_pattern_extractor_destroy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "creative_pattern_extractor_destroy: capacity exceeded");
         return -1;
     }
 

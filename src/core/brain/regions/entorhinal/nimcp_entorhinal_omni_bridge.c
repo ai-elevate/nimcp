@@ -577,7 +577,7 @@ int entorhinal_omni_get_sector_summary(
     float* salience, float* threat, float* opportunity)
 {
     if (!bridge || sector >= OMNI_SECTOR_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "entorhinal_omni_get_sector_summary: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "entorhinal_omni_get_sector_summary: bridge is NULL");
         return -1;
     }
 

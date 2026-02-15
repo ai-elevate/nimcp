@@ -454,6 +454,8 @@ void time_dilation_destroy(time_dilation_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);
@@ -790,7 +792,7 @@ int time_dilation_submit_event(time_dilation_system_t* system,
     /* Find empty slot */
     event_entry_t* entry = find_empty_slot(system);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
                               "time_dilation_submit_event: event buffer full");
         nimcp_platform_mutex_unlock(system->mutex);
         return TIME_DILATION_ERROR_BUFFER_FULL;
@@ -1219,7 +1221,6 @@ int time_dilation_reset_stats(time_dilation_system_t* system) {
 
 bool time_dilation_is_active(const time_dilation_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "time_dilation_is_active: system is NULL");
         return false;
     }
     return system->state.is_dilating;

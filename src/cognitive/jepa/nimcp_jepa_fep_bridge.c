@@ -498,7 +498,6 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
 
 bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -749,7 +748,6 @@ jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
 
 bool jepa_fep_bridge_is_degraded(const jepa_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 

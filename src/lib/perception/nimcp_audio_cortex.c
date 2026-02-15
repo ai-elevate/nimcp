@@ -2564,7 +2564,6 @@ int audio_cortex_set_training_mode(audio_cortex_t* cortex, bool enable)
 bool audio_cortex_is_training_mode(const audio_cortex_t* cortex)
 {
     if (!cortex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_is_training_mode: cortex is NULL");
         return false;
     }
     return cortex->training_mode;

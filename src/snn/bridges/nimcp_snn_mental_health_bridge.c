@@ -209,7 +209,6 @@ int snn_mental_health_bridge_disconnect_bio_async(snn_mental_health_bridge_t* br
  */
 bool snn_mental_health_bridge_is_bio_async_connected(const snn_mental_health_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -559,7 +558,6 @@ snn_dysregulation_type_t snn_mental_health_get_dysregulation_type(
  */
 bool snn_mental_health_is_intervention_active(const snn_mental_health_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_is_intervention_active: null bridge pointer");
         return false;
     }
     return bridge->state.intervention_active;

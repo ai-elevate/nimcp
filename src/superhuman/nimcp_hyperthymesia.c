@@ -566,7 +566,7 @@ uint64_t hyperthymesia_encode_memory(
     }
 
     if (module->memory_count >= module->config.memory_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
                               "hyperthymesia_encode_memory: Memory capacity full");
         set_error(module, HYPERTHYMESIA_ERROR_MEMORY_FULL);
         return 0;

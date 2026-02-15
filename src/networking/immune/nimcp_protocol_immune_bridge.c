@@ -244,7 +244,7 @@ int protocol_immune_create_antibody_filter(
 
     if (bridge->protocol_modulation.filter_count >= bridge->protocol_modulation.filter_capacity) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protocol_immune_create_antibody_filter: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "protocol_immune_create_antibody_filter: capacity exceeded");
         return -1;
     }
 
@@ -482,7 +482,6 @@ int protocol_immune_get_inflammation_state(
 
 bool protocol_immune_has_high_error_rate(const protocol_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_has_high_error_rate: bridge is NULL");
         return false;
     }
     return bridge->protocol_modulation.errors.error_rate >= ERROR_RATE_LOCAL_THRESHOLD;

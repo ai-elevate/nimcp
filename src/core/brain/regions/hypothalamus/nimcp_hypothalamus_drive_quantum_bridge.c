@@ -401,7 +401,6 @@ bool hypo_drive_quantum_is_available(
     const hypo_drive_quantum_bridge_t* bridge) {
 
     if (!bridge || !bridge->quantum) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: required parameter is NULL (bridge, bridge->quantum)");
         return false;
     }
     return hypothalamus_quantum_is_available(bridge->quantum);

@@ -222,7 +222,7 @@ gpu_health_monitor_t* gpu_health_monitor_create(const gpu_health_config_t* confi
     gpu_health_monitor_t* monitor = nimcp_calloc(1, sizeof(gpu_health_monitor_t));
     if (!monitor) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate GPU health monitor");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "monitor is NULL");
 
         return NULL;
     }
@@ -400,7 +400,6 @@ int gpu_health_monitor_stop(gpu_health_monitor_t* monitor) {
 
 bool gpu_health_monitor_is_running(const gpu_health_monitor_t* monitor) {
     if (!validate_monitor(monitor)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_monitor_is_running: validate_monitor is NULL");
         return false;
     }
     return atomic_load((volatile _Atomic bool*)&monitor->running);
@@ -841,7 +840,7 @@ int gpu_error_unregister_callback(
         return -1;
     }
     if (callback_id < 0 || callback_id >= MAX_ERROR_CALLBACKS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_error_unregister_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gpu_error_unregister_callback: capacity exceeded");
         return -1;
     }
 
@@ -968,7 +967,7 @@ int gpu_tensor_validate(
     void* host_buffer = nimcp_malloc(num_elements * element_size);
     if (!host_buffer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "host_buffer is NULL");
 
         return -1;
 
@@ -1031,7 +1030,7 @@ int gpu_tensor_sanitize(
     void* host_buffer = nimcp_malloc(num_elements * element_size);
     if (!host_buffer) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "host_buffer is NULL");
 
         return -1;
 
@@ -1359,7 +1358,7 @@ gpu_memory_pool_t* gpu_memory_pool_create(
     gpu_memory_pool_t* pool = nimcp_calloc(1, sizeof(gpu_memory_pool_t));
     if (!pool) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate GPU memory pool");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool is NULL");
 
         return NULL;
     }
@@ -1432,7 +1431,7 @@ void* gpu_memory_pool_alloc(gpu_memory_pool_t* pool, size_t size) {
     ptr = nimcp_malloc(size);
     if (!ptr) {
         pool->stats.alloc_failures++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ptr is NULL");
 
         return NULL;
     }
@@ -1569,7 +1568,7 @@ int gpu_checkpoint_create(
         nimcp_free(cp->host_copies);
         nimcp_free(cp->sizes);
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_create: required parameter is NULL (cp->host_copies, cp->sizes)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_checkpoint_create: required parameter is NULL (cp->host_copies, cp->sizes)");
         return -1;
     }
 

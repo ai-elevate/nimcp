@@ -394,7 +394,6 @@ float training_module_fep_get_prediction_error(const training_module_fep_bridge_
 
 bool training_module_fep_should_stop(const training_module_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_module_fep_should_stop: bridge is NULL");
         return false;
     }
     return bridge->fep_effects.should_stop_early;
@@ -462,7 +461,6 @@ int training_module_fep_disconnect_bio_async(training_module_fep_bridge_t* bridg
 
 bool training_module_fep_is_bio_async_connected(const training_module_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_module_fep_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

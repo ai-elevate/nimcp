@@ -714,7 +714,7 @@ int metabolic_effects_tensor_set(
         return -1;
     }
     if (effect_idx >= METABOLIC_EFFECT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "metabolic_effects_tensor_set: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "metabolic_effects_tensor_set: capacity exceeded");
         return -1;
     }
 

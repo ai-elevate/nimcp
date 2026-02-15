@@ -32,6 +32,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_init_structural)
 //=============================================================================
@@ -221,16 +222,16 @@ bool nimcp_brain_factory_init_axon_subsystem(brain_t brain)
         // Excitatory neurons tend to have larger, myelinated axons
         if (neuron->type == NEURON_EXCITATORY) {
             axon_type = AXON_TYPE_MYELINATED;
-            myelination = 0.6F + (float)(rand() % 40) / 100.0F;  // 0.6-1.0
+            myelination = 0.6F + (float)(nimcp_tl_rand() % 40) / 100.0F;  // 0.6-1.0
         } else {
             // Inhibitory interneurons often have unmyelinated or lightly myelinated axons
             axon_type = AXON_TYPE_UNMYELINATED;
-            myelination = (float)(rand() % 30) / 100.0F;  // 0.0-0.3
+            myelination = (float)(nimcp_tl_rand() % 30) / 100.0F;  // 0.0-0.3
         }
 
         // Calculate axon properties
-        float length = 100.0F + (float)(rand() % 400);  // 100-500 μm
-        float diameter = 0.5F + (float)(rand() % 20) / 10.0F;  // 0.5-2.5 μm
+        float length = 100.0F + (float)(nimcp_tl_rand() % 400);  // 100-500 μm
+        float diameter = 0.5F + (float)(nimcp_tl_rand() % 20) / 10.0F;  // 0.5-2.5 μm
 
         // Create axon using the axon_create API
         // Parameters: id, type, source_neuron_id, target_synapse_id, length, diameter
@@ -360,13 +361,13 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
                 .id = dend_net->num_dendrites,  // Sequential ID
                 .type = dtype,
                 .target_neuron_id = neuron->id,
-                .total_length = 150.0F + (float)(rand() % 200),  // 150-350 μm
-                .mean_diameter = 1.0F + (float)(rand() % 20) / 10.0F,  // 1.0-3.0 μm
+                .total_length = 150.0F + (float)(nimcp_tl_rand() % 200),  // 150-350 μm
+                .mean_diameter = 1.0F + (float)(nimcp_tl_rand() % 20) / 10.0F,  // 1.0-3.0 μm
                 .start_pos = {0.0F, 0.0F, 0.0F},
-                .integration_window_ms = 15.0F + (float)(rand() % 20),  // 15-35 ms
+                .integration_window_ms = 15.0F + (float)(nimcp_tl_rand() % 20),  // 15-35 ms
                 .structural_plasticity = 0.01F,
-                .ltp_threshold = 0.7F + (float)(rand() % 20) / 100.0F,  // 0.7-0.9
-                .ltd_threshold = 0.2F + (float)(rand() % 20) / 100.0F   // 0.2-0.4
+                .ltp_threshold = 0.7F + (float)(nimcp_tl_rand() % 20) / 100.0F,  // 0.7-0.9
+                .ltd_threshold = 0.2F + (float)(nimcp_tl_rand() % 20) / 100.0F   // 0.2-0.4
             };
 
             // Create dendrite
@@ -376,7 +377,7 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
             }
 
             // Create initial segments (3-5 compartments)
-            uint32_t num_segments = 3 + (rand() % 3);  // 3-5 segments
+            uint32_t num_segments = 3 + (nimcp_tl_rand() % 3);  // 3-5 segments
             segment_config_t* seg_configs = (segment_config_t*)nimcp_calloc(
                 num_segments, sizeof(segment_config_t));
 
@@ -387,7 +388,7 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
                                           (s == num_segments - 1) ? DENDRITE_SEGMENT_TERMINAL :
                                           DENDRITE_SEGMENT_SHAFT;
                     seg_configs[s].parent_segment = (s == 0) ? UINT32_MAX : (s - 1);
-                    seg_configs[s].length = 30.0F + (float)(rand() % 40);  // 30-70 μm
+                    seg_configs[s].length = 30.0F + (float)(nimcp_tl_rand() % 40);  // 30-70 μm
                     seg_configs[s].diameter = dend_config.mean_diameter *
                                              (1.0F - 0.1F * s);  // Taper
                     seg_configs[s].path_distance = path_dist;

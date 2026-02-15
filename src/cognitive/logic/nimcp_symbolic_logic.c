@@ -943,7 +943,7 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
 
     if (logic->num_facts >= logic->kb_capacity) {
         LOG_ERROR("Knowledge base full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "symbolic_logic_add_fact: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "symbolic_logic_add_fact: capacity exceeded");
         return false;
     }
 
@@ -983,7 +983,7 @@ bool symbolic_logic_add_rule(symbolic_logic_t* logic, inference_rule_t* rule)
 
     if (logic->num_rules >= logic->rules_capacity) {
         LOG_ERROR("Rules capacity full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "symbolic_logic_add_rule: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "symbolic_logic_add_rule: capacity exceeded");
         return false;
     }
 

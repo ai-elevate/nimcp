@@ -291,7 +291,7 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     NimcpSwarmMorphogenesis* morph = nimcp_malloc(sizeof(NimcpSwarmMorphogenesis));
     if (!morph) {
         LOG_ERROR("Failed to allocate morphogenesis system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "morph is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "morph is NULL");
 
         return NULL;
     }
@@ -1100,7 +1100,6 @@ bool nimcp_swarm_morphogenesis_role_has_capability(
     NimcpRoleCapability capability
 ) {
     if (role < 0 || role >= NIMCP_SWARM_ROLE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_swarm_morphogenesis_role_has_capability: capacity exceeded");
         return false;
     }
     return (ROLE_SPECS[role].capabilities & capability) != 0;

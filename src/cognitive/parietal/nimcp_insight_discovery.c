@@ -16,6 +16,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(insight_discovery)
 //=============================================================================
@@ -400,7 +401,7 @@ int insight_process_incubation_step(insight_engine_t* engine) {
             if (e->result) {
                 e->result->id = engine->next_eureka_id++;
                 e->result->problem = e->problem;
-                e->result->surprise_magnitude = 0.6f + 0.4f * ((float)rand() / RAND_MAX);
+                e->result->surprise_magnitude = 0.6f + 0.4f * ((float)nimcp_tl_rand() / RAND_MAX);
                 e->result->elegance = 0.5f + 0.5f * e->progress;
                 e->result->confidence = apply_modulation(engine, 0.7f);
                 e->result->incubation_time_us = get_timestamp_us() - e->start_time;
@@ -589,7 +590,7 @@ insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
         engine->stats.perspectives_shifted++;
     }
 
-    r->novelty = 0.5f + 0.5f * ((float)rand() / RAND_MAX);
+    r->novelty = 0.5f + 0.5f * ((float)nimcp_tl_rand() / RAND_MAX);
     snprintf(r->description, sizeof(r->description), "Restructured problem");
 
     return r;

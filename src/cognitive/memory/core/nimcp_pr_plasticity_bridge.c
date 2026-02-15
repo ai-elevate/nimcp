@@ -321,43 +321,34 @@ bool pr_plasticity_config_validate(const pr_plasticity_bridge_config_t* config) 
 
     /* STDP validation */
     if (config->stdp.A_plus <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->stdp.A_minus <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->stdp.tau_plus <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->stdp.tau_minus <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->stdp.resonance_modulation < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
 
     /* BCM validation */
     if (config->bcm.theta_tau <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
 
     /* Homeostatic validation */
     if (config->homeostatic.scaling_tau <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->homeostatic.min_scale <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
     if (config->homeostatic.max_scale <= config->homeostatic.min_scale) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
 
@@ -375,14 +366,12 @@ bool pr_plasticity_config_validate(const pr_plasticity_bridge_config_t* config) 
 
         if (config->homeostatic.target_rate[t] < 0.0f ||
             config->homeostatic.target_rate[t] > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
             return false;
         }
     }
 
     /* Consolidation gate validation */
     if (config->consolidation_gate < 0.0f || config->consolidation_gate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
 
@@ -1754,7 +1743,6 @@ int pr_plasticity_disconnect_bio_async(pr_plasticity_bridge_t bridge) {
 
 bool pr_plasticity_is_bio_async_connected(pr_plasticity_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

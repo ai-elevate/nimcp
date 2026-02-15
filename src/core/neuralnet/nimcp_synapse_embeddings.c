@@ -44,6 +44,7 @@
 
 #define LOG_MODULE "synapse_embeddings"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synapse_embeddings)
 
@@ -80,7 +81,7 @@ bool synapse_init_embedding(synapse_t *synapse, uint16_t dim) {
     // Initialize with random values (Xavier/Glorot initialization)
     float scale = sqrtf(2.0F / dim);
     for (uint16_t i = 0; i < dim; i++) {
-        synapse->semantic_embedding[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+        synapse->semantic_embedding[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
     }
 
     // Normalize to unit length

@@ -173,7 +173,7 @@ static algorithm_graph_t* build_algorithm_graph(const kg_hierarchy_t* hier) {
 
     algorithm_graph_t* graph = nimcp_calloc(1, sizeof(algorithm_graph_t));
     if (!graph) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "graph is NULL");
 
         return NULL;
     }
@@ -305,7 +305,7 @@ static int find_node_index(const algorithm_graph_t* graph, brain_kg_node_id_t no
 
 static float* compute_shortest_paths(const algorithm_graph_t* graph, uint32_t source_idx) {
     if (!graph || source_idx >= graph->node_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "compute_shortest_paths: graph is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "compute_shortest_paths: graph is NULL");
         return NULL;
     }
 
@@ -689,7 +689,7 @@ int kg_detect_communities(
         nimcp_free(community);
         nimcp_free(community_size);
         free_algorithm_graph(graph);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_detect_communities: required parameter is NULL (community, community_size)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_detect_communities: required parameter is NULL (community, community_size)");
         return -1;
     }
 
@@ -1066,7 +1066,6 @@ int kg_compute_graph_metrics(
 bool kg_is_small_world(const kg_hierarchy_t* hier) {
     kg_graph_metrics_t metrics;
     if (kg_compute_graph_metrics(hier, &metrics) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_is_small_world: validation failed");
         return false;
     }
     return metrics.is_small_world;

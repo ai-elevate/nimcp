@@ -461,31 +461,25 @@ bool spatial_language_validate_config(const spatial_language_config_t* config) {
     }
 
     if (config->near_sigma <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
         return false;
     }
     if (config->far_threshold <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
         return false;
     }
     if (config->angle_tolerance <= 0.0f || config->angle_tolerance > 180.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
         return false;
     }
 
     /* Priors should sum to approximately 1.0 */
     float prior_sum = config->egocentric_prior + config->allocentric_prior + config->intrinsic_prior;
     if (prior_sum < 0.9f || prior_sum > 1.1f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
         return false;
     }
 
     if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
         return false;
     }
     if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
         return false;
     }
 
@@ -500,7 +494,7 @@ spatial_language_t* spatial_language_create_custom(const spatial_language_config
     spatial_language_t* sl = (spatial_language_t*)nimcp_calloc(1, sizeof(spatial_language_t));
     if (!sl) {
         set_last_error("Failed to allocate spatial language processor");
-        NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "spatial_language_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "spatial_language_create_custom: allocation failed");
         return NULL;
     }
 
@@ -625,7 +619,6 @@ bool spatial_language_is_preposition(
     const char* word
 ) {
     if (!sl || !word) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_language_is_preposition: required parameter is NULL (sl, word)");
         return false;
     }
     return find_preposition(sl, word) != NULL;

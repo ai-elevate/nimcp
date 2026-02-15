@@ -151,41 +151,32 @@ bool dragonfly_emotion_validate_config(const dragonfly_emotion_config_t* config)
 
     /* Check ranges */
     if (config->hunger_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
     if (config->hunger_satisfaction < 0.0f || config->hunger_satisfaction > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
     if (config->fear_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
     if (config->frustration_buildup_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
 
     if (config->hunt_motivation_threshold < 0.0f || config->hunt_motivation_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
     if (config->fear_abort_threshold < 0.0f || config->fear_abort_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
     if (config->frustration_rest_threshold < 0.0f || config->frustration_rest_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
 
     if (config->emotional_learning_rate < 0.0f || config->emotional_learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
     if (config->homeostasis_rate < 0.0f || config->homeostasis_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
         return false;
     }
 
@@ -670,7 +661,6 @@ int dragonfly_emotion_get_modulation(
 
 bool dragonfly_emotion_should_hunt(const dragonfly_emotion_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_should_hunt: bridge is NULL");
         return false;
     }
 

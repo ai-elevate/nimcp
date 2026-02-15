@@ -447,7 +447,6 @@ int nimcp_brain_bg_get_stats(brain_t brain, bg_enhanced_stats_t* stats) {
 
 bool nimcp_brain_bg_is_enabled(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_is_enabled: brain is NULL");
         return false;
     }
     struct brain_struct* b = (struct brain_struct*)brain;

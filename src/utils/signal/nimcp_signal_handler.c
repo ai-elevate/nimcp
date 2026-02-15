@@ -1569,7 +1569,6 @@ bool signal_handler_has_code_immune(void)
 #ifdef NIMCP_ENABLE_CODE_IMMUNE
     return (g_code_immune != NULL);
 #else
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_has_code_immune: operation failed");
     return false;
 #endif
 }

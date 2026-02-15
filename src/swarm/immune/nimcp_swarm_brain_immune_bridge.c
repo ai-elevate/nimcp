@@ -307,7 +307,6 @@ int swarm_brain_immune_get_inflammation_state(const swarm_brain_immune_bridge_t*
 bool swarm_brain_immune_is_fragmented(const swarm_brain_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_is_fragmented: bridge is NULL");
         return false;
     }
 
@@ -386,7 +385,6 @@ int swarm_brain_immune_disconnect_bio_async(swarm_brain_immune_bridge_t* bridge)
 bool swarm_brain_immune_is_bio_async_connected(const swarm_brain_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

@@ -228,7 +228,6 @@ static bool should_escalate(
         return entry->occurrence_count >= bridge->config.max_per_window;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_escalate: validation failed");
     return false;
 }
 

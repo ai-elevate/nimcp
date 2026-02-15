@@ -467,7 +467,6 @@ bool nimcp_ast_validate(const nimcp_ast_node_t* node) {
         return false;
     }
     if (node->magic != NIMCP_AST_NODE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ast_validate: validation failed");
         return false;
     }
 

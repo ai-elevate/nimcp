@@ -294,7 +294,6 @@ int ephaptic_bio_async_disconnect(ephaptic_bio_async_bridge_t* bridge) {
 
 bool ephaptic_bio_async_is_connected(const ephaptic_bio_async_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
     return bridge->connected;

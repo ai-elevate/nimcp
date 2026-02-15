@@ -131,7 +131,7 @@ static nimcp_cap_entry_t* validate_capability(
     nimcp_capability_t capability)
 {
     if (!caps || capability.index >= NIMCP_CAP_MAX_CAPABILITIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_capability: caps is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "validate_capability: caps is NULL");
         return NULL;
     }
 
@@ -145,7 +145,6 @@ static nimcp_cap_entry_t* validate_capability(
 
     // Check generation (prevents use-after-revoke attacks)
     if (entry->generation != capability.generation) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_capability: validation failed");
         return NULL;
     }
 
@@ -225,8 +224,11 @@ void nimcp_capability_system_destroy(nimcp_capability_system_t* caps)
         nimcp_mutex_free(caps->mutex);
     }
 
-    // Free holder capability arrays
+    // Free holder capability arrays and names
     for (uint32_t i = 0; i < caps->num_holders; i++) {
+        if (caps->holders[i].name) {
+            free((void*)caps->holders[i].name);
+        }
         if (caps->holders[i].capabilities) {
             nimcp_free(caps->holders[i].capabilities);
         }
@@ -412,7 +414,6 @@ bool nimcp_capability_is_valid(
     nimcp_capability_t capability)
 {
     if (!caps) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_capability_is_valid: caps is NULL");
         return false;
     }
 
@@ -437,7 +438,6 @@ static bool capability_check_unlocked(
     nimcp_cap_entry_t* entry = validate_capability(caps, capability);
     if (!entry) {
         caps->stats.checks_failed++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "capability_check_unlocked: entry is NULL");
         return false;
     }
 
@@ -660,7 +660,7 @@ nimcp_result_t nimcp_capability_register_holder(
     nimcp_cap_holder_t* holder = &caps->holders[caps->num_holders];
 
     holder->holder_id = caps->next_holder_id++;
-    holder->name = name;
+    holder->name = name ? strdup(name) : NULL;
     holder->capabilities = nimcp_calloc(32, sizeof(uint32_t));
     holder->num_capabilities = 0;
     holder->max_capabilities = 32;

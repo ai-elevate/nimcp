@@ -142,7 +142,7 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
     occipital_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_quantum_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -180,7 +180,7 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
     if (!bridge->search_candidates || !bridge->binding_hypotheses ||
         !bridge->segment_candidates || !bridge->motion_candidates) {
         occipital_quantum_bridge_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_quantum_bridge_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_quantum_bridge_create: operation failed");
         return NULL;
     }
 
@@ -225,7 +225,6 @@ void occipital_quantum_bridge_destroy(occipital_quantum_bridge_t* bridge) {
 
 bool occipital_quantum_bridge_is_enabled(const occipital_quantum_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_bridge_is_enabled: bridge is NULL");
         return false;
     }
     return bridge->config.enabled;

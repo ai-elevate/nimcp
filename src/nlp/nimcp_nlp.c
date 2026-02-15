@@ -55,6 +55,7 @@
 
 #define LOG_MODULE "NLP"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nlp)
 
@@ -161,7 +162,7 @@ static bool init_embeddings(nlp_network_t network) {
     LOG_DEBUG(LOG_MODULE, "Xavier initialization range: +/- %f (scale=%f)", range, init_scale);
 
     for (uint32_t i = 0; i < vocab_size * embedding_dim; i++) {
-        float r = (float)rand() / RAND_MAX;  // [0,1]
+        float r = (float)nimcp_tl_rand() / RAND_MAX;  // [0,1]
         network->embeddings[i] = 2.0F * range * r - range;  // [-range, +range]
     }
 
@@ -848,7 +849,7 @@ float nlp_network_train(
             float hebbian_update = reward * embedding[dim] * embedding_lr;
 
             // Exploration component: small random perturbation when reward is low
-            float exploration = (1.0F - reward) * ((float)rand() / RAND_MAX - 0.5F) * 0.01F;
+            float exploration = (1.0F - reward) * ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 0.01F;
 
             // L2 regularization to prevent unbounded growth
             float reg_term = regularization * embedding[dim];

@@ -641,7 +641,7 @@ bool hypo_hipp_bridge_create_association(
     float strength) {
 
     if (!bridge || drive >= HYPO_DRIVE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: bridge is NULL");
         return false;
     }
 

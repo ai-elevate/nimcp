@@ -840,7 +840,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
     self_heal_engine_t* engine = nimcp_calloc(1, sizeof(self_heal_engine_t));
     if (engine == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate engine");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_heal_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_heal_create: validation failed");
         return NULL;
     }
 
@@ -1234,7 +1234,7 @@ int self_heal_generate_fix(
     /* Check code size */
     if (strlen(source_code) >= SELF_HEAL_MAX_CODE_SIZE) {
         result->status = HEAL_STATUS_CODE_TOO_LARGE;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "self_heal_generate_fix: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "self_heal_generate_fix: capacity exceeded");
         return -1;
     }
 
@@ -2133,7 +2133,7 @@ int heal_pattern_register(
 
     if (library->custom_count >= library->custom_capacity) {
         nimcp_mutex_unlock(library->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heal_pattern_register: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "heal_pattern_register: capacity exceeded");
         return -1;
     }
 

@@ -523,7 +523,6 @@ bool astrocyte_immune_is_function_impaired(
     const astrocyte_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_is_function_impaired: bridge is NULL");
         return false;
     }
 
@@ -579,7 +578,6 @@ bool astrocyte_immune_is_bio_async_connected(
     const astrocyte_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

@@ -311,7 +311,6 @@ int ofc_bio_async_disconnect(ofc_bio_async_bridge_t* bridge)
 bool ofc_bio_async_is_connected(const ofc_bio_async_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;
@@ -653,7 +652,7 @@ int ofc_bio_async_subscribe_module(
     /* Add new subscription */
     if (bridge->subscription_count >= bridge->config.max_subscriptions) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ofc_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ofc_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

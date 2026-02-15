@@ -74,7 +74,7 @@ static hetero_spatial_index_t* create_spatial_index(
         nimcp_free(index->cell_counts);
         nimcp_free(index->cell_capacities);
         nimcp_free(index);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_spatial_index: required parameter is NULL (index->grid, index->cell_counts, index->cell_capacities)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_spatial_index: required parameter is NULL (index->grid, index->cell_counts, index->cell_capacities)");
         return NULL;
     }
 
@@ -252,6 +252,8 @@ void hetero_destroy(hetero_system_t* system) {
 
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
         system->mutex = NULL;
     }
 

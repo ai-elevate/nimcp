@@ -123,7 +123,6 @@ int snn_introspection_bridge_disconnect_bio_async(snn_introspection_bridge_t* br
 
 bool snn_introspection_bridge_is_bio_async_connected(const snn_introspection_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -208,7 +207,6 @@ int snn_introspection_detect_patterns(snn_introspection_bridge_t* bridge, const 
 
 bool snn_introspection_check_consciousness(const snn_introspection_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_check_consciousness: null bridge pointer");
         return false;
     }
     return bridge->state.consciousness_detected;

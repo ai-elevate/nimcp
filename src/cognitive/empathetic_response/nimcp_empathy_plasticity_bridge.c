@@ -1115,7 +1115,6 @@ int empathy_plasticity_bio_async_disconnect(empathy_plasticity_bridge_t* bridge)
 
 bool empathy_plasticity_is_bio_async_connected(empathy_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathy_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

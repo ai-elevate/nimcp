@@ -277,7 +277,7 @@ static int serialize_network_segment(
     size_t temp_buffer_size = 1024 + num_neurons * (32 + 50 * 8);
     uint8_t* temp_buffer = nimcp_malloc(temp_buffer_size);
     if (!temp_buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temp_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temp_buffer is NULL");
 
         return -1;
     }
@@ -653,7 +653,7 @@ static distributed_cow_state_t* create_distributed_cow_state(
 ) {
     distributed_cow_state_t* state = nimcp_calloc(1, sizeof(distributed_cow_state_t));
     if (!state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "state is NULL");
 
         return NULL;
     }

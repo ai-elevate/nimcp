@@ -402,7 +402,6 @@ bool mirror_omni_bridge_is_fully_connected(
     const mirror_omni_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_bridge_is_fully_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

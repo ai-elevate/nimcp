@@ -556,7 +556,7 @@ bool insula_update_interoception(insula_adapter_t* adapter,
 
     if (signal->channel >= INTERO_CHANNEL_COUNT) {
         set_error(adapter, INSULA_ERROR_INVALID_INPUT);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "insula_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "insula_reset: capacity exceeded");
         return false;
     }
 

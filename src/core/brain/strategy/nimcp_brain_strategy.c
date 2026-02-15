@@ -301,7 +301,7 @@ task_strategy_t* strategy_create(brain_task_t task)
     task_strategy_t* strategy = nimcp_calloc(1, sizeof(task_strategy_t));
     if (!strategy) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strategy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "strategy is NULL");
 
         return NULL;
 

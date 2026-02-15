@@ -124,7 +124,7 @@ runtime_adaptation_context_t runtime_adaptation_create(brain_t brain) {
     runtime_adaptation_context_t ctx = nimcp_calloc(1, sizeof(struct runtime_adaptation_context_internal));
     if (!ctx) {
         LOG_ERROR("Failed to allocate runtime adaptation context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -173,7 +173,7 @@ bool runtime_adaptation_set_parameter(
 ) {
     if (!ctx || param >= RUNTIME_PARAM_COUNT) {
         LOG_ERROR("Invalid parameters for set_parameter");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_set_parameter: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "runtime_adaptation_set_parameter: ctx is NULL");
         return false;
     }
 
@@ -221,7 +221,7 @@ bool runtime_adaptation_reset_parameter(
     runtime_parameter_t param
 ) {
     if (!ctx || param >= RUNTIME_PARAM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_reset_parameter: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "runtime_adaptation_reset_parameter: ctx is NULL");
         return false;
     }
 
@@ -257,7 +257,7 @@ bool runtime_adaptation_enable_feature(
     const char* reason
 ) {
     if (!ctx || feature >= RUNTIME_FEATURE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_enable_feature: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "runtime_adaptation_enable_feature: ctx is NULL");
         return false;
     }
 
@@ -272,7 +272,7 @@ bool runtime_adaptation_disable_feature(
     const char* reason
 ) {
     if (!ctx || feature >= RUNTIME_FEATURE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_disable_feature: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "runtime_adaptation_disable_feature: ctx is NULL");
         return false;
     }
 
@@ -286,7 +286,6 @@ bool runtime_adaptation_is_feature_enabled(
     runtime_feature_t feature
 ) {
     if (!ctx || feature >= RUNTIME_FEATURE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_is_feature_enabled: ctx is NULL");
         return false;
     }
     return ctx->features[feature];
@@ -311,7 +310,7 @@ bool runtime_adaptation_apply_batch(
     for (uint32_t i = 0; i < num_changes; i++) {
         if (changes[i].param >= RUNTIME_PARAM_COUNT) {
             LOG_ERROR("Invalid parameter in batch change");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_apply_batch: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "runtime_adaptation_apply_batch: capacity exceeded");
             return false;
         }
     }
@@ -434,7 +433,7 @@ bool runtime_adaptation_get_param_info(
     parameter_info_t* info
 ) {
     if (!info || param >= RUNTIME_PARAM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_get_param_info: info is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "runtime_adaptation_get_param_info: info is NULL");
         return false;
     }
 

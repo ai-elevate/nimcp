@@ -98,19 +98,16 @@ bool gabor_validate_params(const gabor_filter_params_t* params) {
     if (params->wavelength < MIN_WAVELENGTH) {
         NIMCP_LOGGING_ERROR("Invalid wavelength: %.4f (min: %.4f)",
                            params->wavelength, MIN_WAVELENGTH);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_validate_params: validation failed");
         return false;
     }
 
     if (params->aspect_ratio < EPSILON || params->aspect_ratio > 10.0f) {
         NIMCP_LOGGING_ERROR("Invalid aspect ratio: %.4f", params->aspect_ratio);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_validate_params: validation failed");
         return false;
     }
 
     if (params->bandwidth < EPSILON || params->bandwidth > MAX_BANDWIDTH) {
         NIMCP_LOGGING_ERROR("Invalid bandwidth: %.4f", params->bandwidth);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_validate_params: validation failed");
         return false;
     }
 

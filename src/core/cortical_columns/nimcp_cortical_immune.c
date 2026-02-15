@@ -301,6 +301,8 @@ void cortical_immune_destroy(cortical_immune_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);
@@ -344,7 +346,7 @@ int cortical_immune_register_minicolumn(
 
     if (system->num_columns >= system->column_capacity) {
         nimcp_platform_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_register_minicolumn: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cortical_immune_register_minicolumn: capacity exceeded");
         return -1;
     }
 
@@ -469,7 +471,7 @@ int cortical_immune_create_microglial_site(
 
     if (system->num_sites >= system->site_capacity) {
         nimcp_platform_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_create_microglial_site: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cortical_immune_create_microglial_site: capacity exceeded");
         return -1;
     }
 
@@ -754,7 +756,7 @@ int cortical_immune_apply_inflammation(
             system->num_columns++;
         } else {
             nimcp_platform_mutex_unlock(system->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_apply_inflammation: column capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cortical_immune_apply_inflammation: column capacity exceeded");
             return -1;
         }
     }
@@ -834,7 +836,7 @@ int cortical_immune_apply_cytokine(
             system->num_layers++;
         } else {
             nimcp_platform_mutex_unlock(system->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_apply_cytokine: layer capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cortical_immune_apply_cytokine: layer capacity exceeded");
             return -1;
         }
     }

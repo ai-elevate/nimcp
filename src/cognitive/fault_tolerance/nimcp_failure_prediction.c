@@ -491,7 +491,7 @@ bool failure_predictor_update_indicator(
             LOG_WARNING("Indicator capacity reached (%u), cannot add metric %d",
                         predictor->config.max_indicators, metric);
             unlock(predictor);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "failure_predictor_update_indicator: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "failure_predictor_update_indicator: capacity exceeded");
             return false;
         }
 

@@ -200,7 +200,6 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     if (pool->magic != POOL_MAGIC) {
         set_error("validate_pool_internal: Invalid magic 0x%X (expected 0x%X)",
                   pool->magic, POOL_MAGIC);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: validation failed");
         return false;
     }
 
@@ -222,7 +221,6 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     if (pool->offset > pool->size) {
         set_error("validate_pool_internal: Offset %zu exceeds size %zu",
                   pool->offset, pool->size);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: validation failed");
         return false;
     }
 
@@ -233,7 +231,6 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
         if (entry->magic != ALLOCATION_MAGIC) {
             set_error("validate_pool_internal: Allocation entry corrupted (magic 0x%X)",
                       entry->magic);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validate_pool_internal: validation failed");
             return false;
         }
 
@@ -241,7 +238,6 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
         if (entry->ptr < (void*)pool->buffer ||
             entry->ptr >= (void*)(pool->buffer + pool->size)) {
             set_error("validate_pool_internal: Allocation pointer outside pool bounds");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: validation failed");
             return false;
         }
 
@@ -252,7 +248,6 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     if (tracked_count != pool->allocation_count) {
         set_error("validate_pool_internal: Allocation count mismatch (tracked %u, reported %u)",
                   tracked_count, pool->allocation_count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validate_pool_internal: validation failed");
         return false;
     }
 
@@ -424,14 +419,12 @@ bool recovery_pool_exit_emergency_mode(recovery_pool_t* pool) {
 bool recovery_pool_is_emergency_mode(const recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_is_emergency_mode: pool is NULL");
         return false;
     }
 
     // Lock mutex
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_is_emergency_mode: validation failed");
         return false;
     }
 
@@ -670,14 +663,12 @@ bool recovery_pool_get_stats(const recovery_pool_t* pool, recovery_pool_stats_t*
 bool recovery_pool_has_space(const recovery_pool_t* pool, size_t required_size) {
     // Guard: NULL check
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_has_space: pool is NULL");
         return false;
     }
 
     // Lock mutex
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_has_space: validation failed");
         return false;
     }
 
@@ -726,7 +717,6 @@ bool recovery_pool_validate(const recovery_pool_t* pool) {
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_validate: Failed to lock mutex");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_validate: validation failed");
         return false;
     }
 

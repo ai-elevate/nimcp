@@ -318,7 +318,6 @@ static bool should_skip_sample(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip_sample: validation failed");
     return false;
 }
 
@@ -926,7 +925,6 @@ bool perception_training_should_skip_sample(
     const perception_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_training_should_skip_sample: bridge is NULL");
         return false;
     }
 
@@ -1175,7 +1173,6 @@ bool perception_training_is_bio_async_connected(
     const perception_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -492,7 +492,7 @@ int autobio_immune_create_sickness_landmark(
     /* Check capacity */
     if (bridge->sickness_landmark_count >= bridge->sickness_landmark_capacity) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "autobio_immune_create_sickness_landmark: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "autobio_immune_create_sickness_landmark: capacity exceeded");
         return -1;
     }
 
@@ -791,7 +791,6 @@ bool autobio_immune_is_identity_threatening(
     const autobiographical_memory_entry_t* memory
 ) {
     if (!memory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_is_identity_threatening: memory is NULL");
         return false;
     }
 
@@ -912,7 +911,6 @@ int autobio_immune_get_inflammation_state(
 
 bool autobio_immune_is_sickness_affecting_memory(const autobio_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_is_sickness_affecting_memory: bridge is NULL");
         return false;
     }
 
@@ -1045,7 +1043,6 @@ int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge
  */
 bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

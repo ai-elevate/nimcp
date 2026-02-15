@@ -321,6 +321,8 @@ void nimcp_flocking_destroy(nimcp_flocking_engine_t *engine) {
 
     if (engine->mutex) {
         nimcp_platform_mutex_destroy(engine->mutex);
+        nimcp_free(engine->mutex);
+        engine->mutex = NULL;
     }
 
     nimcp_free(engine);

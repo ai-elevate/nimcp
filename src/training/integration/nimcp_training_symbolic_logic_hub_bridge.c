@@ -189,7 +189,7 @@ training_logic_hub_bridge_t* training_logic_hub_create(
     training_logic_hub_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -378,7 +378,7 @@ int training_logic_hub_add_rule(
         return -1;
     }
     if (bridge->num_rules >= bridge->max_rules) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_logic_hub_add_rule: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "training_logic_hub_add_rule: capacity exceeded");
         return -1;
     }
 
@@ -636,7 +636,6 @@ bool training_logic_hub_is_action_safe(
 {
     if (!bridge || !action) {
         if (confidence) *confidence = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_is_action_safe: validation failed");
         return false;
     }
 

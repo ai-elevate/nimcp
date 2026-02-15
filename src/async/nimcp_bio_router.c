@@ -311,7 +311,7 @@ static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
     // Check if already at max capacity
     if (queue->capacity >= MAX_INBOX_MESSAGES) {
         LOG_DEBUG("Queue at max capacity %u, cannot grow further", MAX_INBOX_MESSAGES);
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
                           "bio_msg_queue_grow: queue at max capacity");
     }
 
@@ -931,7 +931,7 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
             bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
             if (!ctx) {
                 LOG_ERROR("Failed to allocate context for existing module");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
                 return NULL;
             }
@@ -1101,7 +1101,7 @@ nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
     if (entry->handler_count >= MAX_HANDLERS_PER_MODULE) {
         nimcp_platform_mutex_unlock(&entry->handler_mutex);
         LOG_ERROR("Handler table full for module %s", entry->module_name);
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
                           "bio_router_register_handler: handler table full");
     }
 
@@ -1159,7 +1159,7 @@ nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
     if (entry->handler_count >= MAX_HANDLERS_PER_MODULE) {
         nimcp_platform_mutex_unlock(&entry->handler_mutex);
         LOG_ERROR("Handler table full for module %s", entry->module_name);
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
                           "bio_router_register_category_handler: handler table full");
     }
 
@@ -1427,7 +1427,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                 if (enq_result == NIMCP_SUCCESS) {
                     entry->messages_received++;
                 } else {
-                    result = NIMCP_ERROR_BUFFER_OVERFLOW;
+                    result = NIMCP_ERROR_OUT_OF_RANGE;
                     // Queue overflow expected during high-load scenarios (stress tests)
                     LOG_DEBUG("Failed to enqueue broadcast to module %u (queue full)", entry->module_id);
                 }
@@ -1875,7 +1875,7 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
     if (g_signal_observer_count >= 256) {
         nimcp_platform_mutex_unlock(&g_signal_mutex);
         LOG_ERROR("Signal observer registry full");
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
                           "bio_router_observe_signal: observer registry full");
     }
 
@@ -1980,7 +1980,7 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
     phase_sync_context_t* sync_ctx = nimcp_calloc(1, sizeof(phase_sync_context_t));
     if (!sync_ctx) {
         LOG_ERROR("Failed to allocate phase sync context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync_ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sync_ctx is NULL");
 
         return NULL;
     }
@@ -2094,7 +2094,7 @@ nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
     if (g_wave_count >= 64) {
         nimcp_platform_mutex_unlock(&g_wave_mutex);
         LOG_ERROR("Glial wave registry full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "init_wave_mutex_once: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "init_wave_mutex_once: capacity exceeded");
         return NULL;
     }
 
@@ -2155,7 +2155,7 @@ nimcp_error_t bio_router_on_wave_arrival(bio_module_context_t ctx,
     if (g_wave_callback_count >= 128) {
         nimcp_platform_mutex_unlock(&g_wave_mutex);
         LOG_ERROR("Wave callback registry full");
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
                           "bio_router_on_wave_arrival: wave callback registry full");
     }
 
@@ -2331,7 +2331,7 @@ bool bio_router_subscribe(void* ctx, uint32_t msg_type) {
         nimcp_platform_mutex_unlock(&g_subscription_mutex);
         LOG_ERROR("bio_router_subscribe: subscription limit reached (%u)",
                   MAX_SUBSCRIPTIONS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bio_router_subscribe: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bio_router_subscribe: capacity exceeded");
         return false;
     }
 

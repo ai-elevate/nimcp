@@ -68,7 +68,7 @@ static int BioPromise_init(BioPromiseObject* self, PyObject* args, PyObject* kwd
 
     if (channel < 0 || channel >= BIO_CHANNEL_COUNT) {
         PyErr_SetString(PyExc_ValueError, "Invalid channel type");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "BioPromise_init: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "BioPromise_init: capacity exceeded");
         return -1;
     }
 
@@ -309,7 +309,7 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
     void* buffer = nimcp_malloc(buffer_size);
     if (buffer == NULL) {
         PyErr_NoMemory();
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioFuture_wait: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "BioFuture_wait: validation failed");
         return NULL;
     }
 
@@ -501,7 +501,7 @@ static int PhaseSync_init(PhaseSyncObject* self, PyObject* args, PyObject* kwds)
 
     if (band < 0 || band >= BIO_OSC_BAND_COUNT) {
         PyErr_SetString(PyExc_ValueError, "Invalid oscillation band");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "PhaseSync_init: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "PhaseSync_init: capacity exceeded");
         return -1;
     }
 

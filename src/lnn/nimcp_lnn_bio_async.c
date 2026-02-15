@@ -356,7 +356,6 @@ int lnn_bio_async_disconnect(lnn_network_t* network) {
 
 bool lnn_bio_async_is_connected(const lnn_network_t* network) {
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_bio_async_is_connected: network is NULL");
         return false;
     }
 

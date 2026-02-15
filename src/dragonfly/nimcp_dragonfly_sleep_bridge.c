@@ -122,11 +122,9 @@ bool dragonfly_sleep_validate_config(const dragonfly_sleep_config_t* config) {
         config->consolidation_threshold > 1.0f) return false;
 
     if (config->dawn_activity_boost < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_sleep_validate_config: validation failed");
         return false;
     }
     if (config->dusk_activity_boost < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_sleep_validate_config: validation failed");
         return false;
     }
     if (config->night_activity_floor < 0.0f ||

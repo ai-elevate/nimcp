@@ -872,7 +872,6 @@ bool mesh_topology_is_scale_free(
     float* r_squared
 ) {
     if (!ctx || ctx->node_count < 10) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_scale_free: ctx is NULL");
         return false;
     }
 
@@ -887,14 +886,12 @@ bool mesh_topology_is_scale_free(
     }
 
     if (max_degree < 3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_scale_free: validation failed");
         return false;
     }
 
     /* Count degree frequencies */
     uint32_t* freq = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!freq) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_topology_is_scale_free: freq is NULL");
         return false;
     }
 
@@ -925,7 +922,6 @@ bool mesh_topology_is_scale_free(
     nimcp_free(freq);
 
     if (n < 3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_scale_free: validation failed");
         return false;
     }
 
@@ -961,7 +957,6 @@ bool mesh_topology_is_small_world(
     float* sigma
 ) {
     if (!ctx || ctx->node_count < 10) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_small_world: ctx is NULL");
         return false;
     }
 
@@ -978,7 +973,6 @@ bool mesh_topology_is_small_world(
     float N = (float)ctx->node_count;
 
     if (k < 2 || N < 10) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_small_world: validation failed");
         return false;
     }
 
@@ -990,7 +984,6 @@ bool mesh_topology_is_small_world(
     float L = logf(N) / logf(k) * 1.2f; /* Approximate */
 
     if (C_rand < 0.001f || L_rand < 0.1f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_small_world: validation failed");
         return false;
     }
 

@@ -75,7 +75,6 @@ static inline bool validate_system(const cortical_temporal_system_t* system)
         return false;
     }
     if (system->magic != CORTICAL_TEMPORAL_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_system: validation failed");
         return false;
     }
     return true;
@@ -303,7 +302,7 @@ cortical_temporal_system_t* cortical_temporal_create(
     );
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate temporal system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "system is NULL");
 
         return NULL;
     }
@@ -721,7 +720,7 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
     );
     if (!detector) {
         NIMCP_LOGGING_ERROR("Failed to allocate sequence detector");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "detector is NULL");
 
         return NULL;
     }
@@ -1001,7 +1000,6 @@ bool cortical_temporal_is_bio_async_connected(
 {
     // Guard clause
     if (!validate_system(system)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_is_bio_async_connected: validate_system is NULL");
         return false;
     }
     return system->bio_async_enabled;

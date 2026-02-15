@@ -673,7 +673,7 @@ mesh_coordinator_t* mesh_coordinator_pool_get_by_index(
     size_t index
 ) {
     if (!validate_pool(pool) || index >= pool->coordinator_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_coordinator_pool_get_by_index: validate_pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_coordinator_pool_get_by_index: validate_pool is NULL");
         return NULL;
     }
     return pool->coordinators[index];
@@ -695,7 +695,7 @@ mesh_coordinator_t* mesh_coordinator_pool_get_leader(
         return NULL;
     }
     if (pool->leader_index >= pool->coordinator_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_coordinator_pool_get_leader: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_coordinator_pool_get_leader: capacity exceeded");
         return NULL;
     }
     return pool->coordinators[pool->leader_index];
@@ -709,7 +709,6 @@ mesh_participant_id_t mesh_coordinator_pool_get_leader_id(
 
 bool mesh_coordinator_pool_has_leader(const mesh_coordinator_pool_t* pool) {
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_has_leader: pool is NULL");
         return false;
     }
     return pool->leader_index < pool->coordinator_count && pool->leader_id != 0;
@@ -1375,7 +1374,6 @@ void mesh_coordinator_pool_print_status(const mesh_coordinator_pool_t* pool) {
 
 bool mesh_coordinator_pool_is_bft_valid(const mesh_coordinator_pool_t* pool) {
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_is_bft_valid: pool is NULL");
         return false;
     }
 

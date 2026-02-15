@@ -311,7 +311,7 @@ static synapse_entry_t* get_or_create_synapse(plasticity_orchestrator_t* orch, u
 
     if (orch->num_synapses >= orch->synapse_capacity) {
         NIMCP_LOGGING_WARN("Synapse capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_or_create_synapse: capacity exceeded");
         return NULL;
     }
 
@@ -349,7 +349,7 @@ static neuron_entry_t* get_or_create_neuron(plasticity_orchestrator_t* orch, uin
 
     if (orch->num_neurons >= orch->neuron_capacity) {
         NIMCP_LOGGING_WARN("Neuron capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_neuron: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_or_create_neuron: capacity exceeded");
         return NULL;
     }
 
@@ -534,6 +534,8 @@ plasticity_orchestrator_t* plasticity_orchestrator_create(
         if (orchestrator->synapses) nimcp_free(orchestrator->synapses);
         if (orchestrator->neurons) nimcp_free(orchestrator->neurons);
         nimcp_platform_mutex_destroy(orchestrator->mutex);
+        nimcp_free(orchestrator->mutex);
+        orchestrator->mutex = NULL;
         nimcp_free(orchestrator);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_create: validation failed");
         return NULL;
@@ -670,6 +672,8 @@ void plasticity_orchestrator_destroy(plasticity_orchestrator_t* orchestrator) {
 
     nimcp_platform_mutex_unlock(orchestrator->mutex);
     nimcp_platform_mutex_destroy(orchestrator->mutex);
+    nimcp_free(orchestrator->mutex);
+    orchestrator->mutex = NULL;
 
     nimcp_free(orchestrator);
 

@@ -264,7 +264,7 @@ static bool append_expansion(char* output, size_t* out_len,
         nimcp_free(var_name);
         nimcp_free(default_val);
         nimcp_free(alternate_val);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "extract_var_name: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "extract_var_name: capacity exceeded");
         return false;
     }
 
@@ -422,7 +422,7 @@ bool config_expand_env_inplace(char* value, size_t max_size) {
     if (len >= max_size) {
         g_last_error = CONFIG_EXPAND_ERROR_TOO_LONG;
         nimcp_free(expanded);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_expand_env_inplace: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_expand_env_inplace: capacity exceeded");
         return false;
     }
 
@@ -627,7 +627,7 @@ static char** split_path(const char* path, size_t* count) {
     if (!path_copy) {
         nimcp_free(components);
         *count = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_path: path_copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "split_path: path_copy is NULL");
         return NULL;
     }
 
@@ -747,7 +747,7 @@ char* config_key_parent(const char* path) {
     size_t len = (size_t)(last_dot - path);
     char* parent = nimcp_malloc(len + 1);
     if (!parent) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parent is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parent is NULL");
 
         return NULL;
     }
@@ -807,7 +807,7 @@ char* config_key_join(const char** components) {
     // Allocate buffer
     char* result = nimcp_malloc(total_len + 1);
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "result is NULL");
 
         return NULL;
     }
@@ -857,7 +857,7 @@ config_section_t config_get_section(const char* prefix) {
     section->prefix = nimcp_strdup(prefix);
     if (!section->prefix) {
         nimcp_free(section);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_get_section: section->prefix is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_get_section: section->prefix is NULL");
         return NULL;
     }
 

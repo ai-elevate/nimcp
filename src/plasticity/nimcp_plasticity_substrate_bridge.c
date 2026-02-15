@@ -201,6 +201,8 @@ void plasticity_substrate_bridge_destroy(plasticity_substrate_bridge_t* bridge)
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -846,7 +848,6 @@ int plasticity_substrate_get_effects(
 bool plasticity_substrate_is_limited(const plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_substrate_is_limited: bridge is NULL");
         return false;
     }
 
@@ -861,7 +862,6 @@ bool plasticity_substrate_is_limited(const plasticity_substrate_bridge_t* bridge
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_is_limited: validation failed");
     return false;
 }
 

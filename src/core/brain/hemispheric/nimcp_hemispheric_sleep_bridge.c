@@ -272,7 +272,7 @@ hemispheric_sleep_bridge_t* hemispheric_sleep_create(
     hemispheric_sleep_bridge_t* bridge = nimcp_malloc(sizeof(hemispheric_sleep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("hemispheric_sleep_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -520,7 +520,6 @@ bool hemispheric_sleep_is_dreaming(
     hemisphere_id_t hemisphere
 ) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_sleep_is_dreaming: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

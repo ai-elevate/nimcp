@@ -2870,7 +2870,7 @@ static int record_history(auto_arch_context_t* ctx,
                          const auto_arch_fitness_t* fitness)
 {
     if (ctx->history_size >= ctx->history_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "record_history: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "record_history: capacity exceeded");
         return -1;
     }
 

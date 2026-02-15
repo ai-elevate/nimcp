@@ -181,7 +181,7 @@ static pr_mh_retrieval_event_t* get_history_entry(
     size_t index
 ) {
     if (index >= bridge->history_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_history_entry: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_history_entry: capacity exceeded");
         return NULL;
     }
 
@@ -263,7 +263,7 @@ static pr_mh_rumination_pattern_t* find_or_create_rumination_pattern(
     if (pattern) return pattern;
 
     if (bridge->rumination_count >= bridge->rumination_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_rumination_pattern: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_or_create_rumination_pattern: capacity exceeded");
         return NULL;
     }
 
@@ -448,7 +448,7 @@ bool pr_mental_health_bridge_validate_config(const pr_mh_config_t* config) {
     if (config->intrusion_intensity_threshold < 0.0f ||
         config->intrusion_intensity_threshold > 1.0f) return false;
     if (config->valence_bias_healthy_min >= config->valence_bias_healthy_max) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_mental_health_bridge_validate_config: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_mental_health_bridge_validate_config: capacity exceeded");
         return false;
     }
     if (config->trauma_load_threshold < 0.0f ||
@@ -513,7 +513,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_create: bridge->rumination_patterns is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: bridge->rumination_patterns is NULL");
         return NULL;
     }
 
@@ -526,7 +526,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_create: bridge->intrusion_records is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: bridge->intrusion_records is NULL");
         return NULL;
     }
 
@@ -801,7 +801,6 @@ bool pr_mental_health_bridge_is_ruminating_on(
     pr_mh_rumination_pattern_t* pattern
 ) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_is_ruminating_on: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

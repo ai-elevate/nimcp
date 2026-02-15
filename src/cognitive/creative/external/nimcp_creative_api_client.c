@@ -754,7 +754,6 @@ int api_get_balance(creative_api_client_t* client,
 bool api_is_rate_limited(const creative_api_client_t* client)
 {
     if (!client || client->config.requests_per_minute == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_is_rate_limited: client is NULL");
         return false;
     }
 

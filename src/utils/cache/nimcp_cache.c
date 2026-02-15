@@ -585,7 +585,7 @@ void* nimcp_cache_alloc(size_t size) {
     // Allocate memory
     nimcp_cache_header_t* header = nimcp_malloc(total_size);
     if (!header) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "header is NULL");
 
         return NULL;
     }
@@ -762,7 +762,6 @@ void nimcp_cache_release(void* ptr) {
 __attribute__((no_sanitize("address")))
 bool nimcp_cache_is_cached(const void* ptr) {
     if (!ptr) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_is_cached: ptr is NULL");
         return false;
     }
 
@@ -772,13 +771,11 @@ bool nimcp_cache_is_cached(const void* ptr) {
 
 bool nimcp_cache_is_shared(const void* ptr) {
     if (!ptr) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_is_shared: ptr is NULL");
         return false;
     }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_cache_is_shared: validate_cache_header is NULL");
         return false;
     }
 

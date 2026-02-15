@@ -270,7 +270,6 @@ bool cross_modal_is_bottleneck(
     // Guard: Validate channel
     if (!channel) {
         LOG_ERROR("cross_modal_is_bottleneck: NULL channel");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_is_bottleneck: channel is NULL");
         return false;
     }
 

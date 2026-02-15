@@ -1353,7 +1353,6 @@ bool cortical_hierarchy_is_bio_async_connected(
 {
     // Guard: Validate hierarchy
     if (!hierarchy) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_is_bio_async_connected: hierarchy is NULL");
         return false;
     }
 

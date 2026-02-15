@@ -154,7 +154,7 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     struct hot_injector* injector = nimcp_calloc(1, sizeof(struct hot_injector));
     if (!injector) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate injector");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "injector is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "injector is NULL");
 
         return NULL;
     }
@@ -991,7 +991,6 @@ NIMCP_EXPORT void hot_inject_set_validator(
 NIMCP_EXPORT bool hot_inject_is_valid(hot_injector_t injector)
 {
     if (!injector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hot_inject_is_valid: injector is NULL");
         return false;
     }
     return injector->magic == HOT_INJECT_MAGIC;

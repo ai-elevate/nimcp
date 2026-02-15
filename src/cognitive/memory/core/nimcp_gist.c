@@ -653,7 +653,6 @@ bool gist_config_validate(const gist_config_t* config) {
 
     if (config->compression_target <= 0.0f || config->compression_target > 1.0f) {
         gist_set_error("compression_target must be in (0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
@@ -661,20 +660,17 @@ bool gist_config_validate(const gist_config_t* config) {
     if (config->feature_importance_threshold < 0.0f ||
         config->feature_importance_threshold > 1.0f) {
         gist_set_error("feature_importance_threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
     if (config->min_coherence < 0.0f || config->min_coherence > 1.0f) {
         gist_set_error("min_coherence must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
     // Decay rates
     if (config->verbatim_decay_rate < 0.0f || config->gist_decay_rate < 0.0f) {
         gist_set_error("decay rates must be >= 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
@@ -682,7 +678,6 @@ bool gist_config_validate(const gist_config_t* config) {
     if (config->max_gists == 0 || config->max_dual_traces == 0 ||
         config->max_key_features == 0) {
         gist_set_error("max values must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
@@ -2122,29 +2117,23 @@ bool gist_validate(const gist_node_t* gist) {
 
     // Check basic fields
     if (gist->gist_id == GIST_INVALID_ID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
         return false;
     }
     if (gist->abstractness < 0.0f || gist->abstractness > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
         return false;
     }
     if (gist->confidence < 0.0f || gist->confidence > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
         return false;
     }
     if (gist->current_strength < 0.0f || gist->current_strength > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
         return false;
     }
 
     // Check arrays
     if (gist->num_sources > gist->sources_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
         return false;
     }
     if (gist->num_features > gist->features_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
         return false;
     }
 

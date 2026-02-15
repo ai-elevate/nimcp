@@ -274,7 +274,6 @@ bool pag_security_check_access(
     pag_security_op_t op
 ) {
     if (!bbb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_check_access: bbb is NULL");
         return false;
     }
 

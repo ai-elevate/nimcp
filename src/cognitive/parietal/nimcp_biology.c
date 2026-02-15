@@ -235,7 +235,6 @@ bool biology_validate_config(const biology_config_t* config) {
 
     if (config->match_score < 0) {
         set_biology_error("Match score should be non-negative");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_validate_config: validation failed");
         return false;
     }
     return true;
@@ -314,7 +313,6 @@ bool biology_validate_dna(const biology_t* bio, const char* sequence) {
     for (const char* p = sequence; *p; p++) {
         char c = toupper(*p);
         if (c != 'A' && c != 'T' && c != 'G' && c != 'C') {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_validate_dna: validation failed");
             return false;
         }
     }
@@ -334,7 +332,6 @@ bool biology_validate_rna(const biology_t* bio, const char* sequence) {
     for (const char* p = sequence; *p; p++) {
         char c = toupper(*p);
         if (c != 'A' && c != 'U' && c != 'G' && c != 'C') {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_validate_rna: validation failed");
             return false;
         }
     }
@@ -601,7 +598,7 @@ int biology_align_global(
     if (len1 >= BIOLOGY_MAX_SEQUENCE || len2 >= BIOLOGY_MAX_SEQUENCE) {
         set_biology_error("Sequence too long");
         nimcp_mutex_unlock(bio->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "biology_align_global: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "biology_align_global: capacity exceeded");
         return -1;
     }
 
@@ -758,11 +755,9 @@ bool biology_is_silent_mutation(
     const char* mutated_codon
 ) {
     if (!bio || !original_codon || !mutated_codon) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_is_silent_mutation: required parameter is NULL (bio, original_codon, mutated_codon)");
         return false;
     }
     if (strlen(original_codon) != 3 || strlen(mutated_codon) != 3) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_is_silent_mutation: validation failed");
         return false;
     }
 

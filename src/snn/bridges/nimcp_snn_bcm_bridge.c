@@ -202,7 +202,6 @@ int snn_bcm_bridge_disconnect_bio_async(snn_bcm_bridge_t* bridge) {
 
 bool snn_bcm_bridge_is_bio_async_connected(const snn_bcm_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -421,7 +420,6 @@ float snn_bcm_bridge_get_neuron_rate(const snn_bcm_bridge_t* bridge, uint32_t ne
 
 bool snn_bcm_bridge_is_ltp_dominant(const snn_bcm_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_is_ltp_dominant: null bridge pointer");
         return false;
     }
     return bridge->effects.ltp_dominant;

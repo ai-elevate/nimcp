@@ -674,7 +674,6 @@ bool mesh_health_bridge_is_healthy(
     mesh_health_record_t record;
     if (mesh_health_bridge_get_health(bridge, participant_id, &record)
         != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge_is_healthy: validation failed");
         return false;
     }
     return record.status == MESH_HEALTH_HEALTHY ||
@@ -688,7 +687,6 @@ bool mesh_health_bridge_is_channel_healthy(
     mesh_channel_health_t health;
     if (mesh_health_bridge_get_channel_health(bridge, channel_id, &health)
         != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge_is_channel_healthy: validation failed");
         return false;
     }
     return health.status == MESH_HEALTH_HEALTHY ||

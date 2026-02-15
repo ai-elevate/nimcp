@@ -564,7 +564,7 @@ int parietal_training_update_weights(
 
 
     if (domain >= PARIETAL_DOMAIN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_update_weights: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parietal_training_update_weights: capacity exceeded");
         return -1;
     }
 
@@ -632,7 +632,7 @@ int parietal_training_set_domain_lr(
 
 
     if (domain >= PARIETAL_DOMAIN_COUNT || learning_rate < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_set_domain_lr: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parietal_training_set_domain_lr: capacity exceeded");
         return -1;
     }
 
@@ -658,7 +658,7 @@ int parietal_training_set_domain_enabled(
 
 
     if (domain >= PARIETAL_DOMAIN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_set_domain_enabled: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parietal_training_set_domain_enabled: capacity exceeded");
         return -1;
     }
 
@@ -786,7 +786,6 @@ void parietal_training_reset_stats(parietal_training_bridge_t* bridge) {
 
 bool parietal_training_is_connected(const parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -833,7 +832,7 @@ static int apply_weight_update(parietal_training_bridge_t* bridge,
                                parietal_learning_domain_t domain,
                                float learning_rate) {
     if (!bridge || domain >= PARIETAL_DOMAIN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_bridge_version: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parietal_training_bridge_version: bridge is NULL");
         return -1;
     }
 

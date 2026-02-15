@@ -1549,7 +1549,7 @@ int kg_hierarchy_register_state_callback(
 
     if (hier->callback_count >= KG_HIERARCHY_MAX_CALLBACKS) {
         nimcp_mutex_unlock(hier->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_hierarchy_register_state_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_register_state_callback: capacity exceeded");
         return -1;
     }
 
@@ -2114,7 +2114,6 @@ int kg_hierarchy_topological_sort(
 
 bool kg_hierarchy_has_dependency_cycle(const kg_hierarchy_t* hier) {
     if (!hier) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_has_dependency_cycle: hier is NULL");
         return false;
     }
 
@@ -2127,7 +2126,6 @@ bool kg_hierarchy_has_dependency_cycle(const kg_hierarchy_t* hier) {
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_has_dependency_cycle: validation failed");
         return false;
     }
 

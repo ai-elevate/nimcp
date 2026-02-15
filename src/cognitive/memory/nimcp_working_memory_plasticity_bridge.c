@@ -457,7 +457,7 @@ int wm_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wm_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wm_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -1500,7 +1500,6 @@ int wm_plasticity_disconnect_bio_async(wm_plasticity_bridge_t* bridge) {
 
 bool wm_plasticity_is_bio_async_connected(const wm_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

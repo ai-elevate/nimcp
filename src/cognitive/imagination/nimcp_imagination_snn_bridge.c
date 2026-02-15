@@ -266,7 +266,7 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->imagery_buffer || !bridge->prev_state) {
         imagination_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_snn_create: operation failed");
         return NULL;
     }
 
@@ -786,7 +786,6 @@ bool imagination_snn_check_vividness(
     float* vividness_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_check_vividness: bridge is NULL");
         return false;
     }
 
@@ -810,7 +809,6 @@ bool imagination_snn_check_creative(
     float* creative_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_check_creative: bridge is NULL");
         return false;
     }
 
@@ -834,7 +832,6 @@ bool imagination_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1121,7 +1118,6 @@ int imagination_snn_bio_async_disconnect(imagination_snn_bridge_t* bridge) {
 
 bool imagination_snn_is_bio_async_connected(imagination_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

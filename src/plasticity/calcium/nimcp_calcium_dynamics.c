@@ -307,6 +307,8 @@ void calcium_destroy(calcium_dynamics_t calcium) {
     /* Destroy mutex */
     if (calcium->mutex) {
         nimcp_platform_mutex_destroy(calcium->mutex);
+        nimcp_free(calcium->mutex);
+        calcium->mutex = NULL;
     }
 
     nimcp_free(calcium);
@@ -627,7 +629,7 @@ int calcium_register_threshold_callback(
     if (slot < 0 || slot >= CALCIUM_MAX_THRESHOLD_CALLBACKS) {
         nimcp_platform_mutex_unlock(calcium->mutex);
         NIMCP_LOGGING_WARN("Callback array full or invalid slot");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "calcium_register_threshold_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "calcium_register_threshold_callback: capacity exceeded");
         return -1;
     }
 
@@ -728,7 +730,6 @@ int calcium_disconnect_bio_async(calcium_dynamics_t calcium) {
 
 bool calcium_is_bio_async_connected(const calcium_dynamics_t calcium) {
     if (!calcium) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_is_bio_async_connected: calcium is NULL");
         return false;
     }
 

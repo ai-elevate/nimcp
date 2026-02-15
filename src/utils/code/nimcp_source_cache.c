@@ -860,7 +860,6 @@ bool source_cache_invalidate(
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_invalidate: validation failed");
         return false;
     }
 
@@ -992,13 +991,11 @@ bool source_cache_is_cached(
     const char* filename
 ) {
     if (!cache || !filename) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_is_cached: required parameter is NULL (cache, filename)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_is_cached: validation failed");
         return false;
     }
 
@@ -1207,7 +1204,6 @@ bool source_cache_validate(source_cache_t cache) {
     /* Check magic */
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
         LOG_ERROR("Source cache validation failed: bad magic");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_validate: validation failed");
         return false;
     }
 

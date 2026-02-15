@@ -394,7 +394,6 @@ static void izhikevich_update(neuron_model_state_t state, float dt, float input_
 static bool izhikevich_check_spike(const neuron_model_state_t state) {
     // Guard: Validate state
     if (!state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "izhikevich_check_spike: state is NULL");
         return false;
     }
 

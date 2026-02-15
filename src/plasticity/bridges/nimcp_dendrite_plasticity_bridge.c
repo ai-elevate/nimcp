@@ -335,7 +335,6 @@ int dendrite_plasticity_disconnect_bio_async(dendrite_plasticity_bridge_t* bridg
 bool dendrite_plasticity_is_bio_async_connected(const dendrite_plasticity_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

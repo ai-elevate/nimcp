@@ -48,7 +48,7 @@ static visual_jepa_encoder_t* encoder_create(uint32_t input_dim,
     visual_jepa_encoder_t* enc = nimcp_malloc(sizeof(visual_jepa_encoder_t));
     if (!enc) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "enc is NULL");
 
         return NULL;
 
@@ -70,7 +70,7 @@ static visual_jepa_encoder_t* encoder_create(uint32_t input_dim,
         nimcp_free(enc->weights_2);
         nimcp_free(enc->bias_2);
         nimcp_free(enc);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gelu: required parameter is NULL (enc->weights_1, enc->bias_1, enc->weights_2, enc->bias_2)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gelu: required parameter is NULL (enc->weights_1, enc->bias_1, enc->weights_2, enc->bias_2)");
         return NULL;
     }
 
@@ -415,7 +415,6 @@ int visual_jepa_bridge_disconnect_visual_cortex(visual_jepa_bridge_t* bridge) {
 
 bool visual_jepa_bridge_is_connected(const visual_jepa_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->visual_cortex != NULL;
@@ -831,7 +830,7 @@ visual_jepa_batch_t* visual_jepa_batch_create(
     visual_jepa_batch_t* batch = nimcp_malloc(sizeof(visual_jepa_batch_t));
     if (!batch) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "batch is NULL");
 
         return NULL;
 

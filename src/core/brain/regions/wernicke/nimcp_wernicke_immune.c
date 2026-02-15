@@ -192,7 +192,7 @@ wernicke_immune_bridge_t* wernicke_immune_bridge_create(
     wernicke_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_immune_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

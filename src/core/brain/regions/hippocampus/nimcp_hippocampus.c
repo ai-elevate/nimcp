@@ -71,7 +71,9 @@ static uint64_t get_timestamp_ms(void) {
 }
 
 static float randf(void) {
-    return (float)rand() / (float)RAND_MAX;
+    static __thread unsigned int tl_seed = 0;
+    if (tl_seed == 0) tl_seed = (unsigned int)(uintptr_t)&tl_seed;
+    return (float)rand_r(&tl_seed) / (float)RAND_MAX;
 }
 
 static float cosine_similarity(const float* a, const float* b, uint32_t dim) {
@@ -516,7 +518,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
 
     if (hippo->num_episodes >= hippo->max_episodes) {
         hippo->last_error = HIPPO_ERROR_MEMORY_FULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hippo_update: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hippo_update: capacity exceeded");
         return -1;
     }
 

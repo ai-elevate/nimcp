@@ -1313,7 +1313,6 @@ void consolidation_reset_global_state(void)
 bool consolidation_is_running(consolidation_handle_t handle)
 {
     if (handle == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_is_running: validation failed");
         return false;
     }
 

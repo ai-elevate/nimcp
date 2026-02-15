@@ -339,7 +339,6 @@ bool pr_quat_pink_validate_correlation(
 
         if (fabsf(correlation_matrix[i][i] - 1.0f) > EPSILON) {
             set_error("Diagonal elements must be 1.0");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: validation failed");
             return false;
         }
     }
@@ -361,7 +360,6 @@ bool pr_quat_pink_validate_correlation(
 
             if (fabsf(correlation_matrix[i][j] - correlation_matrix[j][i]) > EPSILON) {
                 set_error("Correlation matrix must be symmetric");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: validation failed");
                 return false;
             }
         }
@@ -384,7 +382,6 @@ bool pr_quat_pink_validate_correlation(
 
             if (correlation_matrix[i][j] < -1.0f || correlation_matrix[i][j] > 1.0f) {
                 set_error("Correlation values must be in [-1, 1]");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: validation failed");
                 return false;
             }
         }
@@ -1254,7 +1251,7 @@ bool pr_pink_buffer_get(
 
     if (index >= buffer->sample_count) {
         set_error("Index out of range");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_pink_buffer_get: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_pink_buffer_get: capacity exceeded");
         return false;
     }
 
@@ -1289,7 +1286,7 @@ bool pr_pink_buffer_write(
 
     if (index >= buffer->sample_count) {
         set_error("Index out of range");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_pink_buffer_write: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_pink_buffer_write: capacity exceeded");
         return false;
     }
 
@@ -1323,7 +1320,6 @@ void pr_pink_buffer_reset_index(pr_pink_buffer_t* buffer) {
 
 bool pr_pink_buffer_is_shared(const pr_pink_buffer_t* buffer) {
     if (!buffer || !buffer->noise_handle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_is_shared: required parameter is NULL (buffer, buffer->noise_handle)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

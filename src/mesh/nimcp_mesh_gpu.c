@@ -538,7 +538,7 @@ static nimcp_error_t process_batch(mesh_gpu_channel_t channel, mesh_gpu_batch_t*
                     "No GPU coordinator available");
             channel->stats.total_failed++;
         }
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_READY, "mesh_gpu: error condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_READY, "process_batch: error condition");
         return NIMCP_ERROR_NOT_READY;
     }
 
@@ -706,7 +706,7 @@ nimcp_error_t mesh_gpu_channel_submit(mesh_gpu_channel_t channel, mesh_gpu_trans
     if (!channel || !tx) return NIMCP_ERROR_INVALID_PARAM;
     if (!channel->running) return NIMCP_ERROR_NOT_READY;
     if (channel->pending_count >= channel->config.max_pending) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_gpu: error condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_gpu_channel_submit: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
 
@@ -914,7 +914,7 @@ nimcp_error_t mesh_gpu_channel_get_device_state(
 
 nimcp_error_t mesh_gpu_channel_disable_device(mesh_gpu_channel_t channel, size_t device_idx) {
     if (!channel || device_idx >= channel->coordinator_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_channel_disable_device: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     channel->coordinators[device_idx].enabled = false;
@@ -923,7 +923,7 @@ nimcp_error_t mesh_gpu_channel_disable_device(mesh_gpu_channel_t channel, size_t
 
 nimcp_error_t mesh_gpu_channel_enable_device(mesh_gpu_channel_t channel, size_t device_idx) {
     if (!channel || device_idx >= channel->coordinator_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_channel_enable_device: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
     channel->coordinators[device_idx].enabled = true;
@@ -978,12 +978,12 @@ nimcp_error_t mesh_gpu_channel_register_fallback(
     if (channel->fallback_count >= channel->fallback_capacity) {
         /* Check for overflow before doubling capacity */
         if (channel->fallback_capacity > SIZE_MAX / 2) {
-            return NIMCP_ERROR_BUFFER_OVERFLOW;
+            return NIMCP_ERROR_OUT_OF_RANGE;
         }
         size_t new_cap = channel->fallback_capacity * 2;
         /* Check for allocation size overflow */
         if (new_cap > SIZE_MAX / sizeof(cpu_fallback_entry_t)) {
-            return NIMCP_ERROR_BUFFER_OVERFLOW;
+            return NIMCP_ERROR_OUT_OF_RANGE;
         }
         cpu_fallback_entry_t* new_arr = (cpu_fallback_entry_t*)nimcp_realloc(
             channel->fallbacks, new_cap * sizeof(cpu_fallback_entry_t));

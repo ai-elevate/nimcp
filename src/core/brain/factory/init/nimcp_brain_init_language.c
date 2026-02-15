@@ -192,7 +192,6 @@ static struct language_logic_bridge* language_logic_bridge_create_stub(
  */
 static bool check_prerequisites(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_prerequisites: brain is NULL");
         return false;
     }
 
@@ -200,7 +199,6 @@ static bool check_prerequisites(brain_t brain) {
     if (!brain->config.enable_speech_cortex &&
         !brain->config.enable_multimodal_integration) {
         LOG_DEBUG(LOG_MODULE, "Language layer not needed - no speech/multimodal config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_prerequisites: brain is NULL");
         return false;
     }
 
@@ -729,7 +727,6 @@ void nimcp_brain_factory_destroy_language_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_language_is_initialized(brain_t brain) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_language_is_initialized: brain is NULL");
         return false;
     }
     return brain->language_layer_enabled && brain->language_layer != NULL;

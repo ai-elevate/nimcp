@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_sleep)
 //=============================================================================
@@ -220,6 +221,8 @@ void fep_sleep_destroy(fep_sleep_system_t* sys) {
 
     if (sys->mutex) {
         nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+        sys->mutex = NULL;
     }
 
     nimcp_free(sys);
@@ -471,7 +474,7 @@ int fep_sleep_replay_consolidation(
 
     for (uint32_t r = 0; r < num_replays && r < sys->buffer_count; r++) {
         /* Sample experience (simple: sequential, could use prioritized) */
-        size_t idx = (size_t)(rand() % sys->buffer_count);
+        size_t idx = (size_t)(nimcp_tl_rand() % sys->buffer_count);
         fep_experience_t* exp = &sys->experience_buffer[idx];
 
         /* Compute prediction error */

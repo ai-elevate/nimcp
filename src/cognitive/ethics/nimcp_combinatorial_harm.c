@@ -514,7 +514,6 @@ NIMCP_EXPORT bool combinatorial_is_pink_noise_enabled(
     combinatorial_harm_detector_t detector
 ) {
     if (!detector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_is_pink_noise_enabled: detector is NULL");
         return false;
     }
     return detector->pink_noise_enabled;
@@ -1987,7 +1986,6 @@ NIMCP_EXPORT bool combinatorial_is_mprotect_locked(
     combinatorial_harm_detector_t detector
 ) {
     if (!detector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_is_mprotect_locked: detector is NULL");
         return false;
     }
     return detector->patterns_mprotect_locked;

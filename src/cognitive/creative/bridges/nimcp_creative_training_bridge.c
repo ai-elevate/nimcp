@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_training_bridge)
 //=============================================================================
@@ -432,7 +433,7 @@ static void simulate_training_step(creative_training_bridge_t* bridge) {
     } else {
         /* Exponential decay with noise */
         float decay = expf(-0.001f * (float)bridge->progress.step);
-        float noise = ((float)rand() / RAND_MAX) * 0.1f - 0.05f;
+        float noise = ((float)nimcp_tl_rand() / RAND_MAX) * 0.1f - 0.05f;
         bridge->progress.loss = 0.1f + 2.4f * decay + noise;
 
         if (bridge->progress.loss < bridge->progress.best_loss) {
@@ -840,7 +841,7 @@ int creative_training_export_style(creative_training_bridge_t* bridge,
 
     /* Fill with placeholder values (would be learned in real training) */
     for (uint32_t i = 0; i < style->embedding_dim; i++) {
-        style->embedding[i] = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+        style->embedding[i] = ((float)nimcp_tl_rand() / RAND_MAX) * 2.0f - 1.0f;
     }
 
     strncpy(style->style_name, "Learned style",

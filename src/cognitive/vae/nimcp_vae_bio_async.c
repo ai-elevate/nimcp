@@ -309,7 +309,6 @@ int vae_bio_async_disconnect(vae_bio_async_bridge_t* bridge)
 bool vae_bio_async_is_connected(const vae_bio_async_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bio_async_is_connected: bridge is NULL");
         return false;
     }
     return bridge->state == VAE_BIO_ASYNC_CONNECTED ||

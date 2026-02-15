@@ -876,7 +876,7 @@ int epistemic_snn_register_source(
         return -1;
     }
     if (bridge->num_sources >= bridge->config.max_sources) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "epistemic_snn_register_source: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "epistemic_snn_register_source: capacity exceeded");
         return -1;
     }
 
@@ -1166,7 +1166,6 @@ int epistemic_snn_bio_async_disconnect(epistemic_snn_bridge_t* bridge) {
 
 bool epistemic_snn_is_bio_async_connected(epistemic_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

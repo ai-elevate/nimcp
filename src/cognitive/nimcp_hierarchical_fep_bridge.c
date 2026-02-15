@@ -272,7 +272,6 @@ int hierarchical_fep_bridge_disconnect_bio_async(hierarchical_fep_bridge_t* brid
 
 bool hierarchical_fep_bridge_is_bio_async_connected(const hierarchical_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hierarchical_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

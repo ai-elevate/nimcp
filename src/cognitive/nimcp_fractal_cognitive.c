@@ -258,7 +258,6 @@ bool fractal_is_hub_neuron(const fractal_cognitive_cache_t *cache, uint32_t neur
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fractal_is_hub_neuron: validation failed");
     return false;
 }
 

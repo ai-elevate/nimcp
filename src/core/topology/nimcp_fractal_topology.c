@@ -28,6 +28,7 @@
 
 #define LOG_MODULE "fractal_topology"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fractal_topology)
 
@@ -250,7 +251,7 @@ static uint32_t sample_power_law(float gamma, uint32_t k_min, uint32_t k_max) {
         return k_min;
     }
 
-    float u = (float)rand() / (float)RAND_MAX;
+    float u = (float)nimcp_tl_rand() / (float)RAND_MAX;
     float exponent = -1.0F / (gamma + 1.0F);
     float k_float = (float)k_min * powf(1.0F - u, exponent);
 
@@ -335,12 +336,12 @@ static uint32_t select_preferential(const uint32_t* degrees, uint32_t num_neuron
     // Guard: Zero total degree
     if (total_degree == 0) {
         // Fallback to uniform random
-        uint32_t idx = rand() % num_neurons;
+        uint32_t idx = nimcp_tl_rand() % num_neurons;
         return (idx == exclude_idx) ? (idx + 1) % num_neurons : idx;
     }
 
     // Sample from distribution
-    uint32_t r = rand() % total_degree;
+    uint32_t r = nimcp_tl_rand() % total_degree;
     uint32_t cumsum = 0;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
@@ -630,7 +631,7 @@ bool topology_generate_fractal(
             for (uint32_t i = cluster_start; i < cluster_end && i < num_neurons; i++) {
                 for (uint32_t j = i + 1; j < cluster_end && j < num_neurons; j++) {
                     // Connection probability based on clustering coefficient
-                    float prob = ((float)rand() / (float)RAND_MAX);
+                    float prob = ((float)nimcp_tl_rand() / (float)RAND_MAX);
                     if (prob < config->clustering_coeff) {
                         float weight = 0.5F;
                         neural_network_add_connection(network, i, j, weight);
@@ -660,8 +661,8 @@ bool topology_generate_fractal(
         if (connections_to_make < 1) connections_to_make = 1;
 
         for (uint32_t c = 0; c < connections_to_make; c++) {
-            uint32_t src = level_start + (rand() % neurons_per_level[level]);
-            uint32_t dst = next_level_start + (rand() % neurons_per_level[level + 1]);
+            uint32_t src = level_start + (nimcp_tl_rand() % neurons_per_level[level]);
+            uint32_t dst = next_level_start + (nimcp_tl_rand() % neurons_per_level[level + 1]);
 
             if (src < num_neurons && dst < num_neurons) {
                 float weight = 0.5F;

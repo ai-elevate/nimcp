@@ -114,16 +114,13 @@ bool stdp_pr_bridge_validate_config(const stdp_pr_bridge_config_t* config) {
         return false;
     }
     if (config->consolidation_gate_low > config->consolidation_gate_high) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_bridge_validate_config: validation failed");
         return false;
     }
     if (config->ltp_entangle_gain < 0.0f || config->ltd_entangle_decay < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_bridge_validate_config: validation failed");
         return false;
     }
     for (int i = 0; i < STDP_PR_TIER_COUNT; i++) {
         if (config->tier_rates[i] < 0.0f || config->tier_rates[i] > 2.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_bridge_validate_config: validation failed");
             return false;
         }
     }
@@ -190,7 +187,6 @@ void stdp_pr_bridge_destroy(stdp_pr_bridge_t bridge) {
 
 bool stdp_pr_bridge_is_connected(stdp_pr_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->initialized;

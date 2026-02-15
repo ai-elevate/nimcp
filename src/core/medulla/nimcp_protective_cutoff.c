@@ -461,13 +461,11 @@ bool protective_cutoff_can_execute(
 {
     if (!cutoff) {
         NIMCP_LOGGING_ERROR("NULL cutoff context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_can_execute: cutoff is NULL");
         return false;
     }
 
     if (operation >= OP_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid operation type: %d", operation);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protective_cutoff_can_execute: capacity exceeded");
         return false;
     }
 
@@ -736,7 +734,6 @@ int protective_cutoff_disconnect_bio_async(protective_cutoff_t* cutoff) {
 bool protective_cutoff_is_bio_async_connected(const protective_cutoff_t* cutoff) {
     if (!cutoff) {
         NIMCP_LOGGING_ERROR("NULL cutoff context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_is_bio_async_connected: cutoff is NULL");
         return false;
     }
 

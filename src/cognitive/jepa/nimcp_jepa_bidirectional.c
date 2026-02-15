@@ -125,11 +125,9 @@ static void destroy_direction_predictor(jepa_direction_state_t* dir_state) {
 static inline bool should_use_gpu(const jepa_bidirectional_t* bidir) {
 #ifdef NIMCP_ENABLE_CUDA
     if (!bidir || !bidir->gpu_initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_use_gpu: required parameter is NULL (bidir, bidir->gpu_initialized)");
         return false;
     }
     if (bidir->config.gpu_mode == JEPA_BIDIR_GPU_DISABLED) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_use_gpu: validation failed");
         return false;
     }
     if (bidir->config.gpu_mode == JEPA_BIDIR_GPU_REQUIRED ||
@@ -139,7 +137,6 @@ static inline bool should_use_gpu(const jepa_bidirectional_t* bidir) {
     return false;
 #else
     (void)bidir;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_use_gpu: operation failed");
     return false;
 #endif
 }
@@ -801,7 +798,6 @@ int jepa_bidirectional_set_direction_enabled(jepa_bidirectional_t* bidir,
 bool jepa_bidirectional_is_direction_enabled(const jepa_bidirectional_t* bidir,
                                               jepa_direction_t direction) {
     if (!bidir || direction >= JEPA_DIR_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "jepa_bidirectional_set_training: bidir is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

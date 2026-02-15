@@ -297,7 +297,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
         if (sync->node_ids) nimcp_free(sync->node_ids);
         nimcp_mutex_free(sync->mutex);
         nimcp_free(sync);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_kg_sync_default_config: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_kg_sync_default_config: validation failed");
         return NULL;
     }
 

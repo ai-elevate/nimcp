@@ -289,7 +289,6 @@ bool physics_security_check_access(
     physics_security_op_t op
 ) {
     if (!bbb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_security_check_access: bbb is NULL");
         return false;
     }
 
@@ -343,7 +342,6 @@ bool physics_security_has_capability(
             module_caps |= PHYSICS_CAP_FIELD_MODIFY;
             break;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_has_capability: operation failed");
             return false;
     }
 

@@ -272,7 +272,7 @@ static int grow_mappings(axon_orchestrator_bridge_t* bridge) {
         new_capacity = AXON_ORCH_MAX_MAPPINGS;
         if (bridge->mapping_count >= new_capacity) {
             NIMCP_LOGGING_ERROR("axon_orchestrator: mapping table full");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "grow_mappings: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "grow_mappings: capacity exceeded");
             return -1;
         }
     }
@@ -729,7 +729,6 @@ bool axon_orchestrator_is_bio_async_connected(
     const axon_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_orchestrator_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

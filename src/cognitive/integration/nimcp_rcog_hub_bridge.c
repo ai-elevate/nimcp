@@ -674,7 +674,6 @@ int rcog_hub_bridge_set_engine(
 
 bool rcog_hub_bridge_is_connected(const rcog_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -974,7 +973,7 @@ int rcog_hub_publish_recursion_event(
 
 
     if (event_type >= RCOG_HUB_EVENT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_hub_publish_recursion_event: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rcog_hub_publish_recursion_event: capacity exceeded");
         return -1;
     }
 

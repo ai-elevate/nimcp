@@ -1123,7 +1123,6 @@ int bias_snn_bio_async_disconnect(bias_snn_bridge_t* bridge) {
 
 bool bias_snn_is_bio_async_connected(bias_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

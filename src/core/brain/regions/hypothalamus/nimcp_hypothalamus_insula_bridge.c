@@ -125,7 +125,7 @@ hypo_insula_bridge_t* hypo_insula_bridge_create(
     hypo_insula_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_insula_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_insula_bridge_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

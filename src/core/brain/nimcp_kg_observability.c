@@ -19,6 +19,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kg_observability)
 //=============================================================================
@@ -203,7 +204,7 @@ static void generate_random_hex(char* buf, size_t bytes) {
     static const char hex[] = "0123456789abcdef";
 
     for (size_t i = 0; i < bytes; i++) {
-        uint8_t r = (uint8_t)(rand() & 0xFF);
+        uint8_t r = (uint8_t)(nimcp_tl_rand() & 0xFF);
         buf[i * 2] = hex[(r >> 4) & 0x0F];
         buf[i * 2 + 1] = hex[r & 0x0F];
     }
@@ -927,7 +928,7 @@ kg_trace_span_t* kg_obs_start_span(
 
     /* Check sampling */
     if (obs->config.trace_sample_rate < 1.0f) {
-        float sample = (float)rand() / (float)RAND_MAX;
+        float sample = (float)nimcp_tl_rand() / (float)RAND_MAX;
         if (sample > obs->config.trace_sample_rate) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_start_span: validation failed");
             return NULL; /* Not sampled */

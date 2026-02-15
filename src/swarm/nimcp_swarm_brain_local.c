@@ -1342,7 +1342,6 @@ bool swarm_brain_has_agent(
     uint32_t agent_id
 ) {
     if (!mgr) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_has_agent: mgr is NULL");
         return false;
     }
 

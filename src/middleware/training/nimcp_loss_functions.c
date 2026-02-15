@@ -1337,7 +1337,6 @@ void nimcp_loss_result_free(nimcp_loss_result_t* result) {
 
 bool nimcp_loss_is_registered(const nimcp_loss_context_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_loss_is_registered: ctx is NULL");
         return false;
     }
     return ctx->security_registered;

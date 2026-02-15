@@ -735,7 +735,6 @@ bool dendritic_pink_noise_is_bio_async_connected(
 ) {
     /* Guard: Validate input */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_pink_noise_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

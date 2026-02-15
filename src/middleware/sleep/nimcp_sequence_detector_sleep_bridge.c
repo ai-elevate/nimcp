@@ -271,7 +271,6 @@ bool sequence_detector_sleep_is_replay_enhanced(
     const sequence_detector_sleep_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_sleep_is_replay_enhanced: bridge is NULL");
         return false;
     }
     nimcp_mutex_lock(bridge->base.mutex);

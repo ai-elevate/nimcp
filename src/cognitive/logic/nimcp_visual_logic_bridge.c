@@ -421,7 +421,7 @@ int visual_logic_request_attention(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_logic_request_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "visual_logic_request_attention: capacity exceeded");
         return -1; /* Command queue full */
     }
 
@@ -509,7 +509,7 @@ int visual_logic_send_command(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_logic_send_command: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "visual_logic_send_command: capacity exceeded");
         return -1;
     }
 

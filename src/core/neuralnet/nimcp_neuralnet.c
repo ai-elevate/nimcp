@@ -75,6 +75,7 @@
 #undef LOG_MODULE
 #define LOG_MODULE "neuralnet"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet)
 
@@ -341,7 +342,7 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
     neuron->adaptation = 0.0F;
     neuron->refractory_period = 2;  // Milliseconds
     neuron->state = neuron->rest_potential;
-    neuron->bias = (float) rand() / (float) RAND_MAX * 0.1F - 0.05F;
+    neuron->bias = (float) nimcp_tl_rand() / (float) RAND_MAX * 0.1F - 0.05F;
     neuron->external_current = 0.0F;  // No external input by default
     neuron->creation_time = creation_time;
     neuron->last_update = creation_time;
@@ -674,7 +675,7 @@ neural_network_t neural_network_create(const network_config_t* config)
                 for (uint32_t j = 0;
                      j < next_layer_size && next_layer_offset + j < network->num_neurons; j++) {
                     // Random initial weight between -0.5 and 0.5
-                    float weight = ((float) rand() / RAND_MAX) - 0.5F;
+                    float weight = ((float) nimcp_tl_rand() / RAND_MAX) - 0.5F;
                     neural_network_add_connection(network, offset + i, next_layer_offset + j,
                                                   weight);
                 }

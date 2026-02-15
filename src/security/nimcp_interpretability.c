@@ -353,7 +353,7 @@ interpretability_t* interpretability_create(
     interpretability_t* system = nimcp_calloc(1, sizeof(interpretability_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate interpretability system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "interpretability_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "interpretability_create: validation failed");
         return NULL;
     }
 

@@ -261,7 +261,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_create: engine->custom_templates is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->custom_templates is NULL");
         return NULL;
     }
 
@@ -338,7 +338,6 @@ void code_gen_destroy(code_gen_engine_t* engine) {
 
 bool code_gen_is_ready(const code_gen_engine_t* engine) {
     if (!engine || engine->magic != CODE_GEN_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_is_ready: engine is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -928,7 +927,7 @@ int code_gen_register_template(
 
     if (engine->custom_template_count >= engine->custom_template_capacity) {
         nimcp_mutex_unlock(engine->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_gen_register_template: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "code_gen_register_template: capacity exceeded");
         return -1;
     }
 

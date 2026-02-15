@@ -290,7 +290,7 @@ nimcp_error_t bm_config_validate(const bm_config_t* config) {
         return -1;
     }
     if (config->min_freq_hz >= config->max_freq_hz) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bm_config_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bm_config_validate: capacity exceeded");
         return -1;
     }
     if (config->sample_rate == 0) {

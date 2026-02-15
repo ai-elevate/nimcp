@@ -1117,7 +1117,6 @@ int predictive_plasticity_bio_async_disconnect(predictive_plasticity_bridge_t* b
 
 bool predictive_plasticity_is_bio_async_connected(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

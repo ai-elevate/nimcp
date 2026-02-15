@@ -163,7 +163,7 @@ static agent_model_t* find_or_create_agent_unlocked(tom_social_bridge_t* bridge,
 
     /* Check capacity */
     if (bridge->agent_count >= bridge->agent_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_agent_unlocked: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_or_create_agent_unlocked: capacity exceeded");
         return NULL;
     }
 

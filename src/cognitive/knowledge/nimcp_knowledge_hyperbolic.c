@@ -47,6 +47,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(knowledge_hyperbolic)
 //=============================================================================
@@ -164,7 +165,7 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
         memcpy(coords, parent->hyperbolic_embedding->coords, dim * sizeof(float));
 
         // Add small random offset (0.1-0.2 in random direction)
-        float offset_magnitude = 0.1F + 0.1F * ((float)rand() / RAND_MAX);
+        float offset_magnitude = 0.1F + 0.1F * ((float)nimcp_tl_rand() / RAND_MAX);
         for (uint32_t i = 0; i < dim; i++) {
             /* Phase 8: Loop progress heartbeat */
             if ((i & 0xFF) == 0 && dim > 256) {
@@ -172,7 +173,7 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
                                  (float)(i + 1) / (float)dim);
             }
 
-            float offset = (2.0F * ((float)rand() / RAND_MAX) - 1.0F) * offset_magnitude;
+            float offset = (2.0F * ((float)nimcp_tl_rand() / RAND_MAX) - 1.0F) * offset_magnitude;
             coords[i] += offset;
         }
     } else {
@@ -186,7 +187,7 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
                                  (float)(i + 1) / (float)dim);
             }
 
-            coords[i] = 2.0F * ((float)rand() / RAND_MAX) - 1.0F;
+            coords[i] = 2.0F * ((float)nimcp_tl_rand() / RAND_MAX) - 1.0F;
             norm += coords[i] * coords[i];
         }
         norm = sqrtf(norm);

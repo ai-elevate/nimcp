@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graceful_degradation)
 
@@ -1114,7 +1115,7 @@ bool gd_should_accept_request(gd_context_t* ctx, gd_priority_t priority) {
     }
 
     /* Random shedding based on rate */
-    float r = (float)rand() / (float)RAND_MAX * 100.0f;
+    float r = (float)nimcp_tl_rand() / (float)RAND_MAX * 100.0f;
     bool accept = (r > ctx->load_shed.shed_rate);
 
     if (!accept) {

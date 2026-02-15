@@ -366,7 +366,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
         nimcp_free(eps->q_table);
         nimcp_free(eps->population);
         nimcp_free(eps);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_gene: eps->experience_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_gene: eps->experience_buffer is NULL");
         return NULL;
     }
 
@@ -1155,7 +1155,7 @@ NIMCP_API bool evolutionary_proof_prove_with_strategy(
     evoproof_trace_t* trace) {
 
     if (!eps || strategy_id >= eps->population_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: eps is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: eps is NULL");
         return false;
     }
 

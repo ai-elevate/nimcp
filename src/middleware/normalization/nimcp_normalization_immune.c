@@ -46,7 +46,7 @@ normalization_immune_context_t* normalization_immune_create(
 
     normalization_immune_context_t* ctx = nimcp_calloc(1, sizeof(normalization_immune_context_t));
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -237,7 +237,7 @@ static normalization_outlier_t* create_outlier(
     float severity
 ) {
     if (!ctx || ctx->outlier_count >= ctx->outlier_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "create_outlier: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "create_outlier: ctx is NULL");
         return NULL;
     }
 

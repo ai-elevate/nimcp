@@ -652,7 +652,7 @@ bool middleware_controller_subscribe_pattern(
     if (controller->num_subscriptions >= controller->config.max_subscriptions) {
         nimcp_mutex_unlock(&controller->mutex);
         record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "middleware_controller_subscribe_pattern: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "middleware_controller_subscribe_pattern: capacity exceeded");
         return false;
     }
 
@@ -1018,7 +1018,6 @@ bool middleware_controller_is_performant(
     const middleware_controller_t* controller)
 {
     if (controller == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_is_performant: validation failed");
         return false;
     }
     return controller->metrics.avg_latency_us < MIDDLEWARE_CTRL_LATENCY_TARGET_US;

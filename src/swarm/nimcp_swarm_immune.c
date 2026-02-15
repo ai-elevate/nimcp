@@ -370,6 +370,8 @@ void nimcp_swarm_immune_destroy(NimcpSwarmImmuneSystem* system) {
 
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     /* Free threat rules and their signal_sources arrays */

@@ -623,7 +623,6 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
     if (((uintptr_t) field_data) % size != 0) {
         LOG_ERROR("Integer field misaligned");
         LOG_ERROR("nimcp_validate_integer_field failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_integer_field: validation failed");
         return false;
     }
 
@@ -638,7 +637,6 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
             if (value < NIMCP_INT32_MIN || value > NIMCP_INT32_MAX) {
                 LOG_ERROR("Integer value out of range: %d", value);
                 LOG_ERROR("nimcp_validate_integer_field failed: returning error");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_integer_field: validation failed");
                 return false;
             }
             break;
@@ -648,7 +646,6 @@ bool nimcp_validate_integer_field(const void* field_data, size_t size)
             if (value < NIMCP_INT64_MIN || value > NIMCP_INT64_MAX) {
                 LOG_ERROR("Integer value out of range: %ld", value);
                 LOG_ERROR("nimcp_validate_integer_field failed: returning error");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_integer_field: validation failed");
                 return false;
             }
             break;
@@ -750,7 +747,6 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
     if (((uintptr_t) field_data) % size != 0) {
         LOG_ERROR("Float field misaligned");
         LOG_ERROR("nimcp_validate_float_field failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
         return false;
     }
 
@@ -764,7 +760,6 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         if (isnan(value)) {
             LOG_ERROR("Float field contains NaN");
             LOG_ERROR("nimcp_validate_float_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
             return false;
         }
 
@@ -773,7 +768,6 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         if (isinf(value)) {
             LOG_ERROR("Float field contains infinity");
             LOG_ERROR("nimcp_validate_float_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
             return false;
         }
 
@@ -783,7 +777,6 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         if (fabsf(value) > NIMCP_FLOAT_MAX) {
             LOG_ERROR("Float value out of range: %f", value);
             LOG_ERROR("nimcp_validate_float_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
             return false;
         }
     } else {
@@ -793,21 +786,18 @@ bool nimcp_validate_float_field(const void* field_data, size_t size)
         if (isnan(value)) {
             LOG_ERROR("Double field contains NaN");
             LOG_ERROR("nimcp_validate_float_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
             return false;
         }
 
         if (isinf(value)) {
             LOG_ERROR("Double field contains infinity");
             LOG_ERROR("nimcp_validate_float_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
             return false;
         }
 
         if (fabs(value) > NIMCP_DOUBLE_MAX) {
             LOG_ERROR("Double value out of range: %f", value);
             LOG_ERROR("nimcp_validate_float_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_float_field: validation failed");
             return false;
         }
     }
@@ -908,7 +898,6 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
     if (str[size - 1] != '\0') {
         LOG_ERROR("String not NULL terminated");
         LOG_ERROR("nimcp_validate_string_field failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_string_field: validation failed");
         return false;
     }
 
@@ -932,7 +921,6 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
     if (len > NIMCP_STRING_MAX_LENGTH) {
         LOG_ERROR("String too long: %zu chars", len);
         LOG_ERROR("nimcp_validate_string_field failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_string_field: validation failed");
         return false;
     }
 
@@ -948,7 +936,6 @@ bool nimcp_validate_string_field(const void* field_data, size_t size)
         if (iscntrl(str[i]) && str[i] != '\n' && str[i] != '\t') {
             LOG_ERROR("Invalid control character in string at pos %zu", i);
             LOG_ERROR("nimcp_validate_string_field failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_string_field: validation failed");
             return false;
         }
 
@@ -1088,7 +1075,6 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
     if (required_size > size) {
         LOG_ERROR("Array size exceeds field size");
         LOG_ERROR("nimcp_validate_array_field failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_array_field: validation failed");
         return false;
     }
 
@@ -1101,7 +1087,6 @@ bool nimcp_validate_array_field(const void* field_data, size_t size)
     if (((uintptr_t) array_data) % NIMCP_ARRAY_ALIGNMENT != 0) {
         LOG_ERROR("Array data misaligned");
         LOG_ERROR("nimcp_validate_array_field failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_array_field: validation failed");
         return false;
     }
 
@@ -1289,7 +1274,6 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
     if (header->magic != NIMCP_STATE_MAGIC) {
         LOG_ERROR("Invalid state magic number");
         LOG_ERROR("nimcp_validate_state_fields failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_state_fields: validation failed");
         return false;
     }
 
@@ -1338,7 +1322,6 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
             LOG_ERROR("Field %u exceeds state boundaries", i);
             nimcp_free(usage_map);
             LOG_ERROR("nimcp_validate_state_fields failed: returning error");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_state_fields: validation failed");
             return false;
         }
 
@@ -1351,7 +1334,6 @@ bool nimcp_validate_state_fields(const void* state_data, size_t size)
                 LOG_ERROR("Field %u overlaps with other data", i);
                 nimcp_free(usage_map);
                 LOG_ERROR("nimcp_validate_state_fields failed: returning error");
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_state_fields: validation failed");
                 return false;
             }
             // Mark byte as used
@@ -1608,7 +1590,6 @@ bool nimcp_validate_pointer(const void* ptr, const char* name)
             LOG_ERROR("NULL pointer validation failed");
         }
         LOG_ERROR("nimcp_validate_pointer failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_pointer: validation failed");
         return false;
     }
     return true;

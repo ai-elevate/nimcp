@@ -599,7 +599,6 @@ bool nimcp_immune_integration_is_running(
     const nimcp_immune_integration_t* integration
 ) {
     if (!integration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_is_running: integration is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

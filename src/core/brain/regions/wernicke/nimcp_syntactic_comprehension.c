@@ -445,7 +445,7 @@ syntactic_comprehension_t* syntactic_comprehension_create(
     syntactic_comprehension_t* ctx = nimcp_calloc(1, sizeof(syntactic_comprehension_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
 
@@ -1042,7 +1042,6 @@ int syntactic_get_argument_structure(syntactic_comprehension_t* ctx,
 
 bool syntactic_is_garden_path(const syntactic_comprehension_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntactic_is_garden_path: ctx is NULL");
         return false;
     }
     return ctx->current_state == PARSE_STATE_GARDEN_PATH;
@@ -1148,7 +1147,6 @@ float syntactic_compute_complexity(const syntactic_parse_t* parse) {
 bool syntactic_is_grammatical(const syntactic_comprehension_t* ctx,
                                const syntactic_parse_t* parse) {
     if (!ctx || !parse) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntactic_compute_complexity: required parameter is NULL (ctx, parse)");
         return false;
     }
     return parse->state != PARSE_STATE_ERROR &&

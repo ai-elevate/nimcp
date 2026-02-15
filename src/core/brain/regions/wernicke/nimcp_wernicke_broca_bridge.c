@@ -157,7 +157,7 @@ static void queue_destroy(wbb_queue_t* queue) {
 
 static bool queue_enqueue(wbb_queue_t* queue, const wbb_message_t* message) {
     if (queue->count >= queue->max_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_enqueue: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "queue_enqueue: capacity exceeded");
         return false;  /* Queue full */
     }
 
@@ -311,7 +311,7 @@ wernicke_broca_bridge_t* wbb_create(
     wernicke_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_broca_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 

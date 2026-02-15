@@ -449,7 +449,7 @@ int kg_analytics_explain_query(
         query);
 
     if (written < 0 || (size_t)written >= max_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_analytics_explain_query: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_analytics_explain_query: capacity exceeded");
         return -1;
     }
 

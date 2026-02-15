@@ -197,6 +197,8 @@ void metaplasticity_immune_bridge_destroy(metaplasticity_immune_bridge_t* bridge
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -687,7 +689,6 @@ int metaplasticity_immune_get_instability_state(
 
 bool metaplasticity_immune_is_impaired(const metaplasticity_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_is_impaired: bridge is NULL");
         return false;
     }
     return bridge->cytokine_effects.total_adaptation_suppression < 1.0f;

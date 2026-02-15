@@ -262,7 +262,7 @@ static int grow_neurons(neuron_orchestrator_bridge_t* bridge) {
         new_capacity = NEURON_ORCH_MAX_NEURONS;
         if (bridge->neuron_count >= new_capacity) {
             NIMCP_LOGGING_ERROR("neuron_orchestrator: neuron table full");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "grow_neurons: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "grow_neurons: capacity exceeded");
             return -1;
         }
     }
@@ -873,7 +873,6 @@ bool neuron_orchestrator_is_bio_async_connected(
     const neuron_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_orchestrator_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

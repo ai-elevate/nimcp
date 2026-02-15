@@ -29,6 +29,7 @@
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *============================================================================*/
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_network)
 
@@ -959,7 +960,7 @@ int snn_network_connect_populations(snn_network_t* network,
         for (uint32_t j = 0; j < dst->n_neurons; j++) {
             /* Apply connectivity probability */
             if (topology == SNN_TOPO_RANDOM) {
-                float r = (float)rand() / (float)RAND_MAX;
+                float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
                 if (r > connectivity) continue;
             }
 
@@ -967,8 +968,8 @@ int snn_network_connect_populations(snn_network_t* network,
             float weight = weight_mean;
             if (weight_std > 0.0f) {
                 /* Box-Muller for normal distribution */
-                float u1 = (float)rand() / (float)RAND_MAX;
-                float u2 = (float)rand() / (float)RAND_MAX;
+                float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
                 float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159f * u2);
                 weight += z * weight_std;
             }

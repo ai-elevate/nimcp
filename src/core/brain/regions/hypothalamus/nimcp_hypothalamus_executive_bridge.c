@@ -171,14 +171,12 @@ static void compute_category_boosts(hypo_exec_bridge_t* bridge, float* boosts) {
  */
 static bool check_survival_interrupt(hypo_exec_bridge_t* bridge, hypo_exec_interrupt_t* interrupt) {
     if (!bridge->config.enable_survival_interrupts) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_survival_interrupt: bridge->config is NULL");
         return false;
     }
 
     /* Get drive urgencies */
     float urgencies[HYPO_DRIVE_COUNT];
     if (!hypo_drive_get_urgencies(bridge->drives, urgencies)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_survival_interrupt: hypo_drive_get_urgencies is NULL");
         return false;
     }
 
@@ -220,7 +218,6 @@ static bool check_survival_interrupt(hypo_exec_bridge_t* bridge, hypo_exec_inter
     } else if (max_urgency >= bridge->config.survival_interrupt_threshold * 0.5f) {
         interrupt->level = HYPO_INTERRUPT_SUGGEST;
     } else {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "check_survival_interrupt: capacity exceeded");
         return false;
     }
 
@@ -823,7 +820,6 @@ bool hypo_exec_bridge_check_interrupt(
     hypo_exec_interrupt_t* interrupt) {
 
     if (!bridge || !interrupt) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, interrupt)");
         return false;
     }
 
@@ -931,17 +927,14 @@ bool hypo_exec_bridge_is_category_blocked(
     hypo_goal_category_t category) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
 
     if (!bridge->interrupt_active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->interrupt_active is NULL");
         return false;
     }
 
     if (!bridge->config.block_growth_during_survival) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->config is NULL");
         return false;
     }
 

@@ -28,6 +28,7 @@
 
 #define LOG_MODULE "HPO"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hpo)
 
@@ -1151,7 +1152,7 @@ void hpo_free_trial_result(hpo_trial_result_t* result) {
  * @brief Generate uniform random number in [0, 1)
  */
 static double random_uniform(void) {
-    return (double)rand() / ((double)RAND_MAX + 1.0);
+    return (double)nimcp_tl_rand() / ((double)RAND_MAX + 1.0);
 }
 
 /**

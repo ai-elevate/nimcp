@@ -338,7 +338,7 @@ const nimcp_aggregated_metric_t* nimcp_metrics_aggregator_get_stats(
     nimcp_time_window_t window
 ) {
     if (!agg || window >= NIMCP_WINDOW_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_metrics_aggregator_get_stats: agg is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_metrics_aggregator_get_stats: agg is NULL");
         return NULL;
     }
     return &agg->cached_stats[window];

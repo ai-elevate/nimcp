@@ -376,7 +376,7 @@ int creative_memory_update_preference(creative_memory_bridge_t* bridge,
     /* Create new preference */
     if (bridge->preference_count >= bridge->preference_capacity) {
         LOG_WARN(LOG_MODULE, "Preference storage full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "creative_memory_bridge_destroy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "creative_memory_bridge_destroy: capacity exceeded");
         return -1;
     }
 

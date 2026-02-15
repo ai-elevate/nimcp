@@ -340,7 +340,7 @@ static delegation_state_t* find_free_delegation(transactive_memory_t tm) {
 
     // Need to expand
     if (tm->delegation_capacity >= TRANSACTIVE_MAX_DELEGATIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_free_delegation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_free_delegation: capacity exceeded");
         return NULL;
     }
 
@@ -482,7 +482,6 @@ NIMCP_EXPORT bool transactive_config_validate(const transactive_config_t* config
 
     if (weight_sum < TRANSACTIVE_EPSILON) {
         set_error("At least one weight must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_config_validate: validation failed");
         return false;
     }
 
@@ -2092,7 +2091,6 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
 
     if (agent_count != tm->num_agents) {
         set_error("Agent count mismatch");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_validate: validation failed");
         return false;
     }
 
@@ -2114,7 +2112,6 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
 
     if (domain_count != tm->num_domains) {
         set_error("Domain count mismatch");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_validate: validation failed");
         return false;
     }
 
@@ -2134,7 +2131,6 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
 
     if (active_delegations != tm->num_delegations) {
         set_error("Delegation count mismatch");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_validate: validation failed");
         return false;
     }
 

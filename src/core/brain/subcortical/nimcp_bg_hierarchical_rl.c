@@ -124,7 +124,7 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
     bg_hrl_system_t* system = nimcp_calloc(1, sizeof(bg_hrl_system_t));
     if (!system) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "system is NULL");
 
         return NULL;
 
@@ -171,7 +171,7 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
         nimcp_free(system->primitives);
         nimcp_free(system->options);
         nimcp_free(system);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_create: system->option_stack is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_hrl_create: system->option_stack is NULL");
         return NULL;
     }
 
@@ -256,7 +256,7 @@ int bg_hrl_register_primitive(bg_hrl_system_t* system,
 
     if (system->num_primitives >= system->config.max_primitives) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_hrl_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_hrl_reset: capacity exceeded");
         return -1;
     }
 
@@ -280,7 +280,7 @@ int bg_hrl_create_option(bg_hrl_system_t* system,
 
     if (system->num_options >= system->config.max_options) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_hrl_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_hrl_reset: capacity exceeded");
         return -1;
     }
 
@@ -365,7 +365,7 @@ int bg_hrl_register_goal(bg_hrl_system_t* system,
 
     if (system->num_goals >= system->config.max_goals) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_hrl_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_hrl_reset: capacity exceeded");
         return -1;
     }
 

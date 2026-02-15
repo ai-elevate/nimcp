@@ -610,7 +610,6 @@ int attention_immune_get_inflammation_state(
 
 bool attention_immune_has_attention_deficit(const attention_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_has_attention_deficit: bridge is NULL");
         return false;
     }
 
@@ -736,7 +735,6 @@ bool attention_immune_is_bio_async_connected(const attention_immune_bridge_t* br
      * HOW:  Return internal flag
      */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_observability)
 
@@ -148,7 +149,7 @@ static uint64_t ro_get_time_ns_internal(void) {
  */
 static void ro_generate_random_bytes(uint8_t* buffer, size_t size) {
     for (size_t i = 0; i < size; i++) {
-        buffer[i] = (uint8_t)(rand() & 0xFF);
+        buffer[i] = (uint8_t)(nimcp_tl_rand() & 0xFF);
     }
 }
 

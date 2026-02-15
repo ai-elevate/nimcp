@@ -49025,6 +49025,30 @@ __/utils/rng/nimcp_rand.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/rng/nimcp_rand.c.s
 .PHONY : __/utils/rng/nimcp_rand.c.s
 
+__/utils/serialization/nimcp_serialization.o: __/utils/serialization/nimcp_serialization.c.o
+.PHONY : __/utils/serialization/nimcp_serialization.o
+
+# target to build an object file
+__/utils/serialization/nimcp_serialization.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/serialization/nimcp_serialization.c.o
+.PHONY : __/utils/serialization/nimcp_serialization.c.o
+
+__/utils/serialization/nimcp_serialization.i: __/utils/serialization/nimcp_serialization.c.i
+.PHONY : __/utils/serialization/nimcp_serialization.i
+
+# target to preprocess a source file
+__/utils/serialization/nimcp_serialization.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/serialization/nimcp_serialization.c.i
+.PHONY : __/utils/serialization/nimcp_serialization.c.i
+
+__/utils/serialization/nimcp_serialization.s: __/utils/serialization/nimcp_serialization.c.s
+.PHONY : __/utils/serialization/nimcp_serialization.s
+
+# target to generate assembly for a file
+__/utils/serialization/nimcp_serialization.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/serialization/nimcp_serialization.c.s
+.PHONY : __/utils/serialization/nimcp_serialization.c.s
+
 __/utils/signal/nimcp_hilbert.o: __/utils/signal/nimcp_hilbert.c.o
 .PHONY : __/utils/signal/nimcp_hilbert.o
 
@@ -56488,6 +56512,9 @@ help:
 	@echo "... __/utils/rng/nimcp_rand.o"
 	@echo "... __/utils/rng/nimcp_rand.i"
 	@echo "... __/utils/rng/nimcp_rand.s"
+	@echo "... __/utils/serialization/nimcp_serialization.o"
+	@echo "... __/utils/serialization/nimcp_serialization.i"
+	@echo "... __/utils/serialization/nimcp_serialization.s"
 	@echo "... __/utils/signal/nimcp_hilbert.o"
 	@echo "... __/utils/signal/nimcp_hilbert.i"
 	@echo "... __/utils/signal/nimcp_hilbert.s"

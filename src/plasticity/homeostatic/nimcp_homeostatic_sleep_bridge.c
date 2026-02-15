@@ -256,7 +256,6 @@ float homeostatic_sleep_get_scaling_rate(const homeostatic_sleep_bridge_t bridge
 
 bool homeostatic_sleep_is_scaling_active(const homeostatic_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_sleep_is_scaling_active: bridge is NULL");
         return false;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);

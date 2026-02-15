@@ -220,7 +220,6 @@ bool brain_has_symbolic_logic(brain_t brain)
 {
     // Validate input
     if (!nimcp_validate_pointer(brain, "brain")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_has_symbolic_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 

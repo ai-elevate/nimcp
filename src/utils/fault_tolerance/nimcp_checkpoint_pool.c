@@ -116,7 +116,7 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
     checkpoint_pool_t pool = nimcp_calloc(1, sizeof(struct checkpoint_pool_struct));
     if (!pool) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool is NULL");
 
         return NULL;
 

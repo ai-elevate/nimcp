@@ -25,6 +25,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_context)
 //=============================================================================
@@ -268,7 +269,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
                 float scale = sqrtf(2.0f / (float)(config->context_dim + config->input_dim));
                 for (uint32_t i = 0; i < config->context_dim * config->input_dim; i++) {
                     encoder->conditioning.additive_proj[i] =
-                        ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale;
+                        ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale;
                 }
             }
             break;
@@ -284,7 +285,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
                 float scale = sqrtf(2.0f / (float)(config->context_dim + config->input_dim));
                 for (uint32_t i = 0; i < config->context_dim * config->input_dim; i++) {
                     encoder->conditioning.gate_weights[i] =
-                        ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale;
+                        ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale;
                 }
             }
             break;
@@ -1308,7 +1309,7 @@ static int film_layer_create(
         /* Xavier init */
         float scale = sqrtf(2.0f / (float)(context_dim + hidden_dim));
         for (uint32_t i = 0; i < context_dim * hidden_dim; i++) {
-            f->hidden_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale;
+            f->hidden_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale;
         }
     }
 
@@ -1332,8 +1333,8 @@ static int film_layer_create(
     /* Xavier initialization for gamma/beta */
     float scale = sqrtf(2.0f / (float)(gamma_input + feature_dim));
     for (uint32_t i = 0; i < gamma_input * feature_dim; i++) {
-        f->gamma_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale;
-        f->beta_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale;
+        f->gamma_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale;
+        f->beta_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale;
     }
 
     /* Initialize gamma bias to 1 (no scaling initially) */
@@ -1503,14 +1504,14 @@ static int cross_attention_create(
     float scale_o = sqrtf(2.0f / (float)(proj_dim + input_dim));
 
     for (uint32_t i = 0; i < input_dim * proj_dim; i++) {
-        a->q_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale_q;
+        a->q_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale_q;
     }
     for (uint32_t i = 0; i < context_dim * proj_dim; i++) {
-        a->k_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale_kv;
-        a->v_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale_kv;
+        a->k_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale_kv;
+        a->v_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale_kv;
     }
     for (uint32_t i = 0; i < proj_dim * input_dim; i++) {
-        a->o_weights[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale_o;
+        a->o_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX * 2.0f - 1.0f) * scale_o;
     }
 
     *attn = a;

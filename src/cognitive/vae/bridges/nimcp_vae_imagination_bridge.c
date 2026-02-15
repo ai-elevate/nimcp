@@ -26,6 +26,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <float.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Internal Constants
@@ -880,7 +881,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
         }
 
         float accept_prob = expf(-(energy - current_energy));
-        if ((float)rand() / RAND_MAX < accept_prob) {
+        if ((float)nimcp_tl_rand() / RAND_MAX < accept_prob) {
             memcpy(current_sample, proposal, bridge->vae_latent_dim * sizeof(float));
             accepted++;
 
@@ -963,7 +964,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
     for (uint32_t step = 0; step < num_steps; step++) {
         /* Quantum coin flip (simulate superposition-like exploration) */
         for (uint32_t i = 0; i < bridge->vae_latent_dim; i++) {
-            float coin = (float)rand() / RAND_MAX;
+            float coin = (float)nimcp_tl_rand() / RAND_MAX;
             float amplitude = (coin < coin_bias) ? 1.0f : -1.0f;
 
             /* Add interference-like term */
@@ -1086,7 +1087,7 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
         float delta = energy - current_energy;
         float accept_prob = expf(-delta / temp);
 
-        if (delta < 0 || (float)rand() / RAND_MAX < accept_prob) {
+        if (delta < 0 || (float)nimcp_tl_rand() / RAND_MAX < accept_prob) {
             memcpy(state, proposal, bridge->vae_latent_dim * sizeof(float));
 
             if (energy < best_energy) {

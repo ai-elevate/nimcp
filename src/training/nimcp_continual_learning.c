@@ -172,7 +172,7 @@ cl_ctx_t* cl_create(const cl_config_t* config) {
     if (!ctx) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cl_ctx_t),
                           "cl_create: failed to allocate context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -783,7 +783,6 @@ int cl_validate_config(const cl_config_t* config) {
     }
     if (config->strategy >= CL_STRATEGY_COUNT) return -1;
     if (config->ewc.lambda < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cl_validate_config: validation failed");
         return -1;
     }
     return 0;

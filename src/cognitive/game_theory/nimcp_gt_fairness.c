@@ -438,7 +438,6 @@ bool nimcp_fairness_is_envy_free(const float* const* valuations,
                                   uint32_t num_items) {
     // Guard: validate inputs
     if (!valuations || !assignment || num_players == 0 || num_items == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fairness_coefficient_variation: required parameter is NULL (valuations, assignment)");
         return false;
     }
 
@@ -496,7 +495,6 @@ bool nimcp_fairness_is_ef1(const float* const* valuations,
                             uint32_t num_items) {
     // Guard: validate inputs
     if (!valuations || !assignment || num_players == 0 || num_items == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fairness_coefficient_variation: required parameter is NULL (valuations, assignment)");
         return false;
     }
 
@@ -566,7 +564,6 @@ bool nimcp_fairness_is_efx(const float* const* valuations,
                             uint32_t num_items) {
     // Guard: validate inputs
     if (!valuations || !assignment || num_players == 0 || num_items == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fairness_coefficient_variation: required parameter is NULL (valuations, assignment)");
         return false;
     }
 
@@ -629,7 +626,6 @@ bool nimcp_fairness_is_proportional(const float* const* valuations,
                                      uint32_t num_items) {
     // Guard: validate inputs
     if (!valuations || !assignment || num_players == 0 || num_items == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (valuations, assignment)");
         return false;
     }
 
@@ -706,7 +702,6 @@ bool nimcp_fairness_has_mms_guarantee(const float* const* valuations,
                                        uint32_t num_items) {
     // Guard: validate inputs
     if (!valuations || !assignment || num_players == 0 || num_items == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (valuations, assignment)");
         return false;
     }
 
@@ -716,7 +711,6 @@ bool nimcp_fairness_has_mms_guarantee(const float* const* valuations,
 
 
     if (num_items > NIMCP_FAIRNESS_MAX_MMS_ITEMS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 

@@ -1055,7 +1055,6 @@ void health_diag_bridge_reset_stats(health_diag_bridge_t* bridge) {
 
 bool health_diag_bridge_is_ready(const health_diag_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_diag_bridge_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

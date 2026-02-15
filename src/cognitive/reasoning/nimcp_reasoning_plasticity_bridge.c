@@ -325,7 +325,7 @@ int reasoning_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->num_synapses >= bridge->max_synapses) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reasoning_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reasoning_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -1095,7 +1095,6 @@ int reasoning_plasticity_bio_async_disconnect(reasoning_plasticity_bridge_t* bri
 
 bool reasoning_plasticity_is_bio_async_connected(reasoning_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

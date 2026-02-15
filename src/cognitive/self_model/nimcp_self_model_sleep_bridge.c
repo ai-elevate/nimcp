@@ -327,7 +327,6 @@ float self_model_sleep_get_awareness(const self_model_sleep_bridge_t bridge) {
 
 bool self_model_sleep_is_offline(const self_model_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_sleep_is_offline: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

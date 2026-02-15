@@ -222,7 +222,6 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
     if (schema_entry->type != type) {
         LOG_MODULE_ERROR("config", "Type mismatch for key '%s': expected %d, got %d",
                         key, schema_entry->type, type);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
         return false;
     }
 
@@ -232,7 +231,6 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
             LOG_MODULE_ERROR("config", "Value for '%s' (%lld) below minimum (%lld)",
                             key, (long long)value->int_val,
                             (long long)schema_entry->min_value.int_val);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -242,7 +240,6 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
             LOG_MODULE_ERROR("config", "Value for '%s' (%lld) above maximum (%lld)",
                             key, (long long)value->int_val,
                             (long long)schema_entry->max_value.int_val);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -251,7 +248,6 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
         if (value->float_val < schema_entry->min_value.float_val) {
             LOG_MODULE_ERROR("config", "Value for '%s' (%f) below minimum (%f)",
                             key, value->float_val, schema_entry->min_value.float_val);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -260,7 +256,6 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
         if (value->float_val > schema_entry->max_value.float_val) {
             LOG_MODULE_ERROR("config", "Value for '%s' (%f) above maximum (%f)",
                             key, value->float_val, schema_entry->max_value.float_val);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }

@@ -121,7 +121,6 @@ int snn_meta_learning_bridge_disconnect_bio_async(snn_meta_learning_bridge_t* br
 
 bool snn_meta_learning_bridge_is_bio_async_connected(const snn_meta_learning_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -211,7 +210,6 @@ int snn_meta_learning_update_efficiency(snn_meta_learning_bridge_t* bridge, cons
 
 bool snn_meta_learning_check_adaptation_active(const snn_meta_learning_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_check_adaptation_active: null bridge pointer");
         return false;
     }
     return bridge->state.adaptation_active;

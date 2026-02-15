@@ -637,7 +637,7 @@ static nimcp_ast_node_t* parse_param(parser_state_t* state) {
 
     if (!expect(state, TOKEN_COLON, "Expected ':'")) {
         nimcp_free(key);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_param: expect is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parse_param: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -664,7 +664,7 @@ static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
 
     if (!expect(state, TOKEN_LBRACE, "Expected '{'")) {
         nimcp_free(name);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_rule: expect is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parse_rule: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -725,7 +725,7 @@ static nimcp_ast_node_t* parse_policy(parser_state_t* state) {
 
     if (!expect(state, TOKEN_LBRACE, "Expected '{'")) {
         nimcp_free(name);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_policy: expect is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parse_policy: expect is NULL");
         return NULL;
     }
     advance(state);

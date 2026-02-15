@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_quantum_bridge)
 
@@ -542,9 +543,9 @@ bool elig_quantum_optimize_params(
 
     /* Perturb parameters */
     float perturbation = 0.1f * temp / ctx->config.initial_temperature;
-    optimized_params->tau_fast *= (1.0f + perturbation * (((float)rand() / RAND_MAX) - 0.5f));
-    optimized_params->tau_slow *= (1.0f + perturbation * (((float)rand() / RAND_MAX) - 0.5f));
-    optimized_params->learning_rate *= (1.0f + perturbation * (((float)rand() / RAND_MAX) - 0.5f));
+    optimized_params->tau_fast *= (1.0f + perturbation * (((float)nimcp_tl_rand() / RAND_MAX) - 0.5f));
+    optimized_params->tau_slow *= (1.0f + perturbation * (((float)nimcp_tl_rand() / RAND_MAX) - 0.5f));
+    optimized_params->learning_rate *= (1.0f + perturbation * (((float)nimcp_tl_rand() / RAND_MAX) - 0.5f));
 
     /* Compute energy (objective function) */
     float energy = 0.0f;
@@ -563,7 +564,7 @@ bool elig_quantum_optimize_params(
     ctx->anneal_state.temperature *= cooling_rate;
 
     /* Check for tunneling */
-    if (((float)rand() / RAND_MAX) < ctx->anneal_state.tunneling_probability) {
+    if (((float)nimcp_tl_rand() / RAND_MAX) < ctx->anneal_state.tunneling_probability) {
         ctx->anneal_state.tunneling_events++;
         ctx->metrics.tunneling_events++;
     }

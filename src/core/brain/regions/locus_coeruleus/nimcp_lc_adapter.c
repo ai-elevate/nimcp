@@ -118,7 +118,7 @@ static int enqueue_message(nimcp_lc_adapter_t adapter, const nimcp_lc_message_t*
     }
 
     if (adapter->queue_count >= LC_ADAPTER_MSG_QUEUE_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_message: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_message: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -404,12 +404,12 @@ int nimcp_lc_adapter_register_callback(
     }
 
     if (msg_type >= LC_MSG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_lc_adapter_register_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_lc_adapter_register_callback: capacity exceeded");
         return -1;
     }
 
     if (adapter->callback_counts[msg_type] >= LC_ADAPTER_MAX_CALLBACKS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_lc_adapter_register_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_lc_adapter_register_callback: capacity exceeded");
         return -1;  /* Too many callbacks */
     }
 

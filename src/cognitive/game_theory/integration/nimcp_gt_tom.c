@@ -1403,7 +1403,6 @@ bool nimcp_gt_tom_is_opponent_tracked(
     nimcp_player_id_t opponent_id
 ) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_tom_is_opponent_tracked: ctx is NULL");
         return false;
     }
 

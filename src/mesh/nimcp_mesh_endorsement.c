@@ -82,7 +82,7 @@ static endorsement_collection_t* allocate_collection(
         return NULL;
     }
     if (collector->collection_count >= collector->collection_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "allocate_collection: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "allocate_collection: capacity exceeded");
         return NULL;
     }
     return &collector->collections[collector->collection_count++];
@@ -527,7 +527,6 @@ bool mesh_endorsement_is_complete(
     const mesh_tx_id_t* tx_id
 ) {
     if (!collector || !tx_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_is_complete: required parameter is NULL (collector, tx_id)");
         return false;
     }
 
@@ -569,7 +568,6 @@ bool mesh_endorsement_is_vetoed(
     const mesh_tx_id_t* tx_id
 ) {
     if (!collector || !tx_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_is_vetoed: required parameter is NULL (collector, tx_id)");
         return false;
     }
 

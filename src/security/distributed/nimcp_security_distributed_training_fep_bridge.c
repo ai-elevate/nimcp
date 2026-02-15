@@ -808,7 +808,6 @@ float security_dist_fep_get_byzantine_score(const security_dist_fep_bridge_t* br
 
 bool security_dist_fep_should_quarantine(const security_dist_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_should_quarantine: required parameter is NULL (bridge, bridge->fep_system)");
         return false;
     }
 

@@ -264,7 +264,7 @@ nimcp_error_t emergency_halt_reset(emergency_halt_t* halt,
 
 nimcp_error_t emergency_halt_heartbeat(emergency_halt_t* halt) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt_heartbeat: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -272,7 +272,7 @@ nimcp_error_t emergency_halt_heartbeat(emergency_halt_t* halt) {
 
     if (halt->is_halted) {
         nimcp_mutex_unlock(halt->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SYSTEM_HALTED, "emergency_halt: error condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SYSTEM_HALTED, "emergency_halt_heartbeat: error condition");
         return NIMCP_ERROR_SYSTEM_HALTED;
     }
 
@@ -551,7 +551,7 @@ nimcp_error_t emergency_halt_register_dump_handler(emergency_halt_t* halt,
 
 nimcp_error_t emergency_halt_connect_bio_async(emergency_halt_t* halt) {
     if (!halt || halt->magic != EMERGENCY_HALT_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt: NULL pointer parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emergency_halt_connect_bio_async: NULL pointer parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

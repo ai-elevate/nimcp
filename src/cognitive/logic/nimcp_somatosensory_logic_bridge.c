@@ -246,7 +246,7 @@ int somato_logic_ground_observation(
         return -1;
     }
     if (obs->body_region >= BODY_REGION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_ground_observation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_ground_observation: capacity exceeded");
         return -1;
     }
 
@@ -344,7 +344,7 @@ int somato_logic_report_body_state(
         return -1;
     }
     if (predicate->region >= BODY_REGION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_report_body_state: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_report_body_state: capacity exceeded");
         return -1;
     }
 
@@ -408,7 +408,7 @@ int somato_logic_request_attention(
     float priority
 ) {
     if (!bridge || region >= BODY_REGION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_request_attention: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_request_attention: bridge is NULL");
         return -1;
     }
     if (!bridge->config.enable_top_down_attention) return 0;
@@ -418,7 +418,7 @@ int somato_logic_request_attention(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_request_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_request_attention: capacity exceeded");
         return -1;
     }
 
@@ -439,7 +439,7 @@ int somato_logic_expect_contact(
     const char* object_name
 ) {
     if (!bridge || region >= BODY_REGION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_expect_contact: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_expect_contact: bridge is NULL");
         return -1;
     }
 
@@ -448,7 +448,7 @@ int somato_logic_expect_contact(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_expect_contact: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_expect_contact: capacity exceeded");
         return -1;
     }
 
@@ -530,7 +530,7 @@ int somato_logic_send_command(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_send_command: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "somato_logic_send_command: capacity exceeded");
         return -1;
     }
 

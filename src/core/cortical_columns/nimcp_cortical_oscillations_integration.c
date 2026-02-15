@@ -233,6 +233,8 @@ void cortical_oscillation_destroy(cortical_oscillation_integration_t* integratio
     /* Destroy mutex */
     if (integration->mutex) {
         nimcp_platform_mutex_destroy(integration->mutex);
+        nimcp_free(integration->mutex);
+        integration->mutex = NULL;
     }
 
     nimcp_free(integration);
@@ -474,7 +476,6 @@ bool cortical_oscillation_is_binding_active(
     const cortical_oscillation_integration_t* integration
 ) {
     if (!integration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_oscillation_is_binding_active: integration is NULL");
         return false;
     }
 
@@ -654,7 +655,6 @@ bool cortical_oscillation_is_bio_async_connected(
     const cortical_oscillation_integration_t* integration
 ) {
     if (!integration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_oscillation_is_bio_async_connected: integration is NULL");
         return false;
     }
 

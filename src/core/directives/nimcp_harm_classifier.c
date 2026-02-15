@@ -292,6 +292,8 @@ void harm_classifier_destroy(harm_classifier_t* classifier) {
     /* Destroy mutex */
     if (classifier->mutex) {
         nimcp_platform_mutex_destroy(classifier->mutex);
+        nimcp_free(classifier->mutex);
+        classifier->mutex = NULL;
     }
 
     /* Free classifier */
@@ -650,7 +652,6 @@ int harm_classifier_disconnect_bio_async(harm_classifier_t* classifier) {
 bool harm_classifier_is_bio_async_connected(const harm_classifier_t* classifier) {
     /* Guard clause */
     if (!classifier) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_classifier_is_bio_async_connected: classifier is NULL");
         return false;
     }
 

@@ -97,7 +97,7 @@ routing_immune_bridge_t* routing_immune_create(
 
     routing_immune_bridge_t* bridge = nimcp_malloc(sizeof(routing_immune_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -143,6 +143,8 @@ void routing_immune_destroy(routing_immune_bridge_t* bridge) {
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge->anomalies);

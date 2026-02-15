@@ -153,7 +153,7 @@ static ring_buffer_t* ring_buffer_create(uint32_t capacity)
     if (!rb) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(ring_buffer_t),
                           "Failed to allocate ring buffer structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rb is NULL");
 
         return NULL;
     }
@@ -541,7 +541,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct brain_stream_struct),
                           "Failed to allocate brain stream structure");
         stream_set_error("Failed to allocate stream structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream is NULL");
 
         return NULL;
     }

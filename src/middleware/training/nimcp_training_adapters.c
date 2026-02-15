@@ -200,7 +200,7 @@ static normalization_stats_t* create_norm_stats(uint32_t num_features) {
     normalization_stats_t* stats = nimcp_calloc(1, sizeof(normalization_stats_t));
     if (!stats) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stats is NULL");
 
         return NULL;
 

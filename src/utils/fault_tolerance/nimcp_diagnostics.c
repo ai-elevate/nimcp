@@ -298,7 +298,7 @@ diagnostic_result_t* diagnostics_analyze_stack_trace(void** trace, int depth) {
 
     diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "result is NULL");
 
         return NULL;
     }
@@ -374,7 +374,7 @@ static diag_severity_t error_type_to_severity(error_type_t type) {
 diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* crash_context) {
     diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "result is NULL");
 
         return NULL;
     }
@@ -469,7 +469,7 @@ diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* cras
 diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
     diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "result is NULL");
 
         return NULL;
     }
@@ -539,7 +539,7 @@ static bool is_nan_or_inf(float value) {
 diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
     diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "result is NULL");
 
         return NULL;
     }
@@ -979,7 +979,7 @@ char* diagnostics_report_to_json(const diagnostic_result_t* result) {
     const size_t json_size = 4096;
     char* json = nimcp_malloc(json_size);
     if (!json) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json is NULL");
 
         return NULL;
     }
@@ -1020,7 +1020,7 @@ char* diagnostics_report_to_json(const diagnostic_result_t* result) {
 diagnostic_history_t* diagnostics_create_history(void) {
     diagnostic_history_t* history = nimcp_calloc(1, sizeof(diagnostic_history_t));
     if (!history) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "history is NULL");
 
         return NULL;
     }

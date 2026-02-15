@@ -245,7 +245,7 @@ static bool add_to_history(history_buffer_t* buffer, const observation_t* obs) {
  */
 static observation_t* get_from_history(history_buffer_t* buffer, uint32_t steps_back) {
     if (steps_back >= buffer->count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_from_history: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_from_history: capacity exceeded");
         return NULL;
     }
     uint32_t idx = (buffer->head + buffer->capacity - steps_back) % buffer->capacity;
@@ -1272,7 +1272,6 @@ bool precognition_check_early_warning(
     }
 
     if (!module->config.enable_early_warning) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_check_early_warning: module->config is NULL");
         return false;
     }
 
@@ -1318,7 +1317,6 @@ bool precognition_check_early_warning(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_check_early_warning: validation failed");
     return false;
 }
 

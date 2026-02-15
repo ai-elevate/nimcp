@@ -78,6 +78,15 @@ static inline float sigmoid(float x) {
 static int init_pathway(striatum_pathway_t* pathway, msn_type_t type,
                         uint32_t num_neurons, uint32_t num_actions,
                         float dopamine_gain, float baseline_firing) {
+    if (num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_pathway: num_actions is zero");
+        return -1;
+    }
+    if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_pathway: num_neurons is zero");
+        return -1;
+    }
+
     pathway->type = type;
     pathway->num_neurons = num_neurons;
     pathway->num_actions = num_actions;

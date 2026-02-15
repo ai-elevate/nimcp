@@ -517,7 +517,6 @@ bool cortical_layers_sleep_is_offline(const cortical_layers_sleep_bridge_t bridg
 {
     /* Guard clause: Validate bridge */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_layers_sleep_is_offline: bridge is NULL");
         return false;
     }
 
@@ -532,7 +531,6 @@ bool cortical_layers_sleep_is_up_state(const cortical_layers_sleep_bridge_t brid
 {
     /* Guard clause: Validate bridge */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_layers_sleep_is_up_state: bridge is NULL");
         return false;
     }
 

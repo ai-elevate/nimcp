@@ -973,7 +973,6 @@ bool nimcp_ph_is_critical(
     nimcp_ph_compartment_t compartment
 ) {
     if (!region || compartment >= PH_COMPARTMENT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ph_is_critical: region is NULL");
         return false;
     }
 
@@ -990,7 +989,6 @@ bool nimcp_ph_is_critical(
         case PH_COMPARTMENT_MITOCHONDRIAL:
             return (ph < 7.5f || ph > 8.5f);
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ph_is_critical: operation failed");
             return false;
     }
 }

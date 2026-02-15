@@ -586,7 +586,6 @@ int astro_network_get_inflammation_state(
 bool astro_network_has_astrogliosis(const astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_network_has_astrogliosis: bridge is NULL");
         return false;
     }
 
@@ -665,7 +664,6 @@ int astro_network_disconnect_bio_async(astro_network_bridge_t* bridge) {
 bool astro_network_is_bio_async_connected(const astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_network_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

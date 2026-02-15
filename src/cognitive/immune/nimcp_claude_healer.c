@@ -382,20 +382,17 @@ static bool validate_fix_code(const char* code, size_t code_len)
 
         /* Early exit on obvious imbalance */
         if (brace_count < 0 || paren_count < 0 || bracket_count < 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_fix_code: validation failed");
             return false;
         }
     }
 
     /* Check final balance */
     if (brace_count != 0 || paren_count != 0 || bracket_count != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_fix_code: validation failed");
         return false;
     }
 
     /* Check for unclosed strings */
     if (in_string || in_char) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_fix_code: validation failed");
         return false;
     }
 
@@ -715,7 +712,7 @@ claude_healer_t* claude_healer_create(const claude_healer_config_t* config)
     claude_healer_t* healer = nimcp_calloc(1, sizeof(claude_healer_t));
     if (healer == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate healer");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claude_healer_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "claude_healer_create: validation failed");
         return NULL;
     }
 
@@ -1428,7 +1425,6 @@ bool claude_healer_is_available(void)
 #ifdef HAVE_LIBCURL
     return true;
 #else
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claude_healer_is_available: operation failed");
     return false;
 #endif
 }

@@ -176,7 +176,7 @@ blend_mental_space_t* blending_create_space(const char* name) {
 int blending_add_element(blend_mental_space_t* space, const char* name,
     const float* features, uint32_t num_features) {
     if (!space || space->num_elements >= BLEND_MAX_ELEMENTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "blending_create_space: space is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "blending_create_space: space is NULL");
         return -1;
     }
 

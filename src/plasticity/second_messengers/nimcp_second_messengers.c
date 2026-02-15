@@ -994,11 +994,9 @@ bool second_messenger_is_tagged(
     uint32_t neuron_id
 ) {
     if (!system || neuron_id >= system->max_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "second_messenger_is_tagged: system is NULL");
         return false;
     }
     if (!system->neuron_active[neuron_id]) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "second_messenger_is_tagged: system->neuron_active is NULL");
         return false;
     }
 

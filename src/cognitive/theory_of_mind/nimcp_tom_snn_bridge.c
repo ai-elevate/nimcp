@@ -785,7 +785,6 @@ bool tom_snn_check_deception(
     float* deception_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_snn_check_deception: bridge is NULL");
         return false;
     }
 
@@ -809,7 +808,6 @@ bool tom_snn_check_perspective_shift(
     float* perspective_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_snn_check_perspective_shift: bridge is NULL");
         return false;
     }
 
@@ -833,7 +831,6 @@ bool tom_snn_check_empathy(
     float* resonance_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_snn_check_empathy: bridge is NULL");
         return false;
     }
 
@@ -1104,7 +1101,6 @@ int tom_snn_bio_async_disconnect(tom_snn_bridge_t* bridge) {
 
 bool tom_snn_is_bio_async_connected(tom_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
         return false;
     }
 

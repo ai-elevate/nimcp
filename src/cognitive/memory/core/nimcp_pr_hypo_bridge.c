@@ -369,15 +369,12 @@ NIMCP_EXPORT bool pr_hypo_config_validate(const pr_hypo_config_t* config) {
         return false;
     }
     if (config->optimal_stress_level < 0.0f || config->optimal_stress_level > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: validation failed");
         return false;
     }
     if (config->stress_impairment_threshold < 0.0f || config->stress_impairment_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: validation failed");
         return false;
     }
     if (config->reward_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: validation failed");
         return false;
     }
 
@@ -1344,7 +1341,6 @@ NIMCP_EXPORT bool pr_hypo_bridge_is_flashbulb_state(
     const pr_hypo_bridge_t bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_bridge_is_flashbulb_state: bridge is NULL");
         return false;
     }
 
@@ -1612,7 +1608,6 @@ NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
 
         if (bridge->neuromod_states[i].concentration < 0.0f ||
             bridge->neuromod_states[i].concentration > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_bridge_validate: validation failed");
             return false;
         }
     }

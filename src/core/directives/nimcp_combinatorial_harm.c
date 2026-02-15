@@ -840,7 +840,6 @@ int combinatorial_harm_disconnect_bio_async(combinatorial_harm_system_t* system)
 
 bool combinatorial_harm_is_bio_async_connected(const combinatorial_harm_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_harm_is_bio_async_connected: system is NULL");
         return false;
     }
     return system->bio_async_enabled;

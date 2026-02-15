@@ -610,7 +610,6 @@ bool mesh_participant_is_in_channel(
     mesh_channel_id_t channel
 ) {
     if (!validate_registry(registry)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_participant_is_in_channel: validate_registry is NULL");
         return false;
     }
 
@@ -619,7 +618,6 @@ bool mesh_participant_is_in_channel(
     participant_entry_t* entry = find_entry_by_id(registry, id);
     if (!entry) {
         nimcp_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_is_in_channel: entry is NULL");
         return false;
     }
 
@@ -631,7 +629,6 @@ bool mesh_participant_is_in_channel(
     }
 
     nimcp_mutex_unlock(registry->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_participant_is_in_channel: validation failed");
     return false;
 }
 

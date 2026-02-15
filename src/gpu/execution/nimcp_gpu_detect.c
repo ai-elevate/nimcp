@@ -853,7 +853,7 @@ bool gpu_get_device_info(uint32_t device_index, gpu_device_info_t* info)
     pthread_once(&s_cache_init_once, gpu_detect_init_impl);
 
     if (device_index >= s_cached_caps.device_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_get_device_info: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gpu_get_device_info: capacity exceeded");
         return false;
     }
 

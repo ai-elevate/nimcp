@@ -1251,7 +1251,6 @@ int omni_ai_disconnect_bio_async(omni_active_inference_t* ai) {
 
 bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai) {
     if (!ai) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_is_bio_async_connected: ai is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

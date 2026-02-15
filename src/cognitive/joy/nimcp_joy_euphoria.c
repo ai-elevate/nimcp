@@ -768,7 +768,6 @@ void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {
 
 bool joy_is_joyful(const joy_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_is_joyful: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -780,7 +779,6 @@ bool joy_is_joyful(const joy_system_t* system) {
 
 bool joy_is_euphoric(const joy_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_is_euphoric: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

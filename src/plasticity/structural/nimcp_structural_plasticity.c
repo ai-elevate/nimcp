@@ -265,6 +265,8 @@ void structural_plasticity_destroy(structural_plasticity_system_t* system) {
 
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     if (system->spines) {
@@ -324,7 +326,7 @@ int structural_plasticity_form_synapse(
         if (system->num_spines >= system->max_spines) {
             NIMCP_LOGGING_WARN("Spine limit reached, no eliminated slots available");
             nimcp_platform_mutex_unlock(system->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "structural_plasticity_form_synapse: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "structural_plasticity_form_synapse: capacity exceeded");
             return -1;
         }
         slot = system->num_spines;
@@ -334,7 +336,7 @@ int structural_plasticity_form_synapse(
     if (slot >= system->max_spines) {
         NIMCP_LOGGING_ERROR("Slot index exceeds max_spines");
         nimcp_platform_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "structural_plasticity_form_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "structural_plasticity_form_synapse: capacity exceeded");
         return -1;
     }
 
@@ -425,7 +427,6 @@ bool structural_plasticity_should_form(
     float activity_hz
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_should_form: system is NULL");
         return false;
     }
     return activity_hz >= system->config.formation_threshold_hz;
@@ -436,11 +437,9 @@ bool structural_plasticity_should_prune(
     const synapse_structural_state_t* synapse
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_should_prune: system is NULL");
         return false;
     }
     if (!synapse) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_should_prune: synapse is NULL");
         return false;
     }
 
@@ -1125,7 +1124,6 @@ bool structural_plasticity_is_complement_tagged(
     uint32_t synapse_id
 ) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_is_complement_tagged: system is NULL");
         return false;
     }
 

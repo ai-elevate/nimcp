@@ -324,7 +324,6 @@ float mental_health_sleep_get_stability(const mental_health_sleep_bridge_t bridg
 
 bool mental_health_sleep_is_restoration_active(const mental_health_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_sleep_is_restoration_active: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

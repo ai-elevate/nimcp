@@ -157,6 +157,8 @@ void swarm_registry_destroy(swarm_module_registry_t* registry) {
     /* Destroy mutex */
     if (registry->mutex) {
         nimcp_platform_mutex_destroy(registry->mutex);
+        nimcp_free(registry->mutex);
+        registry->mutex = NULL;
     }
 
     nimcp_free(registry);
@@ -185,7 +187,7 @@ int swarm_registry_register_module(
 
     if (category >= SWARM_MODULE_CATEGORY_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid category: %u", category);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_registry_register_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "swarm_registry_register_module: capacity exceeded");
         return -1;
     }
 
@@ -202,7 +204,7 @@ int swarm_registry_register_module(
         NIMCP_LOGGING_ERROR("Registry full (%u/%u)",
                            registry->module_count, registry->module_capacity);
         nimcp_platform_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_registry_register_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "swarm_registry_register_module: capacity exceeded");
         return -1;
     }
 
@@ -542,7 +544,7 @@ int swarm_registry_update_category(
     uint64_t current_time_ms
 ) {
     if (!registry || category >= SWARM_MODULE_CATEGORY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_registry_update_category: registry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "swarm_registry_update_category: registry is NULL");
         return -1;
     }
 
@@ -1082,7 +1084,6 @@ bool swarm_registry_is_module_registered(
     uint32_t module_id
 ) {
     if (!registry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_is_module_registered: registry is NULL");
         return false;
     }
 
@@ -1092,7 +1093,6 @@ bool swarm_registry_is_module_registered(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_is_module_registered: validation failed");
     return false;
 }
 

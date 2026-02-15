@@ -1249,7 +1249,6 @@ void edp_print_status(const edp_context_t* ctx)
 bool edp_is_active(const edp_context_t* ctx)
 {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "edp_is_active: ctx is NULL");
         return false;
     }
     return ctx->active && ctx->running;

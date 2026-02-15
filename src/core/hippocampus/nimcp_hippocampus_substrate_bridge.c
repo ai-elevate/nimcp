@@ -63,7 +63,7 @@ hippocampus_substrate_bridge_t* hippocampus_substrate_bridge_create(void* hippoc
 
     hippocampus_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(hippocampus_substrate_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_substrate_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_substrate_bridge_create: allocation failed");
         return NULL;
     }
 

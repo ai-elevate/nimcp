@@ -759,7 +759,6 @@ bool curiosity_snn_check_novelty(
     float* novelty_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_check_novelty: bridge is NULL");
         return false;
     }
 
@@ -783,7 +782,6 @@ bool curiosity_snn_check_interest(
     float* interest_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_check_interest: bridge is NULL");
         return false;
     }
 
@@ -807,7 +805,6 @@ bool curiosity_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1094,7 +1091,6 @@ int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
 
 bool curiosity_snn_is_bio_async_connected(curiosity_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -288,7 +288,6 @@ float swarm_pheromone_immune_get_evaporation_factor(const swarm_pheromone_immune
 bool swarm_pheromone_immune_is_gradient_impaired(const swarm_pheromone_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_pheromone_immune_is_gradient_impaired: bridge is NULL");
         return false;
     }
 
@@ -356,7 +355,6 @@ int swarm_pheromone_immune_disconnect_bio_async(swarm_pheromone_immune_bridge_t*
 bool swarm_pheromone_immune_is_bio_async_connected(const swarm_pheromone_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_pheromone_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

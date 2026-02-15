@@ -121,7 +121,7 @@ hippocampus_quantum_bridge_t* hippocampus_quantum_bridge_create(
     hippocampus_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(hippocampus_quantum_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -157,7 +157,7 @@ hippocampus_quantum_bridge_t* hippocampus_quantum_bridge_create(
     if (!bridge->memory_candidates || !bridge->pattern_candidates ||
         !bridge->spatial_candidates) {
         hippocampus_quantum_bridge_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_bridge_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_quantum_bridge_create: operation failed");
         return NULL;
     }
 

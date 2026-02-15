@@ -101,7 +101,7 @@ static attention_entry_t* find_entry(const attention_gate_t* gate,
 
 static bool add_entry(attention_gate_t* gate, uint32_t source_id, uint32_t target_id) {
     if (gate->num_entries >= gate->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_entry: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_entry: capacity exceeded");
         return false;
     }
 
@@ -306,7 +306,7 @@ bool attention_gate_set_weight(attention_gate_t* gate,
     if (!entry) {
         if (!add_entry(gate, source_id, target_id)) {
             nimcp_mutex_unlock(gate->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "attention_gate_set_weight: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "attention_gate_set_weight: capacity exceeded");
             return false;
         }
         entry = find_entry(gate, source_id, target_id);
@@ -389,7 +389,7 @@ bool attention_gate_update_salience(attention_gate_t* gate,
     if (!updated) {
         if (!add_entry(gate, 0, target_id)) {
             nimcp_mutex_unlock(gate->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "attention_gate_update_salience: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "attention_gate_update_salience: capacity exceeded");
             return false;
         }
 

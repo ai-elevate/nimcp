@@ -514,7 +514,7 @@ int audio_logic_request_attention(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_request_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "audio_logic_request_attention: capacity exceeded");
         return -1;
     }
 
@@ -546,7 +546,7 @@ int audio_logic_focus_speaker(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_focus_speaker: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "audio_logic_focus_speaker: capacity exceeded");
         return -1;
     }
 
@@ -576,7 +576,7 @@ int audio_logic_expect_word(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_expect_word: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "audio_logic_expect_word: capacity exceeded");
         return -1;
     }
 
@@ -669,7 +669,7 @@ int audio_logic_send_command(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_send_command: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "audio_logic_send_command: capacity exceeded");
         return -1;
     }
 

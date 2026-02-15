@@ -661,7 +661,6 @@ int introspection_immune_get_consciousness_state(
 
 bool introspection_immune_is_sickness_detected(const introspection_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_is_sickness_detected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -817,7 +816,6 @@ int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bri
  */
 bool introspection_immune_is_bio_async_connected(const introspection_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

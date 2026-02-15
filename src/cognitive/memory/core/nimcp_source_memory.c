@@ -535,7 +535,6 @@ NIMCP_EXPORT bool source_memory_config_validate(const source_memory_config_t* co
         return false;
     }
     if (config->initial_capacity > config->max_entries) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "source_memory_config_validate: validation failed");
         return false;
     }
 
@@ -549,7 +548,6 @@ NIMCP_EXPORT bool source_memory_config_validate(const source_memory_config_t* co
 
     // Validate decay rate
     if (config->source_decay_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_memory_config_validate: validation failed");
         return false;
     }
 

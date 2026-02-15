@@ -194,7 +194,6 @@ bool signal_filter_validate_config(const signal_filter_config_t* config) {
     }
 
     if (config->sample_rate <= 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: validation failed");
         return false;
     }
     if (config->order == 0 || config->order > 1024) {
@@ -202,7 +201,6 @@ bool signal_filter_validate_config(const signal_filter_config_t* config) {
         return false;
     }
     if (config->order % 2 != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: validation failed");
         return false;
     }
 

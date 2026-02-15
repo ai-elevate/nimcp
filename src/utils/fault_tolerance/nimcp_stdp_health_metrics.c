@@ -190,7 +190,7 @@ stdp_health_metrics_t* stdp_health_create(
 ) {
     stdp_health_metrics_t* metrics = nimcp_calloc(1, sizeof(*metrics));
     if (!metrics) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metrics is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metrics is NULL");
 
         return NULL;
     }
@@ -257,7 +257,7 @@ int stdp_health_register_stdp(
 
     if (metrics->context_count >= STDP_HEALTH_MAX_CONTEXTS) {
         nimcp_mutex_unlock(metrics->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stdp_health_register_stdp: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "stdp_health_register_stdp: capacity exceeded");
         return -1;
     }
 
@@ -308,7 +308,7 @@ int stdp_health_register_bcm(
 
     if (metrics->context_count >= STDP_HEALTH_MAX_CONTEXTS) {
         nimcp_mutex_unlock(metrics->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stdp_health_register_bcm: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "stdp_health_register_bcm: capacity exceeded");
         return -1;
     }
 
@@ -371,7 +371,7 @@ int stdp_health_unregister(
     }
 
     if (context_id < 0 || context_id >= STDP_HEALTH_MAX_CONTEXTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stdp_health_unregister: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "stdp_health_unregister: capacity exceeded");
         return -1;
     }
 
@@ -699,7 +699,6 @@ void stdp_health_reset_stats(stdp_health_metrics_t* metrics) {
 
 bool stdp_health_is_healthy(const stdp_health_metrics_t* metrics) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_is_healthy: metrics is NULL");
         return false;
     }
     return metrics->stats.overall_health_score > 0.5f &&

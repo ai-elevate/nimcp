@@ -632,7 +632,6 @@ const char* tcb_get_last_checkpoint(const tcb_context_t* ctx) {
 
 bool tcb_should_stop(tcb_context_t* ctx, float current_loss) {
     if (!ctx || !ctx->config.enable_early_stopping) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tcb_should_stop: required parameter is NULL (ctx, ctx->config)");
         return false;
     }
 

@@ -19,6 +19,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_kg)
 //=============================================================================
@@ -149,7 +150,7 @@ static uint32_t compute_hash(const void* data, size_t len) {
 /* Generate random token */
 static uint64_t generate_random_token(void) {
     uint64_t token = 0;
-    token = ((uint64_t)rand() << 32) | rand();
+    token = ((uint64_t)nimcp_tl_rand() << 32) | nimcp_tl_rand();
     token ^= get_time_ms();
     return token;
 }

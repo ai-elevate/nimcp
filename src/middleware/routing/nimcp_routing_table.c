@@ -84,7 +84,7 @@ static bool create_route(routing_table_t* table,
                         uint32_t dest_id,
                         float strength) {
     if (table->num_routes >= table->config.max_routes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hash_source_id: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hash_source_id: capacity exceeded");
         return false;
     }
 

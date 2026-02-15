@@ -96,7 +96,7 @@ bg_neuromod_system_t* bg_neuromod_create(const bg_neuromod_config_t* config) {
     bg_neuromod_system_t* sys = nimcp_calloc(1, sizeof(bg_neuromod_system_t));
     if (!sys) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sys is NULL");
 
         return NULL;
 
@@ -150,7 +150,7 @@ int bg_neuromod_reset(bg_neuromod_system_t* system) {
 
 int bg_neuromod_set_level(bg_neuromod_system_t* system, bg_neuromod_type_t type, float level) {
     if (!system || type >= BG_NEUROMOD_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_neuromod_set_level: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_neuromod_set_level: system is NULL");
         return -1;
     }
     nimcp_mutex_lock(system->mutex);

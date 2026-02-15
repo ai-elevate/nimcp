@@ -574,7 +574,6 @@ float free_energy_bridge_get_epistemic_wellbeing(
  */
 bool free_energy_bridge_is_high_uncertainty(const free_energy_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_bridge_is_high_uncertainty: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -591,7 +590,6 @@ bool free_energy_bridge_is_high_uncertainty(const free_energy_bridge_t* bridge) 
  */
 bool free_energy_bridge_is_identity_at_risk(const free_energy_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_bridge_is_identity_at_risk: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

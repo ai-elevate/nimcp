@@ -472,7 +472,7 @@ bool core_bio_async_get_module(
     core_module_entry_t* entry)
 {
     if (!bridge || type >= CORE_MODULE_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "core_bio_async_get_module: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "core_bio_async_get_module: bridge is NULL");
         return false;
     }
     if (!bridge->modules[type].active) {
@@ -974,7 +974,7 @@ bool core_bio_async_get_module_health(
     float* health_score)
 {
     if (!bridge || type >= CORE_MODULE_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "core_bio_async_get_module_health: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "core_bio_async_get_module_health: bridge is NULL");
         return false;
     }
     if (!bridge->modules[type].active) {

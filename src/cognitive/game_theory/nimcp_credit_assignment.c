@@ -192,7 +192,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
             nimcp_free(system->coalition_cache);
             nimcp_free(system->cache_valid);
             nimcp_free(system);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_credit_create: required parameter is NULL (system->coalition_cache, system->cache_valid)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_credit_create: required parameter is NULL (system->coalition_cache, system->cache_valid)");
             return NULL;
         }
     }

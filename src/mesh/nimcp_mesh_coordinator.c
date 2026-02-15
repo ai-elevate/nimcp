@@ -467,7 +467,6 @@ bool mesh_coordinator_has_participant(
     mesh_participant_id_t participant_id
 ) {
     if (!validate_coordinator(coord)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_coordinator_has_participant: validate_coordinator is NULL");
         return false;
     }
 

@@ -96,7 +96,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
     signal_wrapper_t wrapper = nimcp_calloc(1, sizeof(struct signal_wrapper_struct));
     if (!wrapper) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wrapper is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wrapper is NULL");
 
         return NULL;
 
@@ -181,7 +181,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
     signal_wrapper_t new_wrapper = nimcp_calloc(1, sizeof(struct signal_wrapper_struct));
     if (!new_wrapper) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_wrapper is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_wrapper is NULL");
 
         return NULL;
 
@@ -317,7 +317,6 @@ NIMCP_EXPORT float* signal_wrapper_write_data(
 NIMCP_EXPORT bool signal_wrapper_is_shared(signal_wrapper_t wrapper) {
     // Guard: validate input
     if (!wrapper) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_is_shared: wrapper is NULL");
         return false;
     }
 

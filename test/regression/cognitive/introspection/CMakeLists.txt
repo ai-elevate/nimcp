@@ -68,7 +68,8 @@ target_include_directories(regression_cognitive_introspection_consciousness_metr
 )
 add_test(NAME regression_cognitive_introspection_consciousness_metrics
          COMMAND regression_cognitive_introspection_consciousness_metrics)
-set_tests_properties(regression_cognitive_introspection_consciousness_metrics PROPERTIES LABELS "regression")
+set_tests_properties(regression_cognitive_introspection_consciousness_metrics PROPERTIES
+    LABELS "regression" TIMEOUT 180 RESOURCE_LOCK "brain_heavy")
 
 # Ensemble Uncertainty Regression Tests
 add_executable(regression_cognitive_introspection_ensemble_uncertainty

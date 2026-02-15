@@ -722,7 +722,6 @@ int population_immune_get_health_metrics(
 
 bool population_immune_is_degraded(const population_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_is_degraded: bridge is NULL");
         return false;
     }
     return (bridge->health_metrics.overall_health < 0.7f);
@@ -910,7 +909,6 @@ int population_coding_immune_disconnect_bio_async(population_immune_bridge_t* br
  */
 bool population_coding_immune_is_bio_async_connected(const population_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

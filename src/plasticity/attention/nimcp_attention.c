@@ -1672,7 +1672,6 @@ bool attention_validate_config(const multihead_attention_config_t* config)
      * WHY:  Each head needs equal dimension
      */
     if (config->input_dim % config->num_heads != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_validate_config: validation failed");
         return false;
     }
 
@@ -2306,7 +2305,7 @@ ternary_attention_ctx_t* ternary_attention_create(
 
     ternary_attention_ctx_t* ctx = nimcp_calloc(1, sizeof(ternary_attention_ctx_t));
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
     }
@@ -2534,7 +2533,7 @@ int ternary_attention_top_k(
     /* Simple O(n*k) algorithm suitable for small k */
     float* values_copy = nimcp_malloc(seq_length * sizeof(float));
     if (!values_copy) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values_copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "values_copy is NULL");
 
         return -1;
     }

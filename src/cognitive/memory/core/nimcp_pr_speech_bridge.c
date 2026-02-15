@@ -186,55 +186,45 @@ bool pr_speech_bridge_config_validate(const pr_speech_bridge_config_t* config) {
 
 
     if (config->position_encoding_bits < 1 || config->position_encoding_bits > 8) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
 
     // Validate decay factor (0-1)
     if (config->position_decay_factor < 0.0f || config->position_decay_factor > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
 
     // Validate quaternion parameters
     if (config->consolidation_base < 0.0f || config->consolidation_base > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
     if (config->emotion_sensitivity < 0.0f || config->emotion_sensitivity > 2.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
     if (config->salience_content_weight < 0.0f || config->salience_content_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
     if (config->accessibility_base < 0.0f || config->accessibility_base > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
 
     // Validate entanglement threshold
     if (config->entanglement_threshold < 0.0f || config->entanglement_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
 
     // Validate theta-gamma frequencies
     if (config->enable_theta_gamma) {
         if (config->theta_frequency_hz < 1.0f || config->theta_frequency_hz > 20.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
             return false;
         }
         if (config->gamma_frequency_hz < 10.0f || config->gamma_frequency_hz > 150.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
             return false;
         }
     }
 
     // Validate FEP threshold
     if (config->word_boundary_pe_threshold < 0.0f || config->word_boundary_pe_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -244,7 +234,6 @@ bool pr_speech_bridge_config_validate(const pr_speech_bridge_config_t* config) {
         return false;
     }
     if (config->retrieval_threshold < 0.0f || config->retrieval_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_speech_bridge_config_validate: validation failed");
         return false;
     }
 

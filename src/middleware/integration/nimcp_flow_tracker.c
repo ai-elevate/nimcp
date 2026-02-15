@@ -574,7 +574,6 @@ bool flow_tracker_has_bottleneck(
     const flow_tracker_t* tracker
 ) {
     if (!tracker) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flow_tracker_has_bottleneck: tracker is NULL");
         return false;
     }
 
@@ -584,7 +583,6 @@ bool flow_tracker_has_bottleneck(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flow_tracker_has_bottleneck: validation failed");
     return false;
 }
 

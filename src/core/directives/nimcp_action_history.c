@@ -516,7 +516,6 @@ int action_history_disconnect_bio_async(action_history_t* history) {
 
 bool action_history_is_bio_async_connected(const action_history_t* history) {
     if (!history) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_history_is_bio_async_connected: history is NULL");
         return false;
     }
 

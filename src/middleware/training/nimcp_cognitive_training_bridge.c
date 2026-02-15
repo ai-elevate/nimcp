@@ -1124,7 +1124,6 @@ bool cognitive_training_is_bio_async_connected(
     const cognitive_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -1319,7 +1318,6 @@ bool cognitive_training_should_checkpoint(
     const cognitive_training_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_training_should_checkpoint: bridge is NULL");
         return false;
     }
     return bridge->cognitive_effects.should_checkpoint;

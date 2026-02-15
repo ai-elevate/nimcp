@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_autobiographical_bridge)
 
@@ -263,7 +264,7 @@ int snn_autobiographical_bridge_update(snn_autobiographical_bridge_t* bridge, fl
     bridge->state.encoding_strength = snn_autobiographical_compute_encoding_strength(bridge);
 
     /* Trigger offline replay probabilistically */
-    float rand_val = (float)rand() / (float)RAND_MAX;
+    float rand_val = (float)nimcp_tl_rand() / (float)RAND_MAX;
     if (rand_val < bridge->config.replay_probability) {
         snn_autobiographical_replay_memories(bridge);
     }
@@ -425,7 +426,7 @@ int snn_autobiographical_retrieve_memory(
         if (!mem->spike_sequence) continue;
 
         /* Simplified overlap computation */
-        float overlap = 0.5f + 0.5f * (float)rand() / (float)RAND_MAX;
+        float overlap = 0.5f + 0.5f * (float)nimcp_tl_rand() / (float)RAND_MAX;
 
         if (overlap > best_match && overlap >= bridge->config.pattern_completion_threshold) {
             best_match = overlap;
@@ -534,7 +535,7 @@ int snn_autobiographical_replay_memories(
 
     /* Replay a random subset of memories */
     for (uint32_t cycle = 0; cycle < bridge->config.consolidation_cycles; cycle++) {
-        uint32_t memory_id = rand() % bridge->state.memory_count;
+        uint32_t memory_id = nimcp_tl_rand() % bridge->state.memory_count;
         snn_autobiographical_consolidate_memory(bridge, memory_id);
     }
 

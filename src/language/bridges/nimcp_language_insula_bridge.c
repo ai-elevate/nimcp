@@ -89,7 +89,7 @@ language_insula_bridge_t* language_insula_bridge_create(
 
     language_insula_bridge_t* bridge = nimcp_calloc(1, sizeof(language_insula_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -244,7 +244,7 @@ int language_insula_set_prosody(
     float intensity)
 {
     if (!bridge || prosody >= PROSODY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_insula_set_prosody: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_insula_set_prosody: bridge is NULL");
         return -1;
     }
 

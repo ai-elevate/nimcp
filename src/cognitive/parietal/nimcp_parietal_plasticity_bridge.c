@@ -1138,7 +1138,6 @@ int parietal_plasticity_bio_async_disconnect(parietal_plasticity_bridge_t* bridg
 
 bool parietal_plasticity_is_bio_async_connected(parietal_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

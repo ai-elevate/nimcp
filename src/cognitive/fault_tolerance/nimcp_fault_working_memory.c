@@ -527,7 +527,7 @@ const active_fault_t* fault_working_memory_get_fault_at(
 
 
     if (index >= wm->count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_working_memory_get_fault_at: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fault_working_memory_get_fault_at: capacity exceeded");
         return NULL;
     }
 
@@ -657,7 +657,6 @@ uint32_t fault_working_memory_get_total_steps(
 
 bool fault_working_memory_is_cascading(const fault_working_memory_t* wm) {
     if (!wm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_working_memory_is_cascading: wm is NULL");
         return false;
     }
 

@@ -382,7 +382,6 @@ bool sleep_is_needed(const sleep_system_t sleep)
 {
     /* Guard clause: Validate input */
     if (sleep == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_is_needed: validation failed");
         return false;
     }
 

@@ -543,7 +543,7 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
     // Guard clause: Check allocation
     if (!gen) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gen is NULL");
 
         return NULL;
 
@@ -671,7 +671,7 @@ static bool validate_spike_inputs(event_generator_t generator, neural_network_t 
 
     // Guard clause: Check neuron ID bounds
     if (neuron_id >= generator->max_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_spike_inputs: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "validate_spike_inputs: capacity exceeded");
         return false;
     }
 
@@ -895,7 +895,7 @@ bool event_generator_set_neuron_feature(event_generator_t generator, uint32_t ne
 
     // Guard clause: Check neuron ID bounds
     if (neuron_id >= generator->max_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "event_generator_set_neuron_feature: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "event_generator_set_neuron_feature: capacity exceeded");
         return false;
     }
 
@@ -994,7 +994,7 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config)
     // Guard clause: Check allocation
     if (!receiver) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "receiver is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "receiver is NULL");
 
         return NULL;
 
@@ -1097,7 +1097,6 @@ static bool check_subscription_filters(event_receiver_t receiver, const event_pa
 {
     // Guard clause: Validate inputs
     if (!receiver || !packet) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_subscription_filters: required parameter is NULL (receiver, packet)");
         return false;
     }
 
@@ -1112,7 +1111,6 @@ static bool check_subscription_filters(event_receiver_t receiver, const event_pa
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_subscription_filters: validation failed");
     return false;
 }
 
@@ -1298,7 +1296,7 @@ bool event_receiver_add_filter(event_receiver_t receiver, const subscription_fil
 
     // Guard clause: Check capacity
     if (receiver->num_filters >= receiver->max_filters) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "event_receiver_add_filter: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "event_receiver_add_filter: capacity exceeded");
         return false;
     }
 

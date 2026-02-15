@@ -1238,7 +1238,7 @@ imagination_scenario_t* imagination_begin_scenario(
 
     }
     if (mode < 0 || mode >= IMAGINATION_MODE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return NULL;
     }
 
@@ -3604,7 +3604,6 @@ static bool imag_mcts_is_terminal(const void* state, void* user_data) {
     if (s->goal_progress >= 0.9f) return true;
     if (s->coherence < ud->engine->config.coherence_threshold) return true;
     if (s->depth >= 10) return true;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imag_mcts_is_terminal: capacity exceeded");
     return false;
 }
 

@@ -325,7 +325,7 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
     if (!system->memories) {
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_create: validation failed");
         return NULL;
     }
 

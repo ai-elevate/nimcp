@@ -532,7 +532,6 @@ bool bbb_verify_signature(bbb_system_t system, const void* data,
 
     /* Guard: Incorrect signature size */
     if (sig_size != SIGNATURE_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_signature: validation failed");
         return false;
     }
 
@@ -589,7 +588,7 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
 
     /* Guard: Key ID too long */
     if (strlen(key_id) >= MAX_KEY_ID_LENGTH) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bbb_add_trusted_key: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bbb_add_trusted_key: capacity exceeded");
         return false;
     }
 

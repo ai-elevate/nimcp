@@ -283,6 +283,8 @@ void fep_context_destroy(fep_context_system_t* sys) {
 
     if (sys->mutex) {
         nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+        sys->mutex = NULL;
     }
 
     nimcp_free(sys);
@@ -318,7 +320,7 @@ int fep_context_add(
     if (sys->num_contexts >= sys->max_contexts) {
         NIMCP_LOGGING_ERROR("Context library full");
         nimcp_platform_mutex_unlock(sys->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fep_context_add: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fep_context_add: capacity exceeded");
         return -1;
     }
 

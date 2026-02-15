@@ -436,7 +436,6 @@ bool pag_init_hypothalamus_link(
 
 bool pag_is_initialized(nimcp_pag_t* pag) {
     if (!pag) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_is_initialized: pag is NULL");
         return false;
     }
 

@@ -15,6 +15,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(temporal_replay)
 //=============================================================================
@@ -116,7 +117,7 @@ static void update_priority_tree(temporal_replay_t* replay, uint32_t index, floa
  */
 static uint32_t sample_from_priority_tree(temporal_replay_t* replay, float value) {
     if (!replay->priority_tree || replay->total_priority <= 0.0f) {
-        return (uint32_t)(((float)rand() / RAND_MAX) * replay->count);
+        return (uint32_t)(((float)nimcp_tl_rand() / RAND_MAX) * replay->count);
     }
 
     uint32_t capacity = replay->config.capacity;
@@ -694,10 +695,10 @@ int temporal_replay_sample(temporal_replay_t* replay,
 
         if (mode == REPLAY_MODE_PRIORITY && replay->config.use_priority_tree && total_p > 0.0f) {
             float segment = total_p / actual_batch;
-            float value = (i + ((float)rand() / RAND_MAX)) * segment;
+            float value = (i + ((float)nimcp_tl_rand() / RAND_MAX)) * segment;
             idx = sample_from_priority_tree(replay, value);
         } else if (mode == REPLAY_MODE_RANDOM) {
-            idx = (uint32_t)(((float)rand() / RAND_MAX) * replay->count);
+            idx = (uint32_t)(((float)nimcp_tl_rand() / RAND_MAX) * replay->count);
         } else {
             idx = i % replay->count;
         }
@@ -770,7 +771,7 @@ int temporal_replay_sample_sequence(temporal_replay_t* replay,
 
     uint32_t actual_length = (sequence_length > replay->count) ? replay->count : sequence_length;
     uint32_t max_start = replay->count - actual_length;
-    uint32_t start_idx = (uint32_t)(((float)rand() / RAND_MAX) * max_start);
+    uint32_t start_idx = (uint32_t)(((float)nimcp_tl_rand() / RAND_MAX) * max_start);
 
     for (uint32_t i = 0; i < actual_length; i++) {
         /* Phase 8: Loop progress heartbeat */

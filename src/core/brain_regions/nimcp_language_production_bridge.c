@@ -541,7 +541,7 @@ language_message_t* language_message_create(const char* semantic_content,
 
     language_message_t* message = nimcp_calloc(1, sizeof(language_message_t));
     if (!message) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "message is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "message is NULL");
 
         return NULL;
     }

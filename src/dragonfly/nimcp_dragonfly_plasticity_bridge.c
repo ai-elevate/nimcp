@@ -133,24 +133,19 @@ bool dragonfly_plasticity_validate_config(const dragonfly_plasticity_config_t* c
         config->eligibility_decay > 1.0f) return false;
 
     if (config->min_nav_gain <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
         return false;
     }
     if (config->max_nav_gain < config->min_nav_gain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
         return false;
     }
     if (config->min_tuning_width <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
         return false;
     }
     if (config->max_tuning_width < config->min_tuning_width) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
         return false;
     }
 
     if (config->homeostasis_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
         return false;
     }
     if (config->target_activity < 0.0f ||

@@ -136,7 +136,7 @@ static bool init_buffers(wernicke_nlp_bridge_t* bridge) {
     );
     if (!bridge->concept_buffer) {
         nimcp_free(bridge->phoneme_buffer);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_buffers: bridge->concept_buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_buffers: bridge->concept_buffer is NULL");
         return false;
     }
 
@@ -380,7 +380,7 @@ wernicke_nlp_bridge_t* wernicke_nlp_bridge_create(
     wernicke_nlp_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_nlp_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate NLP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

@@ -289,7 +289,6 @@ float swarm_signal_immune_get_packet_loss(const swarm_signal_immune_bridge_t* br
 bool swarm_signal_immune_is_critical_only(const swarm_signal_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_immune_is_critical_only: bridge is NULL");
         return false;
     }
 
@@ -357,7 +356,6 @@ int swarm_signal_immune_disconnect_bio_async(swarm_signal_immune_bridge_t* bridg
 bool swarm_signal_immune_is_bio_async_connected(const swarm_signal_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

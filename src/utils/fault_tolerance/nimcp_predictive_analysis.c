@@ -480,7 +480,7 @@ bool pa_add_sample_timed(pa_context_t* ctx, pa_series_type_t series, double valu
         return false;
     }
     if (series < 0 || series >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_add_sample_timed: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_add_sample_timed: capacity exceeded");
         return false;
     }
 
@@ -538,7 +538,7 @@ bool pa_get_series_meta(pa_context_t* ctx, pa_series_type_t series, pa_series_me
         return false;
     }
     if (series < 0 || series >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_get_series_meta: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_get_series_meta: capacity exceeded");
         return false;
     }
 
@@ -652,11 +652,9 @@ uint32_t pa_detect_all_anomalies(pa_context_t* ctx, pa_anomaly_t* anomalies, uin
 
 bool pa_is_anomalous(pa_context_t* ctx, pa_series_type_t series, double value) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_is_anomalous: ctx is NULL");
         return false;
     }
     if (series < 0 || series >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_is_anomalous: capacity exceeded");
         return false;
     }
 
@@ -697,11 +695,11 @@ bool pa_calculate_correlation(pa_context_t* ctx, pa_series_type_t series_a,
         return false;
     }
     if (series_a < 0 || series_a >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_get_anomaly_score: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_get_anomaly_score: capacity exceeded");
         return false;
     }
     if (series_b < 0 || series_b >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_get_anomaly_score: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_get_anomaly_score: capacity exceeded");
         return false;
     }
 
@@ -878,7 +876,7 @@ bool pa_forecast_with_model(pa_context_t* ctx, pa_series_type_t series,
         return false;
     }
     if (series < 0 || series >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_forecast: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_forecast: capacity exceeded");
         return false;
     }
     if (horizon > PA_FORECAST_HORIZON) horizon = PA_FORECAST_HORIZON;
@@ -945,7 +943,7 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
         return false;
     }
     if (series < 0 || series >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_forecast: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_forecast: capacity exceeded");
         return false;
     }
 
@@ -1000,7 +998,7 @@ bool pa_detect_seasonality(pa_context_t* ctx, pa_series_type_t series, pa_season
         return false;
     }
     if (series < 0 || series >= PA_MAX_SERIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_detect_seasonality: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pa_detect_seasonality: capacity exceeded");
         return false;
     }
 

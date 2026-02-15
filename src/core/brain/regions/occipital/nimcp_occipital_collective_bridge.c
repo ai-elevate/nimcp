@@ -169,7 +169,7 @@ occipital_collective_bridge_t* occipital_collective_create(
     occipital_collective_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate occipital-collective bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -718,7 +718,7 @@ int occipital_collective_initiate_attention(
     if (bridge->target_count >= OCCIPITAL_COLLECTIVE_MAX_TARGETS) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot initiate attention: max targets reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_collective_initiate_attention: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "occipital_collective_initiate_attention: capacity exceeded");
         return -1;
     }
 
@@ -1124,7 +1124,6 @@ bool occipital_collective_is_attention_leader(
     const occipital_collective_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_is_attention_leader: bridge is NULL");
         return false;
     }
 

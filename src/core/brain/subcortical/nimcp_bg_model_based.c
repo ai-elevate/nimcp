@@ -144,7 +144,7 @@ bg_model_based_t* bg_mb_create(const bg_mb_config_t* config) {
     bg_model_based_t* mb = nimcp_calloc(1, sizeof(bg_model_based_t));
     if (!mb) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mb is NULL");
 
         return NULL;
 
@@ -696,7 +696,7 @@ int bg_mb_get_arbitration(const bg_model_based_t* mb,
 int bg_mb_set_arbitration_mode(bg_model_based_t* mb,
                                 bg_mb_arbitration_mode_t mode) {
     if (!mb || mode >= BG_MB_ARBIT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_mb_get_state_value: mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_mb_get_state_value: mb is NULL");
         return -1;
     }
 

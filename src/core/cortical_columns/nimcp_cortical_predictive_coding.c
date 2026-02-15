@@ -771,7 +771,6 @@ int cortical_predictive_disconnect_bio_async(cortical_predictive_t* pc) {
 
 bool cortical_predictive_is_bio_async_connected(const cortical_predictive_t* pc) {
     if (!pc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_predictive_is_bio_async_connected: pc is NULL");
         return false;
     }
     return pc->bio_async_enabled;

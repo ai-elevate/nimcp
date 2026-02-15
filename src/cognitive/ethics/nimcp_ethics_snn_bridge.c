@@ -845,7 +845,6 @@ bool ethics_snn_check_harm(
     float* harm_level)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_check_harm: bridge is NULL");
         return false;
     }
 
@@ -870,7 +869,6 @@ bool ethics_snn_check_conflict(
     float* conflict_level)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_check_conflict: bridge is NULL");
         return false;
     }
 
@@ -1144,7 +1142,6 @@ int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
 
 bool ethics_snn_is_bio_async_connected(ethics_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

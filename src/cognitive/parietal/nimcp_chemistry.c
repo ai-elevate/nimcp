@@ -247,12 +247,10 @@ bool chemistry_validate_config(const chemistry_config_t* config) {
 
     if (config->temperature_k <= 0.0f) {
         set_chemistry_error("Invalid temperature");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_validate_config: validation failed");
         return false;
     }
     if (config->pressure_atm <= 0.0f) {
         set_chemistry_error("Invalid pressure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_validate_config: validation failed");
         return false;
     }
     return true;
@@ -375,15 +373,12 @@ bool chemistry_can_form_ionic_bond(
     uint8_t element2
 ) {
     if (!chem) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_can_form_ionic_bond: chem is NULL");
         return false;
     }
     if (element1 == 0 || element1 >= NUM_KNOWN_ELEMENTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_can_form_ionic_bond: element1 is zero");
         return false;
     }
     if (element2 == 0 || element2 >= NUM_KNOWN_ELEMENTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_can_form_ionic_bond: element2 is zero");
         return false;
     }
 
@@ -750,7 +745,6 @@ int chemistry_parse_reaction(
 
 bool chemistry_is_balanced(const reaction_t* reaction) {
     if (!reaction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_is_balanced: reaction is NULL");
         return false;
     }
 
@@ -804,7 +798,6 @@ bool chemistry_is_balanced(const reaction_t* reaction) {
 
     for (uint32_t i = 1; i <= CHEMISTRY_NUM_ELEMENTS; i++) {
         if (reactant_counts[i] != product_counts[i]) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_is_balanced: validation failed");
             return false;
         }
     }
@@ -950,7 +943,6 @@ bool chemistry_is_spontaneous(
     float temperature_k
 ) {
     if (!reaction) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_is_spontaneous: reaction is NULL");
         return false;
     }
 

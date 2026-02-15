@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 #define LOG_TAG "VAE_AUDIO"
 #define PI 3.14159265359f
@@ -333,8 +334,8 @@ int vae_audio_generate(vae_audio_bridge_t* bridge,
     if (!latent) return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
 
     for (uint32_t i = 0; i < latent_dim; i++) {
-        float u1 = (float)rand() / RAND_MAX;
-        float u2 = (float)rand() / RAND_MAX;
+        float u1 = (float)nimcp_tl_rand() / RAND_MAX;
+        float u2 = (float)nimcp_tl_rand() / RAND_MAX;
         latent[i] = sqrtf(-2.0f * logf(u1 + 1e-8f)) * cosf(2.0f * PI * u2) * temperature;
     }
 

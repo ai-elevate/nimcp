@@ -331,7 +331,7 @@ static bool enqueue_command(speech_motor_planner_t* planner, const motor_command
 
     // Check if queue is full
     if (planner->queue_count >= planner->config.max_commands) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_command: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_command: capacity exceeded");
         return false;
     }
 
@@ -738,19 +738,16 @@ bool speech_motor_validate_config(const speech_motor_config_t* config) {
 
     // Validate planning_window_ms
     if (config->planning_window_ms < 0.0F || config->planning_window_ms > 1000.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: validation failed");
         return false;
     }
 
     // Validate coarticulation_strength
     if (config->coarticulation_strength < 0.0F || config->coarticulation_strength > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: validation failed");
         return false;
     }
 
     // Validate default_velocity
     if (config->default_velocity < 0.0F || config->default_velocity > 100.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: validation failed");
         return false;
     }
 

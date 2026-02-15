@@ -747,7 +747,6 @@ bool cingulate_get_last_error(const cingulate_adapter_t* adapter,
 bool cingulate_error_is_conscious(const cingulate_adapter_t* adapter,
                                    uint32_t error_id) {
     if (!adapter) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
         return false;
     }
 
@@ -765,7 +764,6 @@ bool cingulate_error_is_conscious(const cingulate_adapter_t* adapter,
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -903,7 +901,6 @@ bool cingulate_evaluate_self_relevance(cingulate_adapter_t* adapter,
 
 bool cingulate_is_default_mode(const cingulate_adapter_t* adapter) {
     if (!adapter) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_is_default_mode: adapter is NULL");
         return false;
     }
     return adapter->dmn_active;

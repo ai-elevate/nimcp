@@ -325,7 +325,7 @@ int feedback_set_policy(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_set_policy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_set_policy: capacity exceeded");
         return -1;
     }
 
@@ -350,7 +350,7 @@ int feedback_get_policy(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_get_policy: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_get_policy: capacity exceeded");
         return -1;
     }
 
@@ -381,7 +381,7 @@ int feedback_record_transfer(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_record_transfer: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_record_transfer: capacity exceeded");
         return -1;
     }
 
@@ -462,7 +462,7 @@ int feedback_compute_value(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_compute_value: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_compute_value: capacity exceeded");
         return -1;
     }
 
@@ -527,7 +527,7 @@ int feedback_analyze_loop(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_analyze_loop: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_analyze_loop: capacity exceeded");
         return -1;
     }
 
@@ -762,7 +762,6 @@ bool feedback_has_unhealthy_loops(const feedback_system_t* system) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feedback_has_unhealthy_loops: validation failed");
     return false;
 }
 
@@ -786,7 +785,7 @@ int feedback_get_history(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_get_history: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_get_history: capacity exceeded");
         return -1;
     }
 
@@ -860,7 +859,7 @@ int feedback_open_gate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_open_gate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_open_gate: capacity exceeded");
         return -1;
     }
 
@@ -881,7 +880,7 @@ int feedback_close_gate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_close_gate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_close_gate: capacity exceeded");
         return -1;
     }
 
@@ -894,7 +893,6 @@ bool feedback_is_gate_open(
     feedback_loop_type_t loop_type
 ) {
     if (!system || !system->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_is_gate_open: required parameter is NULL (system, system->initialized)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -902,7 +900,6 @@ bool feedback_is_gate_open(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_is_gate_open: capacity exceeded");
         return false;
     }
 
@@ -928,7 +925,7 @@ int feedback_enable_adaptive_rate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_enable_adaptive_rate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_enable_adaptive_rate: capacity exceeded");
         return -1;
     }
 
@@ -953,7 +950,7 @@ int feedback_disable_adaptive_rate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_disable_adaptive_rate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "feedback_disable_adaptive_rate: capacity exceeded");
         return -1;
     }
 

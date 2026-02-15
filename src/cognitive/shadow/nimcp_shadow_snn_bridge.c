@@ -250,7 +250,7 @@ shadow_snn_bridge_t* shadow_snn_create(const shadow_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->suppression_buffer || !bridge->prev_state) {
         shadow_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shadow_snn_create: operation failed");
         return NULL;
     }
 
@@ -666,7 +666,6 @@ bool shadow_snn_check_suppression(
     float* suppression_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_check_suppression: bridge is NULL");
         return false;
     }
 
@@ -686,7 +685,6 @@ bool shadow_snn_check_defense(
     float* defense_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_check_defense: bridge is NULL");
         return false;
     }
 
@@ -706,7 +704,6 @@ bool shadow_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -927,7 +924,6 @@ int shadow_snn_bio_async_disconnect(shadow_snn_bridge_t* bridge) {
 
 bool shadow_snn_is_bio_async_connected(shadow_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -444,7 +444,7 @@ int health_emotion_report_event(
     }
 
     if (event_type >= HEALTH_EMOTION_EVENT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "health_emotion_report_event: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "health_emotion_report_event: capacity exceeded");
         return -1;
     }
     if (severity < 0.0f || severity > 1.0f) severity = 0.5f;

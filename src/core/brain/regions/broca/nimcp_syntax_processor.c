@@ -1067,7 +1067,7 @@ static syntax_tree_node_t* build_tree_recursive(
     syntax_tree_node_t* parent
 ) {
     if (!processor || i > j || j >= processor->unit_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "build_tree_recursive: processor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "build_tree_recursive: processor is NULL");
         return NULL;
     }
 
@@ -1163,21 +1163,18 @@ static syntax_tree_node_t* build_tree_from_chart(syntax_processor_t* processor) 
 
 static bool check_agreement(const syntactic_unit_t* subject, const syntactic_unit_t* verb) {
     if (subject == NULL || verb == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_agreement: validation failed");
         return false;
     }
 
     // Check number agreement
     if (subject->features.number != verb->features.number &&
         subject->features.number != 0 && verb->features.number != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_agreement: validation failed");
         return false;
     }
 
     // Check person agreement
     if (subject->features.person != verb->features.person &&
         subject->features.person != 0 && verb->features.person != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_agreement: operation failed");
         return false;
     }
 

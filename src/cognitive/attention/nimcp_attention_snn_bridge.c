@@ -1522,7 +1522,6 @@ int attention_snn_disconnect_bio_async(attention_snn_bridge_t* bridge) {
 
 bool attention_snn_is_bio_async_connected(const attention_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

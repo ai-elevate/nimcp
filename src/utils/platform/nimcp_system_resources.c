@@ -385,7 +385,6 @@ bool system_resources_can_resize(const system_resources_t* resources,
 {
     if (!resources) {
         LOG_WARN("system_resources_can_resize: resources pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Can resize check: NULL resources pointer");
         return false;
     }
 

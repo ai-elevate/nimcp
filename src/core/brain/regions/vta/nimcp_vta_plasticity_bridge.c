@@ -124,7 +124,7 @@ nimcp_vta_plasticity_bridge_t* nimcp_vta_plasticity_create(const nimcp_vta_plast
     nimcp_vta_plasticity_bridge_t* b = nimcp_calloc(1, sizeof(*b));
     if (!b) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "b is NULL");
 
         return NULL;
 
@@ -133,7 +133,7 @@ nimcp_vta_plasticity_bridge_t* nimcp_vta_plasticity_create(const nimcp_vta_plast
     b->synapse_capacity = VTA_PLASTICITY_MAX_SYNAPSES;
     b->synapses = nimcp_calloc(b->synapse_capacity, sizeof(nimcp_vta_plasticity_synapse_t));
     if (!b->synapses) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vta_plasticity_create: synapses allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_vta_plasticity_create: synapses allocation failed");
         nimcp_free(b);
         return NULL;
     }
@@ -184,7 +184,7 @@ int nimcp_vta_plasticity_connect_coordinator(nimcp_vta_plasticity_bridge_t* b, s
 
 int nimcp_vta_plasticity_register_synapse(nimcp_vta_plasticity_bridge_t* b, uint32_t id, nimcp_vta_synapse_type_t t, float w) {
     if (!b || b->synapse_count >= b->synapse_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_vta_plasticity_register_synapse: b is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_vta_plasticity_register_synapse: b is NULL");
         return -1;
     }
     nimcp_vta_plasticity_synapse_t* s = &b->synapses[b->synapse_count++];

@@ -168,7 +168,6 @@ static void update_threat_level(mesh_amygdala_integration_t* integration,
 static bool should_veto_transaction(mesh_amygdala_integration_t* integration,
                                     const mesh_transaction_t* tx) {
     if (!integration->config.enable_veto_capability) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: integration->config is NULL");
         return false;
     }
 
@@ -178,7 +177,6 @@ static bool should_veto_transaction(mesh_amygdala_integration_t* integration,
 
         /* Don't veto emergency-related transactions */
         if (tx->is_emergency) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return false;
         }
 
@@ -190,20 +188,17 @@ static bool should_veto_transaction(mesh_amygdala_integration_t* integration,
     if (integration->current_threat_level >= integration->config.veto_threshold) {
         /* Allow emergency transactions through */
         if (tx->is_emergency) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return false;
         }
 
         /* Veto non-critical transactions during high threat */
         if (tx->type < 0x1000) {  /* Assume critical types are < 0x1000 */
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return false;
         }
 
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -751,7 +746,6 @@ mesh_participant_id_t mesh_amygdala_get_participant_id(
 
 bool mesh_amygdala_is_registered(const mesh_amygdala_integration_t* integration) {
     if (!integration || integration->magic != MESH_AMYGDALA_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_amygdala_is_registered: integration is NULL");
         return false;
     }
     return integration->registered;

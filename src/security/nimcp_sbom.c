@@ -172,7 +172,7 @@ static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) 
     size_t estimated_size = 4096 + (sc->dependency_count * 1024);
     char* sbom = (char*)nimcp_malloc(estimated_size);
     if (!sbom) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_spdx_sbom: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -276,7 +276,7 @@ static nimcp_error_t generate_spdx_sbom(nimcp_supply_chain_t sc, char** output) 
 overflow:
     LOG_ERROR("SBOM buffer overflow - increase estimated_size");
     nimcp_free(sbom);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_spdx_sbom: memory allocation failed");
     return NIMCP_ERROR_NO_MEMORY;
 }
 
@@ -285,7 +285,7 @@ static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** out
     size_t estimated_size = 4096 + (sc->dependency_count * 1024);
     char* sbom = (char*)nimcp_malloc(estimated_size);
     if (!sbom) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_cyclonedx_sbom: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -393,7 +393,7 @@ static nimcp_error_t generate_cyclonedx_sbom(nimcp_supply_chain_t sc, char** out
 overflow:
     LOG_ERROR("SBOM buffer overflow - increase estimated_size");
     nimcp_free(sbom);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sbom: memory allocation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_cyclonedx_sbom: memory allocation failed");
     return NIMCP_ERROR_NO_MEMORY;
 }
 

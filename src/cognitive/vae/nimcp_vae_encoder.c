@@ -31,6 +31,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_vae_encoder_health_agent = NULL;
@@ -99,7 +100,7 @@ static inline bool is_inf_f(float value) {
  */
 static float xavier_init(uint32_t fan_in, uint32_t fan_out) {
     float limit = sqrtf(6.0f / (float)(fan_in + fan_out));
-    return ((float)rand() / (float)RAND_MAX) * 2.0f * limit - limit;
+    return ((float)nimcp_tl_rand() / (float)RAND_MAX) * 2.0f * limit - limit;
 }
 
 /**
@@ -116,8 +117,8 @@ static float randn(void) {
 
     float u, v, s;
     do {
-        u = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-        v = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+        u = ((float)nimcp_tl_rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+        v = ((float)nimcp_tl_rand() / (float)RAND_MAX) * 2.0f - 1.0f;
         s = u * u + v * v;
     } while (s >= 1.0f || s == 0.0f);
 
@@ -797,7 +798,7 @@ int vae_encoder_layer_forward(vae_encoder_layer_t* layer,
         float scale = 1.0f / keep_prob;
 
         for (uint32_t i = 0; i < batch_size * out_dim; i++) {
-            if ((float)rand() / (float)RAND_MAX > keep_prob) {
+            if ((float)nimcp_tl_rand() / (float)RAND_MAX > keep_prob) {
                 out_data[i] = 0.0f;
             } else {
                 out_data[i] *= scale;

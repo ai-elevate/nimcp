@@ -156,7 +156,7 @@ reticular_bridge_t* reticular_bridge_create(const reticular_bridge_config_t* con
     reticular_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -521,7 +521,7 @@ int reticular_bridge_subscribe_module(
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_bridge_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "reticular_bridge_subscribe_module: capacity exceeded");
         return -1;
     }
 

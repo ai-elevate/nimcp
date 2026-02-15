@@ -756,7 +756,6 @@ bool knowledge_snn_check_activation(
     float* activation_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_check_activation: bridge is NULL");
         return false;
     }
 
@@ -780,7 +779,6 @@ bool knowledge_snn_check_retrieval(
     float* retrieval_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_check_retrieval: bridge is NULL");
         return false;
     }
 
@@ -804,7 +802,6 @@ bool knowledge_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1091,7 +1088,6 @@ int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
 
 bool knowledge_snn_is_bio_async_connected(knowledge_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -133,7 +133,7 @@ striatal_interneurons_t* sint_create(const sint_config_t* config) {
     striatal_interneurons_t* sint = nimcp_calloc(1, sizeof(striatal_interneurons_t));
     if (!sint) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sint is NULL");
 
         return NULL;
 
@@ -549,7 +549,6 @@ float sint_get_ach_level(const striatal_interneurons_t* sint) {
 
 bool sint_is_tan_pausing(const striatal_interneurons_t* sint) {
     if (!sint) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_is_tan_pausing: sint is NULL");
         return false;
     }
 

@@ -658,7 +658,6 @@ int social_fep_bridge_unregister(social_fep_bridge_t* bridge) {
 
 bool social_fep_bridge_is_registered(const social_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -895,7 +894,6 @@ social_fep_state_t social_fep_bridge_get_state(const social_fep_bridge_t* bridge
 
 bool social_fep_bridge_is_degraded(const social_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 

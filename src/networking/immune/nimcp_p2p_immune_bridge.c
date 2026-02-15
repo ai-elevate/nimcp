@@ -234,7 +234,7 @@ int p2p_immune_create_antibody_peer_filter(p2p_immune_bridge_t* bridge, uint32_t
 
     if (bridge->p2p_modulation.filter_count >= bridge->p2p_modulation.filter_capacity) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "p2p_immune_create_antibody_peer_filter: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "p2p_immune_create_antibody_peer_filter: capacity exceeded");
         return -1;
     }
 
@@ -440,7 +440,6 @@ int p2p_immune_get_inflammation_state(const p2p_immune_bridge_t* bridge, inflamm
 
 bool p2p_immune_has_unhealthy_peers(const p2p_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_has_unhealthy_peers: bridge is NULL");
         return false;
     }
     return bridge->p2p_modulation.health.unhealthy_peers >= UNHEALTHY_PEERS_LOCAL_THRESHOLD;

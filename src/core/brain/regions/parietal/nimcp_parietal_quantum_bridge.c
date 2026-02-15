@@ -347,7 +347,6 @@ void parietal_region_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
 
 bool parietal_region_quantum_bridge_is_enabled(const parietal_quantum_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_bridge_is_enabled: bridge is NULL");
         return false;
     }
     return bridge->config.enabled;
@@ -637,7 +636,7 @@ int parietal_quantum_collapse_frame(
         return -1;
     }
     if (target_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return -1;
     }
 

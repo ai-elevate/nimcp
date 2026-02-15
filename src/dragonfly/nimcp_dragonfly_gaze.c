@@ -148,58 +148,45 @@ bool gaze_validate_config(const gaze_config_t* config) {
     }
 
     if (config->max_yaw_rad < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->max_pitch_up_rad < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->max_pitch_down_rad < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->max_roll_rad < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
 
     if (config->max_yaw_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->max_pitch_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->max_roll_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
 
     if (config->pursuit_gain < 0.0f || config->pursuit_gain > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->vor_gain < 0.0f || config->vor_gain > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->stabilization_gain < 0.0f || config->stabilization_gain > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
 
     if (config->saccade_threshold_rad < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->saccade_latency_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
     if (config->saccade_duration_ms <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
         return false;
     }
 
@@ -672,7 +659,6 @@ gaze_mode_t dragonfly_gaze_get_mode(const dragonfly_gaze_t gaze) {
 
 bool dragonfly_gaze_is_locked(const dragonfly_gaze_t gaze) {
     if (!gaze) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_is_locked: gaze is NULL");
         return false;
     }
     return gaze->locked;

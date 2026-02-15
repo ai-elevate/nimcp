@@ -227,6 +227,8 @@ wiring_diagram_t* wiring_diagram_create(const char* base_path) {
             "wiring_diagram_create: failed to allocate module config array");
         NIMCP_LOGGING_ERROR("Failed to allocate module config array");
         nimcp_platform_mutex_destroy(wd->mutex);
+        nimcp_free(wd->mutex);
+        wd->mutex = NULL;
         nimcp_free(wd);
         return NULL;
     }
@@ -267,6 +269,8 @@ void wiring_diagram_destroy(wiring_diagram_t* wd) {
     /* Destroy mutex */
     if (wd->mutex) {
         nimcp_platform_mutex_destroy(wd->mutex);
+        nimcp_free(wd->mutex);
+        wd->mutex = NULL;
     }
 
     nimcp_free(wd);
@@ -316,7 +320,7 @@ int wiring_diagram_load_subsystem(wiring_diagram_t* wd, wiring_subsystem_t subsy
         return -1;
     }
     if (subsystem >= WIRING_SUBSYSTEM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wiring_diagram_load_subsystem: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wiring_diagram_load_subsystem: capacity exceeded");
         return -1;
     }
 
@@ -1014,7 +1018,7 @@ int wiring_diagram_persist_subsystem(wiring_diagram_t* wd, wiring_subsystem_t su
         return -1;
     }
     if (subsystem >= WIRING_SUBSYSTEM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wiring_diagram_persist_subsystem: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wiring_diagram_persist_subsystem: capacity exceeded");
         return -1;
     }
 
@@ -1071,7 +1075,6 @@ bool wiring_diagram_get_auto_persist(const wiring_diagram_t* wd) {
  */
 static bool is_safe_command_name(const char* cmd) {
     if (!cmd || !*cmd) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_command_name: cmd is NULL");
         return false;
     }
     for (const char* p = cmd; *p; p++) {
@@ -1095,7 +1098,6 @@ static bool is_safe_command_name(const char* cmd) {
 static bool check_command_exists(const char* cmd) {
     /* Validate command name - prevent injection */
     if (!is_safe_command_name(cmd)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_command_exists: is_safe_command_name is NULL");
         return false;
     }
 

@@ -401,7 +401,6 @@ NIMCP_EXPORT size_t knowledge_cow_view_get_memory_saved(knowledge_cow_view_t vie
 
 NIMCP_EXPORT bool knowledge_cow_view_is_modified(knowledge_cow_view_t view) {
     if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_view_is_modified: view is NULL");
         return false;
     }
     return page_cow_view_get_private_page_count(view->page_view) > 0;

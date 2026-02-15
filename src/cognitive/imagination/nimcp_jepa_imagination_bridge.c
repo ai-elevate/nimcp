@@ -126,7 +126,6 @@ int jepa_imagination_validate_config(const jepa_imagination_config_t* config) {
 
 
     if (config->confidence_threshold < 0.0f || config->confidence_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->max_prediction_horizon == 0 || config->max_prediction_horizon > 100) {
@@ -134,23 +133,18 @@ int jepa_imagination_validate_config(const jepa_imagination_config_t* config) {
         return -1;
     }
     if (config->prediction_decay < 0.0f || config->prediction_decay > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->novelty_bonus < 0.0f || config->novelty_bonus > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->constraint_softness < 0.0f || config->constraint_softness > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -388,7 +382,6 @@ int jepa_imagination_disconnect_imagination(jepa_imagination_bridge_t* bridge) {
 
 bool jepa_imagination_is_connected(const jepa_imagination_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -822,7 +815,6 @@ bool jepa_imagination_is_bio_async_connected(
     const jepa_imagination_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

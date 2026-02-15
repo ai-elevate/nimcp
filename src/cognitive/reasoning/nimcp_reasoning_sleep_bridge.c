@@ -441,7 +441,6 @@ bool reasoning_sleep_is_offline(const reasoning_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false on error */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_is_offline: bridge is NULL");
         return false;
     }
 
@@ -460,7 +459,6 @@ bool reasoning_sleep_is_rem_creative(const reasoning_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false on error */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_is_rem_creative: bridge is NULL");
         return false;
     }
 
@@ -638,7 +636,6 @@ bool reasoning_sleep_is_bio_async_connected(const reasoning_sleep_bridge_t bridg
 {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

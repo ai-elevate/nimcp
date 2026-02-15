@@ -266,7 +266,7 @@ wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* confi
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->assessment_buffer || !bridge->prev_state) {
         wellbeing_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wellbeing_snn_create: operation failed");
         return NULL;
     }
 
@@ -845,7 +845,6 @@ bool wellbeing_snn_check_stress(
     float* stress_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_snn_check_stress: bridge is NULL");
         return false;
     }
 
@@ -869,7 +868,6 @@ bool wellbeing_snn_check_flourishing(
     float* flourishing_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_snn_check_flourishing: bridge is NULL");
         return false;
     }
 
@@ -893,7 +891,6 @@ bool wellbeing_snn_check_balance(
     float* balance_score
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_snn_check_balance: bridge is NULL");
         return false;
     }
 
@@ -1167,7 +1164,6 @@ int wellbeing_snn_bio_async_disconnect(wellbeing_snn_bridge_t* bridge) {
 
 bool wellbeing_snn_is_bio_async_connected(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

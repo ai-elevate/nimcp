@@ -275,7 +275,6 @@ bool protein_sleep_is_consolidation_window(
     const protein_sleep_bridge_t bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_is_consolidation_window: bridge is NULL");
         return false;
     }
 

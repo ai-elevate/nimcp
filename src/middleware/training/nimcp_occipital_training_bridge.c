@@ -182,7 +182,6 @@ static bool should_skip_sample(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip_sample: validation failed");
     return false;
 }
 
@@ -239,7 +238,7 @@ occipital_training_bridge_t* occipital_training_bridge_create(
 {
     occipital_training_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_training_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -438,7 +437,6 @@ bool occipital_training_should_skip(
     const occipital_training_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_should_skip: bridge is NULL");
         return false;
     }
     return bridge->effects.skip_sample;

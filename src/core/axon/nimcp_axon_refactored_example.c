@@ -193,21 +193,18 @@ bool axon_validate_params(float length, float diameter)
 {
     if (length <= 0.0f) {
         LOG_MODULE_ERROR(MODULE_NAME, "Invalid axon length: %f", length);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
 
     if (diameter < NIMCP_AXON_MIN_DIAMETER_UM) {
         LOG_MODULE_ERROR(MODULE_NAME, "Axon diameter too small: %f < %f",
                         diameter, NIMCP_AXON_MIN_DIAMETER_UM);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
 
     if (diameter > NIMCP_AXON_MAX_DIAMETER_UM) {
         LOG_MODULE_ERROR(MODULE_NAME, "Axon diameter too large: %f > %f",
                         diameter, NIMCP_AXON_MAX_DIAMETER_UM);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
 

@@ -509,6 +509,8 @@ void sec_immune_unified_destroy(sec_immune_unified_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -1514,7 +1516,6 @@ bool sec_immune_unified_is_tolerated(
     size_t pattern_len
 ) {
     if (!bridge || !pattern || pattern_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_is_tolerated: required parameter is NULL (bridge, pattern)");
         return false;
     }
     if (!bridge->config.enable_tolerance_system) {

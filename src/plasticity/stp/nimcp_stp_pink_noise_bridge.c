@@ -674,7 +674,6 @@ int stp_pink_noise_enable(stp_pink_noise_bridge_t* bridge, bool enable) {
  */
 bool stp_pink_noise_is_enabled(const stp_pink_noise_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_is_enabled: bridge is NULL");
         return false;
     }
 
@@ -756,7 +755,6 @@ bool stp_pink_noise_is_bio_async_connected(
     const stp_pink_noise_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

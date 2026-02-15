@@ -140,7 +140,6 @@ int snn_emotional_tagging_bridge_disconnect_bio_async(snn_emotional_tagging_brid
 
 bool snn_emotional_tagging_bridge_is_bio_async_connected(const snn_emotional_tagging_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;

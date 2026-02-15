@@ -327,7 +327,7 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
 ) {
     plasticity_anomaly_detector_t* detector = nimcp_calloc(1, sizeof(*detector));
     if (!detector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "detector is NULL");
 
         return NULL;
     }
@@ -385,7 +385,7 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
         nimcp_free(detector->rules);
         nimcp_mutex_destroy(detector->mutex);
         nimcp_free(detector);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_anomaly_create: detector->anomaly_history is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_anomaly_create: detector->anomaly_history is NULL");
         return NULL;
     }
 
@@ -444,7 +444,7 @@ int plasticity_anomaly_add_rule(
 
     if (detector->rule_count >= detector->rule_capacity) {
         nimcp_mutex_unlock(detector->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "plasticity_anomaly_add_rule: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "plasticity_anomaly_add_rule: capacity exceeded");
         return -1;
     }
 

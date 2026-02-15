@@ -243,23 +243,18 @@ bool visual_bridge_validate_config(const visual_bridge_config_t* config) {
     if (config->min_motion_speed < 0.0f) return false;
     if (config->min_blob_size <= 0.0f) return false;
     if (config->max_blob_size <= config->min_blob_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
         return false;
     }
     if (config->contrast_threshold < 0.0f || config->contrast_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
         return false;
     }
     if (config->assumed_target_size_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
         return false;
     }
     if (config->attention_threshold < 0.0f || config->attention_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
         return false;
     }
     if (config->calibration.focal_length <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
         return false;
     }
     if (config->calibration.image_width == 0) {
@@ -271,7 +266,6 @@ bool visual_bridge_validate_config(const visual_bridge_config_t* config) {
         return false;
     }
     if (config->frame_dt_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
         return false;
     }
 

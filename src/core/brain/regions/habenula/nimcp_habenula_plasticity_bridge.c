@@ -98,7 +98,7 @@ nimcp_habenula_plasticity_bridge_t* nimcp_habenula_plasticity_create(const nimcp
     nimcp_habenula_plasticity_bridge_t* b = nimcp_calloc(1, sizeof(*b));
     if (!b) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "b is NULL");
 
         return NULL;
 
@@ -107,7 +107,7 @@ nimcp_habenula_plasticity_bridge_t* nimcp_habenula_plasticity_create(const nimcp
     b->synapse_capacity = HABENULA_PLASTICITY_MAX_SYNAPSES;
     b->synapses = nimcp_calloc(b->synapse_capacity, sizeof(nimcp_habenula_plasticity_synapse_t));
     if (!b->synapses) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "habenula_plasticity_create: synapses allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_habenula_plasticity_create: synapses allocation failed");
         nimcp_free(b);
         return NULL;
     }
@@ -140,7 +140,7 @@ int nimcp_habenula_plasticity_connect_coordinator(nimcp_habenula_plasticity_brid
 
 int nimcp_habenula_plasticity_register_synapse(nimcp_habenula_plasticity_bridge_t* b, uint32_t id, nimcp_habenula_synapse_type_t t, float w) {
     if (!b || b->synapse_count >= b->synapse_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_habenula_plasticity_register_synapse: b is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_habenula_plasticity_register_synapse: b is NULL");
         return -1;
     }
     nimcp_habenula_plasticity_synapse_t* s = &b->synapses[b->synapse_count++];

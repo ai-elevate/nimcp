@@ -525,7 +525,7 @@ int language_cognitive_bridge_wm_add_word(
 
     if (wm->phonological_count >= wm->phonological_capacity) {
         LOG_WARN(LOG_MODULE, "Phonological buffer full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_cognitive_bridge_wm_add_word: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_cognitive_bridge_wm_add_word: capacity exceeded");
         return -1;
     }
 
@@ -821,7 +821,7 @@ int language_cognitive_bridge_request_inference(
 
     if (reason->num_inferences >= reason->max_inferences) {
         LOG_WARN(LOG_MODULE, "Inference buffer full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_cognitive_bridge_request_inference: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_cognitive_bridge_request_inference: capacity exceeded");
         return -1;
     }
 

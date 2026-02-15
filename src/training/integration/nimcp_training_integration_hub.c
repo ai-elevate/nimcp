@@ -295,7 +295,7 @@ training_integration_hub_t training_hub_create(const training_hub_config_t* conf
     /* Allocate hub structure */
     training_integration_hub_t hub = nimcp_calloc(1, sizeof(struct training_integration_hub_struct));
     if (!hub) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hub is NULL");
 
         return NULL;
     }
@@ -343,7 +343,7 @@ training_integration_hub_t training_hub_create(const training_hub_config_t* conf
         nimcp_free(hub->subscriptions);
         nimcp_free(hub->modules);
         nimcp_free(hub);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_hub_create: hub->subscription_counts is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_hub_create: hub->subscription_counts is NULL");
         return NULL;
     }
 
@@ -557,7 +557,7 @@ int training_hub_subscribe(training_integration_hub_t hub,
     if (!slot) {
         if (count >= hub->config.max_subscriptions) {
             nimcp_mutex_unlock(hub->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_hub_destroy: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "training_hub_destroy: capacity exceeded");
             return -1;
         }
         slot = &subs[count];

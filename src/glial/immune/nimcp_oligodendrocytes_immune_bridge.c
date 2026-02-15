@@ -118,7 +118,7 @@ oligo_immune_bridge_t* oligo_immune_create(
     oligo_immune_bridge_t* bridge = nimcp_malloc(sizeof(oligo_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate oligo-immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -220,7 +220,6 @@ int oligo_immune_disconnect_bio_async(oligo_immune_bridge_t* bridge)
 bool oligo_immune_is_bio_async_connected(const oligo_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -352,7 +351,6 @@ int oligo_immune_accumulate_damage(
 bool oligo_immune_check_death(oligo_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_immune_check_death: bridge is NULL");
         return false;
     }
 

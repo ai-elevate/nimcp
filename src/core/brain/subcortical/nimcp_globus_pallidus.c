@@ -93,12 +93,23 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
     NIMCP_THROW_IF(!gp, NIMCP_ERROR_NO_MEMORY, "Failed to allocate globus pallidus");
     if (!gp) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gp is NULL");
 
         return NULL;
 
     }
     memset(gp, 0, sizeof(globus_pallidus_t));
+
+    if (config->num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "globus_pallidus_create: num_actions is zero");
+        nimcp_free(gp);
+        return NULL;
+    }
+    if (config->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "globus_pallidus_create: num_neurons is zero");
+        nimcp_free(gp);
+        return NULL;
+    }
 
     gp->segment = config->segment;
     gp->num_neurons = config->num_neurons;
@@ -137,7 +148,8 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
 
     /* Initialize output with tonic firing (normalized) */
     for (uint32_t a = 0; a < config->num_actions; a++) {
-        gp->output[a] = config->tonic_firing_rate / config->max_firing_rate;
+        gp->output[a] = (config->max_firing_rate > 0.001f) ?
+            config->tonic_firing_rate / config->max_firing_rate : 0.0f;
     }
 
     /* Allocate input buffers */

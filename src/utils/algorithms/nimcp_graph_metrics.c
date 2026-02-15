@@ -120,7 +120,6 @@ static inline uint32_t get_degree(NimcpGraph* graph, uint32_t vertex)
 static bool has_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
 {
     if (!graph || from >= graph->vertex_count || to >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "has_edge: graph is NULL");
         return false;
     }
 

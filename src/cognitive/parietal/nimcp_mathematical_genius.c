@@ -1054,21 +1054,18 @@ NIMCP_API bool genius_gauss_is_prime(
     float certainty) {
 
     if (!genius || n < 2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_proof_trace_cleanup: genius is NULL");
         return false;
     }
 
     /* Simple primality test */
     if (n == 2) return true;
     if (n % 2 == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_proof_trace_cleanup: 2 is zero");
         return false;
     }
 
     uint64_t limit = (uint64_t)sqrtf((float)n) + 1;
     for (uint64_t i = 3; i <= limit; i += 2) {
         if (n % i == 0) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_proof_trace_cleanup: i is zero");
             return false;
         }
     }

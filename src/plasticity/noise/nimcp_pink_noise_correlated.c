@@ -195,7 +195,7 @@ pink_noise_correlated_t* pink_noise_correlated_create(
     pink_noise_correlated_t* cn = nimcp_calloc(1, sizeof(pink_noise_correlated_t));
     if (!cn) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cn is NULL");
 
         return NULL;
 

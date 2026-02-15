@@ -112,7 +112,7 @@ static autonomy_domain_t* get_or_create_domain(
     if (domain) return domain;
 
     if (system->domain_count >= AUTONOMY_MAX_DOMAINS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_domain: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_or_create_domain: capacity exceeded");
         return NULL;
     }
 

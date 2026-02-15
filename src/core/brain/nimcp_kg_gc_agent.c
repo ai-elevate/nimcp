@@ -202,7 +202,6 @@ static bool should_run_gc(kg_gc_agent_t* agent) {
 
         case KG_GC_SCHEDULE_ON_DEMAND:
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_run_gc: validation failed");
             return false;
     }
 }
@@ -364,7 +363,7 @@ kg_gc_agent_t* kg_gc_agent_create(brain_kg_t* kg, const kg_gc_agent_config_t* co
 
     kg_gc_agent_t* agent = nimcp_calloc(1, sizeof(kg_gc_agent_t));
     if (!agent) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "agent is NULL");
 
         return NULL;
     }
@@ -648,7 +647,6 @@ kg_gc_agent_state_t kg_gc_agent_get_state(const kg_gc_agent_t* agent) {
 
 bool kg_gc_agent_is_running(const kg_gc_agent_t* agent) {
     if (!agent) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_agent_is_running: agent is NULL");
         return false;
     }
 

@@ -364,7 +364,7 @@ pink_spatial_t* pink_spatial_create(const pink_spatial_config_t* config) {
     pink_spatial_t* spatial = nimcp_calloc(1, sizeof(pink_spatial_t));
     if (!spatial) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial is NULL");
 
         return NULL;
 

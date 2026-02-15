@@ -271,7 +271,6 @@ int snn_cortical_bridge_disconnect_bio_async(snn_cortical_bridge_t* bridge) {
 
 bool snn_cortical_bridge_is_bio_async_connected(const snn_cortical_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;

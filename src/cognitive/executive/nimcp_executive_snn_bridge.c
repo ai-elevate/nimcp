@@ -267,7 +267,7 @@ executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* confi
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->control_buffer || !bridge->prev_state) {
         executive_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: operation failed");
         return NULL;
     }
 
@@ -770,7 +770,6 @@ bool executive_snn_check_conflict(
     float* conflict_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_check_conflict: bridge is NULL");
         return false;
     }
 
@@ -794,7 +793,6 @@ bool executive_snn_check_error(
     float* error_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_check_error: bridge is NULL");
         return false;
     }
 
@@ -818,7 +816,6 @@ bool executive_snn_check_goal_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_check_goal_change: bridge is NULL");
         return false;
     }
 
@@ -1103,7 +1100,6 @@ int executive_snn_bio_async_disconnect(executive_snn_bridge_t* bridge) {
 
 bool executive_snn_is_bio_async_connected(executive_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

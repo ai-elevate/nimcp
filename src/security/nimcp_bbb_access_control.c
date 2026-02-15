@@ -575,7 +575,6 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
 
     /* Guard: Null parameters */
     if (!subject || !object) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_check_access: required parameter is NULL (subject, object)");
         return false;
     }
 
@@ -587,7 +586,6 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     /* Check privilege level requirement */
     if (subject->privilege_level < object->required_privilege) {
         log_denial("insufficient privilege level", subject->id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
         return false;
     }
 
@@ -595,7 +593,6 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     if (object->required_roles != 0) {
         if ((subject->roles & object->required_roles) != object->required_roles) {
             log_denial("missing required roles", subject->id);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
             return false;
         }
     }
@@ -608,7 +605,6 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     if (object->required_capabilities != 0) {
         if ((effective_caps & object->required_capabilities) != object->required_capabilities) {
             log_denial("missing required capabilities", subject->id);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
             return false;
         }
     }
@@ -617,7 +613,6 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     uint64_t required_caps = access_type_to_capability(access_type);
     if ((effective_caps & required_caps) != required_caps) {
         log_denial("missing access type capability", subject->id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
         return false;
     }
 

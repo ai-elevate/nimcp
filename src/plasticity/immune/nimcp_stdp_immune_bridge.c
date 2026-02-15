@@ -725,7 +725,6 @@ int stdp_immune_get_instability_state(
 
 bool stdp_immune_is_plasticity_impaired(const stdp_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_is_plasticity_impaired: bridge is NULL");
         return false;
     }
 
@@ -806,7 +805,6 @@ int stdp_immune_disconnect_bio_async(stdp_immune_bridge_t* bridge) {
  */
 bool stdp_immune_is_bio_async_connected(const stdp_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

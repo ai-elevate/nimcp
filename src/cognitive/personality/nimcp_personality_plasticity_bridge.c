@@ -1126,7 +1126,6 @@ int personality_plasticity_bio_async_disconnect(personality_plasticity_bridge_t*
 
 bool personality_plasticity_is_bio_async_connected(personality_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

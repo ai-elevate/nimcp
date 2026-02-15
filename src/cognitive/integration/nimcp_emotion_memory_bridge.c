@@ -327,6 +327,8 @@ void emotion_memory_bridge_destroy(emotion_memory_bridge_t* bridge) {
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
         bridge->base.mutex = NULL;
     }
 
@@ -399,7 +401,7 @@ int emotion_memory_tag_memory(
             );
             if (!new_tags) {
                 nimcp_platform_mutex_unlock(bridge->base.mutex);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_tag_memory: new_tags is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_tag_memory: new_tags is NULL");
                 return -1;
             }
 

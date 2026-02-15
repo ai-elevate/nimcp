@@ -476,7 +476,6 @@ int tom_fep_bridge_get_stats(
 
 bool tom_fep_is_empathy_active(const tom_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_fep_is_empathy_active: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -553,7 +552,6 @@ int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {
 
 bool tom_fep_bridge_is_bio_async_connected(const tom_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

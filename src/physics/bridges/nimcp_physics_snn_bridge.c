@@ -706,7 +706,6 @@ bool physics_snn_is_learning_gated(const physics_snn_bridge_t* bridge) {
     if (!bridge) return true;
 
     if (!bridge->config.enable_atp_gating) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_is_learning_gated: bridge->config is NULL");
         return false;
     }
 

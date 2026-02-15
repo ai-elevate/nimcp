@@ -621,7 +621,7 @@ int pag_get_defense_state(const nimcp_pag_t* pag, pag_defense_state_t* defense) 
 int pag_set_defense_response(nimcp_pag_t* pag, pag_defense_type_t defense_type,
                              float intensity) {
     if (!pag || defense_type >= PAG_DEFENSE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_defense_state: pag is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pag_get_defense_state: pag is NULL");
         return -1;
     }
 
@@ -774,7 +774,7 @@ int pag_get_analgesia_state(const nimcp_pag_t* pag, pag_analgesia_state_t* analg
 int pag_activate_pain_pathway(nimcp_pag_t* pag, pag_pain_pathway_t pathway,
                               float activation) {
     if (!pag || pathway >= PAG_PAIN_PATHWAY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_analgesia_state: pag is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pag_get_analgesia_state: pag is NULL");
         return -1;
     }
 
@@ -831,7 +831,6 @@ int pag_trigger_stress_analgesia(nimcp_pag_t* pag, float stress_level) {
 
 bool pag_has_opioid_tolerance(const nimcp_pag_t* pag) {
     if (!pag) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_has_opioid_tolerance: pag is NULL");
         return false;
     }
     return pag->analgesia.opioid_tolerance;
@@ -844,7 +843,7 @@ bool pag_has_opioid_tolerance(const nimcp_pag_t* pag) {
 int pag_trigger_vocalization(nimcp_pag_t* pag, pag_vocal_type_t type,
                              float intensity) {
     if (!pag || type >= PAG_VOCAL_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_has_opioid_tolerance: pag is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pag_has_opioid_tolerance: pag is NULL");
         return -1;
     }
 
@@ -950,7 +949,6 @@ int pag_get_respiratory_output(const nimcp_pag_t* pag,
 
 bool pag_is_tonic_immobility(const nimcp_pag_t* pag) {
     if (!pag) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_is_tonic_immobility: pag is NULL");
         return false;
     }
     return pag->autonomic.tonic_immobility;
@@ -976,7 +974,7 @@ int pag_get_emotional_state(const nimcp_pag_t* pag, pag_emotional_state_t* emoti
 int pag_set_emotion_input(nimcp_pag_t* pag, pag_emotion_type_t emotion_type,
                           float intensity) {
     if (!pag || emotion_type >= PAG_EMOTION_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_emotional_state: pag is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pag_get_emotional_state: pag is NULL");
         return -1;
     }
 
@@ -1025,7 +1023,7 @@ float pag_get_column_activity(const nimcp_pag_t* pag, pag_column_t column) {
 int pag_set_column_modulation(nimcp_pag_t* pag, pag_column_t column,
                               float modulation) {
     if (!pag || column >= PAG_COLUMN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_column_activity: pag is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pag_get_column_activity: pag is NULL");
         return -1;
     }
 

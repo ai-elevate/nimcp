@@ -1577,6 +1577,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_serialization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_network_serialization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_encryption.c
+    # Utils Serialization - Compression/encryption utilities (compress, encrypt, ctx)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/serialization/nimcp_serialization.c
     # Model Loading - Pre-trained model loading and validation (Phase ML-1)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../io/model/nimcp_model_loader.c  # DISABLED: adaptive_neuron_t type issues
 

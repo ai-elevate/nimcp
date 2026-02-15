@@ -854,7 +854,6 @@ bool homeostatic_controller_is_stable(homeostatic_controller_t controller) {
 
     /* Guard: Validate input */
     if (!controller) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_is_stable: controller is NULL");
         return false;
     }
 

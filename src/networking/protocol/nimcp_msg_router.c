@@ -115,7 +115,7 @@ nimcp_msg_router_t* nimcp_msg_router_create(
     if (!router) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_msg_router_t),
                           "Failed to allocate message router");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router is NULL");
 
         return NULL;
     }
@@ -301,7 +301,6 @@ bool nimcp_msg_router_has_handler(
     nimcp_msg_type_t msg_type
 ) {
     if (!router) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_has_handler: router is NULL");
         return false;
     }
 
@@ -311,7 +310,6 @@ bool nimcp_msg_router_has_handler(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_has_handler: validation failed");
     return false;
 }
 

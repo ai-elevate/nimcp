@@ -557,7 +557,6 @@ static bool validate_config(const node_config_t* config)
     // WHY: Prevent memory exhaustion
     if (config->max_peers > 10000) {
         fprintf(stderr, "[P2P] max_peers too large: %u (max: 10000)\n", config->max_peers);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
@@ -872,7 +871,6 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
 {
     // Guard clause: Validate inputs
     if (!node || !peer_ip) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_is_peer_connected: required parameter is NULL (node, peer_ip)");
         return false;
     }
 
@@ -891,7 +889,6 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
     // Guard clause: Check if peer found
     if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_is_peer_connected: peer_ptr is NULL");
         return false;
     }
 
@@ -1020,7 +1017,7 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int
 
     // Guard clause: Check capacity
     if (node->peer_count >= node->config.max_peers) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_peer_to_node: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "add_peer_to_node: capacity exceeded");
         return false;
     }
 
@@ -1099,7 +1096,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Guard clause: Check capacity
     if (node->peer_count >= node->config.max_peers) {
         nimcp_mutex_unlock(&node->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "p2p_node_connect_peer: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "p2p_node_connect_peer: capacity exceeded");
         return false;
     }
 
@@ -1694,13 +1691,11 @@ static bool peer_has_timed_out(const peer_info_t* peer, uint64_t timeout_us,
 {
     // Guard clause: Validate input
     if (!peer || !peer->connected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "peer_has_timed_out: required parameter is NULL (peer, peer->connected)");
         return false;
     }
 
     // Guard clause: Never received a pong (initial state)
     if (peer->last_pong_received == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "peer_has_timed_out: peer->last_pong_received is zero");
         return false;
     }
 

@@ -599,6 +599,8 @@ void kg_search_index_destroy(kg_search_index_t* idx) {
 
     nimcp_platform_mutex_unlock(idx->mutex);
     nimcp_platform_mutex_destroy(idx->mutex);
+    nimcp_free(idx->mutex);
+    idx->mutex = NULL;
 
     SEARCH_LOG_INFO("Destroyed search index");
     nimcp_free(idx);
@@ -619,7 +621,7 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
         if (idx->module_capacity > UINT32_MAX / 2) {
             SEARCH_LOG_ERROR("Module capacity overflow");
             nimcp_platform_mutex_unlock(idx->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_search_index_add_module: capacity overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_search_index_add_module: capacity overflow");
             return -1;
         }
         uint32_t new_capacity = idx->module_capacity * 2;
@@ -627,7 +629,7 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
         if (new_capacity > SIZE_MAX / sizeof(indexed_module_t)) {
             SEARCH_LOG_ERROR("Module array size overflow");
             nimcp_platform_mutex_unlock(idx->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_search_index_add_module: allocation size overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_search_index_add_module: allocation size overflow");
             return -1;
         }
         indexed_module_t* new_modules = nimcp_realloc(
@@ -1048,7 +1050,7 @@ int kg_search_query_add_condition(kg_search_query_t* query, const char* field,
         return -1;
     }
     if (query->condition_count >= KG_SEARCH_MAX_CONDITIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_search_query_add_condition: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_search_query_add_condition: capacity exceeded");
         return -1;
     }
 
@@ -1081,7 +1083,7 @@ int kg_search_query_add_between(kg_search_query_t* query, const char* field,
         return -1;
     }
     if (query->condition_count >= KG_SEARCH_MAX_CONDITIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_search_query_add_between: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_search_query_add_between: capacity exceeded");
         return -1;
     }
 

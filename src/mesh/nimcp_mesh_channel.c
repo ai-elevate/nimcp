@@ -255,7 +255,6 @@ static bool is_authorized_for_collection(
     mesh_participant_id_t participant
 ) {
     if (!collection) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_authorized_for_collection: collection is NULL");
         return false;
     }
 
@@ -583,7 +582,6 @@ bool mesh_channel_has_participant(
     mesh_participant_id_t participant_id
 ) {
     if (!validate_channel(channel)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_channel_has_participant: validate_channel is NULL");
         return false;
     }
 
@@ -893,7 +891,7 @@ nimcp_error_t mesh_channel_put_private_data(
 ) {
     if (!validate_channel(channel)) return NIMCP_ERROR_INVALID_PARAM;
     if (!collection_name || !key || !value) return NIMCP_ERROR_NULL_POINTER;
-    if (value_len > MESH_MAX_PRIVATE_VALUE_LEN) return NIMCP_ERROR_BUFFER_OVERFLOW;
+    if (value_len > MESH_MAX_PRIVATE_VALUE_LEN) return NIMCP_ERROR_OUT_OF_RANGE;
 
     nimcp_mutex_lock(channel->mutex);
 
@@ -1346,7 +1344,7 @@ mesh_channel_t* mesh_channel_manager_create_channel(
     if (manager->channel_count >= manager->channel_capacity) {
         nimcp_mutex_unlock(manager->mutex);
         LOG_ERROR("Channel manager full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_channel_manager_create_channel: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mesh_channel_manager_create_channel: capacity exceeded");
         return NULL;
     }
 

@@ -158,7 +158,7 @@ neuromod_logging_bridge_t* neuromod_logging_bridge_create(const neuromod_logging
     neuromod_logging_bridge_t* bridge = nimcp_calloc(1, sizeof(neuromod_logging_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -234,7 +234,6 @@ int neuromod_logging_bridge_disconnect(neuromod_logging_bridge_t* bridge) {
 
 bool neuromod_logging_bridge_is_connected(const neuromod_logging_bridge_t* bridge) {
     if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;
@@ -579,7 +578,7 @@ int neuromod_logging_get_pattern(const neuromod_logging_bridge_t* bridge, uint32
         return -1;
     }
     if (index >= bridge->pattern_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neuromod_logging_get_pattern: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neuromod_logging_get_pattern: capacity exceeded");
         return -1;
     }
 

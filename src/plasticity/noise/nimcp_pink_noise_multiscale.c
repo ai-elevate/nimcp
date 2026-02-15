@@ -95,7 +95,7 @@ pink_noise_multiscale_t* pink_noise_multiscale_create(
     pink_noise_multiscale_t* ms = nimcp_calloc(1, sizeof(pink_noise_multiscale_t));
     if (!ms) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ms is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ms is NULL");
 
         return NULL;
 

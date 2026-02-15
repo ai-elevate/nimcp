@@ -122,7 +122,7 @@ static value_stack_t* stack_create(void) {
     value_stack_t* stack = nimcp_calloc(1, sizeof(value_stack_t));
     if (!stack) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stack is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stack is NULL");
 
         return NULL;
 
@@ -510,7 +510,7 @@ function_registry_t* registry_create(void) {
     function_registry_t* registry = nimcp_calloc(1, sizeof(function_registry_t));
     if (!registry) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "registry is NULL");
 
         return NULL;
 
@@ -536,7 +536,7 @@ function_registry_t* registry_create(void) {
             }
             nimcp_free(registry->functions);
             nimcp_free(registry);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry_create: name_copy is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "registry_create: name_copy is NULL");
             return NULL;
         }
         registry->functions[registry->count].name = name_copy;

@@ -320,7 +320,6 @@ float knowledge_sleep_get_retrieval_speed(const knowledge_sleep_bridge_t bridge)
 
 bool knowledge_sleep_is_consolidation_active(const knowledge_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_sleep_is_consolidation_active: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

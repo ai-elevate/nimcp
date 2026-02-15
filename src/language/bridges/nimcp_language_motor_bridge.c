@@ -338,7 +338,7 @@ language_motor_bridge_t* language_motor_bridge_create(
 {
     language_motor_bridge_t* bridge = nimcp_calloc(1, sizeof(language_motor_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -809,7 +809,7 @@ int language_motor_register_phoneme_program(
     }
 
     if (program->phoneme_id >= MAX_PHONEME_PROGRAMS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_motor_register_phoneme_program: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_motor_register_phoneme_program: capacity exceeded");
         return -1;
     }
 
@@ -849,7 +849,6 @@ bool language_motor_has_phoneme_program(
     uint8_t phoneme_id)
 {
     if (!bridge || phoneme_id >= MAX_PHONEME_PROGRAMS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_motor_has_phoneme_program: bridge is NULL");
         return false;
     }
 

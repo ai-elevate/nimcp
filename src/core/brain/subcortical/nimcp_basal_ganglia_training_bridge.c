@@ -248,7 +248,6 @@ int bgtr_bridge_connect_training(
 
 bool bgtr_bridge_is_connected(const bgtr_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->bg != NULL;

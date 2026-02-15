@@ -453,19 +453,16 @@ bool schema_config_validate(const schema_config_t* config) {
 
     if (config->min_fit_threshold < 0.0f || config->min_fit_threshold > 1.0f) {
         set_error("min_fit_threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: validation failed");
         return false;
     }
 
     if (config->inferred_confidence < 0.0f || config->inferred_confidence > 1.0f) {
         set_error("inferred_confidence must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: validation failed");
         return false;
     }
 
     if (config->abstraction_threshold < 0.0f || config->abstraction_threshold > 1.0f) {
         set_error("abstraction_threshold must be in [0, 1]");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: validation failed");
         return false;
     }
 
@@ -1034,7 +1031,7 @@ bool schema_define_slot(
 
     if (strlen(slot_name) >= SCHEMA_MAX_SLOT_NAME_LENGTH) {
         set_error("Slot name too long");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "schema_define_slot: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "schema_define_slot: capacity exceeded");
         return false;
     }
 
@@ -2775,13 +2772,12 @@ bool schema_validate(const schema_t* schema) {
 
 
     if (schema->type < 0 || schema->type >= SCHEMA_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "schema_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "schema_validate: capacity exceeded");
         return false;
     }
 
     // Check slots array consistency
     if (schema->num_slots > schema->slots_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_validate: validation failed");
         return false;
     }
 
@@ -2792,7 +2788,6 @@ bool schema_validate(const schema_t* schema) {
 
     // Check children array consistency
     if (schema->num_children > schema->children_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_validate: validation failed");
         return false;
     }
 
@@ -2803,7 +2798,6 @@ bool schema_validate(const schema_t* schema) {
 
     // Check abstraction level range
     if (schema->abstraction_level < 0.0f || schema->abstraction_level > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_validate: validation failed");
         return false;
     }
 

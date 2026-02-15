@@ -850,7 +850,6 @@ nimcp_error_t omni_wm_memory_bridge_connect_consolidation(
 
 bool omni_wm_memory_bridge_is_connected(const omni_wm_memory_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_memory_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

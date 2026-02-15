@@ -497,7 +497,6 @@ bool directive_fep_bridge_is_bio_async_connected(
     const directive_fep_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "directive_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

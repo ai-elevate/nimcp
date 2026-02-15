@@ -511,7 +511,7 @@ unified_pools_t unified_pools_create(const unified_pools_config_t* config)
     struct unified_pools* pools = nimcp_calloc(1, sizeof(struct unified_pools));
     if (!pools) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pools is NULL");
 
         return NULL;
 
@@ -805,7 +805,7 @@ void* unified_pools_cow_write(unified_cow_handle_t handle)
     void* private_copy = nimcp_malloc(tmpl->size);
     if (!private_copy) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "private_copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "private_copy is NULL");
 
         return NULL;
 
@@ -907,7 +907,6 @@ bool unified_pools_check_quota(
     size_t size)
 {
     if (!pools || pool >= UNIFIED_POOL_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unified_pools_check_quota: pools is NULL");
         return false;
     }
 
@@ -1359,7 +1358,6 @@ const char* unified_pools_get_pressure_name(pressure_level_t level)
 bool unified_pools_is_healthy(unified_pools_t pools)
 {
     if (!pools) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_is_healthy: pools is NULL");
         return false;
     }
 
@@ -1380,7 +1378,6 @@ bool unified_pools_is_healthy(unified_pools_t pools)
 bool unified_pools_is_performant(unified_pools_t pools)
 {
     if (!pools) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_is_performant: pools is NULL");
         return false;
     }
 

@@ -622,7 +622,6 @@ bool curriculum_should_include(
     uint32_t sample_idx
 ) {
     if (!ctx || sample_idx >= ctx->num_samples) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curriculum_should_include: ctx is NULL");
         return false;
     }
 
@@ -844,7 +843,7 @@ float curriculum_get_threshold(const curriculum_ctx_t* ctx) {
 
 int curriculum_set_state(curriculum_ctx_t* ctx, curriculum_state_t state) {
     if (!ctx || state >= CURRICULUM_STATE_COUNT) {
-        /* P2-CL-4: Use NIMCP_ERROR_INVALID_PARAM instead of NIMCP_ERROR_BUFFER_OVERFLOW */
+        /* P2-CL-4: Use NIMCP_ERROR_INVALID_PARAM instead of NIMCP_ERROR_OUT_OF_RANGE */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curriculum_set_state: invalid ctx or state");
         return -1;
     }

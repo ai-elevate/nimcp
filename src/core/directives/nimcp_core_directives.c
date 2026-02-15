@@ -242,6 +242,8 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
         LOG_ERROR("core_directives_create: failed to create ethics engine");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "core_directives_create: ethics engine creation failed");
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
         nimcp_free(system);
         return NULL;
     }
@@ -266,6 +268,8 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "core_directives_create: action history creation failed");
         ethics_engine_destroy(system->ethics_engine);
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
         nimcp_free(system);
         return NULL;
     }
@@ -306,6 +310,8 @@ void core_directives_destroy(core_directives_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);
@@ -706,7 +712,6 @@ int core_directives_disconnect_bio_async(core_directives_system_t* system) {
 
 bool core_directives_is_bio_async_connected(const core_directives_system_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_directives_is_bio_async_connected: system is NULL");
         return false;
     }
     return system->bio_async_enabled;

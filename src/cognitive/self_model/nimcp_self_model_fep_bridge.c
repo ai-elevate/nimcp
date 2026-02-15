@@ -462,7 +462,6 @@ int self_model_fep_bridge_get_stats(
 
 bool self_model_fep_is_exploring(const self_model_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_fep_is_exploring: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -537,7 +536,6 @@ bool self_model_fep_bridge_is_bio_async_connected(
     const self_model_fep_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

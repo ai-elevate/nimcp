@@ -178,7 +178,6 @@ int dragonfly_snn_bridge_validate_config(const dragonfly_snn_config_t* config) {
         return -1;
     }
     if (config->learning_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->unroll_steps == 0) {
@@ -186,7 +185,6 @@ int dragonfly_snn_bridge_validate_config(const dragonfly_snn_config_t* config) {
         return -1;
     }
     if (config->neuron_params.tau_membrane <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: validation failed");
         return -1;
     }
     return 0;

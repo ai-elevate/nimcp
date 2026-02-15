@@ -503,7 +503,7 @@ cnn_layer_t* cnn_trainer_add_conv_layer(cnn_trainer_t* trainer,
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_conv_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_he_init: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cnn_he_init: capacity exceeded");
         return NULL;
     }
 
@@ -591,7 +591,7 @@ cnn_layer_t* cnn_trainer_add_pool_layer(cnn_trainer_t* trainer,
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_pool_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_he_init: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cnn_he_init: capacity exceeded");
         return NULL;
     }
 
@@ -639,7 +639,7 @@ cnn_layer_t* cnn_trainer_add_batch_norm_layer(cnn_trainer_t* trainer,
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_batch_norm_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_he_init: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cnn_he_init: capacity exceeded");
         return NULL;
     }
 
@@ -731,7 +731,7 @@ cnn_layer_t* cnn_trainer_add_dropout_layer(cnn_trainer_t* trainer,
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dropout_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return NULL;
     }
 
@@ -778,7 +778,7 @@ cnn_layer_t* cnn_trainer_add_dense_layer(cnn_trainer_t* trainer,
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dense_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return NULL;
     }
 
@@ -850,7 +850,7 @@ cnn_layer_t* cnn_trainer_add_flatten_layer(cnn_trainer_t* trainer) {
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_flatten_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_trainer_add_flatten_layer: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cnn_trainer_add_flatten_layer: capacity exceeded");
         return NULL;
     }
 
@@ -882,7 +882,7 @@ cnn_layer_t* cnn_trainer_add_activation_layer(cnn_trainer_t* trainer,
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: Max layers exceeded");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_trainer_add_flatten_layer: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cnn_trainer_add_flatten_layer: capacity exceeded");
         return NULL;
     }
 

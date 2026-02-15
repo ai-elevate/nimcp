@@ -476,7 +476,7 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     if (config->theta_freq_max > 12.0f) config->theta_freq_max = 12.0f;
     if (config->theta_freq_min >= config->theta_freq_max) {
         set_error("Invalid theta frequency range");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "theta_gamma_config_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "theta_gamma_config_validate: capacity exceeded");
         return false;
     }
     config->theta_freq_default = clampf(config->theta_freq_default,
@@ -489,7 +489,6 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     if (config->gamma_freq_low_min >= config->gamma_freq_low_max ||
         config->gamma_freq_high_min >= config->gamma_freq_high_max) {
         set_error("Invalid gamma frequency ranges");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "theta_gamma_config_validate: validation failed");
         return false;
     }
 
@@ -901,7 +900,6 @@ theta_op_type_t theta_gamma_get_operation(const theta_gamma_manager_t manager) {
 
 bool theta_gamma_can_encode(const theta_gamma_manager_t manager) {
     if (!manager) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_can_encode: manager is NULL");
         return false;
     }
 
@@ -915,7 +913,6 @@ bool theta_gamma_can_encode(const theta_gamma_manager_t manager) {
 
 bool theta_gamma_can_retrieve(const theta_gamma_manager_t manager) {
     if (!manager) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_can_retrieve: manager is NULL");
         return false;
     }
 

@@ -375,7 +375,7 @@ bool phonological_add_phoneme(phonological_processor_t* processor, uint8_t phone
 
     /* Check capacity */
     if (processor->phoneme_count >= processor->phoneme_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phonological_add_phoneme: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "phonological_add_phoneme: capacity exceeded");
         return false;
     }
 
@@ -446,7 +446,7 @@ bool phonological_add_phoneme_detailed(phonological_processor_t* processor,
 
     /* Check capacity */
     if (processor->phoneme_count >= processor->phoneme_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phonological_add_phoneme: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "phonological_add_phoneme: capacity exceeded");
         return false;
     }
 
@@ -819,7 +819,6 @@ bool phonological_is_ready(const phonological_processor_t* processor) {
      * HOW:  Check syllables generated and prosody applied (if enabled) */
 
     if (!processor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_is_ready: processor is NULL");
         return false;
     }
 

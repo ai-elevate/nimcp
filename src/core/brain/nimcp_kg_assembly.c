@@ -119,7 +119,7 @@ kg_layer_wiring_t* kg_assembly_create_layer(uint8_t layer_index) {
 
     kg_layer_wiring_t* layer = nimcp_calloc(1, sizeof(kg_layer_wiring_t));
     if (!layer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "layer is NULL");
 
         return NULL;
     }
@@ -187,7 +187,7 @@ int kg_assembly_add_module_to_layer(
             new_capacity * sizeof(kg_module_wiring_t*)
         );
         if (!new_modules) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_modules is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_modules is NULL");
 
             return -1;
         }
@@ -225,7 +225,7 @@ int kg_assembly_add_internal_edge(
             new_capacity * sizeof(kg_internal_edge_t)
         );
         if (!new_edges) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_edges is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_edges is NULL");
 
             return -1;
         }
@@ -260,7 +260,7 @@ int kg_assembly_add_external_edge(
     }
 
     if (target_layer >= KG_ASSEMBLY_LAYER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_assembly_add_external_edge: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_assembly_add_external_edge: capacity exceeded");
         return -1;
     }
 
@@ -272,7 +272,7 @@ int kg_assembly_add_external_edge(
             new_capacity * sizeof(kg_external_edge_t)
         );
         if (!new_edges) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_edges is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_edges is NULL");
 
             return -1;
         }
@@ -357,7 +357,7 @@ kg_hemisphere_wiring_t* kg_assembly_create_hemisphere(uint8_t hemisphere) {
 
     kg_hemisphere_wiring_t* hemi = nimcp_calloc(1, sizeof(kg_hemisphere_wiring_t));
     if (!hemi) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemi is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemi is NULL");
 
         return NULL;
     }
@@ -401,7 +401,7 @@ int kg_assembly_add_layer_to_hemisphere(
     }
 
     if (layer->layer_index >= KG_ASSEMBLY_LAYER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_assembly_add_layer_to_hemisphere: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_assembly_add_layer_to_hemisphere: capacity exceeded");
         return -1;
     }
 
@@ -525,7 +525,7 @@ void kg_assembly_destroy_hemisphere(kg_hemisphere_wiring_t* hemi) {
 kg_brain_wiring_t* kg_assembly_create_brain(void) {
     kg_brain_wiring_t* brain = nimcp_calloc(1, sizeof(kg_brain_wiring_t));
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain is NULL");
 
         return NULL;
     }
@@ -553,7 +553,7 @@ kg_brain_wiring_t* kg_assembly_create_brain(void) {
     );
     if (!brain->callosal_connections) {
         nimcp_free(brain);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_create_brain: brain->callosal_connections is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_assembly_create_brain: brain->callosal_connections is NULL");
         return NULL;
     }
     brain->callosal_count = 0;
@@ -670,7 +670,7 @@ int kg_assembly_add_callosal_connection(
             new_capacity * sizeof(kg_callosal_connection_t)
         );
         if (!new_conns) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_conns is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_conns is NULL");
 
             return -1;
         }

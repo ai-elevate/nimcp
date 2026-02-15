@@ -737,7 +737,6 @@ bool checkpoint_validate(const char* path) {
         if (header.crc32 != 0) {
             set_error("CRC32 mismatch for empty data (expected 0x00000000, got 0x%08X)",
                       header.crc32);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_validate: validation failed");
             return false;
         }
         return true;
@@ -767,7 +766,6 @@ bool checkpoint_validate(const char* path) {
     if (calculated_crc != header.crc32) {
         set_error("CRC32 mismatch (expected 0x%08X, got 0x%08X)",
                   header.crc32, calculated_crc);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_validate: validation failed");
         return false;
     }
 

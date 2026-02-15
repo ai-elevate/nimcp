@@ -116,11 +116,9 @@ bool reasoning_curiosity_validate_config(const reasoning_curiosity_config_t* con
         return false;
     }
     if (config->proof_failed_curiosity_boost < 0.0F || config->proof_failed_curiosity_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_curiosity_validate_config: validation failed");
         return false;
     }
     if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_curiosity_validate_config: validation failed");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

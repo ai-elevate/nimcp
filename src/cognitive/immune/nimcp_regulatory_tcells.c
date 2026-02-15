@@ -73,6 +73,8 @@ static inline void regulatory_tcells_heartbeat_instance(
 #define nimcp_mutex_unlock(m) nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)(m))
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
+    nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* Get current time in milliseconds */
@@ -580,7 +582,7 @@ int treg_checkpoint_activate(
     if (system->checkpoint_count >= system->checkpoint_capacity) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_WARN("Checkpoint capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "treg_checkpoint_activate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "treg_checkpoint_activate: capacity exceeded");
         return -1;
     }
 
@@ -741,7 +743,7 @@ int treg_release_cytokine(
     if (system->cytokine_count >= system->cytokine_capacity) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_WARN("Cytokine capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "treg_release_cytokine: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "treg_release_cytokine: capacity exceeded");
         return -1;
     }
 
@@ -895,7 +897,6 @@ treg_state_t treg_get_state(const treg_system_t* system)
 bool treg_is_active(const treg_system_t* system)
 {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_is_active: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

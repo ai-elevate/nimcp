@@ -186,7 +186,7 @@ nimcp_kg_wiring_exception_t* nimcp_kg_wiring_exception_create(
     nimcp_kg_wiring_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_kg_wiring_exception_t));
     if (!ex) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ex is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ex is NULL");
 
         return NULL;
 

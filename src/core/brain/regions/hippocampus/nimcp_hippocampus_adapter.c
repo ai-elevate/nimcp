@@ -27,6 +27,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hippocampus_adapter)
 //=============================================================================
@@ -305,8 +306,8 @@ static place_cell_network_t* create_place_cells(const hippocampus_config_t* conf
 
     /* Initialize place fields randomly */
     for (uint32_t i = 0; i < net->num_cells; i++) {
-        net->centers[i].x = (float)(rand() % 100) - 50.0f;
-        net->centers[i].y = (float)(rand() % 100) - 50.0f;
+        net->centers[i].x = (float)(nimcp_tl_rand() % 100) - 50.0f;
+        net->centers[i].y = (float)(nimcp_tl_rand() % 100) - 50.0f;
         net->field_radii[i] = config->place_field_radius;
     }
 
@@ -362,8 +363,8 @@ static grid_cell_network_t* create_grid_cells(const hippocampus_config_t* config
 
     /* Initialize random phases */
     for (uint32_t i = 0; i < net->num_cells; i++) {
-        net->phases_x[i] = (float)(rand() % 1000) / 1000.0f * 2.0f * M_PI;
-        net->phases_y[i] = (float)(rand() % 1000) / 1000.0f * 2.0f * M_PI;
+        net->phases_x[i] = (float)(nimcp_tl_rand() % 1000) / 1000.0f * 2.0f * M_PI;
+        net->phases_y[i] = (float)(nimcp_tl_rand() % 1000) / 1000.0f * 2.0f * M_PI;
     }
 
     return net;
@@ -406,7 +407,7 @@ static pattern_separator_t* create_pattern_separator(const hippocampus_config_t*
 
     /* Initialize weights randomly */
     for (uint32_t i = 0; i < sep->input_size * sep->output_size; i++) {
-        sep->weights[i] = ((float)(rand() % 1000) / 1000.0f - 0.5f) * 0.1f;
+        sep->weights[i] = ((float)(nimcp_tl_rand() % 1000) / 1000.0f - 0.5f) * 0.1f;
     }
 
     return sep;
@@ -450,10 +451,10 @@ static memory_encoder_t* create_memory_encoder(const hippocampus_config_t* confi
 
     /* Initialize weights */
     for (uint32_t i = 0; i < enc->ca3_size * enc->ca3_size; i++) {
-        enc->ca3_weights[i] = ((float)(rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
+        enc->ca3_weights[i] = ((float)(nimcp_tl_rand() % 1000) / 1000.0f - 0.5f) * 0.01f;
     }
     for (uint32_t i = 0; i < enc->ca3_size * enc->ca1_size; i++) {
-        enc->ca3_to_ca1_weights[i] = ((float)(rand() % 1000) / 1000.0f - 0.5f) * 0.1f;
+        enc->ca3_to_ca1_weights[i] = ((float)(nimcp_tl_rand() % 1000) / 1000.0f - 0.5f) * 0.1f;
     }
 
     return enc;
@@ -874,7 +875,7 @@ uint32_t hippocampus_encode_memory(
     for (uint32_t i = 0; i < adapter->memory_encoder->ca3_size; i++) {
         float sum = 0.0f;
         for (uint32_t j = 0; j < num_features && j < adapter->config.ec_size; j++) {
-            sum += features[j] * (((float)(rand() % 1000) / 1000.0f) - 0.5f);
+            sum += features[j] * (((float)(nimcp_tl_rand() % 1000) / 1000.0f) - 0.5f);
         }
         ca3_pattern[i] = tanhf(sum);
     }

@@ -1544,7 +1544,6 @@ NIMCP_EXPORT const char* pr_visual_bridge_error_string(
 
 NIMCP_EXPORT bool pr_visual_bridge_is_connected(pr_visual_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_is_connected: bridge is NULL");
         return false;
     }
 

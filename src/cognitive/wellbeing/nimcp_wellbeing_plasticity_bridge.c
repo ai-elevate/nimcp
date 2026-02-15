@@ -331,7 +331,7 @@ int wellbeing_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->synapse_count >= bridge->config.max_synapses) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wellbeing_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wellbeing_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -1191,7 +1191,6 @@ int wellbeing_plasticity_bio_async_disconnect(wellbeing_plasticity_bridge_t* bri
 
 bool wellbeing_plasticity_is_bio_async_connected(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

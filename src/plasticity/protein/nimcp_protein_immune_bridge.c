@@ -470,7 +470,6 @@ bool protein_immune_is_synthesis_impaired(
     const protein_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_is_synthesis_impaired: bridge is NULL");
         return false;
     }
 
@@ -569,7 +568,6 @@ bool protein_immune_is_bio_async_connected(
     const protein_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

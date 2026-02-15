@@ -181,7 +181,7 @@ nimcp_habenula_adapter_t nimcp_habenula_adapter_create(
     nimcp_habenula_adapter_t adapter = nimcp_calloc(1, sizeof(*adapter));
     if (!adapter) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adapter is NULL");
 
         return NULL;
 
@@ -322,7 +322,7 @@ int nimcp_habenula_adapter_register_callback(nimcp_habenula_adapter_t adapter,
         return -1;
     }
     if (adapter->callback_count >= MAX_CALLBACKS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_habenula_adapter_process_messages: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_habenula_adapter_process_messages: capacity exceeded");
         return -1;
     }
 

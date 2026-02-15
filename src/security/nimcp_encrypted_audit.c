@@ -413,7 +413,6 @@ static nimcp_error_t decrypt_entry(
  */
 static bool should_rotate_key(nimcp_encrypted_audit_t audit) {
     if (audit->rotation_policy == NIMCP_KEY_ROTATION_MANUAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_rotate_key: validation failed");
         return false;
     }
 
@@ -422,7 +421,6 @@ static bool should_rotate_key(nimcp_encrypted_audit_t audit) {
     }
 
     // Add other rotation policies here
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_rotate_key: validation failed");
     return false;
 }
 
@@ -476,7 +474,7 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
 
     nimcp_encrypted_audit_t audit = nimcp_calloc(1, sizeof(struct nimcp_encrypted_audit_impl));
     if (!audit) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audit is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "audit is NULL");
 
         return NULL;
     }

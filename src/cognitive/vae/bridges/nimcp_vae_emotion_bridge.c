@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Internal Helpers
@@ -245,7 +246,7 @@ vae_emotion_bridge_t* vae_emotion_bridge_create(const vae_emotion_bridge_config_
 
         /* Initialize with random embeddings */
         for (uint32_t i = 0; i < VAE_EMOTION_COUNT * config->emotion_embed_dim; i++) {
-            bridge->emotion_embeddings[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+            bridge->emotion_embeddings[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 0.1f;
         }
     }
 
@@ -584,8 +585,8 @@ int vae_emotion_generate_with_emotion(vae_emotion_bridge_t* bridge,
     /* Add temperature-scaled noise */
     for (uint32_t i = 0; i < latent_dim; i++) {
         /* Box-Muller transform for Gaussian noise */
-        float u1 = (float)rand() / RAND_MAX;
-        float u2 = (float)rand() / RAND_MAX;
+        float u1 = (float)nimcp_tl_rand() / RAND_MAX;
+        float u2 = (float)nimcp_tl_rand() / RAND_MAX;
         if (u1 < 1e-10f) u1 = 1e-10f;
         float noise = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
         result->latent[i] += temperature * noise;

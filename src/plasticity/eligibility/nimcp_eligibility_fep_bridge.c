@@ -139,7 +139,6 @@ float eligibility_fep_apply_precision_decay_modulation(eligibility_fep_bridge_t*
 
 bool eligibility_fep_should_consolidate(const eligibility_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_should_consolidate: bridge is NULL");
         return false;
     }
     if (!bridge->config.enable_fe_gated_consolidation) return true;

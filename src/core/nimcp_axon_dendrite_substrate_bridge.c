@@ -229,6 +229,8 @@ void axon_dendrite_substrate_bridge_destroy(axon_dendrite_substrate_bridge_t* br
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -300,7 +302,6 @@ bool axon_dendrite_substrate_is_bio_async_connected(
 )
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -890,7 +891,6 @@ bool axon_dendrite_substrate_is_axon_limited(
      * HOW:  Check critical thresholds
      */
     if (!bridge || !bridge->axon) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_is_axon_limited: required parameter is NULL (bridge, bridge->axon)");
         return false;
     }
 
@@ -905,7 +905,6 @@ bool axon_dendrite_substrate_is_axon_limited(
     if (physical.ion_balance < bridge->config.min_ion_balance_for_conduct) return true;
     if (physical.membrane_integrity < SUBSTRATE_MEMBRANE_THRESHOLD) return true;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_dendrite_substrate_is_axon_limited: validation failed");
     return false;
 }
 
@@ -914,7 +913,6 @@ bool axon_dendrite_substrate_is_dendrite_limited(
 )
 {
     if (!bridge || !bridge->dendrite) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_is_dendrite_limited: required parameter is NULL (bridge, bridge->dendrite)");
         return false;
     }
 
@@ -928,7 +926,6 @@ bool axon_dendrite_substrate_is_dendrite_limited(
     if (physical.membrane_integrity < bridge->config.min_membrane_for_integration) return true;
     if (physical.ion_balance < 0.5f) return true;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_dendrite_substrate_is_dendrite_limited: validation failed");
     return false;
 }
 

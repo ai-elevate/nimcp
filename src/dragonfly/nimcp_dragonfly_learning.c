@@ -160,38 +160,30 @@ bool learning_validate_config(const learning_config_t* config) {
         return false;
     }
     if (config->episode_decay_rate < 0.0f || config->episode_decay_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
 
     if (config->min_pattern_confidence < 0.0f || config->min_pattern_confidence > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
     if (config->similarity_threshold < 0.0f || config->similarity_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
 
     if (config->strategy_learning_rate < 0.0f || config->strategy_learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
     if (config->pattern_learning_rate < 0.0f || config->pattern_learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
     if (config->adaptation_rate < 0.0f || config->adaptation_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
 
     if (config->exploration_rate < 0.0f || config->exploration_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
     if (config->exploration_decay < 0.0f || config->exploration_decay > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
         return false;
     }
 

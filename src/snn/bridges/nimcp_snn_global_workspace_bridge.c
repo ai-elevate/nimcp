@@ -120,7 +120,6 @@ int snn_global_workspace_bridge_disconnect_bio_async(snn_global_workspace_bridge
 
 bool snn_global_workspace_bridge_is_bio_async_connected(const snn_global_workspace_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_bridge_is_bio_async_connected: null bridge pointer");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -216,7 +215,6 @@ float snn_global_workspace_get_competition_strength(const snn_global_workspace_b
 
 bool snn_global_workspace_is_broadcasting(const snn_global_workspace_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_is_broadcasting: null bridge pointer");
         return false;
     }
     return bridge->state.is_broadcasting;

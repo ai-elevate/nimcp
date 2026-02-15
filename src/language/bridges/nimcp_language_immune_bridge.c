@@ -582,7 +582,6 @@ bool language_immune_bridge_is_inflamed(
     language_region_t region)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_is_inflamed: bridge is NULL");
         return false;
     }
     return language_immune_bridge_get_inflammation(bridge, region) >= LANGUAGE_IMMUNE_MILD_THRESHOLD;
@@ -724,7 +723,6 @@ bool language_immune_bridge_has_symptom(
     aphasia_type_t symptom)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_has_symptom: bridge is NULL");
         return false;
     }
 
@@ -744,7 +742,6 @@ bool language_immune_bridge_has_symptom(
                     bridge->summary.comprehension_score > 0.7f &&
                     bridge->summary.production_score > 0.7f);
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_immune_bridge_has_symptom: operation failed");
             return false;
     }
 }

@@ -29,6 +29,7 @@
 
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_signal)
 
@@ -482,7 +483,7 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
         adapter->node_id = config->node_id;
     } else {
         srand((unsigned int)time(NULL));
-        adapter->node_id = (uint32_t)rand();
+        adapter->node_id = (uint32_t)nimcp_tl_rand();
     }
 
     /* Initialize simulation queue if needed */

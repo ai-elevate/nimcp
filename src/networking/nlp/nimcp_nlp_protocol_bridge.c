@@ -104,7 +104,7 @@ nlp_protocol_bridge_t* nlp_bridge_create(nlp_node_t node) {
     nlp_protocol_bridge_t* bridge = nimcp_calloc(1, sizeof(nlp_protocol_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

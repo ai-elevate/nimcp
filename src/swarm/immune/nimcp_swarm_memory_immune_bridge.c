@@ -306,7 +306,6 @@ float swarm_memory_immune_compute_forgetting_multiplier(const swarm_memory_immun
 bool swarm_memory_immune_has_memory_impairment(const swarm_memory_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_memory_immune_has_memory_impairment: bridge is NULL");
         return false;
     }
 
@@ -374,7 +373,6 @@ int swarm_memory_immune_disconnect_bio_async(swarm_memory_immune_bridge_t* bridg
 bool swarm_memory_immune_is_bio_async_connected(const swarm_memory_immune_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_memory_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

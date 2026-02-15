@@ -295,7 +295,7 @@ static int get_instance_array_index(hyperscanning_t* hs, hyperscanning_instance_
     if (diff >= 0 && diff < COLLECTIVE_MAX_INSTANCES) {
         return (int)diff;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_instance_array_index: capacity exceeded");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_instance_array_index: capacity exceeded");
     return -1;
 }
 

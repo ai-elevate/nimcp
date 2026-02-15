@@ -263,7 +263,6 @@ int bcm_fep_bridge_disconnect_bio_async(bcm_fep_bridge_t* bridge) {
 
 bool bcm_fep_bridge_is_bio_async_connected(const bcm_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

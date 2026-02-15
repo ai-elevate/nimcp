@@ -805,7 +805,7 @@ bool prefrontal_generate_plan(prefrontal_adapter_t* adapter,
     if (!internal_plan) {
         if (adapter->plan_count >= adapter->plan_capacity) {
             set_error(adapter, PREFRONTAL_ERROR_BUFFER_OVERFLOW);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "prefrontal_reset: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "prefrontal_reset: capacity exceeded");
             return false;
         }
         internal_plan = &adapter->plans[adapter->plan_count++];
@@ -876,7 +876,7 @@ bool prefrontal_get_next_action(prefrontal_adapter_t* adapter,
 
     action_plan_t* plan = find_plan(adapter, goal_id);
     if (!plan || plan->current_step >= plan->action_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: plan is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: plan is NULL");
         return false;
     }
 
@@ -1073,7 +1073,6 @@ bool prefrontal_check_inhibition(prefrontal_adapter_t* adapter,
                                   const prefrontal_action_t* action,
                                   impulse_record_t* record) {
     if (!adapter || !action || !record) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, action, record)");
         return false;
     }
 
@@ -1326,7 +1325,7 @@ bool prefrontal_learn_rule(prefrontal_adapter_t* adapter,
 
     /* Simplified rule learning: store context-action-outcome association */
     if (adapter->rule_count >= adapter->rule_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return false;  /* Rule capacity reached */
     }
 

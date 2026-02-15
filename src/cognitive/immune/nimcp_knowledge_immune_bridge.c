@@ -210,7 +210,6 @@ static float compute_sickness_behavior(const brain_immune_system_t* immune) {
  */
 static bool is_health_concept(const char* concept) {
     if (!concept) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_health_concept: concept is NULL");
         return false;
     }
 
@@ -227,7 +226,6 @@ static bool is_health_concept(const char* concept) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_health_concept: validation failed");
     return false;
 }
 
@@ -859,7 +857,6 @@ bool knowledge_immune_is_cognitively_impaired(
     const knowledge_immune_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_is_cognitively_impaired: bridge is NULL");
         return false;
     }
 
@@ -971,7 +968,6 @@ int knowledge_immune_disconnect_bio_async(knowledge_immune_bridge_t* bridge) {
  */
 bool knowledge_immune_is_bio_async_connected(const knowledge_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -655,7 +655,6 @@ bool predictive_attention_bridge_is_connected(
     const predictive_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

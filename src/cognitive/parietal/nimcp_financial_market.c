@@ -113,7 +113,6 @@ static int fin_market_validate_subsystems(const char* operation) {
         int rc = brain_immune_validate_operation(g_fin_market_immune, operation, 5);
         if (rc != 0) {
             set_error("financial_market: immune validation failed for %s", operation);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fin_market_validate_subsystems: validation failed");
             return -1;
         }
     }
@@ -121,7 +120,6 @@ static int fin_market_validate_subsystems(const char* operation) {
         int rc = bbb_validate_data(g_fin_market_bbb, NULL, 0, operation);
         if (rc != 0) {
             set_error("financial_market: BBB validation failed for %s", operation);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fin_market_validate_subsystems: validation failed");
             return -1;
         }
     }

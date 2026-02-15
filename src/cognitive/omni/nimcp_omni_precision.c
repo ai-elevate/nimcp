@@ -1087,7 +1087,6 @@ int omni_precision_disconnect_bio_async(omni_precision_ctx_t* ctx) {
 
 bool omni_precision_is_bio_async_connected(const omni_precision_ctx_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_precision_is_bio_async_connected: ctx is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

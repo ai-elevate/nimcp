@@ -703,7 +703,7 @@ int rcog_health_submit_goal_async(
 
 
     if (integration->num_pending >= integration->max_pending) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_health_submit_goal_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rcog_health_submit_goal_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -787,7 +787,6 @@ bool rcog_health_is_complete(
     uint64_t goal_id
 ) {
     if (!integration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_is_complete: integration is NULL");
         return false;
     }
 
@@ -991,7 +990,7 @@ int rcog_health_register_tool(
 
 
     if (integration->num_custom_tools >= integration->max_custom_tools) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_health_register_tool: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rcog_health_register_tool: capacity exceeded");
         return -1;  /* No room */
     }
 
@@ -1043,7 +1042,7 @@ const rcog_health_tool_t* rcog_health_get_builtin_tool(rcog_health_tool_id_t too
 
 
     if (tool_id >= RCOG_TOOL_ID_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_health_get_builtin_tool: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rcog_health_get_builtin_tool: capacity exceeded");
         return NULL;
     }
 

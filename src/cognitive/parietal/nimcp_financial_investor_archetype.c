@@ -1481,7 +1481,7 @@ int financial_investor_archetype_evaluate_blend(
     }
     if (count == 0 || count > FIN_ARCH_MAX_BLEND_SIZE) {
         set_error("Invalid blend count: %u (max %d)", count, FIN_ARCH_MAX_BLEND_SIZE);
-        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BUFFER_OVERFLOW, "financial_investor_archetype_evaluate_blend: Invalid blend count %u", count);
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_OUT_OF_RANGE, "financial_investor_archetype_evaluate_blend: Invalid blend count %u", count);
         return FIN_ARCH_ERR_BLEND;
     }
     /* Global-level validation */

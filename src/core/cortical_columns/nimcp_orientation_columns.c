@@ -320,6 +320,8 @@ void orientation_column_destroy(orientation_column_t* col) {
 
     if (col->mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)col->mutex);
+        nimcp_free(col->mutex);
+        col->mutex = NULL;
     }
 
     nimcp_free(col);
@@ -632,6 +634,8 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
             if (hcol->columns[i].mutex) {
                 nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->columns[i].mutex);
                 nimcp_free(hcol->columns[i].mutex);
+                hcol->columns[i].mutex = NULL;
+                nimcp_free(hcol->columns[i].mutex);
             }
         }
         nimcp_free(hcol->columns);
@@ -645,6 +649,8 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
         for (uint32_t i = 0; i < num_orientations; i++) {
             if (hcol->columns[i].mutex) {
                 nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->columns[i].mutex);
+                nimcp_free(hcol->columns[i].mutex);
+                hcol->columns[i].mutex = NULL;
                 nimcp_free(hcol->columns[i].mutex);
             }
         }
@@ -670,6 +676,8 @@ void orientation_hypercolumn_destroy(orientation_hypercolumn_t* hcol) {
             if (hcol->columns[i].mutex) {
                 nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->columns[i].mutex);
                 nimcp_free(hcol->columns[i].mutex);
+                hcol->columns[i].mutex = NULL;
+                nimcp_free(hcol->columns[i].mutex);
             }
         }
         nimcp_free(hcol->columns);
@@ -677,6 +685,8 @@ void orientation_hypercolumn_destroy(orientation_hypercolumn_t* hcol) {
 
     if (hcol->mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)hcol->mutex);
+        nimcp_free(hcol->mutex);
+        hcol->mutex = NULL;
     }
 
     nimcp_free(hcol);

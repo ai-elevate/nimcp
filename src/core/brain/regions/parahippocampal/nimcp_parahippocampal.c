@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parahippocampal)
 //=============================================================================
@@ -195,11 +196,11 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
     /* Initialize place cells with random place fields */
     for (uint32_t i = 0; i < ph->num_place_cells; i++) {
         ph->place_cells[i].cell_id = i;
-        ph->place_cells[i].place_field_center[0] = ((float)rand() / RAND_MAX) * 100.0f;
-        ph->place_cells[i].place_field_center[1] = ((float)rand() / RAND_MAX) * 100.0f;
+        ph->place_cells[i].place_field_center[0] = ((float)nimcp_tl_rand() / RAND_MAX) * 100.0f;
+        ph->place_cells[i].place_field_center[1] = ((float)nimcp_tl_rand() / RAND_MAX) * 100.0f;
         ph->place_cells[i].place_field_center[2] = 0.0f;
         ph->place_cells[i].place_field_radius = ph->config.place_field_radius_min +
-            ((float)rand() / RAND_MAX) * (ph->config.place_field_radius_max - ph->config.place_field_radius_min);
+            ((float)nimcp_tl_rand() / RAND_MAX) * (ph->config.place_field_radius_max - ph->config.place_field_radius_min);
         ph->place_cells[i].peak_rate = 1.0f;
         ph->place_cells[i].learning_rate = ph->config.learning_rate;
     }
@@ -220,7 +221,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
         /* Random initialization */
         for (uint32_t j = 0; j < ph->config.scene_dim; j++) {
-            ph->scene_cells[i].scene_weights[j] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+            ph->scene_cells[i].scene_weights[j] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5f) * 0.1f;
         }
         ph->scene_cells[i].preferred_category = (scene_category_t)(i % SCENE_CATEGORY_COUNT);
     }

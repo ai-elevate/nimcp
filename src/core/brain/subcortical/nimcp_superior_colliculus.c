@@ -141,7 +141,7 @@ superior_colliculus_t* sc_create(const sc_config_t* config) {
     superior_colliculus_t* sc = nimcp_calloc(1, sizeof(superior_colliculus_t));
     if (!sc) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sc is NULL");
 
         return NULL;
 
@@ -270,7 +270,7 @@ int sc_add_target(superior_colliculus_t* sc, const sc_target_t* target) {
 
     if (sc->num_targets >= SC_MAX_TARGETS) {
         nimcp_mutex_unlock(sc->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sc_add_target: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sc_add_target: capacity exceeded");
         return -1;
     }
 
@@ -371,7 +371,6 @@ int sc_set_snr_disinhibition(superior_colliculus_t* sc,
 
 bool sc_is_saccade_ready(const superior_colliculus_t* sc) {
     if (!sc) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_is_saccade_ready: sc is NULL");
         return false;
     }
     return sc->saccade_ready;

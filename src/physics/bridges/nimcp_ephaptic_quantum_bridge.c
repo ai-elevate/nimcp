@@ -415,7 +415,7 @@ int ephaptic_qmc_field_walk(
         return -1;
     }
     if (start_idx >= system->neuron_count || target_idx >= system->neuron_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ephaptic_qmc_field_walk: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ephaptic_qmc_field_walk: capacity exceeded");
         return -1;
     }
 

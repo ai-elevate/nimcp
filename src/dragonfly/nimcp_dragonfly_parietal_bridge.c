@@ -207,27 +207,21 @@ bool parietal_bridge_validate_config(const parietal_bridge_config_t* config) {
         return false;
     }
     if (config->attention_decay < 0 || config->attention_decay > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
     }
     if (config->saccade_threshold < 0 || config->saccade_threshold > M_PI) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
     }
     if (config->pursuit_gain < 0 || config->pursuit_gain > 2.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
     }
     if (config->motor_latency_ms < 0 || config->motor_latency_ms > 1000.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
     }
     if (config->gain_field_sigma <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
     }
     if (config->query_radius_default <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
     }
 

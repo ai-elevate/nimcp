@@ -245,6 +245,8 @@ void portia_attention_immune_destroy(portia_attention_immune_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -639,7 +641,6 @@ bool portia_attention_immune_has_resource_deficit(
 ) {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_has_resource_deficit: bridge is NULL");
         return false;
     }
 
@@ -706,7 +707,6 @@ bool portia_attention_immune_is_bio_async_connected(
 ) {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

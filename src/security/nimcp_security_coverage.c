@@ -257,7 +257,7 @@ int32_t nimcp_coverage_register_region(
     }
 
     if (coverage->num_regions >= NIMCP_MAX_PROTECTED_REGIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_region: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_coverage_register_region: capacity exceeded");
         return -1;
     }
 
@@ -480,7 +480,7 @@ int32_t nimcp_coverage_register_input_channel(
     }
 
     if (coverage->num_channels >= NIMCP_MAX_CHANNELS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_input_channel: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_coverage_register_input_channel: capacity exceeded");
         return -1;
     }
 
@@ -519,7 +519,7 @@ int32_t nimcp_coverage_register_output_channel(
     }
 
     if (coverage->num_channels >= NIMCP_MAX_CHANNELS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_output_channel: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_coverage_register_output_channel: capacity exceeded");
         return -1;
     }
 
@@ -588,7 +588,7 @@ int32_t nimcp_coverage_register_ipc_endpoint(
     }
 
     if (coverage->num_ipc_endpoints >= NIMCP_MAX_IPC_ENDPOINTS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_ipc_endpoint: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_coverage_register_ipc_endpoint: capacity exceeded");
         return -1;
     }
 
@@ -746,13 +746,11 @@ nimcp_result_t nimcp_coverage_verify_dimension(
 bool nimcp_coverage_is_complete(nimcp_security_coverage_t* coverage)
 {
     if (!coverage) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_is_complete: coverage is NULL");
         return false;
     }
 
     nimcp_coverage_report_t report;
     if (nimcp_coverage_verify_all(coverage, &report) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_is_complete: validation failed");
         return false;
     }
 
@@ -937,7 +935,6 @@ bool nimcp_coverage_check_temporal(
     uint64_t max_gap_ms)
 {
     if (!coverage) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_check_temporal: coverage is NULL");
         return false;
     }
 
@@ -959,7 +956,6 @@ bool nimcp_coverage_check_temporal(
             msg
         );
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_check_temporal: operation failed");
         return false;
     }
 

@@ -1114,7 +1114,6 @@ int consolidation_plasticity_bio_async_disconnect(consolidation_plasticity_bridg
 
 bool consolidation_plasticity_is_bio_async_connected(consolidation_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

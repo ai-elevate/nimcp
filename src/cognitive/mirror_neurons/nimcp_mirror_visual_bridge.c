@@ -534,7 +534,6 @@ int mirror_visual_bridge_connect_visual_cortex(
 
 bool mirror_visual_bridge_is_connected(const mirror_visual_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1116,7 +1115,6 @@ bool mirror_visual_bridge_is_bio_async_connected(
     const mirror_visual_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -372,7 +372,6 @@ bool execution_mode_is_supported(execution_mode_t mode)
 {
     hardware_capabilities_t caps;
     if (!execution_detect_capabilities(&caps)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execution_mode_is_supported: execution_detect_capabilities is NULL");
         return false;
     }
 
@@ -401,7 +400,6 @@ bool execution_mode_is_supported(execution_mode_t mode)
             return true;  // Auto always supported
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execution_mode_is_supported: operation failed");
             return false;
     }
 }

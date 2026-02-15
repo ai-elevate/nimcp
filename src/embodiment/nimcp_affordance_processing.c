@@ -24,6 +24,7 @@
 
 #define LOG_MODULE "affordance_processing"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(affordance_processing)
 
@@ -571,7 +572,7 @@ static uint32_t softmax_select(
     }
 
     /* Sample */
-    double r = (double)rand() / RAND_MAX;
+    double r = (double)nimcp_tl_rand() / RAND_MAX;
     double cumsum = 0.0;
     uint32_t selected = 0;
 

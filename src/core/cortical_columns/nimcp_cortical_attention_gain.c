@@ -274,6 +274,8 @@ void cortical_attention_destroy(cortical_attention_gain_t* attention) {
      */
     if (attention->mutex) {
         nimcp_platform_mutex_destroy(attention->mutex);
+        nimcp_free(attention->mutex);
+        attention->mutex = NULL;
     }
 
     /* WHAT: Free attention structure
@@ -899,7 +901,6 @@ bool cortical_attention_is_attended(
      * WHY:  Guard clause
      */
     if (!attention || minicolumn_idx >= attention->num_minicolumns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_attention_is_attended: attention is NULL");
         return false;
     }
 
@@ -1027,7 +1028,6 @@ bool cortical_attention_is_bio_async_connected(
      * WHY:  Guard clause
      */
     if (!attention) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_is_bio_async_connected: attention is NULL");
         return false;
     }
 

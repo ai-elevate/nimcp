@@ -811,7 +811,6 @@ bool imagination_reasoning_bridge_is_connected(
     const imagination_reasoning_bridge_t* bridge
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_is_connected: bridge is NULL");
         return false;
     }
 
@@ -1274,7 +1273,7 @@ int imagination_reasoning_generate_scenario(
 
 
     if (type >= IMAG_SCENARIO_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "imagination_reasoning_generate_scenario: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "imagination_reasoning_generate_scenario: capacity exceeded");
         return -1;
     }
 

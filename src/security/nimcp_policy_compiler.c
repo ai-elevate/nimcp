@@ -124,7 +124,7 @@ static bytecode_t* bytecode_create(void) {
     bytecode_t* bc = nimcp_calloc(1, sizeof(bytecode_t));
     if (!bc) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bc is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bc is NULL");
 
         return NULL;
 

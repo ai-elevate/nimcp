@@ -297,7 +297,7 @@ int kg_events_default_config(kg_event_config_t* config) {
 kg_event_stream_t* kg_events_create(brain_kg_t* kg, const kg_event_config_t* config) {
     kg_event_stream_t* stream = nimcp_calloc(1, sizeof(kg_event_stream_t));
     if (!stream) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream is NULL");
 
         return NULL;
     }

@@ -712,7 +712,6 @@ int safety_plasticity_bridge_disconnect(safety_plasticity_bridge_t* bridge) {
 
 bool safety_plasticity_bridge_is_connected(const safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_is_connected: bridge_valid is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1186,7 +1185,6 @@ bool safety_plasticity_bridge_is_bio_async_connected(
     const safety_plasticity_bridge_t* bridge)
 {
     if (!bridge_valid(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_is_bio_async_connected: bridge_valid is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -201,7 +201,6 @@ int language_bio_async_send_phoneme(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_phoneme: Bio-async not registered");
         return -1;
     }
 
@@ -247,7 +246,6 @@ int language_bio_async_send_word(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_word: Bio-async not registered");
         return -1;
     }
 
@@ -285,7 +283,6 @@ int language_bio_async_send_concept(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_concept: Bio-async not registered");
         return -1;
     }
 
@@ -323,7 +320,6 @@ int language_bio_async_send_comprehension(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_comprehension: Bio-async not registered");
         return -1;
     }
 
@@ -361,7 +357,6 @@ int language_bio_async_send_production(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_production: Bio-async not registered");
         return -1;
     }
 
@@ -399,7 +394,6 @@ int language_bio_async_send_anomaly(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_anomaly: Bio-async not registered");
         return -1;
     }
 
@@ -437,7 +431,6 @@ int language_bio_async_send_state_change(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_state_change: Bio-async not registered");
         return -1;
     }
 
@@ -475,7 +468,6 @@ int language_bio_async_send_error(
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_error: Bio-async not registered");
         return -1;
     }
 

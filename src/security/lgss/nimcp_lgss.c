@@ -203,7 +203,7 @@ lgss_context_t* lgss_create(const lgss_config_t* config)
     lgss = nimcp_calloc(1, sizeof(lgss_context_t));
     if (!lgss) {
         LGSS_LOG_ERROR("Failed to allocate LGSS context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss is NULL");
 
         return NULL;
     }

@@ -262,7 +262,7 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->tendency_buffer || !bridge->prev_state) {
         personality_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "personality_snn_create: operation failed");
         return NULL;
     }
 
@@ -811,7 +811,6 @@ bool personality_snn_check_stability(
     float* stability_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_check_stability: bridge is NULL");
         return false;
     }
 
@@ -835,7 +834,6 @@ bool personality_snn_check_fluctuation(
     float* fluctuation_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_check_fluctuation: bridge is NULL");
         return false;
     }
 
@@ -859,7 +857,6 @@ bool personality_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1150,7 +1147,6 @@ int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
 
 bool personality_snn_is_bio_async_connected(personality_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

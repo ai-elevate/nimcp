@@ -331,7 +331,6 @@ float spike_nlp_immune_get_timing_jitter(const spike_nlp_immune_bridge_t* bridge
 
 bool spike_nlp_immune_has_pattern_anomaly(const spike_nlp_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_has_pattern_anomaly: bridge is NULL");
         return false;
     }
     return bridge->spike_modulation.excessive_synchrony ||

@@ -220,13 +220,13 @@ bool nimcp_min_heap_insert(nimcp_min_heap_t* heap, const nimcp_heap_element_t* e
 
     if (heap->size >= heap->capacity) {
         LOG_ERROR("nimcp_min_heap_insert failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_min_heap_insert: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_min_heap_insert: capacity exceeded");
         return false;  // Heap full
     }
 
     if (element->vertex_id >= heap->max_vertex_id) {
         LOG_ERROR("nimcp_min_heap_insert failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_min_heap_insert: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_min_heap_insert: capacity exceeded");
         return false;  // Vertex ID out of range for position map
     }
 
@@ -292,7 +292,7 @@ bool nimcp_min_heap_decrease_key(nimcp_min_heap_t* heap, uint32_t vertex_id, flo
 
     if (vertex_id >= heap->max_vertex_id) {
         LOG_ERROR("nimcp_min_heap_decrease_key failed: returning error");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_min_heap_decrease_key: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_min_heap_decrease_key: capacity exceeded");
         return false;
     }
 

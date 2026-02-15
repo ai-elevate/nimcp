@@ -349,7 +349,7 @@ void pattern_cache_destroy(pattern_cache_t* cache) {
 
 nimcp_error_t pattern_cache_clear(pattern_cache_t* cache) {
     if (!cache || cache->magic != PATTERN_CACHE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_pattern_cache: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_cache_clear: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -958,7 +958,7 @@ nimcp_error_t pattern_cache_evict_expired(pattern_cache_t* cache) {
     ctx.keys_to_remove = nimcp_calloc(ctx.remove_capacity, sizeof(char*));
     if (!ctx.keys_to_remove) {
         nimcp_mutex_unlock(cache->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_cache: memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cache_evict_expired: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
 

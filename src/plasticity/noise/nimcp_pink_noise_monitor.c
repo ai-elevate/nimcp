@@ -134,7 +134,7 @@ pink_noise_monitor_t* pink_monitor_create(const pink_monitor_config_t* config) {
     pink_noise_monitor_t* monitor = nimcp_calloc(1, sizeof(pink_noise_monitor_t));
     if (!monitor) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "monitor is NULL");
 
         return NULL;
 

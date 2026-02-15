@@ -1063,7 +1063,6 @@ int vae_set_training(vae_system_t* vae, bool training)
 bool vae_is_training(const vae_system_t* vae)
 {
     if (!vae) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_is_training: vae is NULL");
         return false;
     }
     return vae->is_training;

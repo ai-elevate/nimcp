@@ -950,7 +950,6 @@ void occipital_cortical_bridge_reset_stats(occipital_cortical_bridge_t* bridge) 
 bool occipital_cortical_is_hypercolumns_connected(
     const occipital_cortical_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_is_hypercolumns_connected: bridge is NULL");
         return false;
     }
     return bridge->hypercolumns_external != NULL;
@@ -959,7 +958,6 @@ bool occipital_cortical_is_hypercolumns_connected(
 bool occipital_cortical_is_map_connected(
     const occipital_cortical_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_is_map_connected: bridge is NULL");
         return false;
     }
     return bridge->topographic_map != NULL;

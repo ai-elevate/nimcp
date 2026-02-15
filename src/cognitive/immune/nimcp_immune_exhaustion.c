@@ -81,6 +81,7 @@ static inline void immune_exhaustion_heartbeat_instance(
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
     nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* Helper macros */
@@ -244,7 +245,7 @@ static exhaustion_cell_record_t* get_or_create_cell_record(
     /* Need to expand array */
     if (system->cell_count >= system->cell_capacity) {
         NIMCP_LOGGING_WARN("Exhaustion tracking capacity reached");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_cell_record: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_or_create_cell_record: capacity exceeded");
         return NULL;
     }
 

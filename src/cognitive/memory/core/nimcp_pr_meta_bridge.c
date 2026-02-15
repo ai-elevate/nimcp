@@ -350,11 +350,9 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
 
     /* Learning rate validation */
     if (config->inner_lr <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
     if (config->outer_lr <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
 
@@ -370,15 +368,12 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
 
 
     if (config->resonance_threshold < 0.0f || config->resonance_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
     if (config->transfer_threshold < 0.0f || config->transfer_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
     if (config->transfer_weight < 0.0f || config->transfer_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
 
@@ -401,14 +396,12 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
         }
 
         if (config->tier_adaptation_rate[t] <= 0.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
             return false;
         }
     }
 
     /* Quaternion rate validation */
     if (config->adapt_quaternion && config->quat_adaptation_rate <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
 
@@ -486,7 +479,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_memory);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_bridge_create: bridge->recall_cache is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_meta_bridge_create: bridge->recall_cache is NULL");
         return NULL;
     }
     bridge->recall_cache_task_id = 0;
@@ -1814,7 +1807,7 @@ int pr_meta_store_task_memory(
 
     if (slot >= bridge->task_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_meta_store_task_memory: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_meta_store_task_memory: capacity exceeded");
         return -1;
     }
 
@@ -2365,7 +2358,6 @@ bool pr_meta_task_validate(const pr_meta_task_t* task) {
                 task->quaternion.y * task->quaternion.y +
                 task->quaternion.z * task->quaternion.z;
     if (fabsf(mag - 1.0f) > 0.1f && mag > PR_META_EPSILON) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_task_validate: validation failed");
         return false;  /* Not normalized */
     }
 

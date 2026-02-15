@@ -438,7 +438,7 @@ int genius_training_register_task(genius_training_bridge_t* bridge,
 
     if (bridge->task_count >= bridge->task_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_training_link_genius: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "genius_training_link_genius: capacity exceeded");
         return -1;
     }
 
@@ -1208,7 +1208,6 @@ int genius_training_bio_async_disconnect(genius_training_bridge_t* bridge) {
 
 bool genius_training_is_bio_async_connected(genius_training_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -163,7 +163,6 @@ bool dragonfly_validate_config(const dragonfly_config_t* config) {
 
     /* Validate subsystem configs */
     if (tsdn_config_validate(&config->tsdn_config) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (!tracking_validate_config(&config->tracker_config)) {
@@ -181,43 +180,34 @@ bool dragonfly_validate_config(const dragonfly_config_t* config) {
 
     /* Validate system parameters */
     if (config->min_target_size <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (config->max_target_distance <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (config->abort_distance <= config->max_target_distance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (config->intercept_threshold <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (config->pursuit_timeout_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
 
     /* Validate thresholds */
     if (config->lock_threshold < 0.0f || config->lock_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (config->pursue_threshold < 0.0f || config->pursue_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
     if (config->abort_threshold < 0.0f || config->abort_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
 
     /* Validate energy */
     if (config->min_energy_reserve < 0.0f || config->min_energy_reserve > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_validate_config: validation failed");
         return false;
     }
 

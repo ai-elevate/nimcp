@@ -248,7 +248,6 @@ int meta_learning_fep_bridge_disconnect_bio_async(meta_learning_fep_bridge_t* br
 
 bool meta_learning_fep_bridge_is_bio_async_connected(const meta_learning_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

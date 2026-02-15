@@ -1935,7 +1935,6 @@ uint32_t rcog_delegation_pool_estimate_wait_time(
 
 bool rcog_delegation_pool_has_capacity(const rcog_delegation_pool_t* pool) {
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_delegation_pool_has_capacity: pool is NULL");
         return false;
     }
 

@@ -160,6 +160,8 @@ void fault_tolerance_substrate_bridge_destroy(fault_tolerance_substrate_bridge_t
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);

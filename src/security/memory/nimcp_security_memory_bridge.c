@@ -150,7 +150,6 @@ static bool check_operation_permission(
 )
 {
     if (!rights) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_operation_permission: rights is NULL");
         return false;
     }
 
@@ -187,7 +186,6 @@ static bool check_memory_system_access(
 )
 {
     if (!rights) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_memory_system_access: rights is NULL");
         return false;
     }
 
@@ -456,7 +454,7 @@ security_mem_bridge_t* security_memory_bridge_create(const security_mem_config_t
     security_mem_bridge_t* bridge = nimcp_malloc(sizeof(security_mem_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-memory bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }

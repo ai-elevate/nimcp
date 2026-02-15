@@ -90,14 +90,12 @@ static bool should_transition(
     if (new_state == state->current_state) {
         // Reset transition tracking
         state->transition.threshold_sustained = false;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_transition: validation failed");
         return false;
     }
 
     // Guard: Check minimum dwell time in current state
     uint64_t time_in_state = current_time_ms - state->last_transition_time_ms;
     if (time_in_state < state->config.min_dwell_time_ms) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_transition: validation failed");
         return false;
     }
 
@@ -111,7 +109,6 @@ static bool should_transition(
         state->transition.target_state = new_state;
         state->transition.threshold_cross_time_ms = current_time_ms;
         state->transition.threshold_sustained = false;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_transition: validation failed");
         return false;
     }
 
@@ -122,7 +119,6 @@ static bool should_transition(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_transition: capacity exceeded");
     return false;
 }
 
@@ -217,6 +213,8 @@ void arousal_state_destroy(arousal_state_t* state) {
     // Destroy mutex
     if (state->mutex) {
         nimcp_platform_mutex_destroy(state->mutex);
+        nimcp_free(state->mutex);
+        state->mutex = NULL;
         state->mutex = NULL;
     }
 
@@ -513,7 +511,6 @@ int arousal_state_disconnect_bio_async(arousal_state_t* state) {
 bool arousal_state_is_bio_async_connected(const arousal_state_t* state) {
     // Guard: NULL check
     if (!state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_is_bio_async_connected: state is NULL");
         return false;
     }
 

@@ -597,7 +597,7 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
 
     // Create new binding
     if (goal->num_bindings >= hierarchy->config.max_bindings_per_goal) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_hierarchy_get_selected_goal: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_hierarchy_get_selected_goal: capacity exceeded");
         return false;  // No room for more bindings
     }
 

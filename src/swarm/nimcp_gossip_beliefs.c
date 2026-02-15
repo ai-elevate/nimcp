@@ -26,6 +26,7 @@
 
 #define LOG_MODULE "gossip_beliefs"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gossip_beliefs)
 
@@ -167,10 +168,10 @@ static bool gossip_belief_iter_cb(const void* key, size_t key_size, void* value,
     }
 
     /* Probabilistically decide to gossip this belief */
-    float r = (float)rand() / (float)RAND_MAX;
+    float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
     if (r < ctx->gossip_prob) {
         /* Select random target agent ID */
-        uint32_t target = rand() % 1000;
+        uint32_t target = nimcp_tl_rand() % 1000;
         if (send_gossip_message(ctx->gb, belief, target) == NIMCP_SUCCESS) {
             (*ctx->gossip_count)++;
             belief->propagation_count++;
@@ -435,6 +436,8 @@ void gossip_beliefs_destroy(gossip_beliefs_t* gb)
     if (gb->mutex) {
         nimcp_platform_mutex_unlock(gb->mutex);
         nimcp_platform_mutex_destroy(gb->mutex);
+        nimcp_free(gb->mutex);
+        gb->mutex = NULL;
     }
 
     nimcp_free(gb);

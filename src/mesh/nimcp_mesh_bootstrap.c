@@ -1376,7 +1376,6 @@ nimcp_error_t mesh_bootstrap_gossip_all(
 
 bool mesh_bootstrap_has_converged(const mesh_bootstrap_t* bootstrap) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap_has_converged: bootstrap is NULL");
         return false;
     }
     return mesh_integration_has_converged(bootstrap->integration);

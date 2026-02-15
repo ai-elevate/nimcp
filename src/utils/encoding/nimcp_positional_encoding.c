@@ -32,6 +32,7 @@
 
 #define LOG_MODULE "PosEncoding"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(positional_encoding)
 
@@ -318,8 +319,8 @@ static bool init_learned_embeddings(
     float std = encoder->data.learned.init_std;
     for (size_t i = 0; i < size; i++) {
         /* Box-Muller transform for normal distribution */
-        float u1 = ((float)rand() + 1.0F) / ((float)RAND_MAX + 2.0F);
-        float u2 = ((float)rand() + 1.0F) / ((float)RAND_MAX + 2.0F);
+        float u1 = ((float)nimcp_tl_rand() + 1.0F) / ((float)RAND_MAX + 2.0F);
+        float u2 = ((float)nimcp_tl_rand() + 1.0F) / ((float)RAND_MAX + 2.0F);
         float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * (float)M_PI * u2);
         encoder->data.learned.embeddings[i] = z * std;
     }

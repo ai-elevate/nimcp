@@ -145,7 +145,7 @@ soma_bio_router_t* soma_bio_async_bridge_create(const soma_bio_async_config_t* c
     soma_bio_router_t* bridge = nimcp_calloc(1, sizeof(soma_bio_router_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -615,7 +615,7 @@ int soma_bio_async_subscribe_module(
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_bio_async_subscribe_module: capacity exceeded");
         return -1;  /* No space */
     }
 

@@ -709,7 +709,6 @@ bool hypo_alignment_verify_weight_bounds(
 
     for (int i = 0; i < 4; i++) {
         if (weights[i] < min_weight || weights[i] > max_weight) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_verify_weight_bounds: validation failed");
             return false;
         }
     }
@@ -831,7 +830,7 @@ bool hypo_alignment_get_audit_entry(
 
     alignment_state_t* state = get_state(system);
     if (!state || index >= state->audit_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_alignment_get_audit_entry: state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_alignment_get_audit_entry: state is NULL");
         return false;
     }
 

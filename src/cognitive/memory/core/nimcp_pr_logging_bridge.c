@@ -302,7 +302,7 @@ NIMCP_EXPORT bool pr_logging_config_validate(const pr_logging_config_t* config) 
         return false;
     }
     if (config->min_level >= PR_LOG_LEVEL_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_logging_config_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_logging_config_validate: capacity exceeded");
         return false;
     }
 
@@ -1625,11 +1625,10 @@ NIMCP_EXPORT bool pr_logging_bridge_validate(const pr_logging_bridge_t bridge) {
         return false;
     }
     if (bridge->count > bridge->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_logging_bridge_validate: validation failed");
         return false;
     }
     if (bridge->write_idx >= bridge->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_logging_bridge_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_logging_bridge_validate: capacity exceeded");
         return false;
     }
 

@@ -287,7 +287,7 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
     omni_wernicke_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wernicke_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -931,7 +931,6 @@ float omni_wernicke_process_audiovisual(omni_wernicke_bridge_t* bridge,
 
 bool omni_wernicke_has_mcgurk_conflict(const omni_wernicke_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wernicke_has_mcgurk_conflict: bridge is NULL");
         return false;
     }
     return bridge->omni_effects.crossmodal.mcgurk_conflict;
@@ -1416,7 +1415,6 @@ int omni_wernicke_disconnect_bio_async(omni_wernicke_bridge_t* bridge) {
 
 bool omni_wernicke_is_bio_async_connected(const omni_wernicke_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wernicke_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

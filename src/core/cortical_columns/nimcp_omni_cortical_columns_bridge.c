@@ -602,7 +602,6 @@ int omni_cc_disconnect_bio_async(omni_cortical_columns_bridge_t* bridge) {
 
 bool omni_cc_is_bio_async_connected(const omni_cortical_columns_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_cc_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->bio_async_connected;

@@ -883,7 +883,7 @@ int security_orch_publish_async(
     if (orch->queue_count >= orch->config.event_queue_size) {
         orch->stats.events_dropped++;
         ORCH_UNLOCK(orch);
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW, "event queue full");
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "event queue full");
     }
 
     /* Add to queue */

@@ -483,7 +483,7 @@ int soma_process_touch(nimcp_somatosensory_t* soma,
         return -1;
     }
     if (segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_update: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_update: capacity exceeded");
         return -1;
     }
     if (intensity < 0.0f) {
@@ -595,7 +595,7 @@ int soma_two_point_discrimination(nimcp_somatosensory_t* soma,
         return -1;
     }
     if (segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_update: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_update: capacity exceeded");
         return -1;
     }
 
@@ -635,7 +635,7 @@ int soma_process_pain(nimcp_somatosensory_t* soma,
         return -1;
     }
     if (segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return -1;
     }
     if (intensity < 0.0f) {
@@ -718,7 +718,7 @@ int soma_update_proprioception(nimcp_somatosensory_t* soma,
         return -1;
     }
     if (segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_pain_level: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_get_pain_level: capacity exceeded");
         return -1;
     }
 
@@ -757,7 +757,7 @@ int soma_get_proprioception(nimcp_somatosensory_t* soma,
         return -1;
     }
     if (segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_pain_level: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_get_pain_level: capacity exceeded");
         return -1;
     }
 
@@ -802,7 +802,7 @@ int soma_process_temperature(nimcp_somatosensory_t* soma,
         return -1;
     }
     if (segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_joint_angle: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_get_joint_angle: capacity exceeded");
         return -1;
     }
 
@@ -855,7 +855,7 @@ temp_sensation_t soma_get_temperature_sensation(nimcp_somatosensory_t* soma,
 const soma_body_map_entry_t* soma_get_body_map_entry(nimcp_somatosensory_t* soma,
                                                       body_segment_t segment) {
     if (!soma || segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_joint_angle: soma is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_get_joint_angle: soma is NULL");
         return NULL;
     }
     return &soma->body_map[segment];
@@ -871,7 +871,7 @@ int soma_update_body_map(nimcp_somatosensory_t* soma,
                          body_segment_t segment,
                          float sensitivity_change) {
     if (!soma || segment >= BODY_SEG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_joint_angle: soma is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "soma_get_joint_angle: soma is NULL");
         return -1;
     }
 

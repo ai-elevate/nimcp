@@ -266,7 +266,7 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->belief_buffer || !bridge->prev_state) {
         fep_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_snn_create: operation failed");
         return NULL;
     }
 
@@ -780,7 +780,6 @@ bool fep_snn_check_pred_error(
     float* pred_error_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_check_pred_error: bridge is NULL");
         return false;
     }
 
@@ -804,7 +803,6 @@ bool fep_snn_check_belief_update(
     float* update_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_check_belief_update: bridge is NULL");
         return false;
     }
 
@@ -828,7 +826,6 @@ bool fep_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1115,7 +1112,6 @@ int fep_snn_bio_async_disconnect(fep_snn_bridge_t* bridge) {
 
 bool fep_snn_is_bio_async_connected(fep_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

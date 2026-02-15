@@ -206,7 +206,7 @@ community_ternary_result_t* community_ternary_detect(
     community_ternary_result_t* result = nimcp_malloc(sizeof(community_ternary_result_t));
     if (!result) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "result is NULL");
 
         return NULL;
 
@@ -293,7 +293,7 @@ community_ternary_result_t* community_ternary_detect(
         if (community_map) nimcp_free(community_map);
         if (seen) nimcp_free(seen);
         community_ternary_result_free(result);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_detect: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_ternary_detect: validation failed");
         return NULL;
     }
 
@@ -326,7 +326,7 @@ community_ternary_result_t* community_ternary_detect(
         !result->internal_positive || !result->internal_negative ||
         !result->external_positive || !result->external_negative) {
         community_ternary_result_free(result);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_detect: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_ternary_detect: operation failed");
         return NULL;
     }
 

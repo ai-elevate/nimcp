@@ -19,6 +19,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kg_disaster_recovery)
 //=============================================================================
@@ -166,7 +167,7 @@ static uint64_t get_timestamp_ms(void) {
  */
 static void generate_replica_id(char* buf, size_t size) {
     uint64_t ts = get_timestamp_us();
-    uint32_t rand_part = (uint32_t)rand();
+    uint32_t rand_part = (uint32_t)nimcp_tl_rand();
     snprintf(buf, size, "replica_%08x%08x", (uint32_t)(ts & 0xFFFFFFFF), rand_part);
 }
 

@@ -1530,7 +1530,7 @@ static bool record_question_history(curiosity_engine_t engine, const char* quest
                                     const char* answer)
 {
     if (engine->num_questions >= engine->questions_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "record_question_history: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "record_question_history: capacity exceeded");
         return false;
     }
 
@@ -2357,7 +2357,6 @@ float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine)
  */
 bool curiosity_should_explore_mc(curiosity_engine_t engine, float epsilon) {
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_should_explore_mc: engine is NULL");
         return false;
     }
 

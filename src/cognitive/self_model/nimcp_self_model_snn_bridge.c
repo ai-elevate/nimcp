@@ -268,7 +268,7 @@ self_model_snn_bridge_t* self_model_snn_create(const self_model_snn_config_t* co
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->insight_buffer || !bridge->prev_state) {
         self_model_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_model_snn_create: operation failed");
         return NULL;
     }
 
@@ -773,7 +773,6 @@ bool self_model_snn_check_boundary(
     float* boundary_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_snn_check_boundary: bridge is NULL");
         return false;
     }
 
@@ -797,7 +796,6 @@ bool self_model_snn_check_agency(
     float* agency_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_snn_check_agency: bridge is NULL");
         return false;
     }
 
@@ -821,7 +819,6 @@ bool self_model_snn_check_identity_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_snn_check_identity_change: bridge is NULL");
         return false;
     }
 
@@ -1108,7 +1105,6 @@ int self_model_snn_bio_async_disconnect(self_model_snn_bridge_t* bridge) {
 
 bool self_model_snn_is_bio_async_connected(self_model_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

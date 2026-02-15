@@ -617,7 +617,7 @@ nimcp_error_t swarm_consensus_receive_vote(
     if (vote_slot->vote_count >= ctx->config.max_votes_per_proposal) {
         nimcp_mutex_unlock(&ctx->mutex);
         LOG_ERROR("Too many votes for proposal %u", vote->proposal_id);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     vote_slot->votes[vote_slot->vote_count++] = *vote;
@@ -1161,7 +1161,6 @@ nimcp_error_t swarm_consensus_disconnect_bio_async(swarm_consensus_t ctx)
 bool swarm_consensus_is_bio_async_connected(const swarm_consensus_t ctx)
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_CONSENSUS_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consensus_is_bio_async_connected: ctx is NULL");
         return false;
     }
 

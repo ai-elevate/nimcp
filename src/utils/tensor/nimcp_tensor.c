@@ -882,7 +882,6 @@ const void* nimcp_tensor_data_const(const nimcp_tensor_t* t)
 bool nimcp_tensor_is_contiguous(const nimcp_tensor_t* t)
 {
     if (!tensor_is_valid(t)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_is_contiguous: tensor_is_valid is NULL");
         return false;
     }
 
@@ -1327,7 +1326,7 @@ nimcp_tensor_t* nimcp_tensor_stack(
     nimcp_tensor_t** unsqueezed = nimcp_calloc(count, sizeof(nimcp_tensor_t*));
     if (!unsqueezed) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unsqueezed is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unsqueezed is NULL");
 
         return NULL;
 
@@ -3039,7 +3038,7 @@ nimcp_autodiff_ctx_t* nimcp_autodiff_create(void)
     nimcp_autodiff_ctx_t* ctx = nimcp_calloc(1, sizeof(nimcp_autodiff_ctx_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
 

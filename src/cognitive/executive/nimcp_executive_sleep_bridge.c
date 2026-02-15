@@ -308,7 +308,6 @@ float executive_sleep_get_inhibition(const executive_sleep_bridge_t bridge) {
 
 bool executive_sleep_is_offline(const executive_sleep_bridge_t bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_sleep_is_offline: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

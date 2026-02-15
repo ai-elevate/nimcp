@@ -136,7 +136,6 @@ bool elig_uq_bridge_validate_config(const elig_uq_bridge_config_t* config) {
     /* Validate ratio bounds */
     if (config->ltp_ltd_ratio_min < 0.0f) return false;
     if (config->ltp_ltd_ratio_max <= config->ltp_ltd_ratio_min) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_uq_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -1105,7 +1104,6 @@ bool elig_uq_bridge_verify(const elig_uq_bridge_t bridge) {
 
     /* Check dt is positive */
     if (bridge->state.current_optimized_dt <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_uq_bridge_verify: validation failed");
         return false;
     }
 

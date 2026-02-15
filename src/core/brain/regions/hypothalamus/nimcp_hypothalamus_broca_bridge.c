@@ -148,7 +148,7 @@ hypo_broca_bridge_t* hypo_broca_bridge_create(
     hypo_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_broca_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_broca_bridge_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -397,7 +397,6 @@ hypo_speech_state_t hypo_broca_bridge_get_state(const hypo_broca_bridge_t* bridg
 
 bool hypo_broca_bridge_is_impaired(const hypo_broca_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_is_impaired: bridge is NULL");
         return false;
     }
     return bridge->modulation.state == HYPO_SPEECH_IMPAIRED ||
@@ -406,7 +405,6 @@ bool hypo_broca_bridge_is_impaired(const hypo_broca_bridge_t* bridge) {
 
 bool hypo_broca_bridge_is_alarm_active(const hypo_broca_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_is_alarm_active: bridge is NULL");
         return false;
     }
     return bridge->modulation.alarm_mode;

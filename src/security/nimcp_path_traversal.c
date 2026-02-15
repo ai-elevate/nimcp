@@ -233,7 +233,6 @@ static bool check_patterns(const char* input, const char* patterns[],
                           size_t* offset)
 {
     if (!input || !patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_patterns: required parameter is NULL (input, patterns)");
         return false;
     }
 
@@ -860,7 +859,6 @@ bool nimcp_path_is_safe(const char* path)
     /* Guard: NULL path is not safe */
     if (!path) {
         LOG_WARN(LOG_MODULE, "nimcp_path_is_safe: NULL path");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_path_is_safe: path is NULL");
         return false;
     }
 
@@ -869,7 +867,6 @@ bool nimcp_path_is_safe(const char* path)
     if (!validator) {
         /* If validator creation failed, be conservative and reject */
         LOG_ERROR(LOG_MODULE, "nimcp_path_is_safe: Failed to create validator");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_path_is_safe: validator is NULL");
         return false;
     }
 

@@ -574,7 +574,6 @@ int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
 
 bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -957,7 +956,6 @@ pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
 
 bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 
@@ -974,7 +972,6 @@ bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
 
 bool pa_fep_bridge_is_high_precision(const pa_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_is_high_precision: bridge is NULL");
         return false;
     }
 

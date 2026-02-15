@@ -1898,7 +1898,6 @@ bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
 {
     // Guard clauses: Validate inputs
     if (!metrics || !thresholds || !severity_out) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_check_resource_thresholds: required parameter is NULL (metrics, thresholds, severity_out)");
         return false;
     }
 

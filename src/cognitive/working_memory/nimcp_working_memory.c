@@ -1046,7 +1046,7 @@ bool working_memory_add(
             nimcp_platform_mutex_unlock(&wm->mutex);
             nimcp_free(item_copy);
             set_error("Working memory full and eviction failed");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "working_memory_add: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "working_memory_add: capacity exceeded");
             return false;
         }
     }
@@ -1670,7 +1670,6 @@ uint32_t working_memory_get_capacity(const working_memory_t* wm) {
 bool working_memory_is_full(const working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_is_full: wm is NULL");
         return false;
     }
 
@@ -1971,7 +1970,7 @@ bool working_memory_get_position_embedding(
     // Guard: Invalid slot index
     if (slot_index >= wm->capacity) {
         set_error("Slot index out of bounds");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "working_memory_get_position_embedding: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "working_memory_get_position_embedding: capacity exceeded");
         return false;
     }
 
@@ -2030,7 +2029,7 @@ bool working_memory_set_pe_type(
     // Guard: Invalid PE type
     if (pe_type >= NIMCP_POS_TYPE_COUNT) {
         set_error("Invalid positional encoding type");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "working_memory_set_pe_type: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "working_memory_set_pe_type: capacity exceeded");
         return false;
     }
 
@@ -2292,7 +2291,6 @@ bool working_memory_is_immune_impaired(const working_memory_t* wm)
     // HOW:  Compare effective to base capacity
 
     if (!wm) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_is_immune_impaired: wm is NULL");
         return false;
     }
 

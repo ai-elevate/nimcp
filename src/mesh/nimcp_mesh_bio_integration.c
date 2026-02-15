@@ -540,7 +540,6 @@ bool mesh_bio_integration_is_connected(
     const mesh_bio_integration_t* integration
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration_is_connected: integration is NULL");
         return false;
     }
     return integration->connected;

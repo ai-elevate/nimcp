@@ -241,18 +241,15 @@ bool swarm_dragonfly_bridge_validate_config(
         config->salience_boost > 1.0f) return false;
 
     if (config->max_pursuit_distance_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: validation failed");
         return false;
     }
     if (config->min_intercept_probability < 0.0f ||
         config->min_intercept_probability > 1.0f) return false;
 
     if (config->formation_spread_m <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: validation failed");
         return false;
     }
     if (config->handoff_threshold_s <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -280,7 +277,7 @@ swarm_dragonfly_bridge_t* swarm_dragonfly_bridge_create(
     swarm_dragonfly_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 

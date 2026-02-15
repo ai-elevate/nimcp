@@ -307,14 +307,12 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
 NIMCP_EXPORT bool brain_is_hub_neuron(brain_t brain, uint32_t neuron_id) {
     // Guard: NULL check
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_hub_neuron: brain is NULL");
         return false;
     }
 
     // Check if hubs detected
     if (!brain->network_hubs) {
         NIMCP_LOGGING_ERROR("brain_is_hub_neuron: no hubs detected (call brain_detect_hubs first)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_hub_neuron: brain->network_hubs is NULL");
         return false;
     }
 

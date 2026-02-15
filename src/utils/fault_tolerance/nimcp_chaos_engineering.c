@@ -164,7 +164,6 @@ static void ce_audit_log(const char* action, uint32_t experiment_id, const char*
  */
 static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
     if (!ctx || !exp) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_check_guardrails: required parameter is NULL (ctx, exp)");
         return false;
     }
 
@@ -177,7 +176,6 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
                     LOG_WARNING("CE", "Blast radius guardrail violated: %u > %.0f",
                                       exp->target.node_count, guard->threshold);
                     if (guard->abort_on_violation) {
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_check_guardrails: validation failed");
                         return false;
                     }
                 }
@@ -197,7 +195,6 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
         if (exp->target.node_count > ctx->config.max_blast_radius) {
             LOG_WARNING("CE", "Global blast radius exceeded: %u > %u",
                               exp->target.node_count, ctx->config.max_blast_radius);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_check_guardrails: validation failed");
             return false;
         }
 
@@ -205,7 +202,6 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
             LOG_WARNING("CE", "Global duration exceeded: %lu > %lu",
                               (unsigned long)exp->max_duration_ms,
                               (unsigned long)ctx->config.max_experiment_duration_ms);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_check_guardrails: validation failed");
             return false;
         }
     }
@@ -490,7 +486,7 @@ bool ce_add_hypothesis(ce_context_t* ctx, uint32_t experiment_id, const ce_hypot
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->hypothesis_count >= CE_MAX_HYPOTHESIS) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_add_hypothesis: exp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ce_add_hypothesis: exp is NULL");
         return false;
     }
 
@@ -512,7 +508,7 @@ bool ce_add_guardrail(ce_context_t* ctx, uint32_t experiment_id, const ce_guardr
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->guardrail_count >= 8) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_add_guardrail: exp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ce_add_guardrail: exp is NULL");
         return false;
     }
 
@@ -534,7 +530,7 @@ bool ce_add_metric(ce_context_t* ctx, uint32_t experiment_id, const char* metric
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->metric_count >= CE_MAX_METRICS) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_add_metric: exp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ce_add_metric: exp is NULL");
         return false;
     }
 
@@ -986,7 +982,7 @@ bool ce_register_inject_callback(ce_context_t* ctx, ce_fault_type_t fault_type,
 
     if (ctx->callback_count >= 32) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_kill_process: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ce_kill_process: capacity exceeded");
         return false;
     }
 
@@ -1023,7 +1019,7 @@ bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type
     /* Create new entry */
     if (ctx->callback_count >= 32) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_kill_process: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ce_kill_process: capacity exceeded");
         return false;
     }
 
@@ -1049,7 +1045,7 @@ bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback,
 
     if (ctx->event_callback_count >= 8) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_register_event_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ce_register_event_callback: capacity exceeded");
         return false;
     }
 
@@ -1068,7 +1064,6 @@ bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback,
 
 bool ce_is_safe_to_run(ce_context_t* ctx, uint32_t experiment_id) {
     if (!ctx || experiment_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_is_safe_to_run: ctx is NULL");
         return false;
     }
 
@@ -1077,7 +1072,6 @@ bool ce_is_safe_to_run(ce_context_t* ctx, uint32_t experiment_id) {
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_is_safe_to_run: exp is NULL");
         return false;
     }
 
@@ -1147,7 +1141,6 @@ void ce_set_dry_run(ce_context_t* ctx, bool enabled) {
 
 bool ce_is_dry_run(ce_context_t* ctx) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_is_dry_run: ctx is NULL");
         return false;
     }
 

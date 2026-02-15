@@ -285,29 +285,23 @@ bool bg_fep_validate_config(const bg_fep_config_t* config) {
         return false;
     }
     if (config->precision_mode > BG_FEP_PRECISION_HIERARCHICAL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
         return false;
     }
 
     if (config->action_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
         return false;
     }
     if (config->outcome_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
         return false;
     }
     if (config->selection_temperature <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
         return false;
     }
 
     if (config->reward_learning_rate < 0.0f || config->reward_learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
         return false;
     }
     if (config->transition_learning_rate < 0.0f || config->transition_learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
         return false;
     }
 
@@ -322,7 +316,7 @@ bg_fep_bridge_t* bg_fep_create(const bg_fep_config_t* config) {
     bg_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(bg_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -432,7 +426,7 @@ int bg_fep_compute_errors(
         return -1;
     }
     if (action_id >= BG_FEP_MAX_ACTIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_compute_errors: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_fep_compute_errors: capacity exceeded");
         return -1;
     }
 
@@ -492,7 +486,7 @@ int bg_fep_update_precision(
         return -1;
     }
     if (action_id >= BG_FEP_MAX_ACTIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_update_precision: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_fep_update_precision: capacity exceeded");
         return -1;
     }
 
@@ -726,7 +720,7 @@ int bg_fep_update_outcome_model(
         return -1;
     }
     if (action_id >= BG_FEP_MAX_ACTIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_update_outcome_model: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_fep_update_outcome_model: capacity exceeded");
         return -1;
     }
 
@@ -766,7 +760,7 @@ int bg_fep_predict_outcome(
         return -1;
     }
     if (action_id >= BG_FEP_MAX_ACTIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_predict_outcome: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_fep_predict_outcome: capacity exceeded");
         return -1;
     }
 
@@ -788,7 +782,7 @@ int bg_fep_set_habit(
         return -1;
     }
     if (action_id >= BG_FEP_MAX_ACTIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_set_habit: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_fep_set_habit: capacity exceeded");
         return -1;
     }
 
@@ -826,7 +820,7 @@ int bg_fep_clear_habit(bg_fep_bridge_t* bridge, uint32_t action_id) {
         return -1;
     }
     if (action_id >= BG_FEP_MAX_ACTIONS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_clear_habit: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_fep_clear_habit: capacity exceeded");
         return -1;
     }
 
@@ -838,7 +832,6 @@ int bg_fep_clear_habit(bg_fep_bridge_t* bridge, uint32_t action_id) {
 
 bool bg_fep_is_habit_mode(const bg_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_is_habit_mode: bridge is NULL");
         return false;
     }
     return bridge->current_model == BG_FEP_MODEL_HABIT;

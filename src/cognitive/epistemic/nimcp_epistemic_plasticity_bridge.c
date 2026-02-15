@@ -331,7 +331,7 @@ int epistemic_plasticity_register_synapse(
         return -1;
     }
     if (bridge->num_synapses >= bridge->max_synapses) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "epistemic_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "epistemic_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -493,7 +493,7 @@ int epistemic_plasticity_source_feedback(
     epistemic_source_learning_t* source = find_source(bridge, source_id);
     if (!source) {
         if (bridge->num_sources >= bridge->max_sources) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "epistemic_plasticity_source_feedback: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "epistemic_plasticity_source_feedback: capacity exceeded");
             return -1;
         }
         source = &bridge->sources[bridge->num_sources++];
@@ -1104,7 +1104,6 @@ int epistemic_plasticity_disconnect_bio_async(epistemic_plasticity_bridge_t* bri
 
 bool epistemic_plasticity_is_bio_async_connected(const epistemic_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

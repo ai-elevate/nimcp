@@ -739,7 +739,6 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
 
 bool mirror_empathy_bridge_is_registered(const mirror_empathy_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_is_registered: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

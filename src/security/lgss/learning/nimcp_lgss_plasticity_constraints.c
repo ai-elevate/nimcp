@@ -318,7 +318,7 @@ plasticity_guard_t plasticity_guard_create(
 ) {
     struct plasticity_guard_internal* guard = nimcp_calloc(1, sizeof(*guard));
     if (!guard) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "guard is NULL");
 
         return NULL;
     }

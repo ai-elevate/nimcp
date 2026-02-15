@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vta_snn_bridge)
 //=============================================================================
@@ -267,7 +268,7 @@ int nimcp_vta_snn_encode_da_state(nimcp_vta_snn_bridge_t* bridge) {
         float rate = bridge->config.tonic_baseline_hz +
             rate_factor * (bridge->config.burst_rate_hz - bridge->config.tonic_baseline_hz);
         float spike_prob = rate * bridge->config.dt_ms / 1000.0f;
-        bridge->input_spikes[i] = (rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
+        bridge->input_spikes[i] = (nimcp_tl_rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
         if (bridge->input_spikes[i] > 0) spikes++;
     }
 
@@ -316,7 +317,7 @@ int nimcp_vta_snn_encode_burst(
 
     for (uint32_t i = 0; i < bridge->spike_buffer_size; i++) {
         float spike_prob = burst_rate * bridge->config.dt_ms / 1000.0f;
-        bridge->input_spikes[i] = (rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
+        bridge->input_spikes[i] = (nimcp_tl_rand() / (float)RAND_MAX) < spike_prob ? 1.0f : 0.0f;
         if (bridge->input_spikes[i] > 0) spikes++;
     }
 

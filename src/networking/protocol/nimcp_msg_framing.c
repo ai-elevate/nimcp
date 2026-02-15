@@ -72,19 +72,16 @@ bool nimcp_msg_header_validate(const nimcp_msg_header_t* header) {
 
     /* Check version */
     if (header->version != NIMCP_MSG_VERSION) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: validation failed");
         return false;
     }
 
     /* Check payload length */
     if (header->payload_len > NIMCP_MSG_MAX_PAYLOAD) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: validation failed");
         return false;
     }
 
     /* Fast path messages must have 16-byte payload */
     if (nimcp_msg_is_fast_path(header) && header->payload_len != NIMCP_MSG_FAST_PAYLOAD) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: validation failed");
         return false;
     }
 

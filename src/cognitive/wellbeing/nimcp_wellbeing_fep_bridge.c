@@ -252,7 +252,6 @@ int wellbeing_fep_bridge_disconnect_bio_async(wellbeing_fep_bridge_t* bridge) {
 
 bool wellbeing_fep_bridge_is_bio_async_connected(const wellbeing_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -229,6 +229,8 @@ void attention_substrate_bridge_destroy(attention_substrate_bridge_t* bridge)
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge */
@@ -299,7 +301,6 @@ int attention_substrate_disconnect_bio_async(attention_substrate_bridge_t* bridg
 bool attention_substrate_is_bio_async_connected(const attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -574,7 +575,6 @@ int attention_substrate_get_effects(
 bool attention_substrate_is_impaired(const attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_is_impaired: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

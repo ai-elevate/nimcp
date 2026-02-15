@@ -421,7 +421,7 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
         portia_set_error("Max waypoints reached: %u",
                           planner->config.max_waypoints);
         LOG_WARN("Cannot add waypoint: max reached for plan %u", plan_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_planning_add_waypoint: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_planning_add_waypoint: capacity exceeded");
         return false;
     }
 
@@ -625,7 +625,6 @@ bool portia_planning_can_detour(portia_planner_t planner, uint32_t plan_id)
 {
     if (!planner) {
         portia_set_error("NULL planner");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_can_detour: planner is NULL");
         return false;
     }
 
@@ -635,7 +634,6 @@ bool portia_planning_can_detour(portia_planner_t planner, uint32_t plan_id)
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_can_detour: plan is NULL");
         return false;
     }
 

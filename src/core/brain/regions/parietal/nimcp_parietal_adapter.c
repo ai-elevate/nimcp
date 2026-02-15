@@ -549,7 +549,7 @@ bool parietal_cortex_add_somatosensory_input(parietal_adapter_t* adapter,
     /* Add to input buffer */
     if (soma->input_count >= soma->input_capacity) {
         set_error(adapter, PARIETAL_CORTEX_ERROR_BUFFER_OVERFLOW);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_cortex_adapter_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parietal_cortex_adapter_reset: capacity exceeded");
         return false;
     }
 
@@ -638,7 +638,7 @@ bool parietal_cortex_add_spatial_target(parietal_adapter_t* adapter,
 
     if (spatial->target_count >= spatial->target_capacity) {
         set_error(adapter, PARIETAL_CORTEX_ERROR_BUFFER_OVERFLOW);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_cortex_adapter_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "parietal_cortex_adapter_reset: capacity exceeded");
         return false;
     }
 
@@ -774,7 +774,7 @@ bool parietal_cortex_transform_coordinates(parietal_adapter_t* adapter,
     }
     if (from_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT || to_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) {
         set_error(adapter, PARIETAL_CORTEX_ERROR_COORDINATE_FAILURE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return false;
     }
 
@@ -943,7 +943,7 @@ bool parietal_cortex_get_next_motor_plan(parietal_adapter_t* adapter,
     parietal_cortex_sensorimotor_integrator_t* motor = adapter->sensorimotor;
 
     if (motor->plan_head >= motor->plan_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return false;  /* No more plans */
     }
 
@@ -1010,7 +1010,7 @@ bool parietal_cortex_train_transform(parietal_adapter_t* adapter,
         return false;
     }
     if (from_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT || to_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return false;
     }
 

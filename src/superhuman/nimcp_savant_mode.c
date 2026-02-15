@@ -167,15 +167,12 @@ bool savant_validate_date(const savant_date_t* date) {
         return false;
     }
     if (date->year < SAVANT_CALENDAR_MIN_YEAR || date->year > SAVANT_CALENDAR_MAX_YEAR) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "savant_validate_date: validation failed");
         return false;
     }
     if (date->month < 1 || date->month > 12) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "savant_validate_date: validation failed");
         return false;
     }
     if (date->day < 1 || date->day > days_in_month(date->year, date->month)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "savant_validate_date: validation failed");
         return false;
     }
     return true;
@@ -274,12 +271,10 @@ static int init_prime_cache(prime_cache_t* cache, int64_t limit) {
  */
 static bool is_prime_internal(prime_cache_t* cache, int64_t n) {
     if (n < 2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_prime_internal: validation failed");
         return false;
     }
     if (n == 2) return true;
     if (n % 2 == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_prime_internal: 2 is zero");
         return false;
     }
 
@@ -330,7 +325,6 @@ static bool is_prime_internal(prime_cache_t* cache, int64_t n) {
         }
 
         if (composite) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_prime_internal: validation failed");
             return false;
         }
     }
@@ -506,6 +500,8 @@ void savant_destroy(savant_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);
@@ -1045,7 +1041,7 @@ int savant_learn_pattern(savant_system_t* system,
 
     /* Check capacity */
     if (system->pattern_count >= system->config.max_patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
                               "savant_learn_pattern: pattern capacity exceeded");
         nimcp_platform_mutex_unlock(system->mutex);
         return SAVANT_ERROR_CAPACITY_EXCEEDED;

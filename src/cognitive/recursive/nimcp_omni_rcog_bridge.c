@@ -568,7 +568,6 @@ int omni_rcog_disconnect_bio_async(omni_rcog_bridge_t* bridge) {
 
 bool omni_rcog_is_bio_async_connected(const omni_rcog_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_rcog_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

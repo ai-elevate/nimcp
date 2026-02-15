@@ -282,19 +282,15 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
 
     /* Weight validation */
     if (config->geodesic_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
     if (config->triplet_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
     if (config->consolidation_weight < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
     if (config->entanglement_lambda < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
 
@@ -306,19 +302,16 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
     float total_weight = config->geodesic_weight + config->triplet_weight +
                         config->consolidation_weight + config->entanglement_lambda;
     if (total_weight <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
 
     /* Triplet margin must be positive */
     if (config->triplet_margin <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
 
     /* Consolidation power must be positive */
     if (config->consolidation_power <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
         return false;
     }
 
@@ -331,7 +324,6 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
         }
 
         if (config->tier_weights[t] < 0.0f || config->tier_weights[t] > 1.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
             return false;
         }
     }

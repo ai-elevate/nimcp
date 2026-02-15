@@ -315,7 +315,6 @@ void self_repair_destroy(self_repair_coordinator_t* coordinator) {
 
 bool self_repair_is_ready(const self_repair_coordinator_t* coordinator) {
     if (!coordinator || coordinator->magic != SELF_REPAIR_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_is_ready: coordinator is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1533,7 +1532,6 @@ int self_repair_notify_health_agent_failure(
  */
 bool self_repair_has_health_agent(const self_repair_coordinator_t* coordinator) {
     if (!coordinator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_has_health_agent: coordinator is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

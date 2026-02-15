@@ -273,7 +273,6 @@ static bool should_chain_fixes(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "should_chain_fixes: validation failed");
     return false;
 }
 
@@ -679,7 +678,6 @@ int heal_bridge_validate_fix(
     sandbox_result_t* result_out)
 {
     if (bridge == NULL || fix == NULL || result_out == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_validate_fix: validation failed");
         return -1;
     }
 
@@ -704,7 +702,6 @@ int heal_bridge_validate_fix(
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         *result_out = SANDBOX_RESULT_COMPILE_ERROR;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_validate_fix: validation failed");
         return -1;
     }
 
@@ -715,7 +712,6 @@ int heal_bridge_validate_fix(
         close(pipefd[0]);
         close(pipefd[1]);
         *result_out = SANDBOX_RESULT_COMPILE_ERROR;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_validate_fix: validation failed");
         return -1;
     }
 
@@ -1156,7 +1152,7 @@ int heal_bridge_create_chain(
     /* Check capacity */
     if (bridge->chain_count >= bridge->chain_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heal_bridge_create_chain: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "heal_bridge_create_chain: capacity exceeded");
         return -1;
     }
 
@@ -1247,7 +1243,7 @@ int heal_bridge_add_to_chain(
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL || chain->fix_count >= HEAL_BRIDGE_MAX_FIX_CHAIN) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heal_bridge_add_to_chain: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "heal_bridge_add_to_chain: capacity exceeded");
         return -1;
     }
 

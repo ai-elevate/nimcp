@@ -701,7 +701,6 @@ bool hypo_homeostasis_check_alignment(const hypo_homeostasis_handle_t* system,
                                        float* alignment_score) {
     if (!system) {
         if (alignment_score) *alignment_score = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_check_alignment: system is NULL");
         return false;
     }
 

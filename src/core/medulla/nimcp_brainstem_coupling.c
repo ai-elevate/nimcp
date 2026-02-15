@@ -285,6 +285,8 @@ void brainstem_coupling_destroy(brainstem_coupling_t* coupling) {
     /* Destroy mutex */
     if (coupling->mutex) {
         nimcp_platform_mutex_destroy(coupling->mutex);
+        nimcp_free(coupling->mutex);
+        coupling->mutex = NULL;
     }
 
     /* Free buffers */
@@ -328,7 +330,7 @@ int brainstem_coupling_send_bottom_up(
         coupling->stats.signals_dropped++;
         nimcp_platform_mutex_unlock(coupling->mutex);
         NIMCP_LOGGING_WARN("Bottom-up buffer full, signal dropped");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_coupling_send_bottom_up: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brainstem_coupling_send_bottom_up: capacity exceeded");
         return -1;
     }
 
@@ -381,7 +383,7 @@ int brainstem_coupling_send_top_down(
         coupling->stats.signals_dropped++;
         nimcp_platform_mutex_unlock(coupling->mutex);
         NIMCP_LOGGING_WARN("Top-down buffer full, signal dropped");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_coupling_send_top_down: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brainstem_coupling_send_top_down: capacity exceeded");
         return -1;
     }
 
@@ -433,7 +435,7 @@ int brainstem_coupling_register_module(
     if (coupling->registered_count >= coupling->config.max_registered_modules) {
         nimcp_platform_mutex_unlock(coupling->mutex);
         NIMCP_LOGGING_ERROR("Module registry full");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_coupling_register_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brainstem_coupling_register_module: capacity exceeded");
         return -1;
     }
 
@@ -587,7 +589,7 @@ int brainstem_coupling_set_priority(
 
     if (signal_type >= BRAINSTEM_BOTTOM_UP_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid signal type: %d", signal_type);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_coupling_set_priority: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brainstem_coupling_set_priority: capacity exceeded");
         return -1;
     }
 
@@ -616,7 +618,7 @@ int brainstem_coupling_set_latency(
 
     if (signal_type >= BRAINSTEM_BOTTOM_UP_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid signal type: %d", signal_type);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_coupling_set_latency: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brainstem_coupling_set_latency: capacity exceeded");
         return -1;
     }
 
@@ -683,7 +685,6 @@ bool brainstem_coupling_is_bio_async_connected(const brainstem_coupling_t* coupl
      * HOW:  Return flag
      */
     if (!coupling) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_is_bio_async_connected: coupling is NULL");
         return false;
     }
     return coupling->bio_async_enabled;

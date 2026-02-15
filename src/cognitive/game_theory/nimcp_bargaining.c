@@ -811,7 +811,6 @@ nimcp_error_t nimcp_bargaining_advance_round(nimcp_bargaining_t bargaining) {
 
 bool nimcp_bargaining_has_agreement(const nimcp_bargaining_t bargaining) {
     if (!bargaining) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_bargaining_has_agreement: bargaining is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

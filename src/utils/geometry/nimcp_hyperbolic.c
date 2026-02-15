@@ -579,20 +579,17 @@ void poincare_point_print(const poincare_point_t *point, const char *label) {
 
 bool poincare_point_is_valid(const poincare_point_t *point) {
     if (!point || !point->coords) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_point_is_valid: required parameter is NULL (point, point->coords)");
         return false;
     }
 
     // Check dimension
     if (point->dim == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "poincare_point_is_valid: point->dim is zero");
         return false;
     }
 
     // Check all coordinates are finite
     for (uint32_t i = 0; i < point->dim; i++) {
         if (!isfinite(point->coords[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "poincare_point_is_valid: isfinite is NULL");
             return false;
         }
     }
@@ -600,7 +597,6 @@ bool poincare_point_is_valid(const poincare_point_t *point) {
     // Check norm is within ball
     float norm = poincare_norm(point);
     if (norm >= 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "poincare_point_is_valid: capacity exceeded");
         return false;
     }
 

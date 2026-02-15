@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(byzantine_fault_tolerance)
 
@@ -264,10 +265,10 @@ bool bft_generate_keys(bft_identity_t* identity) {
 
     // Simple key generation (in real implementation, use Ed25519)
     for (int i = 0; i < BFT_PUBLIC_KEY_SIZE; i++) {
-        identity->public_key[i] = (uint8_t)(rand() & 0xFF);
+        identity->public_key[i] = (uint8_t)(nimcp_tl_rand() & 0xFF);
     }
     for (int i = 0; i < BFT_PRIVATE_KEY_SIZE; i++) {
-        identity->private_key[i] = (uint8_t)(rand() & 0xFF);
+        identity->private_key[i] = (uint8_t)(nimcp_tl_rand() & 0xFF);
     }
     identity->has_private_key = true;
 

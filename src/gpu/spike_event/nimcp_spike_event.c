@@ -482,7 +482,7 @@ bool spike_queue_push(spike_queue_t* queue, const spike_event_t* event)
     // Check if queue is full
     uint32_t current_count = ATOMIC_LOAD(&queue->count);
     if (current_count >= queue->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "spike_queue_push: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "spike_queue_push: capacity exceeded");
         return false;  // Queue full
     }
 

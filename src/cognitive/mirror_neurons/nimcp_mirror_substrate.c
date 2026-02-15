@@ -182,7 +182,6 @@ static float calculate_myelin_speedup(float myelination_level)
 static bool is_coactivated(uint64_t time1, uint64_t time2)
 {
     if (time1 == 0 || time2 == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_coactivated: time1 is zero");
         return false;
     }
     uint64_t diff = (time1 > time2) ? (time1 - time2) : (time2 - time1);
@@ -327,7 +326,7 @@ mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t*
 
     if (found_slot == UINT32_MAX || found_slot >= pool->capacity) {
         nimcp_spinlock_unlock(&pool->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_substrate_pool_alloc: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_substrate_pool_alloc: capacity exceeded");
         return NULL;
     }
 
@@ -656,7 +655,6 @@ void mirror_substrate_cow_release(mirror_substrate_backing_t* backing,
 bool mirror_substrate_is_cow_copy(const mirror_substrate_backing_t* backing)
 {
     if (!backing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_is_cow_copy: backing is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -885,7 +883,7 @@ int32_t mirror_substrate_add_spine(
     if (backing->num_spines >= NIMCP_MIRROR_SUBSTRATE_MAX_SPINES) {
         SUBSTRATE_LOG_WARN("Mirror substrate: max spines reached for unit %u",
                           backing->mirror_unit_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_substrate_add_spine: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_substrate_add_spine: capacity exceeded");
         return -1;
     }
 
@@ -1123,7 +1121,6 @@ void mirror_substrate_update_glial(
 bool mirror_substrate_is_marked_for_pruning(const mirror_substrate_backing_t* backing)
 {
     if (!backing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_is_marked_for_pruning: backing is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

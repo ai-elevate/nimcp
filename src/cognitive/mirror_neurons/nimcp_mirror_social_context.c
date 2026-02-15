@@ -182,7 +182,7 @@ static int32_t find_or_create_agent_slot(struct social_context_system* sys,
     if (sys->agent_count >= NIMCP_SOCIAL_MAX_AGENTS) {
         nimcp_log(LOG_LEVEL_WARN, "Social context: max agents (%d) reached",
                   NIMCP_SOCIAL_MAX_AGENTS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hash_agent_id: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hash_agent_id: capacity exceeded");
         return -1;
     }
 
@@ -800,7 +800,6 @@ bool social_context_get_stats(social_context_t ctx,
 
 bool social_context_has_agent(social_context_t ctx, uint32_t agent_id) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_has_agent: ctx is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

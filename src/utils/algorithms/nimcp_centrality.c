@@ -78,7 +78,7 @@ static bool bfs_shortest_paths(const NimcpGraph* graph, uint32_t source, uint32_
     }
 
     if (source >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bfs_shortest_paths: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bfs_shortest_paths: capacity exceeded");
         return false;
     }
 

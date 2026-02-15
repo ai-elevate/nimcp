@@ -247,7 +247,6 @@ int substrate_immune_disconnect_bio_async(substrate_immune_bridge_t* bridge) {
 
 bool substrate_immune_is_bio_async_connected(const substrate_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -490,7 +489,6 @@ int substrate_immune_apply_il10_recovery(
 
 bool substrate_immune_check_stress(substrate_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_check_stress: bridge is NULL");
         return false;
     }
     if (!bridge->config.enable_substrate_immune_trigger) return false;
@@ -695,7 +693,6 @@ int substrate_immune_get_trigger_state(
 
 bool substrate_immune_is_modulated(const substrate_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_is_modulated: bridge is NULL");
         return false;
     }
     return bridge->cytokine_effects.fever_intensity > 0.05f ||

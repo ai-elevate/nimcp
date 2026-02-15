@@ -23,6 +23,7 @@
 
 #define LOG_MODULE "multimodal_integration"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multimodal_integration)
 
@@ -108,7 +109,7 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
             // Initialize with Xavier initialization
             float scale = sqrtf(2.0F / (config->visual_dim + config->output_dim));
             for (uint32_t i = 0; i < config->visual_dim * config->output_dim; i++) {
-                integration->visual_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                integration->visual_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
 
@@ -116,7 +117,7 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
             integration->audio_weights = nimcp_calloc(config->audio_dim * config->output_dim, sizeof(float));
             float scale = sqrtf(2.0F / (config->audio_dim + config->output_dim));
             for (uint32_t i = 0; i < config->audio_dim * config->output_dim; i++) {
-                integration->audio_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                integration->audio_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
 
@@ -124,7 +125,7 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
             integration->speech_weights = nimcp_calloc(config->speech_dim * config->output_dim, sizeof(float));
             float scale = sqrtf(2.0F / (config->speech_dim + config->output_dim));
             for (uint32_t i = 0; i < config->speech_dim * config->output_dim; i++) {
-                integration->speech_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                integration->speech_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
 
@@ -132,7 +133,7 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
             integration->direct_weights = nimcp_calloc(config->direct_dim * config->output_dim, sizeof(float));
             float scale = sqrtf(2.0F / (config->direct_dim + config->output_dim));
             for (uint32_t i = 0; i < config->direct_dim * config->output_dim; i++) {
-                integration->direct_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 2.0F * scale;
+                integration->direct_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 2.0F * scale;
             }
         }
     }

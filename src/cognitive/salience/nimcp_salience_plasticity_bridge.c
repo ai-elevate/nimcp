@@ -327,7 +327,7 @@ int salience_plasticity_register_synapse(
         return -1;
     }
     if (bridge->num_synapses >= bridge->max_synapses) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "salience_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "salience_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -1124,7 +1124,6 @@ int salience_plasticity_disconnect_bio_async(salience_plasticity_bridge_t* bridg
 
 bool salience_plasticity_is_bio_async_connected(const salience_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

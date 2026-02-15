@@ -449,6 +449,8 @@ void tom_substrate_bridge_destroy(tom_substrate_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
+        nimcp_free(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free bridge structure */
@@ -515,7 +517,6 @@ int tom_substrate_disconnect_bio_async(tom_substrate_bridge_t* bridge) {
 bool tom_substrate_is_bio_async_connected(const tom_substrate_bridge_t* bridge) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -678,7 +679,6 @@ int tom_substrate_get_effects(
 bool tom_substrate_is_impaired(const tom_substrate_bridge_t* bridge) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

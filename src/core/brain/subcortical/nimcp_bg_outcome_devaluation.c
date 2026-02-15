@@ -120,7 +120,7 @@ bg_outcome_deval_t* bgod_create(const bgod_config_t* config) {
     bg_outcome_deval_t* deval = nimcp_calloc(1, sizeof(bg_outcome_deval_t));
     if (!deval) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deval is NULL");
 
         return NULL;
 
@@ -244,7 +244,7 @@ int bgod_register_outcome(bg_outcome_deval_t* deval,
 
     if (deval->num_outcomes >= deval->config.max_outcomes) {
         nimcp_mutex_unlock(deval->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_reset: capacity exceeded");
         return -1;
     }
 
@@ -297,7 +297,7 @@ int bgod_register_association(bg_outcome_deval_t* deval,
         return -1;
     }
     if (action_id >= deval->config.max_actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_reset: capacity exceeded");
         return -1;
     }
 
@@ -306,7 +306,7 @@ int bgod_register_association(bg_outcome_deval_t* deval,
     uint32_t max_assoc = deval->config.max_outcomes * deval->config.max_actions;
     if (deval->num_associations >= max_assoc) {
         nimcp_mutex_unlock(deval->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_reset: capacity exceeded");
         return -1;
     }
 
@@ -437,7 +437,7 @@ int bgod_run_test(bg_outcome_deval_t* deval,
         return -1;
     }
     if (action_id >= deval->config.max_actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_revalue_outcome: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_revalue_outcome: capacity exceeded");
         return -1;
     }
     if (outcome_id >= deval->num_outcomes) {
@@ -641,7 +641,7 @@ int bgod_record_consumption(bg_outcome_deval_t* deval,
 
 int bgod_record_response(bg_outcome_deval_t* deval, uint32_t action_id) {
     if (!deval || action_id >= deval->config.max_actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_record_response: deval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_record_response: deval is NULL");
         return -1;
     }
 

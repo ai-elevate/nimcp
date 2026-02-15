@@ -183,7 +183,6 @@ bool software_eng_validate_config(const software_eng_config_t* config) {
 
     if (config->complexity_threshold <= 0.0f) {
         set_sweng_error("Invalid complexity threshold");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_validate_config: validation failed");
         return false;
     }
     if (config->method_length_limit == 0) {
@@ -728,7 +727,7 @@ int software_eng_add_node(dep_graph_t* graph, const char* name) {
         return -1;
     }
     if (graph->num_nodes >= SWENG_MAX_GRAPH_NODES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "software_eng_add_node: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "software_eng_add_node: capacity exceeded");
         return -1;
     }
 
@@ -762,7 +761,7 @@ int software_eng_add_dependency(dep_graph_t* graph, uint32_t from_id, uint32_t t
 
     dep_node_t* node = &graph->nodes[from_id];
     if (node->num_dependencies >= SWENG_MAX_GRAPH_NODES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "software_eng_add_dependency: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "software_eng_add_dependency: capacity exceeded");
         return -1;
     }
 
@@ -786,7 +785,6 @@ static bool dfs_has_cycle(dep_graph_t* graph, uint32_t node, uint8_t* visited, u
     }
 
     rec_stack[node] = 0;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dfs_has_cycle: visited is NULL");
     return false;
 }
 

@@ -662,7 +662,7 @@ hub_structure_t* community_detect_hubs(
         nimcp_free(degree);
         hub_structure_free(hubs);
         set_error("Failed to allocate hub arrays");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect_hubs: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect_hubs: operation failed");
         return NULL;
     }
 

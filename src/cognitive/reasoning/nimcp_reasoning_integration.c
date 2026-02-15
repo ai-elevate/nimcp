@@ -1324,47 +1324,38 @@ bool reasoning_integration_validate_config(
 
 
     if (config->novel_fact_salience_boost < 0.0F || config->novel_fact_salience_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
     if (config->contradiction_salience_boost < 0.0F || config->contradiction_salience_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
     if (config->proof_found_salience_boost < 0.0F || config->proof_found_salience_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
 
     // Validate curiosity boosts [0.0, 1.0]
     if (config->unexplained_curiosity_boost < 0.0F || config->unexplained_curiosity_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
     if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
 
     // Validate working memory configuration
     if (config->max_active_inferences < 1 || config->max_active_inferences > 32) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
     if (config->inference_decay_tau_ms < 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
 
     // Validate executive configuration
     if (config->planning_priority < 0.0F || config->planning_priority > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
 
     // Validate consolidation configuration
     if (config->consolidation_threshold < 0.0F || config->consolidation_threshold > 1.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
     }
 

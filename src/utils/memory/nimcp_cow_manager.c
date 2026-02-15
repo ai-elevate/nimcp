@@ -174,7 +174,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     cow_manager_t manager = nimcp_calloc(1, sizeof(struct cow_manager_struct));
     if (!manager) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "manager is NULL");
 
         return NULL;
 
@@ -260,7 +260,7 @@ NIMCP_EXPORT cow_handle_t cow_acquire(cow_manager_t manager) {
     cow_handle_t handle = nimcp_calloc(1, sizeof(struct cow_handle_struct));
     if (!handle) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle is NULL");
 
         return NULL;
 
@@ -393,7 +393,7 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
             manager->stats.failed_copies++;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_write: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cow_write: validation failed");
         return NULL;
     }
 
@@ -443,7 +443,6 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
 
 NIMCP_EXPORT bool cow_is_shared(cow_handle_t handle) {
     if (!handle) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_is_shared: handle is NULL");
         return false;
     }
     return handle->state == COW_STATE_SHARED;

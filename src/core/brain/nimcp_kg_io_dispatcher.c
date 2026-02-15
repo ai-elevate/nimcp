@@ -231,7 +231,7 @@ static int queue_init(kg_io_queue_t* queue, uint32_t capacity) {
     /* Create sentinel node */
     kg_io_queue_entry_t* sentinel = nimcp_calloc(1, sizeof(kg_io_queue_entry_t));
     if (!sentinel) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sentinel is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sentinel is NULL");
 
         return -1;
     }
@@ -269,13 +269,13 @@ static int queue_push(kg_io_queue_t* queue, const kg_io_request_t* request) {
 
     uint32_t count = atomic_load(&queue->count);
     if (count >= queue->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_push: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "queue_push: capacity exceeded");
         return -1;  /* Queue full */
     }
 
     kg_io_queue_entry_t* entry = nimcp_calloc(1, sizeof(kg_io_queue_entry_t));
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entry is NULL");
 
         return -1;
     }
@@ -702,7 +702,7 @@ int kg_io_default_config(kg_questdb_config_t* config) {
 kg_io_dispatcher_t* kg_io_dispatcher_create(const kg_questdb_config_t* config) {
     kg_io_dispatcher_t* dispatcher = nimcp_calloc(1, sizeof(kg_io_dispatcher_t));
     if (!dispatcher) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dispatcher is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dispatcher is NULL");
 
         return NULL;
     }
@@ -1194,7 +1194,7 @@ kg_io_batch_t* kg_io_batch_create(kg_io_dispatcher_t* dispatcher,
 
     kg_io_batch_t* batch = nimcp_calloc(1, sizeof(kg_io_batch_t));
     if (!batch) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "batch is NULL");
 
         return NULL;
     }
@@ -1236,7 +1236,7 @@ int kg_io_batch_add_row(kg_io_batch_t* batch, const void* row_data, size_t size)
 
         uint8_t* new_buffer = nimcp_realloc(batch->buffer, new_capacity);
         if (!new_buffer) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_buffer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "new_buffer is NULL");
 
             return -1;
         }
@@ -1291,7 +1291,6 @@ void kg_io_batch_cancel(kg_io_batch_t* batch) {
 
 bool kg_io_can_accept_writes(const kg_io_dispatcher_t* dispatcher) {
     if (!dispatcher) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_can_accept_writes: dispatcher is NULL");
         return false;
     }
     return !queue_is_full(&dispatcher->write_queue);

@@ -1128,7 +1128,6 @@ int imagination_plasticity_bio_async_disconnect(imagination_plasticity_bridge_t*
 
 bool imagination_plasticity_is_bio_async_connected(imagination_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

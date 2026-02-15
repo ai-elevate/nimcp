@@ -21,6 +21,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantum_walk)
 
@@ -646,7 +647,7 @@ uint32_t quantum_walk_measure(quantum_walker_t* walker) {
     // HOW: Weighted random sampling
 
     // Generate random number [0, 1]
-    float r = (float)rand() / (float)RAND_MAX;
+    float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
 
     // Find node via cumulative probability
     float cumulative = 0.0F;

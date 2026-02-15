@@ -570,7 +570,6 @@ int imag_reason_fep_bridge_unregister(imag_reason_fep_bridge_t* bridge) {
 
 bool imag_reason_fep_bridge_is_registered(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -973,7 +972,6 @@ imag_reason_fep_state_t imag_reason_fep_bridge_get_state(
 
 bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 
@@ -990,7 +988,6 @@ bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge) 
 
 bool imag_reason_fep_bridge_is_coherent(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_is_coherent: bridge is NULL");
         return false;
     }
 

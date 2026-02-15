@@ -14,6 +14,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <time.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * PRIVATE CONSTANTS
@@ -1094,7 +1095,7 @@ uint32_t ling_plasticity_structural_update(
                     /* Check for stabilization */
                     if (entry->synapse.activation_count >=
                         (uint32_t)bridge->config.structural.stabilization_threshold) {
-                        float r = (float)rand() / (float)RAND_MAX;
+                        float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
                         if (r < bridge->config.structural.stabilization_prob) {
                             new_state = LING_SPINE_STABLE;
                         }
@@ -1110,7 +1111,7 @@ uint32_t ling_plasticity_structural_update(
                     /* Check for potentiation */
                     if (entry->synapse.dopamine_tagged ||
                         entry->synapse.stdp.weight > 0.8f) {
-                        float r = (float)rand() / (float)RAND_MAX;
+                        float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
                         if (r < bridge->config.structural.potentiation_prob) {
                             new_state = LING_SPINE_POTENTIATED;
                         }
@@ -1135,7 +1136,7 @@ uint32_t ling_plasticity_structural_update(
                     /* Check for recovery */
                     if (entry->synapse.activation_count > 0 &&
                         age < bridge->config.structural.nascent_duration_ms) {
-                        float r = (float)rand() / (float)RAND_MAX;
+                        float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
                         if (r < bridge->config.structural.recovery_prob) {
                             new_state = LING_SPINE_STABLE;
                         }

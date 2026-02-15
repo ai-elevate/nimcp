@@ -585,6 +585,8 @@ void meta_controller_destroy(cognitive_meta_controller_t* controller) {
     /* Destroy mutex */
     if (controller->mutex) {
         nimcp_platform_mutex_destroy(controller->mutex);
+        nimcp_free(controller->mutex);
+        controller->mutex = NULL;
     }
 
     /* Free controller */

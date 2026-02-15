@@ -361,6 +361,8 @@ void nimcp_cascade_destroy(nimcp_cascade_system_t *system) {
 
     if (system->lock) {
         nimcp_platform_mutex_destroy(system->lock);
+        nimcp_free(system->lock);
+        system->lock = NULL;
     }
 
     nimcp_free(system->groups);

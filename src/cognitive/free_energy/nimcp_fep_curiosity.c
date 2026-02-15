@@ -259,6 +259,8 @@ void fep_curiosity_destroy(fep_curiosity_system_t* sys) {
 
     if (sys->mutex) {
         nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+        sys->mutex = NULL;
     }
 
     nimcp_free(sys);
@@ -726,7 +728,6 @@ int fep_curiosity_disconnect_bio_async(fep_curiosity_system_t* sys) {
 
 bool fep_curiosity_is_bio_async_connected(const fep_curiosity_system_t* sys) {
     if (!sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_is_bio_async_connected: sys is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

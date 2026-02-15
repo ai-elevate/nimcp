@@ -1237,24 +1237,19 @@ bool quantum_shannon_verify(const quantum_shannon_diffusion_t* qsd) {
 
     // Verify Shannon metrics
     if (qsd->metrics.source_entropy < 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;
     }
     if (qsd->metrics.total_entropy < 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;
     }
     if (qsd->metrics.mutual_information < 0.0F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;
     }
     if (qsd->metrics.mutual_information > qsd->metrics.source_entropy + 0.1F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;  // MI cannot exceed source entropy
     }
     if (qsd->metrics.propagation_efficiency < 0.0F ||
         qsd->metrics.propagation_efficiency > 1.1F) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;
     }
 

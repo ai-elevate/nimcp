@@ -713,7 +713,6 @@ void recovery_executive_destroy(recovery_executive_t* exec) {
 
 bool recovery_executive_is_ready(const recovery_executive_t* exec) {
     if (!exec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_is_ready: exec is NULL");
         return false;
     }
 
@@ -1033,7 +1032,6 @@ recovery_execution_result_t recovery_executive_execute_plan(
 
 bool recovery_executive_is_plan_working(const recovery_executive_t* exec) {
     if (!exec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_is_plan_working: exec is NULL");
         return false;
     }
 

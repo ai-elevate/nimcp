@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include "utils/thread/nimcp_thread_rand.h"
 
 /* ============================================================================
  * Module Constants
@@ -56,7 +57,7 @@ static inline float clampf(float val, float min_val, float max_val)
  */
 static inline float randf(void)
 {
-    return (float)rand() / (float)RAND_MAX;
+    return (float)nimcp_tl_rand() / (float)RAND_MAX;
 }
 
 /**

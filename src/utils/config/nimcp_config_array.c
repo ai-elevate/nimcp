@@ -335,7 +335,7 @@ config_array_t* config_array_clone(const config_array_t* arr) {
                         LOG_ERROR("config_array_clone: string duplication failed at index %zu", i);
                         config_array_destroy(clone);
                         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
-                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_clone: clone->data is NULL");
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_clone: clone->data is NULL");
                         return NULL;
                     }
                 }
@@ -516,7 +516,7 @@ bool config_array_append_string(config_array_t* arr, const char* val) {
     if (!arr->data.string_vals[arr->count]) {
         LOG_ERROR("config_array_append_string: string duplication failed");
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_append_string: arr->data is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_append_string: arr->data is NULL");
         return false;
     }
 
@@ -715,7 +715,7 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
     if (idx >= arr->count) {
         LOG_ERROR("config_array_remove: index %zu out of bounds (count=%zu)", idx, arr->count);
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_array_remove: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_array_remove: capacity exceeded");
         return false;
     }
 

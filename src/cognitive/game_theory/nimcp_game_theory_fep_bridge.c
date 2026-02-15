@@ -566,7 +566,6 @@ int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
 
 bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_is_registered: bridge is NULL");
         return false;
     }
 
@@ -921,7 +920,6 @@ gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
 
 bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_is_degraded: bridge is NULL");
         return false;
     }
 
@@ -938,7 +936,6 @@ bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
 
 bool gt_fep_bridge_is_at_nash(const gt_fep_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_is_at_nash: bridge is NULL");
         return false;
     }
 

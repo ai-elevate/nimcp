@@ -203,11 +203,9 @@ bool multi_target_validate_config(const multi_target_config_t* config) {
         return false;
     }
     if (config->min_confidence_threshold < 0.0f || config->min_confidence_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
         return false;
     }
     if (config->rejection_threshold < 0.0f || config->rejection_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
         return false;
     }
 
@@ -215,22 +213,18 @@ bool multi_target_validate_config(const multi_target_config_t* config) {
     float weight_sum = 0.0f;
     for (int i = 0; i < PRIORITY_COUNT; i++) {
         if (config->priority_weights[i] < 0.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
             return false;
         }
         weight_sum += config->priority_weights[i];
     }
     if (weight_sum < 0.5f || weight_sum > 1.5f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
         return false;
     }
 
     if (config->min_lock_time_s < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "multi_target_validate_config: validation failed");
         return false;
     }
     if (config->better_target_margin < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
         return false;
     }
 
@@ -629,7 +623,6 @@ bool dragonfly_multi_target_should_switch(
     switch_reason_t* reason
 ) {
     if (!mt || mt->num_targets < 2 || !mt->has_primary) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_should_switch: required parameter is NULL (mt, mt->has_primary)");
         return false;
     }
 
@@ -644,7 +637,6 @@ bool dragonfly_multi_target_should_switch(
     /* Check minimum lock time */
     if (lock_duration_s < mt->config.min_lock_time_s) {
         nimcp_mutex_unlock((nimcp_mutex_t*)mt->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_multi_target_should_switch: validation failed");
         return false;
     }
 

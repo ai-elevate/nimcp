@@ -633,7 +633,6 @@ bool nimcp_is_sorted_u32(const uint32_t* array, uint32_t count) {
 
     for (uint32_t i = 1; i < count; i++) {
         if (array[i] < array[i - 1]) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_is_sorted_u32: validation failed");
             return false;
         }
     }

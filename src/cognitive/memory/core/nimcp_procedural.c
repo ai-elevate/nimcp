@@ -28,6 +28,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(procedural)
 //=============================================================================
@@ -1553,7 +1554,7 @@ NIMCP_EXPORT procedural_error_t procedural_execute(
         float success_prob = base_success_rate + skill->accuracy * 0.1f;
 
         // Simple simulation: consider step successful based on probability
-        bool success = ((float)rand() / RAND_MAX) < success_prob;
+        bool success = ((float)nimcp_tl_rand() / RAND_MAX) < success_prob;
 
         if (success || step->is_optional) {
             steps_completed++;

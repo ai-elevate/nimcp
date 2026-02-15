@@ -780,7 +780,7 @@ int meta_health_reflect_async(
 
 
     if (reflector->num_pending >= reflector->max_pending) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_health_reflect_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "meta_health_reflect_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -943,7 +943,7 @@ int meta_health_apply_adjustment(
 
 
     if (reflector->num_applied >= reflector->max_applied) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_health_apply_adjustment: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "meta_health_apply_adjustment: capacity exceeded");
         return -1;  /* No room */
     }
 
@@ -992,7 +992,7 @@ int meta_health_register_pattern(
     }
 
     if (reflector->num_patterns >= reflector->max_patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_health_register_pattern: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "meta_health_register_pattern: capacity exceeded");
         return -1;  /* No room */
     }
 

@@ -233,7 +233,6 @@ bool nimcp_state_machine_is_valid_transition(
     nimcp_brain_state_t to_state
 ) {
     if (from_state >= NIMCP_STATE_COUNT || to_state >= NIMCP_STATE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_state_machine_is_valid_transition: capacity exceeded");
         return false;
     }
     return transition_matrix[from_state][to_state];

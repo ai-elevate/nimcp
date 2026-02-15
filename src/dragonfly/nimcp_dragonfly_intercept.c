@@ -111,19 +111,15 @@ bool intercept_validate_config(const intercept_config_t* config) {
         return false;
     }
     if (config->pn_gain < 1.0f || config->pn_gain > 10.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
         return false;
     }
     if (config->min_intercept_time_s < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
         return false;
     }
     if (config->max_intercept_time_s <= config->min_intercept_time_s) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
         return false;
     }
     if (config->safety_margin < 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
         return false;
     }
     return true;

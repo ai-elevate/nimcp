@@ -1432,7 +1432,7 @@ const eidetic_memory_config_t* eidetic_config_wiltshire(void) {
 
 const genius_profile_t* genius_profile_get(genius_type_t type) {
     if (type < 0 || type >= GENIUS_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_profile_get: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "genius_profile_get: capacity exceeded");
         return NULL;
     }
     return s_profiles[type];
@@ -2182,7 +2182,6 @@ float genius_profiles_get_flow_depth(const genius_profiles_bridge_t* bridge) {
 
 bool genius_profiles_is_ready(const genius_profiles_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_profiles_is_ready: bridge is NULL");
         return false;
     }
     return bridge->state != GENIUS_STATE_ERROR &&

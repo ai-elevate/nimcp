@@ -459,7 +459,7 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
 {
     hypo_orchestrator_t orch = nimcp_calloc(1, sizeof(*orch));
     if (!orch) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orch is NULL");
 
         return NULL;
     }
@@ -489,7 +489,7 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
         if (!orch->event_queue) {
             nimcp_mutex_free(orch->mutex);
             nimcp_free(orch);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_create: orch->event_queue is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_orch_create: orch->event_queue is NULL");
             return NULL;
         }
     }
@@ -595,7 +595,7 @@ int hypo_orch_register_bridge(
     /* Check capacity */
     if (orch->num_bridges >= orch->config.max_bridges) {
         ORCH_UNLOCK(orch);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_register_bridge: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_orch_register_bridge: capacity exceeded");
         return -1;
     }
 
@@ -801,7 +801,7 @@ int hypo_orch_subscribe(
     if (slot < 0) {
         if (orch->num_subscriptions >= orch->config.max_subscriptions) {
             ORCH_UNLOCK(orch);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_subscribe: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_orch_subscribe: capacity exceeded");
             return -1;
         }
         slot = (int)orch->num_subscriptions++;
@@ -853,7 +853,7 @@ int hypo_orch_subscribe_to_bridge(
     if (slot < 0) {
         if (orch->num_subscriptions >= orch->config.max_subscriptions) {
             ORCH_UNLOCK(orch);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_subscribe_to_bridge: capacity exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_orch_subscribe_to_bridge: capacity exceeded");
             return -1;
         }
         slot = (int)orch->num_subscriptions++;
@@ -964,7 +964,7 @@ int hypo_orch_publish_async(
     if (orch->queue_count >= orch->config.event_queue_size) {
         orch->stats.events_dropped++;
         ORCH_UNLOCK(orch);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_publish_async: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_orch_publish_async: capacity exceeded");
         return -1;
     }
 

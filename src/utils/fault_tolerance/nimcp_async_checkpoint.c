@@ -241,7 +241,7 @@ static bool queue_enqueue(request_queue_t* queue, const async_checkpoint_request
     if (queue->count >= ASYNC_CHECKPOINT_MAX_QUEUE) {
         nimcp_mutex_unlock(&queue->mutex);
         NIMCP_LOGGING_WARN("Checkpoint queue is full (%u requests)", queue->count);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_enqueue: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "queue_enqueue: capacity exceeded");
         return false;
     }
 
@@ -1006,13 +1006,11 @@ bool async_checkpoint_get_request_status(async_checkpoint_writer_t* writer,
 
 bool async_checkpoint_is_healthy(async_checkpoint_writer_t* writer) {
     if (!writer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_is_healthy: writer is NULL");
         return false;
     }
 
     // Check shutdown flag
     if (writer->shutdown) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_is_healthy: validation failed");
         return false;
     }
 
@@ -1024,14 +1022,12 @@ bool async_checkpoint_is_healthy(async_checkpoint_writer_t* writer) {
     nimcp_mutex_unlock(&writer->stats_mutex);
 
     if (has_recent_error) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_is_healthy: validation failed");
         return false;
     }
 
     // Check queue not stuck (has capacity)
     uint32_t current_queue_size = queue_size(&writer->queue);
     if (current_queue_size >= ASYNC_CHECKPOINT_MAX_QUEUE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "async_checkpoint_is_healthy: capacity exceeded");
         return false;
     }
 

@@ -109,7 +109,7 @@ NimcpTernaryGraph* nimcp_ternary_graph_create(void) {
     NimcpTernaryGraph* graph = nimcp_malloc(sizeof(NimcpTernaryGraph));
     if (!graph) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "graph is NULL");
 
         return NULL;
 
@@ -280,7 +280,7 @@ bool nimcp_ternary_graph_remove_vertex(
         return false;
     }
     if (vertex_idx >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_remove_vertex: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ternary_graph_remove_vertex: capacity exceeded");
         return false;
     }
 
@@ -373,7 +373,7 @@ bool nimcp_ternary_graph_add_edge(
         return false;
     }
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_add_edge: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ternary_graph_add_edge: capacity exceeded");
         return false;
     }
     if (from == to) {
@@ -447,7 +447,7 @@ bool nimcp_ternary_graph_remove_edge(
         return false;
     }
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_remove_edge: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ternary_graph_remove_edge: capacity exceeded");
         return false;
     }
 
@@ -506,7 +506,7 @@ bool nimcp_ternary_graph_get_edge_weight(
         return false;
     }
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_get_edge_weight: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ternary_graph_get_edge_weight: capacity exceeded");
         return false;
     }
     if (!weight) {
@@ -570,11 +570,9 @@ bool nimcp_ternary_graph_has_edge(
     uint32_t to
 ) {
     if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_has_edge: graph is NULL");
         return false;
     }
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_has_edge: capacity exceeded");
         return false;
     }
 
@@ -595,7 +593,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         return NULL;
     }
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_shortest_path: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ternary_graph_shortest_path: capacity exceeded");
         return NULL;
     }
     if (from == to) {
@@ -614,7 +612,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         if (dist) nimcp_free(dist);
         if (prev) nimcp_free(prev);
         if (visited) nimcp_free(visited);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ternary_graph_shortest_path: validation failed");
         return NULL;
     }
 
@@ -688,7 +686,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         nimcp_free(dist);
         nimcp_free(prev);
         nimcp_free(visited);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: path->vertices is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ternary_graph_shortest_path: path->vertices is NULL");
         return NULL;
     }
 
@@ -738,7 +736,7 @@ NimcpPath* nimcp_ternary_graph_strong_path(
         /* Path includes non-strong edges */
         nimcp_free(path->vertices);
         nimcp_free(path);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_strong_path: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ternary_graph_strong_path: capacity exceeded");
         return NULL;
     }
 

@@ -261,7 +261,7 @@ nimcp_lc_plasticity_bridge_t* nimcp_lc_plasticity_create(
     nimcp_lc_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -371,7 +371,7 @@ int nimcp_lc_plasticity_register_synapse(
         return -1;
     }
     if (bridge->synapse_count >= bridge->synapse_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_lc_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_lc_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -744,7 +744,6 @@ int nimcp_lc_plasticity_disconnect_bio_async(nimcp_lc_plasticity_bridge_t* bridg
 
 bool nimcp_lc_plasticity_is_bio_async_connected(const nimcp_lc_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->state.bio_async_connected;

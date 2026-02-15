@@ -514,7 +514,6 @@ bool mesh_kg_bridge_has_connection(
     mesh_participant_id_t to_id
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_bridge_has_connection: bridge is NULL");
         return false;
     }
 
@@ -802,7 +801,7 @@ nimcp_error_t mesh_kg_bridge_get_stats(
 
 nimcp_error_t mesh_kg_bridge_reset_stats(mesh_kg_routing_bridge_t* bridge) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_bridge_reset_stats: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

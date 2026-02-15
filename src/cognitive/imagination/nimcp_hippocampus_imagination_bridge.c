@@ -132,32 +132,25 @@ int hippocampus_imagination_validate_config(const hippocampus_imagination_config
 
 
     if (config->relevance_threshold < 0.0f || config->relevance_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->max_memories_per_request == 0 ||
         config->max_memories_per_request > HIPP_IMAG_MAX_RETRIEVED_MEMORIES) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->pattern_completion_weight < 0.0f || config->pattern_completion_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->consolidation_boost < 0.0f || config->consolidation_boost > 10.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->spatial_context_weight < 0.0f || config->spatial_context_weight > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -393,7 +386,6 @@ bool hippocampus_imagination_is_connected(
     const hippocampus_imagination_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -852,7 +844,6 @@ bool hippocampus_imagination_is_bio_async_connected(
     const hippocampus_imagination_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

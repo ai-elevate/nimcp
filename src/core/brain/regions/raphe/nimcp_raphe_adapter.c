@@ -122,7 +122,7 @@ static float lerp(float a, float b, float t) {
 
 static bool queue_push(struct nimcp_raphe_adapter* adapter, const nimcp_raphe_message_t* msg) {
     if (adapter->queue_count >= RAPHE_ADAPTER_MSG_QUEUE_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_push: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "queue_push: capacity exceeded");
         return false;
     }
 
@@ -169,7 +169,7 @@ nimcp_raphe_adapter_t nimcp_raphe_adapter_create(const nimcp_raphe_adapter_confi
     struct nimcp_raphe_adapter* adapter = nimcp_calloc(1, sizeof(struct nimcp_raphe_adapter));
     if (!adapter) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adapter is NULL");
 
         return NULL;
 
@@ -380,11 +380,11 @@ int nimcp_raphe_adapter_register_callback(nimcp_raphe_adapter_t adapter,
         return -1;
     }
     if (type >= RAPHE_MSG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_raphe_adapter_process_messages: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_raphe_adapter_process_messages: capacity exceeded");
         return -1;
     }
     if (adapter->callback_counts[type] >= RAPHE_ADAPTER_MAX_CALLBACKS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_raphe_adapter_process_messages: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_raphe_adapter_process_messages: capacity exceeded");
         return -1;
     }
 

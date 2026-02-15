@@ -76,6 +76,8 @@ static inline void trained_immunity_heartbeat_instance(
 #define nimcp_mutex_unlock(m) nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)(m))
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
+    nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* ============================================================================
@@ -640,11 +642,9 @@ bool trained_immunity_check_cross_protection(
     const brain_antigen_t* antigen
 ) {
     if (!system || !antigen) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_check_cross_protection: required parameter is NULL (system, antigen)");
         return false;
     }
     if (!system->config.enable_cross_protection) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_check_cross_protection: system->config is NULL");
         return false;
     }
 
@@ -723,7 +723,6 @@ int trained_immunity_get_prr_state(
 
 bool trained_immunity_is_active(const trained_immunity_t* system) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_is_active: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

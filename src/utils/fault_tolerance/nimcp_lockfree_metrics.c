@@ -617,7 +617,6 @@ uint32_t lockfree_metrics_size(const lockfree_metrics_buffer_t* buffer) {
 
 bool lockfree_metrics_is_empty(const lockfree_metrics_buffer_t* buffer) {
     if (!buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_is_empty: buffer is NULL");
         return false;
     }
     return lockfree_metrics_size(buffer) == 0;
@@ -625,7 +624,6 @@ bool lockfree_metrics_is_empty(const lockfree_metrics_buffer_t* buffer) {
 
 bool lockfree_metrics_is_full(const lockfree_metrics_buffer_t* buffer) {
     if (!buffer) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_is_full: buffer is NULL");
         return false;
     }
     return lockfree_metrics_size(buffer) >= buffer->capacity;

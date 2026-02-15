@@ -424,7 +424,6 @@ void vesicle_pool_get_stats(
 
 bool vesicle_pool_is_depleted(const vesicle_pool_state_t* pool) {
     if (!pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_is_depleted: null pool pointer");
         return false;
     }
     return pool->is_depleted;

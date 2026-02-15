@@ -298,7 +298,6 @@ static void update_welford_stats(cycle_entry_t* e, uint64_t duration_us) {
 /** Z-score anomaly detection */
 static bool is_duration_anomaly(const cycle_entry_t* e, uint64_t duration_us) {
     if (e->duration_count < 10 || e->duration_stddev < 1.0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_duration_anomaly: validation failed");
         return false;
     }
     double z = ((double)duration_us - e->duration_mean) / e->duration_stddev;
@@ -1298,7 +1297,7 @@ int brain_cycle_coordinator_add_dependency(
         nimcp_mutex_unlock(coord->mutex);
         LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
             "Dependency array full (%u/%u)", coord->dependency_count, max_deps);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_cycle_coordinator_add_dependency: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_cycle_coordinator_add_dependency: capacity exceeded");
         return -1;
     }
 
@@ -1373,7 +1372,7 @@ int brain_cycle_coordinator_register_callbacks(
         LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
             "Callback array full (%u/%u)",
             coord->callback_count, (uint32_t)BRAIN_CYCLE_MAX_CALLBACKS);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_cycle_coordinator_register_callbacks: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_cycle_coordinator_register_callbacks: capacity exceeded");
         return -1;
     }
 

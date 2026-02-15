@@ -288,7 +288,7 @@ int perception_immune_report_visual_anomaly(
         return -1;
     }
     if (ctx->anomaly_count >= ctx->anomaly_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_immune_report_visual_anomaly: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_immune_report_visual_anomaly: capacity exceeded");
         return -1;
     }
 
@@ -360,7 +360,7 @@ int perception_immune_report_audio_anomaly(
         return -1;
     }
     if (ctx->anomaly_count >= ctx->anomaly_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_immune_report_audio_anomaly: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_immune_report_audio_anomaly: capacity exceeded");
         return -1;
     }
 
@@ -426,7 +426,7 @@ int perception_immune_report_speech_anomaly(
         return -1;
     }
     if (ctx->anomaly_count >= ctx->anomaly_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_immune_report_speech_anomaly: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "perception_immune_report_speech_anomaly: capacity exceeded");
         return -1;
     }
 
@@ -861,7 +861,6 @@ bool perception_immune_is_protected(
     perception_modality_t modality
 ) {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_is_protected: ctx is NULL");
         return false;
     }
 
@@ -877,7 +876,6 @@ bool perception_immune_is_protected(
         case PERCEPTION_SPEECH:
             return ctx->modulation.speech_overload_protection;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_is_protected: operation failed");
             return false;
     }
 }

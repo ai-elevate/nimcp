@@ -208,11 +208,18 @@ void nlp_cortical_adapter_destroy(nlp_cortical_adapter_t* adapter) {
 
     // Note: bio-router module unregistration would happen here if registered
 
-    nimcp_free(adapter);
-
+    // Clear global pointer BEFORE freeing to prevent use-after-free
     if (g_adapter == adapter) {
         g_adapter = NULL;
     }
+
+    // Destroy audio cortex if we own it
+    if (adapter->audio_cortex) {
+        audio_cortex_destroy(adapter->audio_cortex);
+        adapter->audio_cortex = NULL;
+    }
+
+    nimcp_free(adapter);
 
     LOG_MODULE_INFO(NLP_CORTICAL_MODULE, "Cortical adapter destroyed");
 }

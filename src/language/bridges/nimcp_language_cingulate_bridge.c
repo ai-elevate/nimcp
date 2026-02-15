@@ -361,7 +361,7 @@ language_cingulate_bridge_t* language_cingulate_bridge_create(
 {
     language_cingulate_bridge_t* bridge = nimcp_calloc(1, sizeof(language_cingulate_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -974,7 +974,6 @@ int language_cingulate_get_recent_conflicts(
 bool language_cingulate_has_pending_error(const language_cingulate_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_has_pending_error: bridge is NULL");
         return false;
     }
 

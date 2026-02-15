@@ -42,6 +42,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(visual_cortex)
 
@@ -238,7 +239,7 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
 
     // Initialize kernels with small random values
     for (uint32_t i = 0; i < kernel_total_size; i++) {
-        layer->kernels[i] = ((float)rand() / RAND_MAX - 0.5F) * 0.1F;
+        layer->kernels[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 0.1F;
     }
 
     // Allocate bias
@@ -890,7 +891,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     // Initialize feature weights
     for (uint32_t i = 0; i < pooled_size; i++) {
-        cortex->feature_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 0.01F;
+        cortex->feature_weights[i] = ((float)nimcp_tl_rand() / RAND_MAX - 0.5F) * 0.01F;
     }
 
     // NIMCP 2.7 Phase 8.5: Fractal Topology Integration (Future Enhancement)

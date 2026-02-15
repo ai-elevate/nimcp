@@ -165,7 +165,6 @@ static bool is_chronic_inflammation(
     uint64_t chronic_threshold_ms
 ) {
     if (!immune) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_chronic_inflammation: immune is NULL");
         return false;
     }
 
@@ -184,7 +183,6 @@ static bool is_chronic_inflammation(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_chronic_inflammation: capacity exceeded");
     return false;
 }
 
@@ -795,7 +793,6 @@ bool curiosity_immune_is_chronic_inflammation(
     const curiosity_immune_bridge_t* bridge
 ) {
     if (!bridge || !bridge->immune_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_is_chronic_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return false;
     }
 
@@ -882,7 +879,6 @@ int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
  */
 bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

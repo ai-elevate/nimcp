@@ -679,7 +679,7 @@ hypo_logging_bridge_t* hypo_logging_bridge_create(
     hypo_logging_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_logging_bridge_t));
     if (!bridge) {
         LOG_ERROR("hypo_logging_bridge_create: allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -1601,7 +1601,7 @@ int hypo_logging_export_query(
                                               sizeof(hypo_log_entry_t));
     if (!entries) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entries is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entries is NULL");
 
         return -1;
 
@@ -1736,7 +1736,7 @@ int hypo_logging_set_type_enabled(
     bool enable)
 {
     if (!bridge || type >= HYPO_LOG_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_logging_set_type_enabled: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hypo_logging_set_type_enabled: bridge is NULL");
         return -1;
     }
 

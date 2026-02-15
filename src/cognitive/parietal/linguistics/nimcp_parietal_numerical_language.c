@@ -386,15 +386,12 @@ bool numerical_language_validate_config(const numerical_language_config_t* confi
     }
 
     if (config->weber_fraction <= 0.0f || config->weber_fraction > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "numerical_language_validate_config: validation failed");
         return false;
     }
     if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "numerical_language_validate_config: validation failed");
         return false;
     }
     if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "numerical_language_validate_config: validation failed");
         return false;
     }
 
@@ -409,7 +406,7 @@ numerical_language_t* numerical_language_create_custom(const numerical_language_
     numerical_language_t* nl = (numerical_language_t*)nimcp_calloc(1, sizeof(numerical_language_t));
     if (!nl) {
         set_last_error("Failed to allocate numerical language processor");
-        NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "numerical_language_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(LING_ERR_ALLOC_FAILED, "numerical_language_create_custom: allocation failed");
         return NULL;
     }
 
@@ -755,7 +752,6 @@ bool numerical_language_is_number_word(
     const char* word
 ) {
     if (!nl || !word) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "numerical_language_is_number_word: required parameter is NULL (nl, word)");
         return false;
     }
 
@@ -776,7 +772,6 @@ bool numerical_language_is_number_word(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "numerical_language_is_number_word: validation failed");
     return false;
 }
 

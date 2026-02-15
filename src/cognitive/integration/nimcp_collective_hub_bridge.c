@@ -670,7 +670,6 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
 
 bool collective_hub_bridge_is_connected(const collective_hub_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_is_connected: bridge is NULL");
         return false;
     }
 

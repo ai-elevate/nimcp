@@ -513,7 +513,6 @@ bool emotion_substrate_is_bio_async_connected(
 ) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -737,7 +736,6 @@ bool emotion_substrate_is_impaired(
     /* Guard: validate bridge pointer */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot check impairment: NULL bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

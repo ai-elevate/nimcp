@@ -181,7 +181,7 @@ synapse_plasticity_bridge_t* synapse_plasticity_create(
     synapse_plasticity_bridge_t* bridge = nimcp_malloc(sizeof(synapse_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate synapse plasticity bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -545,7 +545,6 @@ int synapse_plasticity_disconnect_bio_async(synapse_plasticity_bridge_t* bridge)
 bool synapse_plasticity_is_bio_async_connected(const synapse_plasticity_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -790,11 +789,9 @@ bool synapse_plasticity_is_mechanism_connected(
     plasticity_mechanism_t mechanism)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_is_mechanism_connected: bridge is NULL");
         return false;
     }
     if (mechanism >= PLASTICITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "synapse_plasticity_is_mechanism_connected: capacity exceeded");
         return false;
     }
 

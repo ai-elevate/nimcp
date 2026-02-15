@@ -1152,7 +1152,6 @@ int autobio_plasticity_bio_async_disconnect(autobio_plasticity_bridge_t* bridge)
 
 bool autobio_plasticity_is_bio_async_connected(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

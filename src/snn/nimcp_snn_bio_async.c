@@ -325,7 +325,6 @@ int snn_bio_async_disconnect(snn_network_t* network) {
 
 bool snn_bio_async_is_connected(const snn_network_t* network) {
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bio_async_is_connected: network is NULL");
         return false;
     }
     const snn_bio_async_ctx_t* ctx = get_bio_ctx_const(network);

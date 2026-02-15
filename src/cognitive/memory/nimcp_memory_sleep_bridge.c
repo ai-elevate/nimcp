@@ -491,7 +491,6 @@ float memory_sleep_get_replay_frequency(const memory_sleep_bridge_t bridge)
 bool memory_sleep_is_replay_active(const memory_sleep_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_is_replay_active: bridge is NULL");
         return false;
     }
 
@@ -730,7 +729,6 @@ bool memory_sleep_is_bio_async_connected(const memory_sleep_bridge_t bridge)
 {
     /* Guard clause */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

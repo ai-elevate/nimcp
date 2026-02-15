@@ -88,7 +88,7 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
     subthalamic_nucleus_t* stn = nimcp_malloc(sizeof(subthalamic_nucleus_t));
     if (!stn) {
         NIMCP_LOGGING_ERROR("Failed to allocate subthalamic nucleus");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stn is NULL");
 
         return NULL;
     }

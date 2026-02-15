@@ -613,6 +613,8 @@ void echolocation_destroy(echolocation_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);

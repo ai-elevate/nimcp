@@ -800,7 +800,6 @@ bool spatial_pink_bridge_validate(const spatial_pink_bridge_t* bridge) {
 
     // Check configuration
     if (bridge->config.noise_amplitude < 0.0f || bridge->config.noise_amplitude > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_validate: validation failed");
         return false;
     }
 
@@ -810,7 +809,6 @@ bool spatial_pink_bridge_validate(const spatial_pink_bridge_t* bridge) {
         for (uint32_t i = 0; i < num_neurons; i++) {
             if (isnan(bridge->current_noise_values[i]) ||
                 isinf(bridge->current_noise_values[i])) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_validate: validation failed");
                 return false;
             }
         }

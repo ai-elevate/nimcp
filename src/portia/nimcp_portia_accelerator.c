@@ -816,7 +816,7 @@ bool portia_accelerator_get_info(portia_accelerator_system_t system,
     if (index >= system->registry.count) {
         nimcp_mutex_unlock(&system->lock);
         LOG_WARN("Invalid accelerator index: %u", index);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_accelerator_detect_tpu: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "portia_accelerator_detect_tpu: capacity exceeded");
         return false;
     }
 
@@ -965,7 +965,6 @@ accelerator_type_t portia_accelerator_get_preferred(
 bool portia_accelerator_is_available(portia_accelerator_system_t system,
                                      accelerator_type_t type) {
     if (!bbb_check_pointer(system, "portia_accelerator_is_available")) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_accelerator_get_type_mask: bbb_check_pointer is NULL");
         return false;
     }
 

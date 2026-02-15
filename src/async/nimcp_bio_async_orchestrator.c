@@ -205,6 +205,8 @@ void bio_orchestrator_destroy(bio_async_orchestrator_t* orchestrator) {
     /* Destroy mutex */
     if (orchestrator->mutex) {
         nimcp_platform_mutex_destroy(orchestrator->mutex);
+        nimcp_free(orchestrator->mutex);
+        orchestrator->mutex = NULL;
     }
 
     /* Free orchestrator */
@@ -312,7 +314,7 @@ int bio_orchestrator_register_module(
     if (orchestrator->module_count >= orchestrator->module_capacity) {
         NIMCP_LOGGING_ERROR("Module registry full");
         nimcp_platform_mutex_unlock(orchestrator->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bio_orchestrator_register_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bio_orchestrator_register_module: capacity exceeded");
         return -1;
     }
 

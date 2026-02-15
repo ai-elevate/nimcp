@@ -1185,7 +1185,6 @@ int mirror_plasticity_disconnect_bio_async(mirror_plasticity_bridge_t* bridge) {
 
 bool mirror_plasticity_is_bio_async_connected(const mirror_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

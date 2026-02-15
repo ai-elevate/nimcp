@@ -1224,7 +1224,6 @@ bool engram_is_reconsolidating(
     uint64_t engram_id) {
 
     if (!system || engram_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: system is NULL");
         return false;
     }
 
@@ -1245,7 +1244,6 @@ bool engram_is_reconsolidating(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;
 }
 

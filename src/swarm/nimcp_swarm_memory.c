@@ -28,6 +28,7 @@
 
 #define LOG_MODULE "swarm_memory"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_memory)
 
@@ -575,6 +576,8 @@ void nimcp_swarm_memory_destroy(NimcpSwarmMemory *memory)
     if (memory->mutex) {
         nimcp_platform_mutex_unlock(memory->mutex);
         nimcp_platform_mutex_destroy(memory->mutex);
+        nimcp_free(memory->mutex);
+        memory->mutex = NULL;
     }
 
     nimcp_free(memory);
@@ -966,7 +969,7 @@ static nimcp_result_t _replay_cycle_unlocked(
 
     while (count < max_replays && nimcp_min_heap_size(memory->replay_queue) > 0) {
         /* Check replay probability */
-        float rand_val = (float)rand() / (float)RAND_MAX;
+        float rand_val = (float)nimcp_tl_rand() / (float)RAND_MAX;
         if (rand_val > memory->replay_probability) {
             break;
         }

@@ -582,7 +582,7 @@ bool speech_cortex_get_phonological_position_embedding(
         return false;
     }
     if (buffer_position >= SPEECH_MAX_PHONOLOGICAL_BUFFER) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "speech_cortex_get_phonological_position_embedding: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "speech_cortex_get_phonological_position_embedding: capacity exceeded");
         return false;
     }
     /* Stub: return zeros */

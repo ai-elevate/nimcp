@@ -320,7 +320,7 @@ int surface_bio_async_bridge_unsubscribe(
     BRIDGE_NULL_CHECK(bridge);
 
     if (subscription_id < 0 || (uint32_t)subscription_id >= bridge->max_subscriptions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_bio_async_bridge_unsubscribe: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_bio_async_bridge_unsubscribe: capacity exceeded");
         return -1;
     }
 

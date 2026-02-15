@@ -431,7 +431,6 @@ bool introspection_substrate_is_bio_async_connected(
 ) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -690,7 +689,6 @@ int introspection_substrate_get_effects(
 bool introspection_substrate_is_impaired(const introspection_substrate_bridge_t* bridge) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

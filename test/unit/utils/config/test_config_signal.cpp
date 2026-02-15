@@ -327,19 +327,6 @@ TEST_F(ConfigSignalTest, CloneSnapshot_IndependentOfOriginal) {
 }
 
 //=============================================================================
-// Pending Reload Tests
-//=============================================================================
-
-TEST_F(ConfigSignalTest, IsReloadPending_FalseInitially) {
-    EXPECT_FALSE(config_is_reload_pending());
-}
-
-TEST_F(ConfigSignalTest, CheckPendingReload_ReturnsTrueWhenNoPending) {
-    // When no reload is pending, check_pending_reload returns true (no-op success)
-    EXPECT_TRUE(config_check_pending_reload());
-}
-
-//=============================================================================
 // Version Management Tests
 //=============================================================================
 

@@ -175,7 +175,7 @@ claustrum_bio_async_bridge_t* claustrum_bio_async_bridge_create(
     );
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -194,7 +194,7 @@ claustrum_bio_async_bridge_t* claustrum_bio_async_bridge_create(
     );
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_bridge_create: bridge->subscriptions is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "claustrum_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -551,7 +551,7 @@ int claustrum_bio_async_broadcast_modality_gate(
         return -1;
     }
     if (modality >= CLAUSTRUM_MODALITY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "claustrum_bio_async_broadcast_modality_gate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "claustrum_bio_async_broadcast_modality_gate: capacity exceeded");
         return -1;
     }
 

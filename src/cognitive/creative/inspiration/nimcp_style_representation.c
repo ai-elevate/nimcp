@@ -633,7 +633,7 @@ int style_repr_get_archetype_info(const style_representer_t* repr,
     }
 
     if (!archetypes || (uint32_t)archetype_id >= count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: archetypes is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: archetypes is NULL");
         return -1;
     }
 
@@ -670,7 +670,7 @@ int style_repr_get_archetype_embedding(const style_representer_t* repr,
     }
 
     if (!archetypes || (uint32_t)archetype_id >= count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: archetypes is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: archetypes is NULL");
         return -1;
     }
 
@@ -930,7 +930,7 @@ style_embedding_t* style_repr_clone_embedding(const style_embedding_t* src) {
 
     if (style_embedding_clone(src, clone) < 0) {
         nimcp_free(clone);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_repr_clone_embedding: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_repr_clone_embedding: validation failed");
         return NULL;
     }
 

@@ -114,7 +114,7 @@ static float clampf(float x, float lo, float hi) {
 
 static int enqueue_message(nimcp_vta_adapter_t adapter, const nimcp_vta_message_t* msg) {
     if (adapter->queue_count >= VTA_ADAPTER_MSG_QUEUE_SIZE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_message: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_message: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -385,7 +385,7 @@ int nimcp_vta_adapter_register_callback(
     }
 
     if (adapter->num_callbacks >= VTA_ADAPTER_MAX_CALLBACKS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_vta_adapter_register_callback: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_vta_adapter_register_callback: capacity exceeded");
         return -1;
     }
 

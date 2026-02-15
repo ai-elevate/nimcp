@@ -634,7 +634,6 @@ int speech_jepa_bridge_train_step(
     }
 
     if (!bridge->training_mode) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Not in training mode in speech_jepa_bridge_train_step");
         return NIMCP_ERROR_INVALID_STATE;
     }
 

@@ -491,29 +491,23 @@ bool lateralization_validate(const lateralization_profile_t* profile) {
 
     // Check all dominance values are in valid range [0.0, 1.0]
     if (profile->language_dominance < 0.0f || profile->language_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->spatial_dominance < 0.0f || profile->spatial_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->motor_fine_dominance < 0.0f || profile->motor_fine_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->motor_gross_dominance < 0.0f || profile->motor_gross_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->emotion_processing_dominance < 0.0f ||
         profile->emotion_processing_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->attention_global_dominance < 0.0f ||
         profile->attention_global_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->attention_local_dominance < 0.0f ||
@@ -522,21 +516,17 @@ bool lateralization_validate(const lateralization_profile_t* profile) {
         return false;
     }
     if (profile->music_melody_dominance < 0.0f || profile->music_melody_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->music_rhythm_dominance < 0.0f || profile->music_rhythm_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->face_recognition_dominance < 0.0f ||
         profile->face_recognition_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->logical_reasoning_dominance < 0.0f ||
         profile->logical_reasoning_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->creative_thinking_dominance < 0.0f ||
@@ -547,25 +537,21 @@ bool lateralization_validate(const lateralization_profile_t* profile) {
 
     // Check plasticity configuration
     if (profile->plasticity_rate < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->min_dominance < 0.0f || profile->min_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->max_dominance < 0.0f || profile->max_dominance > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
     if (profile->min_dominance >= profile->max_dominance) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "lateralization_validate: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "lateralization_validate: capacity exceeded");
         return false;
     }
 
     // Check handedness
     if (profile->handedness > HANDEDNESS_AMBIDEXTROUS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lateralization_validate: validation failed");
         return false;
     }
 

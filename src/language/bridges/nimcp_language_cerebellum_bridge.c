@@ -157,7 +157,7 @@ language_cerebellum_bridge_t* language_cerebellum_bridge_create(
 
     language_cerebellum_bridge_t* bridge = nimcp_calloc(1, sizeof(language_cerebellum_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -322,7 +322,7 @@ int language_cerebellum_start_rhythm(
     float tempo_bpm)
 {
     if (!bridge || type >= RHYTHM_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_cerebellum_start_rhythm: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_cerebellum_start_rhythm: bridge is NULL");
         return -1;
     }
 

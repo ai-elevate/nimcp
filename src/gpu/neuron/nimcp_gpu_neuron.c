@@ -650,7 +650,7 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     // Allocate network structure
     gpu_neural_network_t network = nimcp_calloc(1, sizeof(struct gpu_neural_network_struct));
     if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network is NULL");
 
         return NULL;
     }
@@ -840,12 +840,12 @@ NIMCP_EXPORT bool gpu_neural_network_add_synapse(
     }
 
     if (source_id >= network->neurons_count || target_id >= network->neurons_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_neural_network_add_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gpu_neural_network_add_synapse: capacity exceeded");
         return false;
     }
 
     if (network->synapses_count >= network->synapses_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_neural_network_add_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "gpu_neural_network_add_synapse: capacity exceeded");
         return false;
     }
 

@@ -220,7 +220,7 @@ cortical_surround_t* cortical_surround_create(const surround_config_t* config) {
     cortical_surround_t* surround = nimcp_malloc(sizeof(cortical_surround_t));
     if (!surround) {
         NIMCP_LOGGING_ERROR("Failed to allocate surround module");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surround is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surround is NULL");
 
         return NULL;
     }
@@ -241,6 +241,8 @@ cortical_surround_t* cortical_surround_create(const surround_config_t* config) {
     if (!initialize_spatial_fields(surround)) {
         NIMCP_LOGGING_ERROR("Failed to initialize spatial fields");
         nimcp_platform_mutex_destroy(surround->mutex);
+        nimcp_free(surround->mutex);
+        surround->mutex = NULL;
         nimcp_free(surround);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_surround_create: initialize_spatial_fields is NULL");
         return NULL;
@@ -297,6 +299,8 @@ void cortical_surround_destroy(cortical_surround_t* surround) {
     // Destroy mutex
     if (surround->mutex) {
         nimcp_platform_mutex_destroy(surround->mutex);
+        nimcp_free(surround->mutex);
+        surround->mutex = NULL;
     }
 
     nimcp_free(surround);
@@ -788,7 +792,6 @@ bool cortical_surround_disconnect_bio_async(cortical_surround_t* surround) {
 
 bool cortical_surround_is_bio_async_connected(const cortical_surround_t* surround) {
     if (!surround) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_is_bio_async_connected: surround is NULL");
         return false;
     }
     return surround->bio_async_enabled;

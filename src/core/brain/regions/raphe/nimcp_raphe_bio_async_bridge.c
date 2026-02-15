@@ -126,7 +126,7 @@ raphe_bio_async_bridge_t* raphe_bio_async_bridge_create(const raphe_bio_async_co
     raphe_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(raphe_bio_async_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -431,7 +431,7 @@ int raphe_bio_async_subscribe_module(raphe_bio_async_bridge_t* bridge, uint32_t 
         return 0;
     }
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "raphe_bio_async_subscribe_module: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "raphe_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 

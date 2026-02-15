@@ -1008,6 +1008,8 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
     if (!sys->interest_table) {
         NIMCP_LOGGING_ERROR("Failed to create interest table");
         nimcp_platform_mutex_destroy(sys->mutex);
+        nimcp_free(sys->mutex);
+        sys->mutex = NULL;
         nimcp_free(sys);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys->interest_table is NULL");
         return NULL;
@@ -1086,6 +1088,8 @@ void curiosity_enhanced_destroy(curiosity_enhanced_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+        system->mutex = NULL;
     }
 
     nimcp_free(system);
@@ -1128,7 +1132,6 @@ bool curiosity_enhanced_is_bored(
     curiosity_boredom_state_t* state) {
 
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_enhanced_update: system is NULL");
         return false;
     }
 
@@ -1377,7 +1380,6 @@ bool curiosity_enhanced_should_explore(
     float threat_level) {
 
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
 
@@ -1952,7 +1954,6 @@ bool curiosity_enhanced_is_bio_async_connected(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -337,7 +337,7 @@ int ethics_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ethics_plasticity_register_synapse: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ethics_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -1192,7 +1192,6 @@ int ethics_plasticity_bio_async_disconnect(ethics_plasticity_bridge_t* bridge) {
 
 bool ethics_plasticity_is_bio_async_connected(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

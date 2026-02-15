@@ -510,7 +510,7 @@ int wm_snn_update_item(
     uint32_t feature_count)
 {
     if (!bridge || slot >= bridge->config.max_slots) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wm_snn_update_item: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wm_snn_update_item: bridge is NULL");
         return -1;
     }
     if (!bridge->slot_states[slot].occupied) {
@@ -530,7 +530,7 @@ int wm_snn_update_item(
 
 int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
     if (!bridge || slot >= bridge->config.max_slots) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wm_snn_clear_slot: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "wm_snn_clear_slot: bridge is NULL");
         return -1;
     }
 
@@ -1092,7 +1092,6 @@ int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
 
 bool wm_snn_is_bio_async_connected(wm_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

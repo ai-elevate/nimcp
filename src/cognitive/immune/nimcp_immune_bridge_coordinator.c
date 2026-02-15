@@ -274,6 +274,8 @@ void immune_bridge_coordinator_destroy(immune_bridge_coordinator_t* coordinator)
     /* Destroy mutex */
     if (coordinator->mutex) {
         nimcp_platform_mutex_destroy(coordinator->mutex);
+        nimcp_free(coordinator->mutex);
+        coordinator->mutex = NULL;
     }
 
     if (coordinator->config.enable_logging) {

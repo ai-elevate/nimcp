@@ -90,6 +90,7 @@ static inline void brain_immune_heartbeat_instance(
 #define nimcp_mutex_destroy(m) do { \
     nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)(m)); \
     nimcp_free(m); \
+    (m) = NULL; \
 } while(0)
 
 /* ============================================================================
@@ -1369,7 +1370,7 @@ int brain_immune_present_antigen(
         return -1;
     }
     if (system->antigen_count >= system->antigen_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_present_antigen: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_present_antigen: capacity exceeded");
         return -1;
     }
 
@@ -1591,7 +1592,7 @@ int brain_immune_activate_b_cell(
         return -1;
     }
     if (system->b_cell_count >= system->b_cell_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_activate_b_cell: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_b_cell: capacity exceeded");
         return -1;
     }
 
@@ -1707,7 +1708,7 @@ int brain_immune_activate_helper_t(
         return -1;
     }
     if (system->t_cell_count >= system->t_cell_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_activate_helper_t: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_helper_t: capacity exceeded");
         return -1;
     }
 
@@ -1766,7 +1767,7 @@ int brain_immune_activate_killer_t(
         return -1;
     }
     if (system->t_cell_count >= system->t_cell_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_activate_killer_t: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_activate_killer_t: capacity exceeded");
         return -1;
     }
 
@@ -1940,7 +1941,7 @@ int brain_immune_produce_antibody(
     /* Check capacity inside lock to avoid race */
     if (system->antibody_count >= system->antibody_capacity) {
         nimcp_mutex_unlock(system->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_produce_antibody: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_produce_antibody: capacity exceeded");
         return -1;
     }
 
@@ -2172,7 +2173,7 @@ int brain_immune_release_cytokine(
         return -1;
     }
     if (system->cytokine_count >= system->cytokine_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_release_cytokine: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_release_cytokine: capacity exceeded");
         return -1;
     }
     /* Validate concentration is in expected range [0.0, 1.0] */
@@ -2328,7 +2329,7 @@ int brain_immune_initiate_inflammation(
         return -1;
     }
     if (system->inflammation_count >= system->inflammation_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_initiate_inflammation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_initiate_inflammation: capacity exceeded");
         return -1;
     }
 
@@ -2928,7 +2929,6 @@ brain_immune_phase_t brain_immune_get_phase(brain_immune_system_t* system) {
  */
 bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen_id) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_is_neutralized: system is NULL");
         return false;
     }
 

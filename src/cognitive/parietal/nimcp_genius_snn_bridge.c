@@ -516,7 +516,7 @@ int genius_snn_encode_proof_state(genius_snn_bridge_t* bridge, float progress, f
 
 int genius_snn_encode_mode(genius_snn_bridge_t* bridge, genius_mode_t mode, float activation) {
     if (!bridge || mode >= GENIUS_MODE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_snn_encode_mode: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "genius_snn_encode_mode: bridge is NULL");
         return -1;
     }
 
@@ -708,7 +708,6 @@ int genius_snn_get_activations(genius_snn_bridge_t* bridge, float* activations, 
 
 bool genius_snn_check_insight(genius_snn_bridge_t* bridge, float* insight_level) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_snn_check_insight: bridge is NULL");
         return false;
     }
 
@@ -965,7 +964,6 @@ int genius_snn_bio_async_disconnect(genius_snn_bridge_t* bridge) {
 
 bool genius_snn_is_bio_async_connected(genius_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

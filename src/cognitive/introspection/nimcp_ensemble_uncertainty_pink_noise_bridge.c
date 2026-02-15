@@ -384,7 +384,6 @@ int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
 
 bool ensemble_pink_is_connected(const ensemble_pink_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1033,7 +1032,6 @@ bool ensemble_pink_is_bio_async_connected(
     const ensemble_pink_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

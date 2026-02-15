@@ -260,7 +260,7 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->consolidation_buffer || !bridge->prev_state) {
         consolidation_snn_destroy(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_snn_create: operation failed");
         return NULL;
     }
 
@@ -755,7 +755,6 @@ bool consolidation_snn_check_replay(
     float* replay_strength
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_check_replay: bridge is NULL");
         return false;
     }
 
@@ -779,7 +778,6 @@ bool consolidation_snn_check_stabilization(
     float* stabilization_level
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_check_stabilization: bridge is NULL");
         return false;
     }
 
@@ -803,7 +801,6 @@ bool consolidation_snn_check_state_change(
     float* change_magnitude
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_check_state_change: bridge is NULL");
         return false;
     }
 
@@ -1090,7 +1087,6 @@ int consolidation_snn_bio_async_disconnect(consolidation_snn_bridge_t* bridge) {
 
 bool consolidation_snn_is_bio_async_connected(consolidation_snn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

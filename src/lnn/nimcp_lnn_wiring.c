@@ -148,7 +148,6 @@ static int lnn_wiring_compare_uint32(const void* a, const void* b) {
     uint32_t ua = *(const uint32_t*)a;
     uint32_t ub = *(const uint32_t*)b;
     if (ua < ub) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_wiring_compare_uint32: validation failed");
         return -1;
     }
     if (ua > ub) return 1;
@@ -778,11 +777,9 @@ void lnn_wiring_destroy(lnn_wiring_t* wiring) {
 bool lnn_wiring_has_edge(const lnn_wiring_t* wiring, uint32_t from, uint32_t to) {
     // Guard clauses
     if (!wiring || !wiring->row_ptr || !wiring->col_idx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_wiring_has_edge: required parameter is NULL (wiring, wiring->row_ptr, wiring->col_idx)");
         return false;
     }
     if (from >= wiring->n_neurons || to >= wiring->n_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_wiring_has_edge: capacity exceeded");
         return false;
     }
 

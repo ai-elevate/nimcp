@@ -262,31 +262,24 @@ int amyg_fep_bridge_validate_config(const amyg_fep_config_t* config) {
     }
 
     if (config->default_model > AMYG_FEP_MODEL_PANIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->precision_mode > AMYG_FEP_PRECISION_INTEROCEPTIVE) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->sensory_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->interoceptive_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->contextual_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->prior_precision < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->learning_rate <= 0.0f || config->learning_rate > 1.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
     if (config->inference_steps == 0) {
@@ -294,7 +287,6 @@ int amyg_fep_bridge_validate_config(const amyg_fep_config_t* config) {
         return -1;
     }
     if (config->prediction_horizon_ms < 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
         return -1;
     }
 
@@ -313,7 +305,7 @@ amyg_fep_bridge_t* amyg_fep_bridge_create(
     amyg_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(amyg_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 

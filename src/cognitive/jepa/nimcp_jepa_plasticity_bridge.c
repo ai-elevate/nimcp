@@ -1064,7 +1064,6 @@ int jepa_plasticity_bio_async_disconnect(jepa_plasticity_bridge_t* bridge) {
 
 bool jepa_plasticity_is_bio_async_connected(jepa_plasticity_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_plasticity_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

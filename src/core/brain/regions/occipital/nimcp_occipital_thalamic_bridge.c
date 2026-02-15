@@ -318,7 +318,7 @@ occipital_thalamic_bridge_t* occipital_thalamic_bridge_create(
 
     occipital_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_thalamic_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
     }
@@ -844,7 +844,6 @@ bool occipital_thalamic_is_lgn_active(
     const occipital_thalamic_bridge_t* bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_is_lgn_active: bridge is NULL");
         return false;
     }
     return bridge->state.lgn_gain > 0.0f;

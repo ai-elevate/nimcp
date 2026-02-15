@@ -747,7 +747,6 @@ int physics_lnn_get_stats(
 
 bool physics_lnn_is_connected(const physics_lnn_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_is_connected: bridge is NULL");
         return false;
     }
     return bridge->hh_pop != NULL && bridge->lnn_network != NULL;

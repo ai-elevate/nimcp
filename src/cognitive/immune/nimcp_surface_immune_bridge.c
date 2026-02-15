@@ -191,7 +191,7 @@ surface_immune_bridge_t* surface_immune_bridge_create(
         nimcp_free(bridge->active_antigens);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_immune_bridge_create: bridge->antibodies is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_immune_bridge_create: bridge->antibodies is NULL");
         return NULL;
     }
     memset(bridge->antibodies, 0,
@@ -625,7 +625,7 @@ int surface_immune_present_anomaly(
 
     if (antigen_id) *antigen_id = 0;
     if (type == SURFACE_ANTIGEN_NONE || type >= SURFACE_ANTIGEN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_immune_present_anomaly: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_immune_present_anomaly: capacity exceeded");
         return -1;
     }
 

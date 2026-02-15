@@ -807,7 +807,6 @@ int tom_immune_get_inflammation_state(
 
 bool tom_immune_is_social_withdrawal(const tom_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_is_social_withdrawal: bridge is NULL");
         return false;
     }
 
@@ -926,7 +925,6 @@ int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
  */
 bool tom_immune_is_bio_async_connected(const tom_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

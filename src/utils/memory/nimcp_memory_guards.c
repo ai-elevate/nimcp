@@ -106,7 +106,6 @@ static void* get_user_ptr(allocation_header_t* header) {
 
 static bool check_canaries(allocation_header_t* header) {
     if (!header) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "check_canaries: header is NULL");
         return false;
     }
 
@@ -119,7 +118,6 @@ static bool check_canaries(allocation_header_t* header) {
                 header->file ? header->file : "unknown",
                 header->line, header->size);
         g_stats.corruption_detected++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_canaries: validation failed");
         return false;
     }
 
@@ -134,7 +132,6 @@ static bool check_canaries(allocation_header_t* header) {
                 header->line, header->size);
         fprintf(stderr, "Buffer overflow of %zu bytes detected!\n", header->size);
         g_stats.buffer_overflows_detected++;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_canaries: validation failed");
         return false;
     }
 

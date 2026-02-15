@@ -454,7 +454,6 @@ int gpu_neuron_immune_get_error_state(
 
 bool gpu_neuron_immune_is_throttled(const gpu_neuron_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neuron_immune_is_throttled: bridge is NULL");
         return false;
     }
 

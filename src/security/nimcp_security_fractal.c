@@ -635,13 +635,11 @@ bool nimcp_fractal_security_check_dimension_anomaly(
     float* deviation
 ) {
     if (!fsc || !fsc->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fractal_security_check_dimension_anomaly: required parameter is NULL (fsc, fsc->initialized)");
         return false;
     }
 
     float current_dimension;
     if (nimcp_fractal_security_compute_dimension(fsc, &current_dimension) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_fractal_security_check_dimension_anomaly: validation failed");
         return false;
     }
 

@@ -601,7 +601,7 @@ nimcp_kdf_context_t nimcp_kdf_create(const nimcp_kdf_config_t* config)
     // Validate configuration
     if (cfg->algorithm >= NIMCP_KDF_ALGORITHM_COUNT) {
         LOG_ERROR("Invalid KDF algorithm: %d", cfg->algorithm);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_kdf_create: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_kdf_create: capacity exceeded");
         return NULL;
     }
 
@@ -929,7 +929,6 @@ bool nimcp_kdf_verify_params(const nimcp_kdf_config_t* config, size_t salt_len)
 
     if (salt_len < NIMCP_KDF_MIN_SALT_LEN) {
         LOG_WARN("Salt too short: %zu < %d", salt_len, NIMCP_KDF_MIN_SALT_LEN);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_kdf_verify_params: validation failed");
         return false;
     }
 
@@ -937,27 +936,23 @@ bool nimcp_kdf_verify_params(const nimcp_kdf_config_t* config, size_t salt_len)
         if (config->memory_kb < NIMCP_KDF_DEFAULT_MEMORY_KB) {
             LOG_WARN("Argon2 memory below recommended: %u < %u KB",
                      config->memory_kb, NIMCP_KDF_DEFAULT_MEMORY_KB);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_kdf_verify_params: validation failed");
             return false;
         }
 
         if (config->iterations < NIMCP_KDF_DEFAULT_ITERATIONS) {
             LOG_WARN("Argon2 iterations below recommended: %u < %u",
                      config->iterations, NIMCP_KDF_DEFAULT_ITERATIONS);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_kdf_verify_params: validation failed");
             return false;
         }
 
         if (config->parallelism < 1) {
             LOG_WARN("Argon2 parallelism too low");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_kdf_verify_params: validation failed");
             return false;
         }
     } else if (config->algorithm == NIMCP_KDF_PBKDF2_SHA256) {
         if (config->iterations < NIMCP_KDF_PBKDF2_RECOMMENDED_ITERATIONS) {
             LOG_WARN("PBKDF2 iterations below recommended: %u < %u",
                      config->iterations, NIMCP_KDF_PBKDF2_RECOMMENDED_ITERATIONS);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_kdf_verify_params: validation failed");
             return false;
         }
     }

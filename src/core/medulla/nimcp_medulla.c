@@ -723,6 +723,8 @@ void medulla_destroy(medulla_t medulla) {
     // Destroy mutex
     if (medulla->mutex) {
         nimcp_platform_mutex_destroy(medulla->mutex);
+        nimcp_free(medulla->mutex);
+        medulla->mutex = NULL;
     }
 
     // Free structure
@@ -1307,7 +1309,6 @@ int medulla_disconnect_bio_async(medulla_t medulla) {
 
 bool medulla_is_bio_async_connected(const medulla_t medulla) {
     if (!is_valid_medulla(medulla)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_is_bio_async_connected: medulla is NULL or invalid");
         return false;
     }
 

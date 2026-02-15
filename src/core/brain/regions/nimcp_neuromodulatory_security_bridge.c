@@ -143,7 +143,7 @@ neuromod_security_bridge_t* neuromod_security_bridge_create(const neuromod_secur
     neuromod_security_bridge_t* bridge = nimcp_calloc(1, sizeof(neuromod_security_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
 
         return NULL;
 
@@ -215,7 +215,6 @@ int neuromod_security_bridge_disconnect(neuromod_security_bridge_t* bridge) {
 
 bool neuromod_security_bridge_is_connected(const neuromod_security_bridge_t* bridge) {
     if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;

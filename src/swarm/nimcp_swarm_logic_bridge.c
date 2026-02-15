@@ -181,7 +181,6 @@ static swarm_logic_rule_t* find_rule(swarm_logic_bridge_t* bridge, uint32_t rule
 static bool check_cache(swarm_logic_bridge_t* bridge, uint32_t rule_id,
                        uint64_t state_hash, swarm_logic_result_t* result) {
     if (!bridge || !bridge->cache || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule: required parameter is NULL (bridge, bridge->cache, result)");
         return false;
     }
 
@@ -201,7 +200,6 @@ static bool check_cache(swarm_logic_bridge_t* bridge, uint32_t rule_id,
     }
 
     bridge->stats.cache_misses++;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_rule: validation failed");
     return false;
 }
 

@@ -392,7 +392,7 @@ int nimcp_ht_get_receptor_activation(nimcp_ht_release_system_t* system,
         return -1;
     }
     if (receptor >= HT_RECEPTOR_TYPE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
         return -1;
     }
 

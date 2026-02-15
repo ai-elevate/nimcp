@@ -800,7 +800,6 @@ int pattern_immune_get_anomalies(
 
 bool pattern_immune_is_degraded(const pattern_immune_bridge_t* bridge) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_is_degraded: bridge is NULL");
         return false;
     }
 

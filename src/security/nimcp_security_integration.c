@@ -369,7 +369,7 @@ nimcp_sec_integration_t* nimcp_sec_integration_create(void)
     nimcp_sec_integration_t* ctx = nimcp_calloc(1, sizeof(nimcp_sec_integration_t));
     if (!ctx) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
 
         return NULL;
 
@@ -1031,7 +1031,6 @@ bool nimcp_sec_is_module_trusted(
     uint32_t module_id)
 {
     if (!ctx || !ctx->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_sec_is_module_trusted: required parameter is NULL (ctx, ctx->initialized)");
         return false;
     }
 
@@ -1703,7 +1702,7 @@ nimcp_sec_integration_t* nimcp_sec_integration_cow_clone(nimcp_sec_integration_t
     nimcp_sec_integration_t* clone = nimcp_calloc(1, sizeof(nimcp_sec_integration_t));
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clone is NULL");
 
         return NULL;
 
@@ -1757,7 +1756,6 @@ nimcp_sec_integration_t* nimcp_sec_integration_cow_clone(nimcp_sec_integration_t
 bool nimcp_sec_integration_is_cow_shared(nimcp_sec_integration_t* ctx)
 {
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_sec_integration_is_cow_shared: ctx is NULL");
         return false;
     }
     return (ctx->cow_state == NIMCP_SEC_COW_SHARED);

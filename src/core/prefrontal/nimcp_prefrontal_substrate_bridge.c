@@ -63,7 +63,7 @@ prefrontal_substrate_bridge_t* prefrontal_substrate_bridge_create(void* prefront
 
     prefrontal_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(prefrontal_substrate_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_substrate_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_substrate_bridge_create: allocation failed");
         return NULL;
     }
 

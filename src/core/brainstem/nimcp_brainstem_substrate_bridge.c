@@ -63,7 +63,7 @@ brainstem_substrate_bridge_t* brainstem_substrate_bridge_create(void* brainstem,
 
     brainstem_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(brainstem_substrate_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_substrate_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_substrate_bridge_create: allocation failed");
         return NULL;
     }
 

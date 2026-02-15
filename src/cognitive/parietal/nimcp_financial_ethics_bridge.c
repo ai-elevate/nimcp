@@ -254,7 +254,6 @@ static bool is_manipulative_action(fin_action_type_t action_type) {
         case FIN_ACTION_WASH_TRADE:
             return true;
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_manipulative_action: operation failed");
             return false;
     }
 }
@@ -342,7 +341,6 @@ static bool check_first_law(
 
     /* Manipulative actions inherently violate first law */
     if (is_manipulative_action((fin_action_type_t)action->action_type)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_first_law: validation failed");
         return false;
     }
 
@@ -381,7 +379,6 @@ static bool check_third_law(
     /* Third law: Self-interest must not override ethics */
     /* If action has high potential profit (magnitude) but causes harm, it violates */
     if (action->action_magnitude > 0.8f && harm_score > 0.5f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_third_law: validation failed");
         return false;
     }
 
@@ -1176,7 +1173,6 @@ bool financial_ethics_bridge_is_auto_flagged(
     fin_action_type_t action_type
 ) {
     if (!bridge || bridge->magic != FINANCIAL_ETHICS_BRIDGE_MAGIC) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "financial_ethics_bridge_is_auto_flagged: bridge is NULL");
         return false;
     }
 

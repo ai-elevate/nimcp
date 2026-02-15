@@ -258,7 +258,7 @@ static bool enqueue_command_unlocked(motor_adapter_t* adapter, const motor_comma
 
     if (adapter->queue_count >= adapter->queue_capacity) {
         LOG_WARN("[%s] Command queue full", MOTOR_LOG_MODULE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_command_unlocked: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_command_unlocked: capacity exceeded");
         return false;
     }
 
@@ -889,7 +889,7 @@ bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
     /* Create simple trajectory with start and end */
     if (adapter->num_trajectories >= adapter->config.max_trajectories) {
         set_error(adapter, MOTOR_ERROR_BUFFER_OVERFLOW);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "motor_plan_movement: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "motor_plan_movement: capacity exceeded");
         return false;
     }
 
@@ -954,7 +954,7 @@ bool motor_plan_trajectory(motor_adapter_t* adapter,
 
     if (adapter->num_trajectories >= adapter->config.max_trajectories) {
         set_error(adapter, MOTOR_ERROR_BUFFER_OVERFLOW);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "motor_plan_movement: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "motor_plan_movement: capacity exceeded");
         return false;
     }
 
