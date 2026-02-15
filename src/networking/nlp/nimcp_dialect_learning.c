@@ -292,8 +292,15 @@ static void update_matrix(
     // Prevent VLA stack overflow for large dimensions
     if (dim > 4096) return;
 
-    // Compute error
-    float error[dim];
+    // Compute error - use stack for small, heap for large
+    float *error;
+    float stack_error[256];
+    if (dim <= 256) {
+        error = stack_error;
+    } else {
+        error = (float*)nimcp_malloc(dim * sizeof(float));
+        if (!error) { return; }
+    }
     for (uint32_t i = 0; i < dim; i++) {
         error[i] = target[i] - predicted[i];
     }
@@ -304,6 +311,8 @@ static void update_matrix(
             matrix[i * dim + j] += learning_rate * error[i] * input[j];
         }
     }
+
+    if (dim > 256) { nimcp_free(error); }
 }
 
 /**
@@ -502,8 +511,19 @@ int dialect_learn_from_pairs(
         dl->stats.total_dialects_learned++;
     }
 
-    // Learning loop
-    float predicted[signal_size];
+    // Learning loop - use stack for small, heap for large
+    float *predicted;
+    float stack_predicted[256];
+    if (signal_size <= 256) {
+        predicted = stack_predicted;
+    } else {
+        predicted = (float*)nimcp_malloc(signal_size * sizeof(float));
+        if (!predicted) {
+            nimcp_mutex_unlock(&dl->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dialect_learn_from_pairs: predicted alloc failed");
+            return -1;
+        }
+    }
     float total_error = 0.0F;
 
     for (uint32_t iter = 0; iter < num_pairs; iter++) {
@@ -553,6 +573,8 @@ int dialect_learn_from_pairs(
 
     nimcp_mutex_unlock(&dl->lock);
 
+    if (signal_size > 256) { nimcp_free(predicted); }
+
     LOG_DEBUG("Learned dialect %u->%u from %u pairs (compat=%.3f)",
               source, target, num_pairs, entry->dialect.compatibility_score);
 
@@ -591,8 +613,19 @@ int dialect_update_online(
         return -1;
     }
 
-    // Forward pass
-    float predicted[signal_size];
+    // Forward pass - use stack for small, heap for large
+    float *predicted;
+    float stack_predicted2[256];
+    if (signal_size <= 256) {
+        predicted = stack_predicted2;
+    } else {
+        predicted = (float*)nimcp_malloc(signal_size * sizeof(float));
+        if (!predicted) {
+            nimcp_mutex_unlock(&dl->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dialect_update_online: predicted alloc failed");
+            return -1;
+        }
+    }
     matrix_vector_mult(entry->dialect.translation_matrix,
                       source_signal, predicted,
                       signal_size, signal_size);
@@ -607,6 +640,8 @@ int dialect_update_online(
     dl->stats.total_updates++;
 
     nimcp_mutex_unlock(&dl->lock);
+
+    if (signal_size > 256) { nimcp_free(predicted); }
 
     return 0;
 }
@@ -902,8 +937,23 @@ int dialect_translate_path(
     }
 
     // Allocate temporary buffers for intermediate translations
-    float temp1[signal_size];
-    float temp2[signal_size];
+    // Use stack for small, heap for large
+    float *temp1, *temp2;
+    float stack_temp1[256], stack_temp2[256];
+    bool heap_alloc = (signal_size > 256);
+    if (!heap_alloc) {
+        temp1 = stack_temp1;
+        temp2 = stack_temp2;
+    } else {
+        temp1 = (float*)nimcp_malloc(signal_size * sizeof(float));
+        temp2 = (float*)nimcp_malloc(signal_size * sizeof(float));
+        if (!temp1 || !temp2) {
+            nimcp_free(temp1);  /* safe: nimcp_free(NULL) is no-op */
+            nimcp_free(temp2);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dialect_translate_path: temp buffer alloc failed");
+            return -1;
+        }
+    }
     const float* current = signal;
     float* next = temp1;
     uint32_t current_size = signal_size;
@@ -914,6 +964,7 @@ int dialect_translate_path(
         int result = dialect_translate(dl, path[i], path[i + 1],
                                        current, current_size, next, &hop_size);
         if (result != 0) {
+            if (heap_alloc) { nimcp_free(temp1); nimcp_free(temp2); }
             return result;
         }
 
@@ -931,6 +982,8 @@ int dialect_translate_path(
     // Copy final result
     memcpy(translated, current, current_size * sizeof(float));
     *translated_size = current_size;
+
+    if (heap_alloc) { nimcp_free(temp1); nimcp_free(temp2); }
 
     nimcp_mutex_lock(&dl->lock);
     dl->stats.multihop_translations++;

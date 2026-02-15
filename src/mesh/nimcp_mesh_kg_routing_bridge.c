@@ -10,6 +10,7 @@
 #include "mesh/nimcp_mesh_kg_routing_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
@@ -61,6 +62,9 @@ struct mesh_kg_routing_bridge {
 
     /* Statistics */
     mesh_kg_bridge_stats_t stats;
+
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -168,6 +172,17 @@ mesh_kg_routing_bridge_t* mesh_kg_bridge_create(
         mesh_kg_bridge_default_config(&bridge->config);
     }
 
+    /* Create recursive mutex (public functions call other public functions internally) */
+    mutex_attr_t attr = {0};
+    attr.type = MUTEX_TYPE_RECURSIVE;
+    bridge->mutex = nimcp_mutex_create(&attr);
+    if (!bridge->mutex) {
+        LOG_ERROR("Failed to create KG bridge mutex");
+        nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_kg_bridge_create: bridge->mutex is NULL");
+        return NULL;
+    }
+
     LOG_INFO("Created KG-Mesh routing bridge (mode=%d)", bridge->config.mode);
 
     return bridge;
@@ -175,6 +190,10 @@ mesh_kg_routing_bridge_t* mesh_kg_bridge_create(
 
 void mesh_kg_bridge_destroy(mesh_kg_routing_bridge_t* bridge) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) return;
+
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
 
     bridge->magic = 0;
     nimcp_free(bridge);
@@ -197,6 +216,8 @@ nimcp_error_t mesh_kg_bridge_register_module(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
+
     /* Check if already registered */
     kg_bridge_module_t* existing = find_module(bridge, module_id);
     if (existing) {
@@ -214,11 +235,13 @@ nimcp_error_t mesh_kg_bridge_register_module(
                 bridge->router, module_id, field
             );
         }
+        nimcp_mutex_unlock(bridge->mutex);
         return NIMCP_SUCCESS;
     }
 
     /* Add new */
     if (bridge->module_count >= MESH_KG_MAX_TOPOLOGY_CACHE) {
+        nimcp_mutex_unlock(bridge->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_kg_routing_bridge: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
@@ -240,7 +263,10 @@ nimcp_error_t mesh_kg_bridge_register_module(
         );
     }
 
-    if (bridge->config.enable_logging) {
+    bool enable_logging = bridge->config.enable_logging;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (enable_logging) {
         LOG_DEBUG("Registered module 0x%llx with KG bridge (wiring=%d, field=%d)",
                   (unsigned long long)module_id, mod->has_wiring, mod->has_field);
     }
@@ -255,6 +281,8 @@ nimcp_error_t mesh_kg_bridge_init_from_topology(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_routing_bridge: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    nimcp_mutex_lock(bridge->mutex);
 
     /* For each module with wiring, bias pattern router based on connections */
     for (size_t i = 0; i < bridge->module_count; i++) {
@@ -286,8 +314,10 @@ nimcp_error_t mesh_kg_bridge_init_from_topology(
         }
     }
 
-    LOG_INFO("Initialized pattern router from KG topology (%zu modules)",
-             bridge->module_count);
+    size_t count = bridge->module_count;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    LOG_INFO("Initialized pattern router from KG topology (%zu modules)", count);
 
     return NIMCP_SUCCESS;
 }
@@ -313,6 +343,9 @@ nimcp_error_t mesh_kg_bridge_route(
     }
 
     *count_out = 0;
+
+    nimcp_mutex_lock(bridge->mutex);
+
     bridge->stats.total_routings++;
 
     switch (bridge->config.mode) {
@@ -325,6 +358,7 @@ nimcp_error_t mesh_kg_bridge_route(
     case MESH_KG_ROUTE_PATTERN_ONLY:
         /* Pattern matching only */
         bridge->stats.pattern_only++;
+        nimcp_mutex_unlock(bridge->mutex);
         return mesh_pattern_router_compute_activations(
             bridge->router, tx, endorsers, max_endorsers, count_out
         );
@@ -344,14 +378,20 @@ nimcp_error_t mesh_kg_bridge_route(
     nimcp_error_t err = mesh_pattern_router_compute_activations(
         bridge->router, tx, all_activations, 128, &act_count
     );
-    if (err != NIMCP_SUCCESS) return err;
+    if (err != NIMCP_SUCCESS) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return err;
+    }
 
     /* Filter by structural validity if enabled */
     if (bridge->config.enable_structural_validation) {
         err = mesh_kg_bridge_filter_by_structure(
             bridge, tx->proposer, all_activations, &act_count
         );
-        if (err != NIMCP_SUCCESS) return err;
+        if (err != NIMCP_SUCCESS) {
+            nimcp_mutex_unlock(bridge->mutex);
+            return err;
+        }
     }
 
     /* Copy to output */
@@ -371,6 +411,8 @@ nimcp_error_t mesh_kg_bridge_route(
 
     bridge->stats.avg_endorsers_per_route =
         (bridge->stats.avg_endorsers_per_route + (float)out_count) / 2.0f;
+
+    nimcp_mutex_unlock(bridge->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -432,6 +474,8 @@ nimcp_error_t mesh_kg_bridge_get_topological_neighbors(
 
     *count_out = 0;
 
+    nimcp_mutex_lock(bridge->mutex);
+
     /* Check cache first */
     if (bridge->config.enable_topology_cache) {
         for (size_t i = 0; i < bridge->cache_count; i++) {
@@ -445,6 +489,7 @@ nimcp_error_t mesh_kg_bridge_get_topological_neighbors(
                 memcpy(neighbors, entry->neighbors,
                        copy_count * sizeof(mesh_participant_id_t));
                 *count_out = copy_count;
+                nimcp_mutex_unlock(bridge->mutex);
                 return NIMCP_SUCCESS;
             }
         }
@@ -505,6 +550,8 @@ nimcp_error_t mesh_kg_bridge_get_topological_neighbors(
         entry->valid = true;
     }
 
+    nimcp_mutex_unlock(bridge->mutex);
+
     return NIMCP_SUCCESS;
 }
 
@@ -517,7 +564,10 @@ bool mesh_kg_bridge_has_connection(
         return false;
     }
 
-    return modules_connected_direct(bridge, from_id, to_id);
+    nimcp_mutex_lock(bridge->mutex);
+    bool val = modules_connected_direct(bridge, from_id, to_id);
+    nimcp_mutex_unlock(bridge->mutex);
+    return val;
 }
 
 /* ============================================================================
@@ -542,6 +592,8 @@ nimcp_error_t mesh_kg_bridge_find_convergence_points(
     }
 
     *count_out = 0;
+
+    nimcp_mutex_lock(bridge->mutex);
 
     /* For each module, check if it receives from ALL sources */
     for (size_t i = 0; i < bridge->module_count; i++) {
@@ -575,6 +627,8 @@ nimcp_error_t mesh_kg_bridge_find_convergence_points(
         }
     }
 
+    nimcp_mutex_unlock(bridge->mutex);
+
     return NIMCP_SUCCESS;
 }
 
@@ -594,6 +648,8 @@ nimcp_error_t mesh_kg_bridge_suggest_multimodal_endorsers(
 
     *count_out = 0;
 
+    nimcp_mutex_lock(bridge->mutex);
+
     /* Find convergence points */
     mesh_participant_id_t convergence[MESH_KG_MAX_CONVERGENCE_POINTS];
     size_t conv_count = 0;
@@ -602,7 +658,10 @@ nimcp_error_t mesh_kg_bridge_suggest_multimodal_endorsers(
         bridge, pattern_sources, pattern_count,
         convergence, MESH_KG_MAX_CONVERGENCE_POINTS, &conv_count
     );
-    if (err != NIMCP_SUCCESS) return err;
+    if (err != NIMCP_SUCCESS) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return err;
+    }
 
     /* Blend patterns */
     mesh_pattern_t blended;
@@ -633,6 +692,8 @@ nimcp_error_t mesh_kg_bridge_suggest_multimodal_endorsers(
         (*count_out)++;
     }
 
+    nimcp_mutex_unlock(bridge->mutex);
+
     return NIMCP_SUCCESS;
 }
 
@@ -654,14 +715,18 @@ bool mesh_kg_bridge_validate_activation(
         return false;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
+
     /* If novel connections allowed, always valid */
     if (bridge->config.allow_novel_connections) {
+        nimcp_mutex_unlock(bridge->mutex);
         return true;
     }
 
     /* Check for structural connection */
     if (modules_connected_direct(bridge, source_id, target_id)) {
         bridge->stats.validations_passed++;
+        nimcp_mutex_unlock(bridge->mutex);
         return true;
     }
 
@@ -676,12 +741,15 @@ bool mesh_kg_bridge_validate_activation(
     for (size_t i = 0; i < neighbor_count; i++) {
         if (neighbors[i] == target_id) {
             bridge->stats.validations_passed++;
+            nimcp_mutex_unlock(bridge->mutex);
             return true;
         }
     }
 
     /* Not found */
     bridge->stats.validations_failed++;
+    nimcp_mutex_unlock(bridge->mutex);
+
     if (reason_out && reason_size > 0) {
         snprintf(reason_out, reason_size,
                  "No structural path from 0x%llx to 0x%llx within %u hops",
@@ -703,6 +771,8 @@ nimcp_error_t mesh_kg_bridge_filter_by_structure(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
+
     size_t write_idx = 0;
     for (size_t i = 0; i < *count; i++) {
         if (mesh_kg_bridge_validate_activation(
@@ -715,6 +785,8 @@ nimcp_error_t mesh_kg_bridge_filter_by_structure(
     }
 
     *count = write_idx;
+
+    nimcp_mutex_unlock(bridge->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -735,9 +807,14 @@ nimcp_error_t mesh_kg_bridge_learn_outcome(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
+
     if (!bridge->config.learn_from_routing) {
+        nimcp_mutex_unlock(bridge->mutex);
         return NIMCP_SUCCESS;
     }
+
+    nimcp_mutex_unlock(bridge->mutex);
 
     /* Delegate to pattern router */
     return mesh_pattern_router_learn_outcome(
@@ -756,22 +833,27 @@ nimcp_error_t mesh_kg_bridge_strengthen_connection(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
+
     kg_bridge_module_t* from_mod = find_module(bridge, from_id);
     kg_bridge_module_t* to_mod = find_module(bridge, to_id);
 
     if (!from_mod || !to_mod) {
+        nimcp_mutex_unlock(bridge->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_routing_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!from_mod->has_field || !to_mod->has_field) {
+        nimcp_mutex_unlock(bridge->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "mesh_kg_routing_bridge: invalid state");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Update to_mod's receptive field to include from_mod's pattern */
+    nimcp_error_t result = NIMCP_SUCCESS;
     if (from_mod->field.pattern_count > 0) {
-        return mesh_pattern_router_update_receptive_field(
+        result = mesh_pattern_router_update_receptive_field(
             bridge->router,
             to_id,
             &from_mod->field.preferred[0],
@@ -779,7 +861,8 @@ nimcp_error_t mesh_kg_bridge_strengthen_connection(
         );
     }
 
-    return NIMCP_SUCCESS;
+    nimcp_mutex_unlock(bridge->mutex);
+    return result;
 }
 
 /* ============================================================================
@@ -795,7 +878,9 @@ nimcp_error_t mesh_kg_bridge_get_stats(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
     *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -805,7 +890,9 @@ nimcp_error_t mesh_kg_bridge_reset_stats(mesh_kg_routing_bridge_t* bridge) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -827,8 +914,11 @@ nimcp_error_t mesh_kg_bridge_explain_routing(
     memset(explanation, 0, sizeof(*explanation));
     explanation->module_id = module_id;
 
+    nimcp_mutex_lock(bridge->mutex);
+
     kg_bridge_module_t* mod = find_module(bridge, module_id);
     if (!mod) {
+        nimcp_mutex_unlock(bridge->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_kg_routing_bridge: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
@@ -875,6 +965,8 @@ nimcp_error_t mesh_kg_bridge_explain_routing(
     explanation->validated = mesh_kg_bridge_validate_activation(
         bridge, tx->proposer, module_id, NULL, 0
     );
+
+    nimcp_mutex_unlock(bridge->mutex);
 
     return NIMCP_SUCCESS;
 }

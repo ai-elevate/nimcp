@@ -400,14 +400,15 @@ static void step_sgd(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_lock(&ctx->state_mutex);
         }
-        /* Free old buffer if reallocating */
-        if (ctx->state.momentum.velocity != NULL) {
-            free_buffer(ctx, ctx->state.momentum.velocity);
-        }
-        ctx->state.momentum.velocity = alloc_buffer(ctx, count);
-        ctx->state.momentum.count = count;
-        if (ctx->state.momentum.velocity) {
-            memset(ctx->state.momentum.velocity, 0, count * sizeof(float));
+        /* Safe realloc pattern: allocate new buffer first, only free old on success */
+        float* new_velocity = alloc_buffer(ctx, count);
+        if (new_velocity) {
+            memset(new_velocity, 0, count * sizeof(float));
+            if (ctx->state.momentum.velocity != NULL) {
+                free_buffer(ctx, ctx->state.momentum.velocity);
+            }
+            ctx->state.momentum.velocity = new_velocity;
+            ctx->state.momentum.count = count;
         }
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
@@ -471,24 +472,29 @@ static void step_adam(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_lock(&ctx->state_mutex);
         }
-        /* Free old buffers if reallocating */
-        if (state->m != NULL) {
-            free_buffer(ctx, state->m);
-            free_buffer(ctx, state->v);
-            if (state->v_max) free_buffer(ctx, state->v_max);
-            state->v_max = NULL;
-        }
-        state->m = alloc_buffer(ctx, count);
-        state->v = alloc_buffer(ctx, count);
-        if (amsgrad) {
-            state->v_max = alloc_buffer(ctx, count);
-        }
-        state->count = count;
-        if (state->t == 0) state->t = 0;  /* Only init t on first allocation */
+        /* Safe realloc pattern: allocate all new buffers first, only free old on success */
+        float* new_m = alloc_buffer(ctx, count);
+        float* new_v = alloc_buffer(ctx, count);
+        float* new_v_max = amsgrad ? alloc_buffer(ctx, count) : NULL;
 
-        if (state->m) memset(state->m, 0, count * sizeof(float));
-        if (state->v) memset(state->v, 0, count * sizeof(float));
-        if (state->v_max) memset(state->v_max, 0, count * sizeof(float));
+        if (new_m && new_v && (!amsgrad || new_v_max)) {
+            memset(new_m, 0, count * sizeof(float));
+            memset(new_v, 0, count * sizeof(float));
+            if (new_v_max) memset(new_v_max, 0, count * sizeof(float));
+            /* Free old buffers now that new ones are ready */
+            if (state->m) free_buffer(ctx, state->m);
+            if (state->v) free_buffer(ctx, state->v);
+            if (state->v_max) free_buffer(ctx, state->v_max);
+            state->m = new_m;
+            state->v = new_v;
+            state->v_max = new_v_max;
+            state->count = count;
+        } else {
+            /* Partial allocation failed - free any successful allocs, keep old state */
+            if (new_m) free_buffer(ctx, new_m);
+            if (new_v) free_buffer(ctx, new_v);
+            if (new_v_max) free_buffer(ctx, new_v_max);
+        }
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
@@ -579,24 +585,29 @@ static void step_adamw(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_lock(&ctx->state_mutex);
         }
-        /* Free old buffers if reallocating */
-        if (state->m != NULL) {
-            free_buffer(ctx, state->m);
-            free_buffer(ctx, state->v);
-            if (state->v_max) free_buffer(ctx, state->v_max);
-            state->v_max = NULL;
-        }
-        state->m = alloc_buffer(ctx, count);
-        state->v = alloc_buffer(ctx, count);
-        if (amsgrad) {
-            state->v_max = alloc_buffer(ctx, count);
-        }
-        state->count = count;
-        if (state->t == 0) state->t = 0;  /* Only init t on first allocation */
+        /* Safe realloc pattern: allocate all new buffers first, only free old on success */
+        float* new_m = alloc_buffer(ctx, count);
+        float* new_v = alloc_buffer(ctx, count);
+        float* new_v_max = amsgrad ? alloc_buffer(ctx, count) : NULL;
 
-        if (state->m) memset(state->m, 0, count * sizeof(float));
-        if (state->v) memset(state->v, 0, count * sizeof(float));
-        if (state->v_max) memset(state->v_max, 0, count * sizeof(float));
+        if (new_m && new_v && (!amsgrad || new_v_max)) {
+            memset(new_m, 0, count * sizeof(float));
+            memset(new_v, 0, count * sizeof(float));
+            if (new_v_max) memset(new_v_max, 0, count * sizeof(float));
+            /* Free old buffers now that new ones are ready */
+            if (state->m) free_buffer(ctx, state->m);
+            if (state->v) free_buffer(ctx, state->v);
+            if (state->v_max) free_buffer(ctx, state->v_max);
+            state->m = new_m;
+            state->v = new_v;
+            state->v_max = new_v_max;
+            state->count = count;
+        } else {
+            /* Partial allocation failed - free any successful allocs, keep old state */
+            if (new_m) free_buffer(ctx, new_m);
+            if (new_v) free_buffer(ctx, new_v);
+            if (new_v_max) free_buffer(ctx, new_v_max);
+        }
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
@@ -683,18 +694,24 @@ static void step_nadam(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_lock(&ctx->state_mutex);
         }
-        /* Free old buffers if reallocating */
-        if (state->m != NULL) {
-            free_buffer(ctx, state->m);
-            free_buffer(ctx, state->v);
-        }
-        state->m = alloc_buffer(ctx, count);
-        state->v = alloc_buffer(ctx, count);
-        state->count = count;
-        if (state->t == 0) state->t = 0;  /* Only init t on first allocation */
+        /* Safe realloc pattern: allocate all new buffers first, only free old on success */
+        float* new_m = alloc_buffer(ctx, count);
+        float* new_v = alloc_buffer(ctx, count);
 
-        if (state->m) memset(state->m, 0, count * sizeof(float));
-        if (state->v) memset(state->v, 0, count * sizeof(float));
+        if (new_m && new_v) {
+            memset(new_m, 0, count * sizeof(float));
+            memset(new_v, 0, count * sizeof(float));
+            /* Free old buffers now that new ones are ready */
+            if (state->m) free_buffer(ctx, state->m);
+            if (state->v) free_buffer(ctx, state->v);
+            state->m = new_m;
+            state->v = new_v;
+            state->count = count;
+        } else {
+            /* Partial allocation failed - free any successful allocs, keep old state */
+            if (new_m) free_buffer(ctx, new_m);
+            if (new_v) free_buffer(ctx, new_v);
+        }
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
@@ -781,26 +798,31 @@ static void step_rmsprop(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_lock(&ctx->state_mutex);
         }
-        /* Free old buffers if reallocating */
-        if (state->square_avg != NULL) {
-            free_buffer(ctx, state->square_avg);
+        /* Safe realloc pattern: allocate all new buffers first, only free old on success */
+        float* new_square_avg = alloc_buffer(ctx, count);
+        float* new_momentum_buffer = (momentum != 0.0F) ? alloc_buffer(ctx, count) : NULL;
+        float* new_grad_avg = centered ? alloc_buffer(ctx, count) : NULL;
+
+        if (new_square_avg &&
+            (momentum == 0.0F || new_momentum_buffer) &&
+            (!centered || new_grad_avg)) {
+            memset(new_square_avg, 0, count * sizeof(float));
+            if (new_momentum_buffer) memset(new_momentum_buffer, 0, count * sizeof(float));
+            if (new_grad_avg) memset(new_grad_avg, 0, count * sizeof(float));
+            /* Free old buffers now that new ones are ready */
+            if (state->square_avg) free_buffer(ctx, state->square_avg);
             if (state->momentum_buffer) free_buffer(ctx, state->momentum_buffer);
             if (state->grad_avg) free_buffer(ctx, state->grad_avg);
-            state->momentum_buffer = NULL;
-            state->grad_avg = NULL;
+            state->square_avg = new_square_avg;
+            state->momentum_buffer = new_momentum_buffer;
+            state->grad_avg = new_grad_avg;
+            state->count = count;
+        } else {
+            /* Partial allocation failed - free any successful allocs, keep old state */
+            if (new_square_avg) free_buffer(ctx, new_square_avg);
+            if (new_momentum_buffer) free_buffer(ctx, new_momentum_buffer);
+            if (new_grad_avg) free_buffer(ctx, new_grad_avg);
         }
-        state->square_avg = alloc_buffer(ctx, count);
-        if (momentum != 0.0F) {
-            state->momentum_buffer = alloc_buffer(ctx, count);
-        }
-        if (centered) {
-            state->grad_avg = alloc_buffer(ctx, count);
-        }
-        state->count = count;
-
-        if (state->square_avg) memset(state->square_avg, 0, count * sizeof(float));
-        if (state->momentum_buffer) memset(state->momentum_buffer, 0, count * sizeof(float));
-        if (state->grad_avg) memset(state->grad_avg, 0, count * sizeof(float));
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);
         }
@@ -873,18 +895,17 @@ static void step_adagrad(
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_lock(&ctx->state_mutex);
         }
-        /* Free old buffer if reallocating */
-        if (state->sum != NULL) {
-            free_buffer(ctx, state->sum);
-        }
-        state->sum = alloc_buffer(ctx, count);
-        state->count = count;
-        if (state->step == 0) state->step = 0;  /* Only init step on first allocation */
-
-        if (state->sum) {
+        /* Safe realloc pattern: allocate new buffer first, only free old on success */
+        float* new_sum = alloc_buffer(ctx, count);
+        if (new_sum) {
             for (size_t i = 0; i < count; i++) {
-                state->sum[i] = initial_acc;
+                new_sum[i] = initial_acc;
             }
+            if (state->sum != NULL) {
+                free_buffer(ctx, state->sum);
+            }
+            state->sum = new_sum;
+            state->count = count;
         }
         if (ctx->state_mutex_initialized) {
             nimcp_platform_mutex_unlock(&ctx->state_mutex);

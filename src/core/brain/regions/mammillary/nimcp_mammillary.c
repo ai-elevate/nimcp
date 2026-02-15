@@ -1633,7 +1633,7 @@ int mammillary_get_stats(nimcp_mammillary_t* mb, mammillary_stats_t* stats) {
     for (uint32_t i = 0; i < mb->num_relay_cells; i++) {
         total_relay += mb->relay_cells[i].activation;
     }
-    stats->avg_relay_efficiency = total_relay / mb->num_relay_cells;
+    stats->avg_relay_efficiency = (mb->num_relay_cells > 0) ? (total_relay / mb->num_relay_cells) : 0.0f;
 
     return 0;
 }
@@ -1714,8 +1714,8 @@ size_t mammillary_get_hd_cell_activity(nimcp_mammillary_t* mb,
 
     size_t count = (mb->num_hd_cells < max_cells) ? mb->num_hd_cells : max_cells;
     for (size_t i = 0; i < count; i++) {
-        activity[i] = mb->hd_cells[i].current_firing_rate /
-                      mb->hd_cells[i].max_firing_rate;
+        activity[i] = (fabsf(mb->hd_cells[i].max_firing_rate) > 1e-10f) ?
+                      (mb->hd_cells[i].current_firing_rate / mb->hd_cells[i].max_firing_rate) : 0.0f;
     }
 
     return count;

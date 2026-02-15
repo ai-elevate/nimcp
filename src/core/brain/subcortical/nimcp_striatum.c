@@ -109,6 +109,7 @@ static int init_pathway(striatum_pathway_t* pathway, msn_type_t type,
 
     /* Initialize neurons */
     uint32_t neurons_per_action = num_neurons / num_actions;
+    if (neurons_per_action == 0) neurons_per_action = 1;
     for (uint32_t i = 0; i < num_neurons; i++) {
         pathway->neurons[i].id = i;
         pathway->neurons[i].type = type;
@@ -330,8 +331,10 @@ int striatum_process_input(striatum_t* striatum, const float* cortical_input,
         d1_sum += striatum->direct.activations[a];
         d2_sum += striatum->indirect.activations[a];
     }
-    striatum->stats.avg_d1_firing = d1_sum / striatum->direct.num_actions;
-    striatum->stats.avg_d2_firing = d2_sum / striatum->indirect.num_actions;
+    striatum->stats.avg_d1_firing = striatum->direct.num_actions > 0
+        ? d1_sum / striatum->direct.num_actions : 0.0f;
+    striatum->stats.avg_d2_firing = striatum->indirect.num_actions > 0
+        ? d2_sum / striatum->indirect.num_actions : 0.0f;
     if (d2_sum > 0.001f) {
         striatum->stats.d1_d2_ratio = d1_sum / d2_sum;
     } else {
@@ -426,7 +429,9 @@ int striatum_update_weights(striatum_t* striatum, uint32_t action_id,
     nimcp_mutex_lock(striatum->mutex);
 
     /* Update D1 neuron weights for this action */
-    uint32_t neurons_per_action = striatum->direct.num_neurons / striatum->direct.num_actions;
+    uint32_t neurons_per_action = striatum->direct.num_actions > 0
+        ? striatum->direct.num_neurons / striatum->direct.num_actions : 0;
+    if (neurons_per_action == 0) neurons_per_action = 1;
     uint32_t start_idx = action_id * neurons_per_action;
     uint32_t end_idx = start_idx + neurons_per_action;
 
@@ -437,7 +442,9 @@ int striatum_update_weights(striatum_t* striatum, uint32_t action_id,
     }
 
     /* Update D2 neuron weights for this action */
-    neurons_per_action = striatum->indirect.num_neurons / striatum->indirect.num_actions;
+    neurons_per_action = striatum->indirect.num_actions > 0
+        ? striatum->indirect.num_neurons / striatum->indirect.num_actions : 0;
+    if (neurons_per_action == 0) neurons_per_action = 1;
     start_idx = action_id * neurons_per_action;
     end_idx = start_idx + neurons_per_action;
 

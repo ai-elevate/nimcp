@@ -540,7 +540,7 @@ int sensory_swarm_explore_olfactory(sensory_swarm_bridge_t* bridge, const float*
         result->explored_map[i] = randf() * (smell_nodes > 0 ? 1.0f : 0.2f);
     }
 
-    result->coverage = (float)smell_nodes / bridge->config.max_nodes;
+    result->coverage = (bridge->config.max_nodes > 0) ? ((float)smell_nodes / bridge->config.max_nodes) : 0.0f;
     result->num_hotspots = 2;
     result->interesting_points = 5;
 
@@ -634,8 +634,9 @@ int sensory_swarm_build_consensus(sensory_swarm_bridge_t* bridge, sensory_swarm_
         *confidence = weight_sum / contributors;
 
         /* Check quorum */
-        float quorum = (float)contributors / sensory_swarm_get_node_count(bridge, modality);
-        if (quorum < bridge->config.consensus_quorum) {
+        uint32_t total_nodes = sensory_swarm_get_node_count(bridge, modality);
+        float quorum = (total_nodes > 0) ? ((float)contributors / total_nodes) : 0.0f;
+        if (quorum < bridge->config.consensus_quorum && fabsf(bridge->config.consensus_quorum) > 1e-10f) {
             *confidence *= quorum / bridge->config.consensus_quorum;
         }
     } else {

@@ -463,7 +463,7 @@ int nimcp_lc_adapter_process_immune(
         for (uint32_t i = 0; i < num_cytokines; i++) {
             cytokine_sum += cytokine_levels[i];
         }
-        float avg_cytokine = cytokine_sum / num_cytokines;
+        float avg_cytokine = (num_cytokines > 0) ? cytokine_sum / num_cytokines : 0.0f;
 
         if (avg_cytokine > 0.5f) {
             nimcp_lc_apply_excitation(&adapter->lc, avg_cytokine * 0.3f);

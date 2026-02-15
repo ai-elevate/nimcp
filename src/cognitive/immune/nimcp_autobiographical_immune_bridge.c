@@ -314,26 +314,15 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
  * Immune → Memory Implementation
  * ============================================================================ */
 
-int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* bridge) {
-    /* Guard clauses */
-    if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return -1;
-
-    }
+/**
+ * @brief Internal unlocked variant - caller must hold bridge->base.mutex
+ */
+static int autobio_immune_apply_cytokine_encoding_effects_unlocked(autobio_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_encoding_modulation) return 0;
     if (!bridge->immune_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_apply_cytokine_encoding_effects: bridge->immune_system is NULL");
         return -1;
     }
-
-    /* Phase 8: Heartbeat at operation start */
-    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
-
-
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Query cytokine concentrations */
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
@@ -372,14 +361,11 @@ int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* brid
     bridge->cytokine_effects.consolidation_impairment = impairment;
 
     bridge->encoding_modulations++;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
 
-int autobio_immune_apply_inflammation_consolidation_effects(
-    autobio_immune_bridge_t* bridge
-) {
+int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge) {
 
@@ -388,17 +374,29 @@ int autobio_immune_apply_inflammation_consolidation_effects(
         return -1;
 
     }
-    if (!bridge->enable_inflammation_consolidation_impairment) return 0;
-    if (!bridge->immune_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_apply_inflammation_consolidation_effects: bridge->immune_system is NULL");
-        return -1;
-    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
 
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    int result = autobio_immune_apply_cytokine_encoding_effects_unlocked(bridge);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+
+    return result;
+}
+
+/**
+ * @brief Internal unlocked variant - caller must hold bridge->base.mutex
+ */
+static int autobio_immune_apply_inflammation_consolidation_effects_unlocked(
+    autobio_immune_bridge_t* bridge
+) {
+    if (!bridge->enable_inflammation_consolidation_impairment) return 0;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_apply_inflammation_consolidation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Get inflammation state */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -436,8 +434,29 @@ int autobio_immune_apply_inflammation_consolidation_effects(
         bridge->inflammation_state.hippocampal_impairment = severity * 0.2f;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
+}
+
+int autobio_immune_apply_inflammation_consolidation_effects(
+    autobio_immune_bridge_t* bridge
+) {
+    /* Guard clauses */
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
+
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    int result = autobio_immune_apply_inflammation_consolidation_effects_unlocked(bridge);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    return result;
 }
 
 float autobio_immune_modulate_memory_salience(
@@ -466,16 +485,14 @@ float autobio_immune_modulate_memory_salience(
     return clamp_f(modulation, 0.5f, 1.5f);
 }
 
-int autobio_immune_create_sickness_landmark(
+/**
+ * @brief Internal unlocked variant - caller must hold bridge->base.mutex
+ */
+static int autobio_immune_create_sickness_landmark_unlocked(
     autobio_immune_bridge_t* bridge,
     brain_inflammation_level_t severity,
     uint64_t* landmark_id
 ) {
-    /* Guard clauses */
-    if (!bridge || !landmark_id) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_create_sickness_landmark: required parameter is NULL (bridge, landmark_id)");
-        return -1;
-    }
     if (!bridge->enable_sickness_landmark_creation) return 0;
     if (!bridge->autobio_memory) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_create_sickness_landmark: bridge->autobio_memory is NULL");
@@ -483,15 +500,8 @@ int autobio_immune_create_sickness_landmark(
     }
     if (severity < INFLAMMATION_SYSTEMIC) return 0; /* Only create for systemic+ */
 
-    /* Phase 8: Heartbeat at operation start */
-    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_creat", 0.0f);
-
-
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
-
     /* Check capacity */
     if (bridge->sickness_landmark_count >= bridge->sickness_landmark_capacity) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "autobio_immune_create_sickness_landmark: capacity exceeded");
         return -1;
     }
@@ -519,7 +529,6 @@ int autobio_immune_create_sickness_landmark(
     /* Store in autobiographical memory */
     uint64_t mem_id = autobio_store(*bridge->autobio_memory, &memory);
     if (mem_id == 0) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_immune_create_sickness_landmark: mem_id is zero");
         return -1;
     }
@@ -543,36 +552,46 @@ int autobio_immune_create_sickness_landmark(
 
     *landmark_id = mem_id;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     LOG_MODULE_INFO("autobio_immune_bridge",
                   "Created sickness landmark: %s", landmark->description);
 
     return 0;
 }
 
-int autobio_immune_close_sickness_landmark(
+int autobio_immune_create_sickness_landmark(
+    autobio_immune_bridge_t* bridge,
+    brain_inflammation_level_t severity,
+    uint64_t* landmark_id
+) {
+    /* Guard clauses */
+    if (!bridge || !landmark_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_create_sickness_landmark: required parameter is NULL (bridge, landmark_id)");
+        return -1;
+    }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_creat", 0.0f);
+
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    int result = autobio_immune_create_sickness_landmark_unlocked(bridge, severity, landmark_id);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+
+    return result;
+}
+
+/**
+ * @brief Internal unlocked variant - caller must hold bridge->base.mutex
+ */
+static int autobio_immune_close_sickness_landmark_unlocked(
     autobio_immune_bridge_t* bridge,
     uint64_t landmark_id
 ) {
-    /* Guard clauses */
-    if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return -1;
-
-    }
     if (!bridge->autobio_memory) return -1;
     if (landmark_id == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_immune_close_sickness_landmark: landmark_id is zero");
         return -1;
     }
-
-    /* Phase 8: Heartbeat at operation start */
-    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_close", 0.0f);
-
-
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Find landmark */
     sickness_landmark_t* landmark = NULL;
@@ -590,7 +609,6 @@ int autobio_immune_close_sickness_landmark(
     }
 
     if (!landmark) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_close_sickness_landmark: landmark is NULL");
         return -1;
     }
@@ -614,11 +632,34 @@ int autobio_immune_close_sickness_landmark(
         bridge->active_sickness_landmark_id = 0;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     LOG_MODULE_INFO("autobio_immune_bridge",
               "Closed sickness landmark: %llu", (unsigned long long)landmark_id);
 
     return 0;
+}
+
+int autobio_immune_close_sickness_landmark(
+    autobio_immune_bridge_t* bridge,
+    uint64_t landmark_id
+) {
+    /* Guard clauses */
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_close", 0.0f);
+
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    int result = autobio_immune_close_sickness_landmark_unlocked(bridge, landmark_id);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+
+    return result;
 }
 
 float autobio_immune_get_encoding_efficiency(const autobio_immune_bridge_t* bridge) {
@@ -827,8 +868,8 @@ int autobio_immune_bridge_update(
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
-    /* Update inflammation state */
-    autobio_immune_apply_inflammation_consolidation_effects(bridge);
+    /* Update inflammation state (unlocked - we already hold the mutex) */
+    autobio_immune_apply_inflammation_consolidation_effects_unlocked(bridge);
 
     /* Check if should create sickness landmark */
     if (bridge->enable_sickness_landmark_creation) {
@@ -839,18 +880,18 @@ int autobio_immune_bridge_update(
         if (level >= INFLAMMATION_SYSTEMIC &&
             bridge->active_sickness_landmark_id == 0) {
             uint64_t landmark_id;
-            autobio_immune_create_sickness_landmark(bridge, level, &landmark_id);
+            autobio_immune_create_sickness_landmark_unlocked(bridge, level, &landmark_id);
         }
         /* Close landmark if inflammation resolved */
         else if (level < INFLAMMATION_REGIONAL &&
                  bridge->active_sickness_landmark_id != 0) {
-            autobio_immune_close_sickness_landmark(
+            autobio_immune_close_sickness_landmark_unlocked(
                 bridge, bridge->active_sickness_landmark_id);
         }
     }
 
-    /* Apply cytokine encoding effects */
-    autobio_immune_apply_cytokine_encoding_effects(bridge);
+    /* Apply cytokine encoding effects (unlocked - we already hold the mutex) */
+    autobio_immune_apply_cytokine_encoding_effects_unlocked(bridge);
 
     /* Update rumination duration */
     if (bridge->memory_trigger.chronic_stress_active) {

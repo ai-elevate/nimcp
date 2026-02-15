@@ -428,25 +428,27 @@ void reasoning_attention_callback(const brain_event_t* event, void* context) {
             integration->stats.max_salience_applied = salience;
         }
 
-        float total_salience = integration->stats.avg_salience_applied *
-                               (integration->stats.novel_fact_boosts +
-                                integration->stats.contradiction_boosts +
-                                integration->stats.proof_found_boosts - 1);
-        integration->stats.avg_salience_applied =
-            (total_salience + salience) /
-            (integration->stats.novel_fact_boosts +
-             integration->stats.contradiction_boosts +
-             integration->stats.proof_found_boosts);
+        uint64_t total_boosts = integration->stats.novel_fact_boosts +
+                               integration->stats.contradiction_boosts +
+                               integration->stats.proof_found_boosts;
+        if (total_boosts > 0) {
+            float total_salience = integration->stats.avg_salience_applied *
+                                   (float)(total_boosts - 1);
+            integration->stats.avg_salience_applied =
+                (total_salience + salience) / (float)total_boosts;
+        }
     }
 
     // Update callback timing statistics
     uint64_t end_time_us = get_current_time_us();
     uint64_t elapsed_us = end_time_us - start_time_us;
 
-    uint64_t total_time = integration->stats.avg_callback_time_us *
-                          (integration->stats.total_events_processed - 1);
-    integration->stats.avg_callback_time_us =
-        (total_time + elapsed_us) / integration->stats.total_events_processed;
+    if (integration->stats.total_events_processed > 0) {
+        uint64_t total_time = integration->stats.avg_callback_time_us *
+                              (integration->stats.total_events_processed - 1);
+        integration->stats.avg_callback_time_us =
+            (total_time + elapsed_us) / integration->stats.total_events_processed;
+    }
 }
 
 //=============================================================================

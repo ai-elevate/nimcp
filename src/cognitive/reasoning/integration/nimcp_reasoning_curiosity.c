@@ -249,15 +249,17 @@ void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
     if (curiosity_boost >= integration->config.min_curiosity_threshold) {
         if (integration->stats.exploration_triggers > 0) {
             float total = integration->stats.avg_curiosity_boost * (integration->stats.exploration_triggers - 1);
-            integration->stats.avg_curiosity_boost = (total + curiosity_boost) / integration->stats.exploration_triggers;
+            integration->stats.avg_curiosity_boost = (total + curiosity_boost) / (float)integration->stats.exploration_triggers;
         } else {
             integration->stats.avg_curiosity_boost = curiosity_boost;
         }
     }
     
     uint64_t elapsed = get_time_us() - start;
-    uint64_t total_time = integration->stats.avg_callback_time_us * (integration->stats.total_events_processed - 1);
-    integration->stats.avg_callback_time_us = (total_time + elapsed) / integration->stats.total_events_processed;
+    if (integration->stats.total_events_processed > 0) {
+        uint64_t total_time = integration->stats.avg_callback_time_us * (integration->stats.total_events_processed - 1);
+        integration->stats.avg_callback_time_us = (total_time + elapsed) / integration->stats.total_events_processed;
+    }
 }
 
 bool reasoning_curiosity_explore_unexplained_fact(reasoning_curiosity_t* integration, const char* fact) {

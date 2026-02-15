@@ -1157,10 +1157,10 @@ void extended_mind_set_instance_health_agent(void* instance, nimcp_health_agent_
 /* ============================================================================
  * Phase 8: Full training implementation
  * ============================================================================ */
-static uint64_t g_extended_mind_training_steps = 0;
-static double g_extended_mind_training_total_error = 0.0;
-static double g_extended_mind_training_best_error = 1e30;
-static bool g_extended_mind_training_active = false;
+static _Atomic uint64_t g_extended_mind_training_steps = 0;
+static _Atomic double g_extended_mind_training_total_error = 0.0;
+static _Atomic double g_extended_mind_training_best_error = 1e30;
+static _Atomic bool g_extended_mind_training_active = false;
 
 int extended_mind_training_begin(void* instance) {
     if (!instance) {
@@ -1172,10 +1172,10 @@ int extended_mind_training_begin(void* instance) {
     extended_mind_t* ctx = (extended_mind_t*)instance;
 
     /* Reset training counters */
-    g_extended_mind_training_steps = 0;
-    g_extended_mind_training_total_error = 0.0;
-    g_extended_mind_training_best_error = 1e30;
-    g_extended_mind_training_active = true;
+    atomic_store(&g_extended_mind_training_steps, 0);
+    atomic_store(&g_extended_mind_training_total_error, 0.0);
+    atomic_store(&g_extended_mind_training_best_error, 1e30);
+    atomic_store(&g_extended_mind_training_active, true);
 
     /* Reset module stats */
     memset(&ctx->stats, 0, sizeof(ctx->stats));
@@ -1197,17 +1197,20 @@ int extended_mind_training_step(void* instance, float progress) {
     extended_mind_heartbeat_instance(g_extended_mind_instance_health_agent, "ext_mind_train_stp", progress);
     (void)instance;
 
-    g_extended_mind_training_steps++;
+    atomic_fetch_add(&g_extended_mind_training_steps, 1);
 
     /* Progressive adaptation: decay error accumulator */
     float decay = 1.0f - 0.1f * progress;
     if (decay < 0.5f) decay = 0.5f;
-    g_extended_mind_training_total_error *= (double)decay;
+    double old_error = atomic_load(&g_extended_mind_training_total_error);
+    atomic_store(&g_extended_mind_training_total_error, old_error * (double)decay);
 
     /* Adaptive threshold adjustment based on progress */
     float threshold_adjust = 0.01f * progress;
-    g_extended_mind_training_best_error -= (double)threshold_adjust;
-    if (g_extended_mind_training_best_error < 0.0) g_extended_mind_training_best_error = 0.0;
+    double old_best = atomic_load(&g_extended_mind_training_best_error);
+    double new_best = old_best - (double)threshold_adjust;
+    if (new_best < 0.0) new_best = 0.0;
+    atomic_store(&g_extended_mind_training_best_error, new_best);
 
     return 0;
 }
@@ -1221,15 +1224,18 @@ int extended_mind_training_end(void* instance) {
     extended_mind_heartbeat_instance(g_extended_mind_instance_health_agent, "ext_mind_train_end", 1.0f);
 
     /* Compute final averages */
-    double avg_error = (g_extended_mind_training_steps > 0)
-        ? g_extended_mind_training_total_error / (double)g_extended_mind_training_steps
+    uint64_t steps = atomic_load(&g_extended_mind_training_steps);
+    double total_error = atomic_load(&g_extended_mind_training_total_error);
+    double best_error = atomic_load(&g_extended_mind_training_best_error);
+    double avg_error = (steps > 0)
+        ? total_error / (double)steps
         : 0.0;
 
     /* Clear training flag */
-    g_extended_mind_training_active = false;
+    atomic_store(&g_extended_mind_training_active, false);
 
     NIMCP_LOGGING_INFO("extended_mind training end: %lu steps, avg_error=%.6f, best_error=%.6f",
-                       (unsigned long)g_extended_mind_training_steps,
-                       avg_error, g_extended_mind_training_best_error);
+                       (unsigned long)steps,
+                       avg_error, best_error);
     return 0;
 }

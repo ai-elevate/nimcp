@@ -236,7 +236,8 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
 
     /* Autoreceptor feedback (5-HT1A inhibits firing) */
     if (raphe->config.enable_autoreceptors) {
-        float ht_ratio = raphe->ht_concentration / raphe->config.baseline_5ht;
+        float ht_ratio = (fabsf(raphe->config.baseline_5ht) > 1e-10f) ?
+            (raphe->ht_concentration / raphe->config.baseline_5ht) : 1.0f;
         float autoreceptor_inhibition = (ht_ratio - 1.0f) *
                                         raphe->config.autoreceptor_sensitivity;
         raphe->neurons.firing_rate -= autoreceptor_inhibition;
@@ -250,24 +251,27 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
     float release = raphe->neurons.firing_rate * release_per_spike * dt_sec;
 
     /* Decay (reuptake + metabolism) */
-    float decay_rate = 1.0f / raphe->config.ht_decay_tau;
+    float decay_rate = (fabsf(raphe->config.ht_decay_tau) > 1e-10f) ? (1.0f / raphe->config.ht_decay_tau) : 0.0f;
     float decay = raphe->ht_concentration * decay_rate * dt;
 
     raphe->ht_concentration += release - decay;
     raphe->ht_concentration = clamp_f(raphe->ht_concentration, 1.0f, 200.0f);
-    raphe->ht_release_rate = release / dt_sec;
+    raphe->ht_release_rate = (fabsf(dt_sec) > 1e-10f) ? (release / dt_sec) : 0.0f;
 
     /* 3. Update mood state */
-    float ht_ratio = raphe->ht_concentration / raphe->config.baseline_5ht;
+    float ht_ratio = (fabsf(raphe->config.baseline_5ht) > 1e-10f) ?
+        (raphe->ht_concentration / raphe->config.baseline_5ht) : 1.0f;
 
     /* Higher 5-HT -> better mood (more positive valence) */
     float mood_target = (ht_ratio - 1.0f) * 0.5f;
     mood_target = clamp_f(mood_target, -1.0f, 1.0f);
 
-    float mood_alpha = 1.0f - expf(-dt / raphe->config.mood_time_constant);
+    float mood_alpha = (fabsf(raphe->config.mood_time_constant) > 1e-10f) ?
+        (1.0f - expf(-dt / raphe->config.mood_time_constant)) : 1.0f;
     float old_valence = raphe->mood.valence;
     raphe->mood.valence = lerp(raphe->mood.valence, mood_target, mood_alpha);
-    raphe->mood.mood_momentum = (raphe->mood.valence - old_valence) / dt_sec;
+    raphe->mood.mood_momentum = (fabsf(dt_sec) > 1e-10f) ?
+        ((raphe->mood.valence - old_valence) / dt_sec) : 0.0f;
 
     /* Update stability (higher 5-HT -> more stable) */
     float stability_target = 0.5f + (ht_ratio - 1.0f) * 0.3f;

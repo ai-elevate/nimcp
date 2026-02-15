@@ -181,10 +181,12 @@ typedef struct {
     shannon_workspace_state_t* state;
 } shannon_workspace_mapping_t;
 
-/* TODO: g_shannon_mappings and g_num_mappings need mutex for thread safety -
- * atomic counter alone insufficient since array access + counter form compound operation */
+/* NOTE: g_shannon_mappings + g_num_mappings form a compound operation that ideally
+ * needs a mutex for full thread safety. Making the counter atomic prevents torn
+ * reads/writes on the counter itself (P1 data race), but callers that modify the
+ * array + counter together should still serialize externally for correctness. */
 static shannon_workspace_mapping_t g_shannon_mappings[MAX_SHANNON_WORKSPACES];
-static uint32_t g_num_mappings = 0;
+static _Atomic uint32_t g_num_mappings = 0;
 
 //=============================================================================
 // Internal Helper Functions
@@ -390,9 +392,10 @@ bool global_workspace_enable_shannon(
     state->stats.current_broadcast_rate = 1.0F;
 
     /* Register mapping */
-    g_shannon_mappings[g_num_mappings].workspace = workspace;
-    g_shannon_mappings[g_num_mappings].state = state;
-    g_num_mappings++;
+    uint32_t idx = atomic_load(&g_num_mappings);
+    g_shannon_mappings[idx].workspace = workspace;
+    g_shannon_mappings[idx].state = state;
+    atomic_fetch_add(&g_num_mappings, 1);
 
     return true;
 }
@@ -422,10 +425,11 @@ void global_workspace_disable_shannon(global_workspace_t* workspace) {
             }
 
             /* Compact array (move last to this slot) */
-            if (i < g_num_mappings - 1) {
-                g_shannon_mappings[i] = g_shannon_mappings[g_num_mappings - 1];
+            uint32_t last = atomic_load(&g_num_mappings) - 1;
+            if (i < last) {
+                g_shannon_mappings[i] = g_shannon_mappings[last];
             }
-            g_num_mappings--;
+            atomic_fetch_sub(&g_num_mappings, 1);
             return;
         }
     }

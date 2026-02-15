@@ -519,12 +519,13 @@ nimcp_result_t semantic_compress(
         return NIMCP_BUFFER_TOO_SMALL;
     }
 
-    // Write header
+    // Write header (use memcpy to avoid unaligned access UB)
     uint8_t* ptr = compressed;
-    *(uint32_t*)ptr = COMPRESSION_MAGIC; ptr += sizeof(uint32_t);
-    *(uint32_t*)ptr = COMPRESSION_VERSION; ptr += sizeof(uint32_t);
-    *(uint32_t*)ptr = data_size; ptr += sizeof(uint32_t);
-    *(uint32_t*)ptr = num_active; ptr += sizeof(uint32_t);
+    uint32_t tmp_u32;
+    tmp_u32 = COMPRESSION_MAGIC; memcpy(ptr, &tmp_u32, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    tmp_u32 = COMPRESSION_VERSION; memcpy(ptr, &tmp_u32, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    tmp_u32 = data_size; memcpy(ptr, &tmp_u32, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    tmp_u32 = num_active; memcpy(ptr, &tmp_u32, sizeof(uint32_t)); ptr += sizeof(uint32_t);
 
     // Compute quality
     reconstruct_from_encoding(comp, comp->active_prims, num_active,
@@ -535,12 +536,14 @@ nimcp_result_t semantic_compress(
         error += diff * diff;
     }
     float quality = 1.0f - sqrtf(error) / (vector_norm(neural_data, data_size) + EPSILON);
-    *(float*)ptr = quality; ptr += sizeof(float);
+    memcpy(ptr, &quality, sizeof(float)); ptr += sizeof(float);
 
-    // Write active primitives
+    // Write active primitives (use memcpy to avoid unaligned access UB)
     for (uint32_t i = 0; i < num_active; i++) {
-        *(uint32_t*)ptr = comp->active_prims[i].primitive_id; ptr += sizeof(uint32_t);
-        *(float*)ptr = comp->active_prims[i].coefficient; ptr += sizeof(float);
+        tmp_u32 = comp->active_prims[i].primitive_id;
+        memcpy(ptr, &tmp_u32, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+        float tmp_f = comp->active_prims[i].coefficient;
+        memcpy(ptr, &tmp_f, sizeof(float)); ptr += sizeof(float);
     }
 
     *compressed_size = total_size;
@@ -602,13 +605,13 @@ nimcp_result_t semantic_decompress(
         return NIMCP_INVALID_PARAM;
     }
 
-    // Read header
+    // Read header (use memcpy to avoid unaligned access UB)
     const uint8_t* ptr = compressed;
-    uint32_t magic = *(uint32_t*)ptr; ptr += sizeof(uint32_t);
-    uint32_t version = *(uint32_t*)ptr; ptr += sizeof(uint32_t);
-    uint32_t original_size = *(uint32_t*)ptr; ptr += sizeof(uint32_t);
-    uint32_t num_active = *(uint32_t*)ptr; ptr += sizeof(uint32_t);
-    float quality = *(float*)ptr; ptr += sizeof(float);
+    uint32_t magic; memcpy(&magic, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    uint32_t version; memcpy(&version, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    uint32_t original_size; memcpy(&original_size, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    uint32_t num_active; memcpy(&num_active, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    float quality; memcpy(&quality, ptr, sizeof(float)); ptr += sizeof(float);
 
     // Validate
     if (magic != COMPRESSION_MAGIC) {
@@ -621,11 +624,11 @@ nimcp_result_t semantic_decompress(
         return NIMCP_BUFFER_TOO_SMALL;
     }
 
-    // Read active primitives
+    // Read active primitives (use memcpy to avoid unaligned access UB)
     active_primitive_t* active = comp->active_prims;
     for (uint32_t i = 0; i < num_active; i++) {
-        active[i].primitive_id = *(uint32_t*)ptr; ptr += sizeof(uint32_t);
-        active[i].coefficient = *(float*)ptr; ptr += sizeof(float);
+        memcpy(&active[i].primitive_id, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+        memcpy(&active[i].coefficient, ptr, sizeof(float)); ptr += sizeof(float);
     }
 
     // Reconstruct
@@ -647,10 +650,10 @@ nimcp_result_t semantic_decompress_with_metadata(
     uint32_t* data_size,
     semantic_compression_metadata_t* out_metadata
 ) {
-    // Extract quality from header before decompression
+    // Extract quality from header before decompression (use memcpy to avoid unaligned access UB)
     if (out_metadata && comp_size >= 20) {
         const uint8_t* ptr = compressed + 16;  // Skip to quality field
-        out_metadata->quality_score = *(float*)ptr;
+        memcpy(&out_metadata->quality_score, ptr, sizeof(float));
     }
 
     return semantic_decompress(comp, compressed, comp_size, neural_data, data_size);

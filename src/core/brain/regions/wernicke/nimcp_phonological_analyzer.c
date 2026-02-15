@@ -138,6 +138,10 @@ struct phonological_analyzer {
  */
 static void compute_hamming_window(float* window, uint32_t size)
 {
+    if (size <= 1) {
+        if (size == 1) window[0] = 1.0f;
+        return;
+    }
     for (uint32_t i = 0; i < size; i++) {
         window[i] = 0.54f - 0.46f * cosf(2.0f * 3.14159265358979f * (float)i / (float)(size - 1));
     }
@@ -148,6 +152,7 @@ static void compute_hamming_window(float* window, uint32_t size)
  */
 static float compute_rms(const float* signal, uint32_t length)
 {
+    if (length == 0) return 0.0f;
     float sum = 0.0f;
     for (uint32_t i = 0; i < length; i++) {
         sum += signal[i] * signal[i];
@@ -167,8 +172,8 @@ static float compute_zcr(const float* signal, uint32_t length, uint32_t sample_r
             crossings++;
         }
     }
-    float duration_s = (float)length / (float)sample_rate;
-    return (float)crossings / duration_s;
+    float duration_s = (sample_rate > 0) ? (float)length / (float)sample_rate : 0.0f;
+    return (fabsf(duration_s) > 1e-10f) ? (float)crossings / duration_s : 0.0f;
 }
 
 /**
@@ -260,6 +265,7 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
             sum += a_prev[j] * r[i - j];
         }
 
+        if (fabsf(error) < 1e-10f) break;
         float k = -sum / error;
 
         memcpy(a, a_prev, (i + 1) * sizeof(float));
@@ -269,7 +275,6 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
         }
 
         error = error * (1.0f - k * k);
-        if (error < 1e-10f) break;
 
         memcpy(a_prev, a, (i + 1) * sizeof(float));
     }
@@ -513,8 +518,8 @@ bool phonological_extract_features(
     features->is_voiced = (features->fundamental_freq > 0.0f);
 
     /* Duration */
-    features->duration_ms = (float)num_samples * 1000.0f /
-                            (float)analyzer->config.sample_rate;
+    features->duration_ms = (analyzer->config.sample_rate > 0) ?
+        (float)num_samples * 1000.0f / (float)analyzer->config.sample_rate : 0.0f;
 
     /* Spectral centroid (simplified - would use FFT) */
     features->spectral_centroid = features->is_voiced ?
@@ -738,9 +743,10 @@ bool phonological_detect_phonemes(
             phoneme_event_t* event = &phonemes[*num_detected];
             event->phoneme = phoneme;
             event->confidence = confidence;
-            event->onset_time_ms = (uint64_t)offset * 1000 / analyzer->config.sample_rate;
-            event->offset_time_ms = event->onset_time_ms + frame_size * 1000 /
-                                    analyzer->config.sample_rate;
+            event->onset_time_ms = (analyzer->config.sample_rate > 0) ?
+                (uint64_t)offset * 1000 / analyzer->config.sample_rate : 0;
+            event->offset_time_ms = (analyzer->config.sample_rate > 0) ?
+                event->onset_time_ms + frame_size * 1000 / analyzer->config.sample_rate : 0;
 
             /* Copy features */
             event->features.formant_f1 = features.formants.f1;
@@ -893,6 +899,10 @@ bool phonological_extract_prosody(
 
     uint32_t frame_size = analyzer->frame_size_samples;
     uint32_t hop_size = analyzer->hop_size_samples;
+    if (hop_size == 0 || num_samples < frame_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_extract_prosody: hop_size is 0 or num_samples < frame_size");
+        return false;
+    }
     uint32_t num_frames = (num_samples - frame_size) / hop_size + 1;
 
     /* Allocate contours if needed */
@@ -937,7 +947,8 @@ bool phonological_extract_prosody(
     prosody->pitch_range = pitch_max - pitch_min;
 
     /* Estimate speech rate (crude) */
-    float duration_s = (float)num_samples / (float)analyzer->config.sample_rate;
+    float duration_s = (analyzer->config.sample_rate > 0) ?
+        (float)num_samples / (float)analyzer->config.sample_rate : 0.0f;
     prosody->speech_rate = 3.0f;  /* Placeholder; would count syllables */
 
     return true;

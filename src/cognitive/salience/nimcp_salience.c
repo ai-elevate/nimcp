@@ -916,7 +916,7 @@ static brain_salience_t compute_salience_balanced(salience_evaluator_t eval, con
 
             variance += features[i] * features[i];
         }
-        variance /= num_features;
+        if (num_features > 0) { variance /= num_features; }
 
         float urgency_boost = fminf(0.3F, variance);
         salience.urgency = fminf(1.0F, eval->config.urgency_baseline + urgency_boost);
@@ -983,7 +983,7 @@ static brain_salience_t compute_salience_accurate(salience_evaluator_t eval, con
             feature_mean += features[i];
             if (fabsf(features[i]) > fabsf(feature_max)) feature_max = features[i];
         }
-        feature_mean /= safe_features;
+        if (safe_features > 0) { feature_mean /= safe_features; }
 
         for (uint32_t i = 0; i < safe_features; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -995,7 +995,7 @@ static brain_salience_t compute_salience_accurate(salience_evaluator_t eval, con
             float diff = features[i] - feature_mean;
             feature_variance += diff * diff;
         }
-        feature_variance /= safe_features;
+        if (safe_features > 0) { feature_variance /= safe_features; }
         float feature_std = sqrtf(feature_variance);
 
         // Salience from activation patterns
@@ -2574,7 +2574,7 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
             cost_sum += evaluator->modalities[i].salience.estimated_cost;
         }
     }
-    fused.estimated_cost = cost_sum / active_count;
+    fused.estimated_cost = (active_count > 0) ? (cost_sum / active_count) : 0.0f;
 
     nimcp_mutex_unlock(&evaluator->eval_lock);
 

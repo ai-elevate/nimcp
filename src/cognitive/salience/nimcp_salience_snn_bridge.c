@@ -470,7 +470,7 @@ int salience_snn_encode_features(
 
         intensity += fabsf(features[i]);
     }
-    intensity /= feature_count;
+    if (feature_count > 0) { intensity /= feature_count; }
 
     // Encode into channel neurons
     for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
@@ -708,7 +708,7 @@ int salience_snn_forward(
         for (uint32_t i = 0; i < per_channel && (c * per_channel + i) < input_count; i++) {
             sum += inputs[c * per_channel + i];
         }
-        sum /= per_channel;
+        if (per_channel > 0) { sum /= per_channel; }
 
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
             /* Phase 8: Loop progress heartbeat */
@@ -783,7 +783,7 @@ int salience_snn_decode_salience(
 
         output_activity += bridge->output_neurons[n].membrane_potential;
     }
-    output_activity /= bridge->num_output_neurons;
+    if (bridge->num_output_neurons > 0) { output_activity /= bridge->num_output_neurons; }
 
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
         /* Phase 8: Loop progress heartbeat */
@@ -795,7 +795,7 @@ int salience_snn_decode_salience(
         float diff = bridge->output_neurons[n].membrane_potential - output_activity;
         output_variance += diff * diff;
     }
-    output_variance /= bridge->num_output_neurons;
+    if (bridge->num_output_neurons > 0) { output_variance /= bridge->num_output_neurons; }
     output->confidence = clamp(1.0f - sqrtf(output_variance), 0.0f, 1.0f);
 
     // High salience detection

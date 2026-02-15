@@ -114,7 +114,8 @@ static float compute_pid_output(rn_learning_state_t* learn, float error, float d
     learn->error_integral = clamp_float(learn->error_integral, -10.0f, 10.0f);
 
     /* Compute derivative */
-    float derivative = (error - learn->error_derivative) / dt;
+    float derivative = (fabsf(dt) > 1e-10f) ?
+        (error - learn->error_derivative) / dt : 0.0f;
     learn->error_derivative = error;
 
     /* PID output */
@@ -1364,9 +1365,11 @@ int rn_update(nimcp_red_nucleus_t* rn, float dt) {
         rn_trajectory_point_t* target =
             &rn->current_trajectory->points[rn->trajectory_index];
 
-        rn->trajectory_progress += dt * 1000.0f / rn->current_trajectory->total_duration_ms;
+        rn->trajectory_progress += (fabsf(rn->current_trajectory->total_duration_ms) > 1e-10f) ?
+            dt * 1000.0f / rn->current_trajectory->total_duration_ms : 0.0f;
 
-        if (rn->trajectory_progress >= 1.0f / rn->current_trajectory->num_points) {
+        if (rn->trajectory_progress >= ((rn->current_trajectory->num_points > 0) ?
+            1.0f / rn->current_trajectory->num_points : 1.0f)) {
             rn->trajectory_index++;
             rn->trajectory_progress = 0.0f;
         }

@@ -212,16 +212,19 @@ static collective_error_t add_agent_to_memory(collective_memory_t* memory,
         size_t new_cap = memory->agent_capacity * ARRAY_GROWTH_FACTOR;
         if (new_cap == 0) new_cap = 4;
 
+        /* Safe realloc: use temp pointers so originals are preserved on failure */
         uint64_t* new_ids = nimcp_realloc(memory->agent_ids, new_cap * sizeof(uint64_t));
-        float* new_versions = nimcp_realloc(memory->agent_versions, new_cap * sizeof(float));
-
-        if (!new_ids || !new_versions) {
-            nimcp_free(new_ids);
-            nimcp_free(new_versions);
+        if (!new_ids) {
             return COLLECTIVE_ERROR_NO_MEMORY;
         }
-
+        /* Assign first successful realloc immediately (old ptr may be freed by realloc) */
         memory->agent_ids = new_ids;
+
+        float* new_versions = nimcp_realloc(memory->agent_versions, new_cap * sizeof(float));
+        if (!new_versions) {
+            /* agent_ids was already updated; agent_versions is still valid at old size */
+            return COLLECTIVE_ERROR_NO_MEMORY;
+        }
         memory->agent_versions = new_versions;
         memory->agent_capacity = new_cap;
     }

@@ -290,13 +290,16 @@ mesh_ordering_service_t* mesh_ordering_create(
         return NULL;
     }
 
-    /* Copy channels from config */
+    /* Copy channels from config - clamp to capacity */
     if (config && config->channels && config->channel_count > 0) {
-        for (size_t i = 0; i < config->channel_count && i < service->channel_capacity; i++) {
+        size_t count = config->channel_count;
+        if (count > service->channel_capacity) {
+            count = service->channel_capacity;
+        }
+        for (size_t i = 0; i < count; i++) {
             service->channels[i] = config->channels[i];
         }
-        service->channel_count = (config->channel_count < service->channel_capacity) ?
-            config->channel_count : service->channel_capacity;
+        service->channel_count = count;
     }
 
     /* Initialize timing */
@@ -659,7 +662,7 @@ mesh_ordered_block_t* mesh_ordering_create_block(
             service->block_capacity = new_capacity;
         } else {
             /* Realloc failed - free block to prevent leak */
-            NIMCP_LOGGING_WARNING("mesh_ordering_create_block: realloc failed, block leaked");
+            NIMCP_LOGGING_ERROR("mesh_ordering_create_block: realloc failed");
             nimcp_free(block->tx_ids);
             nimcp_free(block);
             nimcp_mutex_unlock(service->mutex);
@@ -707,11 +710,19 @@ const mesh_ordered_block_t* mesh_ordering_get_block(
 }
 
 uint64_t mesh_ordering_get_latest_block(const mesh_ordering_service_t* service) {
-    return service ? service->current_block_number : 0;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    uint64_t val = service->current_block_number;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return val;
 }
 
 uint64_t mesh_ordering_get_sequence(const mesh_ordering_service_t* service) {
-    return service ? service->current_sequence : 0;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    uint64_t val = service->current_sequence;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return val;
 }
 
 /* ============================================================================
@@ -1064,21 +1075,27 @@ const raft_log_entry_t* mesh_ordering_log_get(
 }
 
 uint64_t mesh_ordering_log_last_index(const mesh_ordering_service_t* service) {
-    if (!service || service->raft.log_size == 0) {
-        return 0;
-    }
-    return service->raft.log_size - 1;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    uint64_t val = (service->raft.log_size == 0) ? 0 : service->raft.log_size - 1;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return val;
 }
 
 uint64_t mesh_ordering_log_last_term(const mesh_ordering_service_t* service) {
-    if (!service || service->raft.log_size == 0) {
-        return 0;
-    }
-    return service->raft.log[service->raft.log_size - 1].term;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    uint64_t val = (service->raft.log_size == 0) ? 0 : service->raft.log[service->raft.log_size - 1].term;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return val;
 }
 
 uint64_t mesh_ordering_get_commit_index(const mesh_ordering_service_t* service) {
-    return service ? service->raft.commit_index : 0;
+    if (!service) return 0;
+    nimcp_mutex_lock(((mesh_ordering_service_t*)service)->mutex);
+    uint64_t val = service->raft.commit_index;
+    nimcp_mutex_unlock(((mesh_ordering_service_t*)service)->mutex);
+    return val;
 }
 
 nimcp_error_t mesh_ordering_log_truncate(

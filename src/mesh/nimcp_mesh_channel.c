@@ -620,7 +620,12 @@ nimcp_error_t mesh_channel_get_participants(
 }
 
 size_t mesh_channel_get_participant_count(const mesh_channel_t* channel) {
-    return channel ? channel->participant_count : 0;
+    if (!channel) return 0;
+    /* P1: Lock mutex to prevent torn read while add/remove modifies count */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+    size_t count = channel->participant_count;
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
+    return count;
 }
 
 /* ============================================================================
@@ -695,11 +700,24 @@ nimcp_error_t mesh_channel_get_top_world_state_items(
     return success ? NIMCP_SUCCESS : NIMCP_ERROR_OPERATION_FAILED;
 }
 
+/**
+ * @brief Internal unlocked version of get_world_state_coherence
+ *
+ * WHAT: Get coherence without acquiring the mutex
+ * WHY:  Called from mesh_channel_update() which already holds channel->mutex,
+ *       preventing self-deadlock on non-recursive mutex
+ * PRECONDITION: Caller must hold channel->mutex
+ */
+static float get_world_state_coherence_unlocked(const mesh_channel_t* channel) {
+    if (!channel->world_state) return 0.0f;
+    return collective_workspace_get_coherence(channel->world_state);
+}
+
 float mesh_channel_get_world_state_coherence(const mesh_channel_t* channel) {
     if (!validate_channel(channel) || !channel->world_state) return 0.0f;
     /* P1: Lock mutex to prevent torn read while update modifies world_state */
     nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
-    float coherence = collective_workspace_get_coherence(channel->world_state);
+    float coherence = get_world_state_coherence_unlocked(channel);
     nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
     return coherence;
 }
@@ -1205,7 +1223,7 @@ nimcp_error_t mesh_channel_update(
     }
 
     /* Update statistics */
-    channel->stats.current_coherence = mesh_channel_get_world_state_coherence(channel);
+    channel->stats.current_coherence = get_world_state_coherence_unlocked(channel);
     channel->stats.current_free_energy = channel->current_free_energy;
     channel->stats.transactions_processed++;
 
@@ -1225,18 +1243,33 @@ nimcp_error_t mesh_channel_update(
 }
 
 bool mesh_channel_has_converged(const mesh_channel_t* channel) {
-    return channel ? channel->has_converged : false;
+    if (!channel) return false;
+    /* P1: Lock mutex to prevent torn read while update modifies convergence state */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+    bool val = channel->has_converged;
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
+    return val;
 }
 
 float mesh_channel_get_free_energy(const mesh_channel_t* channel) {
-    return channel ? channel->current_free_energy : 1.0f;
+    if (!channel) return 1.0f;
+    /* P1: Lock mutex to prevent torn read while update modifies free energy */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+    float val = channel->current_free_energy;
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
+    return val;
 }
 
 float mesh_channel_get_convergence_progress(const mesh_channel_t* channel) {
     if (!channel) return 0.0f;
 
+    /* P1: Lock mutex to prevent torn read while update modifies free energy */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
+    float fe = channel->current_free_energy;
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
+
     /* Progress = 1 - (current_fe / initial_fe) clamped to [0,1] */
-    float progress = 1.0f - channel->current_free_energy;
+    float progress = 1.0f - fe;
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     return progress;
@@ -1253,7 +1286,10 @@ nimcp_error_t mesh_channel_get_stats(
     if (!validate_channel(channel)) return NIMCP_ERROR_INVALID_PARAM;
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
 
+    /* P1: Lock mutex to get consistent snapshot of stats */
+    nimcp_mutex_lock(((mesh_channel_t*)channel)->mutex);
     memcpy(stats, &channel->stats, sizeof(mesh_channel_stats_t));
+    nimcp_mutex_unlock(((mesh_channel_t*)channel)->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -1380,14 +1416,19 @@ mesh_channel_t* mesh_channel_manager_get_channel(
         return NULL;
     }
 
+    /* P1: Lock mutex to prevent torn read while create/destroy modifies channel array */
+    nimcp_mutex_lock(manager->mutex);
+    mesh_channel_t* result = NULL;
     for (size_t i = 0; i < manager->channel_count; i++) {
         if (manager->channels[i] &&
             mesh_channel_get_id(manager->channels[i]) == channel_id) {
-            return manager->channels[i];
+            result = manager->channels[i];
+            break;
         }
     }
+    nimcp_mutex_unlock(manager->mutex);
     /* Not found is normal lookup result, not an error (P2: false positive removal) */
-    return NULL;
+    return result;
 }
 
 mesh_channel_t* mesh_channel_manager_get_channel_by_name(
@@ -1399,16 +1440,21 @@ mesh_channel_t* mesh_channel_manager_get_channel_by_name(
         return NULL;
     }
 
+    /* P1: Lock mutex to prevent torn read while create/destroy modifies channel array */
+    nimcp_mutex_lock(manager->mutex);
+    mesh_channel_t* result = NULL;
     for (size_t i = 0; i < manager->channel_count; i++) {
         if (manager->channels[i]) {
             const char* ch_name = mesh_channel_get_name(manager->channels[i]);
             if (ch_name && strcmp(ch_name, name) == 0) {
-                return manager->channels[i];
+                result = manager->channels[i];
+                break;
             }
         }
     }
+    nimcp_mutex_unlock(manager->mutex);
     /* Not found is normal lookup result, not an error (P2: false positive removal) */
-    return NULL;
+    return result;
 }
 
 nimcp_error_t mesh_channel_manager_update(

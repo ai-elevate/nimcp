@@ -843,8 +843,10 @@ int salience_plasticity_update(
 
     // BCM threshold update
     if (bridge->config.enable_bcm) {
-        float threshold_decay = expf(-dt_ms / bridge->config.bcm_threshold_tau);
-        float activity_decay = expf(-dt_ms / bridge->config.bcm_activity_tau);
+        float threshold_decay = (fabsf(bridge->config.bcm_threshold_tau) > 1e-10f) ?
+            expf(-dt_ms / bridge->config.bcm_threshold_tau) : 0.0f;
+        float activity_decay = (fabsf(bridge->config.bcm_activity_tau) > 1e-10f) ?
+            expf(-dt_ms / bridge->config.bcm_activity_tau) : 0.0f;
 
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -866,7 +868,8 @@ int salience_plasticity_update(
 
     // Homeostatic regulation
     if (bridge->config.enable_homeostatic) {
-        float homeo_rate = dt_ms / bridge->config.homeostatic_tau_ms;
+        float homeo_rate = (fabsf(bridge->config.homeostatic_tau_ms) > 1e-10f) ?
+            (dt_ms / bridge->config.homeostatic_tau_ms) : 0.0f;
         float attention_error = bridge->config.target_attention_level - bridge->current_attention_level;
 
         bridge->global_learning_rate += attention_error * homeo_rate;

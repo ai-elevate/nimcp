@@ -240,8 +240,10 @@ int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const 
 
     /* Update statistics AFTER successful routing */
     bridge->stats.detections_routed++;
-    bridge->stats.avg_salience_value = (bridge->stats.avg_salience_value * (bridge->stats.detections_routed - 1) +
-                                        signal->salience_value) / bridge->stats.detections_routed;
+    if (bridge->stats.detections_routed > 0) {
+        bridge->stats.avg_salience_value = (bridge->stats.avg_salience_value * (bridge->stats.detections_routed - 1) +
+                                            signal->salience_value) / bridge->stats.detections_routed;
+    }
 
     if (signal->signal_type == SALIENCE_SIGNAL_SWITCH &&
         signal->salience_value >= bridge->config.switch_threshold) {

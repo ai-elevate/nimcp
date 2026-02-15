@@ -402,9 +402,11 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
 
     /* Update statistics */
     bridge->stats.total_precision_boosts++;
-    bridge->stats.avg_precision_boost =
-        (bridge->stats.avg_precision_boost * (bridge->stats.total_precision_boosts - 1) +
-         precision_boost) / bridge->stats.total_precision_boosts;
+    if (bridge->stats.total_precision_boosts > 0) {
+        bridge->stats.avg_precision_boost =
+            (bridge->stats.avg_precision_boost * (bridge->stats.total_precision_boosts - 1) +
+             precision_boost) / bridge->stats.total_precision_boosts;
+    }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 

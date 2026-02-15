@@ -598,10 +598,34 @@ const endorsement_set_t* mesh_endorsement_get_collected(
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
     );
-    const endorsement_set_t* result = coll ? &coll->received : NULL;
+
+    if (!coll) {
+        nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
+        return NULL;
+    }
+
+    /* P1 fix: Copy the data before releasing mutex to prevent dangling pointer.
+     * Caller receives a heap-allocated snapshot; caller must free when done. */
+    endorsement_set_t* copy = nimcp_malloc(sizeof(endorsement_set_t));
+    if (!copy) {
+        nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
+        return NULL;
+    }
+    *copy = coll->received;
+    /* Deep-copy the endorsements array */
+    if (coll->received.endorsements && coll->received.count > 0) {
+        copy->endorsements = nimcp_malloc(coll->received.count * sizeof(mesh_endorsement_t));
+        if (copy->endorsements) {
+            memcpy(copy->endorsements, coll->received.endorsements,
+                   coll->received.count * sizeof(mesh_endorsement_t));
+        }
+        copy->capacity = coll->received.count;
+    } else {
+        copy->endorsements = NULL;
+    }
 
     nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
-    return result;
+    return copy;
 }
 
 const endorser_set_t* mesh_endorsement_get_selected(
@@ -619,10 +643,24 @@ const endorser_set_t* mesh_endorsement_get_selected(
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
     );
-    const endorser_set_t* result = coll ? &coll->selected : NULL;
+
+    if (!coll) {
+        nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
+        return NULL;
+    }
+
+    /* P1 fix: Copy the data before releasing mutex to prevent dangling pointer.
+     * endorser_set_t uses fixed-size arrays so a shallow copy is sufficient.
+     * Caller receives a heap-allocated snapshot; caller must free when done. */
+    endorser_set_t* copy = nimcp_malloc(sizeof(endorser_set_t));
+    if (!copy) {
+        nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
+        return NULL;
+    }
+    *copy = coll->selected;
 
     nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
-    return result;
+    return copy;
 }
 
 nimcp_error_t mesh_endorsement_cancel_collection(

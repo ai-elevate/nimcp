@@ -683,7 +683,7 @@ int game_theory_executive_analyze_options(
     if (num_actions > 0 && num_outcomes > SIZE_MAX / sizeof(float) / num_actions) {
         bridge->state = GT_EXEC_STATE_ERROR;
         nimcp_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_executive_analyze_options: utilities_size overflow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OVERFLOW, "game_theory_executive_analyze_options: size overflow in utilities allocation");
         return -1;
     }
     size_t utilities_size = (size_t)num_actions * (size_t)num_outcomes * sizeof(float);

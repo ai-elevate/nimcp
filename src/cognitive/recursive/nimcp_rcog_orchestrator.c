@@ -278,8 +278,7 @@ static bool task_deps_satisfied(
                 }
             }
             if (!found) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "task_deps_satisfied: found is NULL");
-                return false;
+                return false;  /* Dependency not yet completed - normal */
             }
         }
     }
@@ -312,8 +311,7 @@ static bool detect_cycle_dfs(
         }
     }
     if (idx == SIZE_MAX) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_dfs: validation failed");
-        return false;
+        return false;  /* Task not in subtask array - no cycle through external deps */
     }
 
     if (in_stack[idx]) return true;  /* Cycle detected */

@@ -192,12 +192,10 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
     new_wrapper->signal_size = wrapper->signal_size;
     new_wrapper->is_owner = false;  // Not owner, just a reference
 
-    // Non-owner does NOT store manager pointers to avoid use-after-free
-    // if the owner is released first. The CoW handles are sufficient for
-    // read/write operations. Manager pointers are only needed for
-    // owner cleanup and stats queries (refcount/is_shared).
-    new_wrapper->dest_ids_manager = NULL;
-    new_wrapper->signal_data_manager = NULL;
+    // Store manager pointers so non-owner can query refcount and handles
+    // remain valid. Only the owner destroys managers (after checking refcount).
+    new_wrapper->dest_ids_manager = wrapper->dest_ids_manager;
+    new_wrapper->signal_data_manager = wrapper->signal_data_manager;
 
     // Acquire new CoW handles (refcount++)
     new_wrapper->dest_ids_handle = cow_acquire(wrapper->dest_ids_manager);
@@ -227,13 +225,21 @@ NIMCP_EXPORT void signal_wrapper_release(signal_wrapper_t wrapper) {
         cow_release(wrapper->signal_data_handle);
     }
 
-    // If this is the owner, destroy managers
+    // If this is the owner, destroy managers only when no more active handles
     if (wrapper->is_owner) {
         if (wrapper->dest_ids_manager) {
-            cow_manager_destroy(wrapper->dest_ids_manager);
+            cow_stats_t stats;
+            bool has_stats = cow_get_stats(wrapper->dest_ids_manager, &stats);
+            if (!has_stats || (stats.active_shared + stats.active_private) == 0) {
+                cow_manager_destroy(wrapper->dest_ids_manager);
+            }
         }
         if (wrapper->signal_data_manager) {
-            cow_manager_destroy(wrapper->signal_data_manager);
+            cow_stats_t stats;
+            bool has_stats = cow_get_stats(wrapper->signal_data_manager, &stats);
+            if (!has_stats || (stats.active_shared + stats.active_private) == 0) {
+                cow_manager_destroy(wrapper->signal_data_manager);
+            }
         }
     }
 

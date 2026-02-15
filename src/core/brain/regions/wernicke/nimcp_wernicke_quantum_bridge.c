@@ -508,14 +508,14 @@ int wernicke_quantum_walk_step(wernicke_quantum_bridge_t* bridge,
     state->steps_taken++;
 
     /* Compute mixing progress (variance of distribution) */
-    float mean = 1.0f / (float)n;  /* Target uniform */
+    float mean = (n > 0) ? 1.0f / (float)n : 0.0f;  /* Target uniform */
     float variance = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
         float prob = state->node_amplitudes[i] * state->node_amplitudes[i];
         float diff = prob - mean;
         variance += diff * diff;
     }
-    variance /= (float)n;
+    variance = (n > 0) ? variance / (float)n : 0.0f;
 
     /* Lower variance = more mixed */
     state->mixing_progress = 1.0f - sqrtf(variance) * sqrtf((float)n);

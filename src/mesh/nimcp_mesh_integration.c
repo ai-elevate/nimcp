@@ -325,7 +325,10 @@ mesh_participant_registry_t* mesh_integration_get_registry(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_registry: integration is NULL");
         return NULL;
     }
-    return integration->registry;
+    nimcp_mutex_lock(integration->mutex);
+    mesh_participant_registry_t* val = integration->registry;
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 mesh_channel_t* mesh_integration_get_channel(
@@ -340,7 +343,10 @@ mesh_channel_t* mesh_integration_get_channel(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_channel: capacity exceeded");
         return NULL;
     }
-    return integration->channels[channel_id];
+    nimcp_mutex_lock(integration->mutex);
+    mesh_channel_t* val = integration->channels[channel_id];
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 mesh_ordering_service_t* mesh_integration_get_ordering(
@@ -350,7 +356,10 @@ mesh_ordering_service_t* mesh_integration_get_ordering(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_ordering: integration is NULL");
         return NULL;
     }
-    return integration->ordering;
+    nimcp_mutex_lock(integration->mutex);
+    mesh_ordering_service_t* val = integration->ordering;
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 mesh_msp_t* mesh_integration_get_msp(mesh_integration_t* integration) {
@@ -358,7 +367,10 @@ mesh_msp_t* mesh_integration_get_msp(mesh_integration_t* integration) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_msp: integration is NULL");
         return NULL;
     }
-    return integration->msp;
+    nimcp_mutex_lock(integration->mutex);
+    mesh_msp_t* val = integration->msp;
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 mesh_endorsement_collector_t* mesh_integration_get_endorsement_collector(
@@ -368,7 +380,10 @@ mesh_endorsement_collector_t* mesh_integration_get_endorsement_collector(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_endorsement_collector: integration is NULL");
         return NULL;
     }
-    return integration->endorsement_collector;
+    nimcp_mutex_lock(integration->mutex);
+    mesh_endorsement_collector_t* val = integration->endorsement_collector;
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 mesh_cross_router_t mesh_integration_get_router(
@@ -378,7 +393,10 @@ mesh_cross_router_t mesh_integration_get_router(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_router: integration is NULL");
         return NULL;
     }
-    return integration->router;
+    nimcp_mutex_lock(integration->mutex);
+    mesh_cross_router_t val = integration->router;
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 mesh_coordinator_pool_t* mesh_integration_get_coordinator_pool(
@@ -393,7 +411,10 @@ mesh_coordinator_pool_t* mesh_integration_get_coordinator_pool(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_coordinator_pool: capacity exceeded");
         return NULL;
     }
-    return integration->coordinator_pools[channel_id];
+    nimcp_mutex_lock(integration->mutex);
+    mesh_coordinator_pool_t* val = integration->coordinator_pools[channel_id];
+    nimcp_mutex_unlock(integration->mutex);
+    return val;
 }
 
 /* ============================================================================
@@ -517,15 +538,22 @@ mesh_adapter_base_t* mesh_integration_get_adapter(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_adapter: integration is NULL");
         return NULL;
     }
-    
+
+    nimcp_mutex_lock(integration->mutex);
+    mesh_adapter_base_t* result = NULL;
     for (size_t i = 0; i < integration->adapter_count; i++) {
         if (integration->adapters[i] &&
             integration->adapters[i]->participant_id == participant_id) {
-            return integration->adapters[i];
+            result = integration->adapters[i];
+            break;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_adapter: integration is NULL");
-    return NULL;
+    nimcp_mutex_unlock(integration->mutex);
+
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_adapter: integration is NULL");
+    }
+    return result;
 }
 
 /* ============================================================================
@@ -965,29 +993,35 @@ bool mesh_integration_has_converged(const mesh_integration_t* integration) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) {
         return false;
     }
-    
+
+    nimcp_mutex_lock(((mesh_integration_t*)integration)->mutex);
+    bool converged = true;
     for (int i = 0; i < MESH_NUM_STANDARD_CHANNELS; i++) {
-        if (integration->channels[i] && 
+        if (integration->channels[i] &&
             !mesh_channel_has_converged(integration->channels[i])) {
-            return false;
+            converged = false;
+            break;
         }
     }
-    return true;
+    nimcp_mutex_unlock(((mesh_integration_t*)integration)->mutex);
+    return converged;
 }
 
 float mesh_integration_get_free_energy(const mesh_integration_t* integration) {
     if (!integration || integration->magic != MESH_INTEGRATION_MAGIC) return 1.0f;
-    
+
+    nimcp_mutex_lock(((mesh_integration_t*)integration)->mutex);
     float total_fe = 0.0f;
     int count = 0;
-    
+
     for (int i = 0; i < MESH_NUM_STANDARD_CHANNELS; i++) {
         if (integration->channels[i]) {
             total_fe += mesh_channel_get_free_energy(integration->channels[i]);
             count++;
         }
     }
-    
+    nimcp_mutex_unlock(((mesh_integration_t*)integration)->mutex);
+
     return count > 0 ? total_fe / count : 1.0f;
 }
 
@@ -1004,9 +1038,18 @@ nimcp_error_t mesh_integration_submit_transaction(
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!tx) return NIMCP_ERROR_NULL_POINTER;
-    
+
+    nimcp_mutex_lock(integration->mutex);
+    if (!integration->ordering) {
+        nimcp_mutex_unlock(integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_integration_submit_transaction: ordering is NULL");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+    mesh_ordering_service_t* ordering = integration->ordering;
+    nimcp_mutex_unlock(integration->mutex);
+
     /* Submit to ordering service */
-    return mesh_ordering_submit(integration->ordering, tx);
+    return mesh_ordering_submit(ordering, tx);
 }
 
 nimcp_error_t mesh_integration_submit_belief(
@@ -1019,16 +1062,19 @@ nimcp_error_t mesh_integration_submit_belief(
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!belief) return NIMCP_ERROR_NULL_POINTER;
-    
+
     /* Introduce belief to appropriate channel */
     mesh_channel_id_t channel_id = belief->channel;
     if (channel_id >= MESH_NUM_STANDARD_CHANNELS) {
         channel_id = MESH_CHANNEL_SYSTEM;
     }
-    
+
+    nimcp_mutex_lock(integration->mutex);
     mesh_channel_t* channel = integration->channels[channel_id];
+    nimcp_mutex_unlock(integration->mutex);
+
     if (!channel) return NIMCP_ERROR_NOT_FOUND;
-    
+
     return mesh_channel_introduce_belief(channel, belief);
 }
 
@@ -1045,10 +1091,14 @@ nimcp_error_t mesh_integration_get_stats(
         return NIMCP_ERROR_INVALID_PARAM;
     }
     if (!stats) return NIMCP_ERROR_NULL_POINTER;
-    
+
+    nimcp_mutex_lock(((mesh_integration_t*)integration)->mutex);
     *stats = integration->stats;
+    nimcp_mutex_unlock(((mesh_integration_t*)integration)->mutex);
+
+    /* Compute free energy outside the lock (get_free_energy takes its own lock) */
     stats->system_free_energy = mesh_integration_get_free_energy(integration);
-    
+
     return NIMCP_SUCCESS;
 }
 

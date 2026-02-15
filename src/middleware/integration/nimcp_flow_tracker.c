@@ -635,18 +635,35 @@ void flow_tracker_reset(
 
         nimcp_mutex_lock(&path->mutex);
 
-        /* Save the mutex before zeroing - memset would destroy it */
-        nimcp_mutex_t saved_mutex = path->mutex;
-
-        memset(path, 0, sizeof(path_flow_state_t));
-
-        /* Restore the mutex */
-        path->mutex = saved_mutex;
-
-        path->measurement_window_start_us = now_us;
-        path->last_update_time_us = now_us;
+        /* P1 fix: Reset fields individually instead of memset to preserve
+         * the embedded mutex. Copying/memset on a mutex is undefined behavior. */
+        path->input_rate_bits_per_sec = 0.0F;
+        path->output_rate_bits_per_sec = 0.0F;
+        path->throughput_bits_per_sec = 0.0F;
+        path->flow_efficiency = 0.0F;
+        path->bottleneck_severity = 0.0F;
+        path->channel_capacity_bits_per_sec = 0.0F;
+        path->capacity_utilization = 0.0F;
+        memset(&path->latency_hist, 0, sizeof(path->latency_hist));
+        path->avg_latency_us = 0.0F;
         path->min_latency_us = INFINITY;
         path->max_latency_us = 0.0F;
+        path->p50_latency_us = 0.0F;
+        path->p90_latency_us = 0.0F;
+        path->p99_latency_us = 0.0F;
+        path->stddev_latency_us = 0.0F;
+        path->total_events = 0;
+        path->filtered_events = 0;
+        path->bottlenecked_events = 0;
+        path->information_loss_bits = 0.0F;
+        path->loss_percentage = 0.0F;
+        path->measurement_window_start_us = now_us;
+        path->last_update_time_us = now_us;
+        path->total_information_bits = 0.0F;
+        path->filtered_information_bits = 0.0F;
+        path->latency_sum_us = 0;
+        path->latency_sq_sum_us = 0;
+        /* mutex is intentionally NOT reset */
         path->latency_hist.min_value_us = INFINITY;
         path->latency_hist.max_value_us = 0.0F;
 

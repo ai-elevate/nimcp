@@ -196,8 +196,7 @@ static participant_entry_t* find_free_slot(mesh_participant_registry_t* registry
             return &registry->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: registry->entries is NULL");
-    return NULL;
+    return NULL;  /* No free slot - registry full */
 }
 
 /**
@@ -706,8 +705,7 @@ const credential_t* mesh_participant_get_credential(
     participant_entry_t* entry = find_entry_by_id(registry, id);
     if (!entry || !entry->has_credential) {
         nimcp_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_get_credential: required parameter is NULL (entry, entry->has_credential)");
-        return NULL;
+        return NULL;  /* Entry not found or no credential - normal lookup miss */
     }
 
     nimcp_mutex_unlock(registry->mutex);
@@ -728,8 +726,7 @@ bool mesh_participant_validate_credential(
     participant_entry_t* entry = find_entry_by_id(registry, id);
     if (!entry || !entry->has_credential) {
         nimcp_mutex_unlock(registry->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_validate_credential: required parameter is NULL (entry, entry->has_credential)");
-        return false;
+        return false;  /* Entry not found or no credential - normal lookup miss */
     }
 
     bool valid = entry->credential.state == CREDENTIAL_STATE_VALID;

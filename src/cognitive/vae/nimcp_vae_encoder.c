@@ -105,10 +105,11 @@ static float xavier_init(uint32_t fan_in, uint32_t fan_out) {
 
 /**
  * @brief Random number from standard normal distribution (Box-Muller)
+ * Thread-safe: uses __thread storage for spare value caching.
  */
 static float randn(void) {
-    static bool has_spare = false;
-    static float spare;
+    static __thread bool has_spare = false;
+    static __thread float spare;
 
     if (has_spare) {
         has_spare = false;

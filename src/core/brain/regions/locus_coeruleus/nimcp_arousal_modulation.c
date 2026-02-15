@@ -213,7 +213,8 @@ int nimcp_arousal_update(
     system->ne_input = ne_concentration;
 
     /* Compute target arousal from NE */
-    float normalized_ne = ne_concentration / system->optimal_ne;
+    float normalized_ne = (fabsf(system->optimal_ne) > 1e-10f) ?
+        ne_concentration / system->optimal_ne : 0.0f;
     system->target_arousal = nimcp_arousal_ne_to_performance(ne_concentration,
                                                               system->optimal_ne,
                                                               system->curve_type);
@@ -227,7 +228,8 @@ int nimcp_arousal_update(
     system->target_arousal = clamp_f(system->target_arousal, 0.0f, 1.0f);
 
     /* Smooth arousal transition */
-    float alpha = 1.0f - expf(-dt / system->arousal_tau);
+    float alpha = (fabsf(system->arousal_tau) > 1e-10f) ?
+        1.0f - expf(-dt / system->arousal_tau) : 1.0f;
     float old_arousal = system->dimensions.arousal;
     system->dimensions.arousal += alpha * (system->target_arousal - system->dimensions.arousal);
 
@@ -241,7 +243,8 @@ int nimcp_arousal_update(
     system->dimensions.alertness += alpha * (target_alertness - system->dimensions.alertness);
 
     /* Update vigilance (slower dynamics, decays without input) */
-    alpha = 1.0f - expf(-dt / system->vigilance_tau);
+    alpha = (fabsf(system->vigilance_tau) > 1e-10f) ?
+        1.0f - expf(-dt / system->vigilance_tau) : 1.0f;
     float target_vigilance = system->dimensions.arousal * 0.8f;
     system->dimensions.vigilance += alpha * (target_vigilance - system->dimensions.vigilance);
 

@@ -251,10 +251,12 @@ int working_memory_fep_apply_precision_capacity_modulation(
 
     /* Update stats */
     bridge->stats.precision_capacity_adjustments++;
-    bridge->stats.avg_capacity_adjustment =
-        (bridge->stats.avg_capacity_adjustment *
-         (bridge->stats.precision_capacity_adjustments - 1) +
-         (float)adjustment) / bridge->stats.precision_capacity_adjustments;
+    if (bridge->stats.precision_capacity_adjustments > 0) {
+        bridge->stats.avg_capacity_adjustment =
+            (bridge->stats.avg_capacity_adjustment *
+             (bridge->stats.precision_capacity_adjustments - 1) +
+             (float)adjustment) / bridge->stats.precision_capacity_adjustments;
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -353,9 +355,11 @@ int working_memory_fep_apply_context_modulation(
 
     /* Extract context from working memory content */
     uint32_t count = working_memory_get_count(bridge->working_memory);
-    float context_strength = bridge->config.item_context_weight *
+    uint32_t cap = working_memory_get_capacity(bridge->working_memory);
+    float context_strength = (cap > 0) ?
+                            (bridge->config.item_context_weight *
                             (float)count /
-                            (float)working_memory_get_capacity(bridge->working_memory);
+                            (float)cap) : 0.0f;
 
     /* Update effects */
     bridge->wm_effects.context_strength = context_strength;
@@ -363,9 +367,11 @@ int working_memory_fep_apply_context_modulation(
 
     /* Update stats */
     bridge->stats.context_modulations++;
-    bridge->stats.avg_context_strength =
-        (bridge->stats.avg_context_strength * (bridge->stats.context_modulations - 1) +
-         context_strength) / bridge->stats.context_modulations;
+    if (bridge->stats.context_modulations > 0) {
+        bridge->stats.avg_context_strength =
+            (bridge->stats.avg_context_strength * (bridge->stats.context_modulations - 1) +
+             context_strength) / bridge->stats.context_modulations;
+    }
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

@@ -926,7 +926,9 @@ nimcp_error_t nimcp_hh_population_update(nimcp_hh_population_t* population,
         voltage_sum += population->neurons[i].V;
     }
 
-    population->mean_voltage = voltage_sum / (float)population->count;
+    if (population->count > 0) {
+        population->mean_voltage = voltage_sum / (float)population->count;
+    }
     population->mean_firing_rate = (float)spike_count * 1000.0f / dt;  /* Convert to Hz */
 
     return NIMCP_SUCCESS;
@@ -1081,7 +1083,9 @@ nimcp_error_t nimcp_hh_population_update_parallel(
     }
 
     /* Update population statistics */
-    population->mean_voltage = total_voltage / (float)population->count;
+    if (population->count > 0) {
+        population->mean_voltage = total_voltage / (float)population->count;
+    }
     population->mean_firing_rate = (float)total_spikes * 1000.0f / dt;
 
     /* Cleanup */

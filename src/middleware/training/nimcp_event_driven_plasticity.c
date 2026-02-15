@@ -438,8 +438,8 @@ static void process_pending_spikes(edp_context_t* ctx)
     uint32_t tail = ctx->spike_buffer.tail;
     uint32_t capacity = ctx->spike_buffer.capacity;
 
-    /* Look at the most recent spike */
-    uint32_t newest_idx = (tail + capacity - 1) % capacity;
+    /* Look at the most recent spike (head points past newest, so go back by 1) */
+    uint32_t newest_idx = (ctx->spike_buffer.head + capacity - 1) % capacity;
     edp_spike_record_t* newest = &ctx->spike_buffer.spikes[newest_idx];
 
     /* Compare with older spikes within the window */

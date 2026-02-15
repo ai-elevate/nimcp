@@ -542,7 +542,10 @@ bool mesh_bio_integration_is_connected(
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
         return false;
     }
-    return integration->connected;
+    nimcp_mutex_lock(((mesh_bio_integration_t*)integration)->mutex);
+    bool val = integration->connected;
+    nimcp_mutex_unlock(((mesh_bio_integration_t*)integration)->mutex);
+    return val;
 }
 
 bool mesh_bio_integration_mesh_available(
@@ -552,7 +555,10 @@ bool mesh_bio_integration_mesh_available(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration_mesh_available: integration is NULL");
         return false;
     }
-    return integration->mesh_integration != NULL && integration->enabled;
+    nimcp_mutex_lock(((mesh_bio_integration_t*)integration)->mutex);
+    bool val = integration->mesh_integration != NULL && integration->enabled;
+    nimcp_mutex_unlock(((mesh_bio_integration_t*)integration)->mutex);
+    return val;
 }
 
 /* ============================================================================
@@ -581,8 +587,8 @@ nimcp_error_t mesh_bio_integration_route_message(
 
     /* Check if mesh routing is available */
     if (!integration->enabled || !integration->mesh_integration) {
-        nimcp_mutex_unlock(integration->mutex);
         integration->stats.direct_fallback++;
+        nimcp_mutex_unlock(integration->mutex);
 
         if (integration->config.fallback_to_direct) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
@@ -602,8 +608,8 @@ nimcp_error_t mesh_bio_integration_route_message(
         nimcp_mutex_lock(integration->mutex);
 
         if (!should_route) {
-            nimcp_mutex_unlock(integration->mutex);
             integration->stats.direct_fallback++;
+            nimcp_mutex_unlock(integration->mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
             return NIMCP_ERROR_NOT_FOUND;
         }
@@ -611,8 +617,8 @@ nimcp_error_t mesh_bio_integration_route_message(
 
     /* Check if broadcasts should be routed */
     if (header->target_module == 0 && !integration->config.route_broadcasts) {
-        nimcp_mutex_unlock(integration->mutex);
         integration->stats.direct_fallback++;
+        nimcp_mutex_unlock(integration->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
         return NIMCP_ERROR_NOT_FOUND;
     }
@@ -696,8 +702,8 @@ nimcp_error_t mesh_bio_integration_route_message(
         integration->stats.routing_failures++;
 
         if (integration->config.fallback_to_direct) {
-            nimcp_mutex_unlock(integration->mutex);
             integration->stats.direct_fallback++;
+            nimcp_mutex_unlock(integration->mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_bio_integration: error condition");
             return NIMCP_ERROR_NOT_FOUND;
         }
@@ -961,7 +967,10 @@ uint32_t mesh_bio_integration_pending_callbacks(
     const mesh_bio_integration_t* integration
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) return 0;
-    return (uint32_t)integration->pending_count;
+    nimcp_mutex_lock(((mesh_bio_integration_t*)integration)->mutex);
+    uint32_t val = (uint32_t)integration->pending_count;
+    nimcp_mutex_unlock(((mesh_bio_integration_t*)integration)->mutex);
+    return val;
 }
 
 /* ============================================================================

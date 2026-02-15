@@ -630,7 +630,7 @@ static deep_nuclei_t* create_deep_nuclei(uint32_t num_dentate, uint32_t num_inte
     nuclei->output_buffer = nimcp_calloc(total_neurons * 8, sizeof(float));
 
     /* Initialize neurons with Purkinje weights */
-    uint32_t purkinje_per_neuron = num_purkinje / total_neurons;
+    uint32_t purkinje_per_neuron = (total_neurons > 0) ? (num_purkinje / total_neurons) : num_purkinje;
     if (purkinje_per_neuron < 1) purkinje_per_neuron = 1;
 
     for (uint32_t i = 0; i < num_dentate; i++) {
@@ -2105,7 +2105,8 @@ bool cerebellum_process(cerebellum_adapter_t* adapter,
         for (uint32_t i = 0; i < adapter->purkinje->num_cells; i++) {
             timing_estimate += adapter->purkinje->cells[i].simple_spike_rate;
         }
-        timing_estimate = timing_estimate / adapter->purkinje->num_cells * 100.0f;  /* ms */
+        timing_estimate = (adapter->purkinje->num_cells > 0) ?
+            (timing_estimate / adapter->purkinje->num_cells * 100.0f) : 0.0f;  /* ms */
 
         adapter->timing.predicted_timing_ms = timing_estimate;
     }
@@ -2257,7 +2258,7 @@ bool cerebellum_get_nuclei_output(cerebellum_adapter_t* adapter,
     uint32_t total_neurons = adapter->nuclei->num_dentate +
                               adapter->nuclei->num_interposed +
                               adapter->nuclei->num_fastigial;
-    output->activity = total_activity / total_neurons;
+    output->activity = (total_neurons > 0) ? (total_activity / total_neurons) : 0.0f;
     output->num_dimensions = 8;
 
     /* Timing adjustment from Purkinje activity */

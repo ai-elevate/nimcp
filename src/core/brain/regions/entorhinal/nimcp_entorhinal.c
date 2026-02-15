@@ -238,7 +238,8 @@ static int init_grid_modules(nimcp_entorhinal_t* ec) {
         return -1;
     }
 
-    uint32_t cells_per_module = ec->config.num_grid_cells / ec->num_grid_modules;
+    uint32_t cells_per_module = (ec->num_grid_modules > 0) ?
+        ec->config.num_grid_cells / ec->num_grid_modules : 0;
     float spacing = ec->config.min_grid_spacing;
 
     for (uint32_t m = 0; m < ec->num_grid_modules; m++) {
@@ -1066,9 +1067,12 @@ int entorhinal_update_grid_cells(nimcp_entorhinal_t* ec,
         }
 
         /* Update module statistics */
-        module->mean_activation = module_activation_sum / module->num_cells;
-        module->population_vector_x = pop_vec_x / module->num_cells;
-        module->population_vector_y = pop_vec_y / module->num_cells;
+        module->mean_activation = (module->num_cells > 0) ?
+            module_activation_sum / module->num_cells : 0.0f;
+        module->population_vector_x = (module->num_cells > 0) ?
+            pop_vec_x / module->num_cells : 0.0f;
+        module->population_vector_y = (module->num_cells > 0) ?
+            pop_vec_y / module->num_cells : 0.0f;
         module->coherence = sqrtf(pop_vec_x * pop_vec_x + pop_vec_y * pop_vec_y) /
                             (module->mean_activation + 0.001f);
     }
@@ -1095,8 +1099,8 @@ int entorhinal_get_grid_population_vector(const nimcp_entorhinal_t* ec,
         pop_y += ec->grid_modules[m].population_vector_y;
     }
 
-    vector_out[0] = pop_x / ec->num_grid_modules;
-    vector_out[1] = pop_y / ec->num_grid_modules;
+    vector_out[0] = (ec->num_grid_modules > 0) ? pop_x / ec->num_grid_modules : 0.0f;
+    vector_out[1] = (ec->num_grid_modules > 0) ? pop_y / ec->num_grid_modules : 0.0f;
     *dim = 2;
 
     return 0;
@@ -1962,8 +1966,10 @@ int entorhinal_get_stats(const nimcp_entorhinal_t* ec, entorhinal_stats_t* stats
         total_coherence += ec->grid_modules[m].coherence;
     }
 
-    stats->mean_grid_activation = total_activation / ec->num_grid_modules;
-    stats->grid_population_coherence = total_coherence / ec->num_grid_modules;
+    stats->mean_grid_activation = (ec->num_grid_modules > 0) ?
+        total_activation / ec->num_grid_modules : 0.0f;
+    stats->grid_population_coherence = (ec->num_grid_modules > 0) ?
+        total_coherence / ec->num_grid_modules : 0.0f;
     stats->grid_drift_accumulated = ec->path_integration.accumulated_error;
 
     /* Path integration statistics */

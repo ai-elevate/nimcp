@@ -76,6 +76,7 @@ static uint32_t simple_hash(const float* data, uint32_t size) {
 }
 
 static float compute_input_magnitude(const float* input, uint32_t size) {
+    if (size == 0) return 0.0f;
     float sum = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
         sum += input[i] * input[i];

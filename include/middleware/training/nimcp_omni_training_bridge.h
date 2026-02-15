@@ -257,8 +257,7 @@ struct omni_training_bridge {
     void* bio_context;               /**< Bio-async module context */
     bool bio_async_connected;        /**< Bio-async connection state */
 
-    /* Thread safety */
-    void* mutex;
+    /* Thread safety: uses base.mutex from bridge_base_t */
 };
 
 /* ============================================================================

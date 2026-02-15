@@ -559,13 +559,16 @@ nimcp_error_t mesh_topology_remove_participant(
         }
     }
 
-    /* Update connection count */
-    ctx->connection_count -= node->degree;
+    /* Update connection count (saturating subtraction to prevent unsigned underflow) */
+    ctx->connection_count = (ctx->connection_count > node->degree) ?
+        (ctx->connection_count - node->degree) : 0;
 
     /* Free and invalidate */
     free_adj_list(node->neighbors);
     node->valid = false;
-    ctx->node_count--;
+    if (ctx->node_count > 0) {
+        ctx->node_count--;
+    }
     ctx->metrics_valid = false;
 
     nimcp_mutex_unlock(ctx->mutex);
@@ -601,17 +604,20 @@ nimcp_error_t mesh_topology_clear(mesh_topology_ctx_t ctx) {
  * Topology Analysis
  * ============================================================================ */
 
-nimcp_error_t mesh_topology_compute_metrics(
+/**
+ * @brief Internal unlocked version of compute_metrics
+ *
+ * WHAT: Compute topology metrics without acquiring the mutex
+ * WHY:  Called from mesh_topology_is_small_world() which may be called
+ *       from contexts that already hold the mutex, preventing self-deadlock
+ *       on non-recursive mutex
+ * PRECONDITION: Caller must hold ctx->mutex
+ */
+static nimcp_error_t compute_metrics_unlocked(
     mesh_topology_ctx_t ctx,
     mesh_topology_metrics_t* metrics
 ) {
-    if (!ctx || !metrics) return NIMCP_ERROR_INVALID_PARAM;
-
-    /* P1: Lock mutex to get consistent snapshot of topology state */
-    nimcp_mutex_lock(ctx->mutex);
-
     if (ctx->node_count == 0) {
-        nimcp_mutex_unlock(ctx->mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -697,9 +703,23 @@ nimcp_error_t mesh_topology_compute_metrics(
     ctx->cached_metrics = *metrics;
     ctx->metrics_valid = true;
 
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t mesh_topology_compute_metrics(
+    mesh_topology_ctx_t ctx,
+    mesh_topology_metrics_t* metrics
+) {
+    if (!ctx || !metrics) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* P1: Lock mutex to get consistent snapshot of topology state */
+    nimcp_mutex_lock(ctx->mutex);
+
+    nimcp_error_t result = compute_metrics_unlocked(ctx, metrics);
+
     nimcp_mutex_unlock(ctx->mutex);
 
-    return NIMCP_SUCCESS;
+    return result;
 }
 
 nimcp_error_t mesh_topology_get_node_info(
@@ -709,8 +729,14 @@ nimcp_error_t mesh_topology_get_node_info(
 ) {
     if (!ctx || !info) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P1: Lock mutex to get consistent snapshot of node state */
+    nimcp_mutex_lock(ctx->mutex);
+
     topo_node_t* node = find_node(ctx, participant_id);
-    if (!node) return NIMCP_ERROR_NOT_FOUND;
+    if (!node) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
 
     info->participant_id = node->id;
     info->degree = node->degree;
@@ -720,6 +746,8 @@ nimcp_error_t mesh_topology_get_node_info(
     info->is_hub = node->is_hub;
     info->cluster_id = node->cluster_id;
     info->coordinator_affinity = node->coordinator_affinity;
+
+    nimcp_mutex_unlock(ctx->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -978,13 +1006,20 @@ bool mesh_topology_is_small_world(
     /* C = clustering coefficient, L = average path length */
     /* For random graphs: C_rand ≈ k/N, L_rand ≈ ln(N)/ln(k) */
 
+    /* Lock mutex for consistent read of metrics and node_count.
+     * Use compute_metrics_unlocked() to avoid self-deadlock since
+     * we already hold the mutex. */
+    nimcp_mutex_lock(ctx->mutex);
+
     if (!ctx->metrics_valid) {
-        mesh_topology_compute_metrics(ctx, &ctx->cached_metrics);
+        compute_metrics_unlocked(ctx, &ctx->cached_metrics);
     }
 
     float C = ctx->cached_metrics.clustering_coefficient;
     float k = ctx->cached_metrics.avg_degree;
     float N = (float)ctx->node_count;
+
+    nimcp_mutex_unlock(ctx->mutex);
 
     if (k < 2 || N < 10) {
         return false;
@@ -1218,10 +1253,15 @@ nimcp_error_t mesh_topology_get_stats(
 ) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
 
+    /* P1: Lock mutex to get consistent snapshot of topology stats */
+    nimcp_mutex_lock(ctx->mutex);
+
     if (num_participants) *num_participants = (uint32_t)ctx->node_count;
     if (num_connections) *num_connections = (uint32_t)ctx->connection_count;
     if (num_hubs) *num_hubs = (uint32_t)ctx->hub_count;
     if (num_clusters) *num_clusters = ctx->num_clusters;
+
+    nimcp_mutex_unlock(ctx->mutex);
 
     return NIMCP_SUCCESS;
 }

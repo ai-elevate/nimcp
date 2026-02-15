@@ -1070,7 +1070,8 @@ bool working_memory_add(
 
     // Check for high utilization and signal stress to immune system
     if (wm->immune_integration_enabled && wm->immune) {
-        float utilization = (float)wm->current_size / (float)working_memory_get_effective_capacity(wm);
+        uint32_t eff_cap = working_memory_get_effective_capacity(wm);
+        float utilization = (eff_cap > 0) ? ((float)wm->current_size / (float)eff_cap) : 0.0f;
         if (utilization > 0.9f) {
             // High utilization - signal IL-6 (cognitive load)
             uint32_t cytokine_id = 0;

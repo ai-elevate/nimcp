@@ -449,14 +449,16 @@ static void update_ne_dynamics(nimcp_lc_system_t* lc, float dt) {
     lc->ne_concentration += release_rate * dt;
 
     /* Apply clearance */
-    float clearance = lc->ne_concentration * (dt / lc->config.ne_clearance_tau_ms);
+    float clearance = (fabsf(lc->config.ne_clearance_tau_ms) > 1e-10f) ?
+        lc->ne_concentration * (dt / lc->config.ne_clearance_tau_ms) : 0.0f;
     lc->ne_concentration -= clearance;
 
     /* Clamp to valid range */
     lc->ne_concentration = clamp_f(lc->ne_concentration, 0.0f, lc->config.ne_max_nm);
 
     /* Update autoreceptor feedback based on NE level */
-    float normalized_ne = lc->ne_concentration / lc->config.ne_baseline_nm;
+    float normalized_ne = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
+        lc->ne_concentration / lc->config.ne_baseline_nm : 0.0f;
     lc->neurons.autoreceptor_feedback = normalized_ne * 0.5f;
 
     /* Update metrics */
@@ -496,7 +498,8 @@ static void update_projections(nimcp_lc_system_t* lc, float dt) {
 
 static void update_arousal_state(nimcp_lc_system_t* lc, float dt) {
     /* Map NE to arousal (inverted-U relationship) */
-    float normalized_ne = lc->ne_concentration / lc->config.ne_baseline_nm;
+    float normalized_ne = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
+        lc->ne_concentration / lc->config.ne_baseline_nm : 0.0f;
 
     /* Simple mapping: optimal around 1.0-2.0x baseline */
     float target_arousal;
@@ -596,7 +599,8 @@ static void update_mode_state(nimcp_lc_system_t* lc, float dt) {
 static void update_status(nimcp_lc_system_t* lc) {
     nimcp_lc_status_t new_status = LC_STATUS_NORMAL;
 
-    float normalized_ne = lc->ne_concentration / lc->config.ne_baseline_nm;
+    float normalized_ne = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
+        lc->ne_concentration / lc->config.ne_baseline_nm : 0.0f;
 
     if (normalized_ne > 5.0f) {
         new_status = LC_STATUS_STRESSED;
@@ -761,7 +765,8 @@ nimcp_lc_error_t nimcp_lc_modulate_arousal(nimcp_lc_system_t* lc, float target_a
     float target_ne = lc->config.ne_baseline_nm * (0.5f + 1.5f * target_arousal);
 
     /* Adjust tonic rate to achieve target NE */
-    float ne_ratio = target_ne / lc->config.ne_baseline_nm;
+    float ne_ratio = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
+        target_ne / lc->config.ne_baseline_nm : 1.0f;
     lc->tonic_firing_rate = lc->config.tonic_rate_hz * ne_ratio;
     lc->tonic_firing_rate = clamp_f(lc->tonic_firing_rate, 0.1f, lc->config.phasic_rate_hz * 0.5f);
 
@@ -996,7 +1001,8 @@ nimcp_lc_error_t nimcp_lc_get_gain_modulation(
         if (lc->projections[i].target == target && lc->projections[i].active) {
             /* Compute gain based on NE level at target */
             float ne = lc->projections[i].current_ne;
-            float normalized_ne = ne / lc->config.ne_baseline_nm;
+            float normalized_ne = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
+                ne / lc->config.ne_baseline_nm : 0.0f;
 
             /* Inverted-U gain modulation */
             float optimal = 2.0f;

@@ -1144,7 +1144,7 @@ int attention_snn_get_weights(
             {
                 float avg = 0.0f;
                 for (uint32_t h = 0; h < n; h++) avg += weights[h];
-                avg /= (float)n;
+                avg = (n > 0) ? (avg / (float)n) : 0.0f;
 
                 for (uint32_t h = 0; h < n; h++) {
                     /* Phase 8: Loop progress heartbeat */
@@ -1275,7 +1275,7 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
 
         mean += bridge->attention.attention_weights[h];
     }
-    mean /= (float)bridge->config.num_heads;
+    mean = (bridge->config.num_heads > 0) ? (mean / (float)bridge->config.num_heads) : 0.0f;
 
     float variance = 0.0f;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
@@ -1288,7 +1288,7 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
         float diff = bridge->attention.attention_weights[h] - mean;
         variance += diff * diff;
     }
-    variance /= (float)bridge->config.num_heads;
+    variance = (bridge->config.num_heads > 0) ? (variance / (float)bridge->config.num_heads) : 0.0f;
 
     /* Normalize variance to [0, 1] focus strength */
     float focus = sqrtf(variance) * 2.0f;  /* Scale factor */
@@ -1337,7 +1337,7 @@ static float attention_snn_get_sparsity_unlocked(attention_snn_bridge_t* bridge)
         }
     }
 
-    float sparsity = (float)near_zero / (float)bridge->config.num_heads;
+    float sparsity = (bridge->config.num_heads > 0) ? ((float)near_zero / (float)bridge->config.num_heads) : 0.0f;
     bridge->attention.sparsity = sparsity;
 
     return sparsity;
@@ -1437,7 +1437,7 @@ int attention_snn_get_state(
 
         sum_rate += bridge->head_buffer[i];
     }
-    state->avg_firing_rate = sum_rate / (float)head_buffer_size;
+    state->avg_firing_rate = (head_buffer_size > 0) ? (sum_rate / (float)head_buffer_size) : 0.0f;
 
     state->competition_energy = bridge->stats.competition_convergence_rate;
     state->bio_async_connected = bridge->bio_async_connected;

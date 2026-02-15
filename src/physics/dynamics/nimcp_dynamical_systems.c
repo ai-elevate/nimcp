@@ -771,6 +771,7 @@ dynsys_error_t dynsys_energy_compute(dynsys_energy_t energy, dynsys_energy_resul
     if (!energy || !result) return DYNSYS_ERR_NULL_PTR;
 
     uint32_t res = energy->config.grid_resolution;
+    if (res < 2) return DYNSYS_ERR_INVALID_DIM;
     uint32_t grid_size = res * res;  /* 2D for simplicity */
 
     memset(result, 0, sizeof(dynsys_energy_result_t));

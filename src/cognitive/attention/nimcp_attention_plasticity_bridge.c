@@ -1024,7 +1024,8 @@ int attention_plasticity_update(
 
         /* Spontaneous recovery from habituation */
         if (bridge->config.enable_habituation && syn->habituation_level > 0.0f) {
-            float recovery_rate = dt_ms / bridge->config.spontaneous_recovery_tau;
+            float recovery_rate = (fabsf(bridge->config.spontaneous_recovery_tau) > 1e-10f) ?
+                (dt_ms / bridge->config.spontaneous_recovery_tau) : 0.0f;
             syn->habituation_level -= recovery_rate;
             syn->habituation_level = clamp_f(syn->habituation_level, 0.0f, 1.0f);
 
@@ -1035,7 +1036,7 @@ int attention_plasticity_update(
         }
 
         /* Homeostatic scaling */
-        if (bridge->config.enable_homeostatic) {
+        if (bridge->config.enable_homeostatic && syn->head_idx < bridge->num_heads) {
             attention_head_plasticity_t* head = &bridge->head_states[syn->head_idx];
             float current_rate = syn->avg_activity;
             float diff = bridge->config.target_attention_rate - current_rate;
@@ -1045,7 +1046,8 @@ int attention_plasticity_update(
         }
 
         /* Update average activity */
-        float alpha = dt_ms / bridge->config.bcm_activity_tau;
+        float alpha = (fabsf(bridge->config.bcm_activity_tau) > 1e-10f) ?
+            (dt_ms / bridge->config.bcm_activity_tau) : 0.0f;
         float recent_activity = (syn->last_pre_spike_us > now_us - 100000) ? 1.0f : 0.0f;
         syn->avg_activity = (1.0f - alpha) * syn->avg_activity + alpha * recent_activity;
     }

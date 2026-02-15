@@ -20,6 +20,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 /* Error code compatibility aliases */
@@ -69,6 +70,9 @@ struct mesh_system_coordinator_internal {
     /* Pending conflict resolutions */
     mesh_cross_transaction_t* pending_conflicts[256];
     size_t pending_conflict_count;
+
+    /* P1: Thread safety */
+    nimcp_mutex_t* mutex;
 };
 
 /**
@@ -90,6 +94,9 @@ struct mesh_cross_router_internal {
     uint64_t total_submitted;
     uint64_t total_completed;
     uint64_t total_failed;
+
+    /* P1: Thread safety */
+    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -149,6 +156,14 @@ mesh_system_coordinator_t mesh_system_coord_create(
     coord->ordering = ordering;
     coord->msp = msp;
 
+    /* P1: Create mutex for thread safety */
+    coord->mutex = nimcp_mutex_create(NULL);
+    if (!coord->mutex) {
+        nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_system_coord_create: mutex creation failed");
+        return NULL;
+    }
+
     return coord;
 }
 
@@ -161,6 +176,11 @@ void mesh_system_coord_destroy(mesh_system_coordinator_t coord) {
     /* Free stats channel array */
     nimcp_free(coord->stats.channel_stats);
 
+    /* P1: Destroy mutex */
+    if (coord->mutex) {
+        nimcp_mutex_destroy(coord->mutex);
+    }
+
     nimcp_free(coord);
 }
 
@@ -170,7 +190,11 @@ nimcp_error_t mesh_system_coord_register_channel(
     const char* channel_name
 ) {
     if (!coord) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(coord->mutex);
+
     if (coord->channel_count >= MESH_CROSS_MAX_CHANNELS) {
+        nimcp_mutex_unlock(coord->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_cross_channel: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
@@ -178,6 +202,7 @@ nimcp_error_t mesh_system_coord_register_channel(
     /* Check if already registered */
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (coord->channels[i].id == channel_id) {
+            nimcp_mutex_unlock(coord->mutex);
             return NIMCP_SUCCESS;  /* Already registered */
         }
     }
@@ -199,6 +224,7 @@ nimcp_error_t mesh_system_coord_register_channel(
     }
 
     coord->channel_count++;
+    nimcp_mutex_unlock(coord->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -208,6 +234,8 @@ nimcp_error_t mesh_system_coord_unregister_channel(
 ) {
     if (!coord) return NIMCP_ERROR_INVALID_PARAM;
 
+    nimcp_mutex_lock(coord->mutex);
+
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (coord->channels[i].id == channel_id) {
             /* Remove by shifting remaining channels */
@@ -215,10 +243,12 @@ nimcp_error_t mesh_system_coord_unregister_channel(
                 coord->channels[j] = coord->channels[j + 1];
             }
             coord->channel_count--;
+            nimcp_mutex_unlock(coord->mutex);
             return NIMCP_SUCCESS;
         }
     }
 
+    nimcp_mutex_unlock(coord->mutex);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_cross_channel: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
@@ -241,6 +271,14 @@ mesh_cross_router_t mesh_cross_router_create(
     router->config = config ? *config : mesh_cross_router_default_config();
     router->system_coord = system_coord;
 
+    /* P1: Create mutex for thread safety */
+    router->mutex = nimcp_mutex_create(NULL);
+    if (!router->mutex) {
+        nimcp_free(router);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cross_router_create: mutex creation failed");
+        return NULL;
+    }
+
     return router;
 }
 
@@ -254,6 +292,11 @@ void mesh_cross_router_destroy(mesh_cross_router_t router) {
         mesh_cross_transaction_destroy(entry->tx);
         nimcp_free(entry);
         entry = next;
+    }
+
+    /* P1: Destroy mutex */
+    if (router->mutex) {
+        nimcp_mutex_destroy(router->mutex);
     }
 
     nimcp_free(router);
@@ -396,8 +439,15 @@ nimcp_error_t mesh_cross_router_submit(
     mesh_cross_transaction_t* tx
 ) {
     if (!router || !tx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!router->running) return NIMCP_ERROR_NOT_READY;
+
+    nimcp_mutex_lock(router->mutex);
+
+    if (!router->running) {
+        nimcp_mutex_unlock(router->mutex);
+        return NIMCP_ERROR_NOT_READY;
+    }
     if (router->pending_count >= router->config.max_pending) {
+        nimcp_mutex_unlock(router->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_cross_channel: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
@@ -408,7 +458,9 @@ nimcp_error_t mesh_cross_router_submit(
     /* Process immediately for simplicity */
     nimcp_error_t err = process_cross_transaction(router, tx);
 
-    /* Invoke callback if set */
+    nimcp_mutex_unlock(router->mutex);
+
+    /* Invoke callback if set (outside lock to avoid holding lock during user callback) */
     if (tx->callback) {
         mesh_result_t result = {
             .tx_id = tx->base_id,
@@ -606,13 +658,17 @@ bool mesh_system_coord_is_healthy(mesh_system_coordinator_t coord) {
         return false;
     }
 
+    nimcp_mutex_lock(coord->mutex);
+    bool healthy = true;
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (!coord->channels[i].healthy) {
-            return false;
+            healthy = false;
+            break;
         }
     }
+    nimcp_mutex_unlock(coord->mutex);
 
-    return true;
+    return healthy;
 }
 
 bool mesh_system_coord_channel_healthy(
@@ -624,14 +680,17 @@ bool mesh_system_coord_channel_healthy(
         return false;
     }
 
+    nimcp_mutex_lock(coord->mutex);
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (coord->channels[i].id == channel_id) {
-            return coord->channels[i].healthy;
+            bool val = coord->channels[i].healthy;
+            nimcp_mutex_unlock(coord->mutex);
+            return val;
         }
     }
+    nimcp_mutex_unlock(coord->mutex);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_system_coord_channel_healthy: validation failed");
-    return false;
+    return false;  /* Channel not found - not healthy */
 }
 
 nimcp_error_t mesh_system_coord_mark_unhealthy(
@@ -642,13 +701,16 @@ nimcp_error_t mesh_system_coord_mark_unhealthy(
     if (!coord) return NIMCP_ERROR_INVALID_PARAM;
     (void)reason;  /* Would log reason in production */
 
+    nimcp_mutex_lock(coord->mutex);
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (coord->channels[i].id == channel_id) {
             coord->channels[i].healthy = false;
             coord->channels[i].stats.healthy = false;
+            nimcp_mutex_unlock(coord->mutex);
             return NIMCP_SUCCESS;
         }
     }
+    nimcp_mutex_unlock(coord->mutex);
 
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_cross_channel: error condition");
     return NIMCP_ERROR_NOT_FOUND;
@@ -660,13 +722,16 @@ nimcp_error_t mesh_system_coord_mark_healthy(
 ) {
     if (!coord) return NIMCP_ERROR_INVALID_PARAM;
 
+    nimcp_mutex_lock(coord->mutex);
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (coord->channels[i].id == channel_id) {
             coord->channels[i].healthy = true;
             coord->channels[i].stats.healthy = true;
+            nimcp_mutex_unlock(coord->mutex);
             return NIMCP_SUCCESS;
         }
     }
+    nimcp_mutex_unlock(coord->mutex);
 
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_cross_channel: error condition");
     return NIMCP_ERROR_NOT_FOUND;
@@ -682,6 +747,8 @@ nimcp_error_t mesh_system_coord_get_stats(
 ) {
     if (!coord || !stats) return NIMCP_ERROR_INVALID_PARAM;
 
+    nimcp_mutex_lock(coord->mutex);
+
     *stats = coord->stats;
 
     /* Allocate and copy channel stats */
@@ -696,11 +763,15 @@ nimcp_error_t mesh_system_coord_get_stats(
         }
     }
 
+    nimcp_mutex_unlock(coord->mutex);
+
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t mesh_system_coord_reset_stats(mesh_system_coordinator_t coord) {
     if (!coord) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(coord->mutex);
 
     memset(&coord->stats, 0, sizeof(mesh_system_coord_stats_t));
 
@@ -710,6 +781,8 @@ nimcp_error_t mesh_system_coord_reset_stats(mesh_system_coordinator_t coord) {
         coord->channels[i].stats.connected = coord->channels[i].connected;
         coord->channels[i].stats.healthy = coord->channels[i].healthy;
     }
+
+    nimcp_mutex_unlock(coord->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -722,7 +795,11 @@ void mesh_system_coord_stats_free(mesh_system_coord_stats_t* stats) {
 }
 
 size_t mesh_cross_router_pending_count(mesh_cross_router_t router) {
-    return router ? router->pending_count : 0;
+    if (!router) return 0;
+    nimcp_mutex_lock(router->mutex);
+    size_t count = router->pending_count;
+    nimcp_mutex_unlock(router->mutex);
+    return count;
 }
 
 /* ============================================================================
