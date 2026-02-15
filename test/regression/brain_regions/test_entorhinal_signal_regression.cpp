@@ -34,6 +34,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <cstdlib>
 #include <vector>
 #include <chrono>
 #include <cstring>
@@ -1277,5 +1278,9 @@ TEST_F(EntorhinalSignalRegressionTest, Serialization_RoundTrip_Preserves) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    int result = RUN_ALL_TESTS();
+    /* Use _exit() to skip static destructors - the nimcp library has ~25
+     * __attribute__((destructor)) functions that race on exit ordering,
+     * causing intermittent hangs. Tests already passed, cleanup not needed. */
+    _exit(result);
 }
