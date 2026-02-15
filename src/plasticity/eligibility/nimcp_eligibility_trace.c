@@ -565,8 +565,8 @@ float eligibility_consolidate_on_burst(
         return 0.0F;
     }
 
-    // OPTIMIZATION: Skip negligible traces
-    if (trace->trace < config->trace_threshold) {
+    // OPTIMIZATION: Skip negligible traces (use absolute value to catch negative traces)
+    if (fabsf(trace->trace) < config->trace_threshold) {
         return 0.0F;
     }
 

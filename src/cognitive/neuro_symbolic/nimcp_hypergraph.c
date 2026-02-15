@@ -303,9 +303,9 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
         nimcp_free(hg->edges);
     }
 
-    /* Destroy mutex */
+    /* Free mutex */
     if (hg->mutex) {
-        nimcp_mutex_destroy(hg->mutex);
+        nimcp_mutex_free(hg->mutex);
     }
 
     /* Free hypergraph */

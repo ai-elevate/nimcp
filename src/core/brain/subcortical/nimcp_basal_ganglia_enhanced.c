@@ -353,13 +353,21 @@ int bg_enhanced_select_action(bg_enhanced_t* bge,
                                const float* cortical_input,
                                uint32_t* selected_action) {
     if (!bge || !cortical_input || !selected_action) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_training_bridge: required parameter is NULL (bge, cortical_input, selected_action)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_select_action: required parameter is NULL (bge, cortical_input, selected_action)");
         return -1;
     }
 
     nimcp_mutex_lock(bge->mutex);
 
     uint32_t num_actions = bge->config.core_config.num_actions;
+
+    /* Guard against stack buffer overflow */
+    if (num_actions > BG_MAX_ACTIONS) {
+        nimcp_mutex_unlock(bge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_enhanced_select_action: num_actions exceeds BG_MAX_ACTIONS");
+        return -1;
+    }
+
     float modified_input[BG_MAX_ACTIONS];
 
     /* Start with cortical input */
@@ -446,7 +454,7 @@ int bg_enhanced_select_action_for_goal(bg_enhanced_t* bge,
                                         uint32_t goal_id,
                                         uint32_t* selected_action) {
     if (!bge || !cortical_input || !selected_action) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_training_bridge: required parameter is NULL (bge, cortical_input, selected_action)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_select_action_for_goal: required parameter is NULL (bge, cortical_input, selected_action)");
         return -1;
     }
 
@@ -462,6 +470,7 @@ int bg_enhanced_select_action_for_goal(bg_enhanced_t* bge,
 
 float bg_enhanced_get_action_value(const bg_enhanced_t* bge, uint32_t action_id) {
     if (!bge || !bge->core) return 0.0f;
+    if (action_id >= BG_MAX_ACTIONS) return 0.0f;
 
     float value = 0.0f;
 
@@ -590,7 +599,7 @@ int bg_enhanced_plan_to_goal(bg_enhanced_t* bge, uint32_t current_state,
                               uint32_t goal_state, uint32_t* action_sequence,
                               uint32_t* sequence_length) {
     if (!bge || !bge->model_based || !action_sequence || !sequence_length) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_liking: required parameter is NULL (bge, bge->model_based, action_sequence, sequence_length)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_plan_to_goal: required parameter is NULL (bge, bge->model_based, action_sequence, sequence_length)");
         return -1;
     }
     /* Use simulate_trajectory and extract action sequence */

@@ -123,7 +123,7 @@ static bool check_lock_ordering(lock_dependency_t* deps, tracked_mutex_t* mutex)
 static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thread,
                                      bool visited[], int depth) {
     if (depth > MAX_THREADS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_lock_ordering: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_recursive: max depth exceeded");
         return false;
     }
 
@@ -556,16 +556,20 @@ deadlock_detector_stats_t deadlock_detector_get_stats(void) {
 }
 
 void deadlock_detector_print_stats(void) {
+    lock_detector();
+    deadlock_detector_stats_t snapshot = g_stats;
+    unlock_detector();
+
     printf("\n=== Deadlock Detector Statistics ===\n");
-    printf("Total lock attempts:  %lu\n", (unsigned long)g_stats.total_locks);
-    printf("Total unlocks:        %lu\n", (unsigned long)g_stats.total_unlocks);
-    printf("Active threads:       %u\n", g_stats.active_threads);
-    printf("Active mutexes:       %u\n", g_stats.active_mutexes);
+    printf("Total lock attempts:  %lu\n", (unsigned long)snapshot.total_locks);
+    printf("Total unlocks:        %lu\n", (unsigned long)snapshot.total_unlocks);
+    printf("Active threads:       %u\n", snapshot.active_threads);
+    printf("Active mutexes:       %u\n", snapshot.active_mutexes);
     printf("\nErrors Detected:\n");
-    printf("  Lock timeouts:      %lu\n", (unsigned long)g_stats.lock_timeouts);
-    printf("  Order violations:   %lu\n", (unsigned long)g_stats.order_violations);
-    printf("  Deadlocks:          %lu\n", (unsigned long)g_stats.deadlocks_detected);
-    printf("  Cycles:             %lu\n", (unsigned long)g_stats.cycles_detected);
+    printf("  Lock timeouts:      %lu\n", (unsigned long)snapshot.lock_timeouts);
+    printf("  Order violations:   %lu\n", (unsigned long)snapshot.order_violations);
+    printf("  Deadlocks:          %lu\n", (unsigned long)snapshot.deadlocks_detected);
+    printf("  Cycles:             %lu\n", (unsigned long)snapshot.cycles_detected);
     printf("====================================\n\n");
 }
 

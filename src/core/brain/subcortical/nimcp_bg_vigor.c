@@ -73,7 +73,6 @@ static bgv_action_vigor_t* bgv_find_action(bgv_system_t* system, uint32_t action
             return &system->actions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgv_find_action: validation failed");
     return NULL;
 }
 
@@ -92,7 +91,6 @@ static const bgv_action_vigor_t* bgv_find_action_const(const bgv_system_t* syste
             return &system->actions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgv_find_action: validation failed");
     return NULL;
 }
 

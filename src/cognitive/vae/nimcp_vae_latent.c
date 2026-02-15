@@ -674,7 +674,7 @@ int vae_latent_interpolate_path(const nimcp_tensor_t* z1,
 
         if (result != 0) {
             nimcp_tensor_destroy(step_tensor);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_latent_interpolate_path: interpolation step failed");
             return -1;
         }
 

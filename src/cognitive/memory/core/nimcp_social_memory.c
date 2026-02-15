@@ -679,7 +679,6 @@ NIMCP_EXPORT const person_node_t* social_memory_get_person_by_name(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_get_person_by_name: validation failed");
     return NULL;
 }
 
@@ -2733,7 +2732,6 @@ static person_entry_t* find_person_entry(social_memory_internal_t* mem, uint64_t
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_person_entry: validation failed");
     return NULL;
 }
 
@@ -2826,7 +2824,6 @@ static bool remove_person_entry(social_memory_internal_t* mem, uint64_t person_i
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "remove_person_entry: operation failed");
     return false;
 }
 
@@ -2990,7 +2987,6 @@ static int get_matrix_index(social_memory_internal_t* mem, uint64_t person_id) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_matrix_index: validation failed");
     return -1;
 }
 

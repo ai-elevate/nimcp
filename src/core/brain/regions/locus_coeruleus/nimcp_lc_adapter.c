@@ -515,7 +515,7 @@ int nimcp_lc_adapter_update(nimcp_lc_adapter_t adapter, float dt) {
     /* Generate messages for significant events */
 
     /* Check for mode changes */
-    static nimcp_lc_mode_t last_mode = LC_MODE_TONIC;
+    static __thread nimcp_lc_mode_t last_mode = LC_MODE_TONIC;
     nimcp_lc_mode_t current_mode = nimcp_lc_get_mode(&adapter->lc);
     if (current_mode != last_mode) {
         nimcp_lc_message_t msg;

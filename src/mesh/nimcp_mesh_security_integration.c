@@ -118,7 +118,7 @@ static threat_entry_t* find_threat_entry(
             return &si->threat_history[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_threat_entry: operation failed");
+    /* Not found is normal -- no threat is good */
     return NULL;
 }
 

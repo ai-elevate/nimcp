@@ -125,7 +125,6 @@ static immune_bridge_entry_t* find_bridge(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_bridge: validation failed");
     return NULL;
 }
 

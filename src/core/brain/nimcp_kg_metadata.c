@@ -107,7 +107,6 @@ static kg_metadata_entry_t* find_entry(const kg_metadata_t* meta, const char* ke
             return &meta->entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: validation failed");
     return NULL;
 }
 

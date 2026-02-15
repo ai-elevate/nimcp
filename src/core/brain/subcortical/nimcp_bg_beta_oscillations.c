@@ -182,7 +182,7 @@ bg_beta_system_t* bg_beta_create(const bg_beta_config_t* config) {
     bg_beta_system_t* system = nimcp_calloc(1, sizeof(bg_beta_system_t));
     if (!system) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_beta_create: allocation failed");
 
         return NULL;
 
@@ -306,7 +306,7 @@ int bg_beta_reset(bg_beta_system_t* system) {
 
 int bg_beta_step(bg_beta_system_t* system, float dt_ms) {
     if (!system || dt_ms <= 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_beta_step: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_beta_step: system is NULL or dt_ms <= 0");
         return -1;
     }
 
@@ -517,7 +517,7 @@ float bg_beta_apply_dopamine(bg_beta_system_t* system, float dopamine_level) {
 int bg_beta_signal_movement_intent(bg_beta_system_t* system,
                                     float intention_strength) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_apply_dopamine: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_signal_movement_intent: system is NULL");
         return -1;
     }
 
@@ -551,11 +551,11 @@ int bg_beta_set_pathology(bg_beta_system_t* system,
                           bg_pathology_t pathology,
                           float severity) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_signal_movement_complete: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_set_pathology: system is NULL");
         return -1;
     }
     if (pathology >= BG_PATHOLOGY_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_beta_signal_movement_complete: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_beta_set_pathology: pathology out of range");
         return -1;
     }
 
@@ -570,7 +570,7 @@ int bg_beta_get_pathology(const bg_beta_system_t* system,
                           bg_pathology_t* out_pathology,
                           float* out_severity) {
     if (!system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_signal_movement_complete: system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_get_pathology: system is NULL");
         return -1;
     }
 

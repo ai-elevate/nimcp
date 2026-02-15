@@ -238,7 +238,7 @@ int nimcp_msg_router_register_fast(
 
     /* Verify it's a fast path type */
     if (!is_fast_path_type(msg_type)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_register_fast: is_fast_path_type is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_register_fast: msg_type is not a fast-path type");
         return -1;
     }
 
@@ -292,7 +292,7 @@ int nimcp_msg_router_unregister(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_unregister: operation failed");
+    /* Handler not found for this msg_type -- not an error */
     return -1;  /* Not found */
 }
 

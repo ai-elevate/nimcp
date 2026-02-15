@@ -1055,13 +1055,11 @@ static bool broadcast_decision_to_workspace(
 {
     // Guard: Workspace integration not enabled
     if (!exec->workspace_integration_enabled || !exec->workspace || !task) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broadcast_decision_to_workspace: required parameter is NULL (exec->workspace_integration_enabled, exec->workspace, task)");
         return false;
     }
 
     // Guard: Confidence below threshold
     if (confidence < exec->workspace_ignition_threshold) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broadcast_decision_to_workspace: validation failed");
         return false;
     }
 
@@ -1469,7 +1467,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
 {
     if (!exec || !goal) {
         set_error("NULL parameter");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan: required parameter is NULL (exec, goal)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_create_plan: required parameter is NULL (exec, goal)");
         return NULL;
     }
 

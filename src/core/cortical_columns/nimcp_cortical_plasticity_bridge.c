@@ -43,7 +43,6 @@ static cortical_column_plasticity_state_t* find_column_state(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_column_state: validation failed");
     return NULL;
 }
 

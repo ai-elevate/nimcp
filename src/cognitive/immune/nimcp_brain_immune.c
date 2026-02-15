@@ -220,7 +220,6 @@ static brain_antigen_t* find_antigen_by_id(brain_immune_system_t* system, uint32
             return &system->antigens[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antigen_by_id: validation failed");
     return NULL;
 }
 
@@ -246,7 +245,6 @@ static brain_b_cell_t* find_b_cell_by_id(brain_immune_system_t* system, uint32_t
             return &system->b_cells[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_b_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -272,7 +270,6 @@ static brain_t_cell_t* find_t_cell_by_id(brain_immune_system_t* system, uint32_t
             return &system->t_cells[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_t_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -298,7 +295,6 @@ static brain_antibody_t* find_antibody_by_id(brain_immune_system_t* system, uint
             return &system->antibodies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody_by_id: validation failed");
     return NULL;
 }
 

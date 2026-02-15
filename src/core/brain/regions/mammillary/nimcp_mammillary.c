@@ -78,6 +78,7 @@ static float compute_hd_tuning(float preferred, float current, float width_deg) 
     float diff = fabsf(preferred - current);
     if (diff > M_PI) diff = 2.0f * M_PI - diff;
     float width_rad = width_deg * M_PI / 180.0f;
+    if (fabsf(width_rad) < 1e-10f) return 0.0f;
     return expf(-(diff * diff) / (2.0f * width_rad * width_rad));
 }
 

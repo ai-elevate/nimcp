@@ -22,6 +22,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <float.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -169,7 +170,7 @@ static void vector_normalize(float* v, uint32_t dim) {
  */
 static uint64_t get_timestamp_us(void) {
     /* Platform-independent timestamp - simplified for now */
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     return counter++;
 }
 

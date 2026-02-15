@@ -255,7 +255,7 @@ protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
     );
     if (!pm) {
         LOG_ERROR("Failed to allocate protocol metrics");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protocol_metrics_create: failed to allocate protocol metrics");
 
         return NULL;
     }

@@ -117,7 +117,6 @@ static inline int find_size_class(uint32_t capacity) {
             return i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_size_class: validation failed");
     return -1;  // Capacity exceeds maximum size class
 }
 

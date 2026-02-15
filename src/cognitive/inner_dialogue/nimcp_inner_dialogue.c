@@ -545,7 +545,6 @@ static bool query_cycle_coordinator_health(const inner_dialogue_engine_t* engine
     if (stalled_ratio > 0.5f) {
         NIMCP_LOGGING_WARN("inner_dialogue: %u/%u cycles stalled — suppressing deliberation",
                            stalled, total);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "inner_dialogue_engine_reset: validation failed");
         return false;
     }
 

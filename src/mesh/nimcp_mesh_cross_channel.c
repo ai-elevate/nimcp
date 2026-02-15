@@ -417,6 +417,9 @@ static nimcp_error_t process_cross_transaction(
     router->total_completed++;
 
     if (router->system_coord) {
+        /* P1: Lock system coordinator mutex for stats update */
+        nimcp_mutex_lock(router->system_coord->mutex);
+
         router->system_coord->stats.total_cross_transactions++;
         router->system_coord->stats.successful_transactions++;
 
@@ -429,6 +432,8 @@ static nimcp_error_t process_cross_transaction(
                 router->system_coord->channels[i].stats.cross_tx_received++;
             }
         }
+
+        nimcp_mutex_unlock(router->system_coord->mutex);
     }
 
     return NIMCP_SUCCESS;

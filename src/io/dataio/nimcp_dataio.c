@@ -209,7 +209,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(config->location)) {
         dataio_set_error("Path validation failed: %s", config->location);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_initialize: nimcp_path_is_safe is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_initialize: path traversal validation failed");
         return false;
     }
 
@@ -244,7 +244,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
             dataio_set_error("Failed to read CSV header");
             fclose(csv_ctx->file);
             nimcp_free(csv_ctx);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_initialize: fgets is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "csv_initialize: failed to read CSV header");
             return false;
         }
 
@@ -337,7 +337,7 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
         if (!nimcp_validate_float_field(&features[i], sizeof(float))) {
             fprintf(stderr, "[DataIO] Invalid feature value at index %u: %f from token '%s'\n", i,
                     features[i], token_copy);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_parse_line: nimcp_validate_float_field is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_parse_line: float field validation failed");
             return false;
         }
 
@@ -383,7 +383,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
     if (!batch->features) {
         dataio_set_error("Failed to allocate features array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "csv_next_batch: batch->features is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "csv_next_batch: failed to allocate features array");
         return false;
     }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
@@ -391,7 +391,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         nimcp_free(batch->features);
         batch->features = NULL;
         dataio_set_error("Failed to allocate labels array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "csv_next_batch: batch->labels is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "csv_next_batch: failed to allocate labels array");
         return false;
     }
     batch->num_samples = 0;
@@ -449,7 +449,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         batch->end_of_dataset = true;
         nimcp_free(batch->features);
         nimcp_free(batch->labels);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_next_batch: batch->num_samples is zero");
+        /* Zero samples is normal end-of-dataset, not an error */
         return false;
     }
 
@@ -588,7 +588,7 @@ static bool postgres_validate_query(const char* query) {
     char* upper_query = nimcp_malloc(qlen + 1);
     if (!upper_query) {
         dataio_set_error("Failed to allocate memory for query validation");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_validate_query: upper_query is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_validate_query: failed to allocate query buffer");
         return false;
     }
 
@@ -664,14 +664,14 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
     postgres_context_t* pg_ctx = nimcp_calloc(1, sizeof(postgres_context_t));
     if (!pg_ctx) {
         dataio_set_error("Failed to allocate PostgreSQL context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_initialize: pg_ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_initialize: failed to allocate postgres context");
         return false;
     }
     const char* separator = strchr(config->location, '|');
     if (!separator) {
         dataio_set_error("PostgreSQL location must be 'connection_string|query'");
         nimcp_free(pg_ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "postgres_initialize: separator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: location missing '|' separator between connection string and query");
         return false;
     }
     size_t conn_len = separator - config->location;
@@ -690,7 +690,7 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
     if (!postgres_validate_query(pg_ctx->query)) {
         /* Error message already set by postgres_validate_query */
         nimcp_free(pg_ctx);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: postgres_validate_query is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: SQL query validation failed");
         return false;
     }
 
@@ -766,7 +766,7 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
     if (pg_ctx->current_row >= pg_ctx->total_rows) {
         batch->end_of_dataset = true;
         batch->num_samples = 0;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_next_batch: capacity exceeded");
+        /* End of dataset is normal, not an error */
         return false;
     }
     uint32_t remaining = pg_ctx->total_rows - pg_ctx->current_row;
@@ -774,7 +774,7 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
     if (!batch->features) {
         dataio_set_error("Failed to allocate features array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_next_batch: batch->features is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_next_batch: failed to allocate features array");
         return false;
     }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
@@ -782,7 +782,7 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
         nimcp_free(batch->features);
         batch->features = NULL;
         dataio_set_error("Failed to allocate labels array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_next_batch: batch->labels is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_next_batch: failed to allocate labels array");
         return false;
     }
     batch->num_samples = 0;
@@ -1302,8 +1302,12 @@ typedef struct {
 static bool stream_push_sample(stream_context_t* ctx, const float* features,
                                uint32_t num_features, const char* label)
 {
-    if (!ctx || !ctx->active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_push_sample: required parameter is NULL (ctx, ctx->active)");
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_push_sample: ctx is NULL");
+        return false;
+    }
+    if (!ctx->active) {
+        /* Stream deactivated is normal shutdown state, not an error */
         return false;
     }
     nimcp_mutex_lock(&ctx->queue_lock);
@@ -1319,7 +1323,7 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
     if (!sample->features) {
         nimcp_free(sample);
         nimcp_mutex_unlock(&ctx->queue_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream_push_sample: sample->features is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream_push_sample: failed to allocate features");
         return false;
     }
     memcpy(sample->features, features, num_features * sizeof(float));
@@ -1329,7 +1333,7 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
         nimcp_free(sample->features);
         nimcp_free(sample);
         nimcp_mutex_unlock(&ctx->queue_lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream_push_sample: sample->label is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream_push_sample: failed to allocate label");
         return false;
     }
     sample->next = NULL;
@@ -1358,7 +1362,7 @@ static stream_sample_t* stream_pop_sample(stream_context_t* ctx, int32_t timeout
         else if (timeout_ms > 0) {
             if (nimcp_cond_timedwait(&ctx->queue_cond, &ctx->queue_lock, (uint32_t)timeout_ms) == NIMCP_TIMEOUT) {
                 nimcp_mutex_unlock(&ctx->queue_lock);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "stream_pop_sample: validation failed");
+                /* Timeout is normal behavior, not an error */
                 return NULL;
             }
         } else {
@@ -2156,7 +2160,7 @@ bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(output_file)) {
         dataio_set_error("Path validation failed: %s", output_file);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_export_predictions: nimcp_path_is_safe is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_export_predictions: path traversal validation failed");
         return false;
     }
 
@@ -2314,7 +2318,7 @@ bool dataset_save_csv(float** features, char** labels, uint32_t num_samples, uin
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(filepath)) {
         dataio_set_error("Path validation failed: %s", filepath);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dataset_save_csv: nimcp_path_is_safe is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dataset_save_csv: path traversal validation failed");
         return false;
     }
 

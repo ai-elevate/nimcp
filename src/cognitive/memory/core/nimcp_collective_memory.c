@@ -222,7 +222,10 @@ static collective_error_t add_agent_to_memory(collective_memory_t* memory,
 
         float* new_versions = nimcp_realloc(memory->agent_versions, new_cap * sizeof(float));
         if (!new_versions) {
-            /* agent_ids was already updated; agent_versions is still valid at old size */
+            /* agent_ids was already resized but agent_versions was not.
+             * Do NOT update agent_capacity - keep it at old size so
+             * subsequent code cannot index beyond agent_versions bounds.
+             * agent_ids having extra capacity is harmless. */
             return COLLECTIVE_ERROR_NO_MEMORY;
         }
         memory->agent_versions = new_versions;

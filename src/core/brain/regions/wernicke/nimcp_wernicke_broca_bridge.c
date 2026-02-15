@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -218,7 +219,7 @@ static bool queue_peek(const wbb_queue_t* queue, wbb_message_t* message) {
  */
 static uint64_t get_timestamp_ms(void) {
     /* Simple timestamp - could be replaced with actual clock */
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     return counter++;
 }
 

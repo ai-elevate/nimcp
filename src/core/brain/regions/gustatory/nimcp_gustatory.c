@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -54,7 +55,7 @@ void gustatory_mesh_unregister(void) {
 
 
 static uint64_t gust_get_time_ms(void) {
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     return counter++;
 }
 

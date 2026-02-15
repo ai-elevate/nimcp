@@ -233,13 +233,13 @@ static int blend_tensors(nimcp_tensor_t* result,
                          const nimcp_tensor_t* b,
                          float alpha) {
     if (!result || !a || !b) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor_norm: required parameter is NULL (result, a, b)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blend_tensors: required parameter is NULL (result, a, b)");
         return -1;
     }
 
     size_t size = nimcp_tensor_size(result);
     if (nimcp_tensor_size(a) != size || nimcp_tensor_size(b) != size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tensor_norm: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "blend_tensors: tensor size mismatch");
         return -1;
     }
 
@@ -567,7 +567,7 @@ int imagination_engine_init_for_brain(
     const imagination_engine_config_t* config) {
 
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_reset: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_init_for_brain: brain is NULL");
         return -1;
     }
 
@@ -578,7 +578,7 @@ int imagination_engine_init_for_brain(
 
     imagination_engine_t* engine = imagination_engine_create(config);
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_reset: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_engine_init_for_brain: engine creation failed");
         return -1;
     }
 
@@ -587,6 +587,10 @@ int imagination_engine_init_for_brain(
 
     /* Attach to brain (implementation depends on brain structure) */
     /* This would typically call: brain_set_imagination_engine(brain, engine); */
+    /* NOTE: If brain doesn't retain the engine pointer, we must destroy it to
+     * avoid a memory leak. Currently brain_set_imagination_engine is not called,
+     * so the engine is leaked. For now, destroy it since there's no API to attach. */
+    imagination_engine_destroy(engine);
 
     return 0;
 }
@@ -618,7 +622,7 @@ int imagination_engine_connect_world_model(
     jepa_predictor_t* jepa) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_world_model: engine is NULL");
         return -1;
     }
 
@@ -638,7 +642,7 @@ int imagination_engine_connect_hippocampus(
     hippocampus_adapter_t* hipp) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_hippocampus: engine is NULL");
         return -1;
     }
 
@@ -658,7 +662,7 @@ int imagination_engine_connect_visual(
     visual_cortex_t* visual) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_visual: engine is NULL");
         return -1;
     }
 
@@ -678,7 +682,7 @@ int imagination_engine_connect_audio(
     audio_cortex_t* audio) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_audio: engine is NULL");
         return -1;
     }
 
@@ -698,7 +702,7 @@ int imagination_engine_connect_prefrontal(
     prefrontal_adapter_t* pfc) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_prefrontal: engine is NULL");
         return -1;
     }
 
@@ -718,7 +722,7 @@ int imagination_engine_connect_global_workspace(
     global_workspace_t* gw) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_global_workspace: engine is NULL");
         return -1;
     }
 
@@ -738,7 +742,7 @@ int imagination_engine_connect_tom(
     theory_of_mind_t* tom) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_tom: engine is NULL");
         return -1;
     }
 
@@ -758,7 +762,7 @@ int imagination_engine_connect_curiosity(
     curiosity_state_t* curiosity) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_curiosity: engine is NULL");
         return -1;
     }
 
@@ -778,7 +782,7 @@ int imagination_engine_connect_sleep(
     sleep_wake_cycle_t* sleep) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_sleep: engine is NULL");
         return -1;
     }
 
@@ -802,7 +806,7 @@ int imagination_engine_connect_bio_async(
     bio_module_context_t* bio_ctx) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_bio_async: engine is NULL");
         return -1;
     }
 
@@ -822,7 +826,7 @@ int imagination_engine_connect_immune(
     brain_immune_system_t* immune) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_imagination_engine: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_immune: engine is NULL");
         return -1;
     }
 
@@ -842,7 +846,7 @@ int imagination_engine_connect_substrate(
     neural_substrate_t* substrate) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_substrate: engine is NULL");
         return -1;
     }
 
@@ -862,7 +866,7 @@ int imagination_engine_connect_thalamic(
     thalamic_router_t* thalamic) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_thalamic: engine is NULL");
         return -1;
     }
 
@@ -882,7 +886,7 @@ int imagination_engine_connect_training(
     training_context_t* training) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_training: engine is NULL");
         return -1;
     }
 
@@ -902,7 +906,7 @@ int imagination_engine_connect_logic(
     neural_logic_gate_t* logic) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_logic: engine is NULL");
         return -1;
     }
 
@@ -922,7 +926,7 @@ int imagination_engine_init_gpu(
     int device_id) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_init_gpu: engine is NULL");
         return -1;
     }
 
@@ -951,7 +955,7 @@ int imagination_engine_connect_parietal(
     parietal_lobe_t* parietal) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_parietal: engine is NULL");
         return -1;
     }
 
@@ -971,7 +975,7 @@ int imagination_engine_connect_spatial(
     spatial_transform_t* spatial) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_spatial: engine is NULL");
         return -1;
     }
 
@@ -991,7 +995,7 @@ int imagination_engine_connect_number_sense(
     number_sense_t* number_sense) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_number_sense: engine is NULL");
         return -1;
     }
 
@@ -1011,7 +1015,7 @@ int imagination_engine_connect_math_intuition(
     mathematical_intuition_t* math) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_math_intuition: engine is NULL");
         return -1;
     }
 
@@ -1031,7 +1035,7 @@ int imagination_engine_connect_scientific(
     scientific_reasoning_t* scientific) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_scientific: engine is NULL");
         return -1;
     }
 
@@ -1055,7 +1059,7 @@ int imagination_engine_connect_chemistry(
     chemistry_context_t* chemistry) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_chemistry: engine is NULL");
         return -1;
     }
 
@@ -1075,7 +1079,7 @@ int imagination_engine_connect_biology(
     biology_context_t* biology) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_biology: engine is NULL");
         return -1;
     }
 
@@ -1095,7 +1099,7 @@ int imagination_engine_connect_physics(
     physics_context_t* physics) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_physics: engine is NULL");
         return -1;
     }
 
@@ -1115,7 +1119,7 @@ int imagination_engine_connect_software(
     software_engineering_context_t* software) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_software: engine is NULL");
         return -1;
     }
 
@@ -1135,7 +1139,7 @@ int imagination_engine_connect_equations(
     equation_manipulation_context_t* equations) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_equations: engine is NULL");
         return -1;
     }
 
@@ -1159,7 +1163,7 @@ int imagination_engine_connect_quantum_kb(
     qreason_kb_t* kb) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_connect_quantum_kb: engine is NULL");
         return -1;
     }
 
@@ -1179,7 +1183,7 @@ int imagination_engine_init_quantum_state(
     size_t num_qubits) {
 
     if (!engine || num_qubits == 0 || num_qubits > 32) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_engine_init_quantum_state: invalid parameters");
         return -1;
     }
 
@@ -1203,7 +1207,7 @@ int imagination_engine_set_quantum_enabled(
     bool enabled) {
 
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_set_quantum_enabled: engine is NULL");
         return -1;
     }
 
@@ -1238,7 +1242,7 @@ imagination_scenario_t* imagination_begin_scenario(
 
     }
     if (mode < 0 || mode >= IMAGINATION_MODE_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "imagination_begin_scenario: invalid mode");
         return NULL;
     }
 
@@ -1252,7 +1256,7 @@ imagination_scenario_t* imagination_begin_scenario(
     scenario_id_t slot_id = imagination_workspace_allocate_scenario(engine->workspace);
     if (slot_id == 0) {
         nimcp_mutex_unlock(engine->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: slot_id is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_begin_scenario: workspace full");
         return NULL;  /* Workspace full */
     }
 
@@ -1262,7 +1266,7 @@ imagination_scenario_t* imagination_begin_scenario(
     if (!scenario) {
         imagination_workspace_release_scenario(engine->workspace, slot_id);
         nimcp_mutex_unlock(engine->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: scenario is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_begin_scenario: allocation failed");
         return NULL;
     }
 
@@ -1350,7 +1354,7 @@ error:
     nimcp_free(scenario);
     imagination_workspace_release_scenario(engine->workspace, slot_id);
     nimcp_mutex_unlock(engine->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_begin_scenario: resource allocation failed");
     return NULL;
 }
 
@@ -1359,11 +1363,10 @@ int imagination_step_scenario(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_step_scenario: engine or scenario is NULL");
         return -1;
     }
     if (!scenario->is_active || scenario->is_paused) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: scenario->is_active is NULL");
         return -1;
     }
 
@@ -1381,7 +1384,7 @@ int imagination_step_scenario(
         engine->workspace, scenario->id);
     if (!ws_latent) {
         nimcp_mutex_unlock(engine->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ws_latent is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_step_scenario: ws_latent is NULL");
         return -1;
     }
 
@@ -1486,7 +1489,7 @@ int imagination_end_scenario(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_end_scenario: engine or scenario is NULL");
         return -1;
     }
 
@@ -1593,7 +1596,7 @@ int imagination_pause_scenario(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_pause_scenario: engine or scenario is NULL");
         return -1;
     }
 
@@ -1613,7 +1616,7 @@ int imagination_resume_scenario(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_resume_scenario: engine or scenario is NULL");
         return -1;
     }
 
@@ -1638,7 +1641,7 @@ int imagination_generate_visual(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_visual: engine or scenario is NULL");
         return -1;
     }
 
@@ -1654,7 +1657,7 @@ int imagination_generate_visual(
         scenario->visual_buffer = nimcp_tensor_create(dims, 3, NIMCP_DTYPE_F32);
         if (!scenario->visual_buffer) {
             nimcp_mutex_unlock(engine->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: scenario->visual_buffer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_visual: scenario->visual_buffer is NULL");
             return -1;
         }
     }
@@ -1694,7 +1697,7 @@ int imagination_generate_audio(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_audio: engine or scenario is NULL");
         return -1;
     }
 
@@ -1710,7 +1713,7 @@ int imagination_generate_audio(
         scenario->audio_buffer = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
         if (!scenario->audio_buffer) {
             nimcp_mutex_unlock(engine->mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: scenario->audio_buffer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_audio: scenario->audio_buffer is NULL");
             return -1;
         }
     }
@@ -1748,7 +1751,7 @@ int imagination_generate_multimodal(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_generate_multimodal: engine or scenario is NULL");
         return -1;
     }
 
@@ -1773,7 +1776,7 @@ int imagination_transform_scene(
     const imagination_transform_t* transform) {
 
     if (!engine || !scenario || !transform) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario, transform)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_transform_scene: engine, scenario, or transform is NULL");
         return -1;
     }
 
@@ -1885,7 +1888,7 @@ int imagination_remove_element(
     uint64_t element_id) {
 
     if (!engine || !scenario || element_id == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_remove_element: invalid parameters");
         return -1;
     }
 
@@ -1945,7 +1948,7 @@ imagination_scenario_t* imagination_blend_scenarios(
     float alpha) {
 
     if (!engine || !scenario_a || !scenario_b) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario_a, scenario_b)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_blend_scenarios: engine or scenario is NULL");
         return NULL;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1995,7 +1998,7 @@ imagination_scenario_t* imagination_counterfactual(
     const counterfactual_query_t* query) {
 
     if (!engine || !memory || !query) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (engine, memory, query)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_counterfactual: engine, memory, or query is NULL");
         return NULL;
     }
 
@@ -2071,7 +2074,7 @@ imagination_scenario_t* imagination_simulate_future(
     size_t steps_ahead) {
 
     if (!engine || !current_state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, current_state)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_simulate_future: engine or current_state is NULL");
         return NULL;
     }
 
@@ -2175,7 +2178,7 @@ imagination_scenario_t* imagination_creative_recombine(
     float creativity_level) {
 
     if (!engine || !seed_memories || num_memories == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, seed_memories)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_creative_recombine: engine or seed_memories is NULL");
         return NULL;
     }
 
@@ -2233,7 +2236,7 @@ int imagination_mental_rotate(
     float angle_radians) {
 
     if (!engine || !scenario || !rotation_axis) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario, rotation_axis)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_mental_rotate: engine, scenario, or rotation_axis is NULL");
         return -1;
     }
 
@@ -2659,7 +2662,7 @@ imagination_scenario_t* imagination_quantum_superpose(
     const float* amplitudes) {
 
     if (!engine || !possibilities || num_possibilities == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, possibilities)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_quantum_superpose: engine or possibilities is NULL");
         return NULL;
     }
 
@@ -2727,7 +2730,7 @@ int imagination_quantum_solve(
     qreason_result_t* result) {
 
     if (!engine || !constraints || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, constraints, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_quantum_solve: engine, constraints, or result is NULL");
         return -1;
     }
 
@@ -2753,7 +2756,7 @@ imagination_scenario_t* imagination_quantum_collapse(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_quantum_collapse: engine or scenario is NULL");
         return NULL;
     }
 
@@ -2785,7 +2788,7 @@ int imagination_evaluate(
     imagination_evaluation_t* result) {
 
     if (!engine || !scenario || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_evaluate: engine, scenario, or result is NULL");
         return -1;
     }
 
@@ -2882,11 +2885,11 @@ int imagination_broadcast_to_workspace(
     float salience) {
 
     if (!engine || !scenario) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, scenario)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_broadcast_to_workspace: engine or scenario is NULL");
         return -1;
     }
     if (!engine->global_workspace) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine->global_workspace is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_broadcast_to_workspace: engine->global_workspace is NULL");
         return -1;
     }
 
@@ -3675,7 +3678,6 @@ int imagination_search_goal_mcts(
         return -1;
     }
     if (!scenario->is_active || scenario->is_paused) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_search_goal_mcts: scenario->is_active is NULL");
         return -1;
     }
 

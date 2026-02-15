@@ -745,7 +745,7 @@ training_pipeline_ctx_t* training_pipeline_create(
     }
 
     /* Initialize prefetch mutex */
-    if (nimcp_platform_mutex_init(&ctx->prefetch_mutex, NULL) != 0) {
+    if (nimcp_platform_mutex_init(&ctx->prefetch_mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to init prefetch mutex");
         nimcp_free(ctx->prefetch_buffer);
         nimcp_free(ctx->indices);

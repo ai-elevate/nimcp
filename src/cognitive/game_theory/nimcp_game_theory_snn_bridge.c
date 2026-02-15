@@ -495,7 +495,7 @@ int game_theory_snn_encode_payoff(
         if (payoffs[i] > max_payoff) max_payoff = payoffs[i];
         sum_payoff += payoffs[i];
     }
-    float avg_payoff = sum_payoff / num_actions;
+    float avg_payoff = (num_actions > 0) ? (sum_payoff / num_actions) : 0.0f;
 
     dims[GT_DIM_PAYOFF_EXPECTATION] = clamp_f(avg_payoff, 0.0f, 1.0f);
     dims[GT_DIM_RISK_TOLERANCE] = clamp_f(max_payoff - avg_payoff, 0.0f, 1.0f);

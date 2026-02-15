@@ -262,7 +262,6 @@ static const region_cytokine_sensitivity_t* find_sensitivity(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_sensitivity: validation failed");
     return NULL;
 }
 

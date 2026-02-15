@@ -378,8 +378,7 @@ static bool unit_propagate(sat_solver_t* solver) {
 
             if (status == CLAUSE_CONFLICTING) {
                 solver->stats.conflicts++;
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unit_propagate: validation failed");
-                return false;  /* Conflict! */
+                return false;  /* Conflict - normal SAT solving state */
             }
 
             if (status == CLAUSE_UNIT) {
@@ -400,8 +399,7 @@ static bool unit_propagate(sat_solver_t* solver) {
 
             if (status == CLAUSE_CONFLICTING) {
                 solver->stats.conflicts++;
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unit_propagate: validation failed");
-                return false;
+                return false;  /* Conflict - normal SAT solving state */
             }
 
             if (status == CLAUSE_UNIT) {

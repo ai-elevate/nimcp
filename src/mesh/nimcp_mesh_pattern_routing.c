@@ -10,6 +10,7 @@
 
 #include "mesh/nimcp_mesh_pattern_routing.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -57,6 +58,9 @@ struct mesh_pattern_router {
     /* Statistics */
     uint64_t total_routings;
     uint64_t successful_routings;
+
+    /* P1: Thread safety */
+    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -229,6 +233,14 @@ mesh_pattern_router_t* mesh_pattern_router_create(
         router->neuromod_levels[i] = 0.5f;
     }
 
+    /* P1: Create mutex for thread safety */
+    router->mutex = nimcp_mutex_create(NULL);
+    if (!router->mutex) {
+        nimcp_free(router);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_router_create: mutex creation failed");
+        return NULL;
+    }
+
     LOG_INFO("Created pattern router with threshold=%.2f",
              router->config.default_threshold);
 
@@ -237,6 +249,11 @@ mesh_pattern_router_t* mesh_pattern_router_create(
 
 void mesh_pattern_router_destroy(mesh_pattern_router_t* router) {
     if (!router || router->magic != MESH_PATTERN_ROUTER_MAGIC) return;
+
+    /* P1: Destroy mutex */
+    if (router->mutex) {
+        nimcp_mutex_destroy(router->mutex);
+    }
 
     router->magic = 0;
     nimcp_free(router);
@@ -259,17 +276,22 @@ nimcp_error_t mesh_pattern_router_register_receptive_field(
     }
     if (!field) return NIMCP_ERROR_NULL_POINTER;
 
+    /* P1: Mutex protection for module list modification */
+    nimcp_mutex_lock(router->mutex);
+
     /* Check if already registered */
     for (size_t i = 0; i < router->module_count; i++) {
         if (router->modules[i].id == module_id) {
             /* Update existing */
             router->modules[i].field = *field;
+            nimcp_mutex_unlock(router->mutex);
             return NIMCP_SUCCESS;
         }
     }
 
     /* Add new */
     if (router->module_count >= MAX_REGISTERED_MODULES) {
+        nimcp_mutex_unlock(router->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED, "mesh_pattern_routing: error condition");
         return NIMCP_ERROR_CAPACITY_EXCEEDED;
     }
@@ -281,6 +303,8 @@ nimcp_error_t mesh_pattern_router_register_receptive_field(
     mod->success_rate = 0.5f;
     mod->activation_count = 0;
     mod->success_count = 0;
+
+    nimcp_mutex_unlock(router->mutex);
 
     LOG_DEBUG("Registered receptive field for module 0x%llx (threshold=%.2f)",
               (unsigned long long)module_id, field->threshold);
@@ -300,6 +324,9 @@ nimcp_error_t mesh_pattern_router_update_receptive_field(
     }
     if (!new_preferred) return NIMCP_ERROR_NULL_POINTER;
 
+    /* P1: Mutex protection for module state modification */
+    nimcp_mutex_lock(router->mutex);
+
     /* Find module */
     for (size_t i = 0; i < router->module_count; i++) {
         if (router->modules[i].id == module_id) {
@@ -317,10 +344,12 @@ nimcp_error_t mesh_pattern_router_update_receptive_field(
                 field->pattern_count = 1;
             }
 
+            nimcp_mutex_unlock(router->mutex);
             return NIMCP_SUCCESS;
         }
     }
 
+    nimcp_mutex_unlock(router->mutex);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "mesh_pattern_routing: error condition");
     return NIMCP_ERROR_NOT_FOUND;
 }
@@ -395,6 +424,9 @@ nimcp_error_t mesh_pattern_router_compute_activations(
 
     *count_out = 0;
 
+    /* P1: Mutex protection for module state read and stats update */
+    nimcp_mutex_lock(router->mutex);
+
     /* Compute activation for all modules */
     float all_activations[MAX_REGISTERED_MODULES];
     for (size_t i = 0; i < router->module_count; i++) {
@@ -447,6 +479,7 @@ nimcp_error_t mesh_pattern_router_compute_activations(
 
     router->total_routings++;
 
+    nimcp_mutex_unlock(router->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -519,7 +552,10 @@ nimcp_error_t mesh_pattern_router_apply_neuromodulation(
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
 
+    /* P1: Mutex protection for neuromodulator state modification */
+    nimcp_mutex_lock(router->mutex);
     router->neuromod_levels[neuromod] = level;
+    nimcp_mutex_unlock(router->mutex);
 
     const char* names[] = {"Dopamine", "Norepinephrine", "Acetylcholine", "Serotonin"};
     LOG_DEBUG("Applied %s level=%.2f", names[neuromod], level);
@@ -547,6 +583,9 @@ nimcp_error_t mesh_pattern_router_learn_outcome(
     if (!router->config.enable_learning) {
         return NIMCP_SUCCESS;
     }
+
+    /* P1: Mutex protection for module state and stats modification */
+    nimcp_mutex_lock(router->mutex);
 
     float lr = router->config.learning_rate;
 
@@ -583,5 +622,6 @@ nimcp_error_t mesh_pattern_router_learn_outcome(
         router->successful_routings++;
     }
 
+    nimcp_mutex_unlock(router->mutex);
     return NIMCP_SUCCESS;
 }

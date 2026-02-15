@@ -343,6 +343,13 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
         }
 
         matrix->num_strategies[i] = strategies_per_player[i];
+        if (strategies_per_player[i] > 0 &&
+            matrix->total_cells > UINT32_MAX / strategies_per_player[i]) {
+            nimcp_free(matrix);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "nimcp_game_matrix_create: total_cells overflow");
+            return NULL;
+        }
         matrix->total_cells *= strategies_per_player[i];
     }
 
@@ -1981,7 +1988,6 @@ static bool check_no_outside_deviation(const nimcp_equilibrium_t ctx,
                 nimcp_strategy_profile_cleanup(&temp);
 
                 if (outside_payoff > support_payoff + 1e-6f) {
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
                     return false;  // Profitable deviation outside support
                 }
             }

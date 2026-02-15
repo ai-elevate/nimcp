@@ -340,14 +340,19 @@ int brain_immune_fep_update(brain_immune_fep_bridge_t* bridge) {
 
         /* High free energy indicates potential threat */
         if (fe > bridge->config.fep_threat_threshold) {
-            bridge->fep_effects.threat_assessment = fminf(1.0f,
-                (fe - bridge->config.fep_tolerance_threshold) /
-                (bridge->config.fep_threat_threshold - bridge->config.fep_tolerance_threshold));
+            float denom = bridge->config.fep_threat_threshold - bridge->config.fep_tolerance_threshold;
+            if (fabsf(denom) < 1e-10f) {
+                bridge->fep_effects.threat_assessment = 1.0f;
+            } else {
+                bridge->fep_effects.threat_assessment = fminf(1.0f,
+                    (fe - bridge->config.fep_tolerance_threshold) / denom);
+            }
             bridge->fep_effects.response_magnitude = bridge->fep_effects.threat_assessment;
             bridge->state.fep_guided_responses++;
         } else if (fe < bridge->config.fep_tolerance_threshold) {
-            bridge->fep_effects.tolerance_confidence = 1.0f -
-                (fe / bridge->config.fep_tolerance_threshold);
+            bridge->fep_effects.tolerance_confidence =
+                (fabsf(bridge->config.fep_tolerance_threshold) > 1e-10f) ?
+                (1.0f - (fe / bridge->config.fep_tolerance_threshold)) : 1.0f;
             bridge->fep_effects.threat_assessment = 0.0f;
         } else {
             /* Uncertain region */

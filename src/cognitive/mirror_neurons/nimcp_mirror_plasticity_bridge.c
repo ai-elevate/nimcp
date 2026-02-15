@@ -168,7 +168,6 @@ static mirror_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_time_us: validation failed");
     return NULL;
 }
 
@@ -581,7 +580,6 @@ int mirror_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_unregister_synapse: operation failed");
     return -1;
 }
 
@@ -607,7 +605,6 @@ int mirror_plasticity_get_synapse(
         return 0;
     }
     nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_synapse: validation failed");
     return -1;
 }
 

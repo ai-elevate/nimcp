@@ -122,7 +122,6 @@ static fep_bridge_entry_t* find_bridge_by_id(
             return &orchestrator->bridges[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_bridge_by_id: validation failed");
     return NULL;
 }
 
@@ -136,7 +135,6 @@ static bool category_needs_update(
 ) {
     const fep_category_config_t* cat_cfg = &orchestrator->config.categories[category];
     if (!cat_cfg->enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "category_needs_update: cat_cfg->enabled is NULL");
         return false;
     }
     

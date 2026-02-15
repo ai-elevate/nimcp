@@ -80,7 +80,7 @@ static kg_bridge_module_t* find_module(
             return &bridge->modules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: validation failed");
+    /* Not found is normal lookup result, not an error */
     return NULL;
 }
 
@@ -93,11 +93,9 @@ static bool modules_connected_direct(
     kg_bridge_module_t* to_mod = find_module(bridge, to_id);
 
     if (!from_mod || !to_mod) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "modules_connected_direct: required parameter is NULL (from_mod, to_mod)");
         return false;
     }
     if (!from_mod->has_wiring || !to_mod->has_wiring) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "modules_connected_direct: required parameter is NULL (from_mod->has_wiring, to_mod->has_wiring)");
         return false;
     }
 

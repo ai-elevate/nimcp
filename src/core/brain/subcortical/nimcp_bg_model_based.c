@@ -227,7 +227,7 @@ bg_model_based_t* bg_mb_create(const bg_mb_config_t* config) {
 
 cleanup:
     bg_mb_destroy(mb);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_create: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_mb_create: allocation failed");
     return NULL;
 }
 
@@ -347,7 +347,7 @@ int bg_mb_update_transition(bg_model_based_t* mb,
                              uint32_t action,
                              uint32_t next_state) {
     if (!mb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_update_transition: mb is NULL");
         return -1;
     }
     if (state >= mb->config.num_states ||
@@ -387,7 +387,7 @@ int bg_mb_update_reward(bg_model_based_t* mb,
                          uint32_t action,
                          float reward) {
     if (!mb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_update_reward: mb is NULL");
         return -1;
     }
     if (state >= mb->config.num_states ||
@@ -455,11 +455,11 @@ int bg_mb_plan(bg_model_based_t* mb,
                 uint32_t current_state,
                 bg_mb_plan_result_t* result) {
     if (!mb || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: required parameter is NULL (mb, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_plan: required parameter is NULL (mb, result)");
         return -1;
     }
     if (current_state >= mb->config.num_states) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_mb_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_mb_plan: current_state out of range");
         return -1;
     }
 
@@ -513,11 +513,11 @@ int bg_mb_simulate_trajectory(bg_model_based_t* mb,
                                uint32_t horizon,
                                bg_mb_trajectory_t* trajectory) {
     if (!mb || !trajectory) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (mb, trajectory)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_simulate_trajectory: required parameter is NULL (mb, trajectory)");
         return -1;
     }
     if (start_state >= mb->config.num_states) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_mb_simulate_trajectory: start_state out of range");
         return -1;
     }
 
@@ -623,7 +623,7 @@ int bg_mb_arbitrate(bg_model_based_t* mb,
                      float* combined_q_values,
                      bg_mb_arbitration_t* arbit_state) {
     if (!mb || !mb_q_values || !mf_q_values || !combined_q_values) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: required parameter is NULL (mb, mb_q_values, mf_q_values, combined_q_values)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_arbitrate: required parameter is NULL (mb, mb_q_values, mf_q_values, combined_q_values)");
         return -1;
     }
 
@@ -648,7 +648,7 @@ int bg_mb_update_arbitration(bg_model_based_t* mb,
                               float prediction_error,
                               bool was_mb_action) {
     if (!mb) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_update_arbitration: mb is NULL");
         return -1;
     }
 
@@ -686,7 +686,7 @@ int bg_mb_update_arbitration(bg_model_based_t* mb,
 int bg_mb_get_arbitration(const bg_model_based_t* mb,
                            bg_mb_arbitration_t* arbit) {
     if (!mb || !arbit) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: required parameter is NULL (mb, arbit)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_arbitration: required parameter is NULL (mb, arbit)");
         return -1;
     }
     *arbit = mb->arbitration;
@@ -696,7 +696,7 @@ int bg_mb_get_arbitration(const bg_model_based_t* mb,
 int bg_mb_set_arbitration_mode(bg_model_based_t* mb,
                                 bg_mb_arbitration_mode_t mode) {
     if (!mb || mode >= BG_MB_ARBIT_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_mb_get_state_value: mb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bg_mb_set_arbitration_mode: invalid mode");
         return -1;
     }
 

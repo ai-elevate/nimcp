@@ -706,7 +706,14 @@ static int predict_distress_trajectory(enhanced_wellbeing_system_t* system) {
     }
 
     /* Compute slope (trajectory) */
-    float slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
+    float denom = n * sum_x2 - sum_x * sum_x;
+    if (fabsf(denom) < 1e-6f) {
+        pred->trajectory = TRAJECTORY_STABLE;
+        pred->trajectory_slope = 0.0f;
+        pred->trajectory_confidence = 0.0f;
+        return 0;
+    }
+    float slope = (n * sum_xy - sum_x * sum_y) / denom;
     pred->trajectory_slope = slope;
     pred->trajectory_confidence = 0.7f; /* Placeholder - would compute R^2 */
 
@@ -985,7 +992,7 @@ enhanced_wellbeing_system_t* enhanced_wellbeing_create(
         (enhanced_wellbeing_system_t*)nimcp_malloc(sizeof(enhanced_wellbeing_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate enhanced wellbeing system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "enhanced_wellbeing_create: allocation failed");
 
         return NULL;
     }

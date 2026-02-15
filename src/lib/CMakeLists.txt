@@ -2942,6 +2942,7 @@ target_link_libraries(nimcp
         lz4
         jansson
         cjson
+        atomic
 )
 
 # Add LAPACK/BLAS libraries if available

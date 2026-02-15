@@ -117,13 +117,13 @@ typedef struct {
 // Static Variables
 //=============================================================================
 
-/** Last error message */
-static char s_last_error[256] = {0};
+/** Last error message (thread-local for thread safety) */
+static __thread char s_last_error[256] = {0};
 
-/** PE histories for variance calculation (thread-local would be better) */
-static pe_history_t s_visual_pe_history = {0};
-static pe_history_t s_audio_pe_history = {0};
-static pe_history_t s_speech_pe_history = {0};
+/** PE histories for variance calculation (thread-local for thread safety) */
+static __thread pe_history_t s_visual_pe_history = {0};
+static __thread pe_history_t s_audio_pe_history = {0};
+static __thread pe_history_t s_speech_pe_history = {0};
 
 //=============================================================================
 // Forward Declarations - Internal Functions

@@ -480,7 +480,7 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     thalamic_router_t* router = (thalamic_router_t*)nimcp_calloc(1, sizeof(thalamic_router_t));
     if (!router) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to allocate router");
 
         return NULL;
 

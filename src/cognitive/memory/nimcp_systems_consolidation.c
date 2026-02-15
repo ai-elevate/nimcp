@@ -38,6 +38,7 @@
 #include "utils/containers/nimcp_vector.h"
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
@@ -175,9 +176,9 @@ static int systems_consolidation_wiring_handler_callback(
  */
 static uint64_t generate_node_id(void)
 {
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     uint64_t timestamp = nimcp_platform_time_monotonic_ms();
-    return (timestamp << 16) | (counter++ & 0xFFFF);
+    return (timestamp << 16) | (atomic_fetch_add(&counter, 1) & 0xFFFF);
 }
 
 //=============================================================================

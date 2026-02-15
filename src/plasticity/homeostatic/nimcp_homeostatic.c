@@ -669,7 +669,11 @@ homeostatic_controller_t homeostatic_controller_create(
     ctrl->current_sleep_state = SLEEP_STATE_AWAKE;
 
     /* Initialize mutex for thread safety */
-    nimcp_mutex_init(&ctrl->mutex, NULL);
+    if (nimcp_mutex_init(&ctrl->mutex, NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_UNKNOWN, "homeostatic_controller_create: mutex init failed");
+        homeostatic_controller_destroy(ctrl);
+        return NULL;
+    }
 
     NIMCP_LOGGING_INFO("Created homeostatic controller: neurons=%u, scaling=%d, ip=%d, meta=%d",
                        num_neurons,

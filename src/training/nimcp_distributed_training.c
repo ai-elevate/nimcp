@@ -504,12 +504,18 @@ dist_group_t* dist_create_group(
 
     /* Track in context */
     nimcp_mutex_lock(ctx->mutex);
-    ctx->num_groups++;
-    ctx->custom_groups = nimcp_realloc(ctx->custom_groups,
-                                       ctx->num_groups * sizeof(dist_group_t*));
-    if (ctx->custom_groups) {
-        ctx->custom_groups[ctx->num_groups - 1] = group;
+    void* tmp = nimcp_realloc(ctx->custom_groups,
+                               (ctx->num_groups + 1) * sizeof(dist_group_t*));
+    if (!tmp) {
+        nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dist_create_group: realloc failed");
+        nimcp_free(group->ranks);
+        nimcp_free(group);
+        return NULL;
     }
+    ctx->custom_groups = tmp;
+    ctx->custom_groups[ctx->num_groups] = group;
+    ctx->num_groups++;
     nimcp_mutex_unlock(ctx->mutex);
 
     return group;

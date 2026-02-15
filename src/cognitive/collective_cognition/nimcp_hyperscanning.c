@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdatomic.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -1576,10 +1577,10 @@ void hyperscanning_set_instance_health_agent(void* instance, nimcp_health_agent_
 /* ============================================================================
  * Phase 8: Full training implementation
  * ============================================================================ */
-static uint64_t g_hyperscanning_training_steps = 0;
-static double g_hyperscanning_training_total_error = 0.0;
-static double g_hyperscanning_training_best_error = 1e30;
-static bool g_hyperscanning_training_active = false;
+static _Atomic uint64_t g_hyperscanning_training_steps = 0;
+static _Atomic double g_hyperscanning_training_total_error = 0.0;
+static _Atomic double g_hyperscanning_training_best_error = 1e30;
+static _Atomic bool g_hyperscanning_training_active = false;
 
 int hyperscanning_training_begin(void* instance) {
     if (!instance) {

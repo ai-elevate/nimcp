@@ -826,7 +826,7 @@ uint32_t hypo_drive_quantum_generate_candidates(
     float urgencies[HYPO_DRIVE_COUNT];
     hypo_drive_get_urgencies(bridge->drives, urgencies);
 
-    static uint32_t rng_state = 12345;
+    static __thread uint32_t rng_state = 12345;
     uint32_t generated = 0;
 
     /* Generate greedy strategies (address most urgent drives) */

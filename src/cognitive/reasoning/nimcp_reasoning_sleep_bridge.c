@@ -246,7 +246,7 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
     /* Guard clause: Validate sleep system */
     if (!sleep) {
         NIMCP_LOGGING_ERROR("NULL sleep system in reasoning_sleep_bridge_create");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_sleep_bridge_create: sleep is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_bridge_create: sleep is NULL");
         return NULL;
     }
 

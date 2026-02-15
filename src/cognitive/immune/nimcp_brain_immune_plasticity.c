@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -84,6 +85,7 @@ static inline void brain_immune_plasticity_heartbeat_instance(
  * ============================================================================ */
 
 static immune_plasticity_stats_t g_stats = {0};
+static nimcp_platform_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* ============================================================================
  * Configuration API
@@ -424,7 +426,9 @@ int immune_plasticity_compute_modulation(
         modulation->attention_gate_scale * 0.125f
     );
 
+    nimcp_platform_mutex_lock(&g_stats_mutex);
     g_stats.cytokine_updates++;
+    nimcp_platform_mutex_unlock(&g_stats_mutex);
 
     return 0;
 }
@@ -458,10 +462,12 @@ int immune_plasticity_modulate_bcm(
     /* Reduce learning rate during inflammation */
     params->learning_rate *= modulation->bcm_learning_rate_scale;
 
+    nimcp_platform_mutex_lock(&g_stats_mutex);
     g_stats.bcm_modulation_events++;
     g_stats.avg_bcm_threshold_elevation =
         (g_stats.avg_bcm_threshold_elevation * 0.9f) +
         (modulation->bcm_threshold_scale * 0.1f);
+    nimcp_platform_mutex_unlock(&g_stats_mutex);
 
     LOG_DEBUG("BCM modulated: threshold_scale=%.3f, lr_scale=%.3f",
               modulation->bcm_threshold_scale, modulation->bcm_learning_rate_scale);
@@ -520,10 +526,12 @@ int immune_plasticity_modulate_stdp(
     /* Reduce learning rate (TNF-α and inflammation) */
     config->learning_rate *= modulation->stdp_learning_rate_scale;
 
+    nimcp_platform_mutex_lock(&g_stats_mutex);
     g_stats.stdp_modulation_events++;
     g_stats.avg_stdp_window_reduction =
         (g_stats.avg_stdp_window_reduction * 0.9f) +
         ((1.0f - modulation->stdp_tau_plus_scale) * 0.1f);
+    nimcp_platform_mutex_unlock(&g_stats_mutex);
 
     LOG_DEBUG("STDP modulated: tau_scale=%.3f, lr_scale=%.3f",
               modulation->stdp_tau_plus_scale, modulation->stdp_learning_rate_scale);
@@ -585,10 +593,12 @@ int immune_plasticity_modulate_attention_config(
      * but this would be applied during forward pass if we add
      * temperature to multihead_attention_forward */
 
+    nimcp_platform_mutex_lock(&g_stats_mutex);
     g_stats.attention_modulation_events++;
     g_stats.avg_attention_impairment =
         (g_stats.avg_attention_impairment * 0.9f) +
         ((1.0f - modulation->attention_gate_scale) * 0.1f);
+    nimcp_platform_mutex_unlock(&g_stats_mutex);
 
     LOG_DEBUG("Attention modulated: gate_scale=%.3f, temp_increase=%.3f",
               modulation->attention_gate_scale, modulation->attention_temperature);
@@ -982,7 +992,9 @@ int immune_plasticity_get_stats(immune_plasticity_stats_t* stats) {
     brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_ge", 0.0f);
 
 
+    nimcp_platform_mutex_lock(&g_stats_mutex);
     memcpy(stats, &g_stats, sizeof(immune_plasticity_stats_t));
+    nimcp_platform_mutex_unlock(&g_stats_mutex);
     return 0;
 }
 
@@ -994,8 +1006,9 @@ void immune_plasticity_reset_stats(void) {
     /* Phase 8: Heartbeat at operation start */
     brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_re", 0.0f);
 
-
+    nimcp_platform_mutex_lock(&g_stats_mutex);
     memset(&g_stats, 0, sizeof(immune_plasticity_stats_t));
+    nimcp_platform_mutex_unlock(&g_stats_mutex);
 }
 
 bool immune_plasticity_is_impaired(

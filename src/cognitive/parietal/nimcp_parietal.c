@@ -267,7 +267,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
     nn->layers = nimcp_calloc(nn->num_layers, sizeof(physics_nn_layer_t));
     if (!nn->layers) {
         nimcp_free(nn);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_time_us: nn->layers is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create: nn->layers allocation failed");
         return NULL;
     }
 
@@ -295,7 +295,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
             }
             nimcp_free(nn->layers);
             nimcp_free(nn);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_time_us: required parameter is NULL (layer->weights, layer->biases)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create: layer weights/biases allocation failed");
             return NULL;
         }
 

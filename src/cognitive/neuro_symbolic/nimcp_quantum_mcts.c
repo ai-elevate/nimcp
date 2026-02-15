@@ -269,7 +269,7 @@ NIMCP_API void quantum_mcts_destroy(quantum_mcts_t* qmcts)
     }
 
     if (qmcts->mutex) {
-        nimcp_mutex_destroy(qmcts->mutex);
+        nimcp_mutex_free(qmcts->mutex);
     }
 
     nimcp_free(qmcts);

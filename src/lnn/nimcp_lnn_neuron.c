@@ -710,8 +710,8 @@ void lnn_neuron_reset_gradients(lnn_neuron_t* neuron) {
         memset(neuron->grad_w_rec, 0, neuron->n_recurrent * sizeof(float));
     }
 
-    /* Reset tau weight gradients */
-    uint32_t n_tau = neuron->n_inputs + neuron->n_recurrent;
+    /* Reset tau weight gradients (+1 for bias term, matching allocation) */
+    uint32_t n_tau = 1 + neuron->n_inputs + neuron->n_recurrent;
     memset(neuron->grad_w_tau, 0, n_tau * sizeof(float));
 
     /* Reset bias gradients */

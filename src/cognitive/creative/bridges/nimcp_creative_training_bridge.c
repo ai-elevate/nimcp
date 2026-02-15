@@ -638,7 +638,7 @@ int creative_training_learn_preferences(creative_training_bridge_t* bridge,
 
     if (dataset->num_preferences < 10) {
         set_training_error("Preference learning requires at least 10 preference pairs");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_learn_preferences: insufficient preference pairs");
         return -1;
     }
 

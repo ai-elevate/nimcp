@@ -128,7 +128,6 @@ static pattern_candidate_t* find_candidate_unlocked(
             return &bridge->candidates[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_candidate_unlocked: validation failed");
     return NULL;
 }
 
@@ -155,7 +154,6 @@ static fix_chain_t* find_chain_unlocked(
             return &bridge->active_chains[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_chain_unlocked: validation failed");
     return NULL;
 }
 
@@ -182,7 +180,6 @@ static rollback_entry_t* find_rollback_entry(
             return &bridge->rollback_history[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rollback_entry: validation failed");
     return NULL;
 }
 

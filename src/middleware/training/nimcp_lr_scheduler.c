@@ -364,13 +364,13 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create(const nimcp_lr_scheduler_con
 
     /* Validate configuration */
     if (nimcp_lr_scheduler_validate_config(config) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lr_scheduler_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_lr_scheduler_create: config validation failed");
         return NULL;
     }
 
     nimcp_lr_scheduler_ctx_t* ctx = (nimcp_lr_scheduler_ctx_t*)nimcp_calloc(1, sizeof(nimcp_lr_scheduler_ctx_t));
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_lr_scheduler_create: failed to allocate scheduler");
 
         return NULL;
     }

@@ -266,7 +266,7 @@ executive_immune_bridge_t* executive_immune_bridge_create(
     if (!immune_system || !executive_controller) {
         LOG_MODULE_ERROR("executive_immune_bridge",
                   "Cannot create bridge without immune and executive systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_immune_bridge_create: required parameter is NULL (immune_system, executive_controller)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_bridge_create: required parameter is NULL (immune_system, executive_controller)");
         return NULL;
     }
 
@@ -279,7 +279,7 @@ executive_immune_bridge_t* executive_immune_bridge_create(
         nimcp_malloc(sizeof(executive_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("executive_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_immune_bridge_create: allocation failed");
 
         return NULL;
     }

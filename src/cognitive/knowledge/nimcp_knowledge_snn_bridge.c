@@ -429,7 +429,7 @@ int knowledge_snn_encode_state(
                                  (float)(n + 1) / (float)neurons_per_dim);
             }
 
-            float preferred = (float)n / (neurons_per_dim - 1);
+            float preferred = (neurons_per_dim > 1) ? ((float)n / (float)(neurons_per_dim - 1)) : 0.0f;
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
             uint32_t idx = d * neurons_per_dim + n;

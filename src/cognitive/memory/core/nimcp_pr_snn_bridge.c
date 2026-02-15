@@ -624,13 +624,15 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_add_spike(
         }
 
         float* new_times = (float*)nimcp_realloc(pattern->spike_times, new_capacity * sizeof(float));
-        uint32_t* new_ids = (uint32_t*)nimcp_realloc(pattern->neuron_ids, new_capacity * sizeof(uint32_t));
-
-        if (!new_times || !new_ids) {
+        if (!new_times) {
             return PR_SNN_ERROR_NO_MEMORY;
         }
-
         pattern->spike_times = new_times;
+
+        uint32_t* new_ids = (uint32_t*)nimcp_realloc(pattern->neuron_ids, new_capacity * sizeof(uint32_t));
+        if (!new_ids) {
+            return PR_SNN_ERROR_NO_MEMORY;
+        }
         pattern->neuron_ids = new_ids;
         pattern->capacity = new_capacity;
     }

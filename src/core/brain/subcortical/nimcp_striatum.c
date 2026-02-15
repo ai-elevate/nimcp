@@ -95,7 +95,7 @@ static int init_pathway(striatum_pathway_t* pathway, msn_type_t type,
 
     pathway->neurons = nimcp_calloc(num_neurons, sizeof(msn_neuron_t));
     if (!pathway->neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sigmoid: pathway->neurons is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_pathway: pathway->neurons alloc failed");
         return -1;
     }
 
@@ -103,7 +103,7 @@ static int init_pathway(striatum_pathway_t* pathway, msn_type_t type,
     if (!pathway->activations) {
         nimcp_free(pathway->neurons);
         pathway->neurons = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sigmoid: pathway->activations is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_pathway: pathway->activations alloc failed");
         return -1;
     }
 
@@ -290,7 +290,7 @@ int striatum_reset(striatum_t* striatum) {
 int striatum_process_input(striatum_t* striatum, const float* cortical_input,
                            float dopamine) {
     if (!striatum || !cortical_input) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_reset: required parameter is NULL (striatum, cortical_input)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_process_input: required parameter is NULL (striatum, cortical_input)");
         return -1;
     }
 
@@ -422,7 +422,7 @@ int striatum_step(striatum_t* striatum, float dt) {
 int striatum_update_weights(striatum_t* striatum, uint32_t action_id,
                             float delta_d1, float delta_d2) {
     if (!striatum || action_id >= striatum->config.num_actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "striatum_step: striatum is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "striatum_update_weights: striatum is NULL");
         return -1;
     }
 

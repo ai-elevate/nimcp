@@ -418,7 +418,7 @@ static void bio_broadcast_item_evicted(working_memory_t* wm, uint32_t slot_id) {
 // ERROR HANDLING
 // ============================================================================
 
-static char last_error[256] = {0};
+static __thread char last_error[256] = {0};
 
 static void set_error(const char* msg) {
     snprintf(last_error, sizeof(last_error), "%s", msg);
@@ -447,7 +447,6 @@ const char* working_memory_get_last_error(void) {
 static int find_lowest_salience_index(const working_memory_t* wm) {
     // Guard: Empty buffer
     if (wm->current_size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_lowest_salience_index: wm->current_size is zero");
         return -1;
     }
 
@@ -1134,7 +1133,7 @@ bool working_memory_add_with_emotion(
     // Guard: Invalid emotion
     if (!emotional_tag_is_valid(emotion)) {
         set_error("Invalid emotional tag");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_add_with_emotion: emotional_tag_is_valid is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_add_with_emotion: emotional tag validation failed");
         return false;
     }
 
@@ -1149,7 +1148,7 @@ bool working_memory_add_with_emotion(
 
     // Add item with boosted salience (this will acquire the lock)
     if (!working_memory_add(wm, item, item_size, total_salience)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_add_with_emotion: working_memory_add is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_add_with_emotion: working_memory_add failed");
         return false;
     }
 
@@ -1436,7 +1435,7 @@ bool working_memory_refresh(working_memory_t* wm, uint32_t index) {
     // Guard: Feature disabled (check before locking)
     if (!wm->enable_attention_refresh) {
         set_error("Attention refresh disabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_refresh: wm->enable_attention_refresh is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_refresh: attention refresh is disabled");
         return false;
     }
 
@@ -1713,7 +1712,6 @@ int working_memory_find_highest_salience(
     // Guard: Empty buffer
     if (wm->current_size == 0) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_find_highest_salience: wm->current_size is zero");
         return -1;
     }
 
@@ -1766,7 +1764,6 @@ int working_memory_find_lowest_salience(
     /* Guard: Empty buffer */
     if (wm->current_size == 0) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_find_lowest_salience: wm->current_size is zero");
         return -1;
     }
 

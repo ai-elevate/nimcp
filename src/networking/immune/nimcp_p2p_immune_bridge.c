@@ -267,7 +267,7 @@ bool p2p_immune_peer_filtered(const p2p_immune_bridge_t* bridge, uint32_t peer_i
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "p2p_immune_peer_filtered: validation failed");
+    /* Peer not in filter list is normal -- not an error */
     return false;
 }
 

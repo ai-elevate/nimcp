@@ -568,6 +568,9 @@ temporal_trend_t introspection_get_trend(introspection_context_t context,
 
     /* WHAT: Limit to trend window */
     uint32_t window = cfg->trend_window;
+    if (window == 0) {
+        window = history_count;  /* Use full history if window is 0 */
+    }
     if (window > history_count) {
         window = history_count;
     }

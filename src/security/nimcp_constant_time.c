@@ -504,8 +504,10 @@ int nimcp_ct_memcmp_tracked(nimcp_ct_context_t ctx, const void* a, const void* b
                             __atomic_load_n(&ctx->stats.hash_comparisons, __ATOMIC_RELAXED);
 
         if (total_ops > 0) {
-            ctx->stats.avg_comparison_time_ns =
-                (ctx->stats.avg_comparison_time_ns * (total_ops - 1) + elapsed_ns) / total_ops;
+            double old_avg;
+            __atomic_load(&ctx->stats.avg_comparison_time_ns, &old_avg, __ATOMIC_RELAXED);
+            double new_avg = (old_avg * (total_ops - 1) + elapsed_ns) / total_ops;
+            __atomic_store(&ctx->stats.avg_comparison_time_ns, &new_avg, __ATOMIC_RELAXED);
         }
     }
 

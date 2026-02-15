@@ -665,7 +665,7 @@ int vae_decoder_forward(vae_decoder_t* decoder,
             nimcp_mutex_unlock(decoder->mutex);
             nimcp_tensor_destroy(current);
             nimcp_tensor_destroy(next);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_decoder_forward: layer forward failed");
             return -1;
         }
 

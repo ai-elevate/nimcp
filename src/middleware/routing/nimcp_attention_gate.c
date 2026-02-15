@@ -617,7 +617,7 @@ bool attention_gate_set_ternary_state(attention_gate_t* gate,
     attention_entry_t* entry = find_entry(gate, source_id, target_id);
     if (!entry) {
         nimcp_mutex_unlock(gate->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_set_ternary_state: entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "attention_gate_set_ternary_state: entry not found");
         return false;
     }
 
@@ -645,7 +645,7 @@ bool attention_gate_get_ternary_state(const attention_gate_t* gate,
     attention_entry_t* entry = find_entry(gate, source_id, target_id);
     if (!entry) {
         nimcp_mutex_unlock(gate->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_gate_get_ternary_state: entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "attention_gate_get_ternary_state: entry not found");
         return false;
     }
 

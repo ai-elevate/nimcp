@@ -260,7 +260,7 @@ static const mesh_bio_priority_policy_t* get_priority_policy(
             return &integration->priority_policies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_priority_policy: validation failed");
+    /* Policy not set is normal default state, not an error */
     return NULL;
 }
 

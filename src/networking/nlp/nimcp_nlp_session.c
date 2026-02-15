@@ -467,7 +467,7 @@ static bool nlp_session_validate_transition(nlp_session_state_t old_state,
             // Unknown state - reject
             NIMCP_LOG_ERROR("nlp_session_validate_transition: Unknown state %d",
                            (int)old_state);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_calculate_crc16: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_session_validate_transition: unknown state");
             return false;
     }
 }
@@ -1049,7 +1049,7 @@ int nlp_session_key_rotation(nlp_node_t node, nlp_peer_t* peer) {
 nlp_peer_t* nlp_peer_add(nlp_node_t node, uint32_t peer_id,
                         const char* address, uint16_t port) {
     if (!nlp_validate_node(node) || !address) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_session_key_rotation: required parameter is NULL (nlp_validate_node, address)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_add: required parameter is NULL (nlp_validate_node, address)");
         return NULL;
     }
 
@@ -1068,7 +1068,7 @@ nlp_peer_t* nlp_peer_add(nlp_node_t node, uint32_t peer_id,
     if (node->peer_count >= NLP_MAX_PEERS) {
         NIMCP_LOG_ERROR("nlp_peer_add: Peer table full (%u peers)", node->peer_count);
         nimcp_mutex_unlock(&node->peer_mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nlp_session_key_rotation: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nlp_peer_add: capacity exceeded");
         return NULL;
     }
 
@@ -1175,7 +1175,7 @@ nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find: validation failed");
+    /* Peer not found is normal lookup miss, not an error */
     return NULL;
 }
 
@@ -1207,7 +1207,7 @@ bool nlp_peer_find_copy(nlp_node_t node, uint32_t peer_id, nlp_peer_t* peer_out)
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_peer_find_copy: validation failed");
+    /* Peer not found is normal lookup miss, not an error */
     return false;
 }
 
@@ -1244,7 +1244,7 @@ nlp_peer_t* nlp_peer_find_by_address(nlp_node_t node, const char* address, uint1
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find_by_address: validation failed");
+    /* Peer not found is normal lookup miss, not an error */
     return NULL;
 }
 
@@ -1279,7 +1279,7 @@ bool nlp_peer_find_by_address_copy(nlp_node_t node, const char* address, uint16_
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_peer_find_by_address: operation failed");
+    /* Peer not found is normal lookup miss, not an error */
     return false;
 }
 

@@ -2343,6 +2343,17 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     mirror->glial_integration = NULL;
     mirror->brain = NULL;
 
+    // WHAT: Create mutex for thread safety (was missing - calloc zeroes it)
+    // WHY:  Without mutex, any locking operation will crash (NULL deref)
+    // HOW:  Same pattern as mirror_neurons_create()
+    {
+        mutex_attr_t mattr = {.type = MUTEX_TYPE_NORMAL};
+        mirror->mutex = nimcp_mutex_create(&mattr);
+        if (!mirror->mutex) {
+            goto cleanup;
+        }
+    }
+
     mirror->initialized = true;
 
     return mirror;

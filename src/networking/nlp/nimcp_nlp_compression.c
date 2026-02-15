@@ -191,7 +191,7 @@ static int lz77_find_match(const uint8_t* data, size_t pos, size_t len,
 static int rle_compress(const uint8_t* input, size_t input_len,
                         uint8_t* output, size_t output_max) {
     if (!input || !output || input_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_adler16: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
@@ -234,7 +234,7 @@ static int rle_compress(const uint8_t* input, size_t input_len,
 static int rle_decompress(const uint8_t* input, size_t input_len,
                           uint8_t* output, size_t output_max) {
     if (!input || !output) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_adler16: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
@@ -248,7 +248,7 @@ static int rle_decompress(const uint8_t* input, size_t input_len,
         if (count == 0) {
             // Literal (escaped)
             if (out_pos >= output_max) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "compute_adler16: capacity exceeded");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "rle_decompress: output buffer overflow");
                 return -1;
             }
             output[out_pos++] = value;
@@ -275,11 +275,11 @@ static int rle_decompress(const uint8_t* input, size_t input_len,
 static int delta_compress(const uint8_t* input, size_t input_len,
                           uint8_t* output, size_t output_max) {
     if (!input || !output || input_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_adler16: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
     if (output_max < input_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_adler16: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "delta_compress: output buffer too small");
         return -1;
     }
 
@@ -298,11 +298,11 @@ static int delta_compress(const uint8_t* input, size_t input_len,
 static int delta_decompress(const uint8_t* input, size_t input_len,
                             uint8_t* output, size_t output_max) {
     if (!input || !output || input_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_adler16: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
     if (output_max < input_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_adler16: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "delta_compress: output buffer too small");
         return -1;
     }
 
@@ -350,7 +350,7 @@ static int dict_find_pattern(const uint8_t* data, size_t len) {
             }
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dict_find_pattern: validation failed");
+    /* Pattern not found in dictionary is normal lookup miss, not an error */
     return -1;
 }
 
@@ -360,7 +360,7 @@ static int dict_find_pattern(const uint8_t* data, size_t len) {
 static int dict_compress(const uint8_t* input, size_t input_len,
                          uint8_t* output, size_t output_max) {
     if (!input || !output || input_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict_find_pattern: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
@@ -391,7 +391,7 @@ static int dict_compress(const uint8_t* input, size_t input_len,
 static int dict_decompress(const uint8_t* input, size_t input_len,
                            uint8_t* output, size_t output_max) {
     if (!input || !output) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict_find_pattern: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
@@ -404,7 +404,7 @@ static int dict_decompress(const uint8_t* input, size_t input_len,
         if (code == NLANG_DICT_ESCAPE) {
             // Literal follows
             if (in_pos >= input_len) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dict_find_pattern: capacity exceeded");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_decompress: truncated data");
                 return -1;
             }
             output[out_pos++] = input[in_pos++];
@@ -412,7 +412,7 @@ static int dict_decompress(const uint8_t* input, size_t input_len,
             // Pattern index
             int plen = get_pattern_len(nlang_dict_patterns[code]);
             if (out_pos + plen > output_max) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dict_find_pattern: validation failed");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_decompress: validation failed");
                 return -1;
             }
 
@@ -438,7 +438,7 @@ static int dict_decompress(const uint8_t* input, size_t input_len,
 static int lz77_compress(const uint8_t* input, size_t input_len,
                          uint8_t* output, size_t output_max) {
     if (!input || !output || input_len == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict_find_pattern: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
@@ -477,7 +477,7 @@ static int lz77_decompress(const uint8_t* input, size_t input_len,
                            uint8_t* output, size_t output_max,
                            size_t expected_size) {
     if (!input || !output) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict_find_pattern: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
@@ -493,14 +493,14 @@ static int lz77_decompress(const uint8_t* input, size_t input_len,
         } else {
             // Match: next byte is offset
             if (in_pos >= input_len) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dict_find_pattern: capacity exceeded");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_decompress: truncated data");
                 return -1;
             }
             uint8_t offset = input[in_pos++];
             uint8_t length = (code & 0x0F) + LZ77_MIN_MATCH;
 
             if (offset > out_pos) {
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dict_find_pattern: validation failed");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_decompress: validation failed");
                 return -1;
             }
 
@@ -568,13 +568,13 @@ int nlp_compress(nlp_msg_type_t msg_type,
                  uint8_t* output, size_t output_max) {
     if (!input || !output || input_len == 0) {
         NIMCP_LOGGING_ERROR("nlp_compress", "Invalid parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
     if (output_max < input_len + NLP_COMPRESS_HEADER_SIZE) {
         NIMCP_LOGGING_ERROR("nlp_compress", "Output buffer too small");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
@@ -582,7 +582,7 @@ int nlp_compress(nlp_msg_type_t msg_type,
     if (input_len > NLP_MAX_PAYLOAD) {
         bbb_audit_log(BBB_AUDIT_WARNING, NLP_COMPRESS_MODULE, "oversized_input",
                       "Input size %zu exceeds max %d", input_len, NLP_MAX_PAYLOAD);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
@@ -662,13 +662,13 @@ int nlp_decompress(const uint8_t* input, size_t input_len,
                    uint8_t* output, size_t output_max) {
     if (!input || !output) {
         NIMCP_LOGGING_ERROR("nlp_decompress", "Invalid parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (input, output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_compression: required parameter is NULL (input, output)");
         return -1;
     }
 
     if (input_len < NLP_COMPRESS_HEADER_SIZE) {
         NIMCP_LOGGING_ERROR("nlp_decompress", "Input too small for header");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
@@ -682,7 +682,7 @@ int nlp_decompress(const uint8_t* input, size_t input_len,
         bbb_audit_log(BBB_AUDIT_WARNING, NLP_COMPRESS_MODULE, "decompression_bomb",
                       "Claimed original size %u exceeds max %d - possible attack",
                       header->original_size, NLP_MAX_PAYLOAD);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
@@ -691,13 +691,13 @@ int nlp_decompress(const uint8_t* input, size_t input_len,
         bbb_audit_log(BBB_AUDIT_WARNING, NLP_COMPRESS_MODULE, "truncated_data",
                       "Compressed data truncated - header claims %zu, have %zu",
                       compressed_len, input_len - NLP_COMPRESS_HEADER_SIZE);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
     if (header->original_size > output_max) {
         NIMCP_LOGGING_ERROR("nlp_decompress", "Output buffer too small");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
@@ -734,13 +734,13 @@ int nlp_decompress(const uint8_t* input, size_t input_len,
         default:
             NIMCP_LOGGING_ERROR("nlp_decompress", "Unknown compression type %u",
                            header->type);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_decompress: unknown compression type");
             return -1;
     }
 
     if (decompressed_len < 0) {
         NIMCP_LOGGING_ERROR("nlp_decompress", "Decompression failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 
@@ -749,7 +749,7 @@ int nlp_decompress(const uint8_t* input, size_t input_len,
     if (checksum != header->checksum) {
         NIMCP_LOGGING_ERROR("nlp_decompress", "Checksum mismatch: 0x%04X != 0x%04X",
                         checksum, header->checksum);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_compression: validation failed");
         return -1;
     }
 

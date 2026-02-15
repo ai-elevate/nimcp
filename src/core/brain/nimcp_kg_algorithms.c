@@ -295,7 +295,6 @@ static int find_node_index(const algorithm_graph_t* graph, brain_kg_node_id_t no
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_node_index: validation failed");
     return -1;
 }
 
@@ -365,7 +364,7 @@ static float* compute_shortest_paths(const algorithm_graph_t* graph, uint32_t so
  * Random Number Generation
  * ============================================================================ */
 
-static uint32_t random_state = KG_ALGO_RANDOM_SEED;
+static __thread uint32_t random_state = KG_ALGO_RANDOM_SEED;
 
 static float random_float(void) {
     random_state = random_state * 1103515245 + 12345;

@@ -487,7 +487,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     // Guard: Invalid config
     if (!pink_noise_validate_config(config)) {
         // Error already set by validate
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_create: pink_noise_validate_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_create: config validation failed");
         return NULL;
     }
 
@@ -531,7 +531,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
             if (!fft_init(gen)) {
                 // Error already set by fft_init
                 nimcp_free(gen);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pink_noise_create: fft_init is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pink_noise_create: FFT initialization failed");
                 return NULL;
             }
             break;
@@ -548,7 +548,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
 void pink_noise_destroy(pink_noise_generator_t generator) {
     // Guard: NULL generator (safe to call)
     if (!generator) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_destroy: generator is NULL");
+        /* destroy(NULL) is a safe no-op, not an error */
         return;
     }
 
@@ -631,7 +631,7 @@ bool pink_noise_generate(pink_noise_generator_t generator, float* samples, uint3
         // Guard: Generation failed
         if (!success) {
             // Error already set by generate_sample
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_generate: success is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pink_noise_generate: sample generation failed");
             return false;
         }
     }

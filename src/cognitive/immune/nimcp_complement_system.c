@@ -177,7 +177,6 @@ static complement_c3b_t* find_c3b_by_id(complement_system_t* system, uint32_t id
             return &system->c3b_pool[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_c3b_by_id: validation failed");
     return NULL;
 }
 
@@ -203,7 +202,6 @@ static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id
             return &system->mac_pool[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_mac_by_id: validation failed");
     return NULL;
 }
 

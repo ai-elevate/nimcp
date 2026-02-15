@@ -82,6 +82,7 @@ struct nimcp_early_stop_ctx {
 /* Simple xorshift64 RNG */
 static uint64_t xorshift64(uint64_t* state) {
     uint64_t x = *state;
+    if (x == 0) x = 0x5DEECE66DULL;  /* Zero is a fixed point; use fallback seed */
     x ^= x << 13;
     x ^= x >> 7;
     x ^= x << 17;
@@ -586,7 +587,7 @@ float nimcp_gradient_norm(const float* gradients, size_t num_gradients) {
 nimcp_dropout_ctx_t* nimcp_dropout_create(const nimcp_dropout_config_t* config) {
     if (!config) {
         LOG_MODULE_ERROR(LOG_MODULE, "Null dropout config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_dropout_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_dropout_create: config is NULL");
         return NULL;
     }
 
@@ -776,7 +777,7 @@ nimcp_early_stop_ctx_t* nimcp_early_stop_create(
 ) {
     if (!config) {
         LOG_MODULE_ERROR(LOG_MODULE, "Null early stop config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_early_stop_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_early_stop_create: config is NULL");
         return NULL;
     }
 

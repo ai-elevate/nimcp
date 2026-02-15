@@ -284,7 +284,7 @@ const mesh_receptive_field_t* mesh_brain_region_get_receptive_field(
             return &MESH_RF_COLLECTIVE_WORKSPACE;
 
         default:
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_region_get_receptive_field: operation failed");
+            /* Unknown region is defensive default, not necessarily an error */
             return NULL;
     }
 }

@@ -148,7 +148,6 @@ static cooldown_entry_t* find_cooldown_entry(
             return &bridge->cooldown_entries[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_cooldown_entry: validation failed");
     return NULL;
 }
 
@@ -218,7 +217,6 @@ static code_immune_repair_tracking_t* find_tracking_record(
             return &bridge->tracking[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tracking_record: validation failed");
     return NULL;
 }
 
@@ -710,31 +708,40 @@ uint32_t code_immune_process_auto_repairs(
 
     uint32_t repairs_triggered = 0;
 
-    /* Iterate through antigens in code immune */
-    for (size_t i = 0; i < bridge->code_immune->antigen_count; i++) {
-        code_antigen_t* antigen = &bridge->code_immune->antigens[i];
-
-        /* Skip if already neutralized or processed */
-        if (antigen->neutralized) {
-            continue;
-        }
-
-        /* Check and trigger if criteria met */
-        if (code_immune_should_auto_repair(bridge, antigen)) {
-            /* Unlock before calling trigger (it will relock) */
-            nimcp_mutex_unlock(bridge->mutex);
-
-            uint64_t repair_id = 0;
-            if (code_immune_trigger_auto_repair(bridge, antigen->id, &repair_id) == 0) {
-                repairs_triggered++;
+    /* Snapshot antigen IDs under lock to avoid TOCTOU when we unlock for repair */
+    uint32_t snapshot_count = (uint32_t)bridge->code_immune->antigen_count;
+    uint64_t* snapshot_ids = NULL;
+    if (snapshot_count > 0) {
+        snapshot_ids = nimcp_calloc(snapshot_count, sizeof(uint64_t));
+        if (snapshot_ids) {
+            uint32_t valid = 0;
+            for (uint32_t i = 0; i < snapshot_count; i++) {
+                if (!bridge->code_immune->antigens[i].neutralized) {
+                    snapshot_ids[valid++] = bridge->code_immune->antigens[i].id;
+                }
             }
-
-            /* Relock for next iteration */
-            nimcp_mutex_lock(bridge->mutex);
+            snapshot_count = valid;
+        } else {
+            /* Allocation failed - bail out safely */
+            nimcp_mutex_unlock(bridge->mutex);
+            return 0;
         }
     }
 
     nimcp_mutex_unlock(bridge->mutex);
+
+    /* Iterate snapshot without holding lock - safe from TOCTOU */
+    for (uint32_t i = 0; i < snapshot_count; i++) {
+        uint64_t antigen_id = snapshot_ids[i];
+
+        /* Look up antigen by ID (trigger_auto_repair does its own locking) */
+        uint64_t repair_id = 0;
+        if (code_immune_trigger_auto_repair(bridge, antigen_id, &repair_id) == 0) {
+            repairs_triggered++;
+        }
+    }
+
+    nimcp_free(snapshot_ids);
 
     return repairs_triggered;
 }

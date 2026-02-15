@@ -197,7 +197,7 @@ NIMCP_API energy_consistency_checker_t* energy_consistency_create(
     /* Initialize last result structure */
     if (energy_consistency_result_init(&checker->last_result,
             checker->config.max_violations) != NIMCP_SUCCESS) {
-        nimcp_mutex_destroy(checker->mutex);
+        nimcp_mutex_free(checker->mutex);
         nimcp_free(checker);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_consistency_create: operation failed");
         return NULL;
@@ -221,9 +221,9 @@ NIMCP_API void energy_consistency_destroy(
     /* Clean up last result */
     energy_consistency_result_cleanup(&checker->last_result);
 
-    /* Destroy mutex */
+    /* Free mutex */
     if (checker->mutex) {
-        nimcp_mutex_destroy(checker->mutex);
+        nimcp_mutex_free(checker->mutex);
     }
 
     /* Free checker */

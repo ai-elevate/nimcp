@@ -166,7 +166,7 @@ bg_cerebellar_coord_t* bgcb_create(const bgcb_config_t* config) {
         nimcp_free(coord->thalamic.combined_output);
         nimcp_free(coord->motor_output);
         nimcp_free(coord);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_create: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgcb_create: thalamic allocation failed");
         return NULL;
     }
 
@@ -186,7 +186,7 @@ bg_cerebellar_coord_t* bgcb_create(const bgcb_config_t* config) {
         nimcp_free(coord->thalamic.combined_output);
         nimcp_free(coord->motor_output);
         nimcp_free(coord);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_create: required parameter is NULL (coord->timing, coord->timing)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgcb_create: timing allocation failed");
         return NULL;
     }
 
@@ -277,7 +277,7 @@ int bgcb_reset(bg_cerebellar_coord_t* coord) {
 int bgcb_receive_bg_command(bg_cerebellar_coord_t* coord,
                              const bgcb_bg_command_t* command) {
     if (!coord || !command) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_reset: required parameter is NULL (coord, command)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_receive_bg_command: required parameter is NULL (coord, command)");
         return -1;
     }
 
@@ -303,7 +303,7 @@ int bgcb_receive_bg_command(bg_cerebellar_coord_t* coord,
 int bgcb_receive_cb_refinement(bg_cerebellar_coord_t* coord,
                                 const bgcb_cb_refinement_t* refinement) {
     if (!coord || !refinement) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_reset: required parameter is NULL (coord, refinement)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_receive_cb_refinement: required parameter is NULL (coord, refinement)");
         return -1;
     }
 
@@ -416,7 +416,7 @@ int bgcb_get_motor_output(const bg_cerebellar_coord_t* coord,
                            float* output,
                            uint32_t* num_channels) {
     if (!coord || !output || !num_channels) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_coordinate: required parameter is NULL (coord, output, num_channels)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_get_motor_output: required parameter is NULL (coord, output, num_channels)");
         return -1;
     }
 
@@ -453,7 +453,7 @@ int bgcb_trigger_handoff(bg_cerebellar_coord_t* coord) {
 int bgcb_get_shared_error(const bg_cerebellar_coord_t* coord,
                            bgcb_error_state_t* error) {
     if (!coord || !error) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_trigger_handoff: required parameter is NULL (coord, error)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_get_shared_error: required parameter is NULL (coord, error)");
         return -1;
     }
     *error = coord->error;
@@ -467,7 +467,7 @@ int bgcb_get_shared_error(const bg_cerebellar_coord_t* coord,
 int bgcb_set_timing_prediction(bg_cerebellar_coord_t* coord,
                                 float interval_ms) {
     if (!coord) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_trigger_handoff: coord is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_set_timing_prediction: coord is NULL");
         return -1;
     }
 
@@ -484,7 +484,7 @@ int bgcb_set_timing_prediction(bg_cerebellar_coord_t* coord,
 int bgcb_report_actual_timing(bg_cerebellar_coord_t* coord,
                                float interval_ms) {
     if (!coord) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_trigger_handoff: coord is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_report_actual_timing: coord is NULL");
         return -1;
     }
 
@@ -509,7 +509,7 @@ int bgcb_report_actual_timing(bg_cerebellar_coord_t* coord,
 int bgcb_get_timing_state(const bg_cerebellar_coord_t* coord,
                            bgcb_timing_state_t* timing) {
     if (!coord || !timing) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_trigger_handoff: required parameter is NULL (coord, timing)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgcb_get_timing_state: required parameter is NULL (coord, timing)");
         return -1;
     }
     *timing = coord->timing;
@@ -617,7 +617,7 @@ int bgcb_update_learning(bg_cerebellar_coord_t* coord,
                           bgcb_learn_type_t type,
                           float signal) {
     if (!coord || type >= BGCB_LEARN_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgcb_get_stats: coord is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgcb_update_learning: invalid parameters");
         return -1;
     }
 

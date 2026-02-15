@@ -1135,7 +1135,6 @@ static self_pattern_t* find_pattern_by_id(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern_by_id: validation failed");
     return NULL;
 }
 
@@ -1166,7 +1165,6 @@ static anergic_cell_record_t* find_anergic_cell(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_anergic_cell: validation failed");
     return NULL;
 }
 

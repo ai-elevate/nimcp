@@ -104,7 +104,7 @@ static inline void meta_learning_heartbeat_instance(
 // Error Handling (module-local)
 //=============================================================================
 
-static char last_error[512] = {0};
+static __thread char last_error[512] = {0};
 
 static void set_error(const char* fmt, ...)
 {
@@ -258,7 +258,7 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
 
     if (num_regions == 0) {
         set_error("Invalid num_regions: must be > 0");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learner_create: num_regions is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_learner_create: num_regions is zero");
         return NULL;
     }
 
@@ -998,7 +998,7 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
 {
     if (!name || num_classes == 0 || input_dim == 0) {
         set_error("Invalid task parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_task_create: name is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_task_create: name is NULL");
         return NULL;
     }
 

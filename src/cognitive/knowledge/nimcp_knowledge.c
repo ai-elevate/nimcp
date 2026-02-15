@@ -407,7 +407,6 @@ static int32_t knowledge_hash_table_find(knowledge_hash_table_t* table, const ch
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_hash_table_find: validation failed");
     return -1;
 }
 
@@ -1066,7 +1065,8 @@ static void update_domain_stats(knowledge_system_t system, knowledge_domain_t do
 
     domain_knowledge_t* stats = &system->domain_stats[domain];
     stats->avg_confidence = calculate_domain_confidence(system, domain);
-    stats->coverage_percentage = (float) stats->concepts_known / stats->estimated_total * 100.0F;
+    stats->coverage_percentage = (stats->estimated_total > 0) ?
+        ((float) stats->concepts_known / stats->estimated_total * 100.0F) : 0.0f;
 }
 
 //=============================================================================
@@ -1569,7 +1569,6 @@ static bool process_concept(knowledge_system_t system, const char* concept_str, 
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_concept: validation failed");
     return false;
 }
 
@@ -2368,8 +2367,8 @@ bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domai
 
     *assessment = system->domain_stats[domain];
 
-    assessment->coverage_percentage =
-        (float) assessment->concepts_known / assessment->estimated_total * 100.0F;
+    assessment->coverage_percentage = (assessment->estimated_total > 0) ?
+        ((float) assessment->concepts_known / assessment->estimated_total * 100.0F) : 0.0f;
 
     assessment->avg_confidence = calculate_domain_confidence(system, domain);
 

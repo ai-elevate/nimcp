@@ -217,14 +217,14 @@ int nlp_bridge_send_expression(nlp_protocol_bridge_t* bridge,
                                const nlang_expression_t* expr) {
     if (!bridge || !expr) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "Invalid parameters");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_bridge_destroy: required parameter is NULL (bridge, expr)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_bridge: required parameter is NULL (bridge, expr)");
         return -1;
     }
 
     // Validate expression
     if (!nlang_expr_validate(expr)) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "Invalid expression");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge_destroy: nlang_expr_validate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge: nlang_expr_validate failed");
         return -1;
     }
 
@@ -233,7 +233,7 @@ int nlp_bridge_send_expression(nlp_protocol_bridge_t* bridge,
     int serial_len = nlang_expr_serialize(expr, serial_buf, sizeof(serial_buf));
     if (serial_len < 0) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "Failed to serialize expression");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge_destroy: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge: serialization failed");
         return -1;
     }
 
@@ -281,14 +281,14 @@ int nlp_bridge_send_expression(nlp_protocol_bridge_t* bridge,
 int nlp_bridge_broadcast_expression(nlp_protocol_bridge_t* bridge,
                                     const nlang_expression_t* expr) {
     if (!bridge || !expr) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_bridge_destroy: required parameter is NULL (bridge, expr)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_bridge: required parameter is NULL (bridge, expr)");
         return -1;
     }
 
     // Validate expression
     if (!nlang_expr_validate(expr)) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "Invalid expression for broadcast");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge_destroy: nlang_expr_validate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge: nlang_expr_validate failed");
         return -1;
     }
 
@@ -296,7 +296,7 @@ int nlp_bridge_broadcast_expression(nlp_protocol_bridge_t* bridge,
     uint8_t serial_buf[256];
     int serial_len = nlang_expr_serialize(expr, serial_buf, sizeof(serial_buf));
     if (serial_len < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge_destroy: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_bridge: serialization failed");
         return -1;
     }
 

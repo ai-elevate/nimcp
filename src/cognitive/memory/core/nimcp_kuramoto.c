@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -121,12 +122,12 @@ static void clear_error(void) {
 /**
  * @brief Simple random number generator (XorShift32)
  */
-static uint32_t g_kuramoto_rng_state = 0;
+static __thread uint32_t g_kuramoto_rng_state = 0;
 
 static uint32_t xorshift32(void) {
     uint32_t x = g_kuramoto_rng_state;
     if (x == 0) {
-        x = (uint32_t)time(NULL) ^ 0xDEADBEEF;
+        x = (uint32_t)time(NULL) ^ (uint32_t)(uintptr_t)&x ^ 0xDEADBEEF;
     }
     x ^= x << 13;
     x ^= x >> 17;
@@ -136,7 +137,7 @@ static uint32_t xorshift32(void) {
 }
 
 static void seed_rng(uint32_t seed) {
-    g_kuramoto_rng_state = seed ? seed : ((uint32_t)time(NULL) ^ 0xDEADBEEF);
+    g_kuramoto_rng_state = seed ? seed : ((uint32_t)time(NULL) ^ (uint32_t)(uintptr_t)&seed ^ 0xDEADBEEF);
 }
 
 /**
@@ -222,14 +223,16 @@ static void update_module_mapping(kuramoto_system_t* system,
         }
         uint32_t* new_map = nimcp_realloc(system->module_to_index,
                                      new_size * sizeof(uint32_t));
-        if (new_map) {
-            /* Initialize new entries to invalid */
-            for (uint32_t i = system->module_map_size; i < new_size; i++) {
-                new_map[i] = UINT32_MAX;
-            }
-            system->module_to_index = new_map;
-            system->module_map_size = new_size;
+        if (!new_map) {
+            /* Realloc failed - cannot grow mapping table */
+            return;
         }
+        /* Initialize new entries to invalid */
+        for (uint32_t i = system->module_map_size; i < new_size; i++) {
+            new_map[i] = UINT32_MAX;
+        }
+        system->module_to_index = new_map;
+        system->module_map_size = new_size;
     }
 
     if (module_id < system->module_map_size) {

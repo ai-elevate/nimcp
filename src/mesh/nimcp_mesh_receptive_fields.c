@@ -276,7 +276,7 @@ const mesh_receptive_field_t* mesh_receptive_field_get_by_name(const char* name)
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_receptive_field_get_by_name: validation failed");
+    /* Not found is normal lookup result, not an error */
     return NULL;
 }
 

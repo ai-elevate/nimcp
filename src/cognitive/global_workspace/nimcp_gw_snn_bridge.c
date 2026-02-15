@@ -458,7 +458,7 @@ int gw_snn_encode_state(
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
     }
-    change_magnitude = sqrtf(change_magnitude / num_dims);
+    change_magnitude = (num_dims > 0) ? sqrtf(change_magnitude / num_dims) : 0.0f;
 
     /* Check for ignition cascade */
     if (dimensions[GW_DIM_IGNITION] > bridge->config.ignition_threshold) {

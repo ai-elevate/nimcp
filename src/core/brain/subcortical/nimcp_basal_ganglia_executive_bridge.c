@@ -69,7 +69,6 @@ static bge_goal_t* find_goal(bge_bridge_t* bridge, uint32_t goal_id) {
             return &bridge->goals[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 

@@ -177,7 +177,7 @@ static pattern_node_t* find_pattern(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: operation failed");
+    /* Not found is normal lookup result, not an error */
     return NULL;
 }
 

@@ -101,7 +101,7 @@ static inline void predictive_heartbeat_instance(
 // Error Handling (module-local)
 //=============================================================================
 
-static char last_error[512] = {0};
+static __thread char last_error[512] = {0};
 
 static void set_error(const char* fmt, ...)
 {

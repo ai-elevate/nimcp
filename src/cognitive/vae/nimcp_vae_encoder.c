@@ -181,7 +181,7 @@ static int vae_encoder_layer_create(vae_encoder_layer_t* layer,
             nimcp_tensor_destroy(layer->weight_grad);
             nimcp_tensor_destroy(layer->bias);
             nimcp_tensor_destroy(layer->bias_grad);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "randn: required parameter is NULL (layer->bias, layer->bias_grad)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_encoder_layer: bias allocation failed");
             return -1;
         }
     }
@@ -207,7 +207,7 @@ static int vae_encoder_layer_create(vae_encoder_layer_t* layer,
             nimcp_tensor_destroy(layer->bn_beta);
             nimcp_tensor_destroy(layer->bn_running_mean);
             nimcp_tensor_destroy(layer->bn_running_var);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "randn: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_encoder_layer: batch norm allocation failed");
             return -1;
         }
 
@@ -892,7 +892,7 @@ int vae_encoder_forward(vae_encoder_t* encoder,
             nimcp_mutex_unlock(encoder->mutex);
             nimcp_tensor_destroy(current);
             nimcp_tensor_destroy(next);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_encoder_forward: layer forward failed");
             return -1;
         }
 

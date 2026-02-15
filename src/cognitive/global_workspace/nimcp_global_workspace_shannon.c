@@ -341,7 +341,7 @@ bool global_workspace_enable_shannon(
      * HOW:  Allocate state, initialize subscribers, register mapping */
 
     if (!workspace) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_enable_shannon: workspace is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_enable_shannon: workspace is NULL");
         return false;
     }
 

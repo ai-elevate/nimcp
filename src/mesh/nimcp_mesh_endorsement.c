@@ -817,11 +817,15 @@ void mesh_endorsement_print_collection(
         return;
     }
 
+    /* P1: Mutex protection for collection access */
+    nimcp_mutex_lock(((mesh_endorsement_collector_t*)collector)->mutex);
+
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
     );
 
     if (!coll) {
+        nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
         printf("Collection: Not found for tx %lu\n",
             (unsigned long)tx_id->sequence);
         return;
@@ -835,4 +839,6 @@ void mesh_endorsement_print_collection(
     printf("  Complete: %s\n", coll->collection_complete ? "YES" : "NO");
     printf("  Vetoed:   %s\n", coll->vetoed ? "YES" : "NO");
     printf("  Timed out: %s\n", coll->timed_out ? "YES" : "NO");
+
+    nimcp_mutex_unlock(((mesh_endorsement_collector_t*)collector)->mutex);
 }

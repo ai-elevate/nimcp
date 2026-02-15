@@ -468,11 +468,12 @@ static float mc_sample_severity(tick_state_t* state, health_agent_severity_t bas
     if (estimate < 1.0f) estimate = 1.0f;
     if (estimate > 10.0f) estimate = 10.0f;
 
+    float saved_std_error = result.std_error;
     mc_result_free(&result);
 
     LOG_DEBUG("MC severity: base=%d, estimated=%.2f (std_err=%.3f)",
               map_health_msg_to_antigen_severity(base_severity),
-              estimate, result.std_error);
+              estimate, saved_std_error);
 
     return estimate;
 }
@@ -1342,7 +1343,7 @@ int brain_immune_tick_init(brain_immune_system_t* immune,
                            const brain_immune_tick_config_t* config) {
     if (!immune) {
         LOG_ERROR("Cannot initialize tick: immune system is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_default_config: immune is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_init: immune is NULL");
         return -1;
     }
 
@@ -1759,7 +1760,7 @@ bool brain_immune_tick_has_health_agent(const brain_immune_system_t* immune) {
 int brain_immune_tick_get_stats(const brain_immune_system_t* immune,
                                  brain_immune_tick_stats_t* stats) {
     if (!stats) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_has_health_agent: stats is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_get_stats: stats is NULL");
         return -1;
     }
 
@@ -1770,7 +1771,7 @@ int brain_immune_tick_get_stats(const brain_immune_system_t* immune,
     const tick_state_t* state = get_tick_state_const(immune);
     if (!state) {
         memset(stats, 0, sizeof(*stats));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_has_health_agent: state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_get_stats: state is NULL");
         return -1;
     }
 
@@ -1795,7 +1796,7 @@ void brain_immune_tick_reset_stats(brain_immune_system_t* immune) {
 int brain_immune_tick_get_config(const brain_immune_system_t* immune,
                                   brain_immune_tick_config_t* config) {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_get_config: config is NULL");
         return -1;
     }
 
@@ -1806,7 +1807,7 @@ int brain_immune_tick_get_config(const brain_immune_system_t* immune,
     const tick_state_t* state = get_tick_state_const(immune);
     if (!state) {
         brain_immune_tick_default_config(config);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_get_config: state is NULL");
         return -1;
     }
 
@@ -1817,7 +1818,7 @@ int brain_immune_tick_get_config(const brain_immune_system_t* immune,
 int brain_immune_tick_set_config(brain_immune_system_t* immune,
                                   const brain_immune_tick_config_t* config) {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_set_config: config is NULL");
         return -1;
     }
 
@@ -1827,7 +1828,7 @@ int brain_immune_tick_set_config(brain_immune_system_t* immune,
 
     tick_state_t* state = get_tick_state(immune);
     if (!state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_set_config: state is NULL");
         return -1;
     }
 

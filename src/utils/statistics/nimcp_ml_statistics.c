@@ -191,7 +191,7 @@ nimcp_ml_error_t nimcp_gmm_fit(nimcp_gmm_t* gmm, const float* X,
     }
 
     /* Initialize means with k-means++ */
-    srand((unsigned int)time(NULL));
+    /* srand() removed: thread-unsafe global PRNG state; nimcp_tl_rand() has its own seeding */
 
     /* First centroid: random point */
     uint32_t idx = nimcp_tl_rand() % n;
@@ -1062,7 +1062,7 @@ nimcp_ml_error_t nimcp_hmm_fit(nimcp_hmm_t* hmm, const float* observations,
     }
 
     /* Initialize emission means from data */
-    srand((unsigned int)time(NULL));
+    /* srand() removed: thread-unsafe global PRNG state; nimcp_tl_rand() has its own seeding */
     for (uint32_t i = 0; i < s; i++) {
         uint32_t idx = nimcp_tl_rand() % total_len;
         memcpy(&hmm->emission_means[i * d], &observations[idx * d], d * sizeof(float));

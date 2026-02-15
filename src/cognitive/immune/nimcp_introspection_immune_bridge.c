@@ -230,7 +230,7 @@ introspection_immune_bridge_t* introspection_immune_bridge_create(
     if (!immune_system || !introspection_context) {
         LOG_MODULE_ERROR("introspection_immune_bridge",
                   "Cannot create bridge without immune and introspection systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_immune_bridge_create: required parameter is NULL (immune_system, introspection_context)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_bridge_create: required parameter is NULL (immune_system, introspection_context)");
         return NULL;
     }
 
@@ -243,7 +243,7 @@ introspection_immune_bridge_t* introspection_immune_bridge_create(
         nimcp_malloc(sizeof(introspection_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("introspection_immune_bridge", "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_immune_bridge_create: allocation failed");
 
         return NULL;
     }

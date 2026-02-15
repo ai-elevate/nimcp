@@ -89,7 +89,7 @@ myelin_network_config_t myelin_network_default_config(void)
 myelin_sheath_pool_t* myelin_sheath_pool_create(uint32_t capacity)
 {
     if (capacity == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_pool_create: capacity is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "myelin_sheath_pool_create: capacity is zero");
         return NULL;
     }
 

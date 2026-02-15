@@ -806,7 +806,7 @@ static concept_bucket_t* find_concept_bucket(curiosity_engine_t engine, const ch
 static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, const char* concept_str)
 {
     if (!engine || !concept_str) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_concept_to_hash_table: required parameter is NULL (engine, concept_str)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_concept_to_hash_table: required parameter is NULL (engine, concept_str)");
         return NULL;
     }
 

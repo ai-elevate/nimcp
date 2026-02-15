@@ -150,7 +150,6 @@ static goal_motor_binding_t* find_binding(goal_representation_t* goal, uint32_t 
             return &goal->bindings[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_binding: validation failed");
     return NULL;
 }
 

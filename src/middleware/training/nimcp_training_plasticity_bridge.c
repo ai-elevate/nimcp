@@ -416,6 +416,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
     /* Initialize RW lock for regions */
     if (nimcp_platform_rwlock_init(&ctx->region_rwlock) != 0) {
         LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init region rwlock");
+        nimcp_mutex_destroy(&ctx->callback_mutex);
         nimcp_mutex_destroy(&ctx->stats_mutex);
         nimcp_mutex_destroy(&ctx->rpe_mutex);
         nimcp_free(ctx);
@@ -502,8 +503,8 @@ void tpb_destroy(tpb_context_t* ctx)
 {
     if (!ctx) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "training_plasticity");
     }
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "training_plasticity");
 
     /* Signal shutdown */
     atomic_store(&ctx->shutdown, true);

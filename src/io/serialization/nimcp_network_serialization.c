@@ -799,19 +799,19 @@ static bool write_network_config(NimcpSerializer* serializer, const network_conf
         return false;
     }
     if (!nimcp_write_bool(serializer, config->enable_stdp)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: serializer write failed");
         return false;
     }
     if (!nimcp_write_bool(serializer, config->enable_hebbian)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: serializer write failed");
         return false;
     }
     if (!nimcp_write_bool(serializer, config->enable_oja)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: serializer write failed");
         return false;
     }
     if (!nimcp_write_bool(serializer, config->enable_homeostasis)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: serializer write failed");
         return false;
     }
     // Note: layer_sizes array and neuron_model/model_params are not serialized in v1
@@ -822,80 +822,80 @@ static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
 {
     // Write neuron basic properties
     if (!nimcp_write_uint32(serializer, neuron->id)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint32 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_uint8(serializer, (uint8_t)neuron->type)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint8 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->state)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->rest_potential)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->threshold)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->adaptation)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->refractory_period)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->bias)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
 
     // Write learning parameters (simplified - just key values)
     if (!nimcp_write_float(serializer, neuron->plasticity_rate)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->homeostatic_factor)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->calcium_concentration)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->weight_norm)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, neuron->avg_activity)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_uint64(serializer, neuron->last_spike)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint64 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_uint64(serializer, neuron->last_update)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint64 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     if (!nimcp_write_uint64(serializer, neuron->creation_time)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint64 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
 
     // Write synapses
     if (!nimcp_write_uint32(serializer, neuron->num_synapses)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint32 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
     for (uint32_t i = 0; i < neuron->num_synapses; i++) {
         if (!write_synapse(serializer, &neuron->synapses[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: write_synapse is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: synapse serialization failed");
             return false;
         }
     }
@@ -907,35 +907,35 @@ static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
 static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
 {
     if (!nimcp_write_uint32(serializer, synapse->target_id)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_uint32 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, synapse->weight)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, synapse->plasticity)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, synapse->last_change)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_uint64(serializer, synapse->last_active)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_uint64 is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, synapse->strength)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, synapse->meta_plasticity)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     if (!nimcp_write_float(serializer, synapse->trace)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
     // Note: STP state not serialized in v1
@@ -1064,7 +1064,7 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
 
     for (uint32_t i = 0; i < num_synapses; i++) {
         if (!read_synapse(serializer, &neuron->synapses[i])) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_neuron: read_synapse is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_neuron: synapse deserialization failed");
             return false;
         }
     }

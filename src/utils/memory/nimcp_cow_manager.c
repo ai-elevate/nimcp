@@ -60,6 +60,26 @@
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cow_manager)
 
 //=============================================================================
+// Recursion Guard for NIMCP_THROW_TO_IMMUNE
+//=============================================================================
+/**
+ * WHY:  If exception creation triggers CoW memory operations, infinite
+ *       recursion can occur. This thread-local guard prevents re-entry.
+ * HOW:  _Atomic prevents compiler reordering if longjmp occurs during throw.
+ *       memory_order_relaxed is sufficient for single-thread access.
+ */
+static _Thread_local _Atomic bool g_cow_in_throw = false;
+
+#define COW_SAFE_THROW(code, msg) \
+    do { \
+        if (!atomic_load_explicit(&g_cow_in_throw, memory_order_relaxed)) { \
+            atomic_store_explicit(&g_cow_in_throw, true, memory_order_relaxed); \
+            NIMCP_THROW_TO_IMMUNE(code, msg); \
+            atomic_store_explicit(&g_cow_in_throw, false, memory_order_relaxed); \
+        } \
+    } while(0)
+
+//=============================================================================
 // Internal Structures
 //=============================================================================
 
@@ -120,7 +140,7 @@ static inline uint64_t get_time_ns(void) {
 static bool default_copy_fn(void* dest, const void* src, size_t size, void* user_data) {
     (void)user_data;
     if (!dest || !src) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "default_copy_fn: required parameter is NULL (dest, src)");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "default_copy_fn: required parameter is NULL (dest, src)");
         return false;
     }
     memcpy(dest, src, size);
@@ -166,7 +186,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     const void* template_data
 ) {
     if (!config || config->data_size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cow_manager_create: config is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_INVALID_PARAM, "cow_manager_create: config is NULL or data_size is 0");
         return NULL;
     }
 
@@ -174,7 +194,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     cow_manager_t manager = nimcp_calloc(1, sizeof(struct cow_manager_struct));
     if (!manager) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "manager is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "manager is NULL");
 
         return NULL;
 
@@ -192,7 +212,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     manager->template_data = nimcp_malloc(config->data_size);
     if (!manager->template_data) {
         nimcp_free(manager);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cow_manager_create: manager->template_data is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "cow_manager_create: manager->template_data is NULL");
         return NULL;
     }
 
@@ -216,7 +236,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     if (nimcp_platform_mutex_init(&manager->mutex, false) != 0) {
         nimcp_free(manager->template_data);
         nimcp_free(manager);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cow_manager_create: validation failed");
+        COW_SAFE_THROW(NIMCP_ERROR_NOT_INITIALIZED, "cow_manager_create: validation failed");
         return NULL;
     }
 
@@ -250,7 +270,7 @@ NIMCP_EXPORT void cow_manager_destroy(cow_manager_t manager) {
 NIMCP_EXPORT cow_handle_t cow_acquire(cow_manager_t manager) {
     if (!manager) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
 
         return NULL;
 
@@ -260,7 +280,7 @@ NIMCP_EXPORT cow_handle_t cow_acquire(cow_manager_t manager) {
     cow_handle_t handle = nimcp_calloc(1, sizeof(struct cow_handle_struct));
     if (!handle) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "handle is NULL");
 
         return NULL;
 
@@ -341,7 +361,7 @@ NIMCP_EXPORT void cow_release(cow_handle_t handle) {
 
 NIMCP_EXPORT const void* cow_read(cow_handle_t handle) {
     if (!handle || handle->state == COW_STATE_INVALID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_read: handle is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "cow_read: handle is NULL");
         return NULL;
     }
     return handle->data;  // Lock-free read
@@ -349,7 +369,7 @@ NIMCP_EXPORT const void* cow_read(cow_handle_t handle) {
 
 NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
     if (!handle || handle->state == COW_STATE_INVALID) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_write: handle is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "cow_write: handle is NULL");
         return NULL;
     }
 
@@ -362,7 +382,7 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
     cow_manager_t manager = handle->manager;
     if (!manager) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
 
         return NULL;
 
@@ -393,7 +413,7 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
             manager->stats.failed_copies++;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cow_write: validation failed");
+        COW_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "cow_write: validation failed");
         return NULL;
     }
 
@@ -416,7 +436,7 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
             manager->stats.failed_copies++;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_write: validation failed");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "cow_write: validation failed");
         return NULL;
     }
 
@@ -473,7 +493,7 @@ NIMCP_EXPORT size_t cow_get_handle_count(cow_manager_t manager) {
 
 NIMCP_EXPORT bool cow_get_stats(cow_manager_t manager, cow_stats_t* stats) {
     if (!manager || !stats) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_get_stats: required parameter is NULL (manager, stats)");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "cow_get_stats: required parameter is NULL (manager, stats)");
         return false;
     }
 
@@ -513,7 +533,7 @@ NIMCP_EXPORT bool cow_calculate_memory_usage(
     size_t* overhead_bytes
 ) {
     if (!manager) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_calculate_memory_usage: manager is NULL");
+        COW_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "cow_calculate_memory_usage: manager is NULL");
         return false;
     }
 

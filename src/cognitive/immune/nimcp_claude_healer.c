@@ -218,7 +218,6 @@ static const char* find_string(
             return haystack + i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_string: validation failed");
     return NULL;
 }
 

@@ -159,7 +159,6 @@ static salience_feature_learning_t* find_feature(
             return &bridge->features[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_feature: validation failed");
     return NULL;
 }
 

@@ -173,7 +173,6 @@ static vaccine_entry_t* find_vaccine_by_id(vaccine_system_t* system, uint32_t id
             return &system->vaccines[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_vaccine_by_id: validation failed");
     return NULL;
 }
 

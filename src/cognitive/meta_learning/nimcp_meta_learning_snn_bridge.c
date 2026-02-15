@@ -460,7 +460,7 @@ int meta_learning_snn_encode_state(
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
     }
-    change_magnitude = sqrtf(change_magnitude / num_dims);
+    change_magnitude = (num_dims > 0) ? sqrtf(change_magnitude / num_dims) : 0.0f;
 
     if (change_magnitude > bridge->config.state_change_threshold) {
         bridge->last_insight.strategy_change_detected = true;

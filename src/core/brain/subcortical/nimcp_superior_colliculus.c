@@ -243,11 +243,11 @@ int sc_set_visual_input(superior_colliculus_t* sc,
                          uint32_t width,
                          uint32_t height) {
     if (!sc || !visual_map) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_reset: required parameter is NULL (sc, visual_map)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_set_visual_input: required parameter is NULL (sc, visual_map)");
         return -1;
     }
     if (width != sc->map_width || height != sc->map_height) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_reset: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_set_visual_input: map dimensions mismatch");
         return -1;
     }
 
@@ -286,7 +286,7 @@ int sc_update_target(superior_colliculus_t* sc,
                       uint32_t target_id,
                       const sc_position_t* position) {
     if (!sc || !position || target_id >= sc->num_targets) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_add_target: required parameter is NULL (sc, position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_update_target: required parameter is NULL (sc, position)");
         return -1;
     }
 
@@ -324,11 +324,11 @@ int sc_receive_snr_input(superior_colliculus_t* sc,
                           uint32_t width,
                           uint32_t height) {
     if (!sc || !snr_output) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_remove_target: required parameter is NULL (sc, snr_output)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_receive_snr_input: required parameter is NULL (sc, snr_output)");
         return -1;
     }
     if (width != sc->map_width || height != sc->map_height) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_remove_target: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_receive_snr_input: map dimensions mismatch");
         return -1;
     }
 
@@ -345,7 +345,7 @@ int sc_set_snr_disinhibition(superior_colliculus_t* sc,
                               const sc_position_t* target,
                               float disinhibition) {
     if (!sc || !target) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_remove_target: required parameter is NULL (sc, target)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_set_snr_disinhibition: required parameter is NULL (sc, target)");
         return -1;
     }
 
@@ -383,7 +383,7 @@ int sc_get_saccade(const superior_colliculus_t* sc, sc_saccade_t* saccade) {
     }
 
     if (!sc->saccade_ready) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_saccade: sc->saccade_ready is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "sc_get_saccade: no saccade ready");
         return -1;
     }
 
@@ -401,7 +401,7 @@ int sc_execute_saccade(superior_colliculus_t* sc) {
 
     if (!sc->saccade_ready) {
         nimcp_mutex_unlock(sc->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_execute_saccade: sc->saccade_ready is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "sc_execute_saccade: no saccade ready");
         return -1;
     }
 
@@ -438,16 +438,12 @@ int sc_cancel_saccade(superior_colliculus_t* sc) {
     return 0;
 }
 
-int sc_command_saccade(superior_colliculus_t* sc,
-                        const sc_position_t* target,
-                        sc_saccade_type_t type) {
-    if (!sc || !target) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_cancel_saccade: required parameter is NULL (sc, target)");
-        return -1;
-    }
-
-    nimcp_mutex_lock(sc->mutex);
-
+/**
+ * @brief Internal unlocked variant - caller MUST hold sc->mutex.
+ */
+static int sc_command_saccade_unlocked(superior_colliculus_t* sc,
+                                        const sc_position_t* target,
+                                        sc_saccade_type_t type) {
     /* Prepare saccade */
     sc->pending_saccade.target = *target;
     sc->pending_saccade.start = sc->current_gaze;
@@ -464,8 +460,21 @@ int sc_command_saccade(superior_colliculus_t* sc,
     sc->saccade_ready = true;
     sc->fixation_state = SC_FIXATION_PREPARING;
 
-    nimcp_mutex_unlock(sc->mutex);
     return 0;
+}
+
+int sc_command_saccade(superior_colliculus_t* sc,
+                        const sc_position_t* target,
+                        sc_saccade_type_t type) {
+    if (!sc || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_cancel_saccade: required parameter is NULL (sc, target)");
+        return -1;
+    }
+
+    nimcp_mutex_lock(sc->mutex);
+    int ret = sc_command_saccade_unlocked(sc, target, type);
+    nimcp_mutex_unlock(sc->mutex);
+    return ret;
 }
 
 int sc_get_gaze(const superior_colliculus_t* sc, sc_position_t* gaze) {
@@ -569,7 +578,7 @@ int sc_step(superior_colliculus_t* sc, float dt_ms) {
                 type = SC_SACCADE_EXPRESS;
             }
 
-            sc_command_saccade(sc, &target, type);
+            sc_command_saccade_unlocked(sc, &target, type);
         }
     }
 
@@ -596,7 +605,7 @@ int sc_get_motor_map(const superior_colliculus_t* sc,
                       uint32_t* width,
                       uint32_t* height) {
     if (!sc || !motor_map || !width || !height) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_step: required parameter is NULL (sc, motor_map, width, height)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_motor_map: required parameter is NULL (sc, motor_map, width, height)");
         return -1;
     }
 
@@ -626,7 +635,7 @@ int sc_get_stats(const superior_colliculus_t* sc, sc_stats_t* stats) {
 int sc_get_corollary_discharge(const superior_colliculus_t* sc,
                                 sc_saccade_t* cd) {
     if (!sc || !cd) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_stats: required parameter is NULL (sc, cd)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_corollary_discharge: required parameter is NULL (sc, cd)");
         return -1;
     }
 
@@ -634,7 +643,7 @@ int sc_get_corollary_discharge(const superior_colliculus_t* sc,
         *cd = sc->pending_saccade;
         return 0;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_get_stats: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "sc_get_corollary_discharge: no saccade pending");
     return -1;
 }
 

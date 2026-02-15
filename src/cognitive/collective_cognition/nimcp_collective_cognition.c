@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdatomic.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -1423,10 +1424,10 @@ void collective_cognition_set_instance_health_agent(void* instance, nimcp_health
 /* ============================================================================
  * Phase 8: Full training implementation
  * ============================================================================ */
-static uint64_t g_collective_cognition_training_steps = 0;
-static double g_collective_cognition_training_total_error = 0.0;
-static double g_collective_cognition_training_best_error = 1e30;
-static bool g_collective_cognition_training_active = false;
+static _Atomic uint64_t g_collective_cognition_training_steps = 0;
+static _Atomic double g_collective_cognition_training_total_error = 0.0;
+static _Atomic double g_collective_cognition_training_best_error = 1e30;
+static _Atomic bool g_collective_cognition_training_active = false;
 
 int collective_cognition_training_begin(void* instance) {
     if (!instance) {

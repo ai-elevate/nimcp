@@ -143,13 +143,13 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
     /* Guard: Validate required components */
     if (!executive) {
         NIMCP_LOGGING_ERROR("Cannot create executive substrate bridge: NULL executive");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: executive is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_substrate_bridge_create: executive is NULL");
         return NULL;
     }
 
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create executive substrate bridge: NULL substrate");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: substrate is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_substrate_bridge_create: substrate is NULL");
         return NULL;
     }
 
@@ -191,6 +191,7 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_substrate_bridge_create: validation failed");
         return NULL;

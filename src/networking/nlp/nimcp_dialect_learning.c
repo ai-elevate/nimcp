@@ -169,7 +169,7 @@ static dialect_entry_t* find_dialect_entry(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_dialect_entry: operation failed");
+    /* Not found is normal lookup result, not an error */
     return NULL;
 }
 

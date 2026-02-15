@@ -185,7 +185,6 @@ static kg_replica_status_t* find_replica(kg_dr_context_t* dr, const char* replic
             return &dr->replicas[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_replica: validation failed");
     return NULL;
 }
 

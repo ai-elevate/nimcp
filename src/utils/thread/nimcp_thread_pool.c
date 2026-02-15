@@ -802,7 +802,7 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads)
             nimcp_cond_destroy(&pool->task_available);
             nimcp_mutex_destroy(&pool->lock);
             nimcp_free(pool);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_pool_create: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_pool_create: thread creation failed");
             return NULL;
         }
     }

@@ -604,6 +604,14 @@ nimcp_error_t mesh_topology_clear(mesh_topology_ctx_t ctx) {
  * Topology Analysis
  * ============================================================================ */
 
+/* Forward declaration for unlocked hub identification (defined after public functions) */
+static nimcp_error_t identify_hubs_unlocked(
+    mesh_topology_ctx_t ctx,
+    mesh_participant_id_t* hub_ids,
+    size_t hub_capacity,
+    size_t* num_hubs
+);
+
 /**
  * @brief Internal unlocked version of compute_metrics
  *
@@ -641,8 +649,8 @@ static nimcp_error_t compute_metrics_unlocked(
     double variance = (sum_degree_sq / ctx->node_count) - (metrics->avg_degree * metrics->avg_degree);
     metrics->degree_std = (float)sqrt(variance > 0 ? variance : 0);
 
-    /* Identify hubs (top percentile by degree) */
-    nimcp_error_t err = mesh_topology_identify_hubs(ctx, ctx->hub_ids, ctx->hub_capacity, &ctx->hub_count);
+    /* Identify hubs (top percentile by degree) - use unlocked version since we hold mutex */
+    nimcp_error_t err = identify_hubs_unlocked(ctx, ctx->hub_ids, ctx->hub_capacity, &ctx->hub_count);
     if (err == NIMCP_SUCCESS) {
         metrics->num_hubs = (uint32_t)ctx->hub_count;
 
@@ -752,7 +760,15 @@ nimcp_error_t mesh_topology_get_node_info(
     return NIMCP_SUCCESS;
 }
 
-nimcp_error_t mesh_topology_identify_hubs(
+/**
+ * @brief Internal unlocked version of identify_hubs
+ *
+ * WHAT: Identify hub nodes without acquiring the mutex
+ * WHY:  Called from compute_metrics_unlocked() which already holds the mutex,
+ *       preventing self-deadlock on non-recursive mutex
+ * PRECONDITION: Caller must hold ctx->mutex
+ */
+static nimcp_error_t identify_hubs_unlocked(
     mesh_topology_ctx_t ctx,
     mesh_participant_id_t* hub_ids,
     size_t hub_capacity,
@@ -799,9 +815,33 @@ nimcp_error_t mesh_topology_identify_hubs(
     return NIMCP_SUCCESS;
 }
 
+nimcp_error_t mesh_topology_identify_hubs(
+    mesh_topology_ctx_t ctx,
+    mesh_participant_id_t* hub_ids,
+    size_t hub_capacity,
+    size_t* num_hubs
+) {
+    if (!ctx || !hub_ids || !num_hubs) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* P1: Mutex protection for topology read/write */
+    nimcp_mutex_lock(ctx->mutex);
+
+    nimcp_error_t result = identify_hubs_unlocked(ctx, hub_ids, hub_capacity, num_hubs);
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return result;
+}
+
 nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
     if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (ctx->node_count < 3) return NIMCP_SUCCESS;
+
+    /* P1: Mutex protection for topology read/write */
+    nimcp_mutex_lock(ctx->mutex);
+
+    if (ctx->node_count < 3) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return NIMCP_SUCCESS;
+    }
 
     /* Send heartbeat at start of long computation */
     mesh_topology_heartbeat("compute_betweenness", 0.0f);
@@ -827,6 +867,7 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
         nimcp_free(dist);
         nimcp_free(paths);
         nimcp_free(queue);
+        nimcp_mutex_unlock(ctx->mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -905,6 +946,7 @@ nimcp_error_t mesh_topology_compute_betweenness(mesh_topology_ctx_t ctx) {
         }
     }
 
+    nimcp_mutex_unlock(ctx->mutex);
     return NIMCP_SUCCESS;
 }
 

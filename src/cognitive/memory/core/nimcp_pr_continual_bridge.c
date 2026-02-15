@@ -174,44 +174,48 @@ static int ensure_fisher_capacity(pr_continual_bridge_t bridge, size_t num_param
         return 0;
     }
 
-    /* Reallocate Fisher diagonal */
+    /* Pre-allocate all arrays to temp pointers before committing */
     float* new_fisher = nimcp_realloc(bridge->fisher_diag,
                                        num_params * sizeof(float));
     if (!new_fisher) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_fisher is NULL");
         return -1;
     }
+
+    float* new_params = nimcp_realloc(bridge->old_params,
+                                       num_params * sizeof(float));
+    if (!new_params) {
+        /* fisher_diag was reallocated but old_params was not - safe because
+         * fisher_diag is still valid at the larger size, we just don't update capacity */
+        bridge->fisher_diag = new_fisher;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_params is NULL");
+        return -1;
+    }
+
+    float* new_accum = NULL;
+    if (bridge->config.enable_online_fisher) {
+        new_accum = nimcp_realloc(bridge->fisher_accum,
+                                          num_params * sizeof(float));
+        if (!new_accum) {
+            bridge->fisher_diag = new_fisher;
+            bridge->old_params = new_params;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_accum is NULL");
+            return -1;
+        }
+    }
+
+    /* All allocations succeeded - commit */
     bridge->fisher_diag = new_fisher;
+    bridge->old_params = new_params;
 
     /* Initialize new entries to zero */
     for (size_t i = bridge->fisher_capacity; i < num_params; i++) {
         bridge->fisher_diag[i] = 0.0f;
-    }
-
-    /* Reallocate old params */
-    float* new_params = nimcp_realloc(bridge->old_params,
-                                       num_params * sizeof(float));
-    if (!new_params) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_params is NULL");
-        return -1;
-    }
-    bridge->old_params = new_params;
-
-    /* Initialize new entries */
-    for (size_t i = bridge->fisher_capacity; i < num_params; i++) {
         bridge->old_params[i] = 0.0f;
     }
 
-    /* Reallocate accumulator if online Fisher enabled */
-    if (bridge->config.enable_online_fisher) {
-        float* new_accum = nimcp_realloc(bridge->fisher_accum,
-                                          num_params * sizeof(float));
-        if (!new_accum) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_accum is NULL");
-            return -1;
-        }
+    if (bridge->config.enable_online_fisher && new_accum) {
         bridge->fisher_accum = new_accum;
-
         for (size_t i = bridge->fisher_capacity; i < num_params; i++) {
             bridge->fisher_accum[i] = 0.0f;
         }

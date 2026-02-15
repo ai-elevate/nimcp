@@ -32,6 +32,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <float.h>
 #include <time.h>
 #include <stdio.h>
@@ -315,7 +316,7 @@ static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
                                             uint32_t obs_dim, uint32_t action_dim) {
     omni_wm_dynamics_t* dyn = nimcp_calloc(1, sizeof(omni_wm_dynamics_t));
     if (!dyn) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "randn: dyn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynamics_create: dyn allocation failed");
         return NULL;
     }
 
@@ -343,7 +344,7 @@ static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
         nimcp_free(dyn->b_z);
         nimcp_free(dyn->b_obs);
         nimcp_free(dyn);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "randn: operation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynamics_create: weight allocation failed");
         return NULL;
     }
 
@@ -1482,8 +1483,12 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
     NIMCP_CHECK_THROW(pred, NIMCP_ERROR_INVALID_PARAM, "MDN prediction is NULL");
     NIMCP_CHECK_THROW(sample, NIMCP_ERROR_INVALID_PARAM, "sample buffer is NULL");
 
-    /* Select component based on weights */
-    unsigned int seed = (unsigned int)time(NULL);
+    /* Select component based on weights - use thread-local seed */
+    static __thread unsigned int tl_mdn_seed = 0;
+    if (tl_mdn_seed == 0) {
+        tl_mdn_seed = (unsigned int)time(NULL) ^ (unsigned int)(uintptr_t)&tl_mdn_seed;
+    }
+    unsigned int seed = tl_mdn_seed;
     float r = (float)rand_r(&seed) / RAND_MAX;
     float cumsum = 0.0f;
     uint32_t selected = 0;
@@ -1513,6 +1518,7 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
 
         sample[i] = comp->mean[i] + comp->std[i] * randn(&seed);
     }
+    tl_mdn_seed = seed;
 
     return NIMCP_SUCCESS;
 }

@@ -370,7 +370,6 @@ static surface_antigen_t* find_antigen(
             return &bridge->active_antigens[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antigen: operation failed");
     return NULL;
 }
 
@@ -392,7 +391,6 @@ static surface_antigen_t* find_similar_antigen(
             return ag;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_similar_antigen: operation failed");
     return NULL;
 }
 
@@ -410,7 +408,6 @@ static surface_antigen_t* find_empty_antigen_slot(
             return &bridge->active_antigens[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_antigen_slot: bridge->active_antigens is NULL");
     return NULL;
 }
 
@@ -430,7 +427,6 @@ static surface_antibody_t* find_antibody(
             return &bridge->antibodies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody: operation failed");
     return NULL;
 }
 
@@ -450,7 +446,6 @@ static surface_antibody_t* find_antibody_for_type(
             return &bridge->antibodies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody_for_type: operation failed");
     return NULL;
 }
 

@@ -180,7 +180,7 @@ nimcp_gradient_manager_ctx_t* nimcp_gradient_manager_create(
     ctx->initialized = true;
 
     /* P0 fix: Initialize accum buffer mutex for thread safety */
-    if (nimcp_platform_mutex_init(&ctx->accum_mutex, NULL) == 0) {
+    if (nimcp_platform_mutex_init(&ctx->accum_mutex, false) == 0) {
         ctx->accum_mutex_initialized = true;
     } else {
         ctx->accum_mutex_initialized = false;

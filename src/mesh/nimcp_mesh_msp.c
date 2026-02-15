@@ -786,6 +786,9 @@ nimcp_error_t mesh_msp_get_channel_memberships(
 
     *count_out = 0;
 
+    /* P1: Mutex protection for credential list traversal */
+    nimcp_mutex_lock(((mesh_msp_t*)msp)->mutex);
+
     credential_entry_t* entry = ((mesh_msp_t*)msp)->credentials_head;
     while (entry) {
         if (entry->participant_id == participant_id) {
@@ -793,11 +796,13 @@ nimcp_error_t mesh_msp_get_channel_memberships(
                                 entry->membership_count : max_channels;
             memcpy(channels_out, entry->memberships, copy_count * sizeof(mesh_channel_id_t));
             *count_out = copy_count;
+            nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
             return NIMCP_SUCCESS;
         }
         entry = entry->next;
     }
 
+    nimcp_mutex_unlock(((mesh_msp_t*)msp)->mutex);
     /* P2-146: Not-found is normal lookup result, not an error (false positive removal) */
     return NIMCP_ERROR_NOT_FOUND;
 }
@@ -1020,14 +1025,19 @@ nimcp_error_t mesh_msp_add_policy(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* P1: Mutex protection for policy list modification */
+    nimcp_mutex_lock(msp->mutex);
+
     /* Check for duplicate */
     if (policy->policy_name && find_policy(msp, policy->policy_name)) {
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ALREADY_EXISTS, "mesh_msp: error condition");
         return NIMCP_ERROR_ALREADY_EXISTS;
     }
 
     policy_entry_t* entry = nimcp_calloc(1, sizeof(policy_entry_t));
     if (!entry) {
+        nimcp_mutex_unlock(msp->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp: memory allocation failed");
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -1048,6 +1058,7 @@ nimcp_error_t mesh_msp_add_policy(
     msp->policies_head = entry;
     msp->policy_count++;
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -1059,6 +1070,9 @@ nimcp_error_t mesh_msp_remove_policy(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp: invalid parameter");
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* P1: Mutex protection for policy list modification */
+    nimcp_mutex_lock(msp->mutex);
 
     policy_entry_t* prev = NULL;
     policy_entry_t* entry = msp->policies_head;
@@ -1073,12 +1087,14 @@ nimcp_error_t mesh_msp_remove_policy(
             nimcp_free((void*)entry->policy.required_channels);
             nimcp_free(entry);
             msp->policy_count--;
+            nimcp_mutex_unlock(msp->mutex);
             return NIMCP_SUCCESS;
         }
         prev = entry;
         entry = entry->next;
     }
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -1378,6 +1394,10 @@ nimcp_error_t mesh_msp_update(
     }
 
     (void)delta_ms;
+
+    /* P1: Mutex protection for credential list traversal and modification */
+    nimcp_mutex_lock(msp->mutex);
+
     uint64_t now = get_time_ns();
 
     /* Check credential expirations and quarantine timeouts */
@@ -1414,6 +1434,7 @@ nimcp_error_t mesh_msp_update(
         entry = entry->next;
     }
 
+    nimcp_mutex_unlock(msp->mutex);
     return NIMCP_SUCCESS;
 }
 

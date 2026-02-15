@@ -196,8 +196,7 @@ static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uin
  */
 static struct brain_kg* get_router_brain_kg_safe(void) {
     if (!atomic_load_explicit(&g_router_brain_kg_mutex_initialized, memory_order_acquire)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_router_brain_kg_safe: mutex not initialized");
-        return NULL;
+        return NULL;  /* Normal pre-init state, not an error */
     }
     nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
     /* TOCTOU FIX: Re-check after acquiring lock. If shutdown cleared the flag

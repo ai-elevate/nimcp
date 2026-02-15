@@ -129,6 +129,7 @@ surface_geometry_ctx_t* surface_geometry_create(
     }
     if (nimcp_mutex_init(ctx->mutex, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "surface_geometry_create: failed to init mutex");
+        nimcp_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }

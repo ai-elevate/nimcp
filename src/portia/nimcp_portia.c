@@ -685,11 +685,15 @@ nimcp_error_t portia_set_tier(platform_tier_t tier) {
     }
 
     if (tier >= PLATFORM_TIER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid tier value %d in portia_set_tier", tier);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid tier value %d in portia_set_tier", tier);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    portia_context_t* ctx = g_portia_ctx;
+    portia_context_t* ctx = atomic_load(&g_portia_ctx);
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Portia context destroyed during portia_set_tier");
+        return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
+    }
     portia_tier_manager_t* mgr = ctx->tier_manager;
 
     nimcp_mutex_lock(&mgr->lock);
@@ -740,7 +744,15 @@ platform_tier_t portia_get_current_tier(void) {
         return PLATFORM_TIER_MINIMAL;
     }
 
-    return g_portia_ctx->tier_manager->current_tier;
+    portia_context_t* ctx = atomic_load(&g_portia_ctx);
+    if (!ctx) {
+        return PLATFORM_TIER_MINIMAL;
+    }
+
+    nimcp_mutex_lock(&ctx->lock);
+    platform_tier_t tier = ctx->tier_manager->current_tier;
+    nimcp_mutex_unlock(&ctx->lock);
+    return tier;
 }
 
 nimcp_error_t portia_set_degradation_level(portia_degradation_level_t level) {
@@ -749,7 +761,11 @@ nimcp_error_t portia_set_degradation_level(portia_degradation_level_t level) {
         return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
     }
 
-    portia_context_t* ctx = g_portia_ctx;
+    portia_context_t* ctx = atomic_load(&g_portia_ctx);
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Portia context destroyed during portia_set_degradation_level");
+        return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
+    }
     portia_degradation_controller_t* ctrl = ctx->degradation_controller;
 
     nimcp_mutex_lock(&ctrl->lock);
@@ -791,7 +807,10 @@ uint32_t portia_recommend_neuron_count(void) {
         return 1000;
     }
 
-    portia_context_t* ctx = g_portia_ctx;
+    portia_context_t* ctx = atomic_load(&g_portia_ctx);
+    if (!ctx) {
+        return 1000;
+    }
 
     /* Get base recommendation from tier */
     platform_tier_t tier = ctx->tier_manager->current_tier;
@@ -838,7 +857,12 @@ nimcp_error_t portia_set_auto_switching(bool enable) {
         return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
     }
 
-    portia_tier_manager_t* mgr = g_portia_ctx->tier_manager;
+    portia_context_t* ctx = atomic_load(&g_portia_ctx);
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Portia context destroyed during portia_set_auto_switching");
+        return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
+    }
+    portia_tier_manager_t* mgr = ctx->tier_manager;
 
     nimcp_mutex_lock(&mgr->lock);
     mgr->config.enable_auto_switching = enable;
@@ -865,7 +889,12 @@ nimcp_error_t portia_get_accelerators(
         return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
     }
 
-    portia_accelerator_detector_t* det = g_portia_ctx->accelerator_detector;
+    portia_context_t* ctx = atomic_load(&g_portia_ctx);
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Portia context destroyed during portia_get_accelerators");
+        return NIMCP_PORTIA_ERROR_NOT_INITIALIZED;
+    }
+    portia_accelerator_detector_t* det = ctx->accelerator_detector;
 
     nimcp_mutex_lock(&det->lock);
 

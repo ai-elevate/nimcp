@@ -204,7 +204,7 @@ static int find_module_by_name(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_by_name: name is NULL");
+    /* Not found is normal lookup result, not an error */
     return -1;
 }
 
@@ -217,7 +217,7 @@ static int find_module_by_id(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_by_id: validation failed");
+    /* Not found is normal lookup result, not an error */
     return -1;
 }
 

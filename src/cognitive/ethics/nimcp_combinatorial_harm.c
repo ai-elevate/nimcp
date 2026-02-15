@@ -202,7 +202,6 @@ static bool pattern_matches(
     const action_record_t* action_b
 ) {
     if (!pattern->enabled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_matches: pattern->enabled is NULL");
         return false;
     }
 
@@ -219,7 +218,6 @@ static bool pattern_matches(
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_matches: operation failed");
     return false;
 }
 
@@ -596,7 +594,6 @@ NIMCP_EXPORT bool combinatorial_unregister_pattern(
     }
 
     nimcp_platform_mutex_unlock(&detector->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "combinatorial_unregister_pattern: operation failed");
     return false;
 }
 

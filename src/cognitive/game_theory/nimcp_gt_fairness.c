@@ -610,7 +610,6 @@ bool nimcp_fairness_is_efx(const float* const* valuations,
 
                 float reduced_value = others_value - valuations[i][item];
                 if (reduced_value > my_value + 1e-6f) {
-                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
                     return false;  // Removing this item doesn't eliminate envy
                 }
             }
@@ -648,7 +647,6 @@ bool nimcp_fairness_is_proportional(const float* const* valuations,
         float proportional_share = proportion * total_value;
 
         if (bundle_value < proportional_share - 1e-6f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return false;  // Player p doesn't get their proportional share
         }
     }
@@ -723,14 +721,13 @@ bool nimcp_fairness_has_mms_guarantee(const float* const* valuations,
 
         float mms = nimcp_fairness_maximin_share(valuations, p, num_players, num_items);
         if (mms < 0.0f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_fairness_has_mms_guarantee: MMS computation failed");
             return false;  // Error computing MMS
         }
 
         float bundle_value = compute_bundle_value(valuations[p], assignment, p, num_items);
 
         if (bundle_value < mms - 1e-6f) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return false;  // Player p doesn't get their MMS
         }
     }

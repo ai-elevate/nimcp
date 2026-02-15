@@ -1200,7 +1200,6 @@ int immune_persistence_merge_incremental(
 
 
     NIMCP_LOGGING_WARN("Incremental merge not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_merge_incremental: required parameter is NULL (base_filepath, incremental_filepath, output_filepath)");
     return -1;
 }
 

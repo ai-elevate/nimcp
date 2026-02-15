@@ -296,7 +296,6 @@ static code_antigen_t* find_antigen_by_id(code_immune_system_t* system, uint64_t
             return &system->antigens[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antigen_by_id: validation failed");
     return NULL;
 }
 
@@ -322,7 +321,6 @@ static code_b_cell_t* find_b_cell_by_id(code_immune_system_t* system, uint64_t i
             return &system->b_cells[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_b_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -348,7 +346,6 @@ static code_antibody_t* find_antibody_by_id(code_immune_system_t* system, uint64
             return &system->antibodies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody_by_id: validation failed");
     return NULL;
 }
 
@@ -1079,7 +1076,6 @@ int code_immune_find_matching_b_cell(
     }
 
     nimcp_mutex_unlock(system->mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_find_matching_b_cell: validation failed");
     return -1;
 }
 
@@ -2243,7 +2239,6 @@ static code_b_cell_t* find_b_cell_by_receptor(
             return &system->b_cells[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_b_cell_by_receptor: validation failed");
     return NULL;
 }
 

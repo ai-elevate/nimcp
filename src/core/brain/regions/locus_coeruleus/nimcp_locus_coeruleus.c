@@ -318,7 +318,7 @@ nimcp_lc_projection_t* nimcp_lc_get_projection(
     }
 
     if (projection_id >= lc->num_projections) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_get_projection: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_lc_get_projection: capacity exceeded");
         return NULL;
     }
 
@@ -343,7 +343,6 @@ nimcp_lc_projection_t* nimcp_lc_get_projection_by_target(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_get_projection_by_target: validation failed");
     return NULL;
 }
 

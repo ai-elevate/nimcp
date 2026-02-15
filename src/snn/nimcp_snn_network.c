@@ -970,6 +970,7 @@ int snn_network_connect_populations(snn_network_t* network,
                 /* Box-Muller for normal distribution */
                 float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
                 float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                if (u1 < 1e-7f) u1 = 1e-7f;
                 float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159f * u2);
                 weight += z * weight_std;
             }

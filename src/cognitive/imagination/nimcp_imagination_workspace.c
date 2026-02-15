@@ -743,7 +743,7 @@ int imagination_workspace_get_stats(
     imagination_workspace_stats_t* stats) {
 
     if (!workspace || !stats) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (workspace, stats)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_workspace_get_stats: workspace or stats is NULL");
         return -1;
     }
 

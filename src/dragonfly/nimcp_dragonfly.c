@@ -270,7 +270,7 @@ dragonfly_system_t* dragonfly_system_create(const dragonfly_config_t* config) {
 
 error:
     dragonfly_system_destroy(system);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_system_create: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_system_create: subsystem creation failed");
     return NULL;
 }
 
@@ -640,9 +640,8 @@ int dragonfly_get_primary_target(
 
     target_entry_t* entry = find_target((dragonfly_system_t*)system, system->primary_target_id);
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_get_primary_target: no primary target");
         nimcp_mutex_unlock(((dragonfly_system_t*)system)->mutex);
-        return -1;
+        return -1;  /* No primary target is a normal state */
     }
 
     *target = entry->info;
@@ -991,7 +990,7 @@ const char* dragonfly_hunt_result_name(dragonfly_hunt_result_t result) {
 }
 
 const char* dragonfly_version(void) {
-    static char version[32];
+    static __thread char version[32];
     snprintf(version, sizeof(version), "%d.%d.%d",
              DRAGONFLY_VERSION_MAJOR,
              DRAGONFLY_VERSION_MINOR,

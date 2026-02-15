@@ -520,7 +520,7 @@ float* nimcp_training_write_weights(
 
     if (weights->is_frozen) {
         LOG_WARNING("Attempted to write to frozen weights");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_write_weights: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_training_write_weights: weights are frozen");
         return NULL;
     }
 

@@ -118,8 +118,8 @@ static void* g_code_immune = NULL;  /* Placeholder when disabled */
  * WHY:  Allow resumption after code immune handles crash
  * HOW:  Set by sigsetjmp in main code, jumped to from handler
  */
-static volatile sig_atomic_t g_recovery_jump_valid = 0;
-static sigjmp_buf g_recovery_jump_buf;
+static __thread volatile sig_atomic_t g_recovery_jump_valid = 0;
+static __thread sigjmp_buf g_recovery_jump_buf;
 
 /**
  * @brief Flag indicating crash is being handled by code immune

@@ -501,16 +501,17 @@ static inline float simd_cosine_distance(const float* a, const float* b, uint32_
 static float history_buffer_compute_novelty(history_buffer_t* hist, const float* features,
                                             uint32_t num_features)
 {
+    nimcp_mutex_lock(&hist->lock);
+
     if (hist->count == 0) {
         /**
          * WHAT: No history yet
          * WHY: Everything is novel when we have no context
          * RETURN: Maximum novelty
          */
+        nimcp_mutex_unlock(&hist->lock);
         return 1.0F;
     }
-
-    nimcp_mutex_lock(&hist->lock);
 
     /**
      * WHAT: Find minimum distance to any historical entry

@@ -292,7 +292,7 @@ bool protocol_immune_message_filtered(
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_immune_message_filtered: operation failed");
+    /* Message not matching any filter is normal -- not an error */
     return false;
 }
 

@@ -286,6 +286,11 @@ bool brain_complex_oscillation_compute_coherence_subset(
         return false;
     }
 
+    // Guard: Prevent division by zero
+    if (num_neurons == 0) {
+        return false;
+    }
+
     // Guard: Need at least 2 neurons
     if (num_neurons < 2) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_compute_coherence_subset: validation failed");

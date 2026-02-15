@@ -28,6 +28,27 @@
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_guards)
 
 //=============================================================================
+// Recursion Guard for NIMCP_THROW_TO_IMMUNE
+//=============================================================================
+/**
+ * WHY:  nimcp_malloc_guarded() and related functions use NIMCP_THROW_TO_IMMUNE.
+ *       If guards are enabled and the exception system allocates through the
+ *       guarded allocator, infinite recursion occurs.
+ * HOW:  _Atomic prevents compiler reordering if longjmp occurs during throw.
+ *       memory_order_relaxed is sufficient for single-thread access.
+ */
+static _Thread_local _Atomic bool g_guards_in_throw = false;
+
+#define GUARDS_SAFE_THROW(code, msg) \
+    do { \
+        if (!atomic_load_explicit(&g_guards_in_throw, memory_order_relaxed)) { \
+            atomic_store_explicit(&g_guards_in_throw, true, memory_order_relaxed); \
+            NIMCP_THROW_TO_IMMUNE(code, msg); \
+            atomic_store_explicit(&g_guards_in_throw, false, memory_order_relaxed); \
+        } \
+    } while(0)
+
+//=============================================================================
 // Internal Data Structures
 //=============================================================================
 
@@ -74,7 +95,7 @@ static void unlock_guards(void) {
 static allocation_header_t* get_header(void* ptr) {
     if (!ptr) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
 
         return NULL;
 
@@ -85,7 +106,7 @@ static allocation_header_t* get_header(void* ptr) {
 static allocation_footer_t* get_footer(allocation_header_t* header) {
     if (!header) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "header is NULL");
 
         return NULL;
 
@@ -96,7 +117,7 @@ static allocation_footer_t* get_footer(allocation_header_t* header) {
 static void* get_user_ptr(allocation_header_t* header) {
     if (!header) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "header is NULL");
 
         return NULL;
 
@@ -215,7 +236,7 @@ void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
     }
 
     if (size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_malloc_guarded: size is zero");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_INVALID_PARAM, "nimcp_malloc_guarded: size is zero");
         return NULL;
     }
 
@@ -226,7 +247,7 @@ void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
     if (!header) {
         fprintf(stderr, "malloc_guarded: allocation failed (%zu bytes) at %s:%d\n",
                 size, file ? file : "unknown", line);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_malloc_guarded: header is NULL");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "nimcp_malloc_guarded: header is NULL");
         return NULL;
     }
 
@@ -288,7 +309,7 @@ void* nimcp_realloc_guarded(void* ptr, size_t size, const char* file, int line) 
 
     if (size == 0) {
         nimcp_free_guarded(ptr, file, line);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_realloc_guarded: size is zero");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_INVALID_PARAM, "nimcp_realloc_guarded: size is zero");
         return NULL;
     }
 
@@ -300,7 +321,7 @@ void* nimcp_realloc_guarded(void* ptr, size_t size, const char* file, int line) 
     void* new_ptr = nimcp_malloc_guarded(size, file, line);
     if (!new_ptr) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_ptr is NULL");
+        GUARDS_SAFE_THROW(NIMCP_ERROR_NULL_POINTER, "new_ptr is NULL");
 
         return NULL;
 

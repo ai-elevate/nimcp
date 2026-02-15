@@ -22,6 +22,7 @@
 #include <math.h>
 #include <time.h>
 #include <float.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -940,9 +941,9 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
         return SKILL_INVALID_ID;
     }
 
-    // Generate skill ID
-    static uint64_t next_skill_id = 1;
-    skill->skill_id = next_skill_id++;
+    // Generate skill ID (atomic for thread safety)
+    static _Atomic uint64_t next_skill_id = 1;
+    skill->skill_id = atomic_fetch_add(&next_skill_id, 1);
 
     // Copy name
     strncpy(skill->name, name, SKILL_MAX_NAME_LEN - 1);

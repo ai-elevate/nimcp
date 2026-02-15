@@ -340,13 +340,17 @@ nimcp_ph_region_t* nimcp_ph_get_region(
     nimcp_ph_system_t* system,
     uint32_t region_id
 ) {
-    if (!system || !system->initialized) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ph_get_region: required parameter is NULL (system, system->initialized)");
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ph_get_region: system is NULL");
+        return NULL;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_ph_get_region: system not initialized");
         return NULL;
     }
 
     if (region_id >= system->num_regions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ph_get_region: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_ph_get_region: region_id out of range");
         return NULL;
     }
 

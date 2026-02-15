@@ -236,6 +236,8 @@ static bool copy_memory_context(memory_context_t* dst, const memory_context_t* s
         if (!dst->social_context) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->social_dim * sizeof(float),
                                "copy_memory_context: Failed to allocate social_context");
+            nimcp_free(dst->spatial_context);
+            dst->spatial_context = NULL;
             return false;
         }
         memcpy(dst->social_context, src->social_context, src->social_dim * sizeof(float));
@@ -247,6 +249,10 @@ static bool copy_memory_context(memory_context_t* dst, const memory_context_t* s
         if (!dst->activity_context) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->activity_dim * sizeof(float),
                                "copy_memory_context: Failed to allocate activity_context");
+            nimcp_free(dst->spatial_context);
+            nimcp_free(dst->social_context);
+            dst->spatial_context = NULL;
+            dst->social_context = NULL;
             return false;
         }
         memcpy(dst->activity_context, src->activity_context, src->activity_dim * sizeof(float));
@@ -258,6 +264,12 @@ static bool copy_memory_context(memory_context_t* dst, const memory_context_t* s
         if (!dst->semantic_context) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->semantic_dim * sizeof(float),
                                "copy_memory_context: Failed to allocate semantic_context");
+            nimcp_free(dst->spatial_context);
+            nimcp_free(dst->social_context);
+            nimcp_free(dst->activity_context);
+            dst->spatial_context = NULL;
+            dst->social_context = NULL;
+            dst->activity_context = NULL;
             return false;
         }
         memcpy(dst->semantic_context, src->semantic_context, src->semantic_dim * sizeof(float));

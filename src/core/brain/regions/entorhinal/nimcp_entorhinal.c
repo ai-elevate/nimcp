@@ -812,7 +812,7 @@ int entorhinal_init_perception_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_swarm_bridge(nimcp_entorhinal_t* ec,
     nimcp_swarm_coordinator_t* swarm) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_swarm_bridge: ec is NULL");
         return -1;
     }
 
@@ -827,7 +827,7 @@ int entorhinal_init_swarm_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_dragonfly_bridge(nimcp_entorhinal_t* ec,
     nimcp_dragonfly_system_t* dragonfly) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_dragonfly_bridge: ec is NULL");
         return -1;
     }
 
@@ -842,7 +842,7 @@ int entorhinal_init_dragonfly_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_portia_bridge(nimcp_entorhinal_t* ec,
     nimcp_portia_system_t* portia) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_portia_bridge: ec is NULL");
         return -1;
     }
 
@@ -857,7 +857,7 @@ int entorhinal_init_portia_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_cerebellum_bridge(nimcp_entorhinal_t* ec,
     cerebellum_adapter_t* cerebellum) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_cerebellum_bridge: ec is NULL");
         return -1;
     }
 
@@ -872,7 +872,7 @@ int entorhinal_init_cerebellum_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_medulla_bridge(nimcp_entorhinal_t* ec,
     medulla_adapter_t* medulla) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_medulla_bridge: ec is NULL");
         return -1;
     }
 
@@ -887,7 +887,7 @@ int entorhinal_init_medulla_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_omni_bridge(nimcp_entorhinal_t* ec,
     nimcp_omnidirectional_system_t* omni) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_omni_bridge: ec is NULL");
         return -1;
     }
 
@@ -902,7 +902,7 @@ int entorhinal_init_omni_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_hypothalamus_bridge(nimcp_entorhinal_t* ec,
     hypothalamus_adapter_t* hypothalamus) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_hypothalamus_bridge: ec is NULL");
         return -1;
     }
 
@@ -917,7 +917,7 @@ int entorhinal_init_hypothalamus_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_logic_bridge(nimcp_entorhinal_t* ec,
     nimcp_logic_system_t* logic) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_logic_bridge: ec is NULL");
         return -1;
     }
 
@@ -932,7 +932,7 @@ int entorhinal_init_logic_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_kg_bridge(nimcp_entorhinal_t* ec,
     brain_kg_t* kg) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_kg_bridge: ec is NULL");
         return -1;
     }
 
@@ -947,7 +947,7 @@ int entorhinal_init_kg_bridge(nimcp_entorhinal_t* ec,
 int entorhinal_init_all_bridges(nimcp_entorhinal_t* ec,
     nimcp_brain_t* brain) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_init_all_bridges: ec is NULL");
         return -1;
     }
 
@@ -1025,7 +1025,7 @@ int entorhinal_init_all_bridges(nimcp_entorhinal_t* ec,
 int entorhinal_update_grid_cells(nimcp_entorhinal_t* ec,
     const float* position, uint32_t dim) {
     if (!ec || !position || dim < 2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_update_grid_cells: required parameter is NULL (ec, position)");
         return -1;
     }
 
@@ -1086,7 +1086,7 @@ int entorhinal_update_grid_cells(nimcp_entorhinal_t* ec,
 int entorhinal_get_grid_population_vector(const nimcp_entorhinal_t* ec,
     float* vector_out, uint32_t* dim) {
     if (!ec || !vector_out || !dim) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, vector_out, dim)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_get_grid_population_vector: required parameter is NULL (ec, vector_out, dim)");
         return -1;
     }
 
@@ -1109,7 +1109,7 @@ int entorhinal_get_grid_population_vector(const nimcp_entorhinal_t* ec,
 int entorhinal_decode_position_from_grid(const nimcp_entorhinal_t* ec,
     float* position_out, float* confidence_out) {
     if (!ec || !position_out) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, position_out)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_decode_position_from_grid: required parameter is NULL (ec, position_out)");
         return -1;
     }
 
@@ -1150,7 +1150,7 @@ int entorhinal_decode_position_from_grid(const nimcp_entorhinal_t* ec,
 int entorhinal_reset_grid_phases(nimcp_entorhinal_t* ec,
     const float* known_position) {
     if (!ec || !known_position) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, known_position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_reset_grid_phases: required parameter is NULL (ec, known_position)");
         return -1;
     }
 
@@ -1178,11 +1178,11 @@ int entorhinal_reset_grid_phases(nimcp_entorhinal_t* ec,
 const nimcp_grid_cell_t* entorhinal_get_grid_cell(const nimcp_entorhinal_t* ec,
     uint32_t module_idx, uint32_t cell_idx) {
     if (!ec || module_idx >= ec->num_grid_modules) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_get_grid_cell: invalid parameters");
         return NULL;
     }
     if (cell_idx >= ec->grid_modules[module_idx].num_cells) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "entorhinal_get_grid_cell: cell_idx out of range");
         return NULL;
     }
 
@@ -1196,7 +1196,7 @@ const nimcp_grid_cell_t* entorhinal_get_grid_cell(const nimcp_entorhinal_t* ec,
 int entorhinal_update_border_cells(nimcp_entorhinal_t* ec,
     const float* boundary_distances, uint32_t num_boundaries) {
     if (!ec || !boundary_distances) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, boundary_distances)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_update_border_cells: required parameter is NULL (ec, boundary_distances)");
         return -1;
     }
 
@@ -1231,7 +1231,7 @@ int entorhinal_detect_boundaries(const nimcp_entorhinal_t* ec,
     float* boundary_directions, float* boundary_distances,
     uint32_t max_boundaries, uint32_t* num_detected) {
     if (!ec || !boundary_directions || !boundary_distances || !num_detected) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, boundary_directions, boundary_distances)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_detect_boundaries: required parameter is NULL (ec, boundary_directions, boundary_distances)");
         return -1;
     }
 
@@ -1280,7 +1280,7 @@ int entorhinal_detect_boundaries(const nimcp_entorhinal_t* ec,
 int entorhinal_update_hd_cells(nimcp_entorhinal_t* ec,
     float heading, float angular_velocity) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_update_hd_cells: ec is NULL");
         return -1;
     }
 
@@ -1297,7 +1297,7 @@ int entorhinal_update_hd_cells(nimcp_entorhinal_t* ec,
 int entorhinal_decode_heading(const nimcp_entorhinal_t* ec,
     float* heading_out, float* confidence_out) {
     if (!ec || !heading_out) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, heading_out)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_decode_heading: required parameter is NULL (ec, heading_out)");
         return -1;
     }
 
@@ -1326,7 +1326,7 @@ int entorhinal_decode_heading(const nimcp_entorhinal_t* ec,
 int entorhinal_calibrate_hd_cells(nimcp_entorhinal_t* ec,
     float known_heading) {
     if (!ec) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_calibrate_hd_cells: ec is NULL");
         return -1;
     }
 
@@ -1361,7 +1361,7 @@ int entorhinal_calibrate_hd_cells(nimcp_entorhinal_t* ec,
 int entorhinal_path_integrate(nimcp_entorhinal_t* ec,
     const float* velocity, float angular_velocity, float dt) {
     if (!ec || !velocity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, velocity)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_path_integrate: required parameter is NULL (ec, velocity)");
         return -1;
     }
     if (dt < 0.0f) {
@@ -1414,7 +1414,7 @@ int entorhinal_get_position_estimate(const nimcp_entorhinal_t* ec,
     float* position_out, float* heading_out,
     float* position_confidence, float* heading_confidence) {
     if (!ec || !position_out) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ec or position_out is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_get_position_estimate: ec or position_out is NULL");
         return -1;
     }
 
@@ -1441,7 +1441,7 @@ int entorhinal_apply_visual_correction(nimcp_entorhinal_t* ec,
     const float* visual_position, float visual_heading,
     float confidence) {
     if (!ec || !visual_position) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, visual_position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_apply_visual_correction: required parameter is NULL (ec, visual_position)");
         return -1;
     }
 
@@ -1484,7 +1484,7 @@ int entorhinal_apply_visual_correction(nimcp_entorhinal_t* ec,
 int entorhinal_apply_boundary_correction(nimcp_entorhinal_t* ec,
     const float* boundary_position, float boundary_direction) {
     if (!ec || !boundary_position) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ec, boundary_position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_apply_boundary_correction: required parameter is NULL (ec, boundary_position)");
         return -1;
     }
 

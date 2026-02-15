@@ -150,7 +150,7 @@ logic_batch_result_t* logic_batch_result_create(
     // Guard: zero gates
     if (num_gates == 0) {
         LOG_ERROR("logic_batch_result_create: num_gates is zero");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_batch_result_create: num_gates is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "logic_batch_result_create: num_gates is zero");
         return NULL;
     }
 
@@ -158,7 +158,7 @@ logic_batch_result_t* logic_batch_result_create(
     logic_batch_result_t* result = (logic_batch_result_t*)nimcp_calloc(1, sizeof(logic_batch_result_t));
     if (!result) {
         LOG_ERROR("logic_batch_result_create: failed to allocate result");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_batch_result_create: failed to allocate result");
 
         return NULL;
     }

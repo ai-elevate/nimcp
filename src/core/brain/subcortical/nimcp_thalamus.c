@@ -949,6 +949,8 @@ int thalamus_pulvinar_attention(
     int result = thal_nucleus_process_input(thal->pulvinar, attention_signal, size);
     if (result < 0) return result;
 
+    if (size == 0) return 0;
+
     /* Pulvinar modulates other visual areas */
     float avg_attention = 0.0f;
     for (uint32_t i = 0; i < size && i < thal->pulvinar->num_input_channels; i++) {

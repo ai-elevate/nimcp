@@ -246,7 +246,7 @@ NIMCP_API void genius_orchestrator_destroy(genius_math_orchestrator_t* orch) {
     if (orch->consistency) energy_consistency_destroy(orch->consistency);
     if (orch->genius) genius_destroy(orch->genius);
 
-    if (orch->mutex) nimcp_mutex_destroy(orch->mutex);
+    if (orch->mutex) nimcp_mutex_free(orch->mutex);
 
     nimcp_free(orch);
 

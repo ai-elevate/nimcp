@@ -39,8 +39,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_flocking)
  */
 static int flocking_find_boid_index(const nimcp_flocking_engine_t *engine, uint32_t boid_id) {
     if (!engine || !engine->boids) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flocking_find_boid_index: required parameter is NULL (engine, engine->boids)");
-        return -1;
+        return -1;  /* Normal search miss on uninitialized engine */
     }
 
     for (uint32_t i = 0; i < engine->boid_count; i++) {

@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -136,7 +137,7 @@ static gust_bio_subscription_t* find_subscription(gust_bio_async_bridge_t* bridg
  */
 static uint64_t get_timestamp_us(void) {
     /* Platform-specific implementation would go here */
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     return counter++;
 }
 

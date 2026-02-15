@@ -251,7 +251,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     /* Guard: require both systems */
     if (!immune_system || !curiosity_engine) {
         LOG_MODULE_ERROR(LOG_MODULE, "Cannot create bridge without immune and curiosity systems");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_immune_bridge_create: required parameter is NULL (immune_system, curiosity_engine)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_bridge_create: required parameter is NULL (immune_system, curiosity_engine)");
         return NULL;
     }
 
@@ -264,7 +264,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
         nimcp_malloc(sizeof(curiosity_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR(LOG_MODULE, "Allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_immune_bridge_create: allocation failed");
 
         return NULL;
     }

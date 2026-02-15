@@ -491,7 +491,7 @@ int creative_memory_get_preference(const creative_memory_bridge_t* bridge,
                                     int32_t archetype_id,
                                     creative_preference_t* out) {
     if (!bridge || !out) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, out)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_memory_get_preference: bridge or out is NULL");
         return -1;
     }
 
@@ -503,7 +503,6 @@ int creative_memory_get_preference(const creative_memory_bridge_t* bridge,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return -1;  /* Not found */
 }
 

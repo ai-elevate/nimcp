@@ -357,7 +357,7 @@ NIMCP_API void qme_math_destroy(qme_math_simulation_t* sim) {
 
     /* Clean up */
     if (sim->mutex) {
-        nimcp_mutex_destroy(sim->mutex);
+        nimcp_mutex_free(sim->mutex);
     }
 
     nimcp_free(sim->proposal_mean);
@@ -1114,7 +1114,7 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
     const float* upper) {
 
     if (!lower || !upper || dim == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (lower, upper)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qme_domain_create_box: lower or upper is NULL");
         return NULL;
     }
 
@@ -1137,7 +1137,7 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
         nimcp_free(domain->lower_bounds);
         nimcp_free(domain->upper_bounds);
         nimcp_free(domain);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (domain->lower_bounds, domain->upper_bounds)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qme_domain_create_box: bounds allocation failed");
         return NULL;
     }
 
@@ -1153,7 +1153,7 @@ NIMCP_API qme_domain_t* qme_domain_create_ball(
     float radius) {
 
     if (!center || dim == 0 || dim > 16 || radius <= 0.0f) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: center is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qme_domain_create_ball: invalid parameters");
         return NULL;
     }
 

@@ -550,9 +550,7 @@ mesh_adapter_base_t* mesh_integration_get_adapter(
     }
     nimcp_mutex_unlock(integration->mutex);
 
-    if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_integration_get_adapter: integration is NULL");
-    }
+    /* Not found is normal lookup result, not an error */
     return result;
 }
 

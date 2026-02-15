@@ -631,6 +631,10 @@ int perception_immune_check_visual_overload(
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_check_visual_overloa", 0.0f);
 
+    if (num_features == 0) {
+        *overload = false;
+        return 0;
+    }
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < num_features; i++) {
@@ -677,6 +681,10 @@ int perception_immune_check_audio_overload(
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_check_audio_overload", 0.0f);
 
+    if (num_bins == 0) {
+        *overload = false;
+        return 0;
+    }
 
     float energy = 0.0f;
     for (uint32_t i = 0; i < num_bins; i++) {

@@ -1056,7 +1056,7 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
     }
 
     /* P0 fix: Initialize state buffer mutex for thread safety */
-    if (nimcp_platform_mutex_init(&ctx->state_mutex, NULL) == 0) {
+    if (nimcp_platform_mutex_init(&ctx->state_mutex, false) == 0) {
         ctx->state_mutex_initialized = true;
     } else {
         ctx->state_mutex_initialized = false;

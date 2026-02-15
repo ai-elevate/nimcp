@@ -228,7 +228,6 @@ static binding_entry_t* find_binding(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_binding: operation failed");
     return NULL;
 }
 
@@ -296,7 +295,6 @@ static bool remove_binding_entry(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "remove_binding_entry: operation failed");
     return false;
 }
 
@@ -450,7 +448,6 @@ static int find_free_simulation_slot(const mirror_language_bridge_t* bridge)
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_simulation_slot: bridge->simulations is NULL");
     return -1;
 }
 

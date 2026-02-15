@@ -193,7 +193,6 @@ static exhaustion_cell_record_t* find_cell_record(
             return &system->cells[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cell_record: validation failed");
     return NULL;
 }
 

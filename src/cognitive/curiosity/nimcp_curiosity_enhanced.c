@@ -323,7 +323,7 @@ static curiosity_topic_interest_t* interest_get_or_create(
     curiosity_enhanced_system_t* sys, const char* topic) {
 
     if (!sys || !topic || !sys->interest_table) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "boredom_update: required parameter is NULL (sys, topic, sys->interest_table)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "interest_get_or_create: required parameter is NULL (sys, topic, sys->interest_table)");
         return NULL;
     }
 
@@ -351,7 +351,7 @@ static curiosity_topic_interest_t* interest_get_or_create(
                                             &new_entry, sizeof(new_entry));
     if (!success) {
         NIMCP_LOGGING_ERROR("Failed to create interest entry for topic: %s", topic);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "boredom_update: success is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "interest_get_or_create: hash table insert failed");
         return NULL;
     }
 
@@ -972,7 +972,7 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
 
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate enhanced curiosity system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_create: sys is NULL");
         return NULL;
     }
 

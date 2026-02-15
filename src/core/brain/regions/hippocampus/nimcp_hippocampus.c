@@ -98,6 +98,7 @@ static float euclidean_distance(const float* a, const float* b, uint32_t dim) {
 }
 
 static float gaussian_activation(float distance, float sigma) {
+    if (fabsf(sigma) < 1e-10f) return 0.0f;
     return expf(-(distance * distance) / (2.0f * sigma * sigma));
 }
 
@@ -478,12 +479,16 @@ int hippo_update(nimcp_hippocampus_t* hippo, float dt) {
     /* Process modulation from hypothalamus */
     if (hippo->hypothalamus_bridge.initialized) {
         float stress_mod = 1.0f - hippo->hypothalamus_bridge.stress_level * 0.3f;
-        hippo->config.default_learning_rate *= stress_mod;
+        /* Use local effective rate - don't permanently mutate config */
+        float effective_learning_rate = hippo->config.default_learning_rate * stress_mod;
+        (void)effective_learning_rate;  /* Available for future use in this scope */
     }
 
     /* Process immune modulation */
     if (hippo->immune_bridge.initialized && hippo->immune_bridge.neuroinflammation) {
-        hippo->theta_power *= 0.9f;  /* Inflammation reduces theta */
+        /* Don't permanently degrade theta_power each cycle - compute locally */
+        float effective_theta_power = hippo->theta_power * 0.9f;
+        (void)effective_theta_power;  /* Available for future use in this scope */
     }
 
     hippo->updates_processed++;
@@ -502,7 +507,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
                           float emotional_arousal,
                           uint32_t* episode_id_out) {
     if (!hippo) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_update: hippo is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_encode_episode: hippo is NULL");
         return -1;
     }
 
@@ -512,13 +517,13 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
     /* Validate input - at least 'what' content is required with non-zero dimension */
     if (!what || what_dim == 0) {
         hippo->last_error = HIPPO_ERROR_INVALID_INPUT;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippo_update: what is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippo_encode_episode: what is NULL");
         return -1;
     }
 
     if (hippo->num_episodes >= hippo->max_episodes) {
         hippo->last_error = HIPPO_ERROR_MEMORY_FULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hippo_update: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hippo_encode_episode: capacity exceeded");
         return -1;
     }
 
@@ -535,7 +540,7 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
         ep->what_content = (float*)nimcp_malloc(what_dim * sizeof(float));
         if (!ep->what_content) {
             hippo->last_error = HIPPO_ERROR_ENCODING_FAILED;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippo_update: ep->what_content is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippo_encode_episode: ep->what_content alloc failed");
             return -1;
         }
         memcpy(ep->what_content, what, what_dim * sizeof(float));
@@ -546,8 +551,11 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
     if (where && where_dim > 0) {
         ep->where_content = (float*)nimcp_malloc(where_dim * sizeof(float));
         if (!ep->where_content) {
+            nimcp_free(ep->what_content);
+            ep->what_content = NULL;
+            ep->what_dim = 0;
             hippo->last_error = HIPPO_ERROR_ENCODING_FAILED;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippo_update: ep->where_content is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippo_encode_episode: ep->where_content alloc failed");
             return -1;
         }
         memcpy(ep->where_content, where, where_dim * sizeof(float));
@@ -564,8 +572,14 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
     if (when && when_dim > 0) {
         ep->when_content = (float*)nimcp_malloc(when_dim * sizeof(float));
         if (!ep->when_content) {
+            nimcp_free(ep->where_content);
+            ep->where_content = NULL;
+            ep->where_dim = 0;
+            nimcp_free(ep->what_content);
+            ep->what_content = NULL;
+            ep->what_dim = 0;
             hippo->last_error = HIPPO_ERROR_ENCODING_FAILED;
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippo_update: ep->when_content is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippo_encode_episode: ep->when_content alloc failed");
             return -1;
         }
         memcpy(ep->when_content, when, when_dim * sizeof(float));
@@ -731,7 +745,6 @@ int hippo_retrieve_episode(nimcp_hippocampus_t* hippo,
     if (best_id == UINT32_MAX) {
         hippo->last_error = HIPPO_ERROR_RETRIEVAL_FAILED;
         hippo->status = HIPPO_STATUS_READY;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -805,7 +818,7 @@ int hippo_find_similar_episodes(nimcp_hippocampus_t* hippo,
                                  uint32_t max_results,
                                  uint32_t* num_found) {
     if (!hippo || !query || !episode_ids || !similarities || !num_found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_forget_episode: required parameter is NULL (hippo, query, episode_ids, similarities, num_found)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_find_similar_episodes: required parameter is NULL (hippo, query, episode_ids, similarities, num_found)");
         return -1;
     }
 
@@ -850,7 +863,7 @@ int hippo_get_episodes_by_type(nimcp_hippocampus_t* hippo,
                                 uint32_t max_episodes,
                                 uint32_t* num_found) {
     if (!hippo || !episode_ids || !num_found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_forget_episode: required parameter is NULL (hippo, episode_ids, num_found)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_episodes_by_type: required parameter is NULL (hippo, episode_ids, num_found)");
         return -1;
     }
 
@@ -870,7 +883,7 @@ int hippo_get_recent_episodes(nimcp_hippocampus_t* hippo,
                                uint32_t max_episodes,
                                uint32_t* num_found) {
     if (!hippo || !episode_ids || !num_found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_forget_episode: required parameter is NULL (hippo, episode_ids, num_found)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_recent_episodes: required parameter is NULL (hippo, episode_ids, num_found)");
         return -1;
     }
 
@@ -894,7 +907,7 @@ int hippo_pattern_separate(nimcp_hippocampus_t* hippo,
                             const float* input, uint32_t input_dim,
                             float* separated_output, uint32_t* output_dim) {
     if (!hippo || !input || input_dim == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_forget_episode: required parameter is NULL (hippo, input)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_pattern_separate: required parameter is NULL (hippo, input)");
         return -1;
     }
 
@@ -923,11 +936,17 @@ int hippo_pattern_complete(nimcp_hippocampus_t* hippo,
                             float* completed_pattern, uint32_t* pattern_dim,
                             float* completion_confidence) {
     if (!hippo || !partial_cue || cue_dim == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_forget_episode: required parameter is NULL (hippo, partial_cue)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_pattern_complete: required parameter is NULL (hippo, partial_cue)");
         return -1;
     }
 
     hippo->status = HIPPO_STATUS_PATTERN_COMPLETING;
+
+    /* Compute effective threshold - dragonfly rapid retrieval lowers it */
+    float effective_threshold = hippo->config.pattern_completion_threshold;
+    if (hippo->dragonfly_bridge.initialized && hippo->dragonfly_bridge.rapid_retrieval_mode) {
+        effective_threshold = 0.2f;
+    }
 
     /* Find best matching stored pattern in CA3 */
     float best_match = 0.0f;
@@ -940,7 +959,7 @@ int hippo_pattern_complete(nimcp_hippocampus_t* hippo,
                                       cue_dim < hippo->episodes[i].bound_dim ?
                                       cue_dim : hippo->episodes[i].bound_dim);
 
-        if (sim > best_match && sim > hippo->config.pattern_completion_threshold) {
+        if (sim > best_match && sim > effective_threshold) {
             best_match = sim;
             best_episode = i;
         }
@@ -1020,7 +1039,7 @@ int hippo_get_active_place_cells(nimcp_hippocampus_t* hippo,
                                   uint32_t max_cells,
                                   uint32_t* num_active) {
     if (!hippo || !cell_ids || !firing_rates || !num_active) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_update_position: required parameter is NULL (hippo, cell_ids, firing_rates, num_active)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_active_place_cells: required parameter is NULL (hippo, cell_ids, firing_rates, num_active)");
         return -1;
     }
 
@@ -1041,7 +1060,7 @@ int hippo_decode_position(nimcp_hippocampus_t* hippo,
                            float* decoded_position,
                            float* confidence) {
     if (!hippo || !decoded_position) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_update_position: required parameter is NULL (hippo, decoded_position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_decode_position: required parameter is NULL (hippo, decoded_position)");
         return -1;
     }
 
@@ -1075,7 +1094,7 @@ int hippo_create_place_field(nimcp_hippocampus_t* hippo,
                               const float* center, float radius,
                               uint32_t* cell_id_out) {
     if (!hippo || !center) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_update_position: required parameter is NULL (hippo, center)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_create_place_field: required parameter is NULL (hippo, center)");
         return -1;
     }
 
@@ -1092,7 +1111,7 @@ int hippo_create_place_field(nimcp_hippocampus_t* hippo,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippo_update_position: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "hippo_create_place_field: no available cells");
     return -1;  /* No available cells */
 }
 
@@ -1100,7 +1119,7 @@ int hippo_link_episode_to_place(nimcp_hippocampus_t* hippo,
                                  uint32_t episode_id,
                                  const float* position) {
     if (!hippo || episode_id >= hippo->num_episodes || !position) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_update_position: required parameter is NULL (hippo, position)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_link_episode_to_place: required parameter is NULL (hippo, position)");
         return -1;
     }
 
@@ -1120,7 +1139,7 @@ int hippo_get_episodes_at_location(nimcp_hippocampus_t* hippo,
                                     uint32_t max_episodes,
                                     uint32_t* num_found) {
     if (!hippo || !position || !episode_ids || !num_found) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_update_position: required parameter is NULL (hippo, position, episode_ids, num_found)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_episodes_at_location: required parameter is NULL (hippo, position, episode_ids, num_found)");
         return -1;
     }
 
@@ -1353,7 +1372,7 @@ int hippo_get_dg_pattern(nimcp_hippocampus_t* hippo,
                           float* pattern, uint32_t max_size,
                           uint32_t* actual_size) {
     if (!hippo || !pattern || !actual_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_consolidation_level: required parameter is NULL (hippo, pattern, actual_size)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_dg_pattern: required parameter is NULL (hippo, pattern, actual_size)");
         return -1;
     }
 
@@ -1368,7 +1387,7 @@ int hippo_get_ca3_pattern(nimcp_hippocampus_t* hippo,
                            float* pattern, uint32_t max_size,
                            uint32_t* actual_size) {
     if (!hippo || !pattern || !actual_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_consolidation_level: required parameter is NULL (hippo, pattern, actual_size)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_ca3_pattern: required parameter is NULL (hippo, pattern, actual_size)");
         return -1;
     }
 
@@ -1383,7 +1402,7 @@ int hippo_get_ca1_pattern(nimcp_hippocampus_t* hippo,
                            float* pattern, uint32_t max_size,
                            uint32_t* actual_size) {
     if (!hippo || !pattern || !actual_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_consolidation_level: required parameter is NULL (hippo, pattern, actual_size)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_ca1_pattern: required parameter is NULL (hippo, pattern, actual_size)");
         return -1;
     }
 
@@ -1398,7 +1417,7 @@ int hippo_get_subiculum_output(nimcp_hippocampus_t* hippo,
                                 float* output, uint32_t max_size,
                                 uint32_t* actual_size) {
     if (!hippo || !output || !actual_size) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_consolidation_level: required parameter is NULL (hippo, output, actual_size)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_subiculum_output: required parameter is NULL (hippo, output, actual_size)");
         return -1;
     }
 
@@ -1412,7 +1431,7 @@ int hippo_get_subiculum_output(nimcp_hippocampus_t* hippo,
 int hippo_activate_dg(nimcp_hippocampus_t* hippo,
                        const float* input, uint32_t input_dim) {
     if (!hippo || !input || input_dim == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_get_consolidation_level: required parameter is NULL (hippo, input)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo_activate_dg: required parameter is NULL (hippo, input)");
         return -1;
     }
 
@@ -1564,7 +1583,9 @@ int hippo_process_incoming(nimcp_hippocampus_t* hippo) {
         float stress = hippo->hypothalamus_bridge.stress_level;
         /* Yerkes-Dodson: moderate stress enhances, high stress impairs */
         float stress_mod = (stress < 0.5f) ? (1.0f + stress) : (2.0f - stress);
-        hippo->config.default_learning_rate *= stress_mod;
+        /* Use local effective rate - don't permanently mutate config */
+        float effective_learning_rate = hippo->config.default_learning_rate * stress_mod;
+        (void)effective_learning_rate;  /* Available for future use in this scope */
     }
 
     /* Process perception salience */
@@ -1585,7 +1606,9 @@ int hippo_process_incoming(nimcp_hippocampus_t* hippo) {
 
     /* Process cognitive attention modulation */
     if (hippo->cognitive_bridge.initialized) {
-        hippo->theta_power *= (0.5f + 0.5f * hippo->cognitive_bridge.attention_level);
+        /* Don't permanently degrade theta_power each cycle - compute locally */
+        float effective_theta_power = hippo->theta_power * (0.5f + 0.5f * hippo->cognitive_bridge.attention_level);
+        (void)effective_theta_power;  /* Available for future use in this scope */
     }
 
     return 0;
@@ -1605,7 +1628,7 @@ int hippo_send_outgoing(nimcp_hippocampus_t* hippo) {
             fornix_signal += hippo->subiculum_cells[i].activation;
         }
         hippo->mammillary_bridge.fornix_output_strength =
-            fornix_signal / hippo->num_subiculum_cells;
+            (hippo->num_subiculum_cells > 0) ? (fornix_signal / hippo->num_subiculum_cells) : 0.0f;
     }
 
     /* Send to thalamus */
@@ -1630,8 +1653,8 @@ int hippo_send_outgoing(nimcp_hippocampus_t* hippo) {
 
     /* Send to Dragonfly for rapid retrieval */
     if (hippo->dragonfly_bridge.initialized && hippo->dragonfly_bridge.rapid_retrieval_mode) {
-        /* Enable fast pattern completion */
-        hippo->config.pattern_completion_threshold = 0.2f;
+        /* Note: rapid retrieval lowers threshold - but don't permanently overwrite config.
+         * Pattern completion uses effective_threshold computed locally where needed. */
     }
 
     return 0;
@@ -1687,7 +1710,8 @@ int hippo_sync_mammillary(nimcp_hippocampus_t* hippo) {
         for (uint32_t i = 0; i < hippo->num_subiculum_cells; i++) {
             output += hippo->subiculum_cells[i].activation;
         }
-        hippo->mammillary_bridge.fornix_output_strength = output / hippo->num_subiculum_cells;
+        hippo->mammillary_bridge.fornix_output_strength =
+            (hippo->num_subiculum_cells > 0) ? (output / hippo->num_subiculum_cells) : 0.0f;
     }
     return 0;
 }

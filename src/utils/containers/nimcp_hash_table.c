@@ -622,7 +622,6 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
 static void* hash_table_lookup_generic(hash_table_t* table, const void* key, size_t key_size)
 {
     if (!table || !key || !table->buckets) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_lookup_generic: required parameter is NULL (table, key, table->buckets)");
         return NULL;
     }
 

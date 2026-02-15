@@ -184,7 +184,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         nimcp_free(bridge->agent_states);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_omni_bridge_create: bridge->action_priors is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_omni_bridge_create: bridge->action_priors allocation failed");
         return NULL;
     }
     bridge->num_action_priors = 0;
@@ -589,7 +589,6 @@ int mirror_omni_get_agent_state(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_get_agent_state: validation failed");
     return -1;  /* Agent not found */
 }
 

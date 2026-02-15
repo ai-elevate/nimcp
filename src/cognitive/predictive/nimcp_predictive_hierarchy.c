@@ -358,7 +358,7 @@ void pred_hier_free_config(pred_hier_config_t* config) {
 predictive_hierarchy_t* pred_hier_create(const pred_hier_config_t* config) {
     if (!config || config->num_levels == 0 || !config->level_configs) {
         NIMCP_LOG_ERROR("Invalid configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_create: required parameter is NULL (config, config->level_configs)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred_hier_create: required parameter is NULL (config, config->level_configs)");
         return NULL;
     }
 
@@ -1181,7 +1181,7 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
 
 
     if (num_levels == 0 || !dims) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred_hier_disconnect_bio_async: dims is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred_hier_result_create: dims is NULL");
         return NULL;
     }
 
@@ -1195,7 +1195,7 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
     result->level_results = nimcp_calloc(num_levels, sizeof(pred_level_result_t));
     if (!result->level_results) {
         nimcp_free(result);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_disconnect_bio_async: result->level_results is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_result_create: result->level_results is NULL");
         return NULL;
     }
 
@@ -1211,7 +1211,7 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
 
         if (!result->level_results[i].prediction || !result->level_results[i].error) {
             pred_hier_result_destroy(result);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_disconnect_bio_async: required parameter is NULL (result->level_results, result->level_results)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_result_create: level allocation failed");
             return NULL;
         }
     }

@@ -298,7 +298,7 @@ static edp_eligibility_entry_t* eligibility_find_or_create(
         probe++;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_find_or_create: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "eligibility_find_or_create: eligibility table full");
     return NULL;  /* Table full */
 }
 
@@ -458,6 +458,12 @@ static void process_pending_spikes(edp_context_t* ctx)
             nimcp_platform_mutex_unlock(&ctx->spike_buffer.mutex);
             process_spike_pair(ctx, older, newest);
             nimcp_platform_mutex_lock(&ctx->spike_buffer.mutex);
+
+            /* Re-validate after reacquiring lock - buffer may have been modified */
+            if (ctx->spike_buffer.count == 0) break;  /* Buffer was drained while unlocked */
+            count = ctx->spike_buffer.count;
+            newest_idx = (ctx->spike_buffer.head + ctx->spike_buffer.capacity - 1) % ctx->spike_buffer.capacity;
+            newest = &ctx->spike_buffer.spikes[newest_idx];
         }
     }
 

@@ -164,7 +164,7 @@ static bool neuron_step(salience_neuron_t* neuron, float dt_ms, float input) {
 
     if (neuron->refractory_remaining > 0.0f) {
         neuron->refractory_remaining -= dt_ms;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: validation failed");
+        /* Refractory period is normal biological behavior, not an error */
         return false;
     }
 
@@ -178,7 +178,7 @@ static bool neuron_step(salience_neuron_t* neuron, float dt_ms, float input) {
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: capacity exceeded");
+    /* Non-spiking is the common case, not an error */
     return false;
 }
 

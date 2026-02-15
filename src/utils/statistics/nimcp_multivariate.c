@@ -1189,7 +1189,7 @@ nimcp_mv_result_t nimcp_ica_fit(
         return NIMCP_MV_ERROR_MEMORY;
     }
 
-    srand(ica->random_state);
+    /* srand() removed: thread-unsafe global PRNG state; nimcp_tl_rand() has its own seeding */
     for (uint32_t i = 0; i < n_comp * n_comp; i++) {
         W[i] = (float)nimcp_tl_rand() / (float)RAND_MAX - 0.5f;
     }

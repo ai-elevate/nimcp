@@ -244,12 +244,16 @@ nimcp_layer_error_t nimcp_layer_registry_find_module_by_name(nimcp_layer_registr
 }
 
 int nimcp_layer_registry_get_module_count(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id) {
-    if (!registry || layer_id >= NIMCP_LAYER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_layer_registry_get_module_count: registry is NULL");
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_layer_registry_get_module_count: registry is NULL");
+        return -1;
+    }
+    if (layer_id >= NIMCP_LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_layer_registry_get_module_count: layer_id out of range");
         return -1;
     }
     if (!registry->layers[layer_id].registered) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_layer_registry_get_module_count: registry->layers is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_layer_registry_get_module_count: layer not registered");
         return -1;
     }
     int count = 0;

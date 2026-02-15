@@ -112,7 +112,6 @@ static mucosal_site_t* find_site(mucosal_system_t* system, uint32_t site_id) {
             return &system->sites[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_site: validation failed");
     return NULL;
 }
 
@@ -141,7 +140,6 @@ static mucosal_siga_t* find_siga(mucosal_system_t* system, uint32_t siga_id) {
             return &system->siga_antibodies[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_siga: validation failed");
     return NULL;
 }
 
@@ -170,7 +168,6 @@ static mucosal_tolerance_t* find_tolerance(mucosal_system_t* system, uint32_t to
             return &system->tolerances[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tolerance: validation failed");
     return NULL;
 }
 

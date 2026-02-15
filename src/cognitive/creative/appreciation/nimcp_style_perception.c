@@ -581,7 +581,7 @@ int style_perception_closest_archetype(const style_perception_t* perc,
     (void)best_archetypes;
 
     if (best_id < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_perception_closest_archetype: no matching archetype found");
         return -1;
     }
 

@@ -159,7 +159,7 @@ bool mesh_gpu_get_device_memory(int device_id, size_t* free_bytes, size_t* total
     (void)device_id;
     if (free_bytes) *free_bytes = 0;
     if (total_bytes) *total_bytes = 0;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_get_device_memory: validation failed");
+    /* GPU not available is expected runtime condition, not an error */
     return false;
 #endif
 }

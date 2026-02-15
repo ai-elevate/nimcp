@@ -86,6 +86,7 @@ static float compute_distance(const float* a, const float* b, uint32_t dim) {
 }
 
 static float gaussian(float x, float mean, float sigma) {
+    if (fabsf(sigma) < 1e-10f) return 0.0f;
     float diff = x - mean;
     return expf(-(diff * diff) / (2.0f * sigma * sigma));
 }

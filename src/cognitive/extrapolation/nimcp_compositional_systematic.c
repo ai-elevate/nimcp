@@ -154,7 +154,6 @@ static cs_primitive_t* find_primitive_by_id(
             return &cs->primitives[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_primitive_by_id: validation failed");
     return NULL;
 }
 
@@ -173,7 +172,6 @@ static cs_primitive_t* find_primitive_by_name(
             return &cs->primitives[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_primitive_by_name: validation failed");
     return NULL;
 }
 
@@ -192,7 +190,6 @@ static cs_rule_t* find_rule_by_id(
             return &cs->rules[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule_by_id: validation failed");
     return NULL;
 }
 

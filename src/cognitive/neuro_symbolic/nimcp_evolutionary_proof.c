@@ -411,7 +411,7 @@ NIMCP_API void evolutionary_proof_destroy(evolutionary_proof_search_t* eps) {
     }
 
     if (eps->mutex) {
-        nimcp_mutex_destroy(eps->mutex);
+        nimcp_mutex_free(eps->mutex);
     }
 
     nimcp_free(eps->experience_buffer);
@@ -842,7 +842,7 @@ NIMCP_API const proof_strategy_t* evolutionary_proof_get_best(
     const evolutionary_proof_search_t* eps) {
 
     if (!eps || eps->population_count == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: eps is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evolutionary_proof_get_best: eps is NULL or empty");
         return NULL;
     }
 
@@ -1064,7 +1064,7 @@ NIMCP_API bool evolutionary_proof_prove(
     uint32_t max_steps) {
 
     if (!eps || !goal || !trace) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (eps, goal, trace)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evolutionary_proof_prove: eps, goal, or trace is NULL");
         return false;
     }
 
@@ -1155,7 +1155,7 @@ NIMCP_API bool evolutionary_proof_prove_with_strategy(
     evoproof_trace_t* trace) {
 
     if (!eps || strategy_id >= eps->population_count) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "unknown: eps is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "evolutionary_proof_prove_with_strategy: invalid eps or strategy_id");
         return false;
     }
 

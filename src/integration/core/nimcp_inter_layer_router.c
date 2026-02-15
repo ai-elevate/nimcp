@@ -222,8 +222,12 @@ nimcp_layer_error_t nimcp_inter_layer_router_peek(
 }
 
 int nimcp_inter_layer_router_get_queue_depth(nimcp_inter_layer_router_t router, nimcp_layer_id_t layer_id) {
-    if (!router || layer_id >= NIMCP_LAYER_COUNT) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_inter_layer_router_get_queue_depth: router is NULL");
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_inter_layer_router_get_queue_depth: router is NULL");
+        return -1;
+    }
+    if (layer_id >= NIMCP_LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_inter_layer_router_get_queue_depth: layer_id out of range");
         return -1;
     }
     return (int)router->queues[layer_id].count;

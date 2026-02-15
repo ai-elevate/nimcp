@@ -676,7 +676,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
 
     if (config && !reasoning_integration_validate_config(config)) {
         set_error("Invalid configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_integration_create_custom: reasoning_integration_validate_config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_create_custom: config validation failed");
         return NULL;
     }
 
@@ -977,7 +977,7 @@ bool reasoning_working_memory_hook(
         return false;
     }
     if (!integration->config.enable_working_memory_integration) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_working_memory_hook: integration->config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_working_memory_hook: working memory integration not enabled");
         return false;
     }
 

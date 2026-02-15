@@ -233,7 +233,7 @@ int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const 
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_route_detection: routed_ok is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_thalamic_route_detection: routing failed");
             return -1;  /* Routing failed */
         }
     }
@@ -263,7 +263,7 @@ int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const 
  */
 int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const void* stimulus, float priority) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_thalamic_route_priority: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_route_priority: bridge is NULL");
         return -1;
     }
 
@@ -308,7 +308,7 @@ int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const v
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_route_priority: routed_ok is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_thalamic_route_priority: routing failed");
             return -1;
         }
     }

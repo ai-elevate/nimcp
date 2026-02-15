@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -90,7 +91,7 @@ struct chemosensory_bridge_struct {
  * ============================================================================ */
 
 static uint64_t get_timestamp(void) {
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     return counter++;
 }
 

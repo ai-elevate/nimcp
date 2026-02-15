@@ -528,7 +528,7 @@ dynsys_error_t dynsys_lyapunov_max(dynsys_lyapunov_t lyap, const float* initial_
 dynsys_bifurcation_t dynsys_bifurcation_create(const dynsys_bifurcation_config_t* config, dynsys_system_t sys)
 {
     if (!config || !sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bifurcation_create: required parameter is NULL (config, sys)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bifurcation_create: required parameter is NULL (config, sys)");
         return NULL;
     }
 
@@ -644,7 +644,7 @@ const char* dynsys_bifurcation_type_name(bifurcation_type_t type)
 dynsys_attractor_t dynsys_attractor_create(const dynsys_attractor_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_attractor_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_attractor_create: config is NULL");
         return NULL;
     }
 
@@ -745,7 +745,7 @@ const char* dynsys_attractor_type_name(attractor_type_t type)
 dynsys_energy_t dynsys_energy_create(const dynsys_energy_config_t* config, dynsys_system_t sys)
 {
     if (!config || !sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_energy_create: required parameter is NULL (config, sys)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_energy_create: required parameter is NULL (config, sys)");
         return NULL;
     }
 
@@ -868,7 +868,7 @@ dynsys_error_t dynsys_energy_barrier(dynsys_energy_t energy, const float* state_
 dynsys_slowfast_t dynsys_slowfast_create(const dynsys_slowfast_config_t* config, dynsys_system_t sys)
 {
     if (!config || !sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_slowfast_create: required parameter is NULL (config, sys)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_slowfast_create: required parameter is NULL (config, sys)");
         return NULL;
     }
 
@@ -927,7 +927,7 @@ dynsys_error_t dynsys_slowfast_project(dynsys_slowfast_t sf, const float* state,
 dynsys_bridge_t dynsys_bridge_create(const dynsys_bridge_config_t* config, dynsys_system_t sys)
 {
     if (!config || !sys) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create: required parameter is NULL (config, sys)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_create: required parameter is NULL (config, sys)");
         return NULL;
     }
 
@@ -989,11 +989,10 @@ int dynsys_bridge_shutdown(dynsys_bridge_t bridge)
 kg_module_wiring_t* dynsys_bridge_create_wiring(dynsys_bridge_t bridge)
 {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create_wiring: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_create_wiring: bridge is NULL");
         return NULL;
     }
-    /* Would create module wiring descriptor */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create_wiring: bridge is NULL");
+    /* TODO: Would create module wiring descriptor - stub returns NULL */
     return NULL;
 }
 

@@ -2188,11 +2188,16 @@ schema_t* schema_specialize(
     if (parent_mut) {
         if (parent_mut->num_children >= parent_mut->children_capacity) {
             size_t new_cap = parent_mut->children_capacity * 2;
+            if (new_cap < 4) new_cap = 4;
             if (new_cap > SCHEMA_MAX_CHILDREN) new_cap = SCHEMA_MAX_CHILDREN;
 
             uint64_t* new_children = (uint64_t*)nimcp_realloc(
                 parent_mut->child_schemas, new_cap * sizeof(uint64_t));
-            if (new_children) {
+            if (!new_children) {
+                /* Realloc failed - cannot add child to parent hierarchy */
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                    "schema_specialize: failed to grow children array");
+            } else {
                 parent_mut->child_schemas = new_children;
                 parent_mut->children_capacity = new_cap;
             }

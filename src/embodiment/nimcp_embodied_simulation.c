@@ -332,8 +332,7 @@ static bool execute_step(
     nimcp_effector_state_t* eff = find_effector(sim, step->effector_id);
     if (!eff) {
         LOG_WARN("Effector %u not found in simulation", step->effector_id);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execute_step: eff is NULL");
-        return false;
+        return false;  /* Normal validation failure, not an error */
     }
 
     double step_time = 0.0;

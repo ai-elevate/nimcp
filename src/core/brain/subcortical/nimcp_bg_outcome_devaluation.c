@@ -168,7 +168,7 @@ bg_outcome_deval_t* bgod_create(const bgod_config_t* config) {
 
 cleanup:
     bgod_destroy(deval);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_create: operation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgod_create: allocation failed");
     return NULL;
 }
 
@@ -236,7 +236,7 @@ int bgod_register_outcome(bg_outcome_deval_t* deval,
                            const bgod_outcome_t* outcome,
                            uint32_t* out_id) {
     if (!deval || !outcome) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_reset: required parameter is NULL (deval, outcome)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_register_outcome: required parameter is NULL (deval, outcome)");
         return -1;
     }
 
@@ -244,7 +244,7 @@ int bgod_register_outcome(bg_outcome_deval_t* deval,
 
     if (deval->num_outcomes >= deval->config.max_outcomes) {
         nimcp_mutex_unlock(deval->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_register_outcome: capacity exceeded");
         return -1;
     }
 
@@ -267,7 +267,7 @@ int bgod_set_outcome_value(bg_outcome_deval_t* deval,
                             uint32_t outcome_id,
                             float value) {
     if (!deval || outcome_id >= deval->num_outcomes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: deval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_set_outcome_value: invalid parameters");
         return -1;
     }
 
@@ -289,15 +289,15 @@ int bgod_register_association(bg_outcome_deval_t* deval,
                                uint32_t outcome_id,
                                float strength) {
     if (!deval) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_reset: deval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_register_association: deval is NULL");
         return -1;
     }
     if (outcome_id >= deval->num_outcomes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_register_association: outcome_id out of range");
         return -1;
     }
     if (action_id >= deval->config.max_actions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_register_association: action_id out of range");
         return -1;
     }
 
@@ -306,7 +306,7 @@ int bgod_register_association(bg_outcome_deval_t* deval,
     uint32_t max_assoc = deval->config.max_outcomes * deval->config.max_actions;
     if (deval->num_associations >= max_assoc) {
         nimcp_mutex_unlock(deval->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_reset: capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "bgod_register_association: associations capacity exceeded");
         return -1;
     }
 
@@ -332,7 +332,7 @@ int bgod_devalue_by_satiety(bg_outcome_deval_t* deval,
                              uint32_t outcome_id,
                              float consumption_amount) {
     if (!deval || outcome_id >= deval->num_outcomes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: deval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_devalue_by_satiety: invalid parameters");
         return -1;
     }
 
@@ -359,7 +359,7 @@ int bgod_devalue_by_aversion(bg_outcome_deval_t* deval,
                               uint32_t outcome_id,
                               float aversion_strength) {
     if (!deval || outcome_id >= deval->num_outcomes) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: deval is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_devalue_by_aversion: invalid parameters");
         return -1;
     }
 

@@ -119,7 +119,6 @@ static kg_federation_peer_t* find_peer(
             return &fed->peers[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_peer: validation failed");
     return NULL;
 }
 
@@ -136,7 +135,6 @@ static pending_conflict_t* find_conflict(
             return &fed->conflicts[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict: operation failed");
     return NULL;
 }
 

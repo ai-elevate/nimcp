@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -86,7 +87,7 @@ struct nimcp_vta_snn_bridge {
  *===========================================================================*/
 
 static uint64_t get_timestamp_us(void) {
-    static uint64_t counter = 0;
+    static _Atomic uint64_t counter = 0;
     return ++counter;
 }
 
