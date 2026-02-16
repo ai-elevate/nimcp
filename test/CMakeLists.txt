@@ -2346,6 +2346,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/csharp/CMakeLists.txt")
     add_subdirectory(bindings/csharp)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/rust/CMakeLists.txt")
+    message(STATUS "Adding Rust bindings tests...")
+    add_subdirectory(bindings/rust)
+endif()
+
 # ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================
