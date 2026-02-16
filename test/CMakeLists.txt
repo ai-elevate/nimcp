@@ -2356,6 +2356,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/go/CMakeLists.txt")
     add_subdirectory(bindings/go)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/perl/CMakeLists.txt")
+    message(STATUS "Adding Perl bindings tests...")
+    add_subdirectory(bindings/perl)
+endif()
+
 # ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================
