@@ -8,6 +8,7 @@
 #include "integration/intra/chemistry/nimcp_chemistry_intra_coordinator.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -43,7 +44,7 @@ nimcp_chemistry_intra_config_t nimcp_chemistry_intra_default_config(void) {
         .ph_vascular_coupling = 0.6f,
         .no_vascular_coupling = 0.7f,
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .baseline_ph = 7.4f,
         .enable_logging = false,
         .enable_metrics = true
@@ -121,9 +122,9 @@ nimcp_layer_error_t nimcp_chemistry_intra_update(nimcp_chemistry_intra_t coord, 
 
     /* pH homeostasis */
     coord->state.current_ph += (coord->config.baseline_ph - coord->state.current_ph) * dt * 0.1f;
-    coord->stats.avg_ph = coord->stats.avg_ph * 0.99f + coord->state.current_ph * 0.01f;
-    coord->stats.avg_no_concentration = coord->stats.avg_no_concentration * 0.99f + coord->state.no_concentration * 0.01f;
-    coord->stats.avg_coherence = coord->stats.avg_coherence * 0.99f + coord->state.layer_coherence * 0.01f;
+    coord->stats.avg_ph = coord->stats.avg_ph * NIMCP_EMA_DECAY_DEFAULT + coord->state.current_ph * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_no_concentration = coord->stats.avg_no_concentration * NIMCP_EMA_DECAY_DEFAULT + coord->state.no_concentration * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_coherence = coord->stats.avg_coherence * NIMCP_EMA_DECAY_DEFAULT + coord->state.layer_coherence * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

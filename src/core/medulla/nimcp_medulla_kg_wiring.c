@@ -32,6 +32,7 @@
 #define MEDULLA_KG_EMERGENCY_NAME "medulla_emergency"
 #define MEDULLA_KG_MAX_HISTORY 1000
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(medulla_kg_wiring)
 
@@ -70,7 +71,7 @@ typedef struct {
  */
 typedef struct {
     uint64_t timestamp_us;
-    char reason[256];
+    char reason[NIMCP_ERROR_BUFFER_SIZE];
 } emergency_history_entry_t;
 
 /**
@@ -389,7 +390,7 @@ int medulla_kg_log_state(medulla_kg_wiring_t wiring) {
         return -1;
     }
 
-    char value_str[64];
+    char value_str[NIMCP_ID_BUFFER_SIZE];
 
     /* Update root node metadata */
     if (wiring->root_id != BRAIN_KG_INVALID_NODE) {
@@ -555,7 +556,7 @@ int medulla_kg_log_protection_change(
 
     /* Update KG node */
     if (wiring->protection_id != BRAIN_KG_INVALID_NODE) {
-        char value_str[64];
+        char value_str[NIMCP_ID_BUFFER_SIZE];
         snprintf(value_str, sizeof(value_str), "%s -> %s",
             medulla_protection_level_to_string(old_level),
             medulla_protection_level_to_string(new_level));
@@ -611,7 +612,7 @@ int medulla_kg_log_emergency(
 
     /* Update KG node */
     if (wiring->emergency_id != BRAIN_KG_INVALID_NODE) {
-        char value_str[256];
+        char value_str[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(value_str, sizeof(value_str), "%s", reason ? reason : "unknown");
         brain_kg_add_metadata(wiring->kg, wiring->emergency_id,
             "last_reason", value_str);

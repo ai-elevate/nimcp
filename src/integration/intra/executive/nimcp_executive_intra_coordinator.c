@@ -8,6 +8,7 @@
 #include "integration/intra/executive/nimcp_executive_intra_coordinator.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -43,7 +44,7 @@ nimcp_executive_intra_config_t nimcp_executive_intra_default_config(void) {
         .ofc_pfc_coupling = 0.6f,
         .retro_pfc_coupling = 0.5f,
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .enable_goal_maintenance = true,
         .enable_logging = false,
         .enable_metrics = true
@@ -133,7 +134,7 @@ nimcp_layer_error_t nimcp_executive_intra_update(nimcp_executive_intra_t coord, 
     }
 
     /* Update stats */
-    coord->stats.avg_coherence = coord->stats.avg_coherence * 0.99f + coord->state.layer_coherence * 0.01f;
+    coord->stats.avg_coherence = coord->stats.avg_coherence * NIMCP_EMA_DECAY_DEFAULT + coord->state.layer_coherence * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

@@ -24,6 +24,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_mental_health_bridge)
 //=============================================================================
@@ -1591,7 +1592,7 @@ pr_mh_error_t pr_mental_health_bridge_update(
     }
 
     // Invalidate old caches
-    uint64_t cache_timeout = 30000;  // 30 seconds
+    uint64_t cache_timeout = NIMCP_LONG_TIMEOUT_MS;  // 30 seconds
     if (bridge->valence_bias_valid &&
         (current_time_ms - bridge->valence_bias_compute_time_ms) > cache_timeout) {
         bridge->valence_bias_valid = false;

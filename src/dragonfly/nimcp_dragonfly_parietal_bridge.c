@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_parietal_bridge)
 
@@ -172,7 +173,7 @@ parietal_bridge_config_t parietal_bridge_default_config(void) {
     config.enable_attention = true;
     config.attention_map_width = NIMCP_ATTENTION_MAP_WIDTH;   /* Was: 64 */
     config.attention_map_height = NIMCP_ATTENTION_MAP_WIDTH / 2;  /* Was: 32 */
-    config.attention_decay = 0.95f;
+    config.attention_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT;
 
     /* Motor commands */
     config.generate_motor_commands = true;

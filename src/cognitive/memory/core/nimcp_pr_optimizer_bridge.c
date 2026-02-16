@@ -62,6 +62,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_optimizer_bridge)
 //=============================================================================
@@ -213,7 +214,7 @@ pr_optimizer_config_t pr_optimizer_config_aggressive(void) {
 
     pr_optimizer_config_t config = pr_optimizer_config_default();
 
-    config.base_lr = 0.01f;                    // Higher base LR
+    config.base_lr = NIMCP_LEARNING_RATE_DEFAULT;                    // Higher base LR
     config.resonance_scale = 1.0f;             // Maximum resonance effect
     config.consolidation_gate = 0.99f;         // Almost no gating
     config.tier_lr_scale[0] = 2.0f;            // Double LR for Z0
@@ -230,7 +231,7 @@ pr_optimizer_config_t pr_optimizer_config_conservative(void) {
 
     pr_optimizer_config_t config = pr_optimizer_config_default();
 
-    config.base_lr = 0.0001f;                  // Very low base LR
+    config.base_lr = NIMCP_LEARNING_RATE_MICRO;                  // Very low base LR
     config.resonance_scale = 0.1f;             // Minimal resonance effect
     config.consolidation_gate = 0.3f;          // Strong gating
     config.tier_lr_scale[0] = 0.5f;            // Lower even for Z0

@@ -14,46 +14,16 @@
 #include <math.h>
 
 //=============================================================================
-#include <stddef.h>  /* for NULL */
+#include <stddef.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(habenula_plasticity_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_habenula_plasticity_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_habenula_plasticity_bridge_mesh_registry = NULL;
-
-nimcp_error_t habenula_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_habenula_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "habenula_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "habenula_plasticity_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_habenula_plasticity_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_habenula_plasticity_bridge_mesh_registry = registry;
-    return err;
-}
-
-void habenula_plasticity_bridge_mesh_unregister(void) {
-    if (g_habenula_plasticity_bridge_mesh_registry && g_habenula_plasticity_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_habenula_plasticity_bridge_mesh_registry, g_habenula_plasticity_bridge_mesh_id);
-        g_habenula_plasticity_bridge_mesh_id = 0;
-        g_habenula_plasticity_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(habenula_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "HABENULA_PLASTICITY_BRIDGE"
@@ -88,9 +58,9 @@ nimcp_habenula_plasticity_config_t nimcp_habenula_plasticity_config_default(void
         .stdp_ltp_window_ms = HABENULA_PLASTICITY_STDP_WINDOW, .stdp_ltd_window_ms = HABENULA_PLASTICITY_STDP_WINDOW, .aversive_stdp_modulation = 0.5f,
         .enable_avoidance_learning = true, .avoidance_learning_rate = 0.15f, .successful_avoidance_boost = 2.0f, .failed_avoidance_penalty = 1.5f,
         .enable_disappointment = true, .disappointment_scale = 1.5f, .omission_penalty = 1.2f,
-        .enable_relief_learning = true, .relief_learning_rate = 0.1f, .relief_ltp_boost = 1.5f,
-        .enable_inhibition_strengthening = true, .inhibition_learning_rate = 0.1f,
-        .weight_min = 0.0f, .weight_max = 1.0f, .initial_weight = 0.5f, .enable_bio_async = false
+        .enable_relief_learning = true, .relief_learning_rate = NIMCP_LEARNING_RATE_COARSE, .relief_ltp_boost = 1.5f,
+        .enable_inhibition_strengthening = true, .inhibition_learning_rate = NIMCP_LEARNING_RATE_COARSE,
+        .weight_min = 0.0f, .weight_max = 1.0f, .initial_weight = NIMCP_SYNAPSE_WEIGHT_INIT, .enable_bio_async = false
     };
 }
 

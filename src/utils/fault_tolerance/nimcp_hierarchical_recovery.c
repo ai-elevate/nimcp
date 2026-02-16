@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hierarchical_recovery)
 
@@ -303,7 +304,7 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
     nimcp_mutex_lock(&ctx->lock);
 
     // Check circuit breaker
-    char circuit_name[64];
+    char circuit_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(circuit_name, sizeof(circuit_name), "recovery_level_%d", request->current_level);
 
     if (ctx->config.enable_circuit_breakers) {

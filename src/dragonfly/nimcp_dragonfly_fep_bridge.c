@@ -7,6 +7,7 @@
 #include "dragonfly/nimcp_dragonfly_fep_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -742,9 +743,9 @@ int dragonfly_fep_update(dragonfly_fep_bridge_t* bridge, float dt_ms) {
 
     /* Update stats */
     bridge->stats.avg_free_energy =
-        (bridge->stats.avg_free_energy * 0.99f) + (bridge->free_energy * 0.01f);
+        (bridge->stats.avg_free_energy * NIMCP_EMA_DECAY_DEFAULT) + (bridge->free_energy * NIMCP_LEARNING_RATE_DEFAULT);
     bridge->stats.avg_precision =
-        (bridge->stats.avg_precision * 0.99f) + (bridge->precision[0] * 0.01f);
+        (bridge->stats.avg_precision * NIMCP_EMA_DECAY_DEFAULT) + (bridge->precision[0] * NIMCP_LEARNING_RATE_DEFAULT);
 
     for (int i = 0; i < 5; i++) {
         bridge->stats.model_evidence[i] = bridge->model_evidence[i];

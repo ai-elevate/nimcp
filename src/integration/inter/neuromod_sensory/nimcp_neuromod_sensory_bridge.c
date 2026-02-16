@@ -9,6 +9,7 @@
 #include "integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -111,8 +112,8 @@ nimcp_layer_error_t nimcp_neuromod_sensory_update(nimcp_neuromod_sensory_bridge_
     bridge->state.reward_signal *= (1.0f - dt * 0.03f);
 
     /* Update averages */
-    bridge->stats.avg_sensory_gain = bridge->stats.avg_sensory_gain * 0.99f + bridge->state.sensory_gain * 0.01f;
-    bridge->stats.avg_salience = bridge->stats.avg_salience * 0.99f + bridge->state.salience_boost * 0.01f;
+    bridge->stats.avg_sensory_gain = bridge->stats.avg_sensory_gain * NIMCP_EMA_DECAY_DEFAULT + bridge->state.sensory_gain * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_salience = bridge->stats.avg_salience * NIMCP_EMA_DECAY_DEFAULT + bridge->state.salience_boost * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

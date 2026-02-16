@@ -24,6 +24,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(epistemic_snn_bridge)
 //=============================================================================
@@ -169,8 +170,8 @@ static void reset_neuron(epistemic_neuron_t* neuron) {
 }
 
 static bool neuron_step(epistemic_neuron_t* neuron, float dt_ms, float input) {
-    const float tau_membrane = 20.0f;
-    const float refractory_period = 2.0f;
+    const float tau_membrane = NIMCP_MEMBRANE_TAU_MS;
+    const float refractory_period = NIMCP_REFRACTORY_PERIOD_MS;
 
     if (neuron->refractory_remaining > 0.0f) {
         neuron->refractory_remaining -= dt_ms;

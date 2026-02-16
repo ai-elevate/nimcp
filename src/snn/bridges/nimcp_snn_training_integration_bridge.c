@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_training_integration_bridge)
 
@@ -36,7 +37,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_training_integration_bridge)
 typedef struct {
     snn_training_ctx_t* ctx;
     snn_network_t* network;
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     bool active;
     uint64_t ltp_count;
     uint64_t ltd_count;

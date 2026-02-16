@@ -16,6 +16,7 @@
  */
 
 #include "utils/fuzzy/nimcp_fuzzy_types.h"
+#include "constants/nimcp_buffer_constants.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,9 +39,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_types)
 //=============================================================================
 
 #ifdef _MSC_VER
-static __declspec(thread) char tls_fuzzy_types_error[256] = {0};
+static __declspec(thread) char tls_fuzzy_types_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 #else
-static __thread char tls_fuzzy_types_error[256] = {0};
+static __thread char tls_fuzzy_types_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 #endif
 
 static void set_error(const char* fmt, ...) {

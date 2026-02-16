@@ -33,6 +33,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_analysis)
 
@@ -1065,7 +1066,7 @@ uint32_t pa_predict_failures(pa_context_t* ctx, pa_failure_prediction_t* predict
 
         float probability = 0.0f;
         uint32_t failure_type = 0;
-        char reasoning[256] = {0};
+        char reasoning[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
         if (is_error_metric && series->meta.trend == PA_TREND_INCREASING) {
             probability = 0.5f + (float)fabs(series->slope) * 0.1f;

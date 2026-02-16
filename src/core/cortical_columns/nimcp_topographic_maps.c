@@ -104,7 +104,8 @@ static void topographic_maps_bio_cleanup(void) {
 #define TOPOGRAPHIC_MIN_MAGNIFICATION 0.01f
 #define TOPOGRAPHIC_MAX_MAGNIFICATION 100.0f
 #define TOPOGRAPHIC_DEFAULT_RF_SIZE 1.0f
-#define TOPOGRAPHIC_EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define TOPOGRAPHIC_EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* Mathematical constants */
 #ifndef M_PI

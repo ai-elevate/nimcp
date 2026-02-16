@@ -12,6 +12,7 @@
  */
 
 #include "swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
@@ -69,7 +70,7 @@ int swarm_consciousness_sleep_default_config(swarm_consciousness_sleep_config_t*
     config->enable_phi_modulation = true;
     config->enable_integration_modulation = true;
     config->enable_coherence_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

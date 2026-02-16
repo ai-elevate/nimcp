@@ -30,6 +30,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stream)
  */
 
 #include "io/stream/nimcp_stream.h"
+#include "constants/nimcp_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "api/nimcp_api_exception.h"
@@ -75,7 +76,7 @@ static nimcp_atomic_bool_t g_stream_initializing = {0};  // Guard against concur
  * WHY: Thread-safe error reporting without mutexes
  * PATTERN: Thread-local storage
  */
-static __thread char g_stream_error[512] = {0};
+static __thread char g_stream_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void stream_set_error(const char* format, ...)
 {
@@ -495,8 +496,8 @@ stream_config_t stream_default_config(void)
                               .batch_size = 10,               // 10 inputs per batch
 
                               // Thresholds for events
-                              .high_salience_threshold = 0.8F,
-                              .high_surprise_threshold = 0.8F,
+                              .high_salience_threshold = NIMCP_CONFIDENCE_HIGH,
+                              .high_surprise_threshold = NIMCP_CONFIDENCE_HIGH,
 
                               // Event callbacks (NULL = not used)
                               .on_high_salience = NULL,

@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/parietal/nimcp_physics_nn.h"
+#include "constants/nimcp_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/numerical/nimcp_integration.h"
 #include "utils/logging/nimcp_logging.h"
@@ -28,68 +29,23 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(physics_nn)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_physics_nn_mesh_id = 0;
-static mesh_participant_registry_t* g_physics_nn_mesh_registry = NULL;
-
-nimcp_error_t physics_nn_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_physics_nn_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "physics_nn", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "physics_nn";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_physics_nn_mesh_id);
-    if (err == NIMCP_SUCCESS) g_physics_nn_mesh_registry = registry;
-    return err;
-}
-
-void physics_nn_mesh_unregister(void) {
-    if (g_physics_nn_mesh_registry && g_physics_nn_mesh_id != 0) {
-        mesh_participant_unregister(g_physics_nn_mesh_registry, g_physics_nn_mesh_id);
-        g_physics_nn_mesh_id = 0;
-        g_physics_nn_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from physics_nn module (instance-level) */
-static inline void physics_nn_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_physics_nn_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_physics_nn_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_physics_nn_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(physics_nn, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
  * CONSTANTS
  * ============================================================================ */
 
-#define EPSILON 1e-8f
+#define EPSILON NIMCP_EPSILON_ADAM
 #define MAX_GRADIENT_HISTORY 1024
 
 /* Thread-local error message */
-static __thread char s_last_error[256] = {0};
+static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * INTERNAL STRUCTURES
@@ -461,12 +417,12 @@ physics_nn_config_t physics_nn_default_config(void) {
     config.activation = PHYSICS_NN_ACTIVATION_SOFTPLUS;
     config.optimizer = PHYSICS_NN_OPTIMIZER_ADAM;
     config.learning_rate = PHYSICS_NN_DEFAULT_LR;
-    config.momentum = 0.9f;
-    config.beta1 = 0.9f;
-    config.beta2 = 0.999f;
-    config.epsilon = 1e-8f;
+    config.momentum = NIMCP_MOMENTUM_DEFAULT;
+    config.beta1 = NIMCP_ADAM_BETA1_DEFAULT;
+    config.beta2 = NIMCP_ADAM_BETA2_DEFAULT;
+    config.epsilon = NIMCP_EPSILON_ADAM;
     config.weight_decay = 0.0f;
-    config.gradient_clip = 1.0f;
+    config.gradient_clip = NIMCP_GRADIENT_CLIP_DEFAULT;
 
     /* Physics constraints */
     config.use_hamiltonian = true;

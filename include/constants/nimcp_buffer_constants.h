@@ -106,8 +106,10 @@ extern "C" {
  * Name and Identifier Buffer Sizes
  *===========================================================================*/
 
-/** @brief Maximum name length for entities */
+/** @brief Maximum name length for entities (may be overridden by tier_optimization.h) */
+#ifndef NIMCP_NAME_BUFFER_SIZE
 #define NIMCP_NAME_BUFFER_SIZE              256
+#endif
 
 /** @brief Maximum identifier length */
 #define NIMCP_ID_BUFFER_SIZE                64

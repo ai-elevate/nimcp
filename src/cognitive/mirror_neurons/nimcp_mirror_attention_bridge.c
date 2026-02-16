@@ -25,6 +25,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mirror_attention_bridge)
 //=============================================================================
@@ -1027,7 +1028,7 @@ void mirror_attention_update_validity(
             mirror_attention_agent_t* agent = &bridge->agents[i];
 
             /* Update validity with learning rate */
-            float lr = 0.1f;
+            float lr = NIMCP_LEARNING_RATE_COARSE;
             float target = valid ? 1.0f : 0.0f;
             agent->gaze_validity = agent->gaze_validity * (1.0f - lr) + target * lr;
 

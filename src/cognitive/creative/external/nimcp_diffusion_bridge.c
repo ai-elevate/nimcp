@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(diffusion_bridge)
 //=============================================================================
@@ -75,7 +76,7 @@ typedef struct {
 // Thread-local error message
 //=============================================================================
 
-static __thread char g_diffusion_error[512] = {0};
+static __thread char g_diffusion_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_diffusion_error(const char* msg)
 {
@@ -755,7 +756,7 @@ bool diffusion_bridge_ready(const diffusion_bridge_t* bridge)
 
 const char* diffusion_bridge_model_info(const diffusion_bridge_t* bridge)
 {
-    static char info[256];
+    static char info[NIMCP_ERROR_BUFFER_SIZE];
 
     if (!bridge) return "Not initialized";
 

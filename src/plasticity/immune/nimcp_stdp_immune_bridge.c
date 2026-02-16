@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_stdp_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -130,9 +131,9 @@ int stdp_immune_default_config(stdp_immune_config_t* config) {
     config->enable_homeostatic_feedback = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->instability_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->instability_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Default STDP parameters (Bi & Poo, 1998) */
     stdp_config_t stdp_defaults = stdp_config_default();

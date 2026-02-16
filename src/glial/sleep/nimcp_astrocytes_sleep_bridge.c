@@ -12,6 +12,7 @@
  */
 
 #include "glial/sleep/nimcp_astrocytes_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -294,7 +295,7 @@ int astro_sleep_default_config(astro_sleep_config_t* config)
     config->enable_coupling_modulation = true;
     config->enable_downscaling_modulation = true;
     config->enable_lactate_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     config->glymphatic_clearance_multiplier = 15.0f;  /* 15x during deep sleep */
     config->adenosine_decay_rate = 0.05f;  /* Per minute during sleep */
 

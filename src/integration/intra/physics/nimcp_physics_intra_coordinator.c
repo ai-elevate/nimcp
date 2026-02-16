@@ -8,6 +8,7 @@
 #include "integration/intra/physics/nimcp_physics_intra_coordinator.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -46,7 +47,7 @@ nimcp_physics_intra_config_t nimcp_physics_intra_default_config(void) {
         .hh_thermo_coupling = 0.4f,
         .geometry_thermo_coupling = 0.3f,
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .enforce_energy_conservation = true,
         .enforce_entropy_increase = true,
         .temperature_kelvin = 310.0f,
@@ -136,9 +137,9 @@ nimcp_layer_error_t nimcp_physics_intra_update(nimcp_physics_intra_t coord, floa
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
 
     /* Accumulate energy/entropy stats */
-    coord->stats.avg_energy = coord->stats.avg_energy * 0.99f + coord->state.total_energy * 0.01f;
-    coord->stats.avg_entropy = coord->stats.avg_entropy * 0.99f + coord->state.entropy * 0.01f;
-    coord->stats.avg_field_magnitude = coord->stats.avg_field_magnitude * 0.99f + coord->state.field_magnitude * 0.01f;
+    coord->stats.avg_energy = coord->stats.avg_energy * NIMCP_EMA_DECAY_DEFAULT + coord->state.total_energy * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_entropy = coord->stats.avg_entropy * NIMCP_EMA_DECAY_DEFAULT + coord->state.entropy * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_field_magnitude = coord->stats.avg_field_magnitude * NIMCP_EMA_DECAY_DEFAULT + coord->state.field_magnitude * NIMCP_LEARNING_RATE_DEFAULT;
 
     /* Update coherences */
     float sum = 0.0f;
@@ -148,7 +149,7 @@ nimcp_layer_error_t nimcp_physics_intra_update(nimcp_physics_intra_t coord, floa
         count++;
     }
     coord->state.layer_coherence = count > 0 ? sum / count : 1.0f;
-    coord->stats.avg_coherence = coord->stats.avg_coherence * 0.99f + coord->state.layer_coherence * 0.01f;
+    coord->stats.avg_coherence = coord->stats.avg_coherence * NIMCP_EMA_DECAY_DEFAULT + coord->state.layer_coherence * NIMCP_LEARNING_RATE_DEFAULT;
 
     (void)dt;
     return NIMCP_LAYER_OK;

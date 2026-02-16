@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_population_coding_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -154,9 +155,9 @@ int population_immune_default_config(population_immune_config_t* config) {
     config->enable_precision_restoration = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->anomaly_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->anomaly_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Evidence-based thresholds */
     config->noise_trigger_threshold = POPULATION_NOISE_THRESHOLD;

@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_predictive_protocol_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/validation/nimcp_common.h"
@@ -30,7 +31,7 @@ int predictive_protocol_fep_default_config(predictive_protocol_fep_config_t* con
     config->prediction_confidence_threshold = 0.7f;
     config->pattern_surprise_threshold = 2.0f;
     config->fep_hierarchy_levels = 3;
-    config->learning_rate = 0.1f;
+    config->learning_rate = NIMCP_LEARNING_RATE_COARSE;
     config->enable_pattern_learning = true;
     config->pattern_history_size = 100;
     config->enable_fep_guided_prefetch = true;

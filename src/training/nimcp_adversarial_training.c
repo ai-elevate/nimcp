@@ -41,6 +41,7 @@
 
 #define LOG_MODULE "ADV_TRAINING"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adv)
 
@@ -48,7 +49,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adv)
 // Internal Constants
 //=============================================================================
 
-#define ADV_EPSILON           1e-8f
+#define ADV_EPSILON           NIMCP_EPSILON_ADAM
 #define ADV_MAX_BATCH         256
 
 //=============================================================================

@@ -28,6 +28,7 @@
  */
 
 #include "training/nimcp_gradient_scaling.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
@@ -44,7 +45,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gradient_scaling)
 // Internal Constants
 //=============================================================================
 
-#define GS_EPSILON            1e-8f
+#define GS_EPSILON            NIMCP_EPSILON_ADAM
 #define GS_VANISHING_THRESH   1e-7f
 #define GS_EXPLODING_THRESH   1e7f
 
@@ -122,7 +123,7 @@ int gs_default_config(gs_config_t* config) {
     /* Adaptive scaling defaults */
     config->adaptive.target_norm = 1.0f;
     config->adaptive.adaptation_rate = 0.1f;
-    config->adaptive.smoothing_factor = 0.99f;
+    config->adaptive.smoothing_factor = NIMCP_EMA_DECAY_DEFAULT;
     config->adaptive.use_running_stats = true;
     config->adaptive.warmup_steps = 100;
 
@@ -135,7 +136,7 @@ int gs_default_config(gs_config_t* config) {
 
     /* Global settings */
     config->global_clip = GS_CLIP_GLOBAL_NORM;
-    config->global_clip_value = 1.0f;
+    config->global_clip_value = NIMCP_GRADIENT_CLIP_DEFAULT;
     config->normalize_per_layer = true;
 
     /* Integration enabled by default */

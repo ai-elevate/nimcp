@@ -20,55 +20,13 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(knowledge_snn_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_knowledge_snn_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_knowledge_snn_bridge_mesh_registry = NULL;
-
-nimcp_error_t knowledge_snn_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_knowledge_snn_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "knowledge_snn_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "knowledge_snn_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_knowledge_snn_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_knowledge_snn_bridge_mesh_registry = registry;
-    return err;
-}
-
-void knowledge_snn_bridge_mesh_unregister(void) {
-    if (g_knowledge_snn_bridge_mesh_registry && g_knowledge_snn_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_knowledge_snn_bridge_mesh_registry, g_knowledge_snn_bridge_mesh_id);
-        g_knowledge_snn_bridge_mesh_id = 0;
-        g_knowledge_snn_bridge_mesh_registry = NULL;
-    }
-}
-
-
-static inline void knowledge_snn_bridge_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_knowledge_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_knowledge_snn_bridge_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_knowledge_snn_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(knowledge_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 #define LOG_MODULE "KNOWLEDGE_SNN_BRIDGE"
 
@@ -173,7 +131,7 @@ knowledge_snn_config_t knowledge_snn_config_default(void) {
     knowledge_snn_config_t config = {
         .num_dimensions = KNOWLEDGE_DIM_COUNT,
         .neurons_per_dim = KNOWLEDGE_SNN_NEURONS_PER_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
 
         .dt_ms = 1.0f,
         .encoding_window_ms = KNOWLEDGE_SNN_ENCODING_WINDOW,
@@ -192,7 +150,7 @@ knowledge_snn_config_t knowledge_snn_config_default(void) {
         .enable_competition = true,
         .inhibition_strength = 0.3f,
         .enable_spreading_activation = true,
-        .spreading_decay = 0.9f,
+        .spreading_decay = NIMCP_EMA_DECAY_FAST,
 
         .enable_retrieval = true,
         .retrieval_gain = 1.5f,

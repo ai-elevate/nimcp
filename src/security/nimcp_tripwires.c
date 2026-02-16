@@ -28,6 +28,10 @@
 #include <stdatomic.h>  /* P0 fix: Required for atomic health agent pointer */
 
 #include "utils/error/nimcp_error_codes.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 /* ============================================================================
  * Constants
@@ -36,7 +40,7 @@
 #define TRIPWIRE_LOG_PREFIX         "[TRIPWIRES]"
 #define TRIPWIRE_MAX_GOALS          64
 #define TRIPWIRE_MAX_RESOURCES      32
-#define TRIPWIRE_FEATURE_DIM        128
+#define TRIPWIRE_FEATURE_DIM        NIMCP_FEATURE_DIM
 
 /* Network anomaly detection constants */
 #define TRIPWIRE_MAX_NETWORK_ENDPOINTS     256      /**< Max unique endpoints to track */
@@ -348,7 +352,7 @@ tripwire_config_t tripwire_default_config(void) {
     }
 
     config.thresholds.min_observations = 10;
-    config.thresholds.min_confidence = 0.5f;
+    config.thresholds.min_confidence = NIMCP_CONFIDENCE_MEDIUM;
 
     /* Halt on critical */
     config.halt_on_critical = true;
@@ -356,7 +360,7 @@ tripwire_config_t tripwire_default_config(void) {
     /* Baseline settings */
     config.baseline_window = 1000;
     config.adaptive_baseline = true;
-    config.baseline_decay = 0.99f;
+    config.baseline_decay = NIMCP_EMA_DECAY_DEFAULT;
 
     /*
      * Alert settings
@@ -2168,7 +2172,7 @@ static void tripwire_add_alert(tripwire_system_t* system,
     if (entry->alert.severity == TRIPWIRE_SEVERITY_CRITICAL &&
         system->config.halt_on_critical &&
         system->halt_system) {
-        char reason[256];
+        char reason[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(reason, sizeof(reason),
                  "Critical tripwire: %s (score=%.3f)",
                  tripwire_type_name(type), score);

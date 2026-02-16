@@ -9,6 +9,7 @@
 #include "integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -588,7 +589,7 @@ int neuromod_plasticity_update(neuromod_plasticity_bridge_t* bridge, float delta
     bridge->state.ltd_gate_level *= slow_decay;
 
     /* Memory boost decays toward baseline */
-    bridge->state.memory_boost = bridge->state.memory_boost * 0.99f + 1.0f * 0.01f;
+    bridge->state.memory_boost = bridge->state.memory_boost * NIMCP_EMA_DECAY_DEFAULT + 1.0f * NIMCP_LEARNING_RATE_DEFAULT;
 
     bridge->state.last_update_us = get_timestamp_us();
     return 0;

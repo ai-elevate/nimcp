@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/parietal/nimcp_equation_manipulation.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -19,63 +20,19 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(equation_manipulation)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_equation_manipulation_mesh_id = 0;
-static mesh_participant_registry_t* g_equation_manipulation_mesh_registry = NULL;
-
-nimcp_error_t equation_manipulation_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_equation_manipulation_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "equation_manipulation", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "equation_manipulation";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_equation_manipulation_mesh_id);
-    if (err == NIMCP_SUCCESS) g_equation_manipulation_mesh_registry = registry;
-    return err;
-}
-
-void equation_manipulation_mesh_unregister(void) {
-    if (g_equation_manipulation_mesh_registry && g_equation_manipulation_mesh_id != 0) {
-        mesh_participant_unregister(g_equation_manipulation_mesh_registry, g_equation_manipulation_mesh_id);
-        g_equation_manipulation_mesh_id = 0;
-        g_equation_manipulation_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from equation_manipulation module (instance-level) */
-static inline void equation_manipulation_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_equation_manipulation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_equation_manipulation_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_equation_manipulation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(equation_manipulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
  * CONSTANTS
  * ============================================================================ */
 
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 #define PI 3.14159265358979323846f
 
 /* ============================================================================
@@ -107,7 +64,7 @@ struct equation_engine {
 };
 
 /* Thread-local error message */
-static _Thread_local char g_equation_error[256] = {0};
+static _Thread_local char g_equation_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * INTERNAL HELPERS
@@ -498,7 +455,7 @@ static expr_node_t* parse_atom(parser_state_t* p) {
 
     /* Variable or function */
     if (isalpha(c)) {
-        char name[64] = {0};
+        char name[NIMCP_ID_BUFFER_SIZE] = {0};
         int i = 0;
         while (isalnum(peek(p)) || peek(p) == '_') {
             name[i++] = consume(p);
@@ -637,7 +594,7 @@ const char* equation_to_string(
             break;
 
         case EXPR_NEG: {
-            char inner[256];
+            char inner[NIMCP_ERROR_BUFFER_SIZE];
             equation_to_string(eq, node->left, inner, sizeof(inner));
             snprintf(buffer, buffer_size, "(-%s)", inner);
             break;
@@ -648,7 +605,7 @@ const char* equation_to_string(
         case EXPR_MUL:
         case EXPR_DIV:
         case EXPR_POW: {
-            char left[256], right[256];
+            char left[NIMCP_ERROR_BUFFER_SIZE], right[256];
             equation_to_string(eq, node->left, left, sizeof(left));
             equation_to_string(eq, node->right, right, sizeof(right));
             const char* op = node->type == EXPR_ADD ? "+" :
@@ -666,7 +623,7 @@ const char* equation_to_string(
         case EXPR_LOG:
         case EXPR_SQRT:
         case EXPR_ABS: {
-            char inner[256];
+            char inner[NIMCP_ERROR_BUFFER_SIZE];
             equation_to_string(eq, node->left, inner, sizeof(inner));
             const char* fn = node->type == EXPR_SIN ? "sin" :
                             node->type == EXPR_COS ? "cos" :

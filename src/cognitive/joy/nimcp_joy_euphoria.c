@@ -24,56 +24,11 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "JOY"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(joy_euphoria)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_joy_euphoria_mesh_id = 0;
-static mesh_participant_registry_t* g_joy_euphoria_mesh_registry = NULL;
-
-nimcp_error_t joy_euphoria_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_joy_euphoria_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "joy_euphoria", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "joy_euphoria";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_joy_euphoria_mesh_id);
-    if (err == NIMCP_SUCCESS) g_joy_euphoria_mesh_registry = registry;
-    return err;
-}
-
-void joy_euphoria_mesh_unregister(void) {
-    if (g_joy_euphoria_mesh_registry && g_joy_euphoria_mesh_id != 0) {
-        mesh_participant_unregister(g_joy_euphoria_mesh_registry, g_joy_euphoria_mesh_id);
-        g_joy_euphoria_mesh_id = 0;
-        g_joy_euphoria_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from joy_euphoria module (instance-level) */
-static inline void joy_euphoria_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_joy_euphoria_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_joy_euphoria_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_joy_euphoria_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(joy_euphoria, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 #define BIO_MODULE_JOY 0x0324
 
@@ -930,8 +885,6 @@ int joy_euphoria_query_self_knowledge(kg_reader_t* kg) {
 /* ============================================================================
  * Instance-Level Health Agent (Phase 8 Utility Integration)
  * ============================================================================ */
-
-static nimcp_health_agent_t* g_joy_euphoria_instance_health_agent = NULL;
 
 void joy_euphoria_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
     (void)ctx;

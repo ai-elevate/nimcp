@@ -15,6 +15,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_sparse_coding)
 
@@ -298,7 +299,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     /* Initialize column states */
     for (uint32_t i = 0; i < config->num_columns; i++) {
         system->column_states[i].column_id = i;
-        system->column_states[i].activation_threshold = 0.5f;  /* Initial threshold */
+        system->column_states[i].activation_threshold = NIMCP_ACTIVATION_THRESHOLD;  /* Initial threshold */
         system->column_states[i].current_activation = 0.0f;
         system->column_states[i].lifetime_activity = 0.0f;
         system->column_states[i].inhibition_received = 0.0f;
@@ -323,7 +324,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     memset(&system->state, 0, sizeof(sparse_coding_state_t));
     system->state.current_population_sparsity = 0.0f;
     system->state.current_lifetime_sparsity = 0.0f;
-    system->state.mean_activation_threshold = 0.5f;
+    system->state.mean_activation_threshold = NIMCP_ACTIVATION_THRESHOLD;
 
     /* Initialize statistics */
     memset(&system->stats, 0, sizeof(sparse_coding_stats_t));

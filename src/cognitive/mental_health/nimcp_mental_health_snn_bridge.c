@@ -23,6 +23,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mental_health_snn_bridge)
 //=============================================================================
@@ -173,7 +175,7 @@ mental_health_snn_config_t mental_health_snn_config_default(void) {
     mental_health_snn_config_t config = {
         .num_dimensions = MENTAL_HEALTH_DIM_COUNT,
         .neurons_per_dim = MENTAL_HEALTH_SNN_NEURONS_PER_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
 
         .dt_ms = 1.0f,
         .encoding_window_ms = MENTAL_HEALTH_SNN_ENCODING_WINDOW,
@@ -192,7 +194,7 @@ mental_health_snn_config_t mental_health_snn_config_default(void) {
         .enable_competition = true,
         .inhibition_strength = 0.3f,
         .enable_mood_tracking = true,
-        .mood_sensitivity = 1.0f,
+        .mood_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
 
         .enable_regulation = true,
         .regulation_gain = 1.5f,

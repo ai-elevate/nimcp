@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_orchestrator)
 
@@ -39,7 +40,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_orchestrator)
 #define ORCHESTRATOR_MAX_CALLBACKS          8
 #define ORCHESTRATOR_MAX_PENDING_PHONEMES   256
 #define ORCHESTRATOR_MAX_PENDING_WORDS      64
-#define ORCHESTRATOR_STATE_TIMEOUT_MS       5000
+#define ORCHESTRATOR_STATE_TIMEOUT_MS       NIMCP_DEFAULT_TIMEOUT_MS
 
 //=============================================================================
 // Internal Structures

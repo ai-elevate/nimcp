@@ -9,6 +9,7 @@
 #include "integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -117,8 +118,8 @@ nimcp_layer_error_t nimcp_integration_superhuman_update(nimcp_integration_superh
     bridge->state.expanded_awareness *= (1.0f - dt * 0.025f);
 
     /* Update averages */
-    bridge->stats.avg_enhancement_level = bridge->stats.avg_enhancement_level * 0.99f + bridge->state.enhancement_activation * 0.01f;
-    bridge->stats.avg_unified_experience = bridge->stats.avg_unified_experience * 0.99f + bridge->state.unified_experience * 0.01f;
+    bridge->stats.avg_enhancement_level = bridge->stats.avg_enhancement_level * NIMCP_EMA_DECAY_DEFAULT + bridge->state.enhancement_activation * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_unified_experience = bridge->stats.avg_unified_experience * NIMCP_EMA_DECAY_DEFAULT + bridge->state.unified_experience * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

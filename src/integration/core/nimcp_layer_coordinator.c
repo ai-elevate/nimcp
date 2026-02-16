@@ -14,6 +14,9 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_timing_constants.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(layer_coordinator)
 
@@ -28,7 +31,7 @@ struct nimcp_layer_coordinator_struct {
     nimcp_layer_coordinator_stats_t stats;
     float layer_coherences[NIMCP_LAYER_COUNT];
     nimcp_layer_error_t last_error;
-    char last_error_msg[256];
+    char last_error_msg[NIMCP_ERROR_BUFFER_SIZE];
 };
 
 nimcp_layer_coordinator_config_t nimcp_layer_coordinator_default_config(void) {
@@ -42,8 +45,8 @@ nimcp_layer_coordinator_config_t nimcp_layer_coordinator_default_config(void) {
     config.enable_immune_integration = true;
     config.enable_logging = false;
     config.enable_metrics = true;
-    config.coherence_threshold = 0.7f;
-    config.sync_timeout_ms = 100;
+    config.coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD;
+    config.sync_timeout_ms = NIMCP_FAST_TIMEOUT_MS;
     return config;
 }
 

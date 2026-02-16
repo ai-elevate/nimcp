@@ -26,6 +26,7 @@
 
 #define LOG_MODULE "community_detection"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(community_detection)
 
@@ -78,7 +79,7 @@ static void community_detection_bio_cleanup(void) {
 // Thread-local error handling
 //=============================================================================
 
-static __thread char last_error[512] = {0};
+static __thread char last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_error(const char* format, ...) {
     va_list args;

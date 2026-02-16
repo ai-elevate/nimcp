@@ -11,6 +11,7 @@
  */
 
 #include "plasticity/protein/nimcp_protein_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -98,7 +99,7 @@ int protein_sleep_default_config(protein_sleep_config_t* config) {
 
     config->enable_synthesis_modulation = true;
     config->enable_delivery_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

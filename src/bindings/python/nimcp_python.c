@@ -62,6 +62,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "constants/nimcp_buffer_constants.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -293,7 +294,7 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    char label[256];
+    char label[NIMCP_NAME_BUFFER_SIZE];
     float confidence;
 
     nimcp_status_t status = nimcp_brain_predict(self->brain, features,

@@ -36,59 +36,12 @@
 #include <float.h>
 #include <time.h>
 #include <stdio.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_world_model)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_omni_world_model_mesh_id = 0;
-static mesh_participant_registry_t* g_omni_world_model_mesh_registry = NULL;
-
-nimcp_error_t omni_world_model_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_omni_world_model_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "omni_world_model", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "omni_world_model";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_omni_world_model_mesh_id);
-    if (err == NIMCP_SUCCESS) g_omni_world_model_mesh_registry = registry;
-    return err;
-}
-
-void omni_world_model_mesh_unregister(void) {
-    if (g_omni_world_model_mesh_registry && g_omni_world_model_mesh_id != 0) {
-        mesh_participant_unregister(g_omni_world_model_mesh_registry, g_omni_world_model_mesh_id);
-        g_omni_world_model_mesh_id = 0;
-        g_omni_world_model_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from omni_world_model module (instance-level) */
-static inline void omni_world_model_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_omni_world_model_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_omni_world_model_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_omni_world_model_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
-
-/** @brief Instance-level health agent (global fallback for non-bridge) */
-static nimcp_health_agent_t* g_omni_world_model_instance_health_agent = NULL;
+BRIDGE_BOILERPLATE(omni_world_model, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 void omni_world_model_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
     (void)ctx;
@@ -444,10 +397,10 @@ nimcp_error_t omni_wm_get_default_config(omni_wm_config_t* config) {
     config->pred_type = OMNI_WM_PRED_STOCHASTIC;
 
     /* Learning settings */
-    config->learning_rate = 0.001f;
-    config->discount_factor = 0.99f;
+    config->learning_rate = NIMCP_LEARNING_RATE_FINE;
+    config->discount_factor = NIMCP_REWARD_DISCOUNT_DEFAULT;
     config->kl_weight = 1.0f;
-    config->reward_scale = 1.0f;
+    config->reward_scale = NIMCP_REWARD_SCALE_DEFAULT;
     config->learn_mode = OMNI_WM_LEARN_REPLAY;
 
     /* Experience replay */

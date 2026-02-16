@@ -20,6 +20,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_immune)
 
@@ -147,7 +148,7 @@ int snn_immune_bridge_connect_bio_async(snn_immune_bridge_t* bridge) {
         return SNN_ERROR_NOT_INITIALIZED;
     }
 
-    char module_name[64];
+    char module_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(module_name, sizeof(module_name), "snn_immune_%u", bridge->network->id);
 
     bio_module_info_t info = {

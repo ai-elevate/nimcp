@@ -14,6 +14,7 @@
  */
 
 #include "async/nimcp_bio_async.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -85,7 +86,7 @@ struct nimcp_brain_snapshot_handle {
 // Global State
 //=============================================================================
 
-static char g_last_error[256] = "No error";
+static char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = "No error";
 static nimcp_atomic_bool_t g_initialized = {0};       // Thread-safe initialized flag
 static nimcp_atomic_bool_t g_init_in_progress = {0};  // Guard against concurrent init
 

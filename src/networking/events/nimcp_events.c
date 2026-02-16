@@ -82,6 +82,8 @@
 
 #define LOG_MODULE "NETWORKING"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(events)
 
@@ -158,8 +160,8 @@ static void events_security_cleanup(void) {
 #define EVENT_QUEUE_CHANNEL 0         // Single channel for all events
 
 // Confidence thresholds for priority mapping
-#define HIGH_CONFIDENCE_THRESHOLD 0.8f
-#define LOW_CONFIDENCE_THRESHOLD 0.3f
+#define HIGH_CONFIDENCE_THRESHOLD NIMCP_CONFIDENCE_HIGH
+#define LOW_CONFIDENCE_THRESHOLD NIMCP_CONFIDENCE_LOW
 
 //=============================================================================
 // Hash Table Implementation for Feature Mappings (Repository Pattern)
@@ -570,7 +572,7 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
         .queue_sizes = {.high = EVENT_QUEUE_HIGH_SIZE,
                         .normal = EVENT_QUEUE_NORMAL_SIZE,
                         .low = EVENT_QUEUE_LOW_SIZE},
-        .default_timeout = 100,
+        .default_timeout = NIMCP_FAST_TIMEOUT_MS,
         .blocking_mode = false,  // Drop on full (backpressure)
         .max_channels = 1,       // Single channel for all events
         .worker_threads = 0      // We manage our own thread

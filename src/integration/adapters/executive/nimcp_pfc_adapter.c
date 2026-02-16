@@ -15,6 +15,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pfc_adapter)
 
@@ -173,7 +174,7 @@ static const char* pfc_get_name(void* module) {
 
 nimcp_pfc_config_t nimcp_pfc_adapter_default_config(void) {
     nimcp_pfc_config_t config = {
-        .wm_slots = 7,  /* Miller's magic number +/- 2 */
+        .wm_slots = NIMCP_WM_SLOTS,  /* Miller's magic number +/- 2 */
         .max_rules = 32,
         .gate_threshold = 0.5f,
         .decay_rate = 0.1f,

@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_logic_bridge)
 
@@ -37,7 +38,7 @@ static uint64_t get_time_us(void) {
 #define PORTIA_LOGIC_DEFAULT_MAX_GATES 100
 #define PORTIA_LOGIC_DEFAULT_MAX_CUSTOM_RULES 50
 #define PORTIA_LOGIC_DEFAULT_DECISION_THRESHOLD 0.7f
-#define PORTIA_LOGIC_DEFAULT_TIMEOUT_MS 100
+#define PORTIA_LOGIC_DEFAULT_TIMEOUT_MS NIMCP_FAST_TIMEOUT_MS
 
 /* Pre-built gate IDs */
 #define GATE_ID_TIER_UPGRADE 1

@@ -29,6 +29,7 @@
 #define LOG_MODULE "HPO"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hpo)
 
@@ -76,7 +77,7 @@ typedef struct {
  * @brief HPO study
  */
 struct hpo_study_s {
-    char name[256];                  /**< Study name */
+    char name[NIMCP_NAME_BUFFER_SIZE];                  /**< Study name */
     trial_state_t* trials;           /**< All trials */
     uint32_t num_trials;             /**< Number of trials */
     uint32_t max_trials;             /**< Capacity */

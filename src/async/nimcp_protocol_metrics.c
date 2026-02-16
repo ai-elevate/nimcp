@@ -27,6 +27,7 @@
 #include <math.h>
 #include <inttypes.h>  /* P3-60 fix: PRIu64 for portable uint64_t formatting */
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(protocol_metrics)
 
@@ -276,7 +277,7 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
         label_count = MAX_METRIC_LABELS;
     }
 
-    char key[256];
+    char key[NIMCP_NAME_BUFFER_SIZE];
     make_metric_key(key, sizeof(key), name, labels, label_count);
 
     nimcp_platform_mutex_lock(&metrics->mutex);
@@ -327,7 +328,7 @@ bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
         return false;
     }
 
-    char key[256];
+    char key[NIMCP_NAME_BUFFER_SIZE];
     make_metric_key(key, sizeof(key), name, labels, label_count);
 
     nimcp_platform_mutex_lock(&metrics->mutex);
@@ -376,7 +377,7 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
         return false;
     }
 
-    char key[256];
+    char key[NIMCP_NAME_BUFFER_SIZE];
     make_metric_key(key, sizeof(key), name, labels, label_count);
 
     nimcp_platform_mutex_lock(&metrics->mutex);

@@ -6,6 +6,7 @@
  */
 
 #include "middleware/sleep/nimcp_feature_extractor_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -91,7 +92,7 @@ int feature_extractor_sleep_default_config(feature_extractor_sleep_config_t* con
     config->enable_threshold_modulation = true;
     config->enable_sensitivity_modulation = true;
     config->enable_window_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

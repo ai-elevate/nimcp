@@ -23,6 +23,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_snn_bridge)
 //=============================================================================
@@ -156,7 +157,7 @@ emotion_snn_config_t emotion_snn_config_default(void) {
 
     emotion_snn_config_t config = {
         .input_dim = EMOTION_SNN_INPUT_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
         .output_dim = EMOTION_COUNT,
         .va_dim = EMOTION_SNN_VA_DIM,
 

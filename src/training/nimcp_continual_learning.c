@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(continual_learning)
 
@@ -36,7 +38,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(continual_learning)
  */
 typedef struct {
     uint32_t task_id;                /**< Task identifier */
-    char name[128];                  /**< Task name */
+    char name[NIMCP_LABEL_BUFFER_SIZE];                  /**< Task name */
     bool completed;                  /**< Task training completed */
 
     /* Fisher/importance for this task */
@@ -139,7 +141,7 @@ int cl_default_config(cl_config_t* config) {
 
     config->mas.lambda = CL_DEFAULT_MAS_LAMBDA;
     config->mas.omega_samples = 1000;
-    config->mas.omega_decay = 0.9f;
+    config->mas.omega_decay = NIMCP_EMA_DECAY_FAST;
 
     config->si.c = 1.0f;
     config->si.epsilon = 0.1f;

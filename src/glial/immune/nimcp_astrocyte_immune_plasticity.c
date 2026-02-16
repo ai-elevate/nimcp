@@ -10,6 +10,7 @@
  */
 
 #include "glial/immune/nimcp_astrocyte_immune_plasticity.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -285,9 +286,9 @@ int astro_plasticity_default_config(astro_plasticity_config_t* config) {
     config->enable_dysfunction_detection = true;
     config->enable_reactive_state_control = true;
 
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->dysfunction_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->dysfunction_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     config->glu_uptake_critical_threshold = ASTROCYTE_GLU_UPTAKE_CRITICAL_THRESHOLD;
     config->d_serine_critical_threshold = ASTROCYTE_D_SERINE_CRITICAL_THRESHOLD;

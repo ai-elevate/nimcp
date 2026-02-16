@@ -26,42 +26,14 @@
 #include <float.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_neural_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(retrosplenial)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_retrosplenial_mesh_id = 0;
-static mesh_participant_registry_t* g_retrosplenial_mesh_registry = NULL;
-
-nimcp_error_t retrosplenial_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_retrosplenial_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "retrosplenial", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "retrosplenial";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_retrosplenial_mesh_id);
-    if (err == NIMCP_SUCCESS) g_retrosplenial_mesh_registry = registry;
-    return err;
-}
-
-void retrosplenial_mesh_unregister(void) {
-    if (g_retrosplenial_mesh_registry && g_retrosplenial_mesh_id != 0) {
-        mesh_participant_unregister(g_retrosplenial_mesh_registry, g_retrosplenial_mesh_id);
-        g_retrosplenial_mesh_id = 0;
-        g_retrosplenial_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(retrosplenial, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -287,7 +259,7 @@ nimcp_rsc_config_t nimcp_rsc_default_config(void) {
     config.scene_dim = RSC_SCENE_DIM;
 
     /* Transformation parameters */
-    config.transform_learning_rate = 0.01f;
+    config.transform_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     config.transform_smoothing = 0.9f;
     config.transform_error_threshold = 0.1f;
 
@@ -300,7 +272,7 @@ nimcp_rsc_config_t nimcp_rsc_default_config(void) {
     /* Scene recognition parameters */
     config.scene_familiarity_threshold = 0.5f;
     config.scene_learning_rate = 0.05f;
-    config.landmark_salience_threshold = 0.3f;
+    config.landmark_salience_threshold = NIMCP_SALIENCE_THRESHOLD;
     config.max_landmarks = RSC_MAX_LANDMARKS;
 
     /* Navigation parameters */
@@ -1658,10 +1630,10 @@ nimcp_rsc_error_t nimcp_rsc_init_bio_async_bridge(
     if (!rsc) return RSC_ERR_NULL_PTR;
 
     rsc->bio_async_bridge.router = router;
-    rsc->bio_async_bridge.dopamine_level = 0.5f;
-    rsc->bio_async_bridge.serotonin_level = 0.5f;
-    rsc->bio_async_bridge.norepinephrine_level = 0.5f;
-    rsc->bio_async_bridge.acetylcholine_level = 0.5f;
+    rsc->bio_async_bridge.dopamine_level = NIMCP_DOPAMINE_BASELINE;
+    rsc->bio_async_bridge.serotonin_level = NIMCP_SEROTONIN_BASELINE;
+    rsc->bio_async_bridge.norepinephrine_level = NIMCP_NOREPINEPHRINE_BASELINE;
+    rsc->bio_async_bridge.acetylcholine_level = NIMCP_ACETYLCHOLINE_BASELINE;
     rsc->bio_async_bridge.pending_messages = 0;
 
     LOG_MODULE_DEBUG(RSC_LOG_MODULE, "Bio-async bridge initialized");

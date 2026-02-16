@@ -39,60 +39,15 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "cognitive.fault.recovery_executive"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_timing_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_executive)
+BRIDGE_BOILERPLATE(recovery_executive, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference executive_set_health_agent (shorter name) */
 void executive_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
-
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_recovery_executive_mesh_id = 0;
-static mesh_participant_registry_t* g_recovery_executive_mesh_registry = NULL;
-
-nimcp_error_t recovery_executive_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_recovery_executive_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "recovery_executive", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "recovery_executive";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_recovery_executive_mesh_id);
-    if (err == NIMCP_SUCCESS) g_recovery_executive_mesh_registry = registry;
-    return err;
-}
-
-void recovery_executive_mesh_unregister(void) {
-    if (g_recovery_executive_mesh_registry && g_recovery_executive_mesh_id != 0) {
-        mesh_participant_unregister(g_recovery_executive_mesh_registry, g_recovery_executive_mesh_id);
-        g_recovery_executive_mesh_id = 0;
-        g_recovery_executive_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from recovery_executive module (instance-level) */
-static inline void recovery_executive_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_recovery_executive_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_recovery_executive_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_recovery_executive_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
 
 #define BIO_MODULE_COGNITIVE_FAULT_RECOVERY_EXECUTIVE 0x035C
 
@@ -238,7 +193,7 @@ static uint32_t select_actions_for_nan(
     // Step 1: Save state (prevent data loss)
     if (count < max_steps) {
         steps[count].action = RECOVERY_EXEC_ACTION_CHECKPOINT_SAVE;
-        steps[count].timeout_ms = 100;
+        steps[count].timeout_ms = NIMCP_FAST_TIMEOUT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Save current state before recovery");
         steps[count].expected_success_rate = 0.95F;
@@ -249,7 +204,7 @@ static uint32_t select_actions_for_nan(
     // Step 2: Reset subsystem (clear NaN state)
     if (count < max_steps) {
         steps[count].action = RECOVERY_EXEC_ACTION_RESET_SUBSYSTEM;
-        steps[count].timeout_ms = 50;
+        steps[count].timeout_ms = NIMCP_FAST_HEARTBEAT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Reset numerical subsystem to clear NaN values");
         steps[count].expected_success_rate = 0.85F;
@@ -271,7 +226,7 @@ static uint32_t select_actions_for_nan(
     // Step 4: Verify (ensure recovery successful)
     if (count < max_steps && criteria->require_verification) {
         steps[count].action = RECOVERY_EXEC_ACTION_VERIFY_STATE;
-        steps[count].timeout_ms = 50;
+        steps[count].timeout_ms = NIMCP_FAST_HEARTBEAT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Verify system state is numerically stable");
         steps[count].expected_success_rate = 0.95F;
@@ -332,7 +287,7 @@ static uint32_t select_actions_for_memory_error(
     // Step 4: Verify
     if (count < max_steps && criteria->require_verification) {
         steps[count].action = RECOVERY_EXEC_ACTION_VERIFY_STATE;
-        steps[count].timeout_ms = 50;
+        steps[count].timeout_ms = NIMCP_FAST_HEARTBEAT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Verify memory integrity");
         steps[count].expected_success_rate = 0.95F;
@@ -360,7 +315,7 @@ static uint32_t select_actions_for_gradient_error(
     // Step 1: Checkpoint (before parameter changes)
     if (count < max_steps) {
         steps[count].action = RECOVERY_EXEC_ACTION_CHECKPOINT_SAVE;
-        steps[count].timeout_ms = 100;
+        steps[count].timeout_ms = NIMCP_FAST_TIMEOUT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Save state before parameter adjustments");
         steps[count].expected_success_rate = 0.95F;
@@ -393,7 +348,7 @@ static uint32_t select_actions_for_gradient_error(
     // Step 4: Verify
     if (count < max_steps && criteria->require_verification) {
         steps[count].action = RECOVERY_EXEC_ACTION_VERIFY_STATE;
-        steps[count].timeout_ms = 50;
+        steps[count].timeout_ms = NIMCP_FAST_HEARTBEAT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Verify gradient stability");
         steps[count].expected_success_rate = 0.90F;
@@ -421,7 +376,7 @@ static uint32_t select_actions_for_critical_error(
     // Step 1: Analyze diagnostic
     if (count < max_steps) {
         steps[count].action = RECOVERY_EXEC_ACTION_ANALYZE_DIAGNOSTIC;
-        steps[count].timeout_ms = 50;
+        steps[count].timeout_ms = NIMCP_FAST_HEARTBEAT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Analyze crash context and stack trace");
         steps[count].expected_success_rate = 0.95F;
@@ -443,7 +398,7 @@ static uint32_t select_actions_for_critical_error(
     // Step 3: If recovery impossible, graceful shutdown
     if (count < max_steps) {
         steps[count].action = RECOVERY_EXEC_ACTION_GRACEFUL_SHUTDOWN;
-        steps[count].timeout_ms = 500;
+        steps[count].timeout_ms = NIMCP_SHORT_TIMEOUT_MS;
         snprintf(steps[count].description, sizeof(steps[count].description),
                 "Graceful shutdown to preserve data");
         steps[count].expected_success_rate = 0.99F;
@@ -495,7 +450,7 @@ static uint32_t select_actions_for_error(
             // Generic recovery: checkpoint + verify
             if (max_steps > 0) {
                 steps[0].action = RECOVERY_EXEC_ACTION_CHECKPOINT_SAVE;
-                steps[0].timeout_ms = 100;
+                steps[0].timeout_ms = NIMCP_FAST_TIMEOUT_MS;
                 snprintf(steps[0].description, sizeof(steps[0].description),
                         "Generic recovery: save state");
                 steps[0].expected_success_rate = 0.80F;

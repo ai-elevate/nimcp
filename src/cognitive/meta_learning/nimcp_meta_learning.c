@@ -20,56 +20,13 @@
  */
 
 #define LOG_MODULE "meta_learning"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(meta_learning)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_meta_learning_mesh_id = 0;
-static mesh_participant_registry_t* g_meta_learning_mesh_registry = NULL;
-
-nimcp_error_t meta_learning_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_meta_learning_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "meta_learning", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "meta_learning";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_meta_learning_mesh_id);
-    if (err == NIMCP_SUCCESS) g_meta_learning_mesh_registry = registry;
-    return err;
-}
-
-void meta_learning_mesh_unregister(void) {
-    if (g_meta_learning_mesh_registry && g_meta_learning_mesh_id != 0) {
-        mesh_participant_unregister(g_meta_learning_mesh_registry, g_meta_learning_mesh_id);
-        g_meta_learning_mesh_id = 0;
-        g_meta_learning_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from meta_learning module (instance-level) */
-static inline void meta_learning_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_meta_learning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_meta_learning_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_meta_learning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(meta_learning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 
@@ -93,6 +50,7 @@ static inline void meta_learning_heartbeat_instance(
 #include <stdarg.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // BIO-ASYNC MODULE REGISTRATION
@@ -104,7 +62,7 @@ static inline void meta_learning_heartbeat_instance(
 // Error Handling (module-local)
 //=============================================================================
 
-static __thread char last_error[512] = {0};
+static __thread char last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_error(const char* fmt, ...)
 {
@@ -119,10 +77,10 @@ static void set_error(const char* fmt, ...)
 //=============================================================================
 
 // MAML Hyperparameters
-#define DEFAULT_INNER_LR 0.01f           // Task adaptation learning rate
-#define DEFAULT_OUTER_LR 0.001f          // Meta-learning rate
+#define DEFAULT_INNER_LR NIMCP_LEARNING_RATE_DEFAULT           // Task adaptation learning rate
+#define DEFAULT_OUTER_LR NIMCP_LEARNING_RATE_FINE          // Meta-learning rate
 #define DEFAULT_INNER_STEPS 5            // Gradient steps per task
-#define DEFAULT_OUTER_BATCH_SIZE 8       // Tasks per meta-update
+#define DEFAULT_OUTER_BATCH_SIZE NIMCP_SMALL_BATCH_SIZE       // Tasks per meta-update
 #define DEFAULT_SIMILARITY_THRESHOLD 0.7f // Transfer if similarity > 0.7
 
 // Adaptive Learning Rates (per region)

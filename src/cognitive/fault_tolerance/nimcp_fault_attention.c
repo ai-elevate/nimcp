@@ -29,56 +29,11 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.fault.attention"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fault_attention)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_fault_attention_mesh_id = 0;
-static mesh_participant_registry_t* g_fault_attention_mesh_registry = NULL;
-
-nimcp_error_t fault_attention_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_fault_attention_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "fault_attention", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "fault_attention";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fault_attention_mesh_id);
-    if (err == NIMCP_SUCCESS) g_fault_attention_mesh_registry = registry;
-    return err;
-}
-
-void fault_attention_mesh_unregister(void) {
-    if (g_fault_attention_mesh_registry && g_fault_attention_mesh_id != 0) {
-        mesh_participant_unregister(g_fault_attention_mesh_registry, g_fault_attention_mesh_id);
-        g_fault_attention_mesh_id = 0;
-        g_fault_attention_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from fault_attention module (instance-level) */
-static inline void fault_attention_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_fault_attention_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fault_attention_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_fault_attention_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(fault_attention, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 #define BIO_MODULE_COGNITIVE_FAULT_ATTENTION 0x0357
 

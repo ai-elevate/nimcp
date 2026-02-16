@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/nimcp_parietal_phonological_wm.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -111,7 +112,7 @@ struct phonological_wm {
  * THREAD-LOCAL ERROR STORAGE
  * ============================================================================ */
 
-static _Thread_local char g_last_error[256] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_last_error(const char* fmt, ...) {
     va_list args;

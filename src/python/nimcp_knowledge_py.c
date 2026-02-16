@@ -19,6 +19,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(knowledge_py)
 
@@ -342,7 +343,7 @@ static PyObject* KnowledgeSystem_understand(KnowledgeSystemObject* self, PyObjec
         return NULL;
     }
 
-    char explanation[2048];
+    char explanation[NIMCP_JSON_BUFFER_SIZE];
     uint32_t length;
 
     Py_BEGIN_ALLOW_THREADS
@@ -377,7 +378,7 @@ static PyObject* KnowledgeSystem_explain_simply(KnowledgeSystemObject* self, PyO
         return NULL;
     }
 
-    char explanation[2048];
+    char explanation[NIMCP_JSON_BUFFER_SIZE];
     uint32_t length;
 
     Py_BEGIN_ALLOW_THREADS

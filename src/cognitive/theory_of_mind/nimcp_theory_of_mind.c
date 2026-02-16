@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_theory_of_mind.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_security.h"
@@ -47,56 +48,13 @@
 #include "cognitive/theory_of_mind/nimcp_theory_of_mind_thalamic_bridge.h"
 
 #define LOG_MODULE "cognitive.theory_of_mind"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(theory_of_mind)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
+BRIDGE_BOILERPLATE(theory_of_mind, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
-static mesh_participant_id_t g_theory_of_mind_mesh_id = 0;
-static mesh_participant_registry_t* g_theory_of_mind_mesh_registry = NULL;
-
-nimcp_error_t theory_of_mind_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_theory_of_mind_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "theory_of_mind", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "theory_of_mind";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_theory_of_mind_mesh_id);
-    if (err == NIMCP_SUCCESS) g_theory_of_mind_mesh_registry = registry;
-    return err;
-}
-
-void theory_of_mind_mesh_unregister(void) {
-    if (g_theory_of_mind_mesh_registry && g_theory_of_mind_mesh_id != 0) {
-        mesh_participant_unregister(g_theory_of_mind_mesh_registry, g_theory_of_mind_mesh_id);
-        g_theory_of_mind_mesh_id = 0;
-        g_theory_of_mind_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from theory_of_mind module (instance-level) */
-static inline void theory_of_mind_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_theory_of_mind_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_theory_of_mind_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_theory_of_mind_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
 
 #define BIO_MODULE_COGNITIVE_THEORY_OF_MIND 0x034E
 
@@ -110,7 +68,7 @@ static inline void theory_of_mind_heartbeat_instance(
 #define MAX_INTENTIONS 8                  /**< Maximum tracked intentions */
 #define DEFAULT_CONFIDENCE 0.5f           /**< Default inference confidence */
 #define OBSERVATION_DECAY_MS 5000         /**< Observations decay after 5 seconds */
-#define MIN_CONFIDENCE_THRESHOLD 0.3f     /**< Minimum confidence for valid inference */
+#define MIN_CONFIDENCE_THRESHOLD NIMCP_CONFIDENCE_LOW     /**< Minimum confidence for valid inference */
 
 // Confidence levels for emotion inference
 #define CONFIDENCE_DIRECT_OBSERVATION 0.9f /**< High confidence: emotion directly observed */
@@ -152,7 +110,7 @@ typedef struct {
     // Current inferences
     tom_emotion_t current_emotion;
     float emotion_confidence;
-    char current_goal[256];
+    char current_goal[NIMCP_ERROR_BUFFER_SIZE];
     float goal_confidence;
 
     // Last update time
@@ -183,7 +141,7 @@ struct theory_of_mind_s {
     // Current inferences (legacy single agent)
     tom_emotion_t current_emotion;
     float emotion_confidence;
-    char current_goal[256];
+    char current_goal[NIMCP_ERROR_BUFFER_SIZE];
     float goal_confidence;
 
     // Observation tracking
@@ -222,7 +180,7 @@ struct theory_of_mind_s {
 // Error Handling
 //=============================================================================
 
-static __thread char last_error[256] = {0};
+static __thread char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /**
  * @brief Set error message
@@ -676,7 +634,7 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
     }
 
     // Infer goal from observation
-    char goal_buffer[256];
+    char goal_buffer[NIMCP_ERROR_BUFFER_SIZE];
     float goal_conf = 0.0F;
     if (infer_goal_from_observation(observation, goal_buffer, sizeof(goal_buffer), &goal_conf)) {
         // Apply immune impairment to goal inference

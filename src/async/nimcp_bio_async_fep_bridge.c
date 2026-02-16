@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_bio_async_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/validation/nimcp_common.h"
@@ -34,7 +35,7 @@ int bio_async_fep_default_config(bio_async_fep_config_t* config) {
     config->surprise_threshold = 2.0f;
     config->primary_channel = BIO_CHANNEL_DOPAMINE;
     config->enable_channel_switching = true;
-    config->learning_rate = 0.1f;
+    config->learning_rate = NIMCP_LEARNING_RATE_COARSE;
     config->enable_precision_learning = true;
     config->enable_prefetch = true;
     config->max_predictions = 32;

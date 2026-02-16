@@ -14,6 +14,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(integration_intra_coordinator)
 
@@ -48,7 +49,7 @@ nimcp_integration_intra_config_t nimcp_integration_intra_default_config(void) {
         .pag_reticular_coupling = 0.5f,
         .red_reticular_coupling = 0.4f,
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .enable_global_binding = true,
         .enable_logging = false,
         .enable_metrics = true

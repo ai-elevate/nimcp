@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/adaptive/nimcp_adaptive_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -46,7 +47,7 @@ int adaptive_fep_bridge_default_config(adaptive_fep_config_t* config) {
     config->enable_complexity_regularization = true;
     config->enable_sparsity_feedback = true;
 
-    config->pe_sensitivity = 1.0f;
+    config->pe_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->precision_gain = 1.0f;
     config->complexity_gain = 0.5f;
     config->sparsity_feedback_gain = 1.0f;

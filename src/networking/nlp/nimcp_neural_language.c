@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neural_language)
 
@@ -953,7 +954,7 @@ int nlang_interpret(const nlang_expression_t* expr,
         return -1;
     }
 
-    static char text_buf[256];
+    static char text_buf[NIMCP_ERROR_BUFFER_SIZE];
     size_t text_offset = 0;
 
     // Build natural language interpretation

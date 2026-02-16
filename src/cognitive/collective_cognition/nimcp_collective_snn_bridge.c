@@ -23,6 +23,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(collective_snn_bridge)
 //=============================================================================
@@ -175,7 +177,7 @@ collective_snn_config_t collective_snn_config_default(void) {
     collective_snn_config_t config = {
         .num_dimensions = COLLECTIVE_DIM_COUNT,
         .neurons_per_dim = COLLECTIVE_SNN_NEURONS_PER_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
 
         .dt_ms = 1.0f,
         .encoding_window_ms = COLLECTIVE_SNN_ENCODING_WINDOW,
@@ -194,7 +196,7 @@ collective_snn_config_t collective_snn_config_default(void) {
         .enable_competition = true,
         .inhibition_strength = 0.3f,
         .enable_sync_detection = true,
-        .sync_sensitivity = 1.0f,
+        .sync_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
 
         .enable_coordination = true,
         .coordination_gain = 1.5f,

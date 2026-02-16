@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_evolution)
 
@@ -159,7 +160,7 @@ re_config_t re_default_config(void) {
         .fitness_criteria = RE_FIT_COMPOSITE,
         .fitness_weights = {0.3f, 0.4f, 0.2f, 0.1f, 0.0f},
         .history_size = RE_MAX_HISTORY,
-        .batch_size = 32,
+        .batch_size = NIMCP_DEFAULT_BATCH_SIZE,
         .enable_transfer = true
     };
     return config;

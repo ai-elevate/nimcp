@@ -30,43 +30,10 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <regex.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pattern_compiler)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_pattern_compiler_mesh_id = 0;
-static mesh_participant_registry_t* g_pattern_compiler_mesh_registry = NULL;
-
-nimcp_error_t pattern_compiler_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_pattern_compiler_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "pattern_compiler", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "pattern_compiler";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pattern_compiler_mesh_id);
-    if (err == NIMCP_SUCCESS) g_pattern_compiler_mesh_registry = registry;
-    return err;
-}
-
-void pattern_compiler_mesh_unregister(void) {
-    if (g_pattern_compiler_mesh_registry && g_pattern_compiler_mesh_id != 0) {
-        mesh_participant_unregister(g_pattern_compiler_mesh_registry, g_pattern_compiler_mesh_id);
-        g_pattern_compiler_mesh_id = 0;
-        g_pattern_compiler_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(pattern_compiler, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 //=============================================================================
@@ -522,7 +489,7 @@ nimcp_error_t nimcp_pattern_suggest_optimizations(
     // Check complexity
     uint32_t complexity = nimcp_pattern_estimate_complexity(pattern);
     if (complexity > 70) {
-        char buf[128];
+        char buf[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(buf, sizeof(buf),
                  "Pattern complexity is high (%u/100). Consider simplifying.\n", complexity);
         strncat(suggestions, buf, suggestions_len - strlen(suggestions) - 1);

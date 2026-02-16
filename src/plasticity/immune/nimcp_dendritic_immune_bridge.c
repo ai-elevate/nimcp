@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_dendritic_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -127,9 +128,9 @@ int dendritic_immune_default_config(dendritic_immune_config_t* config) {
     config->enable_complexity_tracking = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->damage_trigger_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->damage_trigger_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Evidence-based thresholds */
     config->spine_loss_trigger_threshold = SPINE_LOSS_IMMUNE_THRESHOLD;

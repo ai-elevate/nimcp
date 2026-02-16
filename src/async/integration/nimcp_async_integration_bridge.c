@@ -12,6 +12,7 @@
  */
 
 #include "async/integration/nimcp_async_integration_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -494,8 +495,8 @@ int async_integration_default_config(async_integration_config_t* config)
     config->default_band = BIO_OSC_GAMMA;
 
     /* Phase coupling */
-    config->coherence_threshold = 0.8f;
-    config->coupling_strength = 0.5f;
+    config->coherence_threshold = NIMCP_CONFIDENCE_HIGH;
+    config->coupling_strength = NIMCP_MODULATION_DEFAULT;
 
     /* Features */
     config->enable_predictive_dispatch = true;

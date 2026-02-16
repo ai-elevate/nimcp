@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(extended_metaplasticity)
 
@@ -105,10 +106,10 @@ extended_metaplasticity_config_t metaplasticity_config_default(void) {
         .max_theta = METAPLASTICITY_MAX_THRESHOLD,
         .initial_theta_baseline = METAPLASTICITY_DEFAULT_THETA_BASELINE,
 
-        .da_sensitivity = 1.0f,
-        .ne_sensitivity = 1.0f,
-        .ach_sensitivity = 1.0f,
-        .serotonin_sensitivity = 1.0f,
+        .da_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .ne_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .ach_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .serotonin_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
 
         .enable_sleep_reset = true,
         .sleep_reset_strength = 1.0f,

@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_eligibility_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -133,9 +134,9 @@ int eligibility_immune_default_config(eligibility_immune_config_t* config) {
     config->enable_consolidation_monitoring = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->stress_trigger_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->stress_trigger_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Evidence-based thresholds */
     config->learning_failure_threshold = LEARNING_FAILURE_STRESS_THRESHOLD;

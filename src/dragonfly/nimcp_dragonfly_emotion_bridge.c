@@ -22,6 +22,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_emotion_bridge)
 
@@ -134,7 +135,7 @@ dragonfly_emotion_config_t dragonfly_emotion_default_config(void) {
         /* Learning */
         .success_confidence_boost = 0.1f,
         .failure_confidence_penalty = 0.05f,
-        .emotional_learning_rate = 0.1f,
+        .emotional_learning_rate = NIMCP_LEARNING_RATE_COARSE,
 
         /* Homeostasis */
         .enable_emotional_homeostasis = true,

@@ -6,6 +6,7 @@
  */
 
 #include "glial/nimcp_glial_substrate_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
 #include "api/nimcp_api_exception.h"
@@ -64,13 +65,13 @@ int glial_substrate_default_config(glial_substrate_config_t* config) {
     config->enable_lactate_shuttle = true;
     config->enable_bio_async = false;
 
-    config->atp_sensitivity = 1.0f;
-    config->temperature_sensitivity = 1.0f;
-    config->oxygen_sensitivity = 1.0f;
+    config->atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->temperature_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->oxygen_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
-    config->lactate_efficiency = 1.0f;
-    config->myelin_savings_factor = 1.0f;
-    config->pruning_savings_factor = 1.0f;
+    config->lactate_efficiency = NIMCP_SENSITIVITY_DEFAULT;
+    config->myelin_savings_factor = NIMCP_SENSITIVITY_DEFAULT;
+    config->pruning_savings_factor = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

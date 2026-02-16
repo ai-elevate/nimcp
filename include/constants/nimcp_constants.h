@@ -16,6 +16,9 @@
  *   #include "constants/nimcp_buffer_constants.h"
  *   #include "constants/nimcp_frequency_constants.h"
  *   #include "constants/nimcp_dimension_constants.h"
+ *   #include "constants/nimcp_learning_constants.h"
+ *   #include "constants/nimcp_threshold_constants.h"
+ *   #include "constants/nimcp_neural_constants.h"
  */
 
 #ifndef NIMCP_CONSTANTS_H
@@ -25,5 +28,8 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "constants/nimcp_frequency_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_neural_constants.h"
 
 #endif /* NIMCP_CONSTANTS_H */

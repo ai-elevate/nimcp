@@ -6,6 +6,7 @@
  */
 
 #include "portia/immune/nimcp_portia_attention_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -153,9 +154,9 @@ int portia_attention_immune_default_config(portia_attention_immune_config_t* con
     config->enable_preemption_inflammation = true;
 
     /* Sensitivity tuning */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->resource_immune_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->resource_immune_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Thresholds */
     config->depletion_threshold = RESOURCE_DEPLETION_THRESHOLD;

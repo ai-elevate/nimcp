@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp_pr_bridge)
 
@@ -77,7 +78,7 @@ stdp_pr_bridge_config_t stdp_pr_bridge_default_config(void) {
     stdp_pr_bridge_config_t config = {
         .resonance_lr_min = STDP_PR_RESONANCE_LR_MIN,
         .resonance_lr_max = STDP_PR_RESONANCE_LR_MAX,
-        .resonance_sensitivity = 1.0f,
+        .resonance_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
 
         .consolidation_gate_high = STDP_PR_CONSOLIDATION_GATE_HIGH,
         .consolidation_gate_low = STDP_PR_CONSOLIDATION_GATE_LOW,

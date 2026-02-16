@@ -73,8 +73,9 @@ struct semantic_compressor {
 #define COMPRESSION_VERSION 1
 #define MIN_QUALITY_THRESHOLD 0.1f
 #define MAX_QUALITY_THRESHOLD 1.0f
-#define DEFAULT_LEARNING_RATE 0.01f
-#define EPSILON 1e-6f
+#define DEFAULT_LEARNING_RATE NIMCP_LEARNING_RATE_DEFAULT
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* ============================================================================
  * Helper Functions

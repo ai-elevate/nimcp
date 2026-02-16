@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -27,7 +28,7 @@ int bcm_fep_bridge_default_config(bcm_fep_config_t* config) {
     NIMCP_API_CHECK_NULL(config, -1, "BCM-FEP config is NULL");
     config->complexity_threshold_gain = BCM_FEP_THRESHOLD_SCALING;
     config->precision_selectivity_gain = BCM_FEP_SELECTIVITY_GAIN;
-    config->pe_lr_sensitivity = 1.0f;
+    config->pe_lr_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->enable_complexity_regularization = true;
     config->enable_precision_modulation = true;
     config->enable_pe_gating = true;

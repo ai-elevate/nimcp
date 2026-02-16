@@ -8,6 +8,7 @@
  */
 
 #include "lnn/nimcp_lnn_training.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_gradient.h"
@@ -81,19 +82,19 @@ static float compute_warmup_cosine_lr(
 
 /* Default training hyperparameters */
 #ifndef LNN_TRAINING_DEFAULT_LR
-#define LNN_TRAINING_DEFAULT_LR 0.001f
+#define LNN_TRAINING_DEFAULT_LR NIMCP_LEARNING_RATE_FINE
 #endif
 #ifndef LNN_TRAINING_DEFAULT_WEIGHT_DECAY
-#define LNN_TRAINING_DEFAULT_WEIGHT_DECAY 0.0001f
+#define LNN_TRAINING_DEFAULT_WEIGHT_DECAY NIMCP_WEIGHT_DECAY_DEFAULT
 #endif
 #ifndef LNN_TRAINING_DEFAULT_BETA1
-#define LNN_TRAINING_DEFAULT_BETA1 0.9f
+#define LNN_TRAINING_DEFAULT_BETA1 NIMCP_ADAM_BETA1_DEFAULT
 #endif
 #ifndef LNN_TRAINING_DEFAULT_BETA2
-#define LNN_TRAINING_DEFAULT_BETA2 0.999f
+#define LNN_TRAINING_DEFAULT_BETA2 NIMCP_ADAM_BETA2_DEFAULT
 #endif
 #ifndef LNN_TRAINING_DEFAULT_EPSILON
-#define LNN_TRAINING_DEFAULT_EPSILON 1e-8f
+#define LNN_TRAINING_DEFAULT_EPSILON NIMCP_EPSILON_ADAM
 #endif
 #ifndef LNN_TRAINING_MAX_SCHEDULE_PARAMS
 #define LNN_TRAINING_MAX_SCHEDULE_PARAMS 32
@@ -130,7 +131,7 @@ int lnn_training_config_default(lnn_training_config_t* config) {
     config->epsilon = LNN_TRAINING_DEFAULT_EPSILON;
 
     /* Gradient manager defaults */
-    config->gradient_clip_norm = 1.0f;  /* Enable gradient clipping by default */
+    config->gradient_clip_norm = NIMCP_GRADIENT_CLIP_DEFAULT;  /* Enable gradient clipping by default */
     config->use_gradient_scaling = false;
     config->accum_mode = NIMCP_GRAD_ACCUM_MEAN;
     config->accumulation_steps = 1;

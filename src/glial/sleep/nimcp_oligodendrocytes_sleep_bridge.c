@@ -11,6 +11,7 @@
  */
 
 #include "glial/sleep/nimcp_oligodendrocytes_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -256,7 +257,7 @@ int oligo_sleep_default_config(oligo_sleep_config_t* config)
     config->enable_repair_modulation = true;
     config->enable_metabolic_modulation = true;
     config->enable_activity_myelination = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     config->repair_boost_multiplier = 3.0f;    /* 3x during deep sleep */
     config->synthesis_boost_multiplier = 5.0f; /* 5x during deep sleep */
 

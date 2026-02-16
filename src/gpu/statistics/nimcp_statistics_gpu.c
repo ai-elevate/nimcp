@@ -14,6 +14,7 @@
  */
 
 #include "gpu/statistics/nimcp_statistics_gpu.h"
+#include "constants/nimcp_buffer_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include "utils/exception/nimcp_exception_macros.h"
@@ -24,7 +25,7 @@
 // Thread-Local Error Storage
 //=============================================================================
 
-static __thread char g_stats_gpu_error[256] = "GPU statistics not available (CUDA disabled)";
+static __thread char g_stats_gpu_error[NIMCP_ERROR_BUFFER_SIZE] = "GPU statistics not available (CUDA disabled)";
 
 //=============================================================================
 // RNG Lifecycle Stubs

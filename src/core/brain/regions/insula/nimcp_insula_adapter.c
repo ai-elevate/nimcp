@@ -19,42 +19,12 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(insula_adapter)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_insula_adapter_mesh_id = 0;
-static mesh_participant_registry_t* g_insula_adapter_mesh_registry = NULL;
-
-nimcp_error_t insula_adapter_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_insula_adapter_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "insula_adapter", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "insula_adapter";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_insula_adapter_mesh_id);
-    if (err == NIMCP_SUCCESS) g_insula_adapter_mesh_registry = registry;
-    return err;
-}
-
-void insula_adapter_mesh_unregister(void) {
-    if (g_insula_adapter_mesh_registry && g_insula_adapter_mesh_id != 0) {
-        mesh_participant_unregister(g_insula_adapter_mesh_registry, g_insula_adapter_mesh_id);
-        g_insula_adapter_mesh_id = 0;
-        g_insula_adapter_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(insula_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -367,7 +337,7 @@ insula_config_t insula_default_config(void) {
 
     /* Training */
     config.enable_training = false;
-    config.learning_rate = 0.01f;
+    config.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
 
     /* Bio-async */
     config.enable_bio_async = true;

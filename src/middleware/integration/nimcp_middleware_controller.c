@@ -31,6 +31,7 @@
 
 #define LOG_MODULE "middleware_controller"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(middleware_controller)
 
@@ -258,7 +259,7 @@ middleware_controller_config_t middleware_controller_default_config(void)
 
     /* Performance tuning */
     config.enable_command_batching = true;
-    config.batch_timeout_us = 100;
+    config.batch_timeout_us = NIMCP_FAST_TIMEOUT_MS;
     config.enable_shannon_tracking = true;
 
     /* Safety limits */

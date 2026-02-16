@@ -9,6 +9,7 @@
 #include "integration/inter/sensory_memory/nimcp_sensory_memory_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -115,8 +116,8 @@ nimcp_layer_error_t nimcp_sensory_memory_update(nimcp_sensory_memory_bridge_t br
     bridge->state.context_bias *= (1.0f - dt * 0.025f);
 
     /* Update averages */
-    bridge->stats.avg_encoding_strength = bridge->stats.avg_encoding_strength * 0.99f + bridge->state.feature_encoding_level * 0.01f;
-    bridge->stats.avg_expectation_match = bridge->stats.avg_expectation_match * 0.99f + bridge->state.expectation_strength * 0.01f;
+    bridge->stats.avg_encoding_strength = bridge->stats.avg_encoding_strength * NIMCP_EMA_DECAY_DEFAULT + bridge->state.feature_encoding_level * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_expectation_match = bridge->stats.avg_expectation_match * NIMCP_EMA_DECAY_DEFAULT + bridge->state.expectation_strength * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

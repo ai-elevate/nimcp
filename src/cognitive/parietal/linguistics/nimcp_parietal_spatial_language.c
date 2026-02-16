@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/nimcp_parietal_spatial_language.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/fuzzy/nimcp_fuzzy_types.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
@@ -69,7 +70,7 @@ struct spatial_language {
  * THREAD-LOCAL ERROR STORAGE
  * ============================================================================ */
 
-static _Thread_local char g_last_error[256] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_last_error(const char* fmt, ...) {
     va_list args;
@@ -354,11 +355,11 @@ static const preposition_definition_t* find_preposition(
     const spatial_language_t* sl,
     const char* word
 ) {
-    char normalized[64];
+    char normalized[NIMCP_ID_BUFFER_SIZE];
     normalize_word(word, normalized, sizeof(normalized));
 
     for (uint32_t i = 0; i < sl->num_prepositions; i++) {
-        char prep_normalized[64];
+        char prep_normalized[NIMCP_ID_BUFFER_SIZE];
         normalize_word(sl->prepositions[i].word, prep_normalized, sizeof(prep_normalized));
 
         if (strcmp(normalized, prep_normalized) == 0) {

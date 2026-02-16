@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_neuromod_substrate_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/validation/nimcp_common.h"
@@ -205,10 +206,10 @@ int neuromod_substrate_default_config(neuromod_substrate_config_t* config)
     config->enable_bio_async = true;
 
     /* Default sensitivity (1.0 = normal) */
-    config->atp_sensitivity = 1.0f;
-    config->calcium_sensitivity = 1.0f;
-    config->temperature_sensitivity = 1.0f;
-    config->ion_sensitivity = 1.0f;
+    config->atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->calcium_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->temperature_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->ion_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Biological Q10 coefficients */
     config->q10_synthesis = Q10_SYNTHESIS;

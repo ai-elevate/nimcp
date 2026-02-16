@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metabolic/nimcp_metabolic_plasticity.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -124,8 +125,8 @@ int metabolic_plasticity_default_config(metabolic_config_t* config) {
     config->enable_activity_scaling = true;
 
     /* Sensitivity */
-    config->cost_sensitivity = 1.0f;
-    config->recovery_sensitivity = 1.0f;
+    config->cost_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->recovery_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Callbacks */
     config->state_callback = NULL;

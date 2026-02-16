@@ -22,6 +22,7 @@
 #define LOG_MODULE "GPU_EXEC_MODE"
 #define LOG_MODULE_ID 0x0900
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(execution_mode)
 
@@ -1106,7 +1107,7 @@ execution_config_t execution_get_default_config(execution_mode_t mode)
                 hardware_capabilities_t caps;
                 execution_detect_capabilities(&caps);
                 config.cpu_threads = caps.cpu_threads;
-                config.batch_size = 32;
+                config.batch_size = NIMCP_DEFAULT_BATCH_SIZE;
             }
             break;
 

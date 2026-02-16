@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(tom_substrate_bridge)
 //=============================================================================
@@ -311,10 +312,10 @@ tom_substrate_config_t tom_substrate_get_default_config(void) {
     config.enable_empathy_modulation = true;
 
     /* Set moderate sensitivities */
-    config.atp_sensitivity = 1.0f;
-    config.fatigue_sensitivity = 1.0f;
-    config.stress_sensitivity = 1.0f;
-    config.empathy_sensitivity = 1.0f;
+    config.atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.stress_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.empathy_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Impairment threshold: 60% capacity */
     config.impairment_threshold = 0.6f;

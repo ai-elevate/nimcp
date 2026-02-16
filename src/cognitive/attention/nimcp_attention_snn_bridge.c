@@ -23,6 +23,9 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(attention_snn_bridge)
 //=============================================================================
@@ -270,7 +273,7 @@ attention_snn_config_t attention_snn_config_default(void) {
 
 
     attention_snn_config_t config = {
-        .num_heads = 8,
+        .num_heads = NIMCP_DEFAULT_ATTENTION_HEADS,
         .neurons_per_head = ATTENTION_SNN_NEURONS_PER_HEAD,
         .salience_dim = ATTENTION_SNN_SALIENCE_DIM,
         .sequence_length = 128,
@@ -283,7 +286,7 @@ attention_snn_config_t attention_snn_config_default(void) {
 
         .decoding = ATTENTION_SNN_DECODE_SOFTMAX,
         .decoding_threshold = 0.3f,
-        .softmax_temperature = 1.0f,
+        .softmax_temperature = NIMCP_TEMPERATURE_DEFAULT,
         .temporal_smoothing = 0.8f,
 
         .enable_competition = true,
@@ -369,7 +372,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     }
 
     /* Create populations for each attention head */
-    char pop_name[64];
+    char pop_name[NIMCP_ID_BUFFER_SIZE];
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
         /* Phase 8: Loop progress heartbeat */
         if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {

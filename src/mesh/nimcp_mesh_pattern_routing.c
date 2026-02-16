@@ -15,6 +15,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "constants/nimcp_learning_constants.h"
 
 /* ============================================================================
  * Constants
@@ -224,7 +225,7 @@ mesh_pattern_router_t* mesh_pattern_router_create(
         router->config.default_threshold = MESH_DEFAULT_ACTIVATION_THRESHOLD;
         router->config.competition_strength = 0.1f;
         router->config.enable_learning = true;
-        router->config.learning_rate = 0.01f;
+        router->config.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
         router->config.max_endorsers = 16;
     }
 

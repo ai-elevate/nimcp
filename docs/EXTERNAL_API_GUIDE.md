@@ -1,6 +1,6 @@
 # NIMCP External API Guide
 
-**Version 2.6.1** | For users integrating NIMCP into their applications
+**Version 2.6.3** | For users integrating NIMCP into their applications
 
 ---
 
@@ -9,13 +9,23 @@
 1. [Quick Start](#quick-start)
 2. [Brain API](#brain-api)
 3. [Training Pipeline](#training-pipeline)
-4. [Network API](#network-api)
-5. [Ethics Module](#ethics-module)
-6. [Knowledge Graph](#knowledge-graph)
-7. [Tensor Operations](#tensor-operations)
-8. [Health Agent API](#health-agent-api)
-9. [Error Handling](#error-handling)
-10. [Complete Examples](#complete-examples)
+4. [Training Callbacks](#training-callbacks)
+5. [Dynamic Brain Resizing](#dynamic-brain-resizing)
+6. [Brain Snapshots](#brain-snapshots)
+7. [Copy-on-Write Cache](#copy-on-write-cache)
+8. [Working Memory](#working-memory)
+9. [Global Workspace](#global-workspace)
+10. [Complex Oscillations](#complex-oscillations)
+11. [Brain Probe](#brain-probe)
+12. [Config File Loading](#config-file-loading)
+13. [Network API](#network-api)
+14. [Ethics Module](#ethics-module)
+15. [Knowledge Graph](#knowledge-graph)
+16. [Tensor Operations](#tensor-operations)
+17. [Health Agent API](#health-agent-api)
+18. [Error Handling](#error-handling)
+19. [Python Bindings](#python-bindings)
+20. [Complete Examples](#complete-examples)
 
 ---
 
@@ -244,8 +254,32 @@ typedef struct {
 
     bool enable_biological_modulation;
     float biological_blend;     // Bio modulation strength (0-1)
+
+    // Network type dispatch (new in 2.6.3)
+    nimcp_network_type_t network_type;     // NIMCP_NETWORK_ADAPTIVE (default)
+
+    // SNN-specific (when network_type == NIMCP_NETWORK_SNN)
+    nimcp_snn_train_method_t snn_method;   // STDP, R_STDP, EPROP, SURROGATE, HOMEOSTATIC
+    float snn_eligibility_tau;             // Eligibility trace decay (ms, default: 20.0)
+    float snn_reward_tau;                  // Reward signal decay (ms, default: 100.0)
+    float snn_surrogate_beta;              // Surrogate gradient steepness (default: 5.0)
+
+    // LNN-specific (when network_type == NIMCP_NETWORK_LNN)
+    nimcp_lnn_train_method_t lnn_method;   // ADJOINT, BPTT, RTRL, EPROP
+    uint32_t lnn_bptt_truncation;          // BPTT truncation length (default: 100)
+    bool lnn_use_adjoint_checkpointing;    // Memory-efficient checkpointing (default: true)
 } nimcp_training_config_t;
 ```
+
+### Network Types
+
+| Type | Description |
+|------|-------------|
+| `NIMCP_NETWORK_ADAPTIVE` | Standard adaptive network (backprop) - default |
+| `NIMCP_NETWORK_SNN` | Spiking Neural Network (STDP/eProp/surrogate) |
+| `NIMCP_NETWORK_LNN` | Liquid Neural Network (adjoint ODE) |
+| `NIMCP_NETWORK_CNN` | Convolutional Neural Network |
+| `NIMCP_NETWORK_HYBRID` | Mixed architecture (multiple network types) |
 
 ### Training Results
 
@@ -261,6 +295,341 @@ typedef struct {
 
 ---
 
+## Training Callbacks
+
+Event-driven training monitoring and control.
+
+### Callback Events
+
+| Event | Description |
+|-------|-------------|
+| `NIMCP_CB_STEP_COMPLETE` | Training step finished |
+| `NIMCP_CB_EPOCH_COMPLETE` | Epoch finished |
+| `NIMCP_CB_LOSS_COMPUTED` | Loss calculated |
+| `NIMCP_CB_WEIGHTS_UPDATED` | Weights modified |
+| `NIMCP_CB_LR_CHANGED` | Learning rate changed |
+| `NIMCP_CB_CONVERGENCE` | Early stopping triggered |
+| `NIMCP_CB_DIVERGENCE` | Training instability |
+| `NIMCP_CB_CHECKPOINT` | Checkpoint saved |
+
+### Callback Actions
+
+| Action | Description |
+|--------|-------------|
+| `NIMCP_CB_ACTION_CONTINUE` | Continue training normally |
+| `NIMCP_CB_ACTION_STOP` | Stop training loop |
+| `NIMCP_CB_ACTION_SKIP` | Skip current step |
+| `NIMCP_CB_ACTION_ROLLBACK` | Rollback to checkpoint |
+| `NIMCP_CB_ACTION_REDUCE_LR` | Reduce learning rate |
+| `NIMCP_CB_ACTION_INCREASE_LR` | Increase learning rate |
+
+### Enabling Callbacks
+
+```c
+// Get default callback configuration
+nimcp_callback_config_t config = nimcp_callback_config_default();
+config.enable_early_stopping = true;
+config.patience = 10;
+
+// Enable callbacks (must be called after configure_training)
+nimcp_brain_enable_callbacks(brain, &config);
+
+// Register a callback
+nimcp_callback_action_t my_logger(
+    nimcp_callback_event_t event,
+    const nimcp_callback_metrics_t* m,
+    void* user_data)
+{
+    printf("Step %lu: loss=%.4f lr=%.6f\n", m->step, m->loss, m->learning_rate);
+    return NIMCP_CB_ACTION_CONTINUE;
+}
+
+uint32_t cb_id = nimcp_brain_register_callback(
+    brain, NIMCP_CB_STEP_COMPLETE, my_logger, NULL, "logger");
+
+// Unregister when done
+nimcp_brain_unregister_callback(brain, cb_id);
+
+// Disable all callbacks
+nimcp_brain_disable_callbacks(brain);
+```
+
+### Callback Statistics
+
+```c
+uint64_t total_fired;
+float avg_time_us;
+uint32_t early_stops;
+nimcp_brain_get_callback_stats(brain, &total_fired, &avg_time_us, &early_stops);
+```
+
+---
+
+## Dynamic Brain Resizing
+
+Dynamically adjust brain neuron count at runtime.
+
+```c
+// Manual resize to specific neuron count
+bool success = nimcp_brain_resize(brain, 5000);
+
+// Auto-resize based on hardware capabilities and utilization
+bool resized = nimcp_brain_auto_resize(brain);
+
+// Query current neuron count
+uint32_t count = nimcp_brain_get_neuron_count(brain);
+
+// Get utilization metrics
+float utilization, saturation;
+nimcp_brain_get_utilization_metrics(brain, &utilization, &saturation);
+printf("Utilization: %.1f%%, Saturation: %.1f%%\n",
+       utilization * 100, saturation * 100);
+```
+
+---
+
+## Brain Snapshots
+
+Named, timestamped backups for versioning and A/B testing.
+
+```c
+// Save named snapshots at key points
+nimcp_brain_snapshot_save(brain, "before_training", "Baseline state");
+// ... train ...
+nimcp_brain_snapshot_save(brain, "after_epoch_1", "After 1 epoch");
+// ... more training ...
+nimcp_brain_snapshot_save(brain, "final", "Production model");
+
+// Restore from a snapshot
+nimcp_brain_t restored = nimcp_brain_snapshot_restore(brain, "before_training");
+
+// List all available snapshots
+nimcp_brain_snapshot_info_t infos[100];
+uint32_t count;
+nimcp_brain_snapshot_list(brain, infos, 100, &count);
+for (uint32_t i = 0; i < count; i++) {
+    printf("%s: %s (%.1f KB)\n", infos[i].name,
+           infos[i].description, infos[i].file_size / 1024.0f);
+}
+
+// Delete a snapshot
+nimcp_brain_snapshot_delete(brain, "after_epoch_1");
+```
+
+---
+
+## Copy-on-Write Cache
+
+Efficient memory sharing for brain cloning and checkpointing.
+
+### COW Clone
+
+```c
+// Create a lightweight clone (86% memory savings)
+nimcp_brain_t clone = nimcp_brain_clone_cow(original);
+// clone shares memory with original - writes trigger copy
+nimcp_brain_learn_example(clone, ...);  // Triggers copy on first write
+```
+
+### COW Snapshot/Restore
+
+```c
+// Instant snapshot (<1ms, ~48 bytes overhead)
+nimcp_brain_snapshot_t checkpoint = nimcp_brain_snapshot_cow(brain);
+
+// Train and evaluate...
+train_epochs(brain, 100);
+
+if (performance < threshold) {
+    // Instant rollback
+    nimcp_brain_restore_cow(brain, checkpoint);
+}
+
+// Clean up snapshot
+nimcp_brain_snapshot_destroy(checkpoint);
+```
+
+**Performance:**
+- Clone time: <10ms (vs ~1000ms for full copy)
+- Memory savings: 86% for replicas, 99% for snapshots
+- Restore time: <1ms (pointer swapping)
+
+---
+
+## Working Memory
+
+Active representation buffer for reasoning (Miller's 7±2 capacity).
+
+```c
+// Add item to working memory with salience priority
+float features[64] = {...};
+nimcp_brain_working_memory_add(brain, features, 64, 0.8f);  // High salience
+
+// Get highest-salience item
+uint32_t size;
+const float* item = nimcp_brain_working_memory_get(brain, 0, &size);
+
+// Get statistics
+uint32_t current_size, capacity;
+nimcp_brain_working_memory_stats(brain, &current_size, &capacity);
+printf("Working memory: %u/%u items\n", current_size, capacity);
+
+// Refresh item to prevent temporal decay
+nimcp_brain_working_memory_refresh(brain, 0);
+```
+
+> **Note:** Requires `enable_working_memory=true` in brain config.
+
+---
+
+## Global Workspace
+
+Conscious access and cross-module information broadcasting (Global Workspace Theory).
+
+### Cognitive Module Identifiers
+
+| Module | Description |
+|--------|-------------|
+| `NIMCP_MODULE_PERCEPTION` | Sensory processing |
+| `NIMCP_MODULE_WORKING_MEMORY` | Active memory |
+| `NIMCP_MODULE_EXECUTIVE` | Executive control |
+| `NIMCP_MODULE_ETHICS` | Ethical reasoning |
+| `NIMCP_MODULE_ATTENTION` | Attention |
+| `NIMCP_MODULE_EMOTION` | Emotional processing |
+| `NIMCP_MODULE_SALIENCE` | Salience detection |
+
+### Competition and Broadcasting
+
+```c
+// Compete for conscious access
+float content[256] = {...};
+nimcp_status_t status = nimcp_brain_workspace_compete(
+    brain, NIMCP_MODULE_PERCEPTION, content, 256, 0.85f
+);
+if (status == NIMCP_OK) {
+    printf("Content reached conscious access!\n");
+}
+
+// Read current broadcast
+float broadcast[256];
+uint32_t dim;
+nimcp_cognitive_module_t source;
+if (nimcp_brain_workspace_read(brain, broadcast, 256, &dim, &source) == NIMCP_OK) {
+    printf("Broadcast from module %d, dimension %u\n", source, dim);
+}
+
+// Subscribe/unsubscribe modules
+nimcp_brain_workspace_subscribe(brain, NIMCP_MODULE_EXECUTIVE);
+nimcp_brain_workspace_unsubscribe(brain, NIMCP_MODULE_EXECUTIVE);
+
+// Check broadcast status
+bool has_broadcast;
+nimcp_brain_workspace_has_broadcast(brain, &has_broadcast);
+
+// Statistics
+uint32_t total_broadcasts, total_competitions;
+float avg_strength;
+nimcp_brain_workspace_stats(brain, &total_broadcasts, &total_competitions, &avg_strength);
+```
+
+> **Note:** Requires `enable_global_workspace=true` in brain config.
+
+---
+
+## Complex Oscillations
+
+Phase coding and neural synchrony with complex number support.
+
+```c
+// Enable complex oscillation features (~15% memory overhead)
+nimcp_enable_complex_oscillations(brain, true);
+
+// Check if enabled
+bool enabled = nimcp_is_complex_oscillations_enabled(brain);
+
+// Get oscillation phasor for a neuron
+nimcp_oscillation_phasor_t phasor = nimcp_get_oscillation_phasor(brain, 42);
+printf("Neuron 42: amplitude=%.2f, phase=%.2f rad\n",
+       phasor.amplitude, phasor.phase);
+
+// Compute phase coherence across neurons
+uint32_t neurons[] = {10, 20, 30, 40, 50};
+float coherence = nimcp_get_phase_coherence(brain, neurons, 5);
+if (coherence > 0.6f) {
+    printf("High synchronization detected!\n");
+}
+
+// Measure theta-gamma phase-amplitude coupling (PAC)
+float pac = nimcp_get_pac_modulation(brain, 6.0f, 40.0f);
+if (pac > 0.4f) {
+    printf("Strong theta-gamma coupling (memory encoding active)\n");
+}
+```
+
+**Phase Coherence Scale:**
+
+| Value | Meaning |
+|-------|---------|
+| 0.0 | Random phases (no synchronization) |
+| 0.3 | Weak synchronization |
+| 0.6 | Moderate synchronization |
+| 1.0 | Perfect phase locking |
+
+---
+
+## Brain Probe
+
+Comprehensive brain state snapshot for monitoring and debugging.
+
+```c
+nimcp_brain_probe_t probe;
+nimcp_brain_probe(brain, &probe);
+
+printf("Brain: %s (%u neurons, %u synapses)\n",
+       probe.task_name, probe.num_neurons, probe.num_synapses);
+printf("Inferences: %lu, Learning steps: %lu\n",
+       probe.total_inferences, probe.total_learning_steps);
+printf("Accuracy: %.1f%%, Memory: %.1f MB\n",
+       probe.accuracy * 100, probe.memory_bytes / (1024.0 * 1024.0));
+
+// COW statistics (if this is a clone)
+if (probe.is_cow_clone) {
+    printf("COW: %u refs, %.1f KB shared, %.1f KB private\n",
+           probe.cow_ref_count,
+           probe.cow_shared_bytes / 1024.0,
+           probe.cow_private_bytes / 1024.0);
+}
+
+// Broadcast probe data via bio-async message system
+nimcp_brain_broadcast_probe(brain);
+```
+
+---
+
+## Config File Loading
+
+Create brains from YAML or JSON configuration files.
+
+```c
+nimcp_brain_t brain = nimcp_brain_create_from_config("model.yaml");
+```
+
+**Example YAML config:**
+
+```yaml
+brain:
+  name: "classifier"
+  size: small           # tiny, small, medium, large
+  task: classification  # classification, regression, pattern_matching, sequence, association
+  architecture:
+    num_inputs: 784
+    num_outputs: 10
+    num_hidden: 256
+    learning_rate: 0.01
+```
+
+---
+
 ## Network API
 
 Low-level neural network control for advanced users.
@@ -269,13 +638,14 @@ Low-level neural network control for advanced users.
 
 ```c
 nimcp_network_t nimcp_network_create(
-    const char* name,
-    uint32_t num_inputs,
-    uint32_t num_outputs,
-    uint32_t num_hidden_layers,
-    const uint32_t* hidden_sizes
+    uint32_t num_inputs,        // Number of input neurons
+    uint32_t num_outputs,       // Number of output neurons
+    uint32_t num_hidden,        // Number of hidden neurons
+    float learning_rate         // Learning rate (typically 0.001 - 0.1)
 );
 ```
+
+**Returns:** Network handle, or `NULL` on error.
 
 ### Network Operations
 
@@ -284,15 +654,25 @@ nimcp_network_t nimcp_network_create(
 nimcp_status_t nimcp_network_forward(
     nimcp_network_t network,
     const float* inputs,
-    float* outputs
+    uint32_t num_inputs,
+    float* outputs,             // Pre-allocated output array
+    uint32_t num_outputs
 );
 
-// Backward pass (training)
-nimcp_status_t nimcp_network_backward(
+// Train on a single example
+nimcp_status_t nimcp_network_train(
     nimcp_network_t network,
-    const float* target,
-    float learning_rate
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets
 );
+```
+
+### Cleanup
+
+```c
+void nimcp_network_destroy(nimcp_network_t network);
 ```
 
 ---
@@ -310,20 +690,16 @@ nimcp_ethics_t nimcp_ethics_create(void);
 ### Evaluating Actions
 
 ```c
-// Get ethical score for an action
-float nimcp_ethics_evaluate(
+// Check if an action is ethically acceptable
+nimcp_status_t nimcp_ethics_check(
     nimcp_ethics_t ethics,
-    const char* action,
-    const char* context
-);
-
-// Check if action is permissible
-bool nimcp_ethics_is_permissible(
-    nimcp_ethics_t ethics,
-    const char* action,
-    float threshold          // Minimum acceptable score
+    const float* situation,     // Situation features array
+    uint32_t num_features,      // Number of features
+    float* out_score            // Score: -1.0=harmful, 0.0=neutral, 1.0=beneficial
 );
 ```
+
+**Returns:** `NIMCP_OK` on success.
 
 ### Cleanup
 
@@ -340,45 +716,37 @@ Structured knowledge representation and reasoning.
 ### Creating Knowledge Graphs
 
 ```c
-nimcp_knowledge_t nimcp_knowledge_create(const char* name);
+nimcp_knowledge_t nimcp_knowledge_create(void);
 ```
 
 ### Adding Knowledge
 
 ```c
-// Add entity
-nimcp_status_t nimcp_knowledge_add_entity(
-    nimcp_knowledge_t kg,
-    const char* entity_name,
-    const char* entity_type
-);
-
-// Add relationship
-nimcp_status_t nimcp_knowledge_add_relation(
-    nimcp_knowledge_t kg,
-    const char* subject,
-    const char* predicate,
-    const char* object
+// Add a fact (subject-predicate-object triple)
+nimcp_status_t nimcp_knowledge_add_fact(
+    nimcp_knowledge_t knowledge,
+    const char* subject,        // Subject entity
+    const char* predicate,      // Relationship type
+    const char* object          // Object entity
 );
 ```
 
 ### Querying
 
 ```c
-// Query relationships
+// Query the knowledge graph
 nimcp_status_t nimcp_knowledge_query(
-    nimcp_knowledge_t kg,
-    const char* subject,
-    const char* predicate,
-    char* result,           // Buffer for result
-    size_t result_size
+    nimcp_knowledge_t knowledge,
+    const char* query,          // Query string
+    char* out_result,           // Result buffer (pre-allocated, min 1024 bytes)
+    uint32_t max_result_len     // Maximum result length
 );
 ```
 
 ### Cleanup
 
 ```c
-void nimcp_knowledge_destroy(nimcp_knowledge_t kg);
+void nimcp_knowledge_destroy(nimcp_knowledge_t knowledge);
 ```
 
 ---
@@ -782,6 +1150,187 @@ if (status != NIMCP_OK) {
 
 ---
 
+## Python Bindings
+
+NIMCP provides comprehensive Python bindings via the `nimcp` module.
+
+### Installation
+
+```bash
+cd nimcp/build
+cmake ..
+make nimcp_python -j4
+# Module is built as nimcp.so in build/src/python/
+```
+
+### Module Functions
+
+```python
+import nimcp
+
+# Library lifecycle
+nimcp.init()                    # Initialize NIMCP library
+print(nimcp.version())          # "2.6.3"
+print(nimcp.version_int())      # 20603
+print(nimcp.get_error())        # Last error message
+nimcp.shutdown()                # Cleanup
+```
+
+### Constants
+
+```python
+# Brain sizes
+nimcp.BRAIN_TINY                # 100 neurons
+nimcp.BRAIN_SMALL               # 1K neurons
+nimcp.BRAIN_MEDIUM              # 10K neurons
+nimcp.BRAIN_LARGE               # 100K neurons
+
+# Task types
+nimcp.TASK_CLASSIFICATION
+nimcp.TASK_REGRESSION
+nimcp.TASK_PATTERN_MATCHING
+nimcp.TASK_SEQUENCE
+nimcp.TASK_ASSOCIATION
+
+# Network types
+nimcp.NETWORK_ADAPTIVE          # Standard backprop
+nimcp.NETWORK_SNN               # Spiking neural network
+nimcp.NETWORK_LNN               # Liquid neural network
+nimcp.NETWORK_CNN               # Convolutional
+nimcp.NETWORK_HYBRID            # Mixed architecture
+
+# Status codes
+nimcp.OK
+nimcp.ERROR
+nimcp.ERROR_NULL_ARG
+nimcp.ERROR_INVALID
+nimcp.ERROR_MEMORY
+nimcp.ERROR_IO
+```
+
+### Brain Creation and Inference
+
+```python
+# Create a brain
+brain = nimcp.Brain("classifier",
+                    size=nimcp.BRAIN_SMALL,
+                    task=nimcp.TASK_CLASSIFICATION,
+                    inputs=10, outputs=3)
+
+# Learn from examples
+brain.learn([0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.0],
+            "class_a", confidence=1.0)
+
+# Predict
+label, confidence = brain.decide([0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.0])
+print(f"Predicted: {label} ({confidence:.1%})")
+
+# Raw inference (numeric outputs)
+outputs = brain.infer([0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.0], 3)
+print(f"Raw outputs: {outputs}")
+
+# Save/load
+brain.save("model.nimcp")
+loaded = nimcp.Brain.load("model.nimcp")
+
+# Create from config file
+brain = nimcp.Brain.create_from_config("model.yaml")
+
+# Load pre-trained model
+brain = nimcp.Brain.from_pretrained("nimcp_foundation_medium_v1.0")
+```
+
+### Training Pipeline
+
+```python
+# Configure training
+config = nimcp.TrainingConfig.default()
+config.loss_type = nimcp.LOSS_CROSS_ENTROPY
+config.optimizer_type = nimcp.OPT_ADAM
+config.learning_rate = 0.001
+brain.configure_training(config)
+
+# Single training step
+features = [0.1] * 784
+targets = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0]  # One-hot class 3
+result = brain.train_step(features, targets)
+print(f"Loss: {result.loss:.4f}, LR: {result.learning_rate:.6f}")
+
+# Batch training
+batch_features = [[0.1] * 784 for _ in range(32)]
+batch_targets = [[0] * 10 for _ in range(32)]
+result = brain.train_batch(batch_features, batch_targets)
+
+# Training statistics
+steps, loss, lr = brain.get_training_stats()
+new_lr = brain.step_scheduler(validation_accuracy)
+```
+
+### Dynamic Resizing
+
+```python
+print(f"Neurons: {brain.get_neuron_count()}")
+brain.resize(5000)
+brain.auto_resize()
+util, sat = brain.get_utilization_metrics()
+print(f"Utilization: {util:.1%}, Saturation: {sat:.1%}")
+```
+
+### Snapshots and COW
+
+```python
+# Named snapshots
+brain.snapshot_save("baseline", "Before training")
+brain.snapshot_save("epoch_10", "After 10 epochs")
+for snap in brain.snapshot_list():
+    print(f"{snap['name']}: {snap['description']}")
+restored = brain.snapshot_restore("baseline")
+brain.snapshot_delete("epoch_10")
+
+# Copy-on-write cloning
+clone = brain.clone_cow()  # 86% memory savings
+result = clone.decide(features)  # Inference on clone
+```
+
+### Working Memory and Global Workspace
+
+```python
+# Working memory
+brain.working_memory_add([0.1, 0.2, 0.3], 0.8)
+data, size = brain.working_memory_get(0)
+current, capacity = brain.working_memory_stats()
+brain.working_memory_refresh(0)
+
+# Global workspace
+won = brain.workspace_compete(nimcp.MODULE_PERCEPTION, content, 0.85)
+content, dim, source = brain.workspace_read()
+brain.workspace_subscribe(nimcp.MODULE_EXECUTIVE)
+has_broadcast = brain.workspace_has_broadcast()
+broadcasts, competitions, strength = brain.workspace_stats()
+```
+
+### Complex Oscillations
+
+```python
+brain.enable_complex_oscillations(True)
+amp, phase = brain.get_oscillation_phasor(42)
+coherence = brain.get_phase_coherence([10, 20, 30, 40, 50])
+pac = brain.get_pac_modulation(6.0, 40.0)
+```
+
+### Brain Probe
+
+```python
+stats = brain.probe()
+print(f"Neurons: {stats['num_neurons']}")
+print(f"Accuracy: {stats['accuracy']:.1%}")
+print(f"Memory: {stats['memory_bytes'] / 1024 / 1024:.1f} MB")
+if stats['is_cow_clone']:
+    print(f"COW shared: {stats['cow_shared_bytes']} bytes")
+```
+
+---
+
 ## Complete Examples
 
 ### Example 1: Image Classifier
@@ -929,12 +1478,20 @@ int main(void) {
 
 ```c
 // Get version string
-const char* version = nimcp_version();  // "2.6.1"
+const char* version = nimcp_version();  // "2.6.3"
 
 // Get version as integer
-int ver_int = nimcp_version_int();      // 20601
+int ver_int = nimcp_version_int();      // 20603
+
+// Initialize / shutdown
+nimcp_init();
+// ... use NIMCP ...
+nimcp_shutdown();
+
+// Get last error
+const char* err = nimcp_get_error();
 ```
 
 ---
 
-*Last updated: 2025-12-30*
+*Last updated: 2026-02-16*

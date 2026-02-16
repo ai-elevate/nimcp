@@ -153,6 +153,7 @@ static crash_context_t g_pending_crash_context;
  */
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(signal_handler)
 
@@ -228,7 +229,7 @@ static void attempt_checkpoint_save_unsafe(void)
     mkdir(g_config.checkpoint_path, 0755);
 
     // Generate timestamped checkpoint filename
-    char checkpoint_file[512];
+    char checkpoint_file[NIMCP_METRICS_PATH_SIZE];
     time_t now = time(NULL);
     snprintf(checkpoint_file, sizeof(checkpoint_file),
              "%s/crash_checkpoint_%ld.nimcp",
@@ -356,7 +357,7 @@ static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_si
         return false;
     }
 
-    char line_buf[512];
+    char line_buf[NIMCP_ERROR_BUFFER_LARGE];
     ssize_t bytes_read;
     size_t line_pos = 0;
     uintptr_t target = (uintptr_t)addr;
@@ -1283,7 +1284,7 @@ static void cleanup_old_checkpoints(const char* dir_path, int max_count)
 
     // Scan directory
     struct dirent* entry;
-    char fullpath[512];
+    char fullpath[NIMCP_METRICS_PATH_SIZE];
     struct stat st;
 
     while ((entry = readdir(dir)) != NULL) {
@@ -1398,7 +1399,7 @@ bool signal_handler_checkpoint_save(const char* checkpoint_path)
     mkdir(path, 0755);
 
     // Generate timestamped checkpoint filename
-    char checkpoint_file[512];
+    char checkpoint_file[NIMCP_METRICS_PATH_SIZE];
     time_t now = time(NULL);
     snprintf(checkpoint_file, sizeof(checkpoint_file),
              "%s/checkpoint_%ld.nimcp",

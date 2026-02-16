@@ -19,6 +19,7 @@
  */
 
 #include "utils/code/nimcp_recompiler.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
@@ -380,7 +381,7 @@ bool recompiler_compile(
      * WHAT: Build gcc command line
      * WHY: Construct full compilation command
      */
-    char cmd[4096];
+    char cmd[NIMCP_PATH_BUFFER_SIZE];
     if (!build_gcc_command(recompiler, request, cmd, sizeof(cmd))) {
         strncpy(result->error_msg, "Failed to build gcc command",
                 sizeof(result->error_msg) - 1);
@@ -675,7 +676,7 @@ bool recompiler_get_symbol_info(
      * WHAT: Run nm -D with output parsing
      * WHY: Get detailed symbol information
      */
-    char cmd[1024];
+    char cmd[NIMCP_CMD_BUFFER_SIZE];
     snprintf(cmd, sizeof(cmd), "nm -D '%s' 2>/dev/null | grep ' %s$'",
              so_path, symbol_name);
 
@@ -685,7 +686,7 @@ bool recompiler_get_symbol_info(
         return false;
     }
 
-    char line[256];
+    char line[NIMCP_ERROR_BUFFER_SIZE];
     if (fgets(line, sizeof(line), fp)) {
         info->found = true;
 
@@ -695,7 +696,7 @@ bool recompiler_get_symbol_info(
          */
         uint64_t addr;
         char type;
-        char name[256];
+        char name[NIMCP_NAME_BUFFER_SIZE];
 
         if (sscanf(line, "%lx %c %255s", &addr, &type, name) == 3) {
             info->address = addr;
@@ -1225,7 +1226,7 @@ int sandbox_test_enhanced(
         }
 
         /* Read available output while waiting */
-        char temp_buf[1024];
+        char temp_buf[NIMCP_LOG_BUFFER_SIZE];
         ssize_t n;
 
         n = read(stdout_pipe[0], temp_buf, sizeof(temp_buf));
@@ -1258,7 +1259,7 @@ int sandbox_test_enhanced(
      * WHAT: Read remaining output from pipes
      * WHY: Capture any buffered output
      */
-    char temp_buf[1024];
+    char temp_buf[NIMCP_LOG_BUFFER_SIZE];
     ssize_t n;
 
     while ((n = read(stdout_pipe[0], temp_buf, sizeof(temp_buf))) > 0) {
@@ -1516,7 +1517,7 @@ static bool execute_compiler(
     }
 
     size_t total_read = 0;
-    char buf[512];
+    char buf[NIMCP_ERROR_BUFFER_LARGE];
     while (fgets(buf, sizeof(buf), fp) != NULL) {
         size_t len = strlen(buf);
         if (total_read + len < output_size - 1) {
@@ -1580,7 +1581,7 @@ static bool run_nm_check(const char* so_path, const char* symbol_name) {
         return false;
     }
 
-    char cmd[1024];
+    char cmd[NIMCP_CMD_BUFFER_SIZE];
     snprintf(cmd, sizeof(cmd), "nm -D %s 2>/dev/null | grep -q ' T %s'", so_path, symbol_name);
     int ret = system(cmd);
     return (ret == 0);

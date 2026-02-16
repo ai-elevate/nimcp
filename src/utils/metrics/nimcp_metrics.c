@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metrics)
 
@@ -903,11 +904,11 @@ static nimcp_error_t metrics_handle_brain_probe(
     }
 
     // Create metric prefix with brain ID for multi-brain support
-    char prefix[128];
+    char prefix[NIMCP_LABEL_BUFFER_SIZE];
     snprintf(prefix, sizeof(prefix), "brain.%llx", (unsigned long long)probe_msg->brain_id);
 
     // Record brain metrics
-    char metric_name[256];
+    char metric_name[NIMCP_NAME_BUFFER_SIZE];
 
     // Architecture metrics
     snprintf(metric_name, sizeof(metric_name), "%s.num_neurons", prefix);

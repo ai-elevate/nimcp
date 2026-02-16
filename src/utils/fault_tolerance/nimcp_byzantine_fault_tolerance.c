@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(byzantine_fault_tolerance)
 
@@ -147,8 +148,8 @@ bft_config_t bft_default_config(void) {
         .node_id = 0,
         .total_nodes = 4,
         .max_byzantine = 1,
-        .view_timeout_ms = 5000,
-        .message_timeout_ms = 1000,
+        .view_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS,
+        .message_timeout_ms = NIMCP_MEDIUM_TIMEOUT_MS,
         .checkpoint_interval = 100,
         .initial_trust = 80.0f,
         .trust_decay = 10.0f,

@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/eligibility/nimcp_eligibility_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -31,7 +32,7 @@ int eligibility_fep_bridge_default_config(eligibility_fep_config_t* config) {
         return -1;
     }
     config->pe_trace_gain = ELIGIBILITY_FEP_PE_TRACE_SCALING;
-    config->precision_decay_sensitivity = 1.0f;
+    config->precision_decay_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->fe_consolidation_threshold = 1.0f;
     config->enable_pe_eligibility = true;
     config->enable_precision_decay_modulation = true;

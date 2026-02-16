@@ -15,6 +15,8 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(basal_ganglia_adapter)
 
@@ -178,8 +180,8 @@ nimcp_basal_ganglia_config_t nimcp_basal_ganglia_adapter_default_config(void) {
         .d1_d2_balance = 0.5f,
         .selection_threshold = 0.6f,
         .lateral_inhibition = 0.8f,
-        .dopamine_baseline = 0.5f,
-        .learning_rate = 0.01f,
+        .dopamine_baseline = NIMCP_DOPAMINE_BASELINE,
+        .learning_rate = NIMCP_LEARNING_RATE_DEFAULT,
         .enable_stn = true,
         .enable_logging = false
     };

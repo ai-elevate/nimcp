@@ -16,6 +16,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_dendritic)
 
@@ -260,8 +261,8 @@ int cortical_dendritic_default_config(dendritic_config_t* config) {
     config->burst_threshold = 0.8f;
     config->enable_nmda_nonlinearity = true;
     config->nmda_voltage_threshold = -40.0f;
-    config->soma_threshold = -55.0f;
-    config->resting_potential = -70.0f;
+    config->soma_threshold = NIMCP_FIRING_THRESHOLD_MV;
+    config->resting_potential = NIMCP_RESTING_POTENTIAL_MV;
     config->max_burst_spikes = 3;
     config->interburst_interval_ms = 4.0f;
 

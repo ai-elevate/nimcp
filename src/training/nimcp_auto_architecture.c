@@ -35,6 +35,8 @@
 #include <time.h>
 #include <errno.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(auto_architecture)
 
@@ -276,8 +278,8 @@ int auto_arch_default_config(auto_arch_config_t* config)
     config->constraints.allow_skip_connections = true;
     config->constraints.min_tau = 1.0f;
     config->constraints.max_tau = 100.0f;
-    config->constraints.min_dt = 0.1f;
-    config->constraints.max_dt = 1.0f;
+    config->constraints.min_dt = NIMCP_SIMULATION_DT_FINE_MS;
+    config->constraints.max_dt = NIMCP_SIMULATION_DT_MS;
     config->constraints.min_bio_score = 0.0f;
     config->constraints.enforce_dales_law = false;
     config->constraints.require_local_connectivity = false;
@@ -1706,7 +1708,7 @@ static int read_json_key(FILE* fp, char* buf, size_t bufsize) {
 /* Helper to read a JSON number (int or float) */
 static int read_json_number(FILE* fp, double* value) {
     int c = skip_ws(fp);
-    char buf[64];
+    char buf[NIMCP_ID_BUFFER_SIZE];
     size_t i = 0;
     if (c == '-' || c == '+' || (c >= '0' && c <= '9')) {
         buf[i++] = (char)c;
@@ -1762,7 +1764,7 @@ auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
         return NULL;
     }
 
-    char key[64];
+    char key[NIMCP_ID_BUFFER_SIZE];
     double value;
     int c;
 
@@ -2053,7 +2055,7 @@ auto_arch_result_t* auto_arch_result_load(const char* filepath)
         return NULL;
     }
 
-    char key[64];
+    char key[NIMCP_ID_BUFFER_SIZE];
     double value;
     int c;
 

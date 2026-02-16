@@ -31,13 +31,14 @@
 #include "gpu/financial/nimcp_financial_optimization_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
 //=============================================================================
 
-static __thread char g_opt_error[256] = {0};
+static __thread char g_opt_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_opt_error(const char* fmt, ...) {
     va_list args;

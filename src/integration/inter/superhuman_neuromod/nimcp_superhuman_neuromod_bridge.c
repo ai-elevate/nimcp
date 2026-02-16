@@ -9,6 +9,7 @@
 #include "integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -122,8 +123,8 @@ nimcp_layer_error_t nimcp_superhuman_neuromod_update(nimcp_superhuman_neuromod_b
     }
 
     /* Update averages */
-    bridge->stats.avg_enhancement_signal = bridge->stats.avg_enhancement_signal * 0.99f + bridge->state.novel_enhancement_signal * 0.01f;
-    bridge->stats.avg_sensitivity = bridge->stats.avg_sensitivity * 0.99f + bridge->state.sensitivity_level * 0.01f;
+    bridge->stats.avg_enhancement_signal = bridge->stats.avg_enhancement_signal * NIMCP_EMA_DECAY_DEFAULT + bridge->state.novel_enhancement_signal * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_sensitivity = bridge->stats.avg_sensitivity * NIMCP_EMA_DECAY_DEFAULT + bridge->state.sensitivity_level * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

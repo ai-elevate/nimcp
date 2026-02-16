@@ -12,6 +12,7 @@
  */
 
 #include "embodiment/nimcp_interoceptive_prediction.h"
+#include "constants/nimcp_constants.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -452,8 +453,8 @@ void nimcp_intero_default_config(nimcp_intero_config_t* config) {
     config->critical_threshold = 0.8;
 
     config->enable_emotional_mapping = true;
-    config->arousal_sensitivity = 1.0;
-    config->valence_sensitivity = 1.0;
+    config->arousal_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->valence_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     config->assessment_window = 60.0;  /* 60 seconds */
     config->update_rate_hz = 10.0;

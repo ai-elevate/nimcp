@@ -7,6 +7,7 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp.h"
+#include "constants/nimcp_constants.h"
 #include "plasticity/nimcp_plasticity_constants.h"
 #include <stddef.h>  /* for NULL */
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
@@ -40,7 +41,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp)
 stdp_config_t stdp_config_default(void) {
     stdp_config_t config = {
         .w_max = 1.0F,
-        .learning_rate = 0.01F,
+        .learning_rate = NIMCP_LEARNING_RATE_DEFAULT,
         .a_plus = 0.005F,           /* LTP amplitude (Bi & Poo, 1998) */
         .a_minus = 0.00525F,        /* LTD amplitude (slightly larger for balance) */
         .tau_plus = 0.020F,         /* 20 ms (seconds) */

@@ -18,6 +18,7 @@
  */
 
 #include "middleware/training/nimcp_gradient_manager.h"
+#include "constants/nimcp_constants.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/tensor/nimcp_tensor.h"

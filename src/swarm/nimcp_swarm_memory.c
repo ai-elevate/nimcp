@@ -37,6 +37,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_memory)
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "constants/nimcp_buffer_constants.h"
 
 /* ============================================================================
  * Validation Helper Macros (local implementations)
@@ -2346,7 +2347,7 @@ nimcp_result_t swarm_memory_associate_pattern(
     nimcp_platform_mutex_lock(mem->mutex);
 
     /* Create association key */
-    char key[64];
+    char key[NIMCP_ID_BUFFER_SIZE];
     snprintf(key, sizeof(key), "ASSOC_%08X_%08X", pattern_id, outcome_id);
 
     /* Check if association exists */
@@ -2451,7 +2452,7 @@ nimcp_result_t swarm_memory_learn_sequence(
         uint32_t to_pattern = pattern_sequence[i + 1];
 
         /* Create transition key */
-        char key[64];
+        char key[NIMCP_ID_BUFFER_SIZE];
         snprintf(key, sizeof(key), "TRANS_%08X_%08X", from_pattern, to_pattern);
 
         /* Get or create transition count */
@@ -2773,7 +2774,7 @@ nimcp_result_t swarm_memory_associate_patterns(
     nimcp_platform_mutex_lock(memory->mutex);
 
     /* Create association A->B */
-    char key_ab[64];
+    char key_ab[NIMCP_ID_BUFFER_SIZE];
     snprintf(key_ab, sizeof(key_ab), "ASSOC_%08X_%08X", pattern_a, pattern_b);
 
     pattern_association_t *assoc_ab = (pattern_association_t *)nimcp_hash_table_get(
@@ -2805,7 +2806,7 @@ nimcp_result_t swarm_memory_associate_patterns(
     }
 
     /* Create bidirectional association B->A */
-    char key_ba[64];
+    char key_ba[NIMCP_ID_BUFFER_SIZE];
     snprintf(key_ba, sizeof(key_ba), "ASSOC_%08X_%08X", pattern_b, pattern_a);
 
     pattern_association_t *assoc_ba = (pattern_association_t *)nimcp_hash_table_get(

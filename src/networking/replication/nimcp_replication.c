@@ -49,6 +49,7 @@
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "security/nimcp_path_traversal.h"
+#include "constants/nimcp_timing_constants.h"
 
 // Global BBB security system
 static bbb_system_t g_bbb_system = NULL;
@@ -98,6 +99,7 @@ static void replication_security_cleanup(void) {
 
 #define LOG_MODULE "REPLICATION"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(replication)
 
@@ -115,7 +117,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(replication)
  * WHY: Thread-safe error messages without locks
  * PATTERN: Thread-local storage for error handling
  */
-static __thread char g_replication_error[512] = {0};
+static __thread char g_replication_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 /**
  * @brief Set error message (thread-safe)
@@ -158,7 +160,7 @@ typedef struct replication_backend_strategy replication_backend_strategy_t;
  */
 typedef struct registered_brain {
     brain_t brain;                  // Brain handle
-    char brain_name[64];            // Unique name in cluster
+    char brain_name[NIMCP_ID_BUFFER_SIZE];            // Unique name in cluster
     bool autosync_enabled;          // Auto-sync on updates
     uint64_t version;               // Local version counter
     uint64_t last_sync_version;     // Last synced version
@@ -276,8 +278,8 @@ struct replication_backend_strategy {
  * HOW: NFS/GlusterFS shared filesystem
  */
 typedef struct {
-    char shared_dir[512];  // Shared directory path
-    char node_id[64];      // This node's ID
+    char shared_dir[NIMCP_METRICS_PATH_SIZE];  // Shared directory path
+    char node_id[NIMCP_ID_BUFFER_SIZE];      // This node's ID
 } filesystem_context_t;
 
 /**
@@ -328,14 +330,14 @@ static bool filesystem_initialize(void** context, const replication_config_t* co
     }
 
     // Create brains subdirectory
-    char brains_dir[512];
+    char brains_dir[NIMCP_METRICS_PATH_SIZE];
     snprintf(brains_dir, sizeof(brains_dir), "%s/brains", fs_ctx->shared_dir);
     if (stat(brains_dir, &st) == -1) {
         mkdir(brains_dir, 0755);
     }
 
     // Create nodes subdirectory for heartbeats
-    char nodes_dir[512];
+    char nodes_dir[NIMCP_METRICS_PATH_SIZE];
     snprintf(nodes_dir, sizeof(nodes_dir), "%s/nodes", fs_ctx->shared_dir);
     if (stat(nodes_dir, &st) == -1) {
         mkdir(nodes_dir, 0755);
@@ -362,7 +364,7 @@ static void filesystem_shutdown(void* context)
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     // Remove heartbeat file
-    char heartbeat_path[512];
+    char heartbeat_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
              fs_ctx->node_id);
     remove(heartbeat_path);
@@ -392,7 +394,7 @@ static bool filesystem_store_brain(void* context, const char* brain_name, const 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     // Create brain file path
-    char brain_path[512];
+    char brain_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
 
     // P1-3 fix: Path traversal validation
@@ -403,7 +405,7 @@ static bool filesystem_store_brain(void* context, const char* brain_name, const 
     }
 
     // Write to temporary file first (atomic operation)
-    char tmp_path[512];
+    char tmp_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", brain_path);
 
     // P1-3 fix: Path traversal validation for temp path
@@ -466,7 +468,7 @@ static bool filesystem_retrieve_brain(void* context, const char* brain_name, voi
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     // Create brain file path
-    char brain_path[512];
+    char brain_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
 
     // P1-3 fix: Path traversal validation
@@ -538,7 +540,7 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
-    char nodes_dir[512];
+    char nodes_dir[NIMCP_METRICS_PATH_SIZE];
     snprintf(nodes_dir, sizeof(nodes_dir), "%s/nodes", fs_ctx->shared_dir);
 
     // Open directory
@@ -569,7 +571,7 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
             continue;
 
         // Get file stats
-        char heartbeat_path[512];
+        char heartbeat_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/%s", nodes_dir, entry->d_name);
 
         struct stat st;
@@ -577,7 +579,7 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
             continue;
 
         // Extract node ID from filename (remove .heartbeat suffix)
-        char node_id[64];
+        char node_id[NIMCP_ID_BUFFER_SIZE];
         strncpy(node_id, entry->d_name, sizeof(node_id) - 1);
         char* dot = strstr(node_id, ".heartbeat");
         if (dot)
@@ -619,7 +621,7 @@ static bool filesystem_heartbeat(void* context, const char* node_id)
 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
-    char heartbeat_path[512];
+    char heartbeat_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
              node_id);
 
@@ -1060,7 +1062,7 @@ bool replication_sync_push(replication_cluster_t cluster, const char* brain_name
     }
 
     // Save brain to temporary file
-    char tmp_path[512];
+    char tmp_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_sync_%s_%ld.tmp", brain_name,
              (long) nimcp_time_get_sec());
 
@@ -1136,7 +1138,7 @@ bool replication_sync_pull(replication_cluster_t cluster, const char* brain_name
     }
 
     // Write to temporary file
-    char tmp_path[512];
+    char tmp_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(tmp_path, sizeof(tmp_path), "/tmp/nimcp_pull_%s_%ld.tmp", brain_name,
              (long) nimcp_time_get_sec());
 
@@ -1357,7 +1359,7 @@ replication_cluster_t replication_create_filesystem_cluster(const char* shared_d
                                    .strategy = REPLICATION_STRATEGY_EVENTUAL,
                                    .sync_interval_ms = 5000,
                                    .heartbeat_interval_ms = 10000,
-                                   .node_timeout_ms = 30000,
+                                   .node_timeout_ms = NIMCP_LONG_TIMEOUT_MS,
                                    .enable_vector_clock = false,
                                    .enable_crdt = false};
 

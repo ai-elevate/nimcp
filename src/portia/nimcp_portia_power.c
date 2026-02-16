@@ -31,6 +31,7 @@
 #include <math.h>
 #include <sys/stat.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_power)
 
@@ -86,7 +87,7 @@ typedef struct portia_power_manager_struct {
     bool profile_forced;
 
     // Battery path
-    char battery_path[256];
+    char battery_path[NIMCP_SHORT_PATH_SIZE];
     bool battery_available;
 
     // Discharge history
@@ -738,7 +739,7 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
 }
 
 static float read_sysfs_float(const char* path, const char* file) {
-    char filepath[512];
+    char filepath[NIMCP_METRICS_PATH_SIZE];
     snprintf(filepath, sizeof(filepath), "%s/%s", path, file);
 
     FILE* fp = fopen(filepath, "r");
@@ -756,7 +757,7 @@ static float read_sysfs_float(const char* path, const char* file) {
 }
 
 static const char* read_sysfs_string(const char* path, const char* file, char* buf, size_t len) {
-    char filepath[512];
+    char filepath[NIMCP_METRICS_PATH_SIZE];
     snprintf(filepath, sizeof(filepath), "%s/%s", path, file);
 
     FILE* fp = fopen(filepath, "r");

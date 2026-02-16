@@ -9,6 +9,7 @@
  */
 
 #include "core/brain/nimcp_kg_persistence.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -18,42 +19,12 @@
 #include <time.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_timing_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kg_persistence)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_kg_persistence_mesh_id = 0;
-static mesh_participant_registry_t* g_kg_persistence_mesh_registry = NULL;
-
-nimcp_error_t kg_persistence_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_kg_persistence_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "kg_persistence", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "kg_persistence";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_kg_persistence_mesh_id);
-    if (err == NIMCP_SUCCESS) g_kg_persistence_mesh_registry = registry;
-    return err;
-}
-
-void kg_persistence_mesh_unregister(void) {
-    if (g_kg_persistence_mesh_registry && g_kg_persistence_mesh_id != 0) {
-        mesh_participant_unregister(g_kg_persistence_mesh_registry, g_kg_persistence_mesh_id);
-        g_kg_persistence_mesh_id = 0;
-        g_kg_persistence_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(kg_persistence, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
@@ -74,7 +45,7 @@ void kg_persistence_mesh_unregister(void) {
  * @brief Checkpoint record
  */
 typedef struct {
-    char label[64];
+    char label[NIMCP_ID_BUFFER_SIZE];
     uint64_t version;
     uint64_t timestamp;
     char storage_path[KG_PERSIST_MAX_PATH_LEN];
@@ -86,7 +57,7 @@ typedef struct {
 typedef struct kg_audit_entry {
     uint64_t timestamp;
     kg_audit_event_type_t event_type;
-    char details[256];
+    char details[NIMCP_ERROR_BUFFER_SIZE];
     uint8_t prev_hash[PERSIST_HASH_SIZE];
     uint8_t entry_hash[PERSIST_HASH_SIZE];
     struct kg_audit_entry* next;
@@ -98,7 +69,7 @@ typedef struct kg_audit_entry {
 struct kg_hsm_handle {
     kg_hsm_type_t type;
     bool connected;
-    char key_label[64];
+    char key_label[NIMCP_ID_BUFFER_SIZE];
     uint8_t key_id[32];
     uint64_t creation_time;
     uint32_t usage_count;
@@ -416,7 +387,7 @@ int kg_persistence_default_questdb_config(kg_questdb_config_t* config) {
     /* Connection pool defaults */
     config->pool.min_connections = 4;
     config->pool.max_connections = 32;
-    config->pool.connection_timeout_ms = 5000;
+    config->pool.connection_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
     config->pool.idle_timeout_ms = 60000;
     config->pool.max_lifetime_ms = 1800000;
     config->pool.enable_connection_validation = true;
@@ -427,7 +398,7 @@ int kg_persistence_default_questdb_config(kg_questdb_config_t* config) {
     config->async_io.write_queue_depth = 1024;
     config->async_io.enable_batch_writes = true;
     config->async_io.batch_size = 10000;
-    config->async_io.batch_timeout_ms = 100;
+    config->async_io.batch_timeout_ms = NIMCP_FAST_TIMEOUT_MS;
     config->async_io.read_buffer_size_kb = 512;
     config->async_io.prefetch_rows = 10000;
     config->async_io.enable_result_caching = true;
@@ -809,7 +780,7 @@ int kg_persistence_save_incremental(kg_persistence_t* p,
         const kg_diff_record_t* change = &diff->changes[i];
 
         /* Would write to kg_change_events table */
-        char buffer[256];
+        char buffer[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(buffer, sizeof(buffer),
                  "type=%d,node=%llu,ts=%llu",
                  change->change_type,
@@ -861,7 +832,7 @@ int kg_persistence_create_checkpoint(kg_persistence_t* p, const char* label) {
     p->checkpoint_count++;
 
     if (p->audit_initialized) {
-        char details[128];
+        char details[NIMCP_ERROR_BUFFER_MEDIUM];
         snprintf(details, sizeof(details), "Created checkpoint: %s", label);
         kg_persistence_audit_log(p, KG_AUDIT_KEY_GENERATED, details);
     }

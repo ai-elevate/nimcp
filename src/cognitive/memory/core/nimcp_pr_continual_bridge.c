@@ -34,6 +34,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_continual_bridge)
 //=============================================================================
@@ -340,7 +341,7 @@ pr_continual_config_t pr_continual_config_replay_focused(void) {
     config.type = PR_CONTINUAL_RESONANCE_REPLAY;
     config.ewc_lambda = 100.0f;  /* Weaker EWC */
     config.replay_ratio = 0.8f;  /* Strong replay */
-    config.replay_batch_size = 64;
+    config.replay_batch_size = NIMCP_MEDIUM_BATCH_SIZE;
 
     return config;
 }

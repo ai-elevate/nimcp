@@ -64,61 +64,18 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "introspection"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(introspection)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_introspection_mesh_id = 0;
-static mesh_participant_registry_t* g_introspection_mesh_registry = NULL;
-
-nimcp_error_t introspection_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_introspection_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "introspection", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "introspection";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_introspection_mesh_id);
-    if (err == NIMCP_SUCCESS) g_introspection_mesh_registry = registry;
-    return err;
-}
-
-void introspection_mesh_unregister(void) {
-    if (g_introspection_mesh_registry && g_introspection_mesh_id != 0) {
-        mesh_participant_unregister(g_introspection_mesh_registry, g_introspection_mesh_id);
-        g_introspection_mesh_id = 0;
-        g_introspection_mesh_registry = NULL;
-    }
-}
-
-
-static inline void introspection_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_introspection_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_introspection_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_introspection_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(introspection, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 /* ========================================================================
  * INTERNAL STRUCTURES
@@ -869,7 +826,7 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
 
     /* WHAT: Generate human-readable interpretation */
     /* WHY: Help developers understand what state means */
-    char interp_buffer[256];
+    char interp_buffer[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(interp_buffer, sizeof(interp_buffer),
              "State extracted using %s strategy (%.0f%% sampling), "
              "%.2f bits entropy, compression ratio %.2fx",
@@ -2651,9 +2608,6 @@ int introspection_query_self_knowledge(kg_reader_t* kg) {
 /* ============================================================================
  * Phase 8: Instance-Level Health Agent + Full Training
  * ============================================================================ */
-
-/** Global instance health agent for introspection (non-bridge fallback) */
-static nimcp_health_agent_t* g_introspection_instance_health_agent = NULL;
 
 /**
  * @brief Set instance-level health agent for introspection module

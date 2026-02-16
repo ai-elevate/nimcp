@@ -15,6 +15,7 @@
  */
 
 #include "integration/knowledge/nimcp_sensory_kg_wiring.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -307,7 +308,7 @@ int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* nam
         return -1;
     }
 
-    char desc[256];
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(desc, sizeof(desc), "Body region: %s (type %d)", name, region);
 
     int result = create_node(wiring, SENSORY_KG_NODE_BODY_REGION, name, desc,
@@ -327,7 +328,7 @@ int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char*
         return -1;
     }
 
-    char desc[256];
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(desc, sizeof(desc), "Mechanoreceptor: %s (type %d)", name, type);
 
     int result = create_node(wiring, SENSORY_KG_NODE_MECHANORECEPTOR, name, desc,
@@ -387,7 +388,7 @@ int sensory_kg_register_glomerulus(sensory_kg_wiring_t* wiring, uint32_t glom_id
         return -1;
     }
 
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     snprintf(name, sizeof(name), "Glomerulus_%u", glom_id);
 
     int result = create_node(wiring, SENSORY_KG_NODE_GLOMERULUS, name,
@@ -407,7 +408,7 @@ int sensory_kg_register_odor_category(sensory_kg_wiring_t* wiring, const char* n
         return -1;
     }
 
-    char desc[256];
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(desc, sizeof(desc), "Odor category: %s", name);
 
     int result = create_node(wiring, SENSORY_KG_NODE_ODOR_CATEGORY, name, desc,
@@ -426,7 +427,7 @@ int sensory_kg_register_odor_memory(sensory_kg_wiring_t* wiring, uint32_t odor_n
         return -1;
     }
 
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     snprintf(name, sizeof(name), "Odor_Memory_%u", memory_id);
 
     uint32_t mem_node_id;
@@ -486,7 +487,7 @@ int sensory_kg_register_taste_quality(sensory_kg_wiring_t* wiring, basic_taste_t
     const char* taste_names[] = {"Sweet", "Salty", "Sour", "Bitter", "Umami"};
     const char* name = (taste < TASTE_COUNT) ? taste_names[taste] : "Unknown";
 
-    char desc[256];
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(desc, sizeof(desc), "Basic taste quality: %s", name);
 
     int result = create_node(wiring, SENSORY_KG_NODE_TASTE_QUALITY, name, desc,
@@ -508,7 +509,7 @@ int sensory_kg_register_tongue_region(sensory_kg_wiring_t* wiring, tongue_region
     const char* region_names[] = {"Tip", "Front_Sides", "Back_Sides", "Back", "Center"};
     const char* name = (region < TONGUE_REGION_COUNT) ? region_names[region] : "Unknown";
 
-    char full_name[64];
+    char full_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(full_name, sizeof(full_name), "Tongue_%s", name);
 
     int result = create_node(wiring, SENSORY_KG_NODE_TASTE_BUD, full_name,
@@ -527,7 +528,7 @@ int sensory_kg_register_food_category(sensory_kg_wiring_t* wiring, const char* n
         return -1;
     }
 
-    char desc[256];
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(desc, sizeof(desc), "Food category: %s", name);
 
     int result = create_node(wiring, SENSORY_KG_NODE_FOOD_CATEGORY, name, desc,
@@ -563,7 +564,7 @@ int sensory_kg_register_flavor(sensory_kg_wiring_t* wiring, uint32_t taste_node,
         return -1;
     }
 
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     snprintf(name, sizeof(name), "Flavor_%s_%s", taste->name, odor->name);
 
     int result = create_node(wiring, SENSORY_KG_NODE_FLAVOR, name,

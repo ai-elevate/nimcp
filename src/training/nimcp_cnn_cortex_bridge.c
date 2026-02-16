@@ -25,6 +25,7 @@
 
 #define LOG_MODULE "cnn_cortex_bridge"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cnn_cortex_bridge)
 
@@ -448,7 +449,7 @@ int cnn_cortex_bridge_extract_visual_features(
 
     /* Allocate feature buffer - use configured feature_dim from cortex */
     /* Default to 128 if unknown */
-    uint32_t feature_dim = 128;
+    uint32_t feature_dim = NIMCP_FEATURE_DIM;
     float* feature_buffer = nimcp_malloc(feature_dim * sizeof(float));
     NIMCP_CHECK_THROW(feature_buffer, NIMCP_ERROR_NO_MEMORY,
                       "Failed to allocate visual feature buffer");
@@ -550,7 +551,7 @@ int cnn_cortex_bridge_extract_audio_features(
     audio_cortex_get_stats(bridge->audio_cortex, &ac_stats);
 
     /* Allocate feature buffer - default MFCC + mel features */
-    uint32_t feature_dim = 128;  /* Default feature dimension */
+    uint32_t feature_dim = NIMCP_FEATURE_DIM;  /* Default feature dimension */
     float* feature_buffer = nimcp_malloc(feature_dim * sizeof(float));
     NIMCP_CHECK_THROW(feature_buffer, NIMCP_ERROR_NO_MEMORY,
                       "Failed to allocate audio feature buffer");

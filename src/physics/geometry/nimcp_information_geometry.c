@@ -15,6 +15,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(information_geometry)
 
@@ -199,10 +200,10 @@ nimcp_info_geom_config_t nimcp_info_geom_default_config(void) {
         .latent_dim = INFO_GEOM_DEFAULT_LATENT_DIM,
         .ambient_dim = 256,
         .regularization = INFO_GEOM_REGULARIZATION,
-        .learning_rate = 0.01f,
+        .learning_rate = NIMCP_LEARNING_RATE_DEFAULT,
         .gradient_clip = INFO_GEOM_GRAD_CLIP,
         .enable_ema = true,
-        .ema_decay = 0.99f,
+        .ema_decay = NIMCP_EMA_DECAY_DEFAULT,
         .enable_logging = false,
         .enable_metrics = true
     };
@@ -639,8 +640,8 @@ nimcp_info_geom_error_t nimcp_fisher_solve(
 
 nimcp_natural_grad_config_t nimcp_natural_grad_default_config(void) {
     nimcp_natural_grad_config_t config = {
-        .learning_rate = 0.01f,
-        .momentum = 0.9f,
+        .learning_rate = NIMCP_LEARNING_RATE_DEFAULT,
+        .momentum = NIMCP_MOMENTUM_DEFAULT,
         .gradient_clip = 10.0f,
         .use_preconditioner = true,
         .enable_warmup = true,

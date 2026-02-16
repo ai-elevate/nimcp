@@ -24,6 +24,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_constants.h"
 
 /* ============================================================================
  * Module Constants
@@ -243,18 +244,18 @@ int vae_training_bridge_default_config(vae_training_bridge_config_t* config)
     config->surrogate.learn_beta = false;
 
     /* E-prop config */
-    config->eprop.eligibility_decay = 0.99f;
+    config->eprop.eligibility_decay = NIMCP_EMA_DECAY_DEFAULT;
     config->eprop.use_vae_eligibility = true;
-    config->eprop.latent_trace_decay = 0.95f;
+    config->eprop.latent_trace_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT;
     config->eprop.symmetric_eprop = false;
 
     /* Optimizer config */
-    config->optimizer.learning_rate = 0.001f;
-    config->optimizer.weight_decay = 0.0001f;
-    config->optimizer.momentum = 0.9f;
-    config->optimizer.beta1 = 0.9f;
-    config->optimizer.beta2 = 0.999f;
-    config->optimizer.epsilon = 1e-8f;
+    config->optimizer.learning_rate = NIMCP_LEARNING_RATE_FINE;
+    config->optimizer.weight_decay = NIMCP_WEIGHT_DECAY_DEFAULT;
+    config->optimizer.momentum = NIMCP_MOMENTUM_DEFAULT;
+    config->optimizer.beta1 = NIMCP_ADAM_BETA1_DEFAULT;
+    config->optimizer.beta2 = NIMCP_ADAM_BETA2_DEFAULT;
+    config->optimizer.epsilon = NIMCP_EPSILON_ADAM;
     config->optimizer.use_gradient_clipping = true;
     config->optimizer.gradient_clip_norm = VAE_TRAIN_GRAD_CLIP_DEFAULT;
 

@@ -12,6 +12,7 @@
 
 #define LOG_MODULE "language_bridge"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 // Use weak attribute to avoid duplicate symbol with broca version
 static struct nimcp_health_agent* g_language_production_bridge_health_agent = NULL;
@@ -45,7 +46,7 @@ __attribute__((weak)) void language_production_bridge_set_health_agent(struct ni
 #define DEFAULT_ARTICULATION_THRESHOLD 0.7f
 #define DEFAULT_ENCODING_DIM 512
 #define DEFAULT_ENCODING_RATE 100.0f
-#define MIN_CONFIDENCE_THRESHOLD 0.5f
+#define MIN_CONFIDENCE_THRESHOLD NIMCP_CONFIDENCE_MEDIUM
 
 //=============================================================================
 // Internal Structures

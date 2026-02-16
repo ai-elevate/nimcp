@@ -23,6 +23,7 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(axon_plasticity_bridge)
 
@@ -542,7 +543,7 @@ int axon_plasticity_update(axon_plasticity_bridge_t* bridge, float dt_ms)
 
     /* Decay fatigue and activity */
     float fatigue_decay = expf(-dt_ms / bridge->config.conduction_recovery_tau_ms);
-    float activity_decay = 0.99f;
+    float activity_decay = NIMCP_EMA_DECAY_DEFAULT;
 
     float sum_excitability = 0.0f;
     for (size_t i = 0; i < bridge->num_segments; i++) {

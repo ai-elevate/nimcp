@@ -31,6 +31,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_immune_bridge)
 //=============================================================================
@@ -371,11 +372,11 @@ pr_immune_bridge_config_t pr_immune_bridge_config_default(void) {
     config.enable_corruption_detection = true;
 
     /* Cytokine sensitivity */
-    config.cytokine_sensitivity = 1.0f;
-    config.il1_sensitivity = 1.0f;
-    config.tnf_sensitivity = 1.0f;
-    config.il6_sensitivity = 1.0f;
-    config.il10_sensitivity = 1.0f;
+    config.cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.il1_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.tnf_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.il6_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.il10_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Cleanup thresholds */
     config.cleanup_strength_threshold = PR_IMMUNE_CLEANUP_STRENGTH_THRESHOLD;

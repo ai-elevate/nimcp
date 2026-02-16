@@ -25,6 +25,7 @@
 
 #include <stddef.h>  /* for NULL */
 #include <stdlib.h>
+#include "constants/nimcp_neural_constants.h"
 
 //=============================================================================
 // Opaque Structure Definitions
@@ -142,7 +143,7 @@ hair_cell_bank_t* hair_cell_bank_create(const hc_bank_config_t* config) {
     for (uint32_t i = 0; i < n; i++) {
         bank->ihc->cells[i].health = HC_IHC_HEALTHY;
         bank->ihc->cells[i].efficiency = 1.0f;
-        bank->ihc->cells[i].resting_potential = -70.0f;
+        bank->ihc->cells[i].resting_potential = NIMCP_RESTING_POTENTIAL_MV;
         bank->ihc->cells[i].saturation_potential = -30.0f;
         bank->ihc->cells[i].vesicle_pool = 1.0f;
     }
@@ -323,7 +324,7 @@ ihc_bank_t* ihc_bank_create(const ihc_config_t* config) {
     for (uint32_t i = 0; i < config->num_channels; i++) {
         bank->cells[i].health = HC_IHC_HEALTHY;
         bank->cells[i].efficiency = 1.0f;
-        bank->cells[i].resting_potential = -70.0f;
+        bank->cells[i].resting_potential = NIMCP_RESTING_POTENTIAL_MV;
         bank->cells[i].saturation_potential = -30.0f;
         bank->cells[i].vesicle_pool = 1.0f;
     }

@@ -13,6 +13,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_column_sleep_bridge)
 
@@ -197,7 +198,7 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
     bridge->effects.current_state = SLEEP_STATE_AWAKE;
     bridge->effects.receptive_field_gain = 1.0f;
     bridge->effects.lateral_inhibition_strength = 1.0f;
-    bridge->effects.competition_temperature = 1.0f;
+    bridge->effects.competition_temperature = NIMCP_TEMPERATURE_DEFAULT;
     bridge->effects.activation_threshold_factor = 1.0f;
     bridge->effects.competition_mode = CC_COMPETITION_WINNER_TAKE_ALL;
     bridge->effects.columns_offline = false;

@@ -30,47 +30,17 @@
 
 #define LOG_MODULE "core_reasoning_learning"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(reasoning_learning)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_reasoning_learning_mesh_id = 0;
-static mesh_participant_registry_t* g_reasoning_learning_mesh_registry = NULL;
-
-nimcp_error_t reasoning_learning_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_reasoning_learning_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "reasoning_learning", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "reasoning_learning";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_reasoning_learning_mesh_id);
-    if (err == NIMCP_SUCCESS) g_reasoning_learning_mesh_registry = registry;
-    return err;
-}
-
-void reasoning_learning_mesh_unregister(void) {
-    if (g_reasoning_learning_mesh_registry && g_reasoning_learning_mesh_id != 0) {
-        mesh_participant_unregister(g_reasoning_learning_mesh_registry, g_reasoning_learning_mesh_id);
-        g_reasoning_learning_mesh_id = 0;
-        g_reasoning_learning_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(reasoning_learning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal Helper Functions
@@ -196,7 +166,7 @@ static logic_clause_t* pattern_to_clause(
     uint32_t lit_idx = 0;
     for (uint32_t i = 0; i < num_features; i++) {
         if (pattern[i] > 0.5f) {
-            char feature_name[64];
+            char feature_name[NIMCP_ID_BUFFER_SIZE];
             snprintf(feature_name, sizeof(feature_name), "%s_feature_%u", clause_name, i);
 
             // Create atom with variable X (generic)

@@ -10,6 +10,7 @@
  */
 
 #include "utils/fuzzy/nimcp_fuzzy_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -43,7 +44,7 @@ extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size, co
 /* Manual health agent declaration - custom heartbeat function defined below */
 static nimcp_health_agent_t* g_fuzzy_bridge_health_agent = NULL;
 
-static __thread char tls_fuzzy_bridge_error[256] = {0};
+static __thread char tls_fuzzy_bridge_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;

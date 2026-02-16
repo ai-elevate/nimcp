@@ -162,8 +162,9 @@ int omni_wm_tom_bridge_training_end(omni_wm_tom_bridge_t* bridge) {
 /** Maximum state dimension for internal buffers */
 #define MAX_STATE_DIM 512
 
+#include "constants/nimcp_constants.h"
 /** Epsilon for floating point comparisons */
-#define FLOAT_EPSILON 1e-6f
+#define FLOAT_EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* ============================================================================
  * Internal Helper Forward Declarations
@@ -1265,7 +1266,7 @@ nimcp_error_t omni_wm_tom_bridge_predict_social_trajectory(
      * 3. Decode positions, actions, emotions at each step
      * For now, use simple linear extrapolation */
 
-    float confidence_decay = 0.95f;
+    float confidence_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT;
     float cumulative_confidence = agent->confidence;
 
     for (uint32_t t = 0; t < horizon_steps; t++) {

@@ -45,6 +45,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wm_hypothalamus_bridge)
 //=============================================================================
@@ -157,7 +158,7 @@ int omni_wm_hypothalamus_bridge_training_end(omni_wm_hypothalamus_bridge_t* brid
 #define CONSERVATIVE_HORIZON_SCALE 0.5f
 
 /** Resource prediction decay per step */
-#define RESOURCE_PREDICTION_DECAY 0.95f
+#define RESOURCE_PREDICTION_DECAY NIMCP_ELIGIBILITY_DECAY_DEFAULT
 
 /** Reward prediction error smoothing */
 #define REWARD_ERROR_SMOOTHING 0.1f

@@ -23,6 +23,7 @@
  */
 
 #include "training/nimcp_snn_backprop.h"
+#include "constants/nimcp_constants.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -204,12 +205,12 @@ snn_backprop_config_t snn_backprop_default_config(snn_train_algorithm_t algorith
 
     config.loss = snn_loss_default_config(SNN_LOSS_RATE_CODED_MSE);
 
-    config.learning_rate = 0.001f;
-    config.weight_decay = 0.0001f;
+    config.learning_rate = NIMCP_LEARNING_RATE_FINE;
+    config.weight_decay = NIMCP_WEIGHT_DECAY_DEFAULT;
     config.use_gradient_clipping = true;
     config.gradient_clip_norm = SNN_GRADIENT_CLIP_DEFAULT;
 
-    config.batch_size = 32;
+    config.batch_size = NIMCP_DEFAULT_BATCH_SIZE;
     config.sequence_length = 100;
     config.shuffle_batches = true;
 

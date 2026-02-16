@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_homeostatic_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -136,9 +137,9 @@ int homeostatic_immune_default_config(homeostatic_immune_config_t* config) {
     config->enable_tnf_biphasic_effect = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->instability_trigger_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->instability_trigger_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Evidence-based thresholds */
     config->instability_trigger_threshold = INSTABILITY_IMMUNE_TRIGGER_THRESHOLD;

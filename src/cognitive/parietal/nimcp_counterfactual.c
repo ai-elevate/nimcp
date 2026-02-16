@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/parietal/nimcp_counterfactual.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -11,56 +12,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parietal_counterfactual)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_counterfactual_mesh_id = 0;
-static mesh_participant_registry_t* g_counterfactual_mesh_registry = NULL;
-
-static nimcp_error_t counterfactual_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_counterfactual_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "counterfactual", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "counterfactual";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_counterfactual_mesh_id);
-    if (err == NIMCP_SUCCESS) g_counterfactual_mesh_registry = registry;
-    return err;
-}
-
-static void counterfactual_mesh_unregister(void) {
-    if (g_counterfactual_mesh_registry && g_counterfactual_mesh_id != 0) {
-        mesh_participant_unregister(g_counterfactual_mesh_registry, g_counterfactual_mesh_id);
-        g_counterfactual_mesh_id = 0;
-        g_counterfactual_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from counterfactual module (instance-level) */
-static inline void parietal_counterfactual_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_parietal_counterfactual_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_parietal_counterfactual_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_parietal_counterfactual_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(parietal_counterfactual, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 struct counterfactual_engine {
@@ -71,7 +26,7 @@ struct counterfactual_engine {
     uint32_t next_cf_id;
 };
 
-static __thread char g_last_error[256] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     strncpy(g_last_error, msg, sizeof(g_last_error) - 1);
@@ -94,7 +49,7 @@ cf_config_t counterfactual_engine_default_config(void) {
         .enable_causal_tracing = true,
         .use_minimal_change = true,
         .max_trace_depth = 5,
-        .inflammation_sensitivity = 1.0f,
+        .inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .fatigue_sensitivity = 1.0f
     };
 }

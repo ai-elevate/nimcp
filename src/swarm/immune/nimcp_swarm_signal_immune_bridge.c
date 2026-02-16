@@ -12,6 +12,7 @@
  */
 
 #include "swarm/immune/nimcp_swarm_signal_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/logging/nimcp_logging.h"
@@ -64,7 +65,7 @@ int swarm_signal_immune_default_config(swarm_signal_immune_config_t* config)
     config->enable_cytokine_effects = true;
     config->enable_inflammation_effects = true;
     config->enable_corruption_detection = true;
-    config->cytokine_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

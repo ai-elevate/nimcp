@@ -25,6 +25,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_recovery_integration)
 #include <time.h>
 #include <sys/time.h>
 #include "utils/memory/nimcp_unified_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal Structures
@@ -489,7 +490,7 @@ float brain_recovery_predict_success(
     if (!ctx || !strategy || !diagnosis) return -1.0F;
 
     // Generate signature and look for pattern
-    char signature[256];
+    char signature[NIMCP_ERROR_BUFFER_SIZE];
     generate_failure_signature(diagnosis, signature, sizeof(signature));
 
     recovery_pattern_t* pattern = find_pattern(ctx, signature);

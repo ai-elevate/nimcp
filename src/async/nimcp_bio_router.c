@@ -45,6 +45,7 @@
 #include <stdatomic.h>
 
 #include <stddef.h>  /* for NULL */
+#include "constants/nimcp_timing_constants.h"
 // Global BBB system accessor (defined in nimcp_brain_init.c)
 extern bbb_system_t nimcp_bbb_get_global_system(void);
 
@@ -52,6 +53,7 @@ extern bbb_system_t nimcp_bbb_get_global_system(void);
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *============================================================================*/
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_router)
 
@@ -67,7 +69,7 @@ static void bio_router_reset_subsystem_statics(void);
 #define MAX_HANDLERS_PER_MODULE 256
 #define MAX_INBOX_MESSAGES 1024
 #define MAX_WORKER_THREADS 8
-#define DEFAULT_TIMEOUT_MS 5000
+#define DEFAULT_TIMEOUT_MS NIMCP_DEFAULT_TIMEOUT_MS
 #define MAX_MODULE_NAME 64
 
 /*=============================================================================
@@ -1835,7 +1837,7 @@ uint32_t bio_router_process_inbox(bio_module_context_t ctx, uint32_t max_message
  * @brief Signal observer entry for predictive coding
  */
 typedef struct {
-    char signal_name[64];
+    char signal_name[NIMCP_ID_BUFFER_SIZE];
     float prediction;
     float precision;
     bio_prediction_observer_t callback;
@@ -2523,7 +2525,7 @@ nimcp_error_t bio_async_immune_phase_change(
  */
 typedef struct {
     void* system;               /**< System context pointer */
-    char module_name[64];       /**< Module name */
+    char module_name[NIMCP_ID_BUFFER_SIZE];       /**< Module name */
     uint64_t query_count;       /**< Number of queries performed */
     bool active;                /**< Whether registration is active */
 } bbb_emotion_registration_t;

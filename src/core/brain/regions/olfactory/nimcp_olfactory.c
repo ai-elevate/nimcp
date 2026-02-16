@@ -16,42 +16,12 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(olfactory)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_olfactory_mesh_id = 0;
-static mesh_participant_registry_t* g_olfactory_mesh_registry = NULL;
-
-nimcp_error_t olfactory_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_olfactory_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "olfactory", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "olfactory";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_olfactory_mesh_id);
-    if (err == NIMCP_SUCCESS) g_olfactory_mesh_registry = registry;
-    return err;
-}
-
-void olfactory_mesh_unregister(void) {
-    if (g_olfactory_mesh_registry && g_olfactory_mesh_id != 0) {
-        mesh_participant_unregister(g_olfactory_mesh_registry, g_olfactory_mesh_id);
-        g_olfactory_mesh_id = 0;
-        g_olfactory_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(olfactory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 static uint64_t olfact_get_time_ms(void) {
@@ -543,7 +513,7 @@ int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, v
     }
     olfact->plasticity_bridge.plasticity_coordinator = plasticity;
     olfact->plasticity_bridge.stdp_context = stdp;
-    olfact->plasticity_bridge.learning_rate = 0.01f;
+    olfact->plasticity_bridge.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     olfact->plasticity_bridge.olfactory_plasticity_gate = 1.0f;
     olfact->plasticity_bridge.hebbian_enabled = true;
     olfact->plasticity_bridge.initialized = (plasticity != NULL || stdp != NULL);

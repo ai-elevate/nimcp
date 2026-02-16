@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -114,7 +115,7 @@ int calcium_sleep_default_config(calcium_sleep_config_t* config) {
     config->enable_lr_modulation = true;
     config->enable_pump_modulation = true;
     config->enable_threshold_shifts = false;  /* Advanced feature */
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

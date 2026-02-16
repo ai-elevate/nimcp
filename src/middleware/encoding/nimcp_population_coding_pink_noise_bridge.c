@@ -14,6 +14,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_pink_noise_bridge)
 
@@ -101,7 +102,7 @@ population_pink_config_t population_pink_bridge_default_config(void) {
     config.amplitude = 0.05f;
     config.min_frequency = 0.1f;
     config.max_frequency = 100.0f;
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
 
     // Application mode
     config.mode = POPULATION_PINK_MODE_HYBRID;

@@ -8,6 +8,7 @@
 #include "integration/intra/memory/nimcp_memory_intra_coordinator.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -49,7 +50,7 @@ nimcp_memory_intra_config_t nimcp_memory_intra_default_config(void) {
         .prc_mb_coupling = 0.3f,
         .phc_mb_coupling = 0.4f,
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .enable_theta_gating = true,
         .enable_logging = false,
         .enable_metrics = true
@@ -150,8 +151,8 @@ nimcp_layer_error_t nimcp_memory_intra_update(nimcp_memory_intra_t coord, float 
     coord->state.retrieval_strength = (theta_sin < 0) ? -theta_sin : 0.0f;
 
     /* Update stats */
-    coord->stats.avg_encoding_strength = coord->stats.avg_encoding_strength * 0.99f + coord->state.encoding_strength * 0.01f;
-    coord->stats.avg_coherence = coord->stats.avg_coherence * 0.99f + coord->state.layer_coherence * 0.01f;
+    coord->stats.avg_encoding_strength = coord->stats.avg_encoding_strength * NIMCP_EMA_DECAY_DEFAULT + coord->state.encoding_strength * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_coherence = coord->stats.avg_coherence * NIMCP_EMA_DECAY_DEFAULT + coord->state.layer_coherence * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

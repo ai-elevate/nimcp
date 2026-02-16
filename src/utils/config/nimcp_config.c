@@ -22,6 +22,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(config)
 
@@ -168,7 +169,7 @@ bool nimcp_config_load_yaml(const char* filepath, nimcp_brain_config_t* config) 
     nimcp_config_init_defaults(config);
 
     char line[MAX_LINE];
-    char section[64] = "";
+    char section[NIMCP_ID_BUFFER_SIZE] = "";
 
     while (fgets(line, sizeof(line), file)) {
         char* trimmed = trim(line);
@@ -299,7 +300,7 @@ bool nimcp_config_load_json(const char* filepath, nimcp_brain_config_t* config) 
     nimcp_config_init_defaults(config);
 
     // Parse brain configuration fields
-    char str_buffer[256];
+    char str_buffer[NIMCP_ERROR_BUFFER_SIZE];
     int64_t int_value = 0;
     double double_value = 0.0;
     bool bool_value = false;

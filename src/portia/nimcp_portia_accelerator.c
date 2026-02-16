@@ -18,6 +18,7 @@
  */
 
 #include "portia/nimcp_portia_accelerator.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
@@ -124,7 +125,7 @@ static bool detect_nvidia_cuda(accelerator_info_t* info) {
     }
 
     // Get device name
-    char name[256] = {0};
+    char name[NIMCP_NAME_BUFFER_SIZE] = {0};
     if (cuDeviceGetName(name, sizeof(name), device) == 0) {
         name[sizeof(info->name) - 1] = '\0';  // Ensure null-termination
         memcpy(info->name, name, sizeof(info->name) - 1);
@@ -311,7 +312,7 @@ static bool detect_apple_neural_engine(accelerator_info_t* info) {
     // Check if running on Apple Silicon
     FILE* fp = popen("sysctl -n machdep.cpu.brand_string", "r");
     if (fp) {
-        char brand[128] = {0};
+        char brand[NIMCP_LABEL_BUFFER_SIZE] = {0};
         if (fgets(brand, sizeof(brand), fp)) {
             if (strstr(brand, "Apple M") != NULL) {
                 strncpy(info->vendor, "Apple", sizeof(info->vendor) - 1);

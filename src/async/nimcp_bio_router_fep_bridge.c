@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_bio_router_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/validation/nimcp_common.h"
@@ -32,11 +33,11 @@ int bio_router_fep_default_config(bio_router_fep_config_t* config) {
     config->route_prediction_confidence = 0.7f;
     config->latency_tolerance_ms = 10.0f;
     config->surprise_threshold = 2.0f;
-    config->learning_rate = 0.1f;
+    config->learning_rate = NIMCP_LEARNING_RATE_COARSE;
     config->enable_route_learning = true;
     config->history_window = 100;
     config->enable_route_optimization = true;
-    config->exploration_rate = 0.1f;
+    config->exploration_rate = NIMCP_EXPLORATION_RATE_DEFAULT;
     config->max_routes_evaluated = 8;
     config->enable_latency_prediction = true;
     config->enable_congestion_avoidance = true;

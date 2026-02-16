@@ -12,6 +12,7 @@
  */
 
 #include "security/lgss/nimcp_lgss_telemetry.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -21,43 +22,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lgss_telemetry)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_lgss_telemetry_mesh_id = 0;
-static mesh_participant_registry_t* g_lgss_telemetry_mesh_registry = NULL;
-
-nimcp_error_t lgss_telemetry_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_lgss_telemetry_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "lgss_telemetry", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "lgss_telemetry";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_lgss_telemetry_mesh_id);
-    if (err == NIMCP_SUCCESS) g_lgss_telemetry_mesh_registry = registry;
-    return err;
-}
-
-void lgss_telemetry_mesh_unregister(void) {
-    if (g_lgss_telemetry_mesh_registry && g_lgss_telemetry_mesh_id != 0) {
-        mesh_participant_unregister(g_lgss_telemetry_mesh_registry, g_lgss_telemetry_mesh_id);
-        g_lgss_telemetry_mesh_id = 0;
-        g_lgss_telemetry_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(lgss_telemetry, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 /*=============================================================================
@@ -371,7 +338,7 @@ static int write_entry_to_file(
         return 0;
     }
 
-    char buffer[2048];
+    char buffer[NIMCP_DEBUG_BUFFER_SIZE];
     int len = lgss_telemetry_format_entry(entry, buffer, sizeof(buffer));
     if (len < 0) {
         return NIMCP_ERROR_INVALID_PARAM;

@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_feature_extractor_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -129,9 +130,9 @@ int feature_immune_default_config(feature_immune_config_t* config) {
     config->enable_quality_monitoring = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->anomaly_trigger_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->anomaly_trigger_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Evidence-based thresholds */
     config->burst_threshold = FEATURE_BURST_THREAT_THRESHOLD;

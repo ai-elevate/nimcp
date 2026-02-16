@@ -22,6 +22,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_gateway)
 
@@ -53,7 +54,7 @@ static void gateway_init_bbb(void)
  */
 typedef struct {
     char swarm_id[32];               /**< Swarm identifier */
-    char endpoint[128];              /**< Connection endpoint */
+    char endpoint[NIMCP_LABEL_BUFFER_SIZE];              /**< Connection endpoint */
     swarm_status_t status;           /**< Current status */
     uint32_t last_contact_time;      /**< Last communication timestamp */
     uint32_t connect_time;           /**< Connection establishment time */

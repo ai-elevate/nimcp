@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/vae/bridges/nimcp_vae_logging_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/vae/nimcp_vae.h"
 #include "cognitive/vae/nimcp_vae_latent.h"
 
@@ -183,7 +184,7 @@ void vae_log_event(vae_logging_bridge_t* bridge, vae_log_event_t event,
         return;
     }
 
-    char msg[512];
+    char msg[NIMCP_ERROR_BUFFER_LARGE];
     va_list args;
     va_start(args, format);
     vsnprintf(msg, sizeof(msg), format, args);

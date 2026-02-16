@@ -11,6 +11,7 @@
  */
 
 #include "training/nimcp_cnn_training.h"
+#include "constants/nimcp_constants.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -213,10 +214,10 @@ nimcp_error_t cnn_trainer_default_config(cnn_trainer_config_t* config) {
     /* Optimizer: Adam with standard hyperparameters */
     config->optimizer_config.type = NIMCP_OPTIMIZER_ADAM;
     config->optimizer_config.params.adam = (nimcp_adam_config_t){
-        .learning_rate = 0.001f,
-        .beta1 = 0.9f,
-        .beta2 = 0.999f,
-        .epsilon = 1e-8f,
+        .learning_rate = NIMCP_LEARNING_RATE_FINE,
+        .beta1 = NIMCP_ADAM_BETA1_DEFAULT,
+        .beta2 = NIMCP_ADAM_BETA2_DEFAULT,
+        .epsilon = NIMCP_EPSILON_ADAM,
         .weight_decay = 0.0f,
         .amsgrad = false
     };
@@ -226,12 +227,12 @@ nimcp_error_t cnn_trainer_default_config(cnn_trainer_config_t* config) {
 
     /* Training hyperparameters */
     config->max_epochs = 100;
-    config->learning_rate = 0.001f;
+    config->learning_rate = NIMCP_LEARNING_RATE_FINE;
     config->weight_decay = 0.0f;
     config->gradient_clip_value = 5.0f;
 
     /* Data loader */
-    config->dataloader.batch_size = 32;
+    config->dataloader.batch_size = NIMCP_DEFAULT_BATCH_SIZE;
     config->dataloader.shuffle = true;
     config->dataloader.num_workers = 1;
     config->dataloader.pin_memory = false;

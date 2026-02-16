@@ -18,49 +18,10 @@
 
 #define LOG_CATEGORY "value_commitment"
 
-/* ============================================================================
- * Health Agent Integration
- * ============================================================================ */
-
-/* Forward declaration for health agent */
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(value_commitment)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_value_commitment_mesh_id = 0;
-static mesh_participant_registry_t* g_value_commitment_mesh_registry = NULL;
-
-nimcp_error_t value_commitment_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_value_commitment_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "value_commitment", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "value_commitment";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_value_commitment_mesh_id);
-    if (err == NIMCP_SUCCESS) g_value_commitment_mesh_registry = registry;
-    return err;
-}
-
-void value_commitment_mesh_unregister(void) {
-    if (g_value_commitment_mesh_registry && g_value_commitment_mesh_id != 0) {
-        mesh_participant_unregister(g_value_commitment_mesh_registry, g_value_commitment_mesh_id);
-        g_value_commitment_mesh_id = 0;
-        g_value_commitment_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(value_commitment, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 struct value_commitment_system {

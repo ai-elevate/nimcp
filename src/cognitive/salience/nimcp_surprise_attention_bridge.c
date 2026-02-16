@@ -36,6 +36,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_att_bridge_health_agent = NULL;
@@ -180,7 +181,7 @@ surprise_att_bridge_t* surprise_att_bridge_create(
         return NULL;
     }
 
-    bridge->effects.current_sensitivity = 1.0f;
+    bridge->effects.current_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->initialized = true;
 
     if (bridge->config.enable_logging) {
@@ -218,7 +219,7 @@ int surprise_att_bridge_reset(surprise_att_bridge_t* bridge) {
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->effects, 0, sizeof(bridge->effects));
-    bridge->effects.current_sensitivity = 1.0f;
+    bridge->effects.current_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     memset(bridge->channels, 0, sizeof(bridge->channels));
     bridge->channel_count = 0;

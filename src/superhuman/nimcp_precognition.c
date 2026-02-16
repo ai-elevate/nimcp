@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(precognition)
 
@@ -389,8 +390,8 @@ precognition_config_t precognition_default_config(void) {
     config.hidden_dim = PRECOGNITION_DEFAULT_HIDDEN_DIM;
     config.num_prediction_heads = HORIZON_COUNT;
     config.min_confidence = PRECOGNITION_DEFAULT_MIN_CONFIDENCE;
-    config.confidence_decay = 0.9f;
-    config.temporal_discount = 0.99f;
+    config.confidence_decay = NIMCP_EMA_DECAY_FAST;
+    config.temporal_discount = NIMCP_REWARD_DISCOUNT_DEFAULT;
     config.anomaly_threshold = PRECOGNITION_DEFAULT_ANOMALY_THRESHOLD;
     config.novelty_threshold = 2.0f;
     config.enable_early_warning = true;

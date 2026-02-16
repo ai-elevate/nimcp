@@ -56,6 +56,7 @@
 
 #define LOG_MODULE "fn_dispatch"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fn_dispatch)
 
@@ -222,7 +223,7 @@ static int parse_self_symbols(fn_dispatch_table_t* table)
         return FN_DISPATCH_ERR_PARSE;
     }
 
-    char line[512];
+    char line[NIMCP_ERROR_BUFFER_LARGE];
     int count = 0;
 
     while (fgets(line, sizeof(line), maps)) {

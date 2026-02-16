@@ -25,40 +25,10 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cingulate_immune_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_cingulate_immune_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_cingulate_immune_bridge_mesh_registry = NULL;
-
-nimcp_error_t cingulate_immune_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_cingulate_immune_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "cingulate_immune_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "cingulate_immune_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_cingulate_immune_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_cingulate_immune_bridge_mesh_registry = registry;
-    return err;
-}
-
-void cingulate_immune_bridge_mesh_unregister(void) {
-    if (g_cingulate_immune_bridge_mesh_registry && g_cingulate_immune_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_cingulate_immune_bridge_mesh_registry, g_cingulate_immune_bridge_mesh_id);
-        g_cingulate_immune_bridge_mesh_id = 0;
-        g_cingulate_immune_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(cingulate_immune_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -261,9 +231,9 @@ cingulate_immune_bridge_t cingulate_immune_create(
 
     /* Initialize effects to neutral */
     bridge->cytokine_effects.ern_modulation = 1.0f;
-    bridge->cytokine_effects.error_sensitivity = 1.0f;
+    bridge->cytokine_effects.error_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->cytokine_effects.n2_modulation = 1.0f;
-    bridge->cytokine_effects.conflict_threshold = 0.5f;
+    bridge->cytokine_effects.conflict_threshold = NIMCP_CONFLICT_THRESHOLD;
     bridge->cytokine_effects.control_capacity = 1.0f;
     bridge->cytokine_effects.emotional_regulation = 1.0f;
     bridge->cytokine_effects.self_referential_capacity = 1.0f;

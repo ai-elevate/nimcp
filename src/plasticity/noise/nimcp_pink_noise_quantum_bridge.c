@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_quantum_bridge)
 
@@ -155,7 +157,7 @@ pink_quantum_config_t pink_quantum_default_config(void) {
     config.method = PINK_QUANTUM_HYBRID;
     config.target_alpha = 1.0f;
     config.amplitude = 0.1f;
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
     config.seed = 0;
     config.enable_classical_fallback = true;
 
@@ -163,7 +165,7 @@ pink_quantum_config_t pink_quantum_default_config(void) {
     config.annealing.initial_temperature = 10.0f;
     config.annealing.final_temperature = 0.01f;
     config.annealing.num_sweeps = 50;
-    config.annealing.coupling_strength = 0.1f;
+    config.annealing.coupling_strength = NIMCP_OSCILLATION_COUPLING_DEFAULT;
 
     // Ternary defaults
     config.ternary.num_taps = 16;

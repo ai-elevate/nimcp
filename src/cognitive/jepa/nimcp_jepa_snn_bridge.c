@@ -23,6 +23,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_snn_bridge)
 //=============================================================================
@@ -174,7 +176,7 @@ jepa_snn_config_t jepa_snn_config_default(void) {
     jepa_snn_config_t config = {
         .num_dimensions = JEPA_DIM_COUNT,
         .neurons_per_dim = JEPA_SNN_NEURONS_PER_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
 
         .dt_ms = 1.0f,
         .encoding_window_ms = JEPA_SNN_ENCODING_WINDOW,
@@ -193,7 +195,7 @@ jepa_snn_config_t jepa_snn_config_default(void) {
         .enable_competition = true,
         .inhibition_strength = 0.3f,
         .enable_error_detection = true,
-        .error_sensitivity = 1.0f,
+        .error_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
 
         .enable_prediction = true,
         .prediction_gain = 1.5f,

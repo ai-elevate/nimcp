@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gan_bridge)
 //=============================================================================
@@ -60,7 +61,7 @@ void gan_bridge_mesh_unregister(void) {
 // Thread-local error message
 //=============================================================================
 
-static __thread char g_gan_error[512] = {0};
+static __thread char g_gan_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_gan_error(const char* msg)
 {
@@ -895,7 +896,7 @@ bool gan_bridge_ready(const gan_bridge_t* bridge)
 
 const char* gan_bridge_model_info(const gan_bridge_t* bridge)
 {
-    static char info[256];
+    static char info[NIMCP_ERROR_BUFFER_SIZE];
 
     if (!bridge) return "Not initialized";
 

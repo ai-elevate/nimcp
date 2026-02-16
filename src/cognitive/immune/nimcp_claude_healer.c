@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/immune/nimcp_claude_healer.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -28,56 +29,11 @@
 #ifdef HAVE_LIBCURL
 #include <curl/curl.h>
 #endif
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(claude_healer)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_claude_healer_mesh_id = 0;
-static mesh_participant_registry_t* g_claude_healer_mesh_registry = NULL;
-
-nimcp_error_t claude_healer_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_claude_healer_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "claude_healer", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SECURITY);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "claude_healer";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_claude_healer_mesh_id);
-    if (err == NIMCP_SUCCESS) g_claude_healer_mesh_registry = registry;
-    return err;
-}
-
-void claude_healer_mesh_unregister(void) {
-    if (g_claude_healer_mesh_registry && g_claude_healer_mesh_id != 0) {
-        mesh_participant_unregister(g_claude_healer_mesh_registry, g_claude_healer_mesh_id);
-        g_claude_healer_mesh_id = 0;
-        g_claude_healer_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from claude_healer module (instance-level) */
-static inline void claude_healer_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_claude_healer_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_claude_healer_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_claude_healer_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(claude_healer, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 /* ============================================================================
@@ -238,7 +194,7 @@ static size_t extract_json_string(
     if (json == NULL || key == NULL || value_out == NULL) return 0;
 
     /* Find the key */
-    char key_pattern[128];
+    char key_pattern[NIMCP_LABEL_BUFFER_SIZE];
     snprintf(key_pattern, sizeof(key_pattern), "\"%s\":\"", key);
 
     const char* start = find_string(json, json_len, key_pattern);
@@ -423,7 +379,7 @@ static size_t extract_api_error(
     size_t len = extract_json_string(json, json_len, "type", error_out, error_size);
     if (len > 0) {
         /* Append error message if present */
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         size_t msg_len = extract_json_string(json, json_len, "message", msg, sizeof(msg));
         if (msg_len > 0 && len + msg_len + 3 < error_size) {
             error_out[len++] = ':';
@@ -571,11 +527,11 @@ static claude_heal_status_t make_api_request(
     struct curl_slist* headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
 
-    char auth_header[512];
+    char auth_header[NIMCP_ERROR_BUFFER_LARGE];
     snprintf(auth_header, sizeof(auth_header), "x-api-key: %s", healer->config.api_key);
     headers = curl_slist_append(headers, auth_header);
 
-    char version_header[128];
+    char version_header[NIMCP_LABEL_BUFFER_SIZE];
     snprintf(version_header, sizeof(version_header), "anthropic-version: %s", CLAUDE_API_VERSION);
     headers = curl_slist_append(headers, version_header);
 
@@ -624,7 +580,7 @@ static claude_heal_status_t make_api_request(
     }
     if (http_code != 200) {
         /* Try to extract error details from response */
-        char error_msg[256];
+        char error_msg[NIMCP_ERROR_BUFFER_SIZE];
         if (response->data != NULL && response->size > 0) {
             size_t err_len = extract_api_error(
                 response->data, response->size, error_msg, sizeof(error_msg)

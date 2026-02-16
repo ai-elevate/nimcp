@@ -21,6 +21,7 @@
  */
 
 #include "utils/fault_tolerance/nimcp_recovery_observability.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
@@ -653,7 +654,7 @@ ro_recovery_context_t* ro_start_recovery(ro_context_t* ctx, uint32_t fault_type)
 
     /* Start trace span (use unlocked version since we already hold ctx->mutex) */
     if (ctx->config.enable_tracing) {
-        char span_name[64];
+        char span_name[NIMCP_ID_BUFFER_SIZE];
         snprintf(span_name, sizeof(span_name), "recovery_%u", recovery->recovery_id);
         ro_span_t* span = ro_start_trace_unlocked(ctx, span_name);
         if (span) {
@@ -1126,7 +1127,7 @@ bool ro_flush(ro_context_t* ctx) {
 
     nimcp_mutex_lock(&ctx->mutex);
 
-    char buffer[4096];
+    char buffer[NIMCP_PATH_BUFFER_SIZE];
 
     for (uint32_t i = 0; i < ctx->exporter_count; i++) {
         if (ctx->exporters[i].active && ctx->exporters[i].callback) {

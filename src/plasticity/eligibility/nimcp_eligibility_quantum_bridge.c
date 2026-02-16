@@ -18,6 +18,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_quantum_bridge)
 
@@ -83,7 +84,7 @@ elig_quantum_config_t elig_quantum_default_config(void) {
         .synapse_sample_size = 1000,
         .mc_samples = ELIG_QUANTUM_MC_SAMPLES,
         .use_importance_sampling = true,
-        .temporal_discount = 0.99f,
+        .temporal_discount = NIMCP_REWARD_DISCOUNT_DEFAULT,
         .initial_temperature = 10.0f,
         .final_temperature = 0.01f,
         .tunneling_rate = 0.1f,

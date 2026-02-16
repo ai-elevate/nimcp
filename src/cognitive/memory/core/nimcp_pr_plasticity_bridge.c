@@ -31,6 +31,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_plasticity_bridge)
 //=============================================================================
@@ -268,7 +269,7 @@ pr_plasticity_bridge_config_t pr_plasticity_config_default(void) {
     config.homeostatic.max_scale = PR_HOMEOSTATIC_MAX_SCALE;
 
     /* Metaplasticity parameters */
-    config.meta.history_decay = 0.99f;
+    config.meta.history_decay = NIMCP_EMA_DECAY_DEFAULT;
     config.meta.min_lr_scale = 0.1f;
     config.meta.max_lr_scale = 2.0f;
     config.meta.consolidation_protection = 0.5f;

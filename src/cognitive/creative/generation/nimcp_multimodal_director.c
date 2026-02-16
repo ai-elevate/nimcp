@@ -17,44 +17,13 @@
 #include <time.h>
 
 #define LOG_MODULE "MULTIMODAL_DIR"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multimodal_director)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_multimodal_director_mesh_id = 0;
-static mesh_participant_registry_t* g_multimodal_director_mesh_registry = NULL;
-
-nimcp_error_t multimodal_director_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_multimodal_director_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "multimodal_director", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "multimodal_director";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_multimodal_director_mesh_id);
-    if (err == NIMCP_SUCCESS) g_multimodal_director_mesh_registry = registry;
-    return err;
-}
-
-void multimodal_director_mesh_unregister(void) {
-    if (g_multimodal_director_mesh_registry && g_multimodal_director_mesh_id != 0) {
-        mesh_participant_unregister(g_multimodal_director_mesh_registry, g_multimodal_director_mesh_id);
-        g_multimodal_director_mesh_id = 0;
-        g_multimodal_director_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(multimodal_director, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -306,7 +275,7 @@ int director_generate_treatment(multimodal_director_t* dir,
     update_phase(dir, PHASE_TREATMENT, 0.0f, "Generating treatment");
 
     /* Expand synopsis into fuller treatment */
-    char expanded[2048];
+    char expanded[NIMCP_JSON_BUFFER_SIZE];
     snprintf(expanded, sizeof(expanded),
              "%s\n\n"
              "OPENING: The story begins with an establishing sequence that sets the mood and introduces the world.\n\n"
@@ -636,7 +605,7 @@ int director_generate_storyboard(multimodal_director_t* dir,
         visual_generation_request_t vis_req;
         memset(&vis_req, 0, sizeof(vis_req));
 
-        char prompt[256];
+        char prompt[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(prompt, sizeof(prompt),
                  "Cinematic scene, %s, film still, %s lighting",
                  scene->slug_line,
@@ -787,7 +756,7 @@ int director_produce_scene(multimodal_director_t* dir,
     memset(output, 0, sizeof(video_generation_result_t));
 
     /* Build prompt from scene */
-    char prompt[1024];
+    char prompt[NIMCP_LOG_BUFFER_SIZE];
     snprintf(prompt, sizeof(prompt),
              "Cinematic scene: %s. %s. %s lighting, %s mood.",
              scene->slug_line,

@@ -9,6 +9,7 @@
  */
 
 #include "plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -99,7 +100,7 @@ int homeostatic_sleep_default_config(homeostatic_sleep_config_t* config) {
     config->enable_scaling_modulation = true;
     config->enable_target_modulation = true;
     config->enable_pruning_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     config->deep_nrem_scaling_boost = 1.2f;  /* Extra 20% boost in deep NREM */
     return 0;
 }

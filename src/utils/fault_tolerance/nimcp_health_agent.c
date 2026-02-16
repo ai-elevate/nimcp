@@ -19,6 +19,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "constants/nimcp_buffer_constants.h"
 
 /* Module integrations */
 #include "portia/nimcp_portia.h"
@@ -78,6 +79,8 @@
 
 /* Brain Immune Tick Integration */
 #include "cognitive/immune/nimcp_brain_immune_tick.h"
+#include "constants/nimcp_timing_constants.h"
+#include "constants/nimcp_learning_constants.h"
 
 /* Phase 5: Cognitive module integration for real API calls
  * Note: Cannot include full headers due to type conflicts (metric_type_t, cognitive_state_t)
@@ -194,6 +197,7 @@ typedef hypo_orch_stats_t health_agent_hypo_stats_t;
 #include <stdatomic.h>
 #else
 #include <atomic>
+#include "constants/nimcp_buffer_constants.h"
 #endif
 
 #define LOG_MODULE "health_agent"
@@ -218,7 +222,7 @@ typedef hypo_orch_stats_t health_agent_hypo_stats_t;
 #define AGENT_MSG_QUEUE_CAPACITY  2048
 
 /** Maximum time to wait for agent thread to stop (ms) */
-#define AGENT_STOP_TIMEOUT_MS     5000
+#define AGENT_STOP_TIMEOUT_MS     NIMCP_DEFAULT_TIMEOUT_MS
 
 /** Minimum check interval (ms) */
 #define AGENT_MIN_CHECK_INTERVAL_MS  10
@@ -256,7 +260,7 @@ typedef struct {
 typedef struct {
     _Atomic uint64_t last_heartbeat_us;  /**< Last heartbeat timestamp */
     _Atomic uint32_t missed_count;       /**< Consecutive missed heartbeats */
-    char current_operation[64];          /**< Current operation name */
+    char current_operation[NIMCP_ID_BUFFER_SIZE];          /**< Current operation name */
     _Atomic float current_progress;      /**< Current progress (0.0-1.0) */
 } heartbeat_state_t;
 
@@ -552,7 +556,7 @@ struct nimcp_health_agent {
     _Atomic uint64_t capacity_checks_run;
     _Atomic uint64_t capacity_warnings_triggered;
     _Atomic uint64_t capacity_expansions_triggered;
-    char most_critical_module[64];       /**< Name of module closest to capacity */
+    char most_critical_module[NIMCP_ID_BUFFER_SIZE];       /**< Name of module closest to capacity */
 
     /* =========== SYMBOLIC LOGIC HEALTH (Phase 5.9) =========== */
 
@@ -695,7 +699,7 @@ struct nimcp_health_agent {
     struct {
         void* ptr;                       /**< Pointer to structure */
         uint32_t expected_magic;         /**< Expected magic value */
-        char name[64];                   /**< Structure name */
+        char name[NIMCP_ID_BUFFER_SIZE];                   /**< Structure name */
         bool active;                     /**< Entry is in use */
     } registered_structs[64];            /**< Registry of tracked structures */
     uint32_t registered_struct_count;    /**< Number of registered structs */
@@ -2242,13 +2246,13 @@ void nimcp_health_agent_default_cognitive_config(health_agent_cognitive_config_t
     config->collective.enable_consensus_decisions = false;
     config->collective.enable_swarm_immune = false;
     config->collective.consensus_threshold = 0.67f;
-    config->collective.consensus_timeout_ms = 1000;
+    config->collective.consensus_timeout_ms = NIMCP_MEDIUM_TIMEOUT_MS;
 
     /* RCOG defaults */
     config->rcog.enable_rcog_diagnosis = true;
     config->rcog.enable_rcog_recovery_planning = true;
     config->rcog.enable_imagination = true;
-    config->rcog.rcog_timeout_ms = 5000;
+    config->rcog.rcog_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
     config->rcog.confidence_threshold = 0.6f;
 
     /* GPU defaults */
@@ -2274,7 +2278,7 @@ void nimcp_health_agent_default_cognitive_config(health_agent_cognitive_config_t
     config->hypothalamus.stress_trigger_threshold = 0.4f;
     config->hypothalamus.sickness_trigger_threshold = 0.25f;
     config->hypothalamus.homeostasis_update_ms = 100;
-    config->hypothalamus.drive_response_timeout_ms = 1000;
+    config->hypothalamus.drive_response_timeout_ms = NIMCP_MEDIUM_TIMEOUT_MS;
 
     /* Connectivity defaults */
     config->connectivity.enable_connectivity_monitoring = true;
@@ -2311,7 +2315,7 @@ void nimcp_health_agent_default_cognitive_config(health_agent_cognitive_config_t
     config->bio_async.publish_health_events = true;
     config->bio_async.subscribe_health_requests = true;
     config->bio_async.event_batch_size = 10;
-    config->bio_async.event_batch_timeout_ms = 100;
+    config->bio_async.event_batch_timeout_ms = NIMCP_FAST_TIMEOUT_MS;
 
     /* Exception defaults */
     config->exception.enable_exception_integration = true;
@@ -2353,7 +2357,7 @@ int nimcp_health_agent_connect_hypothalamus(
         agent->hypothalamus_config.stress_trigger_threshold = 0.4f;
         agent->hypothalamus_config.sickness_trigger_threshold = 0.25f;
         agent->hypothalamus_config.homeostasis_update_ms = 100;
-        agent->hypothalamus_config.drive_response_timeout_ms = 1000;
+        agent->hypothalamus_config.drive_response_timeout_ms = NIMCP_MEDIUM_TIMEOUT_MS;
     }
 
     /* Register as bridge with hypothalamus orchestrator */
@@ -2592,7 +2596,7 @@ int nimcp_health_agent_connect_bio_async(
         agent->bio_async_config.publish_health_events = true;
         agent->bio_async_config.subscribe_health_requests = true;
         agent->bio_async_config.event_batch_size = 10;
-        agent->bio_async_config.event_batch_timeout_ms = 100;
+        agent->bio_async_config.event_batch_timeout_ms = NIMCP_FAST_TIMEOUT_MS;
     }
     /* Register as module with bio-async router */
     bio_router_t global_router = bio_router_get_global();
@@ -3227,7 +3231,7 @@ int nimcp_health_agent_connect_collective(
         agent->collective_config.enable_consensus_decisions = true;
         agent->collective_config.enable_swarm_immune = true;
         agent->collective_config.consensus_threshold = 0.66f;
-        agent->collective_config.consensus_timeout_ms = 5000;
+        agent->collective_config.consensus_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
     }
     nimcp_mutex_unlock(agent->modules_mutex);
 
@@ -3254,7 +3258,7 @@ int nimcp_health_agent_connect_rcog(
         agent->rcog_config.enable_rcog_diagnosis = true;
         agent->rcog_config.enable_rcog_recovery_planning = true;
         agent->rcog_config.enable_imagination = true;
-        agent->rcog_config.rcog_timeout_ms = 10000;
+        agent->rcog_config.rcog_timeout_ms = NIMCP_WATCHDOG_TIMEOUT_MS;
         agent->rcog_config.confidence_threshold = 0.7f;
     }
     nimcp_mutex_unlock(agent->modules_mutex);
@@ -3637,7 +3641,7 @@ int nimcp_health_agent_create_checkpoint(
     /* Create checkpoint using brain's checkpoint system */
     if (agent->brain) {
         /* Generate checkpoint path with timestamp and reason */
-        char checkpoint_path[256];
+        char checkpoint_path[NIMCP_SHORT_PATH_SIZE];
         uint64_t timestamp = get_timestamp_us();
         snprintf(checkpoint_path, sizeof(checkpoint_path),
                  "/tmp/nimcp_checkpoint_%lu_%s.ckpt",
@@ -3680,7 +3684,7 @@ int nimcp_health_agent_rollback(
      */
     if (agent->brain && checkpoint_id == 0) {
         /* Find most recent checkpoint - simplified approach */
-        char checkpoint_path[256];
+        char checkpoint_path[NIMCP_SHORT_PATH_SIZE];
         snprintf(checkpoint_path, sizeof(checkpoint_path),
                  "/tmp/nimcp_checkpoint_latest.ckpt");
 
@@ -3909,7 +3913,7 @@ int nimcp_health_agent_publish_event(
         bio_module_context_t ctx = bio_router_register_module(&module_info);
         if (ctx) {
             /* Publish health severity as signal value */
-            char signal_name[64];
+            char signal_name[NIMCP_ID_BUFFER_SIZE];
             snprintf(signal_name, sizeof(signal_name), "health_%u", (unsigned)msg->source);
             float signal_value = (float)(HEALTH_SEVERITY_CRITICAL - msg->severity) /
                                  (float)HEALTH_SEVERITY_CRITICAL;  /* Higher = healthier */
@@ -4039,7 +4043,7 @@ static void agent_run_hypothalamus_check(nimcp_health_agent_t* agent, float heal
                 severity = HEALTH_SEVERITY_FATAL;
             }
 
-            char stress_reason[128];
+            char stress_reason[NIMCP_ERROR_BUFFER_MEDIUM];
             snprintf(stress_reason, sizeof(stress_reason),
                      "Health=%.2f, drive=%.2f, active_drives=%u",
                      health_score, drive_level, drive_state.active_drives);
@@ -4121,7 +4125,7 @@ static void agent_check_connectivity(nimcp_health_agent_t* agent) {
     if (!agent || !agent->connectivity) return;
 
     bool isolated = false;
-    char module_name[64] = {0};
+    char module_name[NIMCP_ID_BUFFER_SIZE] = {0};
 
     nimcp_health_agent_check_connectivity(agent, &isolated, module_name, sizeof(module_name));
 
@@ -5760,7 +5764,7 @@ int nimcp_health_agent_connect_swarm_immune(
         agent->swarm_immune_config.enable_memory_sharing = true;
         agent->swarm_immune_config.enable_self_verification = true;
         agent->swarm_immune_config.threat_detection_threshold = 0.5f;
-        agent->swarm_immune_config.consensus_timeout_ms = 5000;
+        agent->swarm_immune_config.consensus_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
     }
 
     nimcp_mutex_unlock(agent->modules_mutex);
@@ -6376,7 +6380,7 @@ int nimcp_health_agent_use_swarm_memory_store(
     atomic_fetch_add(&agent->swarm_memories_stored, 1);
 
     /* Call actual Swarm Memory API */
-    char memory_id[64] = {0};
+    char memory_id[NIMCP_ID_BUFFER_SIZE] = {0};
     nimcp_result_t result = nimcp_swarm_memory_store(
         agent->swarm_memory,
         (NimcpMemoryType)pattern_type,
@@ -11059,7 +11063,7 @@ static void agent_probe_single_brain(
     probe.num_active_synapses = (uint32_t)(probe.num_synapses * 0.8);
     probe.memory_bytes = probe.num_neurons * 1024;
     probe.avg_inference_time_us = 100.0f + (float)((uintptr_t)brain % 100);
-    probe.current_learning_rate = 0.01f;
+    probe.current_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     probe.avg_sparsity = 0.2f;
     probe.accuracy = 0.95f;
     probe.is_cow_clone = false;

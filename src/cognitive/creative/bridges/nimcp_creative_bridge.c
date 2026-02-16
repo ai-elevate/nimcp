@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_bridge)
 //=============================================================================
@@ -67,8 +68,8 @@ void creative_bridge_mesh_unregister(void) {
  * @brief Copyright database entry
  */
 typedef struct {
-    char title[128];
-    char creator[64];
+    char title[NIMCP_LABEL_BUFFER_SIZE];
+    char creator[NIMCP_ID_BUFFER_SIZE];
     style_embedding_t* embedding;
     uint64_t content_hash;
 } copyright_entry_t;

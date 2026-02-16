@@ -12,11 +12,12 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(btree)
 
 #define MAX_LOCK_RETRIES 3
-#define LOCK_TIMEOUT_MS 1000
+#define LOCK_TIMEOUT_MS NIMCP_MEDIUM_TIMEOUT_MS
 
 // Node structure
 struct btree_node_t {

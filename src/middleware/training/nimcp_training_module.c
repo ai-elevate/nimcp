@@ -13,6 +13,7 @@
  */
 
 #include "middleware/training/nimcp_training_module.h"
+#include "constants/nimcp_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -50,7 +51,7 @@ struct nimcp_training_context {
     /* Configuration */
     nimcp_training_module_config_t config;
     nimcp_training_state_t state;
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
 
     /* Security integration */
     nimcp_sec_integration_t* security_ctx;
@@ -128,9 +129,9 @@ nimcp_training_module_config_t nimcp_training_default_config(void)
     cfg.weight_pool_size = 0;  /* Use defaults */
     cfg.enable_cow = true;
     cfg.phase = NIMCP_TRAIN_PHASE_T1;
-    cfg.learning_rate = 0.001;
-    cfg.momentum = 0.9;
-    cfg.weight_decay = 0.0001;
+    cfg.learning_rate = NIMCP_LEARNING_RATE_FINE;
+    cfg.momentum = NIMCP_MOMENTUM_DEFAULT;
+    cfg.weight_decay = NIMCP_WEIGHT_DECAY_DEFAULT;
     cfg.user_data = NULL;
     return cfg;
 }

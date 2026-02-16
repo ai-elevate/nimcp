@@ -34,8 +34,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(semantic_compression)
 
 #define COMPRESSION_MODULE "SemanticCompression"
 #define HASH_TABLE_SIZE 1024
-#define EPSILON 1e-6f
-#define DEFAULT_LEARNING_RATE 0.01f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
+#define DEFAULT_LEARNING_RATE NIMCP_LEARNING_RATE_DEFAULT
 
 /* Bio-async message types */
 #define BIOMSG_COMPRESS_REQUEST 0x6000

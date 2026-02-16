@@ -8,6 +8,7 @@
  */
 
 #include "mesh/nimcp_mesh_kg_routing_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -139,7 +140,7 @@ void mesh_kg_bridge_default_config(mesh_kg_bridge_config_t* config) {
     config->enable_structural_validation = true;
     config->allow_novel_connections = true;
     config->learn_from_routing = true;
-    config->learning_rate = 0.01f;
+    config->learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     config->enable_topology_cache = true;
     config->enable_logging = false;
 }

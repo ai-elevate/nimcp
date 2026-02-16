@@ -23,6 +23,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dataio)
  */
 
 #include "io/dataio/nimcp_dataio.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "nimcp.h"  // For nimcp_brain_learn_example, nimcp_status_t
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -92,7 +93,7 @@ static nimcp_atomic_bool_t g_dataio_initialized = {0};
  * WHY: Thread-safe error reporting without global variables
  * HOW: Thread-local storage for last error per thread
  */
-static __thread char g_last_error[512] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void dataio_set_error(const char* format, ...)
 {
@@ -239,7 +240,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
     // WHAT: Parse header row if present
     // WHY: Extract column names for metadata
     if (config->has_header) {
-        char line[4096];
+        char line[NIMCP_PATH_BUFFER_SIZE];
         if (!fgets(line, sizeof(line), csv_ctx->file)) {
             dataio_set_error("Failed to read CSV header");
             fclose(csv_ctx->file);
@@ -304,7 +305,7 @@ static void csv_shutdown(void* context)
 static bool csv_parse_line(const char* line, char delimiter, uint32_t num_features,
                            uint32_t num_labels, float* features, char* label, size_t label_size)
 {
-    char line_copy[4096];
+    char line_copy[NIMCP_PATH_BUFFER_SIZE];
     strncpy(line_copy, line, sizeof(line_copy) - 1);
     line_copy[sizeof(line_copy) - 1] = '\0';
 
@@ -320,7 +321,7 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
         }
 
         // Store token for error reporting before parsing
-        char token_copy[256];
+        char token_copy[NIMCP_ERROR_BUFFER_SIZE];
         strncpy(token_copy, token, sizeof(token_copy) - 1);
         token_copy[sizeof(token_copy) - 1] = '\0';
 
@@ -396,7 +397,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
     }
     batch->num_samples = 0;
 
-    char line[4096];
+    char line[NIMCP_PATH_BUFFER_SIZE];
     for (uint32_t i = 0; i < batch_size; i++) {
         if (!fgets(line, sizeof(line), csv_ctx->file)) {
             // End of file
@@ -520,8 +521,8 @@ typedef struct {
     void* db_conn;                 // Database connection (void* when libpq unavailable)
     void* result;                  // Current result set
 #endif
-    char connection_string[512];   // Connection string
-    char query[1024];              // SQL query
+    char connection_string[NIMCP_ERROR_BUFFER_LARGE];   // Connection string
+    char query[NIMCP_CMD_BUFFER_SIZE];              // SQL query
     uint32_t num_feature_columns;  // Number of feature columns
     uint32_t num_label_columns;    // Number of label columns
     uint32_t current_row;          // Current row in result set
@@ -1104,8 +1105,8 @@ typedef struct {
     void* db;
     void* stmt;
 #endif
-    char filepath[512];
-    char query[1024];
+    char filepath[NIMCP_METRICS_PATH_SIZE];
+    char query[NIMCP_CMD_BUFFER_SIZE];
     uint32_t num_feature_columns;
     uint32_t num_label_columns;
     uint32_t batch_size;
@@ -1782,7 +1783,7 @@ typedef struct {
     float total_accuracy;
 
     // Error handling
-    char error_message[512];
+    char error_message[NIMCP_ERROR_BUFFER_LARGE];
     bool has_error;
 } training_context_t;
 

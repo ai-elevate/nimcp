@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include "constants/nimcp_neural_constants.h"
 
 /*=============================================================================
  * Internal Helpers
@@ -1413,7 +1414,7 @@ bool nimcp_snn_layer_forward(
         if (spikes_tensor && spikes_tensor->data && layer->refractory_timer->data) {
             float* spikes_data = (float*)spikes_tensor->data;
             float* refrac = (float*)layer->refractory_timer->data;
-            float dt = 1.0f;  /* Default dt */
+            float dt = NIMCP_SIMULATION_DT_MS;  /* Default dt */
 
             /* Get dt from the model parameters */
             if (layer->lif_state) dt = layer->lif_state->params.dt;

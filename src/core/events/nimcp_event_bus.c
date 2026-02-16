@@ -45,6 +45,7 @@
 
 #define LOG_MODULE "event_bus"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(event_bus)
 
@@ -114,7 +115,7 @@ typedef struct event_bus_internal {
 
     // Error handling
     event_error_callback_t error_callback; /**< Error callback */
-    char last_error[256];                  /**< Last error message */
+    char last_error[NIMCP_ERROR_BUFFER_SIZE];                  /**< Last error message */
 
     // Statistics
     uint64_t total_published;              /**< Total events published */

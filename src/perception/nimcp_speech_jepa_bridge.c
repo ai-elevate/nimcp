@@ -25,6 +25,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(speech_jepa_bridge)
 
@@ -45,7 +46,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(speech_jepa_bridge)
 #define SPEECH_JEPA_DEFAULT_MIN_MASK_LEN        3
 #define SPEECH_JEPA_DEFAULT_MAX_MASK_LEN        10
 #define SPEECH_JEPA_DEFAULT_PREDICTOR_LAYERS    2
-#define SPEECH_JEPA_DEFAULT_LEARNING_RATE       0.0001f
+#define SPEECH_JEPA_DEFAULT_LEARNING_RATE       NIMCP_LEARNING_RATE_MICRO
 #define SPEECH_JEPA_DEFAULT_EMA_MOMENTUM        0.996f
 #define SPEECH_JEPA_DEFAULT_PRECISION           1.0f
 

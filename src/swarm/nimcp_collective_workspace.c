@@ -43,6 +43,7 @@
  */
 
 #include "swarm/nimcp_collective_workspace.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
@@ -647,7 +648,7 @@ collective_workspace_t* collective_workspace_create(
     }
 
     // Validate configuration
-    char error_msg[256];
+    char error_msg[NIMCP_ERROR_BUFFER_SIZE];
     if (!collective_workspace_validate_config(config, error_msg, sizeof(error_msg))) {
         LOG_ERROR("Invalid config: %s", error_msg);
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "create_failed",

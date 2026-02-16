@@ -19,6 +19,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_utils_quantum_bridge)
 
@@ -835,8 +837,8 @@ int elig_uq_feedback_loop_tick(elig_uq_bridge_t bridge,
         elig_quantum_params_t current_params = {
             .tau_fast = 10.0f,
             .tau_slow = 100.0f,
-            .learning_rate = 0.001f,
-            .dopamine_sensitivity = 1.0f,
+            .learning_rate = NIMCP_LEARNING_RATE_FINE,
+            .dopamine_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
             .burst_threshold = 0.5f,
             .consolidation_threshold = 0.3f,
             .energy = INFINITY,

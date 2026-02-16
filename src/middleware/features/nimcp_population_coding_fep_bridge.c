@@ -10,6 +10,7 @@
  */
 
 #include "middleware/features/nimcp_population_coding_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -69,9 +70,9 @@ int population_coding_fep_bridge_default_config(
     config->enable_synchrony_confidence = true;
     config->enable_sparsity_optimization = true;
 
-    config->tuning_sensitivity = 1.0f;
-    config->baseline_sensitivity = 1.0f;
-    config->synchrony_sensitivity = 1.0f;
+    config->tuning_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->baseline_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->synchrony_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->sparsity_weight = 0.5f;
 
     config->min_tuning_width = 0.1f;

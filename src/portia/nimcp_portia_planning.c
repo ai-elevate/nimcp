@@ -34,6 +34,7 @@
 
 #define LOG_MODULE "portia_planning"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_planning)
 
@@ -41,7 +42,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_planning)
 // Thread-Local Error Handling
 //=============================================================================
 
-static __thread char g_portia_error[512] = {0};
+static __thread char g_portia_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 /**
  * WHAT: Set thread-local error message

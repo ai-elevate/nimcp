@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(introspection_fep_bridge)
 //=============================================================================
@@ -367,7 +368,7 @@ int introspection_fep_bridge_training_step(introspection_fep_bridge_t* bridge, f
     float adaptation = lr * (1.0f - progress) * 0.1f;
     bridge->config.meta_learning_rate = lr + adaptation;
     if (bridge->config.meta_learning_rate > 1.0f) bridge->config.meta_learning_rate = 1.0f;
-    if (bridge->config.meta_learning_rate < 0.001f) bridge->config.meta_learning_rate = 0.001f;
+    if (bridge->config.meta_learning_rate < 0.001f) bridge->config.meta_learning_rate = NIMCP_LEARNING_RATE_FINE;
     /* Blend state toward training target */
     bridge->state.current_precision = bridge->state.current_precision * 0.99f + progress * 0.01f;
     bridge->stats.precision_estimates_total++;

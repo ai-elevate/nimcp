@@ -55,6 +55,8 @@
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *===========================================================================*/
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(model_loader)
 
@@ -63,9 +65,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(model_loader)
 //=============================================================================
 
 #ifdef _WIN32
-__declspec(thread) static char g_last_error[512] = {0};
+__declspec(thread) static char g_last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 #else
-static __thread char g_last_error[512] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 #endif
 
 static void set_error(const char* format, ...)
@@ -1770,7 +1772,7 @@ brain_t nimcp_model_create_brain(const nimcp_loaded_model_t* model, uint8_t task
     config.task = (brain_task_t)task;
     config.num_inputs = model->architecture.input_size;
     config.num_outputs = model->architecture.output_size;
-    config.learning_rate = 0.01f;
+    config.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     config.sparsity_target = model->architecture.sparsity;
     config.enable_explanations = true;
     config.minimal_mode = false;  // Full brain with all subsystems

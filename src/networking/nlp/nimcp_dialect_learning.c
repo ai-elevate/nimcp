@@ -7,6 +7,7 @@
  */
 
 #include "networking/nlp/nimcp_dialect_learning.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
@@ -20,6 +21,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dialect_learning)
 
@@ -51,7 +53,7 @@ DEFINE_HANDLER_MAP_END()
 
 #define DEFAULT_MAX_DIALECTS 100
 #define DEFAULT_TRANSLATION_DIM 64
-#define DEFAULT_LEARNING_RATE 0.01f
+#define DEFAULT_LEARNING_RATE NIMCP_LEARNING_RATE_DEFAULT
 #define MAX_PATH_LENGTH 16
 #define DIALECT_HASH_SIZE 256
 
@@ -100,7 +102,7 @@ DEFINE_HANDLER_CALLBACK(dialect_learner, dialect_learner_struct, dl)
 // Thread-local Error Storage
 //=============================================================================
 
-static __thread char error_buffer[256] = {0};
+static __thread char error_buffer[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /**
  * @brief Set error message

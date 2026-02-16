@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(networking_nlp)
 
@@ -503,7 +504,7 @@ nlp_config_t nlp_config_default(void) {
 
     config.heartbeat_interval_ms = NLP_HEARTBEAT_INTERVAL;
     config.session_timeout_ms = NLP_SESSION_TIMEOUT;
-    config.handshake_timeout_ms = 5000;
+    config.handshake_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
 
     config.burst_interval_s = NLP_BURST_INTERVAL_DEFAULT;
     config.initial_emcon = NLP_EMCON_NORMAL;

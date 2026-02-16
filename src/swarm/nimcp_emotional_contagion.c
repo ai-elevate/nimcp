@@ -34,7 +34,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotional_contagion)
 
 #define CONTAGION_MODULE "EmotionalContagion"
 #define HASH_TABLE_SIZE 1024
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 #define MAX_BFS_QUEUE 10000
 
 /* Bio-async message types */

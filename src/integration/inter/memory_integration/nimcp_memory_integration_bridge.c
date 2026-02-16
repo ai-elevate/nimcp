@@ -9,6 +9,7 @@
 #include "integration/inter/memory_integration/nimcp_memory_integration_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -115,8 +116,8 @@ nimcp_layer_error_t nimcp_memory_integration_update(nimcp_memory_integration_bri
     bridge->state.retrieval_priority *= (1.0f - dt * 0.025f);
 
     /* Update averages */
-    bridge->stats.avg_conscious_access = bridge->stats.avg_conscious_access * 0.99f + bridge->state.conscious_recall_strength * 0.01f;
-    bridge->stats.avg_consolidation_rate = bridge->stats.avg_consolidation_rate * 0.99f + bridge->state.consolidation_trigger * 0.01f;
+    bridge->stats.avg_conscious_access = bridge->stats.avg_conscious_access * NIMCP_EMA_DECAY_DEFAULT + bridge->state.conscious_recall_strength * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_consolidation_rate = bridge->stats.avg_consolidation_rate * NIMCP_EMA_DECAY_DEFAULT + bridge->state.consolidation_trigger * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

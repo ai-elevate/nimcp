@@ -15,6 +15,7 @@
  */
 
 #include "security/nimcp_security_audit.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -25,43 +26,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_audit"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_audit)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_security_audit_mesh_id = 0;
-static mesh_participant_registry_t* g_security_audit_mesh_registry = NULL;
-
-nimcp_error_t security_audit_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_security_audit_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "security_audit", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "security_audit";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_audit_mesh_id);
-    if (err == NIMCP_SUCCESS) g_security_audit_mesh_registry = registry;
-    return err;
-}
-
-void security_audit_mesh_unregister(void) {
-    if (g_security_audit_mesh_registry && g_security_audit_mesh_id != 0) {
-        mesh_participant_unregister(g_security_audit_mesh_registry, g_security_audit_mesh_id);
-        g_security_audit_mesh_id = 0;
-        g_security_audit_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(security_audit, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 #include <stdlib.h>
@@ -662,7 +629,7 @@ int nimcp_audit_generate_report(
         nimcp_audit_event_t* event = &audit->events[idx];
 
         if (event->severity >= NIMCP_AUDIT_SEV_ERROR) {
-            char event_str[256];
+            char event_str[NIMCP_ERROR_BUFFER_SIZE];
             nimcp_audit_format_event(event, event_str, sizeof(event_str));
             written += snprintf(buffer + written, size - written,
                                "  %s\n", event_str);
@@ -743,7 +710,7 @@ nimcp_result_t nimcp_audit_export(
         nimcp_audit_event_t* event = &audit->events[idx];
 
         if (!query || matches_query(event, query)) {
-            char event_str[1024];
+            char event_str[NIMCP_LOG_BUFFER_SIZE];
             nimcp_audit_format_event(event, event_str, sizeof(event_str));
             fprintf(f, "%s\n", event_str);
         }
@@ -767,7 +734,7 @@ nimcp_result_t nimcp_audit_rotate(nimcp_audit_log_t* audit) {
     fclose(audit->log_file);
 
     // Rename current log
-    char backup_path[512];
+    char backup_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(backup_path, sizeof(backup_path), "%s.%lu",
              audit->config.log_file_path, (unsigned long)time(NULL));
     rename(audit->config.log_file_path, backup_path);
@@ -960,7 +927,7 @@ static bool write_event_to_file(nimcp_audit_log_t* audit, const nimcp_audit_even
         return false;
     }
 
-    char buffer[1024];
+    char buffer[NIMCP_LOG_BUFFER_SIZE];
     int len = nimcp_audit_format_event(event, buffer, sizeof(buffer) - 1);
     buffer[len] = '\n';
 

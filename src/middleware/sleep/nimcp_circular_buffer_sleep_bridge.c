@@ -6,6 +6,7 @@
  */
 
 #include "middleware/sleep/nimcp_circular_buffer_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -90,7 +91,7 @@ int circular_buffer_sleep_default_config(circular_buffer_sleep_config_t* config)
     config->enable_capacity_modulation = true;
     config->enable_retention_modulation = true;
     config->enable_overflow_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

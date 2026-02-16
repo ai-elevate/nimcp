@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <float.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_constants.h"
 
 /* ============================================================================
  * Internal Constants
@@ -126,7 +127,7 @@ int vae_hippo_bridge_default_config(vae_hippo_bridge_config_t* config) {
     config->retrieve.similarity_threshold = VAE_HIPPO_DEFAULT_SIMILARITY;
     config->retrieve.max_candidates = 10;
     config->retrieve.sample_on_retrieve = false;
-    config->retrieve.temperature = 1.0f;
+    config->retrieve.temperature = NIMCP_TEMPERATURE_DEFAULT;
     config->retrieve.return_confidence = true;
 
     config->pattern.separation_ratio = HIPPO_PATTERN_SEPARATION_RATIO;

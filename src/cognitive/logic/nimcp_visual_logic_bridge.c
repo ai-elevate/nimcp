@@ -21,6 +21,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(visual_logic_bridge)
 //=============================================================================
@@ -89,7 +91,7 @@ static inline void visual_logic_bridge_heartbeat_instance(
  */
 typedef struct {
     uint32_t object_id;
-    char concept_name[64];
+    char concept_name[NIMCP_ID_BUFFER_SIZE];
     float confidence;
     uint32_t location_x;
     uint32_t location_y;
@@ -137,8 +139,8 @@ visual_logic_config_t visual_logic_default_config(void) {
         .enable_relation_extraction = true,
         .enable_top_down_attention = true,
         .enable_verification = true,
-        .min_confidence_threshold = 0.5f,
-        .min_salience_threshold = 0.3f,
+        .min_confidence_threshold = NIMCP_CONFIDENCE_MEDIUM,
+        .min_salience_threshold = NIMCP_SALIENCE_THRESHOLD,
         .max_objects_per_frame = 32,
         .max_relations_per_frame = 64
     };

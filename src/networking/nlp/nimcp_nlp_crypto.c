@@ -56,6 +56,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nlp_crypto)
  */
 
 #include "networking/nlp/nimcp_nlp_internal.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -572,7 +573,7 @@ cleanup:
         // Log OpenSSL errors
         unsigned long err;
         while ((err = ERR_get_error()) != 0) {
-            char err_buf[256];
+            char err_buf[NIMCP_ERROR_BUFFER_SIZE];
             ERR_error_string_n(err, err_buf, sizeof(err_buf));
             LOG_ERROR("nlp_crypto_encrypt: OpenSSL error: %s", err_buf);
         }
@@ -689,7 +690,7 @@ cleanup:
         // Log OpenSSL errors
         unsigned long err;
         while ((err = ERR_get_error()) != 0) {
-            char err_buf[256];
+            char err_buf[NIMCP_ERROR_BUFFER_SIZE];
             ERR_error_string_n(err, err_buf, sizeof(err_buf));
             LOG_ERROR("nlp_crypto_decrypt: OpenSSL error: %s", err_buf);
         }

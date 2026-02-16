@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -49,7 +50,7 @@ int stdp_fep_bridge_default_config(stdp_fep_config_t* config) {
     config->enable_belief_modulation = true;
     config->enable_complexity_regularization = true;
 
-    config->pe_sensitivity = 1.0f;
+    config->pe_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->precision_gain = 1.0f;
     config->belief_sensitivity = 0.5f;
 
@@ -83,7 +84,7 @@ stdp_fep_bridge_t* stdp_fep_bridge_create(const stdp_fep_config_t* config) {
     }
 
     bridge->effects.total_lr_scaling = 1.0f;
-    bridge->effects.effective_learning_rate = 0.01f;
+    bridge->effects.effective_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
 
     /* Initialize quantum bridge if enabled */
     bridge->quantum_bridge = NULL;

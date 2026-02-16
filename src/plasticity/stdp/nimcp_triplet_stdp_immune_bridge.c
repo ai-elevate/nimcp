@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -46,9 +47,9 @@ int triplet_stdp_immune_default_config(triplet_stdp_immune_config_t* config) {
     config->enable_inflammation_impairment = true;
     config->enable_instability_detection = true;
 
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->instability_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->instability_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     config->base_A2_plus = TRIPLET_STDP_DEFAULT_A2_PLUS;
     config->base_A2_minus = TRIPLET_STDP_DEFAULT_A2_MINUS;

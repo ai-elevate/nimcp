@@ -24,6 +24,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(personality_snn_bridge)
 //=============================================================================
@@ -169,7 +171,7 @@ personality_snn_config_t personality_snn_config_default(void) {
     personality_snn_config_t config = {
         .num_dimensions = PERSONALITY_DIM_COUNT,
         .neurons_per_dim = PERSONALITY_SNN_NEURONS_PER_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
 
         .dt_ms = 1.0f,
         .encoding_window_ms = PERSONALITY_SNN_ENCODING_WINDOW,
@@ -188,7 +190,7 @@ personality_snn_config_t personality_snn_config_default(void) {
         .enable_competition = true,
         .inhibition_strength = 0.3f,
         .enable_trait_stability = true,
-        .stability_sensitivity = 1.0f,
+        .stability_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
 
         .enable_behavioral_output = true,
         .behavioral_gain = 1.5f,

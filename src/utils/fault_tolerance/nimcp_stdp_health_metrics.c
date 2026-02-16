@@ -24,6 +24,7 @@
 
 #define LOG_MODULE "stdp_health"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp_health_metrics)
 
@@ -38,7 +39,7 @@ typedef struct {
     bool active;
     stdp_context_t* stdp;
     bcm_context_t* bcm;
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     uint64_t last_check_time;
 
     /* Cached metrics */

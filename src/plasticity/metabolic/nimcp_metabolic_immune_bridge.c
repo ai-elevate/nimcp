@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metabolic/nimcp_metabolic_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -119,9 +120,9 @@ int metabolic_immune_default_config(metabolic_immune_config_t* config) {
     config->enable_atp_immune_feedback = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->atp_feedback_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->atp_feedback_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

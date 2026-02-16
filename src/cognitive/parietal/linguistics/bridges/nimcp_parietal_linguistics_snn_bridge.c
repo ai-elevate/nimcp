@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_snn_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -13,6 +14,7 @@
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 /* ============================================================================
  * PRIVATE CONSTANTS
@@ -21,7 +23,7 @@
 #define LING_SNN_MAGIC 0x4C534E4E  /* "LSNN" */
 
 /* Thread-local error message */
-static __thread char g_last_error[256] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* Phoneme names (IPA) */
 static const char* PHONEME_NAMES[LING_PHONEME_COUNT] = {
@@ -925,7 +927,7 @@ int ling_snn_mesh_update(
     }
 
     /* FEP update: μ' = μ - lr × Π × ε */
-    float learning_rate = 0.1f;
+    float learning_rate = NIMCP_LEARNING_RATE_COARSE;
 
     for (uint32_t i = 0; i < count; i++) {
         float error = neighbors[i].certainty - updated->certainty;

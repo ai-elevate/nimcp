@@ -302,7 +302,7 @@
 //   }
 //
 //   // 3. Read values
-//   char host[256];
+//   char host[NIMCP_ERROR_BUFFER_SIZE];
 //   int64_t port;
 //   nimcp_json_get_string_value(ctx, "server/host", host, sizeof(host));
 //   nimcp_json_get_integer_value(ctx, "server/port", &port);
@@ -350,6 +350,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(json)
 

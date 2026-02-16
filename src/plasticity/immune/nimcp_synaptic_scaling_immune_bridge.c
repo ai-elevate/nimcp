@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/immune/nimcp_synaptic_scaling_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -239,8 +240,8 @@ int synaptic_scaling_immune_default_config(synaptic_scaling_immune_config_t* con
     config->enable_il10_restoration = true;
 
     /* Biologically-based default sensitivities */
-    config->tnf_sensitivity = 1.0f;
-    config->aberrance_sensitivity = 1.0f;
+    config->tnf_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->aberrance_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->recovery_threshold = SCALING_RECOVERY_THRESHOLD;
 
     /* Evidence-based thresholds */

@@ -58,6 +58,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wm_cognitive_bridge)
 //=============================================================================
@@ -364,7 +366,7 @@ static nimcp_error_t update_wm_to_cognitive_effects(omni_wm_cognitive_bridge_t* 
     }
 
     /* Compute recommended learning rate based on prediction performance */
-    float base_lr = 0.001f;
+    float base_lr = NIMCP_LEARNING_RATE_FINE;
     float pe_factor = 1.0f + effects->avg_prediction_error;
     effects->recommended_lr = base_lr * pe_factor;
 
@@ -645,7 +647,7 @@ omni_wm_cognitive_bridge_config_t omni_wm_cognitive_bridge_default_config(void) 
 
     /* General settings */
     config.enable_modulation = true;
-    config.sensitivity = 1.0f;
+    config.sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Goal conditioning settings */
     config.enable_goal_conditioning = true;
@@ -676,7 +678,7 @@ omni_wm_cognitive_bridge_config_t omni_wm_cognitive_bridge_default_config(void) 
     /* Working memory integration settings */
     config.enable_working_memory_context = true;
     config.max_wm_context_items = WM_COGNITIVE_MAX_WM_ITEMS;
-    config.wm_context_decay = 0.95f;
+    config.wm_context_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT;
 
     /* Meta-learning integration settings */
     config.enable_meta_learning = true;

@@ -25,6 +25,7 @@
 
 #define LOG_MODULE "API_TRAINING"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(api_training)
 
@@ -172,12 +173,12 @@ nimcp_training_config_t nimcp_training_config_default(void) {
         .optimizer_type = NIMCP_API_OPT_ADAM,
         .scheduler_type = NIMCP_API_SCHED_COSINE,
 
-        .learning_rate = 0.001f,
+        .learning_rate = NIMCP_LEARNING_RATE_FINE,
         .weight_decay = 0.0f,
-        .momentum = 0.9f,
-        .beta1 = 0.9f,
-        .beta2 = 0.999f,
-        .epsilon = 1e-8f,
+        .momentum = NIMCP_MOMENTUM_DEFAULT,
+        .beta1 = NIMCP_ADAM_BETA1_DEFAULT,
+        .beta2 = NIMCP_ADAM_BETA2_DEFAULT,
+        .epsilon = NIMCP_EPSILON_ADAM,
 
         .scheduler_step_size = 1000,
         .scheduler_gamma = 0.1f,

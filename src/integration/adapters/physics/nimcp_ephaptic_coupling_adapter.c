@@ -21,6 +21,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic_coupling_adapter)
 
@@ -241,7 +242,7 @@ static const char* ephaptic_get_name(void* module) {
 nimcp_ephaptic_adapter_config_t nimcp_ephaptic_adapter_default_config(void) {
     nimcp_ephaptic_adapter_config_t config = {
         .num_neurons = 100,
-        .coupling_strength = 0.1f,
+        .coupling_strength = NIMCP_OSCILLATION_COUPLING_DEFAULT,
         .decay_constant = 0.5f,      /* 0.5mm decay constant */
         .field_threshold = 0.01f,    /* 10 uV threshold */
         .enable_lfp_computation = true,

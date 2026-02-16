@@ -23,6 +23,7 @@
 
 #define LOG_MODULE "plasticity_anomaly"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(plasticity_anomaly_detection)
 
@@ -42,7 +43,7 @@ typedef struct {
  * @brief Metric tracking
  */
 typedef struct {
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     plasticity_anomaly_category_t category;
     metric_sample_t* history;
     uint32_t history_size;

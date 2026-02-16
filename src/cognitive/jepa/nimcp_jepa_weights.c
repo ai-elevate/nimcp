@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/jepa/nimcp_jepa_weights.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
@@ -22,56 +23,11 @@
  * ============================================================================ */
 
 #define LOG_MODULE "[JEPA_WEIGHTS]"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_weights)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_jepa_weights_mesh_id = 0;
-static mesh_participant_registry_t* g_jepa_weights_mesh_registry = NULL;
-
-nimcp_error_t jepa_weights_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_jepa_weights_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "jepa_weights", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "jepa_weights";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_jepa_weights_mesh_id);
-    if (err == NIMCP_SUCCESS) g_jepa_weights_mesh_registry = registry;
-    return err;
-}
-
-void jepa_weights_mesh_unregister(void) {
-    if (g_jepa_weights_mesh_registry && g_jepa_weights_mesh_id != 0) {
-        mesh_participant_unregister(g_jepa_weights_mesh_registry, g_jepa_weights_mesh_id);
-        g_jepa_weights_mesh_id = 0;
-        g_jepa_weights_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from jepa_weights module (instance + global) */
-static inline void jepa_weights_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_jepa_weights_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_jepa_weights_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_jepa_weights_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(jepa_weights, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* CRC32 polynomial */
@@ -454,7 +410,7 @@ jepa_load_result_t jepa_weights_load(const char* path,
         jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
 
         /* Try to find matching weight tensor */
-        char weight_name[128];
+        char weight_name[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(weight_name, sizeof(weight_name), "predictor.layer%u.weight", layer_idx);
 
         const jepa_tensor_desc_t* weight_tensor = jepa_weights_get_tensor(weights, weight_name);
@@ -491,7 +447,7 @@ jepa_load_result_t jepa_weights_load(const char* path,
         }
 
         /* Try to find matching bias tensor */
-        char bias_name[128];
+        char bias_name[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(bias_name, sizeof(bias_name), "predictor.layer%u.bias", layer_idx);
 
         const jepa_tensor_desc_t* bias_tensor = jepa_weights_get_tensor(weights, bias_name);
@@ -655,7 +611,7 @@ int jepa_weights_save_with_meta(const char* path,
         const jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
 
         /* Write weight tensor */
-        char name[128];
+        char name[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(name, sizeof(name), "predictor.layer%u.weight", layer_idx);
         uint16_t name_len = (uint16_t)strlen(name);
         fwrite(&name_len, sizeof(uint16_t), 1, fp);
@@ -720,7 +676,7 @@ void jepa_weights_list_tensors(const jepa_weights_t* weights) {
         }
 
         const jepa_tensor_desc_t* t = &weights->tensors[i];
-        char dims_str[128] = "";
+        char dims_str[NIMCP_LABEL_BUFFER_SIZE] = "";
         int offset = 0;
 
         for (uint32_t d = 0; d < t->ndims; d++) {

@@ -55,42 +55,12 @@
 
 #define LOG_MODULE "BRAIN_MULTIMODAL"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_multimodal)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_brain_multimodal_mesh_id = 0;
-static mesh_participant_registry_t* g_brain_multimodal_mesh_registry = NULL;
-
-nimcp_error_t brain_multimodal_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_brain_multimodal_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "brain_multimodal", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "brain_multimodal";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_brain_multimodal_mesh_id);
-    if (err == NIMCP_SUCCESS) g_brain_multimodal_mesh_registry = registry;
-    return err;
-}
-
-void brain_multimodal_mesh_unregister(void) {
-    if (g_brain_multimodal_mesh_registry && g_brain_multimodal_mesh_id != 0) {
-        mesh_participant_unregister(g_brain_multimodal_mesh_registry, g_brain_multimodal_mesh_id);
-        g_brain_multimodal_mesh_id = 0;
-        g_brain_multimodal_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(brain_multimodal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -794,7 +764,7 @@ static bool format_output(
     }
 
     // Generate comprehensive explanation with all 4 modalities
-    char modality_str[256] = {0};
+    char modality_str[NIMCP_ERROR_BUFFER_SIZE] = {0};
     bool has_speech = (speech_features != NULL && speech_dim > 0);
 
     // Build modality attention string
@@ -1170,7 +1140,7 @@ bool brain_process_multimodal(
     if (success && brain->explanation_gen && brain->config.enable_natural_explanations) {
         natural_explanation_t nat_exp;
         if (explanation_generate_from_multimodal(brain->explanation_gen, brain, output, &nat_exp)) {
-            char original_exp[256];
+            char original_exp[NIMCP_ERROR_BUFFER_SIZE];
             strncpy(original_exp, output->explanation, sizeof(original_exp) - 1);
             original_exp[sizeof(original_exp) - 1] = '\0';
 
@@ -1215,20 +1185,20 @@ bool brain_process_multimodal(
                     int intensity;
                     float valence;
                     float arousal;
-                    char text_input[512];
+                    char text_input[NIMCP_ERROR_BUFFER_LARGE];
                     uint32_t crisis_flags;
                     float crisis_confidence;
                 } emotional_state_t;
 
                 typedef struct {
-                    char response_text[1024];
+                    char response_text[NIMCP_LOG_BUFFER_SIZE];
                     int primary_strategy;
                     int secondary_strategy;
                     float empathy_score;
                     float safety_score;
                     bool ethics_approved;
                     bool requires_human_escalation;
-                    char escalation_reason[256];
+                    char escalation_reason[NIMCP_ERROR_BUFFER_SIZE];
                 } empathetic_response_t;
 
                 extern bool empathetic_response_generate(void* engine,

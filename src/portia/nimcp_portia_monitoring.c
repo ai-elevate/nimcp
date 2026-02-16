@@ -21,6 +21,7 @@
  */
 
 #include "portia/nimcp_portia_monitoring.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -131,9 +132,9 @@ typedef struct portia_monitor_struct {
     uint32_t capabilities;
 
     // Linux-specific paths
-    char thermal_zone_path[256];
-    char battery_path[256];
-    char ac_path[256];
+    char thermal_zone_path[NIMCP_SHORT_PATH_SIZE];
+    char battery_path[NIMCP_SHORT_PATH_SIZE];
+    char ac_path[NIMCP_SHORT_PATH_SIZE];
     bool has_thermal;
     bool has_battery;
     bool has_ac;
@@ -189,7 +190,7 @@ static float calculate_cpu_load(const cpu_stats_t* prev, const cpu_stats_t* curr
  * @brief Read a float value from a sysfs file
  */
 static float read_sysfs_float(const char* dir, const char* file) {
-    char path[512];
+    char path[NIMCP_METRICS_PATH_SIZE];
     snprintf(path, sizeof(path), "%s/%s", dir, file);
 
     FILE* fp = fopen(path, "r");
@@ -210,7 +211,7 @@ static float read_sysfs_float(const char* dir, const char* file) {
  * @brief Read an integer value from a sysfs file
  */
 static int64_t read_sysfs_int(const char* dir, const char* file) {
-    char path[512];
+    char path[NIMCP_METRICS_PATH_SIZE];
     snprintf(path, sizeof(path), "%s/%s", dir, file);
 
     FILE* fp = fopen(path, "r");
@@ -233,7 +234,7 @@ static int64_t read_sysfs_int(const char* dir, const char* file) {
  * @brief Read a string value from a sysfs file
  */
 static bool read_sysfs_string(const char* dir, const char* file, char* buf, size_t len) {
-    char path[512];
+    char path[NIMCP_METRICS_PATH_SIZE];
     snprintf(path, sizeof(path), "%s/%s", dir, file);
 
     FILE* fp = fopen(path, "r");
@@ -521,11 +522,11 @@ static bool probe_thermal_zones(portia_monitor_t monitor) {
             continue;
         }
 
-        char zone_path[512];
+        char zone_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(zone_path, sizeof(zone_path), "%s/%s", THERMAL_ZONE_PATH, entry->d_name);
 
         // Read zone type
-        char type_str[64] = {0};
+        char type_str[NIMCP_ID_BUFFER_SIZE] = {0};
         read_sysfs_string(zone_path, "type", type_str, sizeof(type_str));
 
         // Try reading temperature
@@ -590,7 +591,7 @@ static bool probe_battery(portia_monitor_t monitor) {
 
     // Try known battery names
     for (int i = 0; DEFAULT_BATTERY_NAMES[i] != NULL; i++) {
-        char path[512];
+        char path[NIMCP_METRICS_PATH_SIZE];
         snprintf(path, sizeof(path), "%s/%s", POWER_SUPPLY_PATH, DEFAULT_BATTERY_NAMES[i]);
 
         float cap = read_sysfs_float(path, "capacity");
@@ -608,7 +609,7 @@ static bool probe_battery(portia_monitor_t monitor) {
 
 static bool probe_ac_adapter(portia_monitor_t monitor) {
     for (int i = 0; DEFAULT_AC_NAMES[i] != NULL; i++) {
-        char path[512];
+        char path[NIMCP_METRICS_PATH_SIZE];
         snprintf(path, sizeof(path), "%s/%s", POWER_SUPPLY_PATH, DEFAULT_AC_NAMES[i]);
 
         int64_t online = read_sysfs_int(path, "online");
@@ -629,7 +630,7 @@ static float read_thermal_zone(portia_monitor_t monitor, int zone_index) {
         return PORTIA_MONITOR_TEMP_INVALID;
     }
 
-    char zone_path[512];
+    char zone_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(zone_path, sizeof(zone_path), "%s/thermal_zone%d",
              THERMAL_ZONE_PATH, zone_index);
 
@@ -750,7 +751,7 @@ static bool read_cpu_stats(portia_monitor_t monitor) {
         return false;
     }
 
-    char line[1024];
+    char line[NIMCP_CMD_BUFFER_SIZE];
 
     // Save previous stats
     monitor->prev_cpu_stats = monitor->curr_cpu_stats;

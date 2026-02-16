@@ -22,6 +22,7 @@
  */
 
 #include "utils/config/nimcp_dynamic_config.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -158,7 +159,7 @@ static bool expand_env_vars(const char* input, char* output, size_t output_size)
             if (braced) src++;
 
             // Extract variable name
-            char varname[256];
+            char varname[NIMCP_NAME_BUFFER_SIZE];
             size_t varlen = 0;
             while (*src && varlen < sizeof(varname) - 1) {
                 if (braced && *src == '}') {
@@ -296,7 +297,7 @@ static bool parse_config_file(const char* path) {
         return false;
     }
 
-    char line[1024];
+    char line[NIMCP_CMD_BUFFER_SIZE];
     int line_num = 0;
     int entries_parsed = 0;
 
@@ -361,7 +362,7 @@ static bool parse_config_file(const char* path) {
             }
         } else {
             // String value - expand environment variables
-            char expanded[1024];
+            char expanded[NIMCP_LOG_BUFFER_SIZE];
             if (expand_env_vars(value, expanded, sizeof(expanded))) {
                 entry->type = CONFIG_TYPE_STRING;
                 entry->value.string_val = nimcp_strdup(expanded);
@@ -974,7 +975,7 @@ bool config_validate(const char* config_path) {
         return false;
     }
 
-    char line[1024];
+    char line[NIMCP_CMD_BUFFER_SIZE];
     int line_num = 0;
     bool valid = true;
 

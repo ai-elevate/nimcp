@@ -12,6 +12,7 @@
  */
 
 #include "utils/vcs/nimcp_vcs_integration.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_router.h"
@@ -507,7 +508,7 @@ int vcs_git_commit(
         snprintf(cmd, sizeof(cmd), "git commit -m \"%s\"", message);
     }
 
-    char output[1024];
+    char output[NIMCP_LOG_BUFFER_SIZE];
     if (execute_git_command(vcs, cmd, output, sizeof(output)) != 0) {
         result->error = VCS_ERR_GIT_COMMIT;
         snprintf(result->error_message, sizeof(result->error_message),
@@ -602,7 +603,7 @@ int vcs_git_revert(
         return VCS_ERR_NOT_REPO;
     }
 
-    char cmd[256];
+    char cmd[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(cmd, sizeof(cmd), "git revert --no-edit %s", commit_hash);
 
     if (execute_git_command(vcs, cmd, NULL, 0) != 0) {
@@ -909,7 +910,7 @@ bool vcs_has_uncommitted_changes(vcs_integration_t* vcs, const char* file_path) 
     }
 
     char cmd[VCS_MAX_PATH + 64];
-    char output[256];
+    char output[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(cmd, sizeof(cmd), "git status --porcelain \"%s\"", file_path);
 
     if (execute_git_command(vcs, cmd, output, sizeof(output)) != 0) {
@@ -929,7 +930,7 @@ bool vcs_is_repo_clean(vcs_integration_t* vcs) {
         return true;
     }
 
-    char output[256];
+    char output[NIMCP_ERROR_BUFFER_SIZE];
     if (execute_git_command(vcs, "git status --porcelain", output, sizeof(output)) != 0) {
         return false;
     }
@@ -1011,7 +1012,7 @@ static int execute_git_command(vcs_integration_t* vcs, const char* cmd, char* ou
     if (output && output_size > 0) {
         output[0] = '\0';
         size_t total = 0;
-        char buf[256];
+        char buf[NIMCP_ERROR_BUFFER_SIZE];
         while (fgets(buf, sizeof(buf), fp) && total < output_size - 1) {
             size_t len = strlen(buf);
             if (total + len >= output_size) {
@@ -1022,7 +1023,7 @@ static int execute_git_command(vcs_integration_t* vcs, const char* cmd, char* ou
         }
     } else {
         /* Drain output */
-        char buf[256];
+        char buf[NIMCP_ERROR_BUFFER_SIZE];
         while (fgets(buf, sizeof(buf), fp)) {}
     }
 
@@ -1066,7 +1067,7 @@ static int copy_file(const char* src, const char* dst) {
         return -1;
     }
 
-    char buf[4096];
+    char buf[NIMCP_PATH_BUFFER_SIZE];
     size_t n;
     while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
         if (fwrite(buf, 1, n, out) != n) {
@@ -1109,7 +1110,7 @@ static int read_file_lines(const char* path, char*** lines, uint32_t* line_count
     }
 
     /* Read lines */
-    char buf[4096];
+    char buf[NIMCP_PATH_BUFFER_SIZE];
     uint32_t idx = 0;
     while (fgets(buf, sizeof(buf), fp) && idx < count) {
         (*lines)[idx] = strdup(buf);
@@ -1241,7 +1242,7 @@ int vcs_broadcast_commit(
         bio_message_header_t header;
         uint64_t fix_id;
         uint8_t success;
-        char commit_hash[64];
+        char commit_hash[NIMCP_ID_BUFFER_SIZE];
     } msg = {0};
 
     msg.header.type = BIO_MSG_VCS_COMMIT;

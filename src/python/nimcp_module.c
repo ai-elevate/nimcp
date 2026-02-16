@@ -29,10 +29,60 @@ PyObject* NetworkError = NULL;
 PyObject* ProtocolError = NULL;
 PyObject* NodeError = NULL;
 
+// Module-level function: nimcp.version() -> str
+static PyObject* nimcp_py_version(PyObject* Py_UNUSED(self), PyObject* Py_UNUSED(args))
+{
+    const char* ver = nimcp_version();
+    return PyUnicode_FromString(ver ? ver : "unknown");
+}
+
+// Module-level function: nimcp.version_int() -> int
+static PyObject* nimcp_py_version_int(PyObject* Py_UNUSED(self), PyObject* Py_UNUSED(args))
+{
+    return PyLong_FromLong(nimcp_version_int());
+}
+
+// Module-level function: nimcp.init() -> None
+static PyObject* nimcp_py_init(PyObject* Py_UNUSED(self), PyObject* Py_UNUSED(args))
+{
+    nimcp_status_t status = nimcp_init();
+    if (status != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError, "nimcp_init() failed with status %d", (int)status);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+// Module-level function: nimcp.shutdown() -> None
+static PyObject* nimcp_py_shutdown(PyObject* Py_UNUSED(self), PyObject* Py_UNUSED(args))
+{
+    Py_BEGIN_ALLOW_THREADS
+    nimcp_shutdown();
+    Py_END_ALLOW_THREADS
+    Py_RETURN_NONE;
+}
+
+// Module-level function: nimcp.get_error() -> str
+static PyObject* nimcp_py_get_error(PyObject* Py_UNUSED(self), PyObject* Py_UNUSED(args))
+{
+    const char* err = nimcp_get_error();
+    return PyUnicode_FromString(err ? err : "");
+}
+
 // Module method definitions
 static PyMethodDef nimcp_methods[] = {
-    // Protocol methods will be added here
-    {NULL, NULL, 0, NULL}};
+    {"version", (PyCFunction)nimcp_py_version, METH_NOARGS,
+     "Get NIMCP version string\n\nReturns:\n    str: Version (e.g., '2.6.3')"},
+    {"version_int", (PyCFunction)nimcp_py_version_int, METH_NOARGS,
+     "Get NIMCP version as integer\n\nReturns:\n    int: Version (e.g., 20603)"},
+    {"init", (PyCFunction)nimcp_py_init, METH_NOARGS,
+     "Initialize NIMCP library (call once at startup)\n\nRaises:\n    RuntimeError: If initialization fails"},
+    {"shutdown", (PyCFunction)nimcp_py_shutdown, METH_NOARGS,
+     "Shutdown NIMCP library (call once at cleanup)"},
+    {"get_error", (PyCFunction)nimcp_py_get_error, METH_NOARGS,
+     "Get error message for last error\n\nReturns:\n    str: Error message"},
+    {NULL, NULL, 0, NULL}
+};
 
 // Module definition
 static struct PyModuleDef nimcp_module = {
@@ -191,6 +241,34 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         Py_DECREF(NodeError);
         goto error_cleanup;
     }
+
+    // Add brain size constants
+    PyModule_AddIntConstant(m, "BRAIN_TINY", NIMCP_BRAIN_TINY);
+    PyModule_AddIntConstant(m, "BRAIN_SMALL", NIMCP_BRAIN_SMALL);
+    PyModule_AddIntConstant(m, "BRAIN_MEDIUM", NIMCP_BRAIN_MEDIUM);
+    PyModule_AddIntConstant(m, "BRAIN_LARGE", NIMCP_BRAIN_LARGE);
+
+    // Add task type constants
+    PyModule_AddIntConstant(m, "TASK_CLASSIFICATION", NIMCP_TASK_CLASSIFICATION);
+    PyModule_AddIntConstant(m, "TASK_REGRESSION", NIMCP_TASK_REGRESSION);
+    PyModule_AddIntConstant(m, "TASK_PATTERN_MATCHING", NIMCP_TASK_PATTERN_MATCHING);
+    PyModule_AddIntConstant(m, "TASK_SEQUENCE", NIMCP_TASK_SEQUENCE);
+    PyModule_AddIntConstant(m, "TASK_ASSOCIATION", NIMCP_TASK_ASSOCIATION);
+
+    // Add status code constants
+    PyModule_AddIntConstant(m, "OK", NIMCP_OK);
+    PyModule_AddIntConstant(m, "ERROR", NIMCP_ERROR);
+    PyModule_AddIntConstant(m, "ERROR_NULL_ARG", NIMCP_ERROR_NULL_ARG);
+    PyModule_AddIntConstant(m, "ERROR_INVALID", NIMCP_ERROR_INVALID);
+    PyModule_AddIntConstant(m, "ERROR_MEMORY", NIMCP_ERROR_MEMORY);
+    PyModule_AddIntConstant(m, "ERROR_IO", NIMCP_ERROR_IO);
+
+    // Add network type constants
+    PyModule_AddIntConstant(m, "NETWORK_ADAPTIVE", NIMCP_NETWORK_ADAPTIVE);
+    PyModule_AddIntConstant(m, "NETWORK_SNN", NIMCP_NETWORK_SNN);
+    PyModule_AddIntConstant(m, "NETWORK_LNN", NIMCP_NETWORK_LNN);
+    PyModule_AddIntConstant(m, "NETWORK_CNN", NIMCP_NETWORK_CNN);
+    PyModule_AddIntConstant(m, "NETWORK_HYBRID", NIMCP_NETWORK_HYBRID);
 
     // Initialize metrics module
     if (init_metrics_module(m) < 0) {

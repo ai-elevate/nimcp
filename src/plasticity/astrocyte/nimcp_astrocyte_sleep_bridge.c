@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -120,7 +121,7 @@ int astrocyte_sleep_default_config(astrocyte_sleep_config_t* config) {
     config->enable_uptake_modulation = true;
     config->enable_atp_modulation = true;
     config->enable_calcium_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

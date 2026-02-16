@@ -6,6 +6,7 @@
  */
 
 #include "middleware/patterns/nimcp_sequence_detector_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -38,8 +39,8 @@ int sequence_detector_fep_bridge_default_config(
     config->enable_precision_tolerance = true;
     config->enable_sequence_pe = true;
     config->enable_replay_consolidation = true;
-    config->tolerance_sensitivity = 1.0f;
-    config->pe_sensitivity = 1.0f;
+    config->tolerance_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->pe_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

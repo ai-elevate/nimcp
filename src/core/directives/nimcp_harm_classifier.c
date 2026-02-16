@@ -20,6 +20,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(harm_classifier)
 
@@ -128,7 +129,7 @@ static bool contains_keyword(const char* text, const char* keyword) {
 
     /* Create lowercase copies */
     char text_lower[HARM_CLASSIFIER_MAX_ACTION_DESC];
-    char keyword_lower[128];
+    char keyword_lower[NIMCP_LABEL_BUFFER_SIZE];
 
     strncpy(text_lower, text, sizeof(text_lower) - 1);
     text_lower[sizeof(text_lower) - 1] = '\0';

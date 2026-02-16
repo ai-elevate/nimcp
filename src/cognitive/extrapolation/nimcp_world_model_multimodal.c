@@ -12,56 +12,12 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(world_model_multimodal)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_world_model_multimodal_mesh_id = 0;
-static mesh_participant_registry_t* g_world_model_multimodal_mesh_registry = NULL;
-
-nimcp_error_t world_model_multimodal_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_world_model_multimodal_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "world_model_multimodal", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "world_model_multimodal";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_world_model_multimodal_mesh_id);
-    if (err == NIMCP_SUCCESS) g_world_model_multimodal_mesh_registry = registry;
-    return err;
-}
-
-void world_model_multimodal_mesh_unregister(void) {
-    if (g_world_model_multimodal_mesh_registry && g_world_model_multimodal_mesh_id != 0) {
-        mesh_participant_unregister(g_world_model_multimodal_mesh_registry, g_world_model_multimodal_mesh_id);
-        g_world_model_multimodal_mesh_id = 0;
-        g_world_model_multimodal_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from world_model_multimodal module (instance-level) */
-static inline void world_model_multimodal_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_world_model_multimodal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_world_model_multimodal_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_world_model_multimodal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(world_model_multimodal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 
@@ -232,8 +188,8 @@ wm_config_t wm_default_config(void) {
         .max_prediction_steps = WM_MAX_PREDICTION_STEPS,
         .fusion_type = WM_FUSION_ATTENTION,
         .prediction_mode = WM_PRED_MODE_PROBABILISTIC,
-        .learning_rate = 0.001f,
-        .prediction_decay = 0.95f,
+        .learning_rate = NIMCP_LEARNING_RATE_FINE,
+        .prediction_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT,
         .entity_persistence = 0.1f,
         .enable_bio_async = true,
         .enable_immune = true,

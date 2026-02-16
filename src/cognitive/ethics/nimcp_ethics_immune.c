@@ -28,56 +28,12 @@
 #include <math.h>
 
 #define LOG_MODULE "ethics.immune"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ethics_immune)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_ethics_immune_mesh_id = 0;
-static mesh_participant_registry_t* g_ethics_immune_mesh_registry = NULL;
-
-nimcp_error_t ethics_immune_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_ethics_immune_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "ethics_immune", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "ethics_immune";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_ethics_immune_mesh_id);
-    if (err == NIMCP_SUCCESS) g_ethics_immune_mesh_registry = registry;
-    return err;
-}
-
-void ethics_immune_mesh_unregister(void) {
-    if (g_ethics_immune_mesh_registry && g_ethics_immune_mesh_id != 0) {
-        mesh_participant_unregister(g_ethics_immune_mesh_registry, g_ethics_immune_mesh_id);
-        g_ethics_immune_mesh_id = 0;
-        g_ethics_immune_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat (instance-level) */
-static inline void ethics_immune_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_ethics_immune_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_ethics_immune_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_ethics_immune_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(ethics_immune, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -222,7 +178,7 @@ bool ethics_evaluate_with_immune_check(ethics_engine_t engine,
     // WHY:  Transparency about reasoning impairment
     // HOW:  Append to existing explanation
     if (inflammation > 0.3F) {
-        char inflammation_note[128];
+        char inflammation_note[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(inflammation_note, sizeof(inflammation_note),
                  " [Note: Elevated inflammation (%.1f%%) may impair moral reasoning]",
                  inflammation * 100.0F);

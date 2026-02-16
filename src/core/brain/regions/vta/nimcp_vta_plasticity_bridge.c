@@ -14,46 +14,16 @@
 #include <math.h>
 
 //=============================================================================
-#include <stddef.h>  /* for NULL */
+#include <stddef.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vta_plasticity_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_vta_plasticity_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_vta_plasticity_bridge_mesh_registry = NULL;
-
-nimcp_error_t vta_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_vta_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "vta_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "vta_plasticity_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_vta_plasticity_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_vta_plasticity_bridge_mesh_registry = registry;
-    return err;
-}
-
-void vta_plasticity_bridge_mesh_unregister(void) {
-    if (g_vta_plasticity_bridge_mesh_registry && g_vta_plasticity_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_vta_plasticity_bridge_mesh_registry, g_vta_plasticity_bridge_mesh_id);
-        g_vta_plasticity_bridge_mesh_id = 0;
-        g_vta_plasticity_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(vta_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "VTA_PLASTICITY_BRIDGE"
@@ -97,7 +67,7 @@ nimcp_vta_plasticity_config_t nimcp_vta_plasticity_config_default(void) {
         .da_lr_multiplier_max = 2.0f,
         .da_gating_threshold = 0.3f,
         .enable_rpe_learning = true,
-        .rpe_learning_rate = 0.1f,
+        .rpe_learning_rate = NIMCP_LEARNING_RATE_COARSE,
         .positive_rpe_boost = 1.5f,
         .negative_rpe_scale = 0.5f,
         .stdp_ltp_window_ms = 50.0f,
@@ -108,14 +78,14 @@ nimcp_vta_plasticity_config_t nimcp_vta_plasticity_config_default(void) {
         .da_trace_conversion = 0.5f,
         .trace_accumulation_rate = 0.1f,
         .enable_td_learning = true,
-        .td_discount_factor = 0.99f,
-        .td_learning_rate = 0.1f,
+        .td_discount_factor = NIMCP_REWARD_DISCOUNT_DEFAULT,
+        .td_learning_rate = NIMCP_LEARNING_RATE_COARSE,
         .enable_motivation_mod = true,
         .high_motivation_boost = 1.5f,
         .effort_cost_penalty = 0.2f,
         .weight_min = 0.0f,
         .weight_max = 1.0f,
-        .initial_weight = 0.5f,
+        .initial_weight = NIMCP_SYNAPSE_WEIGHT_INIT,
         .enable_bio_async = false
     };
 }

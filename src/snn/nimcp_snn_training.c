@@ -16,6 +16,7 @@
  */
 
 #include "snn/nimcp_snn_training.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor.h"
@@ -47,8 +48,8 @@ void snn_stdp_config_default(snn_stdp_config_t* config) {
     /* Bi & Poo 1998 parameters */
     config->a_plus = NIMCP_DEFAULT_LEARNING_RATE;         /* LTP amplitude */
     config->a_minus = 0.0105f;      /* LTD slightly stronger (asymmetric) */
-    config->tau_plus = 20.0f;       /* 20 ms LTP window */
-    config->tau_minus = 20.0f;      /* 20 ms LTD window */
+    config->tau_plus = NIMCP_STDP_TAU_PLUS_MS;       /* 20 ms LTP window */
+    config->tau_minus = NIMCP_STDP_TAU_MINUS_MS;      /* 20 ms LTD window */
     config->w_min = NIMCP_SYNAPSE_STRENGTH_MIN;
     config->w_max = NIMCP_SYNAPSE_STRENGTH_MAX;
     config->soft_bounds = true;     /* Multiplicative bounds */
@@ -77,9 +78,9 @@ void snn_surrogate_config_default(snn_surrogate_config_t* config) {
     config->type = SNN_SURROGATE_FAST_SIGMOID;
     config->beta = 10.0f;           /* Steepness */
     config->threshold = 1.0f;       /* Normalized threshold */
-    config->learning_rate = 1e-3f;
-    config->momentum = 0.9f;
-    config->weight_decay = 1e-5f;
+    config->learning_rate = NIMCP_LEARNING_RATE_FINE;
+    config->momentum = NIMCP_MOMENTUM_DEFAULT;
+    config->weight_decay = 1e-5f;  /* Module-specific: lighter than default */
 }
 
 void snn_eprop_config_default(snn_eprop_config_t* config) {
@@ -88,12 +89,12 @@ void snn_eprop_config_default(snn_eprop_config_t* config) {
         return;
     }
 
-    config->learning_rate = 1e-3f;
+    config->learning_rate = NIMCP_LEARNING_RATE_FINE;
     config->eligibility_tau = 100.0f;
-    config->kappa = 0.1f;           /* Dampening factor */
+    config->kappa = NIMCP_EXPLORATION_RATE_DEFAULT;           /* Dampening factor */
     config->use_adam = true;
-    config->adam_beta1 = 0.9f;
-    config->adam_beta2 = 0.999f;
+    config->adam_beta1 = NIMCP_ADAM_BETA1_DEFAULT;
+    config->adam_beta2 = NIMCP_ADAM_BETA2_DEFAULT;
 }
 
 void snn_homeostatic_config_default(snn_homeostatic_config_t* config) {

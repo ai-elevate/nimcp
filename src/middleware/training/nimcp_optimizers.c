@@ -16,6 +16,7 @@
  */
 
 #include "middleware/training/nimcp_optimizers.h"
+#include "constants/nimcp_constants.h"
 #include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -297,9 +298,9 @@ nimcp_sgd_config_t nimcp_optimizer_sgd_default(float learning_rate) {
 nimcp_adam_config_t nimcp_optimizer_adam_default(float learning_rate) {
     nimcp_adam_config_t config = {
         .learning_rate = learning_rate,
-        .beta1 = 0.9F,
-        .beta2 = 0.999F,
-        .epsilon = 1e-8F,
+        .beta1 = NIMCP_ADAM_BETA1_DEFAULT,
+        .beta2 = NIMCP_ADAM_BETA2_DEFAULT,
+        .epsilon = NIMCP_EPSILON_ADAM,
         .weight_decay = 0.0F,
         .amsgrad = false
     };
@@ -309,8 +310,8 @@ nimcp_adam_config_t nimcp_optimizer_adam_default(float learning_rate) {
 nimcp_rmsprop_config_t nimcp_optimizer_rmsprop_default(float learning_rate) {
     nimcp_rmsprop_config_t config = {
         .learning_rate = learning_rate,
-        .alpha = 0.99F,
-        .epsilon = 1e-8F,
+        .alpha = NIMCP_EMA_DECAY_DEFAULT,
+        .epsilon = NIMCP_EPSILON_ADAM,
         .weight_decay = 0.0F,
         .momentum = 0.0F,
         .centered = false
@@ -334,43 +335,43 @@ nimcp_optimizer_config_t nimcp_optimizer_default_config(nimcp_optimizer_type_t t
     memset(&config, 0, sizeof(config));
     config.type = type;
     config.clip_gradients = false;
-    config.gradient_clip_value = 1.0F;
+    config.gradient_clip_value = NIMCP_GRADIENT_CLIP_DEFAULT;
     config.gradient_clip_norm = 0.0F;
     config.use_memory_pool = true;
     config.cow_strategy = UNIFIED_STRATEGY_POOL_DIRECT;
 
     switch (type) {
         case NIMCP_OPTIMIZER_SGD:
-            config.params.sgd = nimcp_optimizer_sgd_default(0.01F);
+            config.params.sgd = nimcp_optimizer_sgd_default(NIMCP_LEARNING_RATE_DEFAULT);
             break;
         case NIMCP_OPTIMIZER_SGD_MOMENTUM:
-            config.params.sgd = nimcp_optimizer_sgd_default(0.01F);
-            config.params.sgd.momentum = 0.9F;
+            config.params.sgd = nimcp_optimizer_sgd_default(NIMCP_LEARNING_RATE_DEFAULT);
+            config.params.sgd.momentum = NIMCP_MOMENTUM_DEFAULT;
             break;
         case NIMCP_OPTIMIZER_NESTEROV:
-            config.params.sgd = nimcp_optimizer_sgd_default(0.01F);
-            config.params.sgd.momentum = 0.9F;
+            config.params.sgd = nimcp_optimizer_sgd_default(NIMCP_LEARNING_RATE_DEFAULT);
+            config.params.sgd.momentum = NIMCP_MOMENTUM_DEFAULT;
             config.params.sgd.nesterov = true;
             break;
         case NIMCP_OPTIMIZER_ADAM:
-            config.params.adam = nimcp_optimizer_adam_default(0.001F);
+            config.params.adam = nimcp_optimizer_adam_default(NIMCP_LEARNING_RATE_FINE);
             break;
         case NIMCP_OPTIMIZER_ADAMW:
-            config.params.adamw.learning_rate = 0.001F;
-            config.params.adamw.beta1 = 0.9F;
-            config.params.adamw.beta2 = 0.999F;
-            config.params.adamw.epsilon = 1e-8F;
-            config.params.adamw.weight_decay = 0.01F;
+            config.params.adamw.learning_rate = NIMCP_LEARNING_RATE_FINE;
+            config.params.adamw.beta1 = NIMCP_ADAM_BETA1_DEFAULT;
+            config.params.adamw.beta2 = NIMCP_ADAM_BETA2_DEFAULT;
+            config.params.adamw.epsilon = NIMCP_EPSILON_ADAM;
+            config.params.adamw.weight_decay = NIMCP_LEARNING_RATE_DEFAULT;
             config.params.adamw.amsgrad = false;
             break;
         case NIMCP_OPTIMIZER_NADAM:
-            config.params.adam = nimcp_optimizer_adam_default(0.001F);
+            config.params.adam = nimcp_optimizer_adam_default(NIMCP_LEARNING_RATE_FINE);
             break;
         case NIMCP_OPTIMIZER_RMSPROP:
-            config.params.rmsprop = nimcp_optimizer_rmsprop_default(0.01F);
+            config.params.rmsprop = nimcp_optimizer_rmsprop_default(NIMCP_LEARNING_RATE_DEFAULT);
             break;
         case NIMCP_OPTIMIZER_ADAGRAD:
-            config.params.adagrad = nimcp_optimizer_adagrad_default(0.01F);
+            config.params.adagrad = nimcp_optimizer_adagrad_default(NIMCP_LEARNING_RATE_DEFAULT);
             break;
         default:
             break;

@@ -112,8 +112,9 @@ static void orientation_columns_bio_cleanup(void) {
 /** Gabor kernel size multiplier (kernel = sigma × multiplier) */
 #define GABOR_KERNEL_MULTIPLIER 6
 
+#include "constants/nimcp_constants.h"
 /** Small epsilon for numerical stability */
-#define EPSILON 1e-6f
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /** Default patch size for batch processing */
 #define DEFAULT_PATCH_SIZE 32

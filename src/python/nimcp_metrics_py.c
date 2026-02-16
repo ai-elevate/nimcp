@@ -21,6 +21,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metrics_py)
 
@@ -309,7 +310,7 @@ static PyObject* MetricsCollector_export_powerbi_json(MetricsCollectorObject* se
 }
 
 static PyObject* MetricsCollector_get_stats(MetricsCollectorObject* self, PyObject* Py_UNUSED(ignored)) {
-    char stats_json[4096];
+    char stats_json[NIMCP_PATH_BUFFER_SIZE];
     int32_t written = nimcp_metrics_get_stats(self->collector, stats_json, sizeof(stats_json));
 
     if (written < 0) {

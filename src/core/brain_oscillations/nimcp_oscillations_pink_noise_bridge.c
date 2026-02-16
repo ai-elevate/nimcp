@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(oscillations_pink_noise_bridge)
 
@@ -176,7 +177,7 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     bridge->noise_config.amplitude = config->global_amplitude;
     bridge->noise_config.min_frequency = PINK_NOISE_MIN_FREQUENCY;
     bridge->noise_config.max_frequency = PINK_NOISE_MAX_FREQUENCY;
-    bridge->noise_config.sample_rate = 1000.0f; /* Default 1kHz, updated on first use */
+    bridge->noise_config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ; /* Default 1kHz, updated on first use */
     bridge->noise_config.method = config->method;
     bridge->noise_config.seed = config->seed;
 

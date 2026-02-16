@@ -21,6 +21,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hh_dynamics_adapter)
 
@@ -113,7 +114,7 @@ static nimcp_layer_error_t hh_update(void* module, float dt) {
         float I = adapter->injected_currents[i];
 
         /* Simplified leaky integrate-and-fire dynamics */
-        float tau_m = 20.0f;  /* Membrane time constant (ms) */
+        float tau_m = NIMCP_MEMBRANE_TAU_MS;  /* Membrane time constant (ms) */
         float v_rest = -65.0f;
         float v_thresh = -50.0f;
         float v_reset = -70.0f;

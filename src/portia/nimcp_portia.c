@@ -31,6 +31,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include "constants/nimcp_timing_constants.h"
 
 #define LOG_MODULE "portia"
 
@@ -257,7 +258,7 @@ portia_config_t portia_get_default_config(void) {
     config.accelerator_config.enable_gpu_detection = true;
     config.accelerator_config.enable_npu_detection = true;
     config.accelerator_config.enable_auto_offload = true;
-    config.accelerator_config.detection_timeout_ms = 5000;
+    config.accelerator_config.detection_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
 
     /* General settings */
     config.enable_bio_async = true;

@@ -9,6 +9,7 @@
 #include "integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -100,8 +101,8 @@ nimcp_layer_error_t nimcp_chemistry_biology_update(nimcp_chemistry_biology_bridg
     bridge->state.no_signal_strength *= (1.0f - dt * 0.2f);
 
     /* Update stats */
-    bridge->stats.avg_receptor_activation = bridge->stats.avg_receptor_activation * 0.99f + bridge->state.receptor_activation_level * 0.01f;
-    bridge->stats.avg_synthesis_rate = bridge->stats.avg_synthesis_rate * 0.99f + bridge->state.protein_synthesis_load * 0.01f;
+    bridge->stats.avg_receptor_activation = bridge->stats.avg_receptor_activation * NIMCP_EMA_DECAY_DEFAULT + bridge->state.receptor_activation_level * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_synthesis_rate = bridge->stats.avg_synthesis_rate * NIMCP_EMA_DECAY_DEFAULT + bridge->state.protein_synthesis_load * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

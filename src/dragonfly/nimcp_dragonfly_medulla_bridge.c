@@ -26,6 +26,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -511,7 +512,7 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
         bridge->stats.avg_update_time_us = update_time;
     } else {
         bridge->stats.avg_update_time_us =
-            0.99f * bridge->stats.avg_update_time_us + 0.01f * update_time;
+            NIMCP_EMA_DECAY_DEFAULT * bridge->stats.avg_update_time_us + NIMCP_LEARNING_RATE_DEFAULT * update_time;
     }
     bridge->stats.last_update_us = start_time;
 

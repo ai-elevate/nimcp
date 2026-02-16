@@ -54,6 +54,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(async_checkpoint)
 #include <unistd.h>
 #include <sys/time.h>
 #include "utils/memory/nimcp_unified_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal Structures
@@ -106,7 +107,7 @@ struct async_checkpoint_writer_struct {
     volatile bool shutdown;         /**< Shutdown flag */
     nimcp_mutex_t stats_mutex;      /**< Statistics mutex */
     uint64_t next_request_id;       /**< Next request ID (atomic) */
-    char error_msg[256];            /**< Last error message */
+    char error_msg[NIMCP_ERROR_BUFFER_SIZE];            /**< Last error message */
     nimcp_mutex_t error_mutex;      /**< Error message mutex */
 };
 

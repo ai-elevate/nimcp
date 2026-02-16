@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/structural/nimcp_structural_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -32,9 +33,9 @@ int structural_immune_default_config(structural_immune_config_t* config) {
     config->enable_microglia_pruning = true;
     config->enable_complement_tagging = true;
     config->enable_inflammation_effects = true;
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->pruning_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->pruning_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->weak_spine_threshold = 2.0f;  /* Hz */
     config->high_density_threshold = 500.0f;
 

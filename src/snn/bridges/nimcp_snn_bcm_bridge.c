@@ -7,6 +7,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_bcm_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -37,7 +38,7 @@ void snn_bcm_bridge_config_default(snn_bcm_bridge_config_t* config) {
 
     /* Spike rate estimation */
     config->rate_window_ms = 100.0f;
-    config->rate_tau_ms = 20.0f;
+    config->rate_tau_ms = NIMCP_MEMBRANE_TAU_MS;
     config->min_rate_hz = 0.1f;
     config->max_rate_hz = 100.0f;
 

@@ -40,6 +40,7 @@
 
 #define LOG_MODULE "plasticity_bcm"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bcm)
 
@@ -47,7 +48,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bcm)
 // Constants
 //=============================================================================
 
-#define BCM_EPSILON 1e-8f          // Prevent division by zero
+#define BCM_EPSILON NIMCP_EPSILON_ADAM          // Prevent division by zero
 #define BCM_WEIGHT_MIN 0.0f        // Minimum synaptic weight
 #define BCM_WEIGHT_MAX 1.0f        // Maximum synaptic weight
 

@@ -20,6 +20,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(training_symbolic_logic_hub_bridge)
 
@@ -232,7 +233,7 @@ training_logic_hub_bridge_t* training_logic_hub_create(
     bridge->state.current_metrics.grad_stable = true;
     bridge->state.current_metrics.difficulty = 0.5f;
     bridge->state.current_metrics.mastery = 0.0f;
-    bridge->state.current_metrics.learning_rate = 0.001f;
+    bridge->state.current_metrics.learning_rate = NIMCP_LEARNING_RATE_FINE;
 
     bridge->initialized = true;
 

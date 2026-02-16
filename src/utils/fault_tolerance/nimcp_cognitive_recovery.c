@@ -29,6 +29,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cognitive_recovery)
 #include <time.h>
 #include <sys/time.h>
 #include "utils/memory/nimcp_unified_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal Structures
@@ -1028,14 +1029,14 @@ bool cognitive_recovery_save(
 
     // Also save brain recovery state
     if (coordinator->brain_recovery) {
-        char brain_path[512];
+        char brain_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(brain_path, sizeof(brain_path), "%s.brain", filepath);
         brain_recovery_save(coordinator->brain_recovery, brain_path);
     }
 
     // Save runtime adaptation config
     if (coordinator->runtime_adaptation) {
-        char adapt_path[512];
+        char adapt_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(adapt_path, sizeof(adapt_path), "%s.adapt", filepath);
         runtime_adaptation_save_config(coordinator->runtime_adaptation, adapt_path);
     }
@@ -1100,7 +1101,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_load(
 
     // Load brain recovery state
     if (coordinator->brain_recovery) {
-        char brain_path[512];
+        char brain_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(brain_path, sizeof(brain_path), "%s.brain", filepath);
 
         // Destroy existing and load saved
@@ -1115,7 +1116,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_load(
 
     // Load runtime adaptation config
     if (coordinator->runtime_adaptation) {
-        char adapt_path[512];
+        char adapt_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(adapt_path, sizeof(adapt_path), "%s.adapt", filepath);
         runtime_adaptation_load_config(coordinator->runtime_adaptation, adapt_path);
     }

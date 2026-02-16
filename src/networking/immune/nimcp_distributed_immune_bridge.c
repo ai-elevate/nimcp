@@ -6,6 +6,7 @@
  */
 
 #include "networking/immune/nimcp_distributed_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -109,8 +110,8 @@ int distributed_immune_default_config(distributed_immune_config_t* config) {
     config->enable_recovery_memory = true;
 
     /* Default sensitivity */
-    config->congestion_sensitivity = 1.0f;
-    config->immune_network_sensitivity = 1.0f;
+    config->congestion_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->immune_network_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Default thresholds */
     config->packet_loss_threshold = CONGESTION_PACKET_LOSS_LOCAL;

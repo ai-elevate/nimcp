@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_training_bridge)
 
@@ -230,7 +231,7 @@ int omni_training_update(omni_training_bridge_t* bridge) {
 
     /* Compute training → omni effects */
     bridge->training_effects.weight_update_magnitude = 0.0f;
-    bridge->training_effects.precision_learning_rate = 0.01f;
+    bridge->training_effects.precision_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     bridge->training_effects.enable_backward_training =
         (bridge->config.grad_source == OMNI_GRAD_BIDIRECTIONAL ||
          bridge->config.grad_source == OMNI_GRAD_BACKWARD);

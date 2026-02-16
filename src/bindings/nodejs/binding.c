@@ -16,6 +16,7 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_learning_constants.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -103,7 +104,7 @@ static napi_value CreateNeuralNetwork(napi_env env, napi_callback_info info) {
     uint32_t num_inputs = 0;
     uint32_t num_outputs = 0;
     uint32_t num_hidden = 0;
-    float learning_rate = 0.01f;
+    float learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
 
     // Get num_inputs
     napi_value num_inputs_val;

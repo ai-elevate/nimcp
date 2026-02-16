@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(harm_prevention)
 
@@ -383,7 +384,7 @@ int harm_prevention_evaluate_inaction(
     }
 
     /* Build inaction description for classifier */
-    char inaction_desc[512];
+    char inaction_desc[NIMCP_ERROR_BUFFER_LARGE];
     snprintf(inaction_desc, sizeof(inaction_desc),
              "INACTION: %s. Required action: %s",
              context_desc, required_action);

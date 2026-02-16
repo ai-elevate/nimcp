@@ -31,6 +31,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(echolocation)
 
@@ -1240,7 +1241,7 @@ int echolocation_track_objects(echolocation_system_t* system,
 
         if (best_track) {
             /* Update existing track */
-            float dt = 1.0f;  /* Normalized time step */
+            float dt = NIMCP_SIMULATION_DT_MS;  /* Normalized time step */
 
             /* Compute velocity */
             best_track->object.velocity.x = (obj->position.x - best_track->object.position.x) / dt;

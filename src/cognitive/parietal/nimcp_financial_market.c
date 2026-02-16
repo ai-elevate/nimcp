@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/parietal/nimcp_financial_market.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,45 +25,13 @@
 //=============================================================================
 #include <stddef.h> /* for NULL */
 #include "utils/memory/nimcp_memory.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
-/* Health agent: using pre-existing custom implementation */
-static nimcp_health_agent_t* g_fin_mkt_health_agent = NULL;
-
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_fin_mkt_mesh_id = 0;
-static mesh_participant_registry_t* g_fin_mkt_mesh_registry = NULL;
-
-nimcp_error_t fin_mkt_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_fin_mkt_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "fin_mkt", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "fin_mkt";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_mkt_mesh_id);
-    if (err == NIMCP_SUCCESS) g_fin_mkt_mesh_registry = registry;
-    return err;
-}
-
-void fin_mkt_mesh_unregister(void) {
-    if (g_fin_mkt_mesh_registry && g_fin_mkt_mesh_id != 0) {
-        mesh_participant_unregister(g_fin_mkt_mesh_registry, g_fin_mkt_mesh_id);
-        g_fin_mkt_mesh_id = 0;
-        g_fin_mkt_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(fin_mkt, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 struct kg_wiring;
@@ -85,18 +54,11 @@ void financial_market_set_bbb(bbb_system_t bbb) {
     g_fin_market_bbb = bbb;
 }
 
-/** @brief Send heartbeat from financial market module */
-static inline void fin_mkt_heartbeat(const char* operation, float progress) {
-    if (g_fin_mkt_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_fin_mkt_health_agent, operation, progress);
-    }
-}
-
 //=============================================================================
 // Thread-Local Error Handling
 //=============================================================================
 
-static _Thread_local char fin_mkt_last_error[256] = {0};
+static _Thread_local char fin_mkt_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;
@@ -130,7 +92,7 @@ static int fin_market_validate_subsystems(const char* operation) {
 // Constants
 //=============================================================================
 
-#define FIN_MKT_EPSILON         1e-8f
+#define FIN_MKT_EPSILON         NIMCP_EPSILON_ADAM
 #define FIN_MKT_PI              3.14159265358979323846f
 #define FIN_MKT_SQRT2           1.41421356237309504880f
 #define FIN_MKT_LCG_A           1664525u
@@ -355,8 +317,8 @@ fin_market_config_t financial_market_default_config(void) {
     cfg.garch_convergence_tol   = 1e-6f;
     cfg.monte_carlo_default_paths = 10000;
     cfg.enable_regime_detection = true;
-    cfg.inflammation_sensitivity = 1.0f;
-    cfg.fatigue_sensitivity      = 1.0f;
+    cfg.inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    cfg.fatigue_sensitivity      = NIMCP_SENSITIVITY_DEFAULT;
     cfg.enable_fuzzy_logic       = false;
     cfg.fuzzy_bridge             = NULL;
     return cfg;

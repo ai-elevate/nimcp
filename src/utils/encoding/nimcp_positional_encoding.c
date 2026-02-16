@@ -33,6 +33,7 @@
 #define LOG_MODULE "PosEncoding"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(positional_encoding)
 
@@ -451,7 +452,7 @@ nimcp_pos_sinusoidal_config_t nimcp_pos_sinusoidal_default_config(void)
     nimcp_pos_sinusoidal_config_t config = {
         .base = {
             .max_seq_length = 8192,
-            .embedding_dim = 512,
+            .embedding_dim = NIMCP_LARGE_EMBEDDING_DIM,
             .cache_enabled = true,
             .thread_safe = true
         },
@@ -466,7 +467,7 @@ nimcp_pos_learned_config_t nimcp_pos_learned_default_config(void)
     nimcp_pos_learned_config_t config = {
         .base = {
             .max_seq_length = 2048,
-            .embedding_dim = 512,
+            .embedding_dim = NIMCP_LARGE_EMBEDDING_DIM,
             .cache_enabled = true,
             .thread_safe = true
         },
@@ -482,7 +483,7 @@ nimcp_pos_rope_config_t nimcp_pos_rope_default_config(void)
     nimcp_pos_rope_config_t config = {
         .base = {
             .max_seq_length = 8192,
-            .embedding_dim = 512,
+            .embedding_dim = NIMCP_LARGE_EMBEDDING_DIM,
             .cache_enabled = true,
             .thread_safe = true
         },
@@ -500,7 +501,7 @@ nimcp_pos_alibi_config_t nimcp_pos_alibi_default_config(void)
     nimcp_pos_alibi_config_t config = {
         .base = {
             .max_seq_length = 16384,
-            .embedding_dim = 512,
+            .embedding_dim = NIMCP_LARGE_EMBEDDING_DIM,
             .cache_enabled = false,
             .thread_safe = true
         },
@@ -516,7 +517,7 @@ nimcp_pos_relative_config_t nimcp_pos_relative_default_config(void)
     nimcp_pos_relative_config_t config = {
         .base = {
             .max_seq_length = 4096,
-            .embedding_dim = 512,
+            .embedding_dim = NIMCP_LARGE_EMBEDDING_DIM,
             .cache_enabled = true,
             .thread_safe = true
         },

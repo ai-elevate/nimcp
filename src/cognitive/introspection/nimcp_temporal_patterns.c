@@ -51,55 +51,12 @@
 #include <stdlib.h>
 
 #define LOG_MODULE "cognitive.introspection.temporal_patterns"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(temporal_patterns)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_temporal_patterns_mesh_id = 0;
-static mesh_participant_registry_t* g_temporal_patterns_mesh_registry = NULL;
-
-nimcp_error_t temporal_patterns_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_temporal_patterns_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "temporal_patterns", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "temporal_patterns";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_temporal_patterns_mesh_id);
-    if (err == NIMCP_SUCCESS) g_temporal_patterns_mesh_registry = registry;
-    return err;
-}
-
-void temporal_patterns_mesh_unregister(void) {
-    if (g_temporal_patterns_mesh_registry && g_temporal_patterns_mesh_id != 0) {
-        mesh_participant_unregister(g_temporal_patterns_mesh_registry, g_temporal_patterns_mesh_id);
-        g_temporal_patterns_mesh_id = 0;
-        g_temporal_patterns_mesh_registry = NULL;
-    }
-}
-
-
-static inline void temporal_patterns_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_temporal_patterns_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_temporal_patterns_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_temporal_patterns_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(temporal_patterns, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ========================================================================
@@ -507,7 +464,7 @@ brain_state_t introspection_predict_next_state(introspection_context_t context,
             predicted_state.compression_ratio = 1.0F;
             predicted_state.information_content = 1.0F;
 
-            char interp[256];
+            char interp[NIMCP_ERROR_BUFFER_SIZE];
             snprintf(interp, sizeof(interp),
                      "Predicted from pattern '%s' (confidence: %.2f)",
                      best_pattern->name, best_confidence);
@@ -1520,8 +1477,6 @@ int temporal_patterns_query_self_knowledge(kg_reader_t* kg) {
 /* ============================================================================
  * Phase 8: Instance-Level Health Agent + Full Training
  * ============================================================================ */
-
-static nimcp_health_agent_t* g_temporal_patterns_instance_health_agent = NULL;
 
 void temporal_patterns_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
     (void)ctx;

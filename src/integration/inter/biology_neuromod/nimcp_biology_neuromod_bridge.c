@@ -9,6 +9,7 @@
 #include "integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -107,8 +108,8 @@ nimcp_layer_error_t nimcp_biology_neuromod_update(nimcp_biology_neuromod_bridge_
     bridge->state.energy_capacity *= (1.0f - dt * 0.005f);
 
     /* Update averages */
-    bridge->stats.avg_receptor_density = bridge->stats.avg_receptor_density * 0.99f + bridge->state.receptor_density_level * 0.01f;
-    bridge->stats.avg_bdnf_level = bridge->stats.avg_bdnf_level * 0.99f + bridge->state.bdnf_expression_level * 0.01f;
+    bridge->stats.avg_receptor_density = bridge->stats.avg_receptor_density * NIMCP_EMA_DECAY_DEFAULT + bridge->state.receptor_density_level * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_bdnf_level = bridge->stats.avg_bdnf_level * NIMCP_EMA_DECAY_DEFAULT + bridge->state.bdnf_expression_level * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

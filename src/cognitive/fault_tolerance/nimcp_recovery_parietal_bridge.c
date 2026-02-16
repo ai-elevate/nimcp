@@ -31,6 +31,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery_parietal_bridge)
 //=============================================================================
@@ -92,9 +93,9 @@ static inline void recovery_parietal_bridge_heartbeat_instance(
 typedef struct {
     uint64_t pattern_id;
     diag_severity_t severity;
-    char failure_type[64];
-    char module_pattern[128];
-    char successful_fix[512];
+    char failure_type[NIMCP_ID_BUFFER_SIZE];
+    char module_pattern[NIMCP_LABEL_BUFFER_SIZE];
+    char successful_fix[NIMCP_ERROR_BUFFER_LARGE];
     uint32_t occurrences;
     uint32_t successful_recoveries;
     float avg_recovery_time_ms;
@@ -869,7 +870,7 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
 
     /* Enhance plan with parietal insights */
     /* Append enhancement info to rationale */
-    char enhanced_rationale[256];
+    char enhanced_rationale[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(enhanced_rationale, sizeof(enhanced_rationale),
             "%s [Parietal: %.0f%% success, %.0fms est., %u components affected]",
             plan->rationale,
@@ -1223,9 +1224,9 @@ int recovery_parietal_generate_fix_candidates(
     recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_ge", 0.0f);
 
 
-    char fix_code[4096];
+    char fix_code[NIMCP_PATH_BUFFER_SIZE];
     float confidence;
-    char explanation[512];
+    char explanation[NIMCP_ERROR_BUFFER_LARGE];
 
     if (recovery_parietal_generate_fix(bridge, diagnosis, analysis,
             fix_code, sizeof(fix_code), &confidence,

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_spatial)
 
@@ -297,7 +298,7 @@ pink_spatial_config_t pink_spatial_default_config(void) {
     config.min_correlation = 0.05f;
     config.decay_type = PINK_SPATIAL_DECAY_EXPONENTIAL;
     config.power_law_exponent = 2.0f;
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
     config.seed = 0;
 
     // Default: 4 cortical regions

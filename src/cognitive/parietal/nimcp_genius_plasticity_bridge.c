@@ -25,42 +25,12 @@
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(genius_plasticity_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_genius_plasticity_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_genius_plasticity_bridge_mesh_registry = NULL;
-
-nimcp_error_t genius_plasticity_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_genius_plasticity_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "genius_plasticity_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "genius_plasticity_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_genius_plasticity_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_genius_plasticity_bridge_mesh_registry = registry;
-    return err;
-}
-
-void genius_plasticity_bridge_mesh_unregister(void) {
-    if (g_genius_plasticity_bridge_mesh_registry && g_genius_plasticity_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_genius_plasticity_bridge_mesh_registry, g_genius_plasticity_bridge_mesh_id);
-        g_genius_plasticity_bridge_mesh_id = 0;
-        g_genius_plasticity_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(genius_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /** @brief Send heartbeat from genius_plasticity_bridge module (instance-level) */
@@ -187,7 +157,7 @@ genius_plasticity_config_t genius_plasticity_config_default(void) {
         .base_learning_rate = GENIUS_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
         .stdp_tau_minus_ms = 20.0f,
-        .stdp_a_plus = 0.01f,
+        .stdp_a_plus = NIMCP_STDP_A_PLUS,
         .stdp_a_minus = 0.0105f,
 
         .bcm_tau_ms = 1000.0f,

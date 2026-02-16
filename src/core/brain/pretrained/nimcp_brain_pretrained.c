@@ -29,6 +29,7 @@
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -52,42 +53,12 @@
 
 #define LOG_MODULE "BRAIN_PRETRAINED"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_dimension_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_pretrained)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_brain_pretrained_mesh_id = 0;
-static mesh_participant_registry_t* g_brain_pretrained_mesh_registry = NULL;
-
-nimcp_error_t brain_pretrained_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_brain_pretrained_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "brain_pretrained", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "brain_pretrained";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_brain_pretrained_mesh_id);
-    if (err == NIMCP_SUCCESS) g_brain_pretrained_mesh_registry = registry;
-    return err;
-}
-
-void brain_pretrained_mesh_unregister(void) {
-    if (g_brain_pretrained_mesh_registry && g_brain_pretrained_mesh_id != 0) {
-        mesh_participant_unregister(g_brain_pretrained_mesh_registry, g_brain_pretrained_mesh_id);
-        g_brain_pretrained_mesh_id = 0;
-        g_brain_pretrained_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(brain_pretrained, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -146,7 +117,7 @@ static bool get_model_directory(char* buffer, size_t buffer_size)
  */
 static bool ensure_model_directory_exists(void)
 {
-    char model_dir[512];
+    char model_dir[NIMCP_METRICS_PATH_SIZE];
     if (!get_model_directory(model_dir, sizeof(model_dir))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_model_directory_exists: get_model_directory is NULL");
         return false;
@@ -187,7 +158,7 @@ static bool ensure_model_directory_exists(void)
  */
 static bool get_model_filepath(const char* model_id, char* buffer, size_t buffer_size)
 {
-    char model_dir[512];
+    char model_dir[NIMCP_METRICS_PATH_SIZE];
     if (!get_model_directory(model_dir, sizeof(model_dir))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_model_filepath: get_model_directory is NULL");
         return false;
@@ -208,7 +179,7 @@ bool brain_model_exists(const char* model_id)
         return false;
     }
 
-    char filepath[512];
+    char filepath[NIMCP_METRICS_PATH_SIZE];
     if (!get_model_filepath(model_id, filepath, sizeof(filepath))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_model_exists: get_model_filepath is NULL");
         return false;
@@ -232,7 +203,7 @@ bool brain_download_model(const char* model_id)
         return false;
     }
 
-    char filepath[512];
+    char filepath[NIMCP_METRICS_PATH_SIZE];
     if (!get_model_filepath(model_id, filepath, sizeof(filepath))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: get_model_filepath is NULL");
         return false;
@@ -245,14 +216,14 @@ bool brain_download_model(const char* model_id)
     }
 
     // Construct download URL
-    char url[512];
+    char url[NIMCP_ERROR_BUFFER_LARGE];
     snprintf(url, sizeof(url), "https://models.nimcp.ai/v2.7.0/%s_v2.7.0.brain", model_id);
 
     printf("NIMCP: Downloading model '%s' from %s\n", model_id, url);
     printf("NIMCP: Saving to %s\n", filepath);
 
     // Use curl to download (works on most Linux systems)
-    char cmd[1024];
+    char cmd[NIMCP_CMD_BUFFER_SIZE];
     snprintf(cmd, sizeof(cmd), "curl -L -o '%s' '%s' 2>/dev/null", filepath, url);
 
     int result = system(cmd);
@@ -337,7 +308,7 @@ brain_t brain_create_pretrained(const char* model_id, brain_task_t task)
     }
 
     // Get model filepath
-    char filepath[512];
+    char filepath[NIMCP_METRICS_PATH_SIZE];
     if (!get_model_filepath(model_id, filepath, sizeof(filepath))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_pretrained: get_model_filepath is NULL");
         return NULL;
@@ -390,7 +361,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
         .freeze_sensory = true,
         .freeze_cognitive = true,
         .finetune_classifier = true,
-        .batch_size = 32,
+        .batch_size = NIMCP_DEFAULT_BATCH_SIZE,
         .verbose = true
     };
 

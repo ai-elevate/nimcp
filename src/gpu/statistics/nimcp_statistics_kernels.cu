@@ -35,6 +35,7 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/common/nimcp_device_utils.cuh"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
@@ -71,7 +72,7 @@ struct stats_gpu_workspace_s {
 // Thread-Local Error Storage
 //=============================================================================
 
-static __thread char g_stats_gpu_error[256] = {0};
+static __thread char g_stats_gpu_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static __thread stats_gpu_stats_t g_stats_gpu_stats = {0};
 
 static void set_stats_error(const char* fmt, ...) {

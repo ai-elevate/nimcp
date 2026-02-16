@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cognitive_bio_async_bridge)
 //=============================================================================
@@ -294,10 +295,10 @@ cognitive_bio_bridge_config_t cognitive_bio_bridge_default_config(void) {
     cognitive_bio_bridge_config_t config = {0};
 
     /* Neuromodulator sensitivity */
-    config.dopamine_sensitivity = 1.0f;
-    config.norepinephrine_sensitivity = 1.0f;
-    config.acetylcholine_sensitivity = 1.0f;
-    config.serotonin_sensitivity = 1.0f;
+    config.dopamine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.norepinephrine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.acetylcholine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.serotonin_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Phase coupling */
     config.coherence_threshold = COG_BIO_DEFAULT_COHERENCE_THRESHOLD;

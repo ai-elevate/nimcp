@@ -14,6 +14,7 @@
  */
 
 #include "cognitive/parietal/linguistics/nimcp_parietal_linguistics_mesh.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -25,6 +26,8 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include "constants/nimcp_timing_constants.h"
+#include "constants/nimcp_learning_constants.h"
 
 /* ============================================================================
  * LOG MODULE IDENTIFIER
@@ -45,9 +48,9 @@
 #define MESH_MAX_NEIGHBORS              32
 
 /* Algorithm constants */
-#define BP_CONVERGENCE_EPS              1e-4f
+#define BP_CONVERGENCE_EPS              NIMCP_EPSILON_LARGE
 #define FISHER_MATRIX_SIZE              (MESH_BELIEF_VECTOR_DIM * MESH_BELIEF_VECTOR_DIM)
-#define PAGERANK_CONVERGENCE_EPS        1e-6f
+#define PAGERANK_CONVERGENCE_EPS        NIMCP_EPSILON_NUMERICAL
 #define LAPLACIAN_MAX_EIGENVALUE        4.0f   /* Max eigenvalue for step size */
 
 /* ============================================================================
@@ -162,7 +165,7 @@ struct linguistics_mesh {
 };
 
 /* Thread-local error message */
-static __thread char g_mesh_error[256] = {0};
+static __thread char g_mesh_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * ERROR HANDLING HELPERS
@@ -1696,7 +1699,7 @@ linguistics_mesh_config_t linguistics_mesh_default_config(void) {
         .default_channel = LING_MESH_CHANNEL_ATTENTION,
 
         /* Performance */
-        .timeout_ms = 5000,
+        .timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS,
         .heartbeat_interval_ms = LING_MESH_HEARTBEAT_INTERVAL_MS
     };
 

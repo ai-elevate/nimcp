@@ -46,6 +46,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocytes_refactored)
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Module Constants and Configuration Keys
@@ -376,7 +377,7 @@ void astrocyte_update_calcium(astrocyte_t* astro, float dt, float external_stimu
                     g_astrocyte_bio_ctx) {
                     // Publish calcium spike as a predictive signal
                     // Signal name encodes astrocyte ID for specific routing
-                    char signal_name[64];
+                    char signal_name[NIMCP_ID_BUFFER_SIZE];
                     snprintf(signal_name, sizeof(signal_name), "astrocyte.calcium_spike.%u", astro->id);
                     bio_router_publish_signal(g_astrocyte_bio_ctx, signal_name, astro->calcium_concentration);
 

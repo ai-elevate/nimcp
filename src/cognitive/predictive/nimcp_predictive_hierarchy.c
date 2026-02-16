@@ -11,56 +11,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_hierarchy)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_predictive_hierarchy_mesh_id = 0;
-static mesh_participant_registry_t* g_predictive_hierarchy_mesh_registry = NULL;
-
-nimcp_error_t predictive_hierarchy_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_predictive_hierarchy_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "predictive_hierarchy", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "predictive_hierarchy";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_predictive_hierarchy_mesh_id);
-    if (err == NIMCP_SUCCESS) g_predictive_hierarchy_mesh_registry = registry;
-    return err;
-}
-
-void predictive_hierarchy_mesh_unregister(void) {
-    if (g_predictive_hierarchy_mesh_registry && g_predictive_hierarchy_mesh_id != 0) {
-        mesh_participant_unregister(g_predictive_hierarchy_mesh_registry, g_predictive_hierarchy_mesh_id);
-        g_predictive_hierarchy_mesh_id = 0;
-        g_predictive_hierarchy_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from predictive_hierarchy module (instance-level) */
-static inline void predictive_hierarchy_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_predictive_hierarchy_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_predictive_hierarchy_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_predictive_hierarchy_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(predictive_hierarchy, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* Logging macros - wrap LOG_* for consistent usage */
@@ -330,7 +286,7 @@ int pred_hier_simple_config(pred_hier_config_t* config,
         config->level_configs[i].gen_hidden_dim = dims[i];
         config->level_configs[i].gen_type = PRED_HIER_GEN_LINEAR;
         config->level_configs[i].initial_precision = PRED_HIER_DEFAULT_PRECISION;
-        config->level_configs[i].precision_lr = 0.01f;
+        config->level_configs[i].precision_lr = NIMCP_LEARNING_RATE_DEFAULT;
         config->level_configs[i].learnable_precision = true;
     }
 

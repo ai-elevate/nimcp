@@ -10,6 +10,7 @@
  */
 
 #include "utils/fuzzy/nimcp_fuzzy_inference.h"
+#include "constants/nimcp_buffer_constants.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_inference)
 
@@ -32,9 +34,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_inference)
 //=============================================================================
 
 #ifdef _MSC_VER
-static __declspec(thread) char tls_fuzzy_inference_error[256] = {0};
+static __declspec(thread) char tls_fuzzy_inference_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 #else
-static __thread char tls_fuzzy_inference_error[256] = {0};
+static __thread char tls_fuzzy_inference_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 #endif
 
 static void set_error(const char* fmt, ...) {
@@ -93,7 +95,7 @@ fuzzy_inference_config_t fuzzy_inference_default_config(void) {
     config.aggregation = FUZZY_AGG_MAX;
     config.defuzz_resolution = FUZZY_RESOLUTION;
     config.enable_anfis = false;
-    config.anfis_learning_rate = 0.01f;
+    config.anfis_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     config.anfis_max_epochs = 100;
     config.anfis_convergence_tol = 1e-5f;
     config.inflammation_sensitivity = 0.3f;

@@ -6,6 +6,7 @@
  */
 
 #include "portia/immune/nimcp_portia_learning_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -155,9 +156,9 @@ int portia_learning_immune_default_config(portia_learning_immune_config_t* confi
     config->enable_repeated_failure_inflammation = true;
 
     /* Sensitivity tuning */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->learning_immune_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->learning_immune_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Thresholds */
     config->failure_threshold = LEARNING_FAILURE_THRESHOLD;

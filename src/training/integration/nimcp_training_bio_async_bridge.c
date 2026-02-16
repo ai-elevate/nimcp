@@ -6,6 +6,7 @@
  */
 
 #include "training/integration/nimcp_training_bio_async_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -173,19 +174,19 @@ training_bio_bridge_config_t training_bio_bridge_default_config(void) {
     training_bio_bridge_config_t config = {0};
 
     /* Neuromodulator sensitivity */
-    config.dopamine_sensitivity = 1.0f;
-    config.norepinephrine_sensitivity = 1.0f;
-    config.acetylcholine_sensitivity = 1.0f;
-    config.serotonin_sensitivity = 1.0f;
+    config.dopamine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.norepinephrine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.acetylcholine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.serotonin_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Gradient synchronization */
     config.sync_coherence_threshold = TRAIN_BIO_DEFAULT_SYNC_COHERENCE;
-    config.sync_timeout_ms = 30000; /* 30 seconds */
+    config.sync_timeout_ms = NIMCP_LONG_TIMEOUT_MS; /* 30 seconds */
     config.enable_gradient_compression = false;
     config.compression_threshold = 0.001f;
 
     /* Phase coupling */
-    config.coupling_strength = 0.5f;
+    config.coupling_strength = NIMCP_MODULATION_DEFAULT;
     config.default_oscillation_band = 3; /* BETA band for working memory */
 
     /* Message routing */
@@ -199,7 +200,7 @@ training_bio_bridge_config_t training_bio_bridge_default_config(void) {
 
     /* Checkpoint coordination */
     config.enable_checkpoint_waves = true;
-    config.checkpoint_wave_threshold = 0.8f;
+    config.checkpoint_wave_threshold = NIMCP_CONFIDENCE_HIGH;
 
     /* Glial wave parameters */
     config.glial_wave_decay = 0.1f;
@@ -558,7 +559,7 @@ int training_bio_bridge_signal_batch_complete(
     bridge->outgoing_effects.completed_batches++;
 
     /* Update running average loss */
-    bridge->stats.avg_loss = bridge->stats.avg_loss * 0.99f + loss * 0.01f;
+    bridge->stats.avg_loss = bridge->stats.avg_loss * NIMCP_EMA_DECAY_DEFAULT + loss * NIMCP_LEARNING_RATE_DEFAULT;
 
     /* Check for loss improvement */
     if (loss < bridge->best_loss) {

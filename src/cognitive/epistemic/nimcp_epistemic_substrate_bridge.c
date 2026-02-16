@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(epistemic_substrate_bridge)
 //=============================================================================
@@ -90,7 +91,7 @@ epistemic_substrate_config_t epistemic_substrate_default_config(void) {
 
 
     epistemic_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
-        .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
+        .enable_bio_async = false, .atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT, .fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT, .min_capacity = 0.2f };
     return cfg;
 }
 

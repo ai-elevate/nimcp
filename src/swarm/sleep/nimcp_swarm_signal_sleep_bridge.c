@@ -12,6 +12,7 @@
  */
 
 #include "swarm/sleep/nimcp_swarm_signal_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
@@ -62,7 +63,7 @@ int swarm_signal_sleep_default_config(swarm_signal_sleep_config_t* config)
     config->enable_power_modulation = true;
     config->enable_reception_modulation = true;
     config->enable_latency_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

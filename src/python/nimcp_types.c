@@ -23,6 +23,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(types)
 
@@ -235,7 +236,7 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
     }
 
     // Allocate output buffers
-    char label[64];
+    char label[NIMCP_ID_BUFFER_SIZE];
     float confidence;
 
     // Release GIL during potentially long-running C operation
@@ -1718,7 +1719,7 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
     }
 
     // Get prediction
-    char label[64];
+    char label[NIMCP_ID_BUFFER_SIZE];
     float confidence;
 
     nimcp_status_t status;
@@ -1785,6 +1786,228 @@ static PyObject* Brain_release_dopamine(BrainObject* self, PyObject* args, PyObj
     Py_END_ALLOW_THREADS
 
     return PyFloat_FromDouble((double)released);
+}
+
+// Brain.infer(features, num_outputs) -> list[float]
+// Raw inference returning output vector
+static PyObject* Brain_infer(BrainObject* self, PyObject* args)
+{
+    PyObject* features_list;
+    unsigned int num_outputs;
+
+    if (!PyArg_ParseTuple(args, "OI", &features_list, &num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_infer: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_infer: self->brain is NULL");
+        return NULL;
+    }
+
+    if (!PyList_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t num_features = PyList_Size(features_list);
+    if (num_features <= 0) {
+        PyErr_SetString(PyExc_ValueError, "features list must be non-empty");
+        return NULL;
+    }
+
+    // Convert Python list to C array
+    float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
+    if (!features) {
+        return PyErr_NoMemory();
+    }
+
+    for (Py_ssize_t i = 0; i < num_features; i++) {
+        PyObject* item = PyList_GetItem(features_list, i);
+        features[i] = (float)PyFloat_AsDouble(item);
+        if (PyErr_Occurred()) {
+            nimcp_free(features);
+            return NULL;
+        }
+    }
+
+    // Allocate output array
+    float* outputs = (float*)nimcp_malloc(sizeof(float) * num_outputs);
+    if (!outputs) {
+        nimcp_free(features);
+        return PyErr_NoMemory();
+    }
+
+    // Call C API with GIL released
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_infer(self->brain, features, (uint32_t)num_features,
+                               outputs, num_outputs);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(features);
+
+    if (status != NIMCP_OK) {
+        nimcp_free(outputs);
+        PyErr_SetString(NIMCPError, "Brain inference failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_infer: inference failed");
+        return NULL;
+    }
+
+    // Convert output to Python list
+    PyObject* result = PyList_New(num_outputs);
+    if (!result) {
+        nimcp_free(outputs);
+        return NULL;
+    }
+
+    for (unsigned int i = 0; i < num_outputs; i++) {
+        PyList_SET_ITEM(result, i, PyFloat_FromDouble((double)outputs[i]));
+    }
+
+    nimcp_free(outputs);
+    return result;
+}
+
+// Brain.resize(new_neuron_count) -> bool
+static PyObject* Brain_resize(BrainObject* self, PyObject* args)
+{
+    unsigned int new_neuron_count;
+
+    if (!PyArg_ParseTuple(args, "I", &new_neuron_count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_resize: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_resize: self->brain is NULL");
+        return NULL;
+    }
+
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = nimcp_brain_resize(self->brain, new_neuron_count);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(success);
+}
+
+// Brain.auto_resize() -> bool
+static PyObject* Brain_auto_resize(BrainObject* self, PyObject* Py_UNUSED(ignored))
+{
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_auto_resize: self->brain is NULL");
+        return NULL;
+    }
+
+    bool resized;
+    Py_BEGIN_ALLOW_THREADS
+    resized = nimcp_brain_auto_resize(self->brain);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(resized);
+}
+
+// Brain.get_neuron_count() -> int
+static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* Py_UNUSED(ignored))
+{
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_neuron_count: self->brain is NULL");
+        return NULL;
+    }
+
+    uint32_t count = nimcp_brain_get_neuron_count(self->brain);
+    return PyLong_FromUnsignedLong(count);
+}
+
+// Brain.get_utilization_metrics() -> (float, float)
+static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* Py_UNUSED(ignored))
+{
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_utilization_metrics: self->brain is NULL");
+        return NULL;
+    }
+
+    float utilization = 0.0f, saturation = 0.0f;
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = nimcp_brain_get_utilization_metrics(self->brain, &utilization, &saturation);
+    Py_END_ALLOW_THREADS
+
+    if (!success) {
+        PyErr_SetString(NIMCPError, "Failed to get utilization metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_utilization_metrics: failed");
+        return NULL;
+    }
+
+    return Py_BuildValue("(ff)", utilization, saturation);
+}
+
+// Brain.create_from_config(filepath) -> Brain (classmethod)
+static PyObject* Brain_create_from_config(PyObject* cls, PyObject* args)
+{
+    const char* filepath;
+
+    if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_create_from_config: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    // Copy filepath since we release GIL
+    char* filepath_copy = strdup(filepath);
+    if (!filepath_copy) {
+        return PyErr_NoMemory();
+    }
+
+    nimcp_brain_t brain;
+    Py_BEGIN_ALLOW_THREADS
+    brain = nimcp_brain_create_from_config(filepath_copy);
+    Py_END_ALLOW_THREADS
+
+    free(filepath_copy);
+
+    if (!brain) {
+        PyErr_SetString(NIMCPError, "Failed to create brain from config file");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_create_from_config: brain is NULL");
+        return NULL;
+    }
+
+    // Create Python Brain object
+    PyTypeObject* type = (PyTypeObject*)cls;
+    BrainObject* brain_obj = (BrainObject*)type->tp_alloc(type, 0);
+    if (!brain_obj) {
+        nimcp_brain_destroy(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_create_from_config: brain_obj is NULL");
+        return NULL;
+    }
+
+    brain_obj->brain = brain;
+    return (PyObject*)brain_obj;
+}
+
+// Brain.get_pac_modulation(theta_freq, gamma_freq) -> float
+static PyObject* Brain_get_pac_modulation(BrainObject* self, PyObject* args)
+{
+    float theta_freq, gamma_freq;
+
+    if (!PyArg_ParseTuple(args, "ff", &theta_freq, &gamma_freq)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_get_pac_modulation: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_pac_modulation: self->brain is NULL");
+        return NULL;
+    }
+
+    float pac = nimcp_get_pac_modulation(self->brain, theta_freq, gamma_freq);
+    return PyFloat_FromDouble((double)pac);
 }
 
 static PyMethodDef Brain_methods[] = {
@@ -2191,6 +2414,75 @@ static PyMethodDef Brain_methods[] = {
      "    neuron_ids (list): List of neuron identifiers\n"
      "Returns:\n"
      "    float: Phase coherence value [0, 1]"},
+
+    {"get_pac_modulation", (PyCFunction)Brain_get_pac_modulation, METH_VARARGS,
+     "Compute phase-amplitude coupling (PAC) modulation index\n\n"
+     "Measures theta-gamma cross-frequency coupling strength.\n"
+     "Requires complex oscillations to be enabled.\n\n"
+     "Args:\n"
+     "    theta_freq (float): Theta frequency in Hz (typically 4-8)\n"
+     "    gamma_freq (float): Gamma frequency in Hz (typically 30-100)\n"
+     "Returns:\n"
+     "    float: PAC modulation index [0, 1]\n\n"
+     "Example:\n"
+     "    pac = brain.get_pac_modulation(6.0, 40.0)\n"
+     "    if pac > 0.4:\n"
+     "        print('Strong theta-gamma coupling')"},
+
+    /* Dynamic Brain Resizing Methods */
+    {"resize", (PyCFunction)Brain_resize, METH_VARARGS,
+     "Manually resize brain to a specific neuron count\n\n"
+     "Args:\n"
+     "    new_neuron_count (int): Target number of neurons\n"
+     "Returns:\n"
+     "    bool: True on success, False on failure\n\n"
+     "Example:\n"
+     "    brain.resize(5000)  # Resize to 5000 neurons"},
+
+    {"auto_resize", (PyCFunction)Brain_auto_resize, METH_NOARGS,
+     "Automatically resize brain based on hardware and utilization\n\n"
+     "Returns:\n"
+     "    bool: True if resized, False if no resize needed"},
+
+    {"get_neuron_count", (PyCFunction)Brain_get_neuron_count, METH_NOARGS,
+     "Get current neuron count\n\n"
+     "Returns:\n"
+     "    int: Current number of neurons"},
+
+    {"get_utilization_metrics", (PyCFunction)Brain_get_utilization_metrics, METH_NOARGS,
+     "Get brain utilization metrics\n\n"
+     "Returns:\n"
+     "    tuple: (utilization, saturation) - both floats 0.0-1.0\n\n"
+     "Example:\n"
+     "    util, sat = brain.get_utilization_metrics()\n"
+     "    print(f'Utilization: {util:.1%}, Saturation: {sat:.1%}')"},
+
+    /* Raw Inference */
+    {"infer", (PyCFunction)Brain_infer, METH_VARARGS,
+     "Run raw inference and get output vector\n\n"
+     "For numeric predictions, embeddings, or when you don't need\n"
+     "label classification. Returns raw network output activations.\n\n"
+     "Args:\n"
+     "    features (list): Input feature vector\n"
+     "    num_outputs (int): Number of outputs expected\n"
+     "Returns:\n"
+     "    list[float]: Raw output vector\n\n"
+     "Example:\n"
+     "    outputs = brain.infer([0.5, 0.3, 0.8, 0.1], 3)\n"
+     "    print(f'Outputs: {outputs}')"},
+
+    /* Config File Loading */
+    {"create_from_config", (PyCFunction)Brain_create_from_config, METH_CLASS | METH_VARARGS,
+     "Create brain from YAML or JSON config file (classmethod)\n\n"
+     "Supports loading brain configuration from YAML (.yaml, .yml)\n"
+     "or JSON (.json) files including architecture, training params,\n"
+     "plasticity settings, and ethics.\n\n"
+     "Args:\n"
+     "    filepath (str): Path to configuration file\n"
+     "Returns:\n"
+     "    Brain: New brain instance\n\n"
+     "Example:\n"
+     "    brain = nimcp.Brain.create_from_config('model.yaml')"},
 
     {NULL, NULL, 0, NULL}
 };

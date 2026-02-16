@@ -21,6 +21,7 @@
 
 #define LOG_MODULE "swarm_conflict"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_conflict)
 
@@ -103,7 +104,7 @@ static float calculate_territory_overlap(const nimcp_territory_bounds_t* a, cons
 conflict_config_t conflict_resolver_default_config(void) {
     conflict_config_t config = {
         .max_conflicts = 100,
-        .resolution_timeout_ms = 5000,
+        .resolution_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS,
         .enable_negotiation = true,
         .enable_arbitration = true,
         .enable_auto_resolution = false,

@@ -14,13 +14,13 @@
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <time.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "utils/fault_tolerance/nimcp_recovery.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
-
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_api_client)
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_timing_constants.h"
 
 //=============================================================================
 // Circuit Breaker for External API Protection
@@ -37,7 +37,7 @@ static circuit_breaker_t* g_api_circuit_breaker = NULL;
 
 /* Circuit breaker configuration constants */
 #define API_CB_FAILURE_THRESHOLD    5      /**< Failures before opening circuit */
-#define API_CB_TIMEOUT_MS           30000  /**< 30 seconds before testing recovery */
+#define API_CB_TIMEOUT_MS           NIMCP_LONG_TIMEOUT_MS  /**< 30 seconds before testing recovery */
 
 /**
  * @brief Initialize the API circuit breaker
@@ -67,38 +67,7 @@ static void cleanup_api_circuit_breaker(void) {
     }
 }
 
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_creative_api_client_mesh_id = 0;
-static mesh_participant_registry_t* g_creative_api_client_mesh_registry = NULL;
-
-nimcp_error_t creative_api_client_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_creative_api_client_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "creative_api_client", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "creative_api_client";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_creative_api_client_mesh_id);
-    if (err == NIMCP_SUCCESS) g_creative_api_client_mesh_registry = registry;
-    return err;
-}
-
-void creative_api_client_mesh_unregister(void) {
-    if (g_creative_api_client_mesh_registry && g_creative_api_client_mesh_id != 0) {
-        mesh_participant_unregister(g_creative_api_client_mesh_registry, g_creative_api_client_mesh_id);
-        g_creative_api_client_mesh_id = 0;
-        g_creative_api_client_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(creative_api_client, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -325,8 +294,8 @@ int api_generate_image(creative_api_client_t* client,
     clock_t start = clock();
 
     /* Build request based on provider */
-    char url[512];
-    char body[4096];
+    char url[NIMCP_ERROR_BUFFER_LARGE];
+    char body[NIMCP_PATH_BUFFER_SIZE];
 
     switch (client->config.provider) {
         case API_PROVIDER_STABILITY:
@@ -551,7 +520,7 @@ int api_generate_text(creative_api_client_t* client,
     clock_t start = clock();
 
     /* Build request based on provider */
-    char url[512];
+    char url[NIMCP_ERROR_BUFFER_LARGE];
     char body[8192];
 
     switch (client->config.provider) {

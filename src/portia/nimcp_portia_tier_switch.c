@@ -17,6 +17,7 @@
 
 #define LOG_MODULE "portia_tier_switch"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_tier_switch)
 
@@ -400,7 +401,7 @@ tier_switch_config_t portia_tier_switch_default_config(void) {
     config.emergency_downgrade = true;
 
     // Module coordination
-    config.module_shutdown_timeout_ms = 10000;  // 10 seconds
+    config.module_shutdown_timeout_ms = NIMCP_WATCHDOG_TIMEOUT_MS;  // 10 seconds
     config.wait_for_module_ack = true;
 
     // Bio-async

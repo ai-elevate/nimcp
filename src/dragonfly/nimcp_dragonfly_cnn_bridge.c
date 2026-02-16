@@ -7,6 +7,7 @@
 #include "dragonfly/nimcp_dragonfly_cnn_bridge.h"
 #include "utils/rng/nimcp_rand.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -344,7 +345,7 @@ float dragonfly_cnn_train_step(dragonfly_cnn_bridge_t* bridge) {
     bridge->stats.batches_processed++;
 
     /* Simulated training step */
-    float loss = bridge->current_loss * 0.99f + 0.01f * nimcp_rand_uniform();
+    float loss = bridge->current_loss * NIMCP_EMA_DECAY_DEFAULT + NIMCP_LEARNING_RATE_DEFAULT * nimcp_rand_uniform();
     bridge->current_loss = loss;
 
     bridge->stats.current_loss = loss;

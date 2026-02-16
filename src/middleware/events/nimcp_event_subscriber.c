@@ -4,6 +4,7 @@
 //=============================================================================
 
 #include "middleware/events/nimcp_event_subscriber.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
@@ -48,7 +49,7 @@ struct subscriber_manager_struct {
 // Error Handling
 //=============================================================================
 
-static __thread char last_error[256] = {0};
+static __thread char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     snprintf(last_error, sizeof(last_error), "%s", msg);

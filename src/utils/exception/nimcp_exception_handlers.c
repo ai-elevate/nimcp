@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(exception_handlers)
 
@@ -397,7 +398,7 @@ bool nimcp_default_logging_handler(nimcp_exception_t* ex, void* user_data) {
 
     /* Log stack trace for severe and above */
     if (ex->severity >= EXCEPTION_SEVERITY_SEVERE && ex->stack_trace.depth > 0) {
-        char trace_buf[1024];
+        char trace_buf[NIMCP_LOG_BUFFER_SIZE];
         nimcp_stack_trace_to_string(&ex->stack_trace, trace_buf, sizeof(trace_buf));
         LOG_ERROR("%s", trace_buf);
     }

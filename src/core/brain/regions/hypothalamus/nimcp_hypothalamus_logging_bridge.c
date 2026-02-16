@@ -20,6 +20,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -30,42 +31,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hypothalamus_logging_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_hypothalamus_logging_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_hypothalamus_logging_bridge_mesh_registry = NULL;
-
-nimcp_error_t hypothalamus_logging_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_hypothalamus_logging_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "hypothalamus_logging_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "hypothalamus_logging_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_hypothalamus_logging_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_hypothalamus_logging_bridge_mesh_registry = registry;
-    return err;
-}
-
-void hypothalamus_logging_bridge_mesh_unregister(void) {
-    if (g_hypothalamus_logging_bridge_mesh_registry && g_hypothalamus_logging_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_hypothalamus_logging_bridge_mesh_registry, g_hypothalamus_logging_bridge_mesh_id);
-        g_hypothalamus_logging_bridge_mesh_id = 0;
-        g_hypothalamus_logging_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_logging_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "HYPOTHALAMUS_LOGGING_BRIDGE"
@@ -133,7 +103,7 @@ typedef struct {
             float drive_level;
             float deviation;
             float urgency_weight;
-            char description[128];
+            char description[NIMCP_ERROR_BUFFER_MEDIUM];
         } drive;
 
         struct {
@@ -438,7 +408,7 @@ static void output_to_console(const hypo_logging_bridge_t* bridge,
                                const hypo_log_entry_t* entry) {
     if (!bridge->config.enable_console_output) return;
 
-    char buffer[512];
+    char buffer[NIMCP_ERROR_BUFFER_LARGE];
     hypo_log_entry_format(entry, buffer, sizeof(buffer));
 
     log_level_t level = type_to_log_level(entry->type);
@@ -453,7 +423,7 @@ static void output_to_file(hypo_logging_bridge_t* bridge,
                             const hypo_log_entry_t* entry) {
     if (!bridge->config.enable_file_output || !bridge->log_file) return;
 
-    char buffer[1024];
+    char buffer[NIMCP_LOG_BUFFER_SIZE];
     if (bridge->config.enable_structured_output) {
         hypo_log_entry_format_json(entry, buffer, sizeof(buffer));
     } else {
@@ -1522,7 +1492,7 @@ int hypo_logging_export(
         uint32_t idx = (start + i) % bridge->buffer_size;
         const hypo_log_entry_t* entry = &bridge->entries[idx];
 
-        char buffer[512];
+        char buffer[NIMCP_ERROR_BUFFER_LARGE];
         hypo_log_entry_format(entry, buffer, sizeof(buffer));
         fprintf(f, "%s\n", buffer);
     }
@@ -1566,7 +1536,7 @@ int hypo_logging_export_json(
         uint32_t idx = (start + i) % bridge->buffer_size;
         const hypo_log_entry_t* entry = &bridge->entries[idx];
 
-        char buffer[1024];
+        char buffer[NIMCP_LOG_BUFFER_SIZE];
         hypo_log_entry_format_json(entry, buffer, sizeof(buffer));
 
         fprintf(f, "    %s%s\n", buffer, (i < bridge->count - 1) ? "," : "");
@@ -1627,7 +1597,7 @@ int hypo_logging_export_query(
     fprintf(f, "# Filtered export: %u entries\n\n", count);
 
     for (uint32_t i = 0; i < count; i++) {
-        char buffer[512];
+        char buffer[NIMCP_ERROR_BUFFER_LARGE];
         hypo_log_entry_format(&entries[i], buffer, sizeof(buffer));
         fprintf(f, "%s\n", buffer);
     }
@@ -1884,7 +1854,7 @@ void hypo_logging_print_recent(
 
     printf("\n=== Recent %u Log Entries ===\n", actual_count);
     for (uint32_t i = 0; i < actual_count; i++) {
-        char buffer[512];
+        char buffer[NIMCP_ERROR_BUFFER_LARGE];
         hypo_log_entry_format(&entries[i], buffer, sizeof(buffer));
         printf("%s\n", buffer);
     }

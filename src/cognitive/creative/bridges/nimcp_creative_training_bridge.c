@@ -21,53 +21,22 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/thread/nimcp_thread_rand.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_training_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_creative_training_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_creative_training_bridge_mesh_registry = NULL;
-
-nimcp_error_t creative_training_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_creative_training_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "creative_training_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "creative_training_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_creative_training_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_creative_training_bridge_mesh_registry = registry;
-    return err;
-}
-
-void creative_training_bridge_mesh_unregister(void) {
-    if (g_creative_training_bridge_mesh_registry && g_creative_training_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_creative_training_bridge_mesh_registry, g_creative_training_bridge_mesh_id);
-        g_creative_training_bridge_mesh_id = 0;
-        g_creative_training_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(creative_training_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
 // Thread-local error handling
 //=============================================================================
 
-static __thread char g_training_error[512] = {0};
+static __thread char g_training_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_training_error(const char* fmt, ...) {
     va_list args;
@@ -130,7 +99,7 @@ void creative_training_bridge_config_defaults(
     config->hyperparams.warmup_ratio = 0.1f;
     strncpy(config->hyperparams.lr_scheduler, "cosine",
             sizeof(config->hyperparams.lr_scheduler) - 1);
-    config->hyperparams.gradient_clip = 1.0f;
+    config->hyperparams.gradient_clip = NIMCP_GRADIENT_CLIP_DEFAULT;
     config->hyperparams.mixed_precision = true;
     config->hyperparams.save_every_n_steps = 500;
 
@@ -887,7 +856,7 @@ typedef struct {
     void* content;
     art_modality_t modality;
     uint8_t rating;
-    char feedback[512];
+    char feedback[NIMCP_ERROR_BUFFER_LARGE];
 } feedback_entry_t;
 
 static feedback_entry_t* g_feedback_buffer = NULL;

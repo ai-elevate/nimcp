@@ -23,6 +23,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(introspection_snn_bridge)
 //=============================================================================
@@ -173,7 +174,7 @@ introspection_snn_config_t introspection_snn_config_default(void) {
     introspection_snn_config_t config = {
         .num_dimensions = INTROSPECTION_DIM_COUNT,
         .neurons_per_dim = INTROSPECTION_SNN_NEURONS_PER_DIM,
-        .hidden_dim = 128,
+        .hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE,
 
         .dt_ms = 1.0f,
         .encoding_window_ms = INTROSPECTION_SNN_ENCODING_WINDOW,

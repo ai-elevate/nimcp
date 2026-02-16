@@ -12,6 +12,7 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_predictive_coding)
 
@@ -22,12 +23,12 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_predictive_coding)
 #define PC_DEFAULT_PREDICTION_LR    NIMCP_DEFAULT_LEARNING_RATE
 #define PC_DEFAULT_PRECISION_LR     NIMCP_DEFAULT_DECAY_RATE
 #define PC_DEFAULT_ERROR_GAIN       1.0f
-#define PC_DEFAULT_PREDICTION_DECAY 0.0001f
+#define PC_DEFAULT_PREDICTION_DECAY NIMCP_WEIGHT_DECAY_DEFAULT
 #define PC_DEFAULT_HIERARCHY_DEPTH  3
 #define PC_INITIAL_PRECISION        1.0f
 #define PC_MIN_PRECISION            0.001f
 #define PC_MAX_PRECISION            100.0f
-#define PC_EPSILON                  1e-8f
+#define PC_EPSILON                  NIMCP_EPSILON_ADAM
 
 /* ============================================================================
  * Helper Functions

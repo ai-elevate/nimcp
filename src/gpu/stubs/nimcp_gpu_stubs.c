@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_dimension_constants.h"
 
 /*=============================================================================
  * Wernicke GPU Stubs (gpu/cognitive/nimcp_wernicke_gpu.h)
@@ -56,22 +57,22 @@ wernicke_gpu_config_t wernicke_gpu_default_config(void) {
     wernicke_gpu_config_t config;
     memset(&config, 0, sizeof(config));
     config.num_phoneme_categories = WERNICKE_GPU_DEFAULT_NUM_PHONEMES;
-    config.phoneme_embedding_dim = 64;
+    config.phoneme_embedding_dim = NIMCP_SMALL_EMBEDDING_DIM;
     config.max_spectral_frames = 256;
     config.max_lexicon_size = 10000;
     config.max_cohort_size = 100;
-    config.word_embedding_dim = 256;
+    config.word_embedding_dim = NIMCP_DEFAULT_EMBEDDING_DIM;
     config.max_phonemes_per_word = 16;
     config.max_concepts = 5000;
-    config.semantic_embedding_dim = 512;
+    config.semantic_embedding_dim = NIMCP_LARGE_EMBEDDING_DIM;
     config.spreading_iterations = 3;
     config.spreading_decay = 0.5f;
     config.enable_attention = false;
     config.attention_heads = 4;
-    config.working_memory_slots = 7;
+    config.working_memory_slots = NIMCP_WM_SLOTS;
     config.wm_decay_rate = 0.1f;
     config.enable_async_transfer = false;
-    config.max_batch_size = 64;
+    config.max_batch_size = NIMCP_MEDIUM_BATCH_SIZE;
     return config;
 }
 
@@ -2418,10 +2419,10 @@ struct broca_gpu_context {
 broca_gpu_config_t broca_gpu_default_config(void) {
     broca_gpu_config_t config = {
         .max_lexicon_size = 10000,
-        .max_batch_size = 256,
+        .max_batch_size = NIMCP_MAX_BATCH_SIZE,
         .max_phonemes_per_word = 16,
         .max_articulators = 6,
-        .working_memory_slots = 7,
+        .working_memory_slots = NIMCP_WM_SLOTS,
         .enable_coarticulation = true,
         .enable_async_transfer = false,
         .activation_decay_rate = 0.05f

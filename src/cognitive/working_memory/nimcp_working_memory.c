@@ -26,60 +26,18 @@
  */
 
 #define LOG_MODULE "working_memory"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_dimension_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(working_memory)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
+BRIDGE_BOILERPLATE(working_memory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
-static mesh_participant_id_t g_working_memory_mesh_id = 0;
-static mesh_participant_registry_t* g_working_memory_mesh_registry = NULL;
-
-nimcp_error_t working_memory_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_working_memory_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "working_memory", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "working_memory";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_working_memory_mesh_id);
-    if (err == NIMCP_SUCCESS) g_working_memory_mesh_registry = registry;
-    return err;
-}
-
-void working_memory_mesh_unregister(void) {
-    if (g_working_memory_mesh_registry && g_working_memory_mesh_id != 0) {
-        mesh_participant_unregister(g_working_memory_mesh_registry, g_working_memory_mesh_id);
-        g_working_memory_mesh_id = 0;
-        g_working_memory_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from working_memory module (instance-level) */
-static inline void working_memory_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_working_memory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_working_memory_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_working_memory_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
 
 
 
 #include "cognitive/nimcp_working_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/nimcp_second_messengers.h"
 #include "security/nimcp_security.h"
@@ -418,7 +376,7 @@ static void bio_broadcast_item_evicted(working_memory_t* wm, uint32_t slot_id) {
 // ERROR HANDLING
 // ============================================================================
 
-static __thread char last_error[256] = {0};
+static __thread char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     snprintf(last_error, sizeof(last_error), "%s", msg);
@@ -572,7 +530,7 @@ working_memory_config_t working_memory_default_config(void) {
         .enable_temporal_decay = true,
         .enable_positional_encoding = true,           // Enable position encoding
         .pe_type = NIMCP_POS_SINUSOIDAL,              // Sinusoidal (no training needed)
-        .pe_embedding_dim = 64,                       // 64-dim position embeddings
+        .pe_embedding_dim = NIMCP_SMALL_EMBEDDING_DIM,                       // 64-dim position embeddings
         .enable_quantum_wm = true                     // Enable quantum retrieval
     };
     return config;

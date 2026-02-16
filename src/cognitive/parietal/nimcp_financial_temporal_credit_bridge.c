@@ -26,6 +26,7 @@
 #include <time.h>
 
 #include "cognitive/parietal/nimcp_financial_temporal_credit_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -42,38 +43,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_temporal_credit)
 static inline void fin_temporal_credit_heartbeat_global(const char* op, float progress) {
     (void)op; (void)progress;
 }
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_fin_temporal_credit_mesh_id = 0;
-static mesh_participant_registry_t* g_fin_temporal_credit_mesh_registry = NULL;
-
-nimcp_error_t fin_temporal_credit_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_fin_temporal_credit_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "fin_temporal_credit", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "fin_temporal_credit";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_fin_temporal_credit_mesh_id);
-    if (err == NIMCP_SUCCESS) g_fin_temporal_credit_mesh_registry = registry;
-    return err;
-}
-
-void fin_temporal_credit_mesh_unregister(void) {
-    if (g_fin_temporal_credit_mesh_registry && g_fin_temporal_credit_mesh_id != 0) {
-        mesh_participant_unregister(g_fin_temporal_credit_mesh_registry, g_fin_temporal_credit_mesh_id);
-        g_fin_temporal_credit_mesh_id = 0;
-        g_fin_temporal_credit_mesh_registry = NULL;
-    }
-}
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
+BRIDGE_DEFINE_MESH_REGISTRATION(fin_temporal_credit, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
@@ -94,7 +65,7 @@ extern int bbb_validate_data(bbb_system_t bbb, const void* data,
  * Thread-Local Error Handling
  * ============================================================================ */
 
-static _Thread_local char fin_temporal_credit_last_error[256] = {0};
+static _Thread_local char fin_temporal_credit_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;

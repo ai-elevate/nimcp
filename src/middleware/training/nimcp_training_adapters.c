@@ -17,6 +17,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(training_adapters)
 
@@ -960,7 +961,7 @@ weight_update_router_config_t weight_update_router_default_config(void) {
         .enable_dynamic_routing = true,
         .enable_priority_routing = true,
         .route_learning_rate = 0.01F,
-        .max_batch_size = 32,
+        .max_batch_size = NIMCP_DEFAULT_BATCH_SIZE,
         .enable_update_coalescing = false
     };
     return config;

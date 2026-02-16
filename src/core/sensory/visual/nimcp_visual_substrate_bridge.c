@@ -9,6 +9,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(visual_substrate_bridge)
 
@@ -43,8 +44,8 @@ visual_substrate_config_t visual_substrate_default_config(void) {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
         .enable_bio_async = false,
-        .atp_sensitivity = 1.0f,
-        .fatigue_sensitivity = 1.0f,
+        .atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .min_capacity = 0.2f
     };
     return cfg;
@@ -75,7 +76,7 @@ visual_substrate_bridge_t* visual_substrate_bridge_create(void* visual,
 
     /* Initialize effects to full capacity (no degradation) */
     bridge->effects.visual_acuity = 1.0f;
-    bridge->effects.contrast_sensitivity = 1.0f;
+    bridge->effects.contrast_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.motion_processing = 1.0f;
     bridge->effects.feature_binding = 1.0f;
     bridge->effects.overall_capacity = 1.0f;

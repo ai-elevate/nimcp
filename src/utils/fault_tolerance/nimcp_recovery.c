@@ -39,6 +39,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(recovery)
 #include <malloc.h>  // For malloc_trim()
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "constants/nimcp_buffer_constants.h"
 #endif
 
 // Simple logging macros (fallback if nimcp_logging.h not available)
@@ -396,7 +397,7 @@ static recovery_status_t action_emergency_save(brain_t brain)
     LOG_INFO("Recovery: Performing emergency save");
 
     // Save to emergency snapshot
-    char emergency_name[64];
+    char emergency_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(emergency_name, sizeof(emergency_name), "emergency_%lu", (unsigned long)time(NULL));
 
     if (brain_save_snapshot(brain, emergency_name, "Emergency save before crash")) {

@@ -7,6 +7,7 @@
  */
 
 #include "snn/bridges/nimcp_snn_stdp_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -35,8 +36,8 @@ void snn_stdp_bridge_config_default(snn_stdp_bridge_config_t* config) {
     }
 
     /* Timing windows from Bi & Poo (1998) */
-    config->ltp_window_ms = 20.0f;
-    config->ltd_window_ms = 20.0f;
+    config->ltp_window_ms = NIMCP_STDP_TAU_PLUS_MS;
+    config->ltd_window_ms = NIMCP_STDP_TAU_MINUS_MS;
     config->min_spike_interval_ms = 1.0f;
 
     /* Learning rate coordination */

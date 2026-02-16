@@ -35,6 +35,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_training_integration)
 
@@ -262,7 +263,7 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
 
     /* Training parameters */
     config.max_epochs = 1000;
-    config.batch_size = 32;
+    config.batch_size = NIMCP_DEFAULT_BATCH_SIZE;
     config.convergence_threshold = 1e-6F;
     config.divergence_threshold = 1e6F;
 

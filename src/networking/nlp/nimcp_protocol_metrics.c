@@ -32,7 +32,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(protocol_metrics)
  * ============================================================================ */
 
 #define METRICS_MODULE "ProtocolMetrics"
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* ============================================================================
  * Internal Structures
@@ -713,7 +714,7 @@ int metrics_check_alerts(protocol_metrics_t* pm) {
     if (stats->messages_sent > 0) {
         float error_rate = (float)stats->errors / (float)stats->messages_sent;
         if (error_rate > pm->config.alert_threshold) {
-            char alert[256];
+            char alert[NIMCP_ERROR_BUFFER_SIZE];
             snprintf(alert, sizeof(alert),
                      "High error rate: %.2f%% (threshold: %.2f%%)",
                      error_rate * 100.0F, pm->config.alert_threshold * 100.0F);
@@ -732,7 +733,7 @@ int metrics_check_alerts(protocol_metrics_t* pm) {
 
         /* Alert if current latency is 2x historical average */
         if (stats->avg_latency_ms > hist_avg * 2.0F && hist_avg > EPSILON) {
-            char alert[256];
+            char alert[NIMCP_ERROR_BUFFER_SIZE];
             snprintf(alert, sizeof(alert),
                      "Latency spike: %.2f ms (avg: %.2f ms)",
                      stats->avg_latency_ms, hist_avg);

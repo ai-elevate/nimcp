@@ -14,6 +14,7 @@
  */
 
 #include "cognitive/parietal/nimcp_intuitive_reasoning.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -24,56 +25,13 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(intuitive_reasoning)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_intuitive_reasoning_mesh_id = 0;
-static mesh_participant_registry_t* g_intuitive_reasoning_mesh_registry = NULL;
-
-nimcp_error_t intuitive_reasoning_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_intuitive_reasoning_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "intuitive_reasoning", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "intuitive_reasoning";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_intuitive_reasoning_mesh_id);
-    if (err == NIMCP_SUCCESS) g_intuitive_reasoning_mesh_registry = registry;
-    return err;
-}
-
-void intuitive_reasoning_mesh_unregister(void) {
-    if (g_intuitive_reasoning_mesh_registry && g_intuitive_reasoning_mesh_id != 0) {
-        mesh_participant_unregister(g_intuitive_reasoning_mesh_registry, g_intuitive_reasoning_mesh_id);
-        g_intuitive_reasoning_mesh_id = 0;
-        g_intuitive_reasoning_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from intuitive_reasoning module (instance-level) */
-static inline void intuitive_reasoning_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_intuitive_reasoning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_intuitive_reasoning_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_intuitive_reasoning_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(intuitive_reasoning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
@@ -95,7 +53,7 @@ static inline void intuitive_reasoning_heartbeat_instance(
  */
 typedef struct {
     uint32_t id;
-    char name[64];
+    char name[NIMCP_ID_BUFFER_SIZE];
     float* data;
     uint32_t dim;
     uint32_t match_count;
@@ -145,7 +103,7 @@ struct intuitive_engine {
 };
 
 /* Thread-local error message */
-static __thread char g_last_error[256] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * INTERNAL HELPERS
@@ -349,7 +307,7 @@ intuitive_config_t intuitive_engine_default_config(void) {
 
     intuitive_config_t config = {
         .plausibility_threshold = 0.3f,
-        .confidence_threshold = 0.5f,
+        .confidence_threshold = NIMCP_CONFIDENCE_MEDIUM,
         .novelty_weight = 0.2f,
         .coherence_weight = 0.4f,
         .fertility_weight = 0.2f,
@@ -357,9 +315,9 @@ intuitive_config_t intuitive_engine_default_config(void) {
         .enable_incubation = true,
         .enable_emotional_markers = true,
         .prior_strength = 0.5f,
-        .learning_rate = 0.1f,
-        .inflammation_sensitivity = 1.0f,
-        .fatigue_sensitivity = 1.0f,
+        .learning_rate = NIMCP_LEARNING_RATE_COARSE,
+        .inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .max_incubation_problems = MAX_INCUBATION_QUEUE,
         .pattern_memory_size = MAX_PATTERN_MEMORY
     };

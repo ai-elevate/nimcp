@@ -28,6 +28,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(creative_knowledge_bridge)
 //=============================================================================
@@ -200,7 +201,7 @@ void creative_knowledge_bridge_config_defaults(
 //=============================================================================
 
 typedef struct {
-    char query_key[256];
+    char query_key[NIMCP_NAME_BUFFER_SIZE];
     art_entity_type_t type;
     void* results;
     uint32_t count;

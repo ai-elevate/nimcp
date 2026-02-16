@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/stp/nimcp_stp_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -96,7 +97,7 @@ int stp_sleep_default_config(stp_sleep_config_t* config) {
     config->enable_u_modulation = true;
     config->enable_tau_d_modulation = true;
     config->enable_tau_f_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

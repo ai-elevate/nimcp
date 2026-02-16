@@ -14,6 +14,7 @@
  */
 
 #include "middleware/training/nimcp_regularization.h"
+#include "constants/nimcp_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -140,7 +141,7 @@ nimcp_dropout_config_t nimcp_dropout_default_config(float rate) {
 nimcp_clip_config_t nimcp_clip_default_config(nimcp_clip_mode_t mode, float threshold) {
     nimcp_clip_config_t config = {
         .mode = mode,
-        .threshold = threshold > 0.0F ? threshold : 1.0F
+        .threshold = threshold > 0.0F ? threshold : NIMCP_GRADIENT_CLIP_DEFAULT
     };
     return config;
 }
@@ -171,7 +172,7 @@ nimcp_regularization_config_t nimcp_regularization_default_config(void) {
     config.weight_reg.l2.lambda = 0.01F;
 
     config.gradient_clip.mode = NIMCP_CLIP_NONE;
-    config.gradient_clip.threshold = 1.0F;
+    config.gradient_clip.threshold = NIMCP_GRADIENT_CLIP_DEFAULT;
 
     config.dropout.rate = 0.0F;
     config.dropout.mode = NIMCP_DROPOUT_STANDARD;

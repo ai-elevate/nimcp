@@ -22,6 +22,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_config)
 
@@ -39,7 +40,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_config)
 #define LNN_DEFAULT_ADAPTIVE_TOL      1e-5f   /**< Adaptive error tolerance */
 #define LNN_DEFAULT_BPTT_TRUNCATION   100     /**< BPTT truncation length */
 #define LNN_DEFAULT_CHECKPOINT_INTERVAL 10    /**< Checkpoint every N steps */
-#define LNN_DEFAULT_GRADIENT_CLIP     1.0f    /**< Gradient clipping threshold */
+#define LNN_DEFAULT_GRADIENT_CLIP     NIMCP_GRADIENT_CLIP_DEFAULT    /**< Gradient clipping threshold */
 #define LNN_DEFAULT_INSTABILITY_THRESH 1e6f   /**< State explosion threshold */
 
 //=============================================================================

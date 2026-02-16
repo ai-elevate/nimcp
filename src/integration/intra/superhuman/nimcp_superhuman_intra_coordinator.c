@@ -14,6 +14,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(superhuman_intra_coordinator)
 
@@ -53,7 +54,7 @@ nimcp_superhuman_intra_config_t nimcp_superhuman_intra_default_config(void) {
         .echo_electroreception_coupling = 0.8f,
         .time_all_coupling = 1.0f,  /* Time affects everything */
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .enable_capability_blending = true,
         .enable_logging = false,
         .enable_metrics = true

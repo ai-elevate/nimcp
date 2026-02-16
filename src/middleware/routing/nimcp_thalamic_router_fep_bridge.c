@@ -6,6 +6,7 @@
  */
 
 #include "middleware/routing/nimcp_thalamic_router_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -36,8 +37,8 @@ int thalamic_router_fep_bridge_default_config(thalamic_router_fep_config_t* conf
     config->enable_prediction_routing = true;
     config->enable_pe_priority_boost = true;
     config->enable_synchrony_confidence = true;
-    config->gain_sensitivity = 1.0f;
-    config->priority_sensitivity = 1.0f;
+    config->gain_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->priority_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

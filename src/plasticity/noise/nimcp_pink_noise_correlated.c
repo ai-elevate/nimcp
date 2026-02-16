@@ -17,6 +17,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_correlated)
 
@@ -101,7 +102,7 @@ pink_noise_correlated_config_t pink_noise_correlated_neuromod_config(void) {
 
     config.num_channels = PINK_NOISE_NEUROMOD_CHANNELS;
     config.correlation_type = PINK_CORR_NEUROMODULATORS;
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
     config.seed = 0;
 
     // Channel configurations
@@ -153,7 +154,7 @@ pink_noise_correlated_config_t pink_noise_correlated_independent_config(
 
     config.num_channels = num_channels;
     config.correlation_type = PINK_CORR_INDEPENDENT;
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
     config.seed = 0;
 
     // Identity correlation matrix

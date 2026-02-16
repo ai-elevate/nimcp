@@ -37,7 +37,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_pheromone)
 #define MAX_GRID_DIMENSION 1000
 #define MIN_VOXEL_SIZE 0.1F
 #define MAX_VOXEL_SIZE 100.0F
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* Bio-async message types */
 #define BIOMSG_PHEROMONE_DEPOSIT 0x5000

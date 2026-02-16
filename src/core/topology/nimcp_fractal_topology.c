@@ -4,6 +4,7 @@
 //=============================================================================
 
 #include "core/topology/nimcp_fractal_topology.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -90,7 +91,7 @@ struct neural_network_struct {
 // Error Handling - Thread-local storage
 //=============================================================================
 
-static _Thread_local char last_error[256] = {0};
+static _Thread_local char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /**
  * WHY: Thread-safe error reporting without global state

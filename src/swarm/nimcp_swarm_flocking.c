@@ -28,7 +28,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_flocking)
 #define NIMCP_FLOCKING_DEFAULT_BOID_CAPACITY 1000
 #define NIMCP_FLOCKING_DEFAULT_OBSTACLE_CAPACITY 100
 #define NIMCP_FLOCKING_DEFAULT_NEIGHBOR_CAPACITY 20
-#define NIMCP_FLOCKING_EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define NIMCP_FLOCKING_EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* ========================================================================
  * Internal Helper Functions

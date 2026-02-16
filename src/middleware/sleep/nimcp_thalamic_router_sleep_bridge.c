@@ -6,6 +6,7 @@
  */
 
 #include "middleware/sleep/nimcp_thalamic_router_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -91,7 +92,7 @@ int thalamic_router_sleep_default_config(thalamic_router_sleep_config_t* config)
     config->enable_routing_modulation = true;
     config->enable_queue_modulation = true;
     config->enable_attention_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

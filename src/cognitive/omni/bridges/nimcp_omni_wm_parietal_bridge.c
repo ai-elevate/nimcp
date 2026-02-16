@@ -152,8 +152,9 @@ int omni_wm_parietal_bridge_training_end(omni_wm_parietal_bridge_t* bridge) {
 /** Default trajectory cache capacity */
 #define DEFAULT_TRAJECTORY_CACHE_CAPACITY 16
 
+#include "constants/nimcp_constants.h"
 /** Small epsilon for floating point comparisons */
-#define FLOAT_EPSILON 1e-6f
+#define FLOAT_EPSILON NIMCP_EPSILON_NUMERICAL
 
 /** Default gravity (Earth, m/s^2) */
 #define DEFAULT_GRAVITY 9.81f

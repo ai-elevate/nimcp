@@ -30,6 +30,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(health_monitor)
 #include <sys/time.h>
 #include <unistd.h>
 #include "utils/memory/nimcp_unified_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal Structures
@@ -49,7 +50,7 @@ typedef struct {
  * @brief Internal health monitor structure
  */
 struct health_monitor_internal {
-    char brain_id[64];                          /**< Brain identifier */
+    char brain_id[NIMCP_ID_BUFFER_SIZE];                          /**< Brain identifier */
     bool running;                               /**< Monitor running flag */
     nimcp_thread_t monitor_thread;              /**< Background thread */
     nimcp_mutex_t mutex;                        /**< Thread synchronization */

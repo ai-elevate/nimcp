@@ -32,6 +32,7 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/exception/nimcp_exception_immune.h"
+#include "constants/nimcp_buffer_constants.h"
 
 #define LOG_MODULE "utils_checkpoint"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -55,6 +56,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(checkpoint)
 #ifdef HAVE_ZLIB
 #include <zlib.h>
 #include "utils/memory/nimcp_unified_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 #endif
 
 //=============================================================================
@@ -628,7 +630,7 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
     uint32_t data_crc = crc32_calculate(data_buffer, data_size);
 
     // Create temp file for atomic write
-    char temp_path[1024];
+    char temp_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(temp_path, sizeof(temp_path), "%s%s", path, TEMP_SUFFIX);
 
     FILE* fp = fopen(temp_path, "wb");

@@ -40,43 +40,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BROCA_LANG_PROD"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_dimension_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_production_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_language_production_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_language_production_bridge_mesh_registry = NULL;
-
-static nimcp_error_t language_production_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_language_production_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "language_production_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "language_production_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_language_production_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_language_production_bridge_mesh_registry = registry;
-    return err;
-}
-
-static void language_production_bridge_mesh_unregister(void) {
-    if (g_language_production_bridge_mesh_registry && g_language_production_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_language_production_bridge_mesh_registry, g_language_production_bridge_mesh_id);
-        g_language_production_bridge_mesh_id = 0;
-        g_language_production_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(language_production_bridge, MESH_ADAPTER_CATEGORY_SYSTEM)
 
 
 /*=============================================================================
@@ -325,10 +294,10 @@ lpb_config_t lpb_default_config(void) {
             .motor_seq_pe_type = NIMCP_POS_SINUSOIDAL,
             .gesture_pe_type = NIMCP_POS_ROTARY,
             .motor_seq_max_length = 256,
-            .motor_seq_embedding_dim = 128,
+            .motor_seq_embedding_dim = NIMCP_MEDIUM_EMBEDDING_DIM,
             .motor_seq_pe_base = 10000.0F,
             .gesture_max_length = 512,
-            .gesture_embedding_dim = 256,
+            .gesture_embedding_dim = NIMCP_DEFAULT_EMBEDDING_DIM,
             .gesture_rope_base = 10000.0F,
             .enable_motor_pe_cache = true,
             .enable_gesture_pe_cache = true

@@ -50,8 +50,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(myelin_sheath)
 #define MYELIN_CLAMP(val, min, max) \
     ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))
 
+#include "constants/nimcp_constants.h"
 /** Minimum float for division safety */
-#define MYELIN_EPSILON 1e-6f
+#define MYELIN_EPSILON NIMCP_EPSILON_NUMERICAL
 
 /** Get current time in microseconds */
 static inline uint64_t myelin_get_time_us(void) {

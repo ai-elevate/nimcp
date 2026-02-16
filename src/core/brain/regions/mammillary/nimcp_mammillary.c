@@ -16,42 +16,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_frequency_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mammillary)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_mammillary_mesh_id = 0;
-static mesh_participant_registry_t* g_mammillary_mesh_registry = NULL;
-
-nimcp_error_t mammillary_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_mammillary_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "mammillary", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "mammillary";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_mammillary_mesh_id);
-    if (err == NIMCP_SUCCESS) g_mammillary_mesh_registry = registry;
-    return err;
-}
-
-void mammillary_mesh_unregister(void) {
-    if (g_mammillary_mesh_registry && g_mammillary_mesh_id != 0) {
-        mesh_participant_unregister(g_mammillary_mesh_registry, g_mammillary_mesh_id);
-        g_mammillary_mesh_id = 0;
-        g_mammillary_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(mammillary, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #ifndef M_PI
@@ -155,7 +126,7 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
         mb->hd_cells[i].vestibular_weight = 0.6f;
         mb->hd_cells[i].visual_weight = 0.3f;
         mb->hd_cells[i].landmark_weight = 0.1f;
-        mb->hd_cells[i].learning_rate = 0.01f;
+        mb->hd_cells[i].learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
         mb->hd_cells[i].spike_threshold = 0.5f;
         mb->hd_cells[i].snn_neuron_id = i;
     }
@@ -223,7 +194,7 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
     mb->thalamus_bridge.tract_strength = 0.8f;
     mb->thalamus_bridge.relay_efficiency = 0.9f;
 
-    mb->vestibular_bridge.update_rate = 100.0f;
+    mb->vestibular_bridge.update_rate = NIMCP_HIGH_UPDATE_RATE_HZ;
 
     mb->creation_time = get_timestamp_ms();
     mb->status = MAMMILLARY_STATUS_READY;
@@ -1285,7 +1256,7 @@ int mammillary_init_vestibular_bridge(nimcp_mammillary_t* mb, void* vestibular) 
     }
     mb->vestibular_bridge.initialized = true;
     mb->vestibular_bridge.vestibular_ref = vestibular;
-    mb->vestibular_bridge.update_rate = 100.0f;
+    mb->vestibular_bridge.update_rate = NIMCP_HIGH_UPDATE_RATE_HZ;
     mb->vestibular_bridge.calibration_offset = 0.0f;
     return 0;
 }
@@ -1445,7 +1416,7 @@ int mammillary_init_cognitive_bridge(nimcp_mammillary_t* mb, void* cognitive, vo
     mb->cognitive_bridge.initialized = true;
     mb->cognitive_bridge.cognitive_ctx = cognitive;
     mb->cognitive_bridge.training_ctx = training;
-    mb->cognitive_bridge.learning_rate = 0.01f;
+    mb->cognitive_bridge.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     return 0;
 }
 
@@ -1505,7 +1476,7 @@ int mammillary_init_snn_bridge(nimcp_mammillary_t* mb, void* snn) {
     }
     mb->snn_bridge.initialized = true;
     mb->snn_bridge.snn_network = snn;
-    mb->snn_bridge.global_learning_rate = 0.01f;
+    mb->snn_bridge.global_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     mb->snn_bridge.plasticity_enabled = true;
     return 0;
 }
@@ -1530,7 +1501,7 @@ int mammillary_init_cerebellum_bridge(nimcp_mammillary_t* mb, void* cerebellum) 
     mb->cerebellum_bridge.initialized = true;
     mb->cerebellum_bridge.cerebellum = cerebellum;
     mb->cerebellum_bridge.timing_precision = 0.9f;
-    mb->cerebellum_bridge.motor_learning_rate = 0.01f;
+    mb->cerebellum_bridge.motor_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     return 0;
 }
 

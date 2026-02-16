@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_biological_timescales_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -56,7 +57,7 @@ int biological_timescales_fep_default_config(biological_timescales_fep_config_t*
         }
     }
 
-    config->learning_rate = 0.1f;
+    config->learning_rate = NIMCP_LEARNING_RATE_COARSE;
     config->enable_precision_learning = true;
     config->enable_decay_adaptation = true;
     config->enable_temporal_prediction = true;

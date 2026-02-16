@@ -6,6 +6,7 @@
  */
 
 #include "networking/immune/nimcp_p2p_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -76,8 +77,8 @@ int p2p_immune_default_config(p2p_immune_config_t* config) {
     config->enable_cytokine_p2p_modulation = true;
     config->enable_antibody_peer_filters = true;
 
-    config->health_sensitivity = 1.0f;
-    config->immune_p2p_sensitivity = 1.0f;
+    config->health_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->immune_p2p_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     config->unhealthy_threshold = UNHEALTHY_PEERS_LOCAL_THRESHOLD;
     config->max_peer_filters = 128;

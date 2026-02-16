@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_multi_target)
 
@@ -163,7 +164,7 @@ multi_target_config_t multi_target_default_config(void) {
     multi_target_config_t config = {
         /* Queue settings */
         .max_queue_size = MULTI_TARGET_MAX_QUEUE,
-        .min_confidence_threshold = 0.3f,
+        .min_confidence_threshold = NIMCP_CONFIDENCE_LOW,
         .rejection_threshold = 0.1f,
 
         /* Priority weights */

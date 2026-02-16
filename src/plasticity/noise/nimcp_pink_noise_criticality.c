@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_criticality)
 
@@ -37,7 +38,7 @@ criticality_config_t criticality_default_config(void) {
     config.target_tau = 1.5f;               // Critical avalanche exponent
     config.criticality_tolerance = 0.1f;    // κ threshold
     config.min_avalanche_duration = 3;      // At least 3 samples
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
     config.enable_feedback = true;
     config.feedback_gain = 0.1f;
 

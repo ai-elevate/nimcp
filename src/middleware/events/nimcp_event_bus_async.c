@@ -16,6 +16,7 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(event_bus_async)
 
@@ -482,7 +483,7 @@ nimcp_bio_future_t event_bus_request_bio_async(event_bus_t bus,
     }
 
     // Create predictive model for response latency
-    char model_name[64];
+    char model_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(model_name, sizeof(model_name), "request_response_%u", request->type);
 
     nimcp_predictive_model_t model = nimcp_predictive_create(

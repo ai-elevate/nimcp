@@ -22,42 +22,12 @@
 
 #define LOG_MODULE "BRAIN_CONFIG_PROFILES"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_config_profiles)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_brain_config_profiles_mesh_id = 0;
-static mesh_participant_registry_t* g_brain_config_profiles_mesh_registry = NULL;
-
-nimcp_error_t brain_config_profiles_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_brain_config_profiles_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "brain_config_profiles", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "brain_config_profiles";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_brain_config_profiles_mesh_id);
-    if (err == NIMCP_SUCCESS) g_brain_config_profiles_mesh_registry = registry;
-    return err;
-}
-
-void brain_config_profiles_mesh_unregister(void) {
-    if (g_brain_config_profiles_mesh_registry && g_brain_config_profiles_mesh_id != 0) {
-        mesh_participant_unregister(g_brain_config_profiles_mesh_registry, g_brain_config_profiles_mesh_id);
-        g_brain_config_profiles_mesh_id = 0;
-        g_brain_config_profiles_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(brain_config_profiles, MESH_ADAPTER_CATEGORY_SYSTEM)
 
 
 //=============================================================================
@@ -918,7 +888,7 @@ void brain_config_print_summary(const brain_config_t* config)
     printf("Lazy Init: %s\n", config->lazy_init_mode ? "YES" : "NO");
 
     printf("\nEnabled Features:\n");
-    char features[1024];
+    char features[NIMCP_LOG_BUFFER_SIZE];
     uint32_t count = brain_config_get_enabled_features(config, features, sizeof(features));
     if (count > 0) {
         printf("  %s\n", features);

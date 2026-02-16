@@ -9,6 +9,7 @@
 #include "integration/inter/executive_integration/nimcp_executive_integration_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -118,8 +119,8 @@ nimcp_layer_error_t nimcp_executive_integration_update(nimcp_executive_integrati
     bridge->state.decision_coherence += dt * bridge->config.decision_coherence_coupling * 0.02f;
 
     /* Update averages */
-    bridge->stats.avg_decision_awareness = bridge->stats.avg_decision_awareness * 0.99f + bridge->state.decision_awareness * 0.01f;
-    bridge->stats.avg_cognitive_capacity = bridge->stats.avg_cognitive_capacity * 0.99f + bridge->state.cognitive_capacity * 0.01f;
+    bridge->stats.avg_decision_awareness = bridge->stats.avg_decision_awareness * NIMCP_EMA_DECAY_DEFAULT + bridge->state.decision_awareness * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_cognitive_capacity = bridge->stats.avg_cognitive_capacity * NIMCP_EMA_DECAY_DEFAULT + bridge->state.cognitive_capacity * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

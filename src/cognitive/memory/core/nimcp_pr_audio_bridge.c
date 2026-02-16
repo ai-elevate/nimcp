@@ -30,6 +30,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_audio_bridge)
 //=============================================================================
@@ -195,7 +196,7 @@ NIMCP_EXPORT pr_audio_quat_config_t pr_audio_quat_config_default(void) {
     memset(&config, 0, sizeof(config));
 
     /* Consolidation (w) */
-    config.repetition_decay = 0.9f;
+    config.repetition_decay = NIMCP_EMA_DECAY_FAST;
     config.coherence_weight = 0.3f;
 
     /* Emotion (x) */

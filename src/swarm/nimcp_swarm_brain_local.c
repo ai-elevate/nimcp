@@ -40,7 +40,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_brain_local)
 
 #define SWARM_BRAIN_MODULE "SwarmBrainLocal"
 #define HASH_TABLE_SIZE 256
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* ============================================================================
  * Internal Structures
@@ -436,7 +437,7 @@ int swarm_brain_create_for_agent(
     }
 
     /* Create brain instance */
-    char task_name[64];
+    char task_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(task_name, sizeof(task_name), "swarm_agent_%u", agent_id);
 
     nimcp_brain_t brain = NULL;
@@ -771,7 +772,7 @@ int swarm_brain_create_for_agent_with_template(
     }
 
     /* Generate task name */
-    char task_name[64];
+    char task_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(task_name, sizeof(task_name), "swarm_%s_%u",
              swarm_brain_role_name(templ->role), agent_id);
 
@@ -1433,7 +1434,7 @@ static const role_training_config_t DEFAULT_ROLE_TRAINING_CONFIGS[] = {
     {
         .role = DRONE_ROLE_WORKER,
         .learning_rate = 0.001F,     /* Stable, slow learning */
-        .batch_size = 32,
+        .batch_size = NIMCP_DEFAULT_BATCH_SIZE,
         .use_replay_buffer = false,
         .replay_buffer_size = 0,
         .sync_within_role = true,
@@ -1446,7 +1447,7 @@ static const role_training_config_t DEFAULT_ROLE_TRAINING_CONFIGS[] = {
     {
         .role = DRONE_ROLE_COORDINATOR,
         .learning_rate = 0.005F,     /* Moderate learning */
-        .batch_size = 64,
+        .batch_size = NIMCP_MEDIUM_BATCH_SIZE,
         .use_replay_buffer = true,
         .replay_buffer_size = 5000,
         .sync_within_role = false,   /* Coordinators sync with all */
@@ -1459,7 +1460,7 @@ static const role_training_config_t DEFAULT_ROLE_TRAINING_CONFIGS[] = {
     {
         .role = DRONE_ROLE_SENSOR,
         .learning_rate = 0.02F,      /* Fast adaptation */
-        .batch_size = 8,
+        .batch_size = NIMCP_SMALL_BATCH_SIZE,
         .use_replay_buffer = true,
         .replay_buffer_size = 500,
         .sync_within_role = true,
@@ -1472,7 +1473,7 @@ static const role_training_config_t DEFAULT_ROLE_TRAINING_CONFIGS[] = {
     {
         .role = DRONE_ROLE_GUARDIAN,
         .learning_rate = 0.003F,     /* Conservative learning */
-        .batch_size = 32,
+        .batch_size = NIMCP_DEFAULT_BATCH_SIZE,
         .use_replay_buffer = true,
         .replay_buffer_size = 2000,
         .sync_within_role = true,
@@ -1485,7 +1486,7 @@ static const role_training_config_t DEFAULT_ROLE_TRAINING_CONFIGS[] = {
     {
         .role = DRONE_ROLE_RELAY,
         .learning_rate = 0.0001F,    /* Minimal learning */
-        .batch_size = 8,
+        .batch_size = NIMCP_SMALL_BATCH_SIZE,
         .use_replay_buffer = false,
         .replay_buffer_size = 0,
         .sync_within_role = true,

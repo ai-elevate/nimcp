@@ -9,6 +9,7 @@
 #include "integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -117,8 +118,8 @@ nimcp_layer_error_t nimcp_neuromod_executive_update(nimcp_neuromod_executive_bri
     bridge->state.conflict_level *= (1.0f - dt * 0.04f);
 
     /* Update averages */
-    bridge->stats.avg_motivation = bridge->stats.avg_motivation * 0.99f + bridge->state.motivation_level * 0.01f;
-    bridge->stats.avg_flexibility = bridge->stats.avg_flexibility * 0.99f + bridge->state.cognitive_flexibility * 0.01f;
+    bridge->stats.avg_motivation = bridge->stats.avg_motivation * NIMCP_EMA_DECAY_DEFAULT + bridge->state.motivation_level * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_flexibility = bridge->stats.avg_flexibility * NIMCP_EMA_DECAY_DEFAULT + bridge->state.cognitive_flexibility * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

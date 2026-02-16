@@ -55,6 +55,7 @@
 #define SPEECH_LOG_MODULE "SPEECH_CORTEX"
 #define LOG_MODULE "perception.speech_cortex"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(speech_cortex)
 
@@ -455,7 +456,7 @@ speech_cortex_config_t speech_cortex_default_config(void) {
     config.num_formants = SPEECH_NUM_FORMANTS;
     config.phonological_buffer_size = SPEECH_MAX_PHONOLOGICAL_BUFFER;
     config.lexicon_size = 1000;
-    config.feature_dim = 128;
+    config.feature_dim = NIMCP_FEATURE_DIM;
     config.enable_wernicke = true;
     config.enable_broca = false;
     config.enable_prosody = true;

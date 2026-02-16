@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/eligibility/nimcp_eligibility_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -94,7 +95,7 @@ int eligibility_sleep_default_config(eligibility_sleep_config_t* config) {
     config->enable_lr_modulation = true;
     config->enable_decay_modulation = true;
     config->enable_consolidation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

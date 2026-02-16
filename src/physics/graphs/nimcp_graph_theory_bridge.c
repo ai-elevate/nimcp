@@ -23,6 +23,8 @@
 #include <math.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graph_theory_bridge)
 
@@ -39,7 +41,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(graph_theory_bridge)
 #define DEFAULT_PAGERANK_DAMPING    0.85f
 
 /** Default max iterations */
-#define DEFAULT_MAX_ITERATIONS      1000
+#define DEFAULT_MAX_ITERATIONS      NIMCP_MAX_ITERATIONS_DEFAULT
 
 /** Default spectral dimensions */
 #define DEFAULT_SPECTRAL_DIM        10

@@ -11,6 +11,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_plasticity_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -85,12 +86,12 @@ struct dragonfly_plasticity_bridge_s {
 dragonfly_plasticity_config_t dragonfly_plasticity_default_config(void) {
     dragonfly_plasticity_config_t config = {
         /* Learning rates */
-        .tsdn_learning_rate = 0.01f,
+        .tsdn_learning_rate = NIMCP_LEARNING_RATE_DEFAULT,
         .imm_learning_rate = 0.05f,
         .intercept_learning_rate = 0.02f,
 
         /* Eligibility traces */
-        .eligibility_decay = 0.95f,
+        .eligibility_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT,
         .enable_eligibility = true,
 
         /* Reward modulation */
@@ -106,7 +107,7 @@ dragonfly_plasticity_config_t dragonfly_plasticity_default_config(void) {
 
         /* Homeostasis */
         .enable_homeostasis = true,
-        .homeostasis_rate = 0.01f,
+        .homeostasis_rate = NIMCP_LEARNING_RATE_DEFAULT,
         .target_activity = 0.3f,
 
         /* Metaplasticity */

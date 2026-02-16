@@ -5,6 +5,7 @@
 
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_snn_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
@@ -128,13 +129,13 @@ int physics_snn_default_config(physics_snn_config_t* config) {
 
     config->encoding = PHYSICS_SNN_ENCODE_PRECISE;
     config->spike_threshold_mv = 0.0f;
-    config->refractory_ms = 2.0f;
+    config->refractory_ms = NIMCP_REFRACTORY_PERIOD_MS;
 
     config->stdp_rule = PHYSICS_SNN_STDP_CLASSICAL;
     config->ltp_window_ms = PHYSICS_SNN_LTP_WINDOW;
     config->ltd_window_ms = PHYSICS_SNN_LTD_WINDOW;
-    config->ltp_amplitude = 0.01f;
-    config->ltd_amplitude = 0.012f;  /* Slight LTD bias for stability */
+    config->ltp_amplitude = NIMCP_STDP_A_PLUS;
+    config->ltd_amplitude = NIMCP_STDP_A_MINUS;  /* Slight LTD bias for stability */
 
     config->enable_temp_scaling = true;
     config->enable_atp_gating = true;
@@ -143,7 +144,7 @@ int physics_snn_default_config(physics_snn_config_t* config) {
 
     config->enable_eligibility = true;
     config->eligibility_decay_ms = 100.0f;
-    config->coherence_gate_threshold = 0.5f;
+    config->coherence_gate_threshold = NIMCP_MODULATION_DEFAULT;
 
     config->enable_feedback = true;
     config->mod_target = PHYSICS_SNN_MOD_CONDUCTANCE;

@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <ctype.h>
+#include "constants/nimcp_buffer_constants.h"
 
 /* ============================================================================
  * BBB and Health Agent Integration
@@ -1213,7 +1214,7 @@ typedef enum token_type {
 typedef struct tokenizer {
     const char* input;
     size_t pos;
-    char current_ident[64];
+    char current_ident[NIMCP_ID_BUFFER_SIZE];
 } tokenizer_t;
 
 static token_type_t next_token(tokenizer_t* tok) {

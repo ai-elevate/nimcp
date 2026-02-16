@@ -25,43 +25,9 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_coverage"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_coverage)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_security_coverage_mesh_id = 0;
-static mesh_participant_registry_t* g_security_coverage_mesh_registry = NULL;
-
-nimcp_error_t security_coverage_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_security_coverage_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "security_coverage", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "security_coverage";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_coverage_mesh_id);
-    if (err == NIMCP_SUCCESS) g_security_coverage_mesh_registry = registry;
-    return err;
-}
-
-void security_coverage_mesh_unregister(void) {
-    if (g_security_coverage_mesh_registry && g_security_coverage_mesh_id != 0) {
-        mesh_participant_unregister(g_security_coverage_mesh_registry, g_security_coverage_mesh_id);
-        g_security_coverage_mesh_id = 0;
-        g_security_coverage_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(security_coverage, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 #include <stdio.h>
@@ -71,6 +37,7 @@ void security_coverage_mesh_unregister(void) {
 #include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal Structures
@@ -225,7 +192,7 @@ void nimcp_security_coverage_destroy(nimcp_security_coverage_t* coverage)
     // Log final coverage report
     nimcp_coverage_report_t report;
     if (nimcp_coverage_verify_all(coverage, &report) == NIMCP_SUCCESS) {
-        char msg[128];
+        char msg[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(msg, sizeof(msg),
                  "Coverage monitoring ended: %.1f%% overall, %lu violations",
                  report.overall_coverage, (unsigned long)report.total_violations);
@@ -350,7 +317,7 @@ bool nimcp_coverage_verify_region(
         coverage->total_violations++;
         coverage->dimension_stats[NIMCP_COVERAGE_MEMORY_REGIONS].violations_detected++;
 
-        char msg[128];
+        char msg[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "Memory region '%s' integrity violation detected",
                  region->name ? region->name : "unnamed");
         nimcp_security_log_event(
@@ -638,7 +605,7 @@ nimcp_result_t nimcp_coverage_record_ipc_message(
         coverage->total_violations++;
         coverage->dimension_stats[NIMCP_COVERAGE_IPC_CHANNELS].violations_detected++;
 
-        char msg[128];
+        char msg[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "IPC authentication failure on endpoint '%s'",
                  endpoint->name ? endpoint->name : "unnamed");
         nimcp_security_log_event(
@@ -947,7 +914,7 @@ bool nimcp_coverage_check_temporal(
         coverage->dimension_stats[NIMCP_COVERAGE_TEMPORAL].violations_detected++;
         coverage->total_violations++;
 
-        char msg[128];
+        char msg[NIMCP_LABEL_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "Temporal coverage gap detected: %lu ms",
                  (unsigned long)(current_gap > max_gap_ms ? current_gap : coverage->max_gap_detected));
         nimcp_security_log_event(

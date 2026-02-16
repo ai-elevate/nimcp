@@ -25,6 +25,9 @@
 
 #define LOG_MODULE "META_LEARNING"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(meta)
 
@@ -135,13 +138,13 @@ int meta_default_config(meta_config_t* config) {
 
     /* Reptile settings */
     config->reptile.inner_lr = META_DEFAULT_INNER_LR;
-    config->reptile.outer_lr = 0.1f;
+    config->reptile.outer_lr = NIMCP_LEARNING_RATE_COARSE;
     config->reptile.inner_steps = META_DEFAULT_INNER_STEPS;
     config->reptile.inner_optimizer = META_INNER_SGD;
 
     /* Prototypical settings */
-    config->prototypical.embedding_dim = 64;
-    config->prototypical.temperature = 1.0f;
+    config->prototypical.embedding_dim = NIMCP_SMALL_EMBEDDING_DIM;
+    config->prototypical.temperature = NIMCP_TEMPERATURE_DEFAULT;
     config->prototypical.use_attention = false;
     config->prototypical.euclidean_distance = true;
 
@@ -1364,7 +1367,7 @@ int meta_compute_second_order_gradient(
         return -1;
     }
 
-    float eps = 1e-4f;  /* Finite difference epsilon */
+    float eps = NIMCP_EPSILON_LARGE;  /* Finite difference epsilon */
     if (compute_hessian_vector_product(support_grad, query_grad, hvp, param_count, eps) != 0) {
         nimcp_free(hvp);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_compute_second_order_gradient: validation failed");

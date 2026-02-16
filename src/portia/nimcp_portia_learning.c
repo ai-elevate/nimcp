@@ -24,6 +24,7 @@
 
 #define LOG_MODULE "portia_learning"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_learning)
 
@@ -36,7 +37,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_learning)
 // Default configuration values
 #define DEFAULT_MAX_HABITUATION_ENTRIES 64
 #define DEFAULT_MAX_ASSOCIATION_ENTRIES 128
-#define DEFAULT_LEARNING_RATE 0.1f
+#define DEFAULT_LEARNING_RATE NIMCP_LEARNING_RATE_COARSE
 #define DEFAULT_FORGETTING_RATE 0.01f
 #define DEFAULT_CONSOLIDATION_INTERVAL_MS 60000  // 1 minute
 #define DEFAULT_HABITUATION_THRESHOLD 0.1f

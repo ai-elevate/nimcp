@@ -16,43 +16,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(perirhinal)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_perirhinal_mesh_id = 0;
-static mesh_participant_registry_t* g_perirhinal_mesh_registry = NULL;
-
-nimcp_error_t perirhinal_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_perirhinal_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "perirhinal", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "perirhinal";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_perirhinal_mesh_id);
-    if (err == NIMCP_SUCCESS) g_perirhinal_mesh_registry = registry;
-    return err;
-}
-
-void perirhinal_mesh_unregister(void) {
-    if (g_perirhinal_mesh_registry && g_perirhinal_mesh_id != 0) {
-        mesh_participant_unregister(g_perirhinal_mesh_registry, g_perirhinal_mesh_id);
-        g_perirhinal_mesh_id = 0;
-        g_perirhinal_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(perirhinal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -151,9 +121,9 @@ perirhinal_config_t perirhinal_default_config(void) {
     config.enable_recency_tracking = true;
 
     /* Learning parameters */
-    config.learning_rate = 0.01f;
-    config.weight_decay = 0.0001f;
-    config.eligibility_decay = 0.95f;
+    config.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
+    config.weight_decay = NIMCP_WEIGHT_DECAY_DEFAULT;
+    config.eligibility_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT;
 
     /* Oscillation parameters */
     config.theta_frequency = 8.0f;
@@ -217,7 +187,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
         pr->familiarity_cells[i].adaptation_rate = pr->config.repetition_suppression_rate;
         pr->familiarity_cells[i].baseline_response = 1.0f;
         pr->familiarity_cells[i].trace_size = pr->config.max_stored_objects;
-        pr->familiarity_cells[i].trace_decay = 0.99f;
+        pr->familiarity_cells[i].trace_decay = NIMCP_EMA_DECAY_DEFAULT;
         pr->familiarity_cells[i].memory_trace = (float*)nimcp_calloc(
             pr->config.max_stored_objects, sizeof(float));
         if (!pr->familiarity_cells[i].memory_trace) goto error;

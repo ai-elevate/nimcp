@@ -35,6 +35,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(game_theory_executive_bridge)
 //=============================================================================
@@ -1153,7 +1154,7 @@ int game_theory_executive_update_opponent_model(
     }
 
     /* Bayesian-like update of strategy probabilities */
-    float learning_rate = 0.1f;
+    float learning_rate = NIMCP_LEARNING_RATE_COARSE;
     float decay = bridge->config.opponent_model_decay;
 
     /* Decay all probabilities */

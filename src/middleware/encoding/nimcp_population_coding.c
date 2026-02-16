@@ -3,6 +3,7 @@
 #define LOG_MODULE "nimcp_population_coding"
 #define LOG_MODULE_ID 0x0517
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding)
 
@@ -410,7 +411,7 @@ population_coding_config_t population_coding_default_config(void) {
 
         /* Positional Encoding defaults */
         .enable_positional_encoding = false,  // Disabled by default
-        .pe_embedding_dim = 64,               // Standard embedding dimension
+        .pe_embedding_dim = NIMCP_SMALL_EMBEDDING_DIM,               // Standard embedding dimension
         .pe_frequency_base = 10000.0F,        // Standard transformer base
         .position_weight = 0.3F               // 30% position weighting
     };

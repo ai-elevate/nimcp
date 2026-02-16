@@ -21,6 +21,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_immune_bridge)
 //=============================================================================
@@ -352,7 +353,7 @@ int omni_immune_update(omni_immune_bridge_t* bridge) {
 
     /* Compute immune → omni effects */
     bridge->immune_effects.precision_modulation = 1.0f;
-    bridge->immune_effects.pe_sensitivity = 1.0f;
+    bridge->immune_effects.pe_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->immune_effects.retrieval_threshold = 0.0f;
     bridge->immune_effects.replay_priority = 0.0f;
     bridge->immune_effects.suppress_backward = false;

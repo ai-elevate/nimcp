@@ -8,6 +8,7 @@
 #include "integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -48,7 +49,7 @@ nimcp_neuromod_intra_config_t nimcp_neuromod_intra_default_config(void) {
         .vta_habenula_coupling = 0.5f,
         .raphe_habenula_coupling = 0.3f,
         .sync_interval_ms = 10,
-        .coherence_threshold = 0.7f,
+        .coherence_threshold = NIMCP_PHASE_COHERENCE_THRESHOLD,
         .enable_logging = false,
         .enable_metrics = true
     };
@@ -59,9 +60,9 @@ nimcp_neuromod_intra_t nimcp_neuromod_intra_create(const nimcp_neuromod_intra_co
     nimcp_neuromod_intra_t coord = (nimcp_neuromod_intra_t)nimcp_calloc(1, sizeof(struct nimcp_neuromod_intra_struct));
     NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate neuromod intra coordinator");
     coord->config = config ? *config : nimcp_neuromod_intra_default_config();
-    coord->state.norepinephrine_level = 0.5f;
-    coord->state.dopamine_level = 0.5f;
-    coord->state.serotonin_level = 0.5f;
+    coord->state.norepinephrine_level = NIMCP_NOREPINEPHRINE_BASELINE;
+    coord->state.dopamine_level = NIMCP_DOPAMINE_BASELINE;
+    coord->state.serotonin_level = NIMCP_SEROTONIN_BASELINE;
     return coord;
 }
 
@@ -142,9 +143,9 @@ nimcp_layer_error_t nimcp_neuromod_intra_update(nimcp_neuromod_intra_t coord, fl
     coord->state.serotonin_level += (0.5f - coord->state.serotonin_level) * dt * 0.05f;
 
     /* Update stats */
-    coord->stats.avg_arousal = coord->stats.avg_arousal * 0.99f + coord->state.arousal_level * 0.01f;
-    coord->stats.avg_dopamine = coord->stats.avg_dopamine * 0.99f + coord->state.dopamine_level * 0.01f;
-    coord->stats.avg_coherence = coord->stats.avg_coherence * 0.99f + coord->state.layer_coherence * 0.01f;
+    coord->stats.avg_arousal = coord->stats.avg_arousal * NIMCP_EMA_DECAY_DEFAULT + coord->state.arousal_level * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_dopamine = coord->stats.avg_dopamine * NIMCP_EMA_DECAY_DEFAULT + coord->state.dopamine_level * NIMCP_LEARNING_RATE_DEFAULT;
+    coord->stats.avg_coherence = coord->stats.avg_coherence * NIMCP_EMA_DECAY_DEFAULT + coord->state.layer_coherence * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

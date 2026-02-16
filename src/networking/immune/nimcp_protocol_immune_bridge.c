@@ -6,6 +6,7 @@
  */
 
 #include "networking/immune/nimcp_protocol_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -83,8 +84,8 @@ int protocol_immune_default_config(protocol_immune_config_t* config) {
     config->enable_cytokine_protocol_modulation = true;
     config->enable_antibody_filters = true;
 
-    config->error_sensitivity = 1.0f;
-    config->immune_protocol_sensitivity = 1.0f;
+    config->error_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->immune_protocol_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     config->error_rate_threshold = ERROR_RATE_LOCAL_THRESHOLD;
     config->max_filters = 256;

@@ -151,6 +151,7 @@
 // Thread-local PRNG (thread-safe replacement for rand())
 //=============================================================================
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Bio-Async Module Registration
@@ -308,7 +309,7 @@ static void brain_publish_processing_event(const char* processing_type, float co
                      processing_type, confidence);
 
     // Use predictive coding signal for processing events
-    char signal_name[64];
+    char signal_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(signal_name, sizeof(signal_name), "brain.processing.%s", processing_type);
     bio_router_publish_signal(g_brain_bio_ctx, signal_name, confidence);
 }
@@ -2709,7 +2710,7 @@ bool ensure_writable_network(brain_t brain)
 
     // Generate unique temporary filename using mkstemp for security
     // (prevents symlink attacks and race conditions)
-    char temp_file[256];
+    char temp_file[NIMCP_SHORT_PATH_SIZE];
     snprintf(temp_file, sizeof(temp_file), "/tmp/nimcp_cow_temp_XXXXXX");
     int fd = mkstemp(temp_file);
     if (fd < 0) {
@@ -3747,7 +3748,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         // Record experience in curiosity engine (learns patterns over time)
         // This enables the engine to detect when similar patterns recur
-        char experience_desc[128];
+        char experience_desc[NIMCP_ERROR_BUFFER_MEDIUM];
         snprintf(experience_desc, sizeof(experience_desc),
                 "input_variance_%.3f", input_variance);
         curiosity_learn_experience(brain->curiosity, experience_desc,
@@ -4171,7 +4172,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
             // Optional: Add symbolic logic proof if available and enabled
             if (brain->symbolic_logic && nat_exp.has_symbolic_proof) {
-                char proof_buffer[512];
+                char proof_buffer[NIMCP_ERROR_BUFFER_LARGE];
                 if (explain_with_symbolic_logic(brain->explanation_gen, brain,
                                                decision, proof_buffer, sizeof(proof_buffer))) {
                     // Append proof to explanation (if space permits)
@@ -4520,7 +4521,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             if (has_observations) {
                 // Use ToM to predict what the observed agent might do next
                 // This can help anticipate collaborative or competitive behaviors
-                char predicted_action[64];
+                char predicted_action[NIMCP_ID_BUFFER_SIZE];
                 float prediction_likelihood = 0.0F;
 
                 bool predicted = tom_predict_action(
@@ -4941,7 +4942,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
 {
     // Guard: NULL parameters handled by caller
 
-    char meta_path[512];
+    char meta_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     FILE* meta_file = fopen(meta_path, "wb");
@@ -5021,7 +5022,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
         success = false;
     }
     if (has_knowledge) {
-        char knowledge_path[512];
+        char knowledge_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
         knowledge_save(brain->knowledge, knowledge_path);
     }
@@ -5042,7 +5043,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save executive controller state to separate file
         // WHY:  Preserve task queue, statistics, and configuration
         // HOW:  Use executive_save API with dedicated file
-        char executive_path[512];
+        char executive_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
         FILE* exec_file = fopen(executive_path, "wb");
         if (exec_file) {
@@ -5065,7 +5066,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save pink noise neuromodulator state to separate file
         // WHY:  Preserve neuromodulator levels and pink noise generators
         // HOW:  Use neuromod_pink_save API with dedicated file
-        char pink_noise_path[512];
+        char pink_noise_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(pink_noise_path, sizeof(pink_noise_path), "%s.pink_noise", filepath);
         FILE* pink_file = fopen(pink_noise_path, "wb");
         if (pink_file) {
@@ -5083,7 +5084,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save mirror neuron system state to separate file
         // WHY:  Preserve learned action associations and statistics
         // HOW:  Use mirror_neurons_save API with dedicated file
-        char mirror_path[512];
+        char mirror_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
         FILE* mirror_file = fopen(mirror_path, "wb");
         if (mirror_file) {
@@ -5247,7 +5248,7 @@ static bool load_working_memory_state(brain_t brain, FILE* file)
  */
 static bool load_metadata(brain_t brain, const char* filepath)
 {
-    char meta_path[512];
+    char meta_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     FILE* meta_file = fopen(meta_path, "rb");
@@ -5468,7 +5469,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
     // Load knowledge system state (if exists)
     bool has_knowledge = false;
     if (fread(&has_knowledge, sizeof(bool), 1, meta_file) == 1 && has_knowledge) {
-        char knowledge_path[512];
+        char knowledge_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
         brain->knowledge = knowledge_load(knowledge_path);
         // Non-fatal if knowledge load fails
@@ -5488,7 +5489,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
         // WHAT: Load executive controller state from separate file
         // WHY:  Restore task queue, statistics, and configuration
         // HOW:  Use executive_load API with dedicated file
-        char executive_path[512];
+        char executive_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
         FILE* exec_file = fopen(executive_path, "rb");
         if (exec_file) {
@@ -5507,7 +5508,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
         // WHAT: Load pink noise neuromodulator state from separate file
         // WHY:  Restore neuromodulator levels and pink noise generators
         // HOW:  Use neuromod_pink_load API with dedicated file
-        char pink_noise_path[512];
+        char pink_noise_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(pink_noise_path, sizeof(pink_noise_path), "%s.pink_noise", filepath);
         FILE* pink_file = fopen(pink_noise_path, "rb");
         if (pink_file) {
@@ -5522,7 +5523,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
         // WHAT: Load mirror neuron system state from separate file
         // WHY:  Restore learned action associations and statistics
         // HOW:  Use mirror_neurons_load API with dedicated file
-        char mirror_path[512];
+        char mirror_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
         FILE* mirror_file = fopen(mirror_path, "rb");
         if (mirror_file) {

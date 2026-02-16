@@ -17,6 +17,7 @@
 
 #define LOG_MODULE "SurfaceManifold"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surface_manifold)
 
@@ -32,7 +33,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surface_manifold)
  * HOW:  Use 1e-8f which is well above float denormals (~1e-38) but small enough
  *       to catch near-zero vectors before division causes NaN/Inf.
  */
-#define SURFACE_VEC_MAGNITUDE_EPSILON 1e-8f
+#define SURFACE_VEC_MAGNITUDE_EPSILON NIMCP_EPSILON_ADAM
 
 //=============================================================================
 // VECTOR UTILITIES

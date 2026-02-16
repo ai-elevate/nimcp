@@ -16,6 +16,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gw_thalamic_bridge)
 //=============================================================================
@@ -87,7 +88,7 @@ gw_thalamic_config_t gw_thalamic_default_config(void) {
     gw_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_competition_routing = true,
-        .min_salience_threshold = 0.3f,
+        .min_salience_threshold = NIMCP_SALIENCE_THRESHOLD,
         .ignition_threshold = 0.6f
     };
     return cfg;

@@ -21,6 +21,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_substrate_bridge)
 //=============================================================================
@@ -97,8 +98,8 @@ predictive_substrate_config_t predictive_substrate_default_config(void) {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
         .enable_bio_async = false,
-        .atp_sensitivity = 1.0f,
-        .fatigue_sensitivity = 1.0f,
+        .atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .min_capacity = 0.2f
     };
     return cfg;
@@ -131,7 +132,7 @@ predictive_substrate_bridge_t* predictive_substrate_bridge_create(void* predicti
     bridge->config = config ? *config : predictive_substrate_default_config();
 
     bridge->effects.prediction_precision = 1.0f;
-    bridge->effects.error_sensitivity = 1.0f;
+    bridge->effects.error_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.model_update_rate = 1.0f;
     bridge->effects.hierarchical_depth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;

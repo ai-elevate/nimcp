@@ -36,6 +36,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(exception_immune)
 
@@ -125,7 +126,7 @@ int nimcp_recovery_set_context(
 
     /* Set default emergency checkpoint path */
     if (checkpoint_dir) {
-        static char emergency_path[512];
+        static char emergency_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(emergency_path, sizeof(emergency_path),
                  "%s/emergency_checkpoint.ckpt", checkpoint_dir);
         g_recovery_context.emergency_checkpoint = emergency_path;
@@ -867,7 +868,7 @@ int nimcp_recovery_rollback(nimcp_exception_t* ex, nimcp_exception_recovery_acti
 
     /* Try to find and load the most recent checkpoint */
     /* Build path to most recent checkpoint */
-    char checkpoint_path[512];
+    char checkpoint_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(checkpoint_path, sizeof(checkpoint_path),
              "%s/latest.ckpt", g_recovery_context.checkpoint_dir);
 

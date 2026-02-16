@@ -7,6 +7,7 @@
 #include "dragonfly/nimcp_dragonfly_snn_bridge.h"
 #include "utils/rng/nimcp_rand.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -134,7 +135,7 @@ int dragonfly_snn_bridge_default_config(dragonfly_snn_config_t* config) {
     config->neuron_params.v_threshold = 1.0f;
     config->neuron_params.v_reset = 0.0f;
     config->neuron_params.v_rest = 0.0f;
-    config->neuron_params.refractory_ms = 2.0f;
+    config->neuron_params.refractory_ms = NIMCP_REFRACTORY_PERIOD_MS;
     config->neuron_params.leak_conductance = 0.05f;
 
     /* BPTT parameters */
@@ -313,7 +314,7 @@ int dragonfly_snn_forward(
         return -1;
     }
 
-    float dt = 1.0f;  /* 1ms timestep */
+    float dt = NIMCP_SIMULATION_DT_MS;  /* 1ms timestep */
     float tau = bridge->config.neuron_params.tau_membrane;
     float v_thresh = bridge->config.neuron_params.v_threshold;
     float v_reset = bridge->config.neuron_params.v_reset;
@@ -592,7 +593,7 @@ int dragonfly_snn_apply_reward(
     if (bridge->config.use_advantage) {
         /* Update baseline with exponential moving average */
         bridge->config.reward_baseline =
-            0.99f * bridge->config.reward_baseline + 0.01f * reward;
+            NIMCP_EMA_DECAY_DEFAULT * bridge->config.reward_baseline + NIMCP_LEARNING_RATE_DEFAULT * reward;
     } else {
         advantage = reward;
     }

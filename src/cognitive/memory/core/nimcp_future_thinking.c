@@ -15,6 +15,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_future_thinking.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
@@ -27,56 +28,11 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(future_thinking)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_future_thinking_mesh_id = 0;
-static mesh_participant_registry_t* g_future_thinking_mesh_registry = NULL;
-
-nimcp_error_t future_thinking_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_future_thinking_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "future_thinking", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_MEMORY);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "future_thinking";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_future_thinking_mesh_id);
-    if (err == NIMCP_SUCCESS) g_future_thinking_mesh_registry = registry;
-    return err;
-}
-
-void future_thinking_mesh_unregister(void) {
-    if (g_future_thinking_mesh_registry && g_future_thinking_mesh_id != 0) {
-        mesh_participant_unregister(g_future_thinking_mesh_registry, g_future_thinking_mesh_id);
-        g_future_thinking_mesh_id = 0;
-        g_future_thinking_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from future_thinking module (instance-level) */
-static inline void future_thinking_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_future_thinking_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_future_thinking_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_future_thinking_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(future_thinking, MESH_ADAPTER_CATEGORY_MEMORY)
 
 
 //=============================================================================
@@ -125,7 +81,7 @@ struct future_thinking_struct {
 // Thread-Local Error Handling
 //=============================================================================
 
-static _Thread_local char last_error[256] = {0};
+static _Thread_local char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;
@@ -1316,7 +1272,7 @@ NIMCP_EXPORT future_error_t future_thinking_simulate_with_context(
     }
 
     // Convert signature to text description (simplified)
-    char description[256];
+    char description[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(description, sizeof(description),
              "Future event (sig hash: 0x%016llx)",
              (unsigned long long)context_signature->hash);
@@ -1539,7 +1495,7 @@ NIMCP_EXPORT future_error_t future_thinking_generate_subgoals(
         float interval = parent->deadline / (float)(to_generate + 1);
 
         for (size_t i = 0; i < to_generate && ft->num_goals < ft->goals_capacity; i++) {
-            char subgoal_desc[256];
+            char subgoal_desc[NIMCP_ERROR_BUFFER_SIZE];
             snprintf(subgoal_desc, sizeof(subgoal_desc),
                     "Milestone %zu for: %.50s", i + 1, parent->description);
 

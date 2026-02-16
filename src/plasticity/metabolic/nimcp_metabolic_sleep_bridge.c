@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metabolic/nimcp_metabolic_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -113,7 +114,7 @@ int metabolic_sleep_default_config(metabolic_sleep_config_t* config) {
     config->enable_recovery_modulation = true;
     config->enable_cost_modulation = true;
     config->enable_sleep_pressure_feedback = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

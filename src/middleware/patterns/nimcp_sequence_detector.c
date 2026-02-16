@@ -31,6 +31,7 @@
 #define LOG_MODULE "nimcp_sequence_detector"
 #define LOG_MODULE_ID 0x0527
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sequence_detector)
 
@@ -298,7 +299,7 @@ sequence_detector_config_t sequence_detector_default_config(void) {
     // Positional Encoding defaults (disabled by default)
     config.enable_positional_encoding = false;
     config.pe_type = NIMCP_POS_ROTARY;  // RoPE for temporal sequences
-    config.pe_embedding_dim = 64;       // Moderate dimension
+    config.pe_embedding_dim = NIMCP_SMALL_EMBEDDING_DIM;       // Moderate dimension
     config.pe_similarity_weight = 0.3F; // Temporal matching still dominant
 
     // Quantum acceleration defaults (enabled by default)

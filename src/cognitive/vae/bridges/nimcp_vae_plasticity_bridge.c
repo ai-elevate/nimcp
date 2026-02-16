@@ -24,6 +24,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
 /* ============================================================================
  * Module Constants
@@ -206,8 +208,8 @@ int vae_plasticity_bridge_default_config(vae_plasticity_bridge_config_t* config)
 
     /* Consolidation config */
     config->consolidation.enable_replay = true;
-    config->consolidation.replay_batch_size = 32;
-    config->consolidation.replay_temperature = 1.0f;
+    config->consolidation.replay_batch_size = NIMCP_DEFAULT_BATCH_SIZE;
+    config->consolidation.replay_temperature = NIMCP_TEMPERATURE_DEFAULT;
     config->consolidation.consolidation_rate = 0.1f;
     config->consolidation.prioritized_replay = true;
 

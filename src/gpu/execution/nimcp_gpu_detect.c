@@ -58,6 +58,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_detect)
 // Thread-safe initialization
 #include <pthread.h>
 #include "utils/thread/nimcp_thread.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // CUDA Types (for runtime loading without CUDA headers)
@@ -130,7 +131,7 @@ typedef int hipError_t;
 
 // HIP device properties structure (simplified)
 typedef struct {
-    char name[256];
+    char name[NIMCP_NAME_BUFFER_SIZE];
     size_t totalGlobalMem;
     int multiProcessorCount;
     int maxThreadsPerBlock;
@@ -430,7 +431,7 @@ static void detect_opencl_devices(gpu_detect_result_t* caps)
     // Query each platform
     for (cl_uint p = 0; p < actual_platforms; p++) {
         // Get platform name
-        char platform_name[128] = {0};
+        char platform_name[NIMCP_LABEL_BUFFER_SIZE] = {0};
         clGetPlatformInfo(platforms[p], CL_PLATFORM_NAME, sizeof(platform_name), platform_name, NULL);
 
         if (p < 4) {
@@ -456,7 +457,7 @@ static void detect_opencl_devices(gpu_detect_result_t* caps)
         // Query each device
         for (cl_uint d = 0; d < actual_devices && caps->device_count < 16; d++) {
             // Check if this device was already detected via CUDA
-            char dev_name[256] = {0};
+            char dev_name[NIMCP_NAME_BUFFER_SIZE] = {0};
             clGetDeviceInfo(devices[d], CL_DEVICE_NAME, sizeof(dev_name), dev_name, NULL);
 
             // Skip if already detected via CUDA (avoid duplicates)
@@ -479,7 +480,7 @@ static void detect_opencl_devices(gpu_detect_result_t* caps)
             strncpy(info->name, dev_name, sizeof(info->name) - 1);
 
             // Determine vendor from name or vendor string
-            char vendor_str[128] = {0};
+            char vendor_str[NIMCP_LABEL_BUFFER_SIZE] = {0};
             clGetDeviceInfo(devices[d], CL_DEVICE_VENDOR, sizeof(vendor_str), vendor_str, NULL);
 
             if (strstr(vendor_str, "NVIDIA") || strstr(vendor_str, "nvidia")) {

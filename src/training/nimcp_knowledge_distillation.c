@@ -22,6 +22,7 @@
 #include <float.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(knowledge_distillation)
 
@@ -150,7 +151,7 @@ int kd_default_config(kd_config_t* config) {
     /* Self-distillation config */
     config->self_distill.num_generations = 3;
     config->self_distill.reinitialize_student = true;
-    config->self_distill.temperature_decay = 0.9f;
+    config->self_distill.temperature_decay = NIMCP_EMA_DECAY_FAST;
 
     /* Mutual config */
     config->mutual.num_peers = 2;

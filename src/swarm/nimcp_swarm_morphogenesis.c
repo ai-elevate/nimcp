@@ -20,6 +20,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_morphogenesis)
 
@@ -31,7 +32,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_morphogenesis)
 #define NIMCP_MORPH_DEFAULT_GRID_SIZE 64
 #define NIMCP_MORPH_MIN_COOLDOWN 1.0f
 #define NIMCP_MORPH_MAX_COOLDOWN 300.0f
-#define NIMCP_MORPH_GRADIENT_DECAY 0.95f
+#define NIMCP_MORPH_GRADIENT_DECAY NIMCP_ELIGIBILITY_DECAY_DEFAULT
 #define NIMCP_MORPH_POSITION_EPSILON 0.001f
 #define NIMCP_MORPH_BALANCE_THRESHOLD 0.7f
 

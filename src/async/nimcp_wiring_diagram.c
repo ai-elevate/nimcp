@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(wiring_diagram)
 
@@ -1111,7 +1112,7 @@ static bool check_command_exists(const char* cmd) {
         NULL
     };
 
-    char full_path[512];
+    char full_path[NIMCP_METRICS_PATH_SIZE];
     for (int i = 0; paths[i]; i++) {
         int ret = snprintf(full_path, sizeof(full_path), "%s%s", paths[i], cmd);
         if (ret < 0 || (size_t)ret >= sizeof(full_path)) {
@@ -1299,7 +1300,7 @@ static uint32_t detect_cpu_cores(void) {
     /* Fallback: parse /proc/cpuinfo */
     FILE* f = fopen("/proc/cpuinfo", "r");
     if (f) {
-        char line[256];
+        char line[NIMCP_ERROR_BUFFER_SIZE];
         uint32_t count = 0;
         while (fgets(line, sizeof(line), f)) {
             if (strncmp(line, "processor", 9) == 0) count++;
@@ -1328,7 +1329,7 @@ static size_t detect_memory_mb(void) {
     /* Fallback: parse /proc/meminfo */
     FILE* f = fopen("/proc/meminfo", "r");
     if (f) {
-        char line[256];
+        char line[NIMCP_ERROR_BUFFER_SIZE];
         while (fgets(line, sizeof(line), f)) {
             size_t mem_kb;
             if (sscanf(line, "MemTotal: %zu kB", &mem_kb) == 1) {

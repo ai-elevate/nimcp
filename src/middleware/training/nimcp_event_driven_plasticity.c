@@ -32,6 +32,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_dimension_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(event_driven_plasticity)
 
@@ -480,7 +481,7 @@ edp_config_t edp_config_default(void)
     memset(&config, 0, sizeof(config));
 
     config.mode = EDP_MODE_IMMEDIATE;
-    config.batch_size = 32;
+    config.batch_size = NIMCP_DEFAULT_BATCH_SIZE;
     config.batch_timeout_ms = 10;
 
     config.stdp_window_ms = 40.0F;  /* ±40ms STDP window */

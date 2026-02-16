@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/nimcp_parietal_numerical_language.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/fuzzy/nimcp_fuzzy_types.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
@@ -103,7 +104,7 @@ struct numerical_language {
  * THREAD-LOCAL ERROR STORAGE
  * ============================================================================ */
 
-static _Thread_local char g_last_error[256] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_last_error(const char* fmt, ...) {
     va_list args;
@@ -157,7 +158,7 @@ static bool starts_with(const char* str, const char* prefix, size_t* len) {
  * @brief Parse a simple number word (0-999)
  */
 static int parse_simple_number(const char* word, float* value) {
-    char normalized[64];
+    char normalized[NIMCP_ID_BUFFER_SIZE];
     normalize_word(word, normalized, sizeof(normalized));
 
     /* Check units (0-19) */
@@ -195,7 +196,7 @@ static void number_to_words_under_1000(uint32_t n, char* buffer, uint32_t max_le
     }
 
     buffer[0] = '\0';
-    char temp[128];
+    char temp[NIMCP_LABEL_BUFFER_SIZE];
 
     if (n >= 100) {
         uint32_t hundreds = n / 100;
@@ -230,7 +231,7 @@ static void number_to_ordinal_under_1000(uint32_t n, char* buffer, uint32_t max_
     }
 
     buffer[0] = '\0';
-    char temp[128];
+    char temp[NIMCP_LABEL_BUFFER_SIZE];
 
     if (n >= 100) {
         uint32_t hundreds = n / 100;
@@ -345,7 +346,7 @@ static const quantifier_definition_t* find_quantifier(
     const numerical_language_t* nl,
     const char* word
 ) {
-    char normalized[64];
+    char normalized[NIMCP_ID_BUFFER_SIZE];
     normalize_word(word, normalized, sizeof(normalized));
 
     for (uint32_t i = 0; i < nl->num_quantifiers; i++) {
@@ -566,7 +567,7 @@ int numerical_language_parse_ordinal(
     memset(out, 0, sizeof(*out));
     out->type = NUM_WORD_ORDINAL;
 
-    char normalized[64];
+    char normalized[NIMCP_ID_BUFFER_SIZE];
     normalize_word(word, normalized, sizeof(normalized));
 
     /* Check ordinal units (1st-19th) */
@@ -594,7 +595,7 @@ int numerical_language_parse_ordinal(
     /* Check for compound ordinals (e.g., "twenty-third") */
     for (int tens = 2; tens < 10; tens++) {
         for (int units = 1; units < 10; units++) {
-            char compound[64];
+            char compound[NIMCP_ID_BUFFER_SIZE];
             snprintf(compound, sizeof(compound), "%s-%s", g_tens[tens], g_ordinal_units[units]);
             if (strcmp(normalized, compound) == 0) {
                 out->ordinal_position = (uint32_t)(tens * 10 + units);
@@ -631,7 +632,7 @@ int numerical_language_parse_fraction(
     memset(out, 0, sizeof(*out));
     out->type = NUM_WORD_FRACTION;
 
-    char normalized[64];
+    char normalized[NIMCP_ID_BUFFER_SIZE];
     normalize_word(word, normalized, sizeof(normalized));
 
     /* Common fractions */
@@ -808,8 +809,8 @@ int numerical_language_generate_word(
         return LING_ERR_OK;
     }
 
-    char temp[256] = {0};
-    char group_word[64];
+    char temp[NIMCP_ERROR_BUFFER_SIZE] = {0};
+    char group_word[NIMCP_ID_BUFFER_SIZE];
 
     /* Process each magnitude group */
     int magnitude = 4;  /* trillion */
@@ -993,7 +994,7 @@ int numerical_language_mesh_process(
     if (request->type == LING_REQUEST_PARSE_NUMBER) {
         result = numerical_language_parse_word(nl, request->input_word, &semantics);
     } else {
-        char word[128];
+        char word[NIMCP_LABEL_BUFFER_SIZE];
         result = numerical_language_generate_word(nl, request->input_magnitude, word, sizeof(word));
         if (result == LING_ERR_OK) {
             semantics.magnitude = request->input_magnitude;

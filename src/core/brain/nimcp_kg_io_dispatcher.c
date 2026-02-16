@@ -18,42 +18,13 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_timing_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(kg_io_dispatcher)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_kg_io_dispatcher_mesh_id = 0;
-static mesh_participant_registry_t* g_kg_io_dispatcher_mesh_registry = NULL;
-
-nimcp_error_t kg_io_dispatcher_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_kg_io_dispatcher_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "kg_io_dispatcher", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "kg_io_dispatcher";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_kg_io_dispatcher_mesh_id);
-    if (err == NIMCP_SUCCESS) g_kg_io_dispatcher_mesh_registry = registry;
-    return err;
-}
-
-void kg_io_dispatcher_mesh_unregister(void) {
-    if (g_kg_io_dispatcher_mesh_registry && g_kg_io_dispatcher_mesh_id != 0) {
-        mesh_participant_unregister(g_kg_io_dispatcher_mesh_registry, g_kg_io_dispatcher_mesh_id);
-        g_kg_io_dispatcher_mesh_id = 0;
-        g_kg_io_dispatcher_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(kg_io_dispatcher, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
@@ -61,7 +32,7 @@ void kg_io_dispatcher_mesh_unregister(void) {
  * ============================================================================ */
 
 #define IO_QUEUE_LOCK_RETRIES       1000
-#define IO_THREAD_SHUTDOWN_TIMEOUT  5000
+#define IO_THREAD_SHUTDOWN_TIMEOUT  NIMCP_DEFAULT_TIMEOUT_MS
 #define IO_BATCH_INITIAL_SIZE       4096
 
 /* ============================================================================
@@ -93,7 +64,7 @@ typedef struct {
     int socket_fd;              /* Connection socket (-1 if closed) */
     bool in_use;                /* Currently being used */
     uint64_t last_used;         /* Last use timestamp */
-    char host[128];             /* Connected host */
+    char host[NIMCP_LABEL_BUFFER_SIZE];             /* Connected host */
     uint16_t port;              /* Connected port */
 } kg_io_connection_t;
 

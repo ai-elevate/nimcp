@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_prefrontal_bridge)
 
@@ -197,7 +198,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
     }
 
     for (uint32_t i = 0; i < bridge->n_goals; i++) {
-        char name[64];
+        char name[NIMCP_ID_BUFFER_SIZE];
         snprintf(name, sizeof(name), "goal_%u", i);
         bridge->goals[i] = create_goal_state(i, name);
         if (!bridge->goals[i]) {

@@ -18,6 +18,7 @@
 #include <time.h>
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_prey)
 
@@ -329,7 +330,7 @@ static void classify_prey(
 prey_classifier_config_t prey_classifier_default_config(void) {
     prey_classifier_config_t config = {
         /* Classification thresholds */
-        .min_confidence_threshold = 0.3f,
+        .min_confidence_threshold = NIMCP_CONFIDENCE_LOW,
         .reclassification_interval_ms = 200.0f,
 
         /* Feature weights */

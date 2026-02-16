@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/structural/nimcp_structural_plasticity.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -202,7 +203,7 @@ int structural_plasticity_default_config(structural_plasticity_config_t* config)
     config->ltp_potentiation_threshold = 10.0f;
     config->potentiation_decay_rate = 0.001f;
     config->enable_immune_pruning = true;
-    config->complement_sensitivity = 1.0f;
+    config->complement_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->enable_sleep_consolidation = true;
     config->sleep_consolidation_boost = 2.0f;
     config->max_spines = STRUCTURAL_MAX_SPINES;

@@ -9,6 +9,7 @@
 #include "integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -112,8 +113,8 @@ nimcp_layer_error_t nimcp_neuromod_memory_update(nimcp_neuromod_memory_bridge_t 
     bridge->state.prediction_error *= (1.0f - dt * 0.05f);
 
     /* Update averages */
-    bridge->stats.avg_encoding_strength = bridge->stats.avg_encoding_strength * 0.99f + bridge->state.encoding_enhancement * 0.01f;
-    bridge->stats.avg_emotional_activation = bridge->stats.avg_emotional_activation * 0.99f + bridge->state.emotional_activation * 0.01f;
+    bridge->stats.avg_encoding_strength = bridge->stats.avg_encoding_strength * NIMCP_EMA_DECAY_DEFAULT + bridge->state.encoding_enhancement * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_emotional_activation = bridge->stats.avg_emotional_activation * NIMCP_EMA_DECAY_DEFAULT + bridge->state.emotional_activation * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

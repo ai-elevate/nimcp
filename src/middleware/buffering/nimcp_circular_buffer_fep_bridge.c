@@ -6,6 +6,7 @@
  */
 
 #include "middleware/buffering/nimcp_circular_buffer_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -43,10 +44,10 @@ int circular_buffer_fep_bridge_default_config(
     config->enable_overflow_surprise = true;
     config->enable_utilization_feedback = true;
 
-    config->horizon_sensitivity = 1.0f;
-    config->precision_sensitivity = 1.0f;
-    config->overflow_sensitivity = 1.0f;
-    config->utilization_sensitivity = 1.0f;
+    config->horizon_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->precision_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->overflow_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->utilization_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

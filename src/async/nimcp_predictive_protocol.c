@@ -19,6 +19,7 @@
 
 #define LOG_MODULE "predictive_protocol"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_protocol)
 
@@ -44,7 +45,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_protocol)
 #define MAX_TRANSITION_HASH_BUCKETS 256  /* Hash buckets for Markov transitions */
 #define DEFAULT_PREDICTION_HORIZON_MS 100
 #define DEFAULT_CACHE_SIZE 256
-#define DEFAULT_LEARNING_RATE 0.1f
+#define DEFAULT_LEARNING_RATE NIMCP_LEARNING_RATE_COARSE
 #define DEFAULT_MIN_CONFIDENCE 0.7f
 #define DEFAULT_MAX_PATTERNS 1024
 #define DEFAULT_MARKOV_ORDER 1

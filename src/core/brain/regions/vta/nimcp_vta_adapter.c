@@ -16,42 +16,12 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vta_adapter)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_vta_adapter_mesh_id = 0;
-static mesh_participant_registry_t* g_vta_adapter_mesh_registry = NULL;
-
-nimcp_error_t vta_adapter_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_vta_adapter_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "vta_adapter", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "vta_adapter";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_vta_adapter_mesh_id);
-    if (err == NIMCP_SUCCESS) g_vta_adapter_mesh_registry = registry;
-    return err;
-}
-
-void vta_adapter_mesh_unregister(void) {
-    if (g_vta_adapter_mesh_registry && g_vta_adapter_mesh_id != 0) {
-        mesh_participant_unregister(g_vta_adapter_mesh_registry, g_vta_adapter_mesh_id);
-        g_vta_adapter_mesh_id = 0;
-        g_vta_adapter_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(vta_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -182,7 +152,7 @@ nimcp_vta_adapter_config_t nimcp_vta_adapter_default_config(void) {
     config.enable_training_integration = true;
     config.reward_lr_boost = 1.5f;
     config.motivation_persistence_scale = 0.8f;
-    config.rpe_sensitivity = 1.0f;
+    config.rpe_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     return config;
 }
@@ -219,7 +189,7 @@ nimcp_vta_adapter_t nimcp_vta_adapter_create(const nimcp_vta_adapter_config_t* c
 
     /* Initialize training modulation */
     adapter->current_modulation.lr_multiplier = 1.0f;
-    adapter->current_modulation.reward_sensitivity = 1.0f;
+    adapter->current_modulation.reward_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     adapter->current_modulation.motivation_signal = 0.5f;
     adapter->current_modulation.persistence_factor = 0.5f;
     adapter->current_modulation.rpe_signal = 0.0f;
@@ -676,7 +646,7 @@ static void update_vta_training_modulation(nimcp_vta_adapter_t adapter) {
     /* Compute reward sensitivity based on DA level */
     /* Low DA -> higher sensitivity to rewards (seeking) */
     /* High DA -> lower sensitivity (satiation) */
-    float sensitivity = 1.0f;
+    float sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     if (da_ratio < 0.8f) {
         sensitivity = 1.0f + (0.8f - da_ratio) * 0.5f;
     } else if (da_ratio > 1.2f) {

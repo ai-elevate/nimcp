@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_self_repair.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -21,56 +22,12 @@
 #include <stdio.h>
 #include <time.h>
 #include <sys/stat.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_timing_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(self_repair)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_self_repair_mesh_id = 0;
-static mesh_participant_registry_t* g_self_repair_mesh_registry = NULL;
-
-nimcp_error_t self_repair_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_self_repair_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "self_repair", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "self_repair";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_self_repair_mesh_id);
-    if (err == NIMCP_SUCCESS) g_self_repair_mesh_registry = registry;
-    return err;
-}
-
-void self_repair_mesh_unregister(void) {
-    if (g_self_repair_mesh_registry && g_self_repair_mesh_id != 0) {
-        mesh_participant_unregister(g_self_repair_mesh_registry, g_self_repair_mesh_id);
-        g_self_repair_mesh_id = 0;
-        g_self_repair_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from self_repair module (instance-level) */
-static inline void self_repair_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_self_repair_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_self_repair_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_self_repair_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(self_repair, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -159,10 +116,10 @@ self_repair_config_t self_repair_default_config(void) {
     config.require_human_approval = false;
     config.require_approval_complex = true;
 
-    config.analysis_timeout_ms = 10000;
-    config.generation_timeout_ms = 10000;
-    config.validation_timeout_ms = 30000;
-    config.deployment_timeout_ms = 10000;
+    config.analysis_timeout_ms = NIMCP_WATCHDOG_TIMEOUT_MS;
+    config.generation_timeout_ms = NIMCP_WATCHDOG_TIMEOUT_MS;
+    config.validation_timeout_ms = NIMCP_LONG_TIMEOUT_MS;
+    config.deployment_timeout_ms = NIMCP_WATCHDOG_TIMEOUT_MS;
 
     config.auto_rollback_on_failure = true;
     config.auto_rollback_on_regression = true;
@@ -525,7 +482,7 @@ int self_repair_initiate(
 
     /* Source commit deployment */
     if (mode == REPAIR_MODE_SOURCE_ONLY || mode == REPAIR_MODE_DUAL) {
-        char commit_hash[64] = {0};
+        char commit_hash[NIMCP_ID_BUFFER_SIZE] = {0};
         ret = self_repair_deploy_source(coordinator, &fix, commit_hash, sizeof(commit_hash));
         if (ret == 0) {
             record->source_committed = true;
@@ -1506,7 +1463,7 @@ int self_repair_notify_health_agent_failure(
             bio_message_header_t header;
             uint64_t repair_id;
             uint32_t status;
-            char error_message[256];
+            char error_message[NIMCP_ERROR_BUFFER_SIZE];
         } msg = {0};
 
         msg.header.type = BIO_MSG_REPAIR_HEALTH_FAILURE;

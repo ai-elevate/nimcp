@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/parietal/nimcp_hypothesis_generation.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -16,62 +17,17 @@
 #include <time.h>
 
 /* Health agent macros must be at file scope, not inside #ifdef */
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hypothesis_generation)
+BRIDGE_BOILERPLATE(hypothesis_generation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* GPU acceleration with CPU fallback */
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/quantum/nimcp_qmc_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_hypothesis_generation_mesh_id = 0;
-static mesh_participant_registry_t* g_hypothesis_generation_mesh_registry = NULL;
-
-nimcp_error_t hypothesis_generation_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_hypothesis_generation_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "hypothesis_generation", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "hypothesis_generation";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_hypothesis_generation_mesh_id);
-    if (err == NIMCP_SUCCESS) g_hypothesis_generation_mesh_registry = registry;
-    return err;
-}
-
-void hypothesis_generation_mesh_unregister(void) {
-    if (g_hypothesis_generation_mesh_registry && g_hypothesis_generation_mesh_id != 0) {
-        mesh_participant_unregister(g_hypothesis_generation_mesh_registry, g_hypothesis_generation_mesh_id);
-        g_hypothesis_generation_mesh_id = 0;
-        g_hypothesis_generation_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from hypothesis_generation module (instance-level) */
-static inline void hypothesis_generation_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_hypothesis_generation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_hypothesis_generation_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_hypothesis_generation_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
-
 
 static nimcp_gpu_context_t* g_hypogen_gpu_ctx = NULL;
 static qmc_gpu_rng_t g_hypogen_gpu_rng = NULL;
@@ -131,7 +87,7 @@ struct hypothesis_engine {
     uint32_t rand_seed;  /**< Thread-safe RNG seed for MCTS */
 };
 
-static __thread char g_last_error[256] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     strncpy(g_last_error, msg, sizeof(g_last_error) - 1);
@@ -155,7 +111,7 @@ hypogen_config_t hypothesis_engine_default_config(void) {
         .enable_abduction = true,
         .enable_prediction = true,
         .max_hypotheses = 10,
-        .inflammation_sensitivity = 1.0f,
+        .inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .fatigue_sensitivity = 1.0f
     };
 }

@@ -43,6 +43,7 @@
 //=============================================================================
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread.h"
+#include "constants/nimcp_threshold_constants.h"
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_column)
 
 
@@ -101,7 +102,7 @@ static void cortical_column_bio_cleanup(void) {
 #define DEFAULT_MAX_MINICOLUMNS 1000
 #define DEFAULT_MAX_HYPERCOLUMNS 100
 #define DEFAULT_MAX_NEURONS_PER_MINICOLUMN 100
-#define DEFAULT_TEMPERATURE 1.0f
+#define DEFAULT_TEMPERATURE NIMCP_TEMPERATURE_DEFAULT
 #define DEFAULT_LATERAL_INHIBITION_STRENGTH 0.5f
 #define DEFAULT_LATERAL_INHIBITION_SIGMA1 1.0f
 #define DEFAULT_LATERAL_INHIBITION_SIGMA2 3.0f

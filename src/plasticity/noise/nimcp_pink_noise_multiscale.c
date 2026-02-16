@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_frequency_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_multiscale)
 
@@ -32,7 +33,7 @@ pink_noise_multiscale_config_t pink_noise_multiscale_default_config(void) {
 
     config.num_scales = PINK_NOISE_DEFAULT_SCALES;
     config.global_amplitude = 1.0f;
-    config.sample_rate = 1000.0f;
+    config.sample_rate = NIMCP_OSC_SAMPLE_RATE_HZ;
     config.seed = 0;
     config.enable_coupling = true;
 

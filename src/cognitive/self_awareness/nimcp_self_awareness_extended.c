@@ -34,56 +34,13 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "cognitive.self_awareness"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(self_awareness_extended)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
+BRIDGE_BOILERPLATE(self_awareness_extended, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
-static mesh_participant_id_t g_self_awareness_extended_mesh_id = 0;
-static mesh_participant_registry_t* g_self_awareness_extended_mesh_registry = NULL;
-
-nimcp_error_t self_awareness_extended_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_self_awareness_extended_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "self_awareness_extended", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "self_awareness_extended";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_self_awareness_extended_mesh_id);
-    if (err == NIMCP_SUCCESS) g_self_awareness_extended_mesh_registry = registry;
-    return err;
-}
-
-void self_awareness_extended_mesh_unregister(void) {
-    if (g_self_awareness_extended_mesh_registry && g_self_awareness_extended_mesh_id != 0) {
-        mesh_participant_unregister(g_self_awareness_extended_mesh_registry, g_self_awareness_extended_mesh_id);
-        g_self_awareness_extended_mesh_id = 0;
-        g_self_awareness_extended_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from self_awareness_extended module (instance-level) */
-static inline void self_awareness_extended_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_self_awareness_extended_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_self_awareness_extended_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_self_awareness_extended_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
 
 #define BIO_MODULE_COGNITIVE_SELF_AWARENESS 0x0350
 
@@ -93,9 +50,9 @@ static inline void self_awareness_extended_heartbeat_instance(
 // ============================================================================
 
 struct self_awareness_system {
-    char name[64];
-    char role[256];
-    char purpose[512];
+    char name[NIMCP_ID_BUFFER_SIZE];
+    char role[NIMCP_ERROR_BUFFER_SIZE];
+    char purpose[NIMCP_ERROR_BUFFER_LARGE];
 
     self_model_system_t self_model;
     autobiographical_memory_t autobio;

@@ -16,42 +16,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gustatory)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_gustatory_mesh_id = 0;
-static mesh_participant_registry_t* g_gustatory_mesh_registry = NULL;
-
-nimcp_error_t gustatory_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_gustatory_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "gustatory", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "gustatory";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_gustatory_mesh_id);
-    if (err == NIMCP_SUCCESS) g_gustatory_mesh_registry = registry;
-    return err;
-}
-
-void gustatory_mesh_unregister(void) {
-    if (g_gustatory_mesh_registry && g_gustatory_mesh_id != 0) {
-        mesh_participant_unregister(g_gustatory_mesh_registry, g_gustatory_mesh_id);
-        g_gustatory_mesh_id = 0;
-        g_gustatory_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(gustatory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 static uint64_t gust_get_time_ms(void) {
@@ -66,7 +37,7 @@ gust_config_t gust_default_config(void) {
         .max_receptors = GUST_MAX_TASTE_RECEPTORS,
         .adaptation_rate = 0.0002f,
         .bitter_sensitivity = 2.0f,
-        .sweet_sensitivity = 1.0f,
+        .sweet_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .enable_flavor_integration = true,
         .enable_reward_learning = true,
         .enable_all_bridges = true
@@ -494,7 +465,7 @@ int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void*
     }
     gust->plasticity_bridge.plasticity_coordinator = plasticity;
     gust->plasticity_bridge.stdp_context = stdp;
-    gust->plasticity_bridge.learning_rate = 0.01f;
+    gust->plasticity_bridge.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     gust->plasticity_bridge.gustatory_plasticity_gate = 1.0f;
     gust->plasticity_bridge.hebbian_enabled = true;
     gust->plasticity_bridge.initialized = (plasticity != NULL || stdp != NULL);

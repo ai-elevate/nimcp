@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <float.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_constants.h"
 
 /* ============================================================================
  * Internal Constants
@@ -190,7 +191,7 @@ int vae_imag_bridge_default_config(vae_imag_bridge_config_t* config) {
 
     /* Sampling configuration */
     config->sample.method = VAE_IMAG_SAMPLE_STANDARD;
-    config->sample.temperature = 1.0f;
+    config->sample.temperature = NIMCP_TEMPERATURE_DEFAULT;
     config->sample.top_p = 0.9f;
     config->sample.num_samples = 1;
     config->sample.qmc_shots = VAE_IMAG_QMC_DEFAULT_SHOTS;

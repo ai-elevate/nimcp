@@ -22,6 +22,7 @@
 #include <float.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantization_aware)
 
@@ -33,7 +34,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantization_aware)
  * @brief Range observer for a tensor
  */
 typedef struct {
-    char name[128];                  /**< Tensor name */
+    char name[NIMCP_LABEL_BUFFER_SIZE];                  /**< Tensor name */
     qat_target_t target;             /**< Weight or activation */
     bool active;                     /**< Whether observer is active */
 

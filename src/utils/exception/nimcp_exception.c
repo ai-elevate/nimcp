@@ -12,6 +12,7 @@
  */
 
 #include "utils/exception/nimcp_exception.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -975,7 +976,7 @@ size_t nimcp_exception_to_string(
 void nimcp_exception_log(const nimcp_exception_t* ex) {
     if (!ex) return;
 
-    char buf[2048];
+    char buf[NIMCP_DEBUG_BUFFER_SIZE];
     nimcp_exception_to_string(ex, buf, sizeof(buf));
     LOG_ERROR("Exception: %s", buf);
 }
@@ -983,7 +984,7 @@ void nimcp_exception_log(const nimcp_exception_t* ex) {
 void nimcp_exception_print(const nimcp_exception_t* ex) {
     if (!ex) return;
 
-    char buf[2048];
+    char buf[NIMCP_DEBUG_BUFFER_SIZE];
     nimcp_exception_to_string(ex, buf, sizeof(buf));
     fprintf(stderr, "%s", buf);
 }

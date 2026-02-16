@@ -12,6 +12,7 @@
  */
 
 #include "glial/immune/nimcp_microglia_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -119,9 +120,9 @@ int microglia_immune_default_config(microglia_immune_config_t* config) {
     config->enable_complement_reporting = true;
 
     /* Default sensitivity (1.0 = biological baseline) */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->polarization_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->polarization_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Default thresholds from biological literature */
     config->m1_threshold = M1_POLARIZATION_THRESHOLD;

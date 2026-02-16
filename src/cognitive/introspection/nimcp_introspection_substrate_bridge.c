@@ -40,6 +40,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(introspection_substrate_bridge)
 //=============================================================================
@@ -825,7 +826,7 @@ int introspection_substrate_bridge_training_step(introspection_substrate_bridge_
     float lr = bridge->config.atp_sensitivity;
     float adaptation = lr * (1.0f - progress) * 0.1f;
     bridge->config.atp_sensitivity = lr + adaptation;
-    if (bridge->config.atp_sensitivity > 1.0f) bridge->config.atp_sensitivity = 1.0f;
+    if (bridge->config.atp_sensitivity > 1.0f) bridge->config.atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     if (bridge->config.atp_sensitivity < 0.001f) bridge->config.atp_sensitivity = 0.001f;
     bridge->effects.self_awareness_depth = bridge->effects.self_awareness_depth * 0.99f + progress * 0.01f;
     bridge->stats.update_count++;

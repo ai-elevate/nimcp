@@ -14,13 +14,14 @@
 
 #define LOG_MODULE "neuralnet_homeostasis"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet_homeostasis)
 
 // Constants
 #define CALCIUM_DECAY_RATE 0.1f
 #define META_PLASTICITY_RATE NIMCP_DEFAULT_DECAY_RATE
-#define HOMEOSTATIC_DECAY 0.999f
+#define HOMEOSTATIC_DECAY NIMCP_EMA_DECAY_SLOW
 #define MAX_SYNAPTIC_STRENGTH 10.0f
 #define NORMALIZATION_INTERVAL 1000
 

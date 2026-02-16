@@ -21,6 +21,8 @@
 
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_learning_constants.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -178,7 +180,7 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
         features[i] = (float)PyFloat_AsDouble(item);
     }
 
-    char label[64];
+    char label[NIMCP_ID_BUFFER_SIZE];
     float confidence;
 
     nimcp_status_t status = nimcp_brain_predict(self->brain, features,
@@ -298,7 +300,7 @@ static PyObject* Network_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 static int Network_init(NetworkObject* self, PyObject* args, PyObject* kwds) {
     unsigned int num_inputs, num_outputs, num_hidden = 100;
-    float learning_rate = 0.01f;
+    float learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
 
     static char* kwlist[] = {"num_inputs", "num_outputs", "num_hidden", "learning_rate", NULL};
 

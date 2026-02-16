@@ -23,64 +23,20 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parietal)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_parietal_mesh_id = 0;
-static mesh_participant_registry_t* g_parietal_mesh_registry = NULL;
-
-nimcp_error_t parietal_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_parietal_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "parietal", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "parietal";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_parietal_mesh_id);
-    if (err == NIMCP_SUCCESS) g_parietal_mesh_registry = registry;
-    return err;
-}
-
-void parietal_mesh_unregister(void) {
-    if (g_parietal_mesh_registry && g_parietal_mesh_id != 0) {
-        mesh_participant_unregister(g_parietal_mesh_registry, g_parietal_mesh_id);
-        g_parietal_mesh_id = 0;
-        g_parietal_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from parietal module (instance-level) */
-static inline void parietal_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_parietal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_parietal_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_parietal_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
+BRIDGE_BOILERPLATE(parietal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* ============================================================================
  * CONSTANTS
  * ============================================================================ */
 
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* ============================================================================
  * INTERNAL STRUCTURES
@@ -218,7 +174,7 @@ struct parietal_lobe {
 };
 
 /* Thread-local error message */
-static _Thread_local char g_parietal_error[256] = {0};
+static _Thread_local char g_parietal_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * INTERNAL HELPERS
@@ -525,8 +481,8 @@ parietal_config_t parietal_default_config(void) {
     config.enable_fep_parietal_bridge = true;
 
     /* Neural network settings */
-    config.nn_hidden_size = 256;
-    config.nn_learning_rate = 0.001f;
+    config.nn_hidden_size = NIMCP_DEFAULT_HIDDEN_SIZE;
+    config.nn_learning_rate = NIMCP_LEARNING_RATE_FINE;
     config.nn_use_hamiltonian = true;
     config.nn_use_lagrangian = true;
 
@@ -543,7 +499,7 @@ parietal_config_t parietal_default_config(void) {
 
     /* Performance */
     config.max_parallel_requests = 8;
-    config.request_timeout_ms = 5000;
+    config.request_timeout_ms = NIMCP_DEFAULT_TIMEOUT_MS;
 
     return config;
 }

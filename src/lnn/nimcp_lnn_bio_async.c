@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_bio_async)
 
@@ -270,7 +271,7 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
     }
 
     /* Register with bio-router */
-    char module_name[64];
+    char module_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(module_name, sizeof(module_name), "lnn_network_%u", network->id);
 
     bio_module_info_t info = {

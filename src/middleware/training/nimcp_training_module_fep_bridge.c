@@ -4,6 +4,7 @@
  */
 
 #include "middleware/training/nimcp_training_module_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
@@ -47,7 +48,7 @@ int training_module_fep_default_config(training_module_fep_config_t* config) {
     }
 
     /* FEP parameters */
-    config->belief_learning_rate = 0.1f;
+    config->belief_learning_rate = NIMCP_LEARNING_RATE_COARSE;
     config->precision_learning_rate = 0.05f;
     config->initial_precision = 1.0f;
     config->learn_precision = true;

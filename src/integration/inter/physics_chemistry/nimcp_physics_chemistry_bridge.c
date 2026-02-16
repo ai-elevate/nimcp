@@ -9,6 +9,7 @@
 #include "integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -101,8 +102,8 @@ nimcp_layer_error_t nimcp_physics_chemistry_update(nimcp_physics_chemistry_bridg
     bridge->state.diffusion_rate = temp_factor * bridge->config.diffusion_coupling_strength;
 
     /* Update average stats */
-    bridge->stats.avg_energy_transfer = bridge->stats.avg_energy_transfer * 0.99f + bridge->state.energy_available * 0.01f;
-    bridge->stats.avg_thermal_coupling = bridge->stats.avg_thermal_coupling * 0.99f + bridge->state.reaction_rate_modifier * 0.01f;
+    bridge->stats.avg_energy_transfer = bridge->stats.avg_energy_transfer * NIMCP_EMA_DECAY_DEFAULT + bridge->state.energy_available * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_thermal_coupling = bridge->stats.avg_thermal_coupling * NIMCP_EMA_DECAY_DEFAULT + bridge->state.reaction_rate_modifier * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_brain)
 
@@ -41,7 +43,7 @@ typedef nimcp_platform_mutex_t nimcp_mutex_t;
 #define MODULE_NAME "swarm_brain"
 
 // Timing constants
-#define PEER_TIMEOUT_MS 500           // Consider peer dead after 500ms
+#define PEER_TIMEOUT_MS NIMCP_SHORT_TIMEOUT_MS           // Consider peer dead after 500ms
 #define HEARTBEAT_JITTER_MS 10        // Random jitter for heartbeat
 #define SYNC_JITTER_MS 5              // Random jitter for sync
 
@@ -1065,7 +1067,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
         .radio_type = SWARM_RADIO_SIMULATION,
         .max_packet_size = SWARM_MAX_MESSAGE_SIZE,
         .retry_count = 3,
-        .timeout_ms = 50,
+        .timeout_ms = NIMCP_FAST_HEARTBEAT_MS,
         .node_id = config->drone_id  // Use drone_id as network node identifier
     };
     swarm->signal_adapter = swarm_signal_adapter_create(&signal_config);
@@ -1104,7 +1106,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     }
 
     // Create constrained local brain for drone
-    char brain_name[64];
+    char brain_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(brain_name, sizeof(brain_name), "swarm_drone_%u", config->drone_id);
     swarm->local_brain = brain_create(
         brain_name,
@@ -1591,7 +1593,7 @@ brain_t swarm_brain_create_local(
 
     // Create brain using the proper brain API
     // Use brain_create with configuration derived from the local config
-    char task_name[64];
+    char task_name[NIMCP_ID_BUFFER_SIZE];
     snprintf(task_name, sizeof(task_name), "swarm_agent_%u", agent_id);
 
     brain_t brain = brain_create(

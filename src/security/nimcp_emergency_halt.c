@@ -24,6 +24,7 @@
 
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 /* ============================================================================
  * Constants
@@ -38,7 +39,7 @@
  * ============================================================================ */
 
 typedef struct dump_handler_entry {
-    char module_name[64];
+    char module_name[NIMCP_ID_BUFFER_SIZE];
     halt_state_dump_handler_t handler;
     void* user_data;
     bool active;

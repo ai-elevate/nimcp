@@ -11,6 +11,7 @@
  */
 
 #include "plasticity/protein/nimcp_protein_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -99,8 +100,8 @@ int protein_immune_default_config(protein_immune_config_t* config) {
     config->enable_tag_decay_modulation = true;
 
     /* Sensitivity */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Thresholds */
     config->chronic_inflammation_threshold_sec = 86400.0f * 7.0f;  /* 7 days */

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_statistics_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/parietal/linguistics/nimcp_parietal_linguistics_mesh.h"
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,7 @@
 #include <stdarg.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_learning_constants.h"
 
 /* ============================================================================
  * CONSTANTS
@@ -97,7 +99,7 @@ struct ling_stats_bridge {
  * THREAD-LOCAL ERROR
  * ============================================================================ */
 
-static __thread char s_last_error[256] = {0};
+static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;
@@ -295,7 +297,7 @@ ling_stats_bridge_config_t ling_stats_bridge_default_config(void) {
         .entropy_bins = 32,
         .use_kl_divergence = true,
         .enable_mesh = true,
-        .mesh_learning_rate = 0.1f,
+        .mesh_learning_rate = NIMCP_LEARNING_RATE_COARSE,
         .enable_bbb = true,
         .enable_health = true,
         .enable_logging = true
@@ -774,7 +776,7 @@ int ling_stats_bayes_update_prior(
 
     /* Bayesian update: prior' = prior × likelihood / evidence */
     /* Simplified: nudge prior toward evidence */
-    float lr = 0.1f;  /* Learning rate */
+    float lr = NIMCP_LEARNING_RATE_COARSE;  /* Learning rate */
     bridge->frame_priors[frame] += lr * evidence_strength * (1.0f - bridge->frame_priors[frame]);
 
     /* Renormalize */

@@ -32,6 +32,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(diagnostics)
 #include <sys/time.h>
 #include <pthread.h>
 #include "utils/memory/nimcp_unified_memory.h"
+#include "constants/nimcp_buffer_constants.h"
 
 //=============================================================================
 // Internal State
@@ -985,8 +986,8 @@ char* diagnostics_report_to_json(const diagnostic_result_t* result) {
     }
 
     // Escape strings for JSON safety
-    char escaped_root_cause[1024];
-    char escaped_symptoms[1024];
+    char escaped_root_cause[NIMCP_LOG_BUFFER_SIZE];
+    char escaped_symptoms[NIMCP_LOG_BUFFER_SIZE];
     json_escape_string(escaped_root_cause, sizeof(escaped_root_cause), result->root_cause);
     json_escape_string(escaped_symptoms, sizeof(escaped_symptoms), result->symptoms);
 

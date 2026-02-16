@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -88,9 +89,9 @@ int metaplasticity_immune_default_config(metaplasticity_immune_config_t* config)
     config->enable_instability_detection = true;
     config->enable_homeostatic_feedback = true;
 
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->instability_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->instability_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     config->base_theta_baseline = METAPLASTICITY_DEFAULT_THETA_BASELINE;
     config->base_adaptation_rate = 1.0f;

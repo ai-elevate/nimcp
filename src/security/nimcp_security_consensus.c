@@ -4,6 +4,7 @@
  */
 
 #include "security/nimcp_security_consensus.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -23,44 +24,10 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
-#include "mesh/nimcp_mesh_participant.h"
-#include "mesh/nimcp_mesh_adapter.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "utils/thread/nimcp_thread_rand.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(security_consensus)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_security_consensus_mesh_id = 0;
-static mesh_participant_registry_t* g_security_consensus_mesh_registry = NULL;
-
-nimcp_error_t security_consensus_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_security_consensus_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "security_consensus", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "security_consensus";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_security_consensus_mesh_id);
-    if (err == NIMCP_SUCCESS) g_security_consensus_mesh_registry = registry;
-    return err;
-}
-
-void security_consensus_mesh_unregister(void) {
-    if (g_security_consensus_mesh_registry && g_security_consensus_mesh_id != 0) {
-        mesh_participant_unregister(g_security_consensus_mesh_registry, g_security_consensus_mesh_id);
-        g_security_consensus_mesh_id = 0;
-        g_security_consensus_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(security_consensus, MESH_ADAPTER_CATEGORY_SECURITY)
 
 
 /* Forward declarations from protocol */
@@ -88,7 +55,7 @@ typedef struct {
 /* Cluster node */
 typedef struct nimcp_cluster_node {
     nimcp_node_id_t node_id;
-    char address[256];
+    char address[NIMCP_ERROR_BUFFER_SIZE];
     uint16_t port;
     bool is_alive;
     time_t last_contact;
@@ -120,7 +87,7 @@ struct nimcp_security_consensus {
 
     /* Configuration */
     nimcp_node_id_t node_id;
-    char bind_address[256];
+    char bind_address[NIMCP_ERROR_BUFFER_SIZE];
     uint16_t port;
     uint32_t election_timeout_min_ms;
     uint32_t election_timeout_max_ms;
@@ -281,7 +248,7 @@ static void become_candidate(nimcp_security_consensus_t c) {
     /* Request votes from all peers */
     /* This would send RequestVote RPCs via bio-router */
     if (c->router) {
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "RequestVote:term=%lu,candidate=%lu",
                 (unsigned long)c->current_term, (unsigned long)c->node_id);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -335,7 +302,7 @@ static void become_leader(nimcp_security_consensus_t c) {
     gettimeofday(&c->last_heartbeat_sent, NULL);
 
     if (c->router) {
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "Heartbeat:term=%lu,leader=%lu",
                 (unsigned long)c->current_term, (unsigned long)c->node_id);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -393,7 +360,7 @@ static void handle_request_vote(
 
     /* Send response */
     if (c->router) {
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "VoteResponse:term=%lu,granted=%d,voter=%lu",
                 (unsigned long)c->current_term, vote_granted, (unsigned long)c->node_id);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -459,7 +426,7 @@ static void handle_append_entries(
 
     /* Send response */
     if (c->router) {
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "AppendResponse:term=%lu,success=%d,match=%lu",
                 (unsigned long)c->current_term, success, (unsigned long)match_index);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -492,7 +459,7 @@ static void* timer_thread_func(void* arg) {
 
             if (elapsed >= c->heartbeat_interval_ms) {
                 if (c->router) {
-                    char msg[256];
+                    char msg[NIMCP_ERROR_BUFFER_SIZE];
                     snprintf(msg, sizeof(msg), "Heartbeat:term=%lu,leader=%lu",
                             (unsigned long)c->current_term, (unsigned long)c->node_id);
                     bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -660,7 +627,7 @@ nimcp_error_t nimcp_consensus_join(
 
     /* Send join request to peer */
     if (c->router) {
-        char msg[512];
+        char msg[NIMCP_ERROR_BUFFER_LARGE];
         snprintf(msg, sizeof(msg), "JoinRequest:node_id=%lu,address=%s:%u",
                 (unsigned long)c->node_id, c->bind_address, c->port);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -680,7 +647,7 @@ nimcp_error_t nimcp_consensus_leave(nimcp_security_consensus_t c) {
     nimcp_mutex_lock(&c->mutex);
 
     if (c->router) {
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "LeaveRequest:node_id=%lu",
                 (unsigned long)c->node_id);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);
@@ -729,7 +696,7 @@ nimcp_error_t nimcp_consensus_propose_policy(
 
     /* Replicate to followers (simplified) */
     if (c->router) {
-        char msg[256];
+        char msg[NIMCP_ERROR_BUFFER_SIZE];
         snprintf(msg, sizeof(msg), "ReplicatePolicy:id=%lu",
                 (unsigned long)policy->policy_id);
         bio_router_broadcast(c->bio_ctx, msg, strlen(msg) + 1);

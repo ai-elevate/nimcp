@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_plasticity_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_constants.h"
 
 /* ============================================================================
  * PRIVATE CONSTANTS
@@ -28,7 +30,7 @@
 #define BCM_SYNAPSE_HASH_SIZE 2048
 
 /* Thread-local error message */
-static __thread char g_last_error[256] = {0};
+static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * PRIVATE HELPER FUNCTIONS
@@ -128,8 +130,8 @@ ling_plasticity_config_t ling_plasticity_config_default(void) {
     config.stdp.pairwise_lr = LING_PLASTICITY_DEFAULT_LR;
     config.stdp.a_plus = 0.005f;
     config.stdp.a_minus = 0.00525f;
-    config.stdp.tau_plus = 20.0f;
-    config.stdp.tau_minus = 20.0f;
+    config.stdp.tau_plus = NIMCP_STDP_TAU_PLUS_MS;
+    config.stdp.tau_minus = NIMCP_STDP_TAU_MINUS_MS;
     config.stdp.enable_da_modulation = true;
     config.stdp.da_gain = 100.0f;
     config.stdp.burst_amplification = 3.0f;
@@ -150,7 +152,7 @@ ling_plasticity_config_t ling_plasticity_config_default(void) {
     config.triplet.high_freq_threshold = 40.0f;
 
     /* BCM configuration */
-    config.bcm.learning_rate = 0.01f;
+    config.bcm.learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     config.bcm.threshold_tau = 10000.0f;
     config.bcm.initial_threshold = LING_PLASTICITY_BCM_THRESHOLD;
     config.bcm.competition_strength = 0.8f;
@@ -416,7 +418,7 @@ static int plasticity_mesh_update(
     }
 
     /* FEP-style precision-weighted belief update */
-    float lr = 0.1f;  /* FEP_DEFAULT_BELIEF_LR */
+    float lr = NIMCP_LEARNING_RATE_COARSE;  /* FEP_DEFAULT_BELIEF_LR */
 
     for (uint32_t i = 0; i < neighbor_count && i < 16; i++) {
         float error = neighbors[i].certainty - updated->certainty;

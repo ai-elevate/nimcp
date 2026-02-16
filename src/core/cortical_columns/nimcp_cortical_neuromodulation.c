@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_neuromodulation)
 
@@ -153,7 +154,7 @@ cortical_neuromod_system_t* cortical_neuromod_create(
     system->state.current_levels.ach_level = 0.5f;
     system->state.current_levels.da_level = 0.5f;
     system->state.current_levels.ne_level = 0.5f;
-    system->state.current_levels.serotonin_level = 0.5f;
+    system->state.current_levels.serotonin_level = NIMCP_SEROTONIN_BASELINE;
     memcpy(&system->state.target_levels, &system->state.current_levels,
            sizeof(cortical_neuromod_levels_t));
 
@@ -703,7 +704,7 @@ int cortical_neuromod_reset(cortical_neuromod_system_t* system) {
     system->state.current_levels.ach_level = 0.5f;
     system->state.current_levels.da_level = 0.5f;
     system->state.current_levels.ne_level = 0.5f;
-    system->state.current_levels.serotonin_level = 0.5f;
+    system->state.current_levels.serotonin_level = NIMCP_SEROTONIN_BASELINE;
 
     memcpy(&system->state.target_levels, &system->state.current_levels,
            sizeof(cortical_neuromod_levels_t));

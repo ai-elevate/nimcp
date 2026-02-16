@@ -16,6 +16,7 @@
  */
 
 #include "snn/nimcp_snn_config.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
@@ -50,9 +51,9 @@ int snn_config_default(snn_config_t* config) {
     config->dt = SNN_DT_DEFAULT;        /* 0.1 ms timestep */
     config->t_ref = SNN_REFRACTORY_DEFAULT;  /* 2 ms refractory */
     config->v_thresh = -50.0f;          /* Spike threshold (mV) */
-    config->v_reset = -70.0f;           /* Reset potential (mV) */
-    config->v_rest = -65.0f;            /* Resting potential (mV) */
-    config->tau_mem = 20.0f;            /* Membrane τ (ms) */
+    config->v_reset = NIMCP_RESTING_POTENTIAL_MV;           /* Reset potential (mV) */
+    config->v_rest = NIMCP_RESET_POTENTIAL_MV;            /* Resting potential (mV) */
+    config->tau_mem = NIMCP_MEMBRANE_TAU_MS;            /* Membrane τ (ms) */
     config->tau_syn = 5.0f;             /* Synaptic τ (ms) */
 
     /* Encoder defaults - Poisson rate coding */
@@ -67,7 +68,7 @@ int snn_config_default(snn_config_t* config) {
     /* Decoder defaults - rate decoding */
     config->decoder.method = SNN_DECODE_RATE;
     config->decoder.time_window = 100.0f;  /* 100 ms window */
-    config->decoder.decay_tau = 20.0f;
+    config->decoder.decay_tau = NIMCP_MEMBRANE_TAU_MS;
     config->decoder.use_softmax = false;
 
     /* Training defaults - STDP */

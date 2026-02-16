@@ -20,42 +20,12 @@
 
 #define LOG_MODULE "TEMPORAL_SUBSTRATE"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(temporal_substrate_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_temporal_substrate_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_temporal_substrate_bridge_mesh_registry = NULL;
-
-nimcp_error_t temporal_substrate_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_temporal_substrate_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "temporal_substrate_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "temporal_substrate_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_temporal_substrate_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_temporal_substrate_bridge_mesh_registry = registry;
-    return err;
-}
-
-void temporal_substrate_bridge_mesh_unregister(void) {
-    if (g_temporal_substrate_bridge_mesh_registry && g_temporal_substrate_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_temporal_substrate_bridge_mesh_registry, g_temporal_substrate_bridge_mesh_id);
-        g_temporal_substrate_bridge_mesh_id = 0;
-        g_temporal_substrate_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(temporal_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -86,8 +56,8 @@ temporal_substrate_config_t temporal_substrate_default_config(void) {
     config.enable_atp_modulation = true;
     config.enable_fatigue_modulation = true;
     config.enable_bio_async = true;
-    config.atp_sensitivity = 1.0f;
-    config.fatigue_sensitivity = 1.0f;
+    config.atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config.fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config.min_capacity = 0.2f;
     config.auditory_atp_weight = 1.0f;
     config.semantic_fatigue_weight = 1.0f;

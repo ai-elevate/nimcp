@@ -9,6 +9,7 @@
 #include "integration/inter/sensory_executive/nimcp_sensory_executive_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_constants.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -115,8 +116,8 @@ nimcp_layer_error_t nimcp_sensory_executive_update(nimcp_sensory_executive_bridg
     bridge->state.predictive_enhancement *= (1.0f - dt * 0.025f);
 
     /* Update averages */
-    bridge->stats.avg_attention_capture = bridge->stats.avg_attention_capture * 0.99f + bridge->state.attention_capture_level * 0.01f;
-    bridge->stats.avg_feature_enhancement = bridge->stats.avg_feature_enhancement * 0.99f + bridge->state.feature_enhancement * 0.01f;
+    bridge->stats.avg_attention_capture = bridge->stats.avg_attention_capture * NIMCP_EMA_DECAY_DEFAULT + bridge->state.attention_capture_level * NIMCP_LEARNING_RATE_DEFAULT;
+    bridge->stats.avg_feature_enhancement = bridge->stats.avg_feature_enhancement * NIMCP_EMA_DECAY_DEFAULT + bridge->state.feature_enhancement * NIMCP_LEARNING_RATE_DEFAULT;
 
     return NIMCP_LAYER_OK;
 }

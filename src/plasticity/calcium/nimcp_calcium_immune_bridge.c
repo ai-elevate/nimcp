@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -77,9 +78,9 @@ int calcium_immune_default_config(calcium_immune_config_t* config) {
     config->enable_homeostatic_feedback = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->instability_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->instability_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Default calcium parameters */
     config->base_influx_alpha = CALCIUM_INFLUX_ALPHA_DEFAULT;

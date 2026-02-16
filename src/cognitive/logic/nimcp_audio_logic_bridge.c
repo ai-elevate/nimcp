@@ -20,6 +20,8 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(audio_logic_bridge)
 //=============================================================================
@@ -100,7 +102,7 @@ typedef struct {
  */
 typedef struct {
     sound_category_t category;
-    char sound_name[64];
+    char sound_name[NIMCP_ID_BUFFER_SIZE];
     float confidence;
     uint64_t timestamp_us;
 } recent_sound_t;
@@ -172,7 +174,7 @@ audio_logic_config_t audio_logic_default_config(void) {
         .enable_verification = true,
         .enable_spatial_grounding = true,
         .min_confidence_threshold = 0.4f,
-        .min_salience_threshold = 0.3f,
+        .min_salience_threshold = NIMCP_SALIENCE_THRESHOLD,
         .speech_priority_boost = 1.5f,
         .max_active_speakers = MAX_ACTIVE_SPEAKERS
     };

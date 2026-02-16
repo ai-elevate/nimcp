@@ -6,6 +6,7 @@
  */
 
 #include "middleware/features/nimcp_feature_extractor_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -41,10 +42,10 @@ int feature_extractor_fep_bridge_default_config(
     config->enable_entropy_feedback = true;
     config->enable_oscillation_state = true;
 
-    config->hierarchy_sensitivity = 1.0f;
-    config->precision_sensitivity = 1.0f;
-    config->entropy_sensitivity = 1.0f;
-    config->oscillation_sensitivity = 1.0f;
+    config->hierarchy_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->precision_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->entropy_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->oscillation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }

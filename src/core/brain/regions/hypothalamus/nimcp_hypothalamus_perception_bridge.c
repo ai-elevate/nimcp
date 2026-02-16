@@ -27,42 +27,12 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hypothalamus_perception_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_hypothalamus_perception_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_hypothalamus_perception_bridge_mesh_registry = NULL;
-
-nimcp_error_t hypothalamus_perception_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_hypothalamus_perception_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "hypothalamus_perception_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "hypothalamus_perception_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_hypothalamus_perception_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_hypothalamus_perception_bridge_mesh_registry = registry;
-    return err;
-}
-
-void hypothalamus_perception_bridge_mesh_unregister(void) {
-    if (g_hypothalamus_perception_bridge_mesh_registry && g_hypothalamus_perception_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_hypothalamus_perception_bridge_mesh_registry, g_hypothalamus_perception_bridge_mesh_id);
-        g_hypothalamus_perception_bridge_mesh_id = 0;
-        g_hypothalamus_perception_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_perception_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "HYPOTHALAMUS_PERCEPTION_BRIDGE"
@@ -344,7 +314,7 @@ hypo_perception_bridge_t* hypo_perception_bridge_create(
     bridge->pain_modulation_enabled = true;
     bridge->acute_stress_analgesia = 0.5f;
     bridge->chronic_stress_hyperalgesia = 0.3f;
-    bridge->pain.pain_sensitivity = 1.0f;
+    bridge->pain.pain_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->pain.stress_level = 0.0f;
     bridge->pain.analgesia_level = 0.0f;
     bridge->pain.hyperalgesia_level = 0.0f;
@@ -368,8 +338,8 @@ hypo_perception_bridge_t* hypo_perception_bridge_create(
     bridge->thermal_salience_enabled = true;
     bridge->thermal_setpoint = 0.5f;
     bridge->thermal_tolerance = 0.1f;
-    bridge->thermal.core_temperature = 0.5f;
-    bridge->thermal.ambient_temperature = 0.5f;
+    bridge->thermal.core_temperature = NIMCP_TEMPERATURE_LOW;
+    bridge->thermal.ambient_temperature = NIMCP_TEMPERATURE_LOW;
     bridge->thermal.thermal_discomfort = 0.0f;
     bridge->thermal.thermal_salience_boost = 1.0f;
     bridge->thermal.warm_seeking = 0.0f;
@@ -996,7 +966,7 @@ int hypo_perception_bridge_set_stress_for_pain(
     } else {
         bridge->pain.analgesia_level = 0.0f;
         bridge->pain.hyperalgesia_level = 0.0f;
-        bridge->pain.pain_sensitivity = 1.0f;
+        bridge->pain.pain_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     }
 
     bridge->pain.timestamp_us = nimcp_time_get_us();
@@ -1432,7 +1402,7 @@ int hypo_perception_bridge_reset(hypo_perception_bridge_t* bridge) {
     bridge->predictive.free_energy = 0.0f;
 
     /* Reset pain */
-    bridge->pain.pain_sensitivity = 1.0f;
+    bridge->pain.pain_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->pain.stress_level = 0.0f;
     bridge->pain.analgesia_level = 0.0f;
     bridge->pain.hyperalgesia_level = 0.0f;
@@ -1447,8 +1417,8 @@ int hypo_perception_bridge_reset(hypo_perception_bridge_t* bridge) {
     bridge->sleep_gating.sleep_onset_us = 0;
 
     /* Reset thermal */
-    bridge->thermal.core_temperature = 0.5f;
-    bridge->thermal.ambient_temperature = 0.5f;
+    bridge->thermal.core_temperature = NIMCP_TEMPERATURE_LOW;
+    bridge->thermal.ambient_temperature = NIMCP_TEMPERATURE_LOW;
     bridge->thermal.thermal_discomfort = 0.0f;
     bridge->thermal.thermal_salience_boost = 1.0f;
     bridge->thermal.warm_seeking = 0.0f;

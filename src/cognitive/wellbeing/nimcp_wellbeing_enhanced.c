@@ -26,56 +26,14 @@
 #include "cognitive/wellbeing/nimcp_wellbeing_fep_bridge.h"
 #include "cognitive/wellbeing/nimcp_wellbeing_thalamic_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_threshold_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(wellbeing_enhanced)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
+BRIDGE_BOILERPLATE(wellbeing_enhanced, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
-static mesh_participant_id_t g_wellbeing_enhanced_mesh_id = 0;
-static mesh_participant_registry_t* g_wellbeing_enhanced_mesh_registry = NULL;
-
-nimcp_error_t wellbeing_enhanced_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_wellbeing_enhanced_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "wellbeing_enhanced", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "wellbeing_enhanced";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_wellbeing_enhanced_mesh_id);
-    if (err == NIMCP_SUCCESS) g_wellbeing_enhanced_mesh_registry = registry;
-    return err;
-}
-
-void wellbeing_enhanced_mesh_unregister(void) {
-    if (g_wellbeing_enhanced_mesh_registry && g_wellbeing_enhanced_mesh_id != 0) {
-        mesh_participant_unregister(g_wellbeing_enhanced_mesh_registry, g_wellbeing_enhanced_mesh_id);
-        g_wellbeing_enhanced_mesh_id = 0;
-        g_wellbeing_enhanced_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from wellbeing_enhanced module (instance-level) */
-static inline void wellbeing_enhanced_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_wellbeing_enhanced_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_wellbeing_enhanced_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_wellbeing_enhanced_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
 
 
 
@@ -899,9 +857,9 @@ int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
     config->substrate_config.enable_temperature_effects = true;
     config->substrate_config.enable_hypoxia_effects = true;
     config->substrate_config.enable_membrane_effects = true;
-    config->substrate_config.atp_sensitivity = 1.0f;
-    config->substrate_config.temperature_sensitivity = 1.0f;
-    config->substrate_config.hypoxia_sensitivity = 1.0f;
+    config->substrate_config.atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->substrate_config.temperature_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->substrate_config.hypoxia_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->substrate_config.atp_critical_threshold = WELLBEING_ATP_CRITICAL_THRESHOLD;
     config->substrate_config.atp_warning_threshold = WELLBEING_ATP_WARNING_THRESHOLD;
 
@@ -909,9 +867,9 @@ int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
     config->sleep_config.enable_sleep_debt_effects = true;
     config->sleep_config.enable_rem_effects = true;
     config->sleep_config.enable_circadian_effects = true;
-    config->sleep_config.sleep_debt_sensitivity = 1.0f;
-    config->sleep_config.rem_sensitivity = 1.0f;
-    config->sleep_config.circadian_sensitivity = 1.0f;
+    config->sleep_config.sleep_debt_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->sleep_config.rem_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->sleep_config.circadian_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->sleep_config.sleep_debt_threshold = WELLBEING_SLEEP_DEBT_THRESHOLD;
     config->sleep_config.optimal_circadian_phase = CIRCADIAN_OPTIMAL_PHASE;
 
@@ -920,17 +878,17 @@ int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
     config->mental_health_config.enable_anxiety_modulation = true;
     config->mental_health_config.enable_depression_modulation = true;
     config->mental_health_config.enable_stress_tracking = true;
-    config->mental_health_config.anxiety_sensitivity = 1.0f;
-    config->mental_health_config.depression_sensitivity = 1.0f;
-    config->mental_health_config.stress_sensitivity = 1.0f;
+    config->mental_health_config.anxiety_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->mental_health_config.depression_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->mental_health_config.stress_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Free energy config */
     config->free_energy_config.enable_prediction_error_effects = true;
     config->free_energy_config.enable_precision_effects = true;
     config->free_energy_config.enable_model_coherence_effects = true;
-    config->free_energy_config.prediction_error_sensitivity = 1.0f;
-    config->free_energy_config.precision_sensitivity = 1.0f;
-    config->free_energy_config.coherence_sensitivity = 1.0f;
+    config->free_energy_config.prediction_error_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->free_energy_config.precision_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->free_energy_config.coherence_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->free_energy_config.high_fe_threshold = WELLBEING_FREE_ENERGY_HIGH;
     config->free_energy_config.low_precision_threshold = WELLBEING_PRECISION_LOW;
 
@@ -955,7 +913,7 @@ int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
     config->homeostasis_config.initial_tolerance_setpoint = 0.5f;
     config->homeostasis_config.initial_flourishing_setpoint = WELLBEING_FLOURISHING_THRESHOLD;
     config->homeostasis_config.adaptation_time_constant_ms = WELLBEING_HOMEOSTASIS_TAU_MS;
-    config->homeostasis_config.setpoint_learning_rate = 0.01f;
+    config->homeostasis_config.setpoint_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;
     config->homeostasis_config.intervention_threshold = 0.2f;
 
     /* Consent config */

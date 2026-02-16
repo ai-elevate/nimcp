@@ -19,44 +19,13 @@
 #include <stdio.h>
 
 #define LOG_MODULE "VIDEO_GEN"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(video_generation)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_video_generation_mesh_id = 0;
-static mesh_participant_registry_t* g_video_generation_mesh_registry = NULL;
-
-nimcp_error_t video_generation_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_video_generation_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "video_generation", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "video_generation";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_video_generation_mesh_id);
-    if (err == NIMCP_SUCCESS) g_video_generation_mesh_registry = registry;
-    return err;
-}
-
-void video_generation_mesh_unregister(void) {
-    if (g_video_generation_mesh_registry && g_video_generation_mesh_id != 0) {
-        mesh_participant_unregister(g_video_generation_mesh_registry, g_video_generation_mesh_id);
-        g_video_generation_mesh_id = 0;
-        g_video_generation_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(video_generation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
@@ -886,7 +855,7 @@ int video_export(const video_generation_result_t* result,
 
     /* Placeholder: would use ffmpeg or similar in production */
     /* For now, export as image sequence */
-    char dir_path[512];
+    char dir_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(dir_path, sizeof(dir_path), "%s_frames", path);
 
     return video_export_frames(result, dir_path, "ppm", "frame_%04d");
@@ -906,8 +875,8 @@ int video_export_frames(const video_generation_result_t* result,
     (void)dir;
 
     for (uint32_t i = 0; i < result->num_frames; i++) {
-        char path[512];
-        char filename[256];
+        char path[NIMCP_METRICS_PATH_SIZE];
+        char filename[NIMCP_SHORT_PATH_SIZE];
         snprintf(filename, sizeof(filename), name_pattern, i);
         snprintf(path, sizeof(path), "%s/%s.%s", dir, filename, format);
 

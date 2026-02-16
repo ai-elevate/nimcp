@@ -25,6 +25,7 @@
 
 #define LOG_MODULE "LANG_SUBSTRATE_BRIDGE"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_substrate_bridge)
 
@@ -176,8 +177,8 @@ language_substrate_bridge_t* language_substrate_bridge_create(
     bridge->current_state.oxygen_level = 1.0f;
     bridge->current_state.fatigue_level = 0.0f;
     bridge->current_state.stress_level = 0.2f;  /* Baseline arousal */
-    bridge->current_state.dopamine_level = 0.5f;
-    bridge->current_state.acetylcholine_level = 0.5f;
+    bridge->current_state.dopamine_level = NIMCP_DOPAMINE_BASELINE;
+    bridge->current_state.acetylcholine_level = NIMCP_ACETYLCHOLINE_BASELINE;
     bridge->current_state.norepinephrine_level = 0.3f;
 
     /* Compute initial modulation */

@@ -27,42 +27,12 @@
 
 #define LOG_MODULE "pretrained"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pretrained)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_pretrained_mesh_id = 0;
-static mesh_participant_registry_t* g_pretrained_mesh_registry = NULL;
-
-nimcp_error_t pretrained_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_pretrained_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "pretrained", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "pretrained";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_pretrained_mesh_id);
-    if (err == NIMCP_SUCCESS) g_pretrained_mesh_registry = registry;
-    return err;
-}
-
-void pretrained_mesh_unregister(void) {
-    if (g_pretrained_mesh_registry && g_pretrained_mesh_id != 0) {
-        mesh_participant_unregister(g_pretrained_mesh_registry, g_pretrained_mesh_id);
-        g_pretrained_mesh_id = 0;
-        g_pretrained_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(pretrained, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #include "core/brain/nimcp_brain.h"
@@ -107,7 +77,7 @@ void pretrained_mesh_unregister(void) {
 // Model registry configuration
 #define MODEL_REGISTRY_URL "https://models.nimcp.ai/registry"
 #define MODEL_REGISTRY_API_VERSION "v1"
-#define VERSION_CHECK_TIMEOUT_MS 5000  // 5 second timeout for HTTP requests
+#define VERSION_CHECK_TIMEOUT_MS NIMCP_DEFAULT_TIMEOUT_MS  // 5 second timeout for HTTP requests
 
 // Model registry (built into source)
 #define MODEL_REPO_BASE "/home/bbrelin/nimcp/models/pretrained/"
@@ -232,7 +202,7 @@ static bool get_models_directory(char* buffer, size_t buffer_size) {
  */
 static bool parse_model_name(const char* model_name, char* size, char* version) {
     // Copy for parsing
-    char name_copy[256];
+    char name_copy[NIMCP_NAME_BUFFER_SIZE];
     snprintf(name_copy, sizeof(name_copy), "%s", model_name);
 
     // Split by underscores
@@ -264,7 +234,7 @@ static bool parse_model_name(const char* model_name, char* size, char* version) 
  */
 static bool build_model_path(const char* model_name, const char* models_dir,
                              const char* extension, char* output, size_t output_size) {
-    char base_dir[512];
+    char base_dir[NIMCP_METRICS_PATH_SIZE];
 
     // Get models directory
     if (models_dir) {
@@ -276,7 +246,7 @@ static bool build_model_path(const char* model_name, const char* models_dir,
     }
 
     // Parse model name to get size and version
-    char size[64] = "medium"; // default
+    char size[NIMCP_ID_BUFFER_SIZE] = "medium"; // default
     char version[16] = "v1.0"; // default
     parse_model_name(model_name, size, version);
 
@@ -297,7 +267,7 @@ static bool build_model_path(const char* model_name, const char* models_dir,
 static cJSON* load_model_metadata(const char* model_name, const char* models_dir) {
     LOG_DEBUG("Loading metadata for model: %s", model_name);
 
-    char metadata_path[1024];
+    char metadata_path[NIMCP_DWARF_PATH_SIZE];
 
     if (!build_model_path(model_name, models_dir, METADATA_EXTENSION,
                          metadata_path, sizeof(metadata_path))) {
@@ -470,7 +440,7 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
              model_name, size_str, neurons);
 
     // Build path to model file
-    char model_path[1024];
+    char model_path[NIMCP_DWARF_PATH_SIZE];
     if (!build_model_path(model_name, models_dir, MODEL_EXTENSION,
                          model_path, sizeof(model_path))) {
         LOG_ERROR("Failed to build model path for: %s", model_name);
@@ -648,7 +618,7 @@ static bool query_remote_registry(const char* model_id,
     // WHAT: Construct registry API URL
     // WHY:  Query model version endpoint
     // HOW:  Format: {base_url}/{api_version}/models/{model_id}/latest
-    char api_url[512];
+    char api_url[NIMCP_ERROR_BUFFER_LARGE];
     snprintf(api_url, sizeof(api_url), "%s/%s/models/%s/latest",
              MODEL_REGISTRY_URL, MODEL_REGISTRY_API_VERSION, model_id);
 
@@ -713,7 +683,7 @@ static bool check_model_version_update(const char* model_id,
     // WHAT: Get models directory
     // WHY:  Need base path to scan for versions
     // HOW:  Use get_models_directory helper
-    char models_dir[512];
+    char models_dir[NIMCP_METRICS_PATH_SIZE];
     if (!get_models_directory(models_dir, sizeof(models_dir))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: get_models_directory is NULL");
         return false;  // Can't check without directory
@@ -722,14 +692,14 @@ static bool check_model_version_update(const char* model_id,
     // WHAT: Extract model size from model_id
     // WHY:  Models are organized by size directory
     // HOW:  Parse model_id format: nimcp_<type>_<size>_<version>
-    char size[64] = "medium";  // default
+    char size[NIMCP_ID_BUFFER_SIZE] = "medium";  // default
     char version_unused[16];
     parse_model_name(model_id, size, version_unused);
 
     // WHAT: Scan version directories for this model size
     // WHY:  Find all available versions
     // HOW:  Iterate through version directories (v1.0, v1.1, etc.)
-    char size_dir[1024];
+    char size_dir[NIMCP_DWARF_PATH_SIZE];
     snprintf(size_dir, sizeof(size_dir), "%s/%s", models_dir, size);
 
     DIR* dir = opendir(size_dir);
@@ -751,7 +721,7 @@ static bool check_model_version_update(const char* model_id,
         }
 
         // Check if this directory has our model
-        char candidate_path[2048];
+        char candidate_path[NIMCP_JSON_BUFFER_SIZE];
         snprintf(candidate_path, sizeof(candidate_path),
                 "%s/%s/%s%s", size_dir, entry->d_name, model_id, MODEL_EXTENSION);
 
@@ -835,7 +805,7 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
     }
 
     // Check if model exists locally
-    char model_path[1024];
+    char model_path[NIMCP_DWARF_PATH_SIZE];
     info->is_available = build_model_path(model_id, NULL, MODEL_EXTENSION,
                                          model_path, sizeof(model_path)) &&
                         (access(model_path, R_OK) == 0);
@@ -872,7 +842,7 @@ bool brain_model_exists(const char* model_id) {
         return false;
     }
 
-    char model_path[1024];
+    char model_path[NIMCP_DWARF_PATH_SIZE];
     if (!build_model_path(model_id, NULL, MODEL_EXTENSION,
                          model_path, sizeof(model_path))) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_model_exists: model_id is NULL");
@@ -947,7 +917,7 @@ static float train_batch(brain_t brain, const float* data, const float* labels,
             }
         }
 
-        char label[64];
+        char label[NIMCP_ID_BUFFER_SIZE];
         snprintf(label, sizeof(label), "class_%u", class_idx);
 
         // Learn example with specified learning rate
@@ -1124,12 +1094,12 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
 
     // Use default config if not provided
     brain_finetune_config_t default_config = {
-        .learning_rate = 0.001f,
+        .learning_rate = NIMCP_LEARNING_RATE_FINE,
         .num_epochs = 5,
         .freeze_sensory = true,
         .freeze_cognitive = true,
         .finetune_classifier = true,
-        .batch_size = 32,
+        .batch_size = NIMCP_DEFAULT_BATCH_SIZE,
         .verbose = true
     };
 

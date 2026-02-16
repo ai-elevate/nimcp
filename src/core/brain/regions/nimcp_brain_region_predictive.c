@@ -39,42 +39,12 @@
 
 #define LOG_MODULE "brain_region_predictive"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_region_predictive)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_brain_region_predictive_mesh_id = 0;
-static mesh_participant_registry_t* g_brain_region_predictive_mesh_registry = NULL;
-
-nimcp_error_t brain_region_predictive_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_brain_region_predictive_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "brain_region_predictive", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "brain_region_predictive";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_brain_region_predictive_mesh_id);
-    if (err == NIMCP_SUCCESS) g_brain_region_predictive_mesh_registry = registry;
-    return err;
-}
-
-void brain_region_predictive_mesh_unregister(void) {
-    if (g_brain_region_predictive_mesh_registry && g_brain_region_predictive_mesh_id != 0) {
-        mesh_participant_unregister(g_brain_region_predictive_mesh_registry, g_brain_region_predictive_mesh_id);
-        g_brain_region_predictive_mesh_id = 0;
-        g_brain_region_predictive_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(brain_region_predictive, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 // Default PE embedding dimension for hierarchy encoding
@@ -152,8 +122,8 @@ brain_region_predictive_config_t brain_region_predictive_config_default(uint32_t
         .num_levels_below = 0,  // Must be set by caller
         .num_levels_above = 0,  // Must be set by caller
 
-        .prediction_learning_rate = 0.01f,
-        .precision_learning_rate = 0.001f,
+        .prediction_learning_rate = NIMCP_LEARNING_RATE_DEFAULT,
+        .precision_learning_rate = NIMCP_LEARNING_RATE_FINE,
         .error_correction_rate = 0.1f,
 
         .max_iterations = PC_REGION_CONVERGENCE_ITERATIONS,
@@ -181,7 +151,7 @@ brain_region_predictive_config_t brain_region_predictive_config_sensory(void) {
 
     // High sensitivity to errors
     config.error_correction_rate = 0.2f;
-    config.precision_learning_rate = 0.01f;  // Fast precision learning
+    config.precision_learning_rate = NIMCP_LEARNING_RATE_DEFAULT;  // Fast precision learning
 
     // Always broadcast errors up
     config.broadcast_errors = true;
@@ -205,7 +175,7 @@ brain_region_predictive_config_t brain_region_predictive_config_association(void
     config.compute_prediction_errors = true;
 
     // Slower, more stable learning
-    config.prediction_learning_rate = 0.001f;
+    config.prediction_learning_rate = NIMCP_LEARNING_RATE_FINE;
     config.error_correction_rate = 0.05f;
     config.precision_learning_rate = 0.0005f;
 
@@ -337,7 +307,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
         pe_config.config.learned.base.thread_safe = true;
         pe_config.config.learned.init_std = 0.02f;
         pe_config.config.learned.learning_rate = config->prediction_learning_rate;
-        pe_config.config.learned.weight_decay = 0.0001f;
+        pe_config.config.learned.weight_decay = NIMCP_WEIGHT_DECAY_DEFAULT;
 
         pred->hierarchy_pe_encoder = nimcp_pos_encoder_create(&pe_config);
         if (!pred->hierarchy_pe_encoder) {

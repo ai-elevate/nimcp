@@ -76,6 +76,7 @@
 #define LOG_MODULE "neuralnet"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet)
 
@@ -89,7 +90,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet)
 #define CALCIUM_DECAY_RATE 0.1f
 #define TRACE_DECAY_RATE 0.05f
 #define META_PLASTICITY_RATE 0.001f
-#define HOMEOSTATIC_DECAY 0.999f
+#define HOMEOSTATIC_DECAY NIMCP_EMA_DECAY_SLOW
 #define MAX_SYNAPTIC_STRENGTH 10.0f
 
 //=============================================================================

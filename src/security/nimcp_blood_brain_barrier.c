@@ -37,6 +37,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
+#include "constants/nimcp_timing_constants.h"
 
 #define LOG_MODULE "security_bbb"
 
@@ -574,7 +575,7 @@ NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t*
      * Uses condition variable instead of spin-wait for proper synchronization. */
     if (immune_system == NULL && system->immune_system != NULL) {
         /* Wait for pending immune operations to complete using condition variable */
-        const uint32_t TIMEOUT_MS = 1000;  /* 1 second timeout */
+        const uint32_t TIMEOUT_MS = NIMCP_MEDIUM_TIMEOUT_MS;  /* 1 second timeout */
         int total_wait_ms = 0;
         const int WAIT_INTERVAL_MS = 10;   /* Check every 10ms */
 

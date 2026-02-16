@@ -11,6 +11,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_learning.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
@@ -130,7 +131,7 @@ learning_config_t learning_default_config(void) {
     learning_config_t config = {
         /* Memory */
         .max_episodes = LEARNING_MAX_EPISODES,
-        .episode_decay_rate = 0.01f,
+        .episode_decay_rate = NIMCP_LEARNING_RATE_DEFAULT,
 
         /* Pattern detection */
         .min_pattern_confidence = 0.6f,
@@ -138,7 +139,7 @@ learning_config_t learning_default_config(void) {
         .similarity_threshold = 0.7f,
 
         /* Learning rates */
-        .strategy_learning_rate = 0.1f,
+        .strategy_learning_rate = NIMCP_LEARNING_RATE_COARSE,
         .pattern_learning_rate = 0.05f,
         .adaptation_rate = 0.1f,
 

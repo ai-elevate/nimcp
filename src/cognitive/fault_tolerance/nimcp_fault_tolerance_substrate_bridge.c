@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fault_tolerance_substrate_bridge)
 //=============================================================================
@@ -92,8 +93,8 @@ fault_tolerance_substrate_config_t fault_tolerance_substrate_default_config(void
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
         .enable_bio_async = false,
-        .atp_sensitivity = 1.0f,
-        .fatigue_sensitivity = 1.0f,
+        .atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
+        .fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT,
         .min_capacity = 0.3f  /* Higher min for critical fault tolerance */
     };
     return cfg;
@@ -141,7 +142,7 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
         return NULL;
     }
 
-    bridge->effects.detection_sensitivity = 1.0f;
+    bridge->effects.detection_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.recovery_speed = 1.0f;
     bridge->effects.redundancy_capacity = 1.0f;
     bridge->effects.monitoring_depth = 1.0f;
@@ -318,7 +319,7 @@ int fault_tolerance_substrate_bridge_training_begin(fault_tolerance_substrate_br
     struct fault_tolerance_substrate_bridge* ctx = (struct fault_tolerance_substrate_bridge*)bridge;
     fault_tolerance_substrate_bridge_heartbeat_instance(ctx->health_agent, "fault_tolera_training_begin", 0.0f);
     ctx->update_count = 0;
-    ctx->effects.detection_sensitivity = 1.0f;
+    ctx->effects.detection_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     ctx->effects.recovery_speed = 1.0f;
     ctx->effects.redundancy_capacity = 1.0f;
     ctx->effects.monitoring_depth = 1.0f;
@@ -354,7 +355,7 @@ int fault_tolerance_substrate_bridge_training_end(fault_tolerance_substrate_brid
     struct fault_tolerance_substrate_bridge* ctx = (struct fault_tolerance_substrate_bridge*)bridge;
     fault_tolerance_substrate_bridge_heartbeat_instance(ctx->health_agent, "fault_tolera_training_end", 1.0f);
     ctx->effects.overall_capacity = 1.0f;
-    ctx->effects.detection_sensitivity = 1.0f;
+    ctx->effects.detection_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     ctx->effects.recovery_speed = 1.0f;
     NIMCP_LOGGING_INFO("%s training end: updates=%lu",
                        "fault_tolerance_substrate_bridge", (unsigned long)ctx->update_count);

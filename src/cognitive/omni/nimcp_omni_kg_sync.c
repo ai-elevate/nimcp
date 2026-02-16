@@ -15,59 +15,12 @@
 
 #include <string.h>
 #include <stdio.h>
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_buffer_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_kg_sync)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_omni_kg_sync_mesh_id = 0;
-static mesh_participant_registry_t* g_omni_kg_sync_mesh_registry = NULL;
-
-nimcp_error_t omni_kg_sync_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_omni_kg_sync_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "omni_kg_sync", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "omni_kg_sync";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_omni_kg_sync_mesh_id);
-    if (err == NIMCP_SUCCESS) g_omni_kg_sync_mesh_registry = registry;
-    return err;
-}
-
-void omni_kg_sync_mesh_unregister(void) {
-    if (g_omni_kg_sync_mesh_registry && g_omni_kg_sync_mesh_id != 0) {
-        mesh_participant_unregister(g_omni_kg_sync_mesh_registry, g_omni_kg_sync_mesh_id);
-        g_omni_kg_sync_mesh_id = 0;
-        g_omni_kg_sync_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from omni_kg_sync module (instance-level) */
-static inline void omni_kg_sync_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_omni_kg_sync_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_omni_kg_sync_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_omni_kg_sync_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
-
-/** @brief Instance-level health agent (global fallback for non-bridge) */
-static nimcp_health_agent_t* g_omni_kg_sync_instance_health_agent = NULL;
+BRIDGE_BOILERPLATE(omni_kg_sync, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 void omni_kg_sync_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
     (void)ctx;
@@ -352,7 +305,7 @@ brain_kg_node_id_t omni_kg_register_module(omni_kg_sync_t* sync,
     }
 
     /* Create description */
-    char description[256];
+    char description[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(description, sizeof(description),
              "Omnidirectional %s module with capabilities: 0x%02X",
              omni_kg_module_type_to_string(info->type),
@@ -518,7 +471,7 @@ int omni_kg_add_prediction_edge(omni_kg_sync_t* sync,
     nimcp_mutex_lock(sync->mutex);
 
     /* Create description with precision */
-    char description[128];
+    char description[NIMCP_ERROR_BUFFER_MEDIUM];
     snprintf(description, sizeof(description),
              "%s edge (precision=%.3f)",
              omni_kg_edge_type_to_string(edge_type),

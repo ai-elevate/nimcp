@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/predictive/nimcp_predictive_coding_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -30,7 +31,7 @@ int predictive_coding_fep_bridge_default_config(predictive_coding_fep_config_t* 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_default_config: config is NULL");
         return -1;
     }
-    config->precision_sensitivity = 1.0f;
+    config->precision_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     config->error_scaling = 1.0f;
     config->learning_rate_modulation = 0.5f;
     config->enable_precision_weighting = true;

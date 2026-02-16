@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(personality_plasticity_bridge)
 //=============================================================================
@@ -235,11 +236,11 @@ personality_plasticity_bridge_t* personality_plasticity_create(
     }
 
     /* Initialize trait adaptation state */
-    bridge->adaptation_state.openness_sensitivity = 1.0f;
+    bridge->adaptation_state.openness_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->adaptation_state.conscientiousness_calibration = 0.5f;
-    bridge->adaptation_state.extraversion_sensitivity = 1.0f;
-    bridge->adaptation_state.agreeableness_sensitivity = 1.0f;
-    bridge->adaptation_state.neuroticism_sensitivity = 1.0f;
+    bridge->adaptation_state.extraversion_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    bridge->adaptation_state.agreeableness_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    bridge->adaptation_state.neuroticism_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->adaptation_state.learning_rate_mod = 1.0f;
     bridge->adaptation_state.last_learning_us = 0;
 
@@ -299,11 +300,11 @@ int personality_plasticity_reset(personality_plasticity_bridge_t* bridge) {
     }
 
     /* Reset trait adaptation state */
-    bridge->adaptation_state.openness_sensitivity = 1.0f;
+    bridge->adaptation_state.openness_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->adaptation_state.conscientiousness_calibration = 0.5f;
-    bridge->adaptation_state.extraversion_sensitivity = 1.0f;
-    bridge->adaptation_state.agreeableness_sensitivity = 1.0f;
-    bridge->adaptation_state.neuroticism_sensitivity = 1.0f;
+    bridge->adaptation_state.extraversion_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    bridge->adaptation_state.agreeableness_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    bridge->adaptation_state.neuroticism_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->adaptation_state.learning_rate_mod = 1.0f;
 
     bridge->state = PERSONALITY_PLASTICITY_STATE_IDLE;

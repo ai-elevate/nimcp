@@ -34,6 +34,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_neural_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(training_plasticity_bridge_bioasync_handlers)
 
@@ -247,10 +248,10 @@ static nimcp_error_t tpb_handle_region_config_query(
             response.acetylcholine_level = neuromodulator_pool_get_acetylcholine(&pool);
             neuromodulator_pool_destroy(&pool);
         } else {
-            response.dopamine_level = 0.5f;
-            response.serotonin_level = 0.5f;
-            response.norepinephrine_level = 0.5f;
-            response.acetylcholine_level = 0.5f;
+            response.dopamine_level = NIMCP_DOPAMINE_BASELINE;
+            response.serotonin_level = NIMCP_SEROTONIN_BASELINE;
+            response.norepinephrine_level = NIMCP_NOREPINEPHRINE_BASELINE;
+            response.acetylcholine_level = NIMCP_ACETYLCHOLINE_BASELINE;
         }
 
         LOG_TRACE("[%s] Region %u config: neurons=%u, DA=%.3f",

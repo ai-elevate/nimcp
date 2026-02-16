@@ -7,6 +7,7 @@
  */
 
 #include "async/nimcp_semantic_compression_fep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/validation/nimcp_common.h"
@@ -35,7 +36,7 @@ int semantic_compression_fep_default_config(semantic_compression_fep_config_t* c
     config->enable_predictive_compression = true;
     config->enable_semantic_preservation = true;
     config->quality_vs_compression_tradeoff = 0.7f; /* Favor quality */
-    config->learning_rate = 0.1f;
+    config->learning_rate = NIMCP_LEARNING_RATE_COARSE;
     config->enable_primitive_learning = true;
     config->max_primitives = 256;
     config->enable_error_feedback = true;

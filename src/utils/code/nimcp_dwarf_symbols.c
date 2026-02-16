@@ -47,6 +47,7 @@
 
 #define LOG_MODULE "dwarf_symbols"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dwarf_symbols)
 
@@ -227,7 +228,7 @@ static bool parse_proc_maps(struct dwarf_symbols* syms) {
         return false;
     }
 
-    char line[512];
+    char line[NIMCP_ERROR_BUFFER_LARGE];
     bool found = false;
 
     while (fgets(line, sizeof(line), maps)) {
@@ -237,7 +238,7 @@ static bool parse_proc_maps(struct dwarf_symbols* syms) {
         unsigned long offset;
         unsigned int dev_major, dev_minor;
         unsigned long inode;
-        char pathname[256];
+        char pathname[NIMCP_SHORT_PATH_SIZE];
 
         int matched = sscanf(line, "%lx-%lx %4s %lx %x:%x %lu %255s",
                              &start, &end, perms, &offset, &dev_major, &dev_minor,

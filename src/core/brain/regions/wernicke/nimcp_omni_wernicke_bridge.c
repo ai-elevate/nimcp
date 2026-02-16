@@ -23,46 +23,17 @@
 #include <math.h>
 
 //=============================================================================
-#include <stddef.h>  /* for NULL */
+#include <stddef.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_neural_constants.h"
+#include "constants/nimcp_dimension_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wernicke_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_omni_wernicke_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_omni_wernicke_bridge_mesh_registry = NULL;
-
-nimcp_error_t omni_wernicke_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_omni_wernicke_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "omni_wernicke_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "omni_wernicke_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_omni_wernicke_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_omni_wernicke_bridge_mesh_registry = registry;
-    return err;
-}
-
-void omni_wernicke_bridge_mesh_unregister(void) {
-    if (g_omni_wernicke_bridge_mesh_registry && g_omni_wernicke_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_omni_wernicke_bridge_mesh_registry, g_omni_wernicke_bridge_mesh_id);
-        g_omni_wernicke_bridge_mesh_id = 0;
-        g_omni_wernicke_bridge_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(omni_wernicke_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "OMNI_WERNICKE_BRIDGE"
@@ -82,12 +53,12 @@ void omni_wernicke_bridge_mesh_unregister(void) {
 #define DEFAULT_PE_THRESHOLD           0.3f
 #define DEFAULT_N400_THRESHOLD         0.5f
 #define DEFAULT_RECOGNITION_THRESHOLD  0.9f
-#define DEFAULT_AV_COHERENCE_THRESHOLD 0.7f
+#define DEFAULT_AV_COHERENCE_THRESHOLD NIMCP_PHASE_COHERENCE_THRESHOLD
 #define DEFAULT_BROCA_FEEDBACK_WEIGHT  0.3f
 
 /* Buffer sizes */
 #define PHONEME_HISTORY_SIZE           16
-#define CONTEXT_EMBEDDING_DIM          64
+#define CONTEXT_EMBEDDING_DIM          NIMCP_SMALL_EMBEDDING_DIM
 #define MAX_WORD_LEN                   32
 
 /* Precision decay rate */

@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_thalamic_immune_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -138,9 +139,9 @@ int thalamic_immune_default_config(thalamic_immune_config_t* config) {
     config->enable_priority_escalation = true;
 
     /* Biologically-based default sensitivities */
-    config->cytokine_sensitivity = 1.0f;
-    config->inflammation_sensitivity = 1.0f;
-    config->anomaly_sensitivity = 1.0f;
+    config->cytokine_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->anomaly_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Evidence-based thresholds */
     config->queue_anomaly_threshold = ROUTING_ANOMALY_QUEUE_THRESHOLD;

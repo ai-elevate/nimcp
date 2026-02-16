@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_threshold_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_recognition_substrate_bridge)
 //=============================================================================
@@ -89,7 +90,7 @@ emotion_recognition_substrate_config_t emotion_recognition_substrate_default_con
 
 
     emotion_recognition_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
-        .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
+        .enable_bio_async = false, .atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT, .fatigue_sensitivity = NIMCP_SENSITIVITY_DEFAULT, .min_capacity = 0.2f };
     return cfg;
 }
 
@@ -118,7 +119,7 @@ emotion_recognition_substrate_bridge_t* emotion_recognition_substrate_bridge_cre
     bridge->config = config ? *config : emotion_recognition_substrate_default_config();
     bridge->effects.recognition_accuracy = 1.0f;
     bridge->effects.detection_speed = 1.0f;
-    bridge->effects.subtle_sensitivity = 1.0f;
+    bridge->effects.subtle_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.context_integration = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
     NIMCP_LOGGING_INFO("Created %s bridge", "emotion_recognition_substrate");

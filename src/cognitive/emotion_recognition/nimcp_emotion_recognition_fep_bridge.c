@@ -23,6 +23,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_recognition_fep_bridge)
 //=============================================================================
@@ -377,7 +378,7 @@ int emotion_recognition_fep_update(
     bridge->state.last_recognition_time += delta_ms;
 
     /* Decay inference confidence over time */
-    float decay = 0.99f;
+    float decay = NIMCP_EMA_DECAY_DEFAULT;
     bridge->state.inference_confidence *= decay;
     if (bridge->state.inference_confidence < 0.01f) {
         bridge->state.recognition_active = false;

@@ -25,6 +25,7 @@
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "security/nimcp_path_traversal.h"
@@ -244,42 +245,11 @@ static void update_stats_checksum_failure(void)
 
 #define LOG_MODULE "BRAIN_PERSIST"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_persistence)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_brain_persistence_mesh_id = 0;
-static mesh_participant_registry_t* g_brain_persistence_mesh_registry = NULL;
-
-nimcp_error_t brain_persistence_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_brain_persistence_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "brain_persistence", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "brain_persistence";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_brain_persistence_mesh_id);
-    if (err == NIMCP_SUCCESS) g_brain_persistence_mesh_registry = registry;
-    return err;
-}
-
-void brain_persistence_mesh_unregister(void) {
-    if (g_brain_persistence_mesh_registry && g_brain_persistence_mesh_id != 0) {
-        mesh_participant_unregister(g_brain_persistence_mesh_registry, g_brain_persistence_mesh_id);
-        g_brain_persistence_mesh_id = 0;
-        g_brain_persistence_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(brain_persistence, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 // Error handling (forward declarations from nimcp_brain.c)
@@ -378,7 +348,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
 {
     // Guard: NULL parameters handled by caller
 
-    char meta_path[512];
+    char meta_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     // P1-3 fix: Path traversal validation
@@ -439,7 +409,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     bool has_knowledge = (brain->knowledge != NULL);
     fwrite(&has_knowledge, sizeof(bool), 1, meta_file);
     if (has_knowledge) {
-        char knowledge_path[512];
+        char knowledge_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
         knowledge_save(brain->knowledge, knowledge_path);
     }
@@ -456,7 +426,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save executive controller state to separate file
         // WHY:  Preserve task queue, statistics, and configuration
         // HOW:  Use executive_save API with dedicated file
-        char executive_path[512];
+        char executive_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
         FILE* exec_file = fopen(executive_path, "wb");
         if (exec_file) {
@@ -477,7 +447,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save pink noise neuromodulator state to separate file
         // WHY:  Preserve neuromodulator levels and pink noise generators
         // HOW:  Use neuromod_pink_save API with dedicated file
-        char pink_noise_path[512];
+        char pink_noise_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(pink_noise_path, sizeof(pink_noise_path), "%s.pink_noise", filepath);
         FILE* pink_file = fopen(pink_noise_path, "wb");
         if (pink_file) {
@@ -493,7 +463,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save mirror neuron system state to separate file
         // WHY:  Preserve learned action associations and statistics
         // HOW:  Use mirror_neurons_save API with dedicated file
-        char mirror_path[512];
+        char mirror_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
         FILE* mirror_file = fopen(mirror_path, "wb");
         if (mirror_file) {
@@ -705,7 +675,7 @@ bool nimcp_brain_load_working_memory_state(brain_t brain, FILE* file)
  */
 bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
 {
-    char meta_path[512];
+    char meta_path[NIMCP_METRICS_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     // P1-3 fix: Path traversal validation
@@ -923,7 +893,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
     // Load knowledge system state (if exists)
     bool has_knowledge = false;
     if (fread(&has_knowledge, sizeof(bool), 1, meta_file) == 1 && has_knowledge) {
-        char knowledge_path[512];
+        char knowledge_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
         brain->knowledge = knowledge_load(knowledge_path);
         // Non-fatal if knowledge load fails
@@ -943,7 +913,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         // WHAT: Load executive controller state from separate file
         // WHY:  Restore task queue, statistics, and configuration
         // HOW:  Use executive_load API with dedicated file
-        char executive_path[512];
+        char executive_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
         FILE* exec_file = fopen(executive_path, "rb");
         if (exec_file) {
@@ -962,7 +932,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         // WHAT: Load pink noise neuromodulator state from separate file
         // WHY:  Restore neuromodulator levels and pink noise generators
         // HOW:  Use neuromod_pink_load API with dedicated file
-        char pink_noise_path[512];
+        char pink_noise_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(pink_noise_path, sizeof(pink_noise_path), "%s.pink_noise", filepath);
         FILE* pink_file = fopen(pink_noise_path, "rb");
         if (pink_file) {
@@ -977,7 +947,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         // WHAT: Load mirror neuron system state from separate file
         // WHY:  Restore learned action associations and statistics
         // HOW:  Use mirror_neurons_load API with dedicated file
-        char mirror_path[512];
+        char mirror_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
         FILE* mirror_file = fopen(mirror_path, "rb");
         if (mirror_file) {
@@ -1250,7 +1220,7 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
 
     // Generate snapshot filename with timestamp
     time_t now = time(NULL);
-    char snapshot_path[1024];
+    char snapshot_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s_%ld.snapshot",
              snapshot_dir, name, (long)now);
 
@@ -1268,7 +1238,7 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
     brain_heartbeat(brain, "brain_save_snapshot:metadata", 0.9f);
 
     // Save snapshot metadata
-    char meta_path[1024];
+    char meta_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s/%s_%ld.snapshot.info",
              snapshot_dir, name, (long)now);
     FILE* meta_file = fopen(meta_path, "w");
@@ -1346,7 +1316,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
         return NULL;
     }
 
-    char best_snapshot[1024] = {0};
+    char best_snapshot[NIMCP_DWARF_PATH_SIZE] = {0};
     time_t best_timestamp = 0;
     size_t name_len = strlen(name);
 
@@ -1390,7 +1360,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
     brain_heartbeat(brain, "brain_restore_snapshot:loading", 0.5f);
 
     // Load brain from snapshot
-    char snapshot_path[1024];
+    char snapshot_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s", snapshot_dir, best_snapshot);
 
     brain_t loaded_brain = brain_load(snapshot_path);
@@ -1451,7 +1421,7 @@ bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
         }
 
         // Read metadata from .info file
-        char info_path[1024];
+        char info_path[NIMCP_DWARF_PATH_SIZE];
         snprintf(info_path, sizeof(info_path), "%s/%s.info", snapshot_dir, entry->d_name);
 
         FILE* info_file = fopen(info_path, "r");
@@ -1463,7 +1433,7 @@ bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
         memset(info, 0, sizeof(brain_snapshot_info_t));
 
         // Parse metadata file
-        char line[1024];
+        char line[NIMCP_CMD_BUFFER_SIZE];
         while (fgets(line, sizeof(line), info_file)) {
             char* equals = strchr(line, '=');
             if (!equals) continue;
@@ -1498,7 +1468,7 @@ bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
         fclose(info_file);
 
         // Get file size
-        char snapshot_path[1024];
+        char snapshot_path[NIMCP_DWARF_PATH_SIZE];
         snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s", snapshot_dir, entry->d_name);
         struct stat st;
         if (stat(snapshot_path, &st) == 0) {
@@ -1534,7 +1504,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
         return false;
     }
 
-    char best_snapshot[1024] = {0};
+    char best_snapshot[NIMCP_DWARF_PATH_SIZE] = {0};
     time_t best_timestamp = 0;
     size_t name_len = strlen(name);
 
@@ -1575,7 +1545,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
     }
 
     // Delete snapshot file
-    char snapshot_path[1024];
+    char snapshot_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s", snapshot_dir, best_snapshot);
 
     if (remove(snapshot_path) != 0) {
@@ -1585,7 +1555,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
     }
 
     // Delete metadata file if it exists
-    char meta_path[1024];
+    char meta_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s.info", snapshot_path);
     remove(meta_path);  // Ignore error
 
@@ -1594,7 +1564,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
     remove(meta_path);  // Ignore error
 
     // Delete .knowledge file if it exists
-    char knowledge_path[1024];
+    char knowledge_path[NIMCP_DWARF_PATH_SIZE];
     snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", snapshot_path);
     remove(knowledge_path);  // Ignore error
 
@@ -1932,7 +1902,7 @@ bool brain_save_ex(brain_t brain, const char* filepath, const persistence_config
 
     // Compute and save checksum if enabled
     if (success && config->enable_checksum) {
-        char checksum_path[512];
+        char checksum_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(checksum_path, sizeof(checksum_path), "%s.checksum", filepath);
 
         // Read file and compute checksum
@@ -2007,7 +1977,7 @@ brain_t brain_load_ex(const char* filepath, const persistence_config_t* config)
 
     // Verify checksum if enabled
     if (config->verify_on_load && config->enable_checksum) {
-        char checksum_path[512];
+        char checksum_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(checksum_path, sizeof(checksum_path), "%s.checksum", filepath);
 
         FILE* cf = fopen(checksum_path, "rb");
@@ -2127,7 +2097,7 @@ bool brain_save_snapshot_cow(brain_t brain, const char* name,
         ensure_snapshot_dir(snapshot_dir);
 
         time_t now = time(NULL);
-        char meta_path[1024];
+        char meta_path[NIMCP_DWARF_PATH_SIZE];
         snprintf(meta_path, sizeof(meta_path), "%s/%s_%ld.snapshot.info",
                  snapshot_dir, name, (long)now);
 

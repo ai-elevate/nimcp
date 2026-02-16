@@ -12,6 +12,7 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -127,12 +128,12 @@ int neuromod_sleep_default_config(neuromodulators_sleep_config_t* config) {
     config->enable_pressure_effects = true;
     config->enable_neuromod_sleep_effects = true;
 
-    config->ach_modulation_strength = 1.0f;
-    config->ne_modulation_strength = 1.0f;
+    config->ach_modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
+    config->ne_modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     config->da_modulation_strength = 0.8f;  /* DA changes less dramatic */
-    config->serotonin_modulation_strength = 1.0f;
+    config->serotonin_modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
 
-    config->pressure_sensitivity = 1.0f;
+    config->pressure_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     return 0;
 }
@@ -189,8 +190,8 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
     bridge->effects.ne_factor = 1.0f;
     bridge->effects.da_factor = 1.0f;
     bridge->effects.serotonin_factor = 1.0f;
-    bridge->effects.ne_release_sensitivity = 1.0f;
-    bridge->effects.ach_release_sensitivity = 1.0f;
+    bridge->effects.ne_release_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    bridge->effects.ach_release_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
     bridge->effects.current_state = SLEEP_STATE_AWAKE;
     bridge->effects.sleep_pressure = 0.0f;
     bridge->effects.learning_rate_modifier = 1.0f;

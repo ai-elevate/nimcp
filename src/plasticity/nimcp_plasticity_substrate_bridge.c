@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/nimcp_plasticity_substrate_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -90,9 +91,9 @@ int plasticity_substrate_default_config(plasticity_substrate_config_t* config)
     config->enable_bio_async = false;
 
     /* Moderate sensitivity (1.0 = biological measurements) */
-    config->atp_sensitivity = 1.0f;
-    config->temperature_sensitivity = 1.0f;
-    config->membrane_sensitivity = 1.0f;
+    config->atp_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->temperature_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->membrane_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Biological realism */
     config->enforce_atp_blocking = true;    /* Block LTP at low ATP */

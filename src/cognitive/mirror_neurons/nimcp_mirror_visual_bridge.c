@@ -22,6 +22,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mirror_visual_bridge)
 //=============================================================================
@@ -79,7 +80,7 @@ BRIDGE_DEFINE_SECURITY_SETTERS(mirror_visual_bridge)
 #define VISUAL_FEATURES_BUFFER_SIZE  256
 #define BIO_MOTION_COHERENCE_WEIGHT  0.6f
 #define FACE_EXPRESSION_WEIGHT       0.7f
-#define STS_INTEGRATION_DECAY        0.95f
+#define STS_INTEGRATION_DECAY        NIMCP_ELIGIBILITY_DECAY_DEFAULT
 
 /* ============================================================================
  * Internal Helper Functions

@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_constants.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_ternary)
@@ -37,7 +38,7 @@ void snn_ternary_default_config(snn_ternary_config_t* config) {
     config->ltd_threshold = SNN_TERNARY_LTD_THRESHOLD;
     config->positive_scale = SNN_TERNARY_WEIGHT_POSITIVE_SCALE;
     config->negative_scale = SNN_TERNARY_WEIGHT_NEGATIVE_SCALE;
-    config->accumulation_decay = 0.99f;
+    config->accumulation_decay = NIMCP_EMA_DECAY_DEFAULT;
     config->use_stochastic_round = false;
     config->update_interval = 100;
     config->pack_mode = TERNARY_PACK_BASE243;

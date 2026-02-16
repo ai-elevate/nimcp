@@ -79,7 +79,8 @@ static inline void mirror_tom_bridge_heartbeat_instance(
  * Internal Constants
  * ============================================================================ */
 
-#define EPSILON                           1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON                           NIMCP_EPSILON_NUMERICAL
 #define AGENT_HASH_PRIME                  37
 #define BELIEF_DECAY_TIME_CONSTANT_US     3600000000ULL  /* 1 hour */
 #define INTENTION_HISTORY_SIZE            8
@@ -506,7 +507,7 @@ int mirror_tom_process_observation(mirror_tom_bridge_t bridge,
     if (bridge->config.enable_intention_inference &&
         observation->action_dim > 0) {
 
-        char intention_buf[128];
+        char intention_buf[NIMCP_LABEL_BUFFER_SIZE];
         float intent_conf;
         if (mirror_tom_infer_intention(bridge, agent_id,
                                         observation->action_features,

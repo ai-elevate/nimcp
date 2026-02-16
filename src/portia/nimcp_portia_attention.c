@@ -51,7 +51,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_attention)
 #define MAX_SALIENCE 1.0F
 #define MIN_ALLOCATION 0.0f
 #define MAX_ALLOCATION 1.0f
-#define EPSILON 1e-6f
+#include "constants/nimcp_constants.h"
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 //=============================================================================
 // Internal Structures

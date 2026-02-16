@@ -22,42 +22,12 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_learning_constants.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(semantic_integrator)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_semantic_integrator_mesh_id = 0;
-static mesh_participant_registry_t* g_semantic_integrator_mesh_registry = NULL;
-
-nimcp_error_t semantic_integrator_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_semantic_integrator_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "semantic_integrator", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_SYSTEM);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "semantic_integrator";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_semantic_integrator_mesh_id);
-    if (err == NIMCP_SUCCESS) g_semantic_integrator_mesh_registry = registry;
-    return err;
-}
-
-void semantic_integrator_mesh_unregister(void) {
-    if (g_semantic_integrator_mesh_registry && g_semantic_integrator_mesh_id != 0) {
-        mesh_participant_unregister(g_semantic_integrator_mesh_registry, g_semantic_integrator_mesh_id);
-        g_semantic_integrator_mesh_id = 0;
-        g_semantic_integrator_mesh_registry = NULL;
-    }
-}
+BRIDGE_BOILERPLATE_MESH_ONLY(semantic_integrator, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /*=============================================================================
@@ -361,13 +331,13 @@ semantic_config_t semantic_default_config(void) {
         .max_active_concepts = SEM_DEFAULT_MAX_ACTIVE_CONCEPTS,
         .concept_feature_dim = SEM_DEFAULT_CONCEPT_FEATURE_DIM,
         .context_window = SEM_DEFAULT_CONTEXT_WINDOW,
-        .context_decay = 0.9f,
+        .context_decay = NIMCP_EMA_DECAY_FAST,
         .strategy = DISAMBIG_COMBINED,
         .disambiguation_threshold = SEM_DEFAULT_DISAMBIGUATION_THRESHOLD,
         .frequency_weight = 0.4f,
         .context_weight = 0.6f,
         .activation_threshold = 0.1f,
-        .activation_decay = 0.95f,
+        .activation_decay = NIMCP_ELIGIBILITY_DECAY_DEFAULT,
         .spreading_rate = 0.7f,
         .enable_spreading_activation = true,
         .enable_thematic_roles = true,

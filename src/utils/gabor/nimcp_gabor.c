@@ -34,8 +34,9 @@ static gabor_stats_t g_gabor_stats = {0};
  * Internal Constants
  * ========================================================================== */
 
+#include "constants/nimcp_constants.h"
 /** Small epsilon for numerical stability */
-#define EPSILON 1e-6f
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /** Maximum bandwidth value */
 #define MAX_BANDWIDTH 10.0f

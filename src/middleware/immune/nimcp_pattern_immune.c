@@ -10,6 +10,7 @@
  */
 
 #include "middleware/immune/nimcp_pattern_immune.h"
+#include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -145,8 +146,8 @@ int pattern_immune_default_config(pattern_immune_config_t* config) {
     config->enable_pattern_library_monitoring = true;
 
     /* Default sensitivities */
-    config->inflammation_sensitivity = 1.0f;
-    config->anomaly_detection_sensitivity = 1.0f;
+    config->inflammation_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
+    config->anomaly_detection_sensitivity = NIMCP_SENSITIVITY_DEFAULT;
 
     /* Use default thresholds (0 = use constants) */
     config->pathological_hypersync_threshold = 0.0f;

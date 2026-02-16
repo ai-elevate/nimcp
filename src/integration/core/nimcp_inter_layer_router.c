@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_timing_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(inter_layer_router)
 
@@ -43,7 +44,7 @@ nimcp_inter_layer_router_config_t nimcp_inter_layer_router_default_config(void) 
     config.enable_priority_queuing = true;
     config.enable_message_logging = false;
     config.enable_latency_tracking = true;
-    config.timeout_ms = 100;
+    config.timeout_ms = NIMCP_FAST_TIMEOUT_MS;
     return config;
 }
 

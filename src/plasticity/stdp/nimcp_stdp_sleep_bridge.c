@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
+#include "constants/nimcp_constants.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -97,7 +98,7 @@ int stdp_sleep_default_config(stdp_sleep_config_t* config) {
     config->enable_lr_modulation = true;
     config->enable_ratio_modulation = true;
     config->enable_window_modulation = true;
-    config->modulation_strength = 1.0f;
+    config->modulation_strength = NIMCP_SENSITIVITY_DEFAULT;
     return 0;
 }
 

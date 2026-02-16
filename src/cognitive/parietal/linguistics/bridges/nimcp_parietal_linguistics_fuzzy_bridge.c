@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/parietal/linguistics/bridges/nimcp_parietal_linguistics_fuzzy_bridge.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "cognitive/parietal/linguistics/nimcp_parietal_linguistics_mesh.h"
 #include "utils/fuzzy/nimcp_fuzzy_types.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_learning_constants.h"
 
 /* ============================================================================
  * CONSTANTS
@@ -71,7 +73,7 @@ struct ling_fuzzy_bridge {
  * THREAD-LOCAL ERROR
  * ============================================================================ */
 
-static __thread char s_last_error[256] = {0};
+static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;
@@ -396,9 +398,9 @@ ling_fuzzy_bridge_config_t ling_fuzzy_bridge_default_config(void) {
         .default_far_threshold = DEFAULT_FAR_THRESHOLD,
         .default_angle_sigma = DEFAULT_ANGLE_SIGMA,
         .base_precision = LING_FUZZY_DEFAULT_PRECISION,
-        .precision_decay = 0.9f,
+        .precision_decay = NIMCP_EMA_DECAY_FAST,
         .enable_mesh = true,
-        .mesh_learning_rate = 0.1f,
+        .mesh_learning_rate = NIMCP_LEARNING_RATE_COARSE,
         .enable_bbb = true,
         .enable_health = true,
         .enable_logging = true,

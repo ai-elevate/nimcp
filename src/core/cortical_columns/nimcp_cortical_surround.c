@@ -38,8 +38,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_surround)
  * Internal Constants
  * ========================================================================== */
 
+#include "constants/nimcp_constants.h"
 /** Small epsilon for numerical stability */
-#define EPSILON 1e-6f
+#define EPSILON NIMCP_EPSILON_NUMERICAL
 
 /** Maximum modulation factor (prevents runaway facilitation) */
 #define MAX_MODULATION_FACTOR 3.0f

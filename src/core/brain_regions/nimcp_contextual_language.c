@@ -7,6 +7,7 @@
  */
 
 #include "core/brain_regions/nimcp_contextual_language.h"
+#include "constants/nimcp_buffer_constants.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -84,7 +85,7 @@ typedef struct contextual_language_struct {
 // Thread-local Error Storage
 //=============================================================================
 
-static __thread char error_buffer[256] = {0};
+static __thread char error_buffer[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /**
  * @brief Set error message

@@ -28,6 +28,7 @@
  */
 
 #include "training/nimcp_multi_task.h"
+#include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
@@ -45,7 +46,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multi_task)
 // Internal Constants
 //=============================================================================
 
-#define MTL_EPSILON           1e-8f
+#define MTL_EPSILON           NIMCP_EPSILON_ADAM
 #define MTL_MAX_GRAD_NORM     10.0f
 
 //=============================================================================
@@ -157,7 +158,7 @@ int mtl_default_config(mtl_config_t* config) {
     config->gradnorm.use_last_layer = true;
 
     /* PCGrad defaults */
-    config->pcgrad.projection_eps = 1e-8f;
+    config->pcgrad.projection_eps = NIMCP_EPSILON_ADAM;
     config->pcgrad.normalize_gradients = true;
     config->pcgrad.use_random_order = true;
 
@@ -166,7 +167,7 @@ int mtl_default_config(mtl_config_t* config) {
     config->cagrad.rescale = 1.0f;
 
     /* Training settings */
-    config->shared_lr = 0.001f;
+    config->shared_lr = NIMCP_LEARNING_RATE_FINE;
     config->task_lr_multiplier = 1.0f;
     config->auxiliary_weight = 0.5f;
 

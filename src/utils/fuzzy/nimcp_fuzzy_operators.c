@@ -11,6 +11,7 @@
  */
 
 #include "utils/fuzzy/nimcp_fuzzy_operators.h"
+#include "constants/nimcp_buffer_constants.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_operators)
 // Thread-Local Error Handling
 //=============================================================================
 
-static _Thread_local char fuzzy_op_last_error[256] = {0};
+static _Thread_local char fuzzy_op_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;

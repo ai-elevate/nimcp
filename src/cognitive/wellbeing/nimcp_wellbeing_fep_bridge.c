@@ -18,58 +18,11 @@
 #include <math.h>
 
 #define LOG_MODULE "wellbeing_fep_bridge"
-#include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(wellbeing_fep_bridge)
-//=============================================================================
-// Mesh Participant Registration
-//=============================================================================
-
-static mesh_participant_id_t g_wellbeing_fep_bridge_mesh_id = 0;
-static mesh_participant_registry_t* g_wellbeing_fep_bridge_mesh_registry = NULL;
-
-nimcp_error_t wellbeing_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_wellbeing_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
-    mesh_participant_interface_t iface;
-    mesh_participant_interface_init(&iface);
-    strncpy(iface.module_name, "wellbeing_fep_bridge", MESH_MAX_NAME_LEN - 1);
-    iface.type = MESH_PARTICIPANT_MODULE;
-    iface.home_channel = mesh_adapter_get_default_channel(MESH_ADAPTER_CATEGORY_COGNITIVE);
-    mesh_participant_config_t config;
-    mesh_participant_config_init(&config);
-    config.module_name = "wellbeing_fep_bridge";
-    config.type = MESH_PARTICIPANT_MODULE;
-    config.home_channel = iface.home_channel;
-    nimcp_error_t err = mesh_participant_register(registry, &iface, &config, &g_wellbeing_fep_bridge_mesh_id);
-    if (err == NIMCP_SUCCESS) g_wellbeing_fep_bridge_mesh_registry = registry;
-    return err;
-}
-
-void wellbeing_fep_bridge_mesh_unregister(void) {
-    if (g_wellbeing_fep_bridge_mesh_registry && g_wellbeing_fep_bridge_mesh_id != 0) {
-        mesh_participant_unregister(g_wellbeing_fep_bridge_mesh_registry, g_wellbeing_fep_bridge_mesh_id);
-        g_wellbeing_fep_bridge_mesh_id = 0;
-        g_wellbeing_fep_bridge_mesh_registry = NULL;
-    }
-}
-
-
-/** @brief Send heartbeat from wellbeing_fep_bridge module (instance-level) */
-static inline void wellbeing_fep_bridge_heartbeat_instance(
-    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
-{
-    if (g_wellbeing_fep_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(g_wellbeing_fep_bridge_health_agent, operation, progress);
-    }
-    if (instance_agent && instance_agent != g_wellbeing_fep_bridge_health_agent) {
-        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
-    }
-}
-
-
+BRIDGE_BOILERPLATE(wellbeing_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 int wellbeing_fep_bridge_default_config(wellbeing_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -295,9 +248,6 @@ int wellbeing_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     return self ? 1 : 0;
 }
 
-/* ============================================================================
- * Phase 8: Instance-Level Health Agent
- * ============================================================================ */
 
 void wellbeing_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
     if (instance) {

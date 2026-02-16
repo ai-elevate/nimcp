@@ -22,6 +22,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
+#include "constants/nimcp_learning_constants.h"
 
 /* ============================================================================
  * Bootstrap Structure
@@ -972,7 +973,7 @@ mesh_bootstrap_t* mesh_bootstrap_create(const mesh_bootstrap_config_t* config) {
         .default_threshold = MESH_DEFAULT_ACTIVATION_THRESHOLD,
         .competition_strength = 0.5f,
         .enable_learning = true,
-        .learning_rate = 0.1f,
+        .learning_rate = NIMCP_LEARNING_RATE_COARSE,
         .max_endorsers = 16
     };
     bootstrap->pattern_router = mesh_pattern_router_create(&router_config);

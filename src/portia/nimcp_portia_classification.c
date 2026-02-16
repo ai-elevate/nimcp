@@ -28,6 +28,7 @@
 
 #define LOG_MODULE "portia_classification"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_buffer_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_classification)
 
@@ -35,7 +36,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_classification)
 // Thread-Local Error Handling
 //=============================================================================
 
-static __thread char g_classification_error[512] = {0};
+static __thread char g_classification_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 /**
  * WHAT: Set error message

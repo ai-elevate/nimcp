@@ -24,6 +24,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_sensor_fusion)
 #include <math.h>
 #include <float.h>
 #include <stdio.h>
+#include "constants/nimcp_buffer_constants.h"
 
 // Constants
 #define MAX_SENSOR_HISTORY 10
@@ -379,7 +380,7 @@ static void broadcast_fusion_event(portia_fusion_ctx_t* ctx, const char* event_t
     }
 
     // Create message payload
-    char payload[256];
+    char payload[NIMCP_ERROR_BUFFER_SIZE];
     snprintf(payload, sizeof(payload),
              "fusion_event:type=%s,confidence=%.3f,sensors=%u,timestamp=%lu",
              event_type,
