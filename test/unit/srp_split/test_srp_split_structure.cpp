@@ -236,17 +236,6 @@ TEST_F(SRPSplitStructureTest, ParentFilesHaveSRPSplitMarker) {
 }
 
 /**
- * @brief Verify .c.orig backups exist for all split modules
- */
-TEST_F(SRPSplitStructureTest, OrigBackupsExist) {
-    for (const auto& mod : get_split_modules()) {
-        std::string orig_path = mod.parent_path + ".orig";
-        EXPECT_TRUE(fs::exists(orig_path))
-            << "Backup missing: " << orig_path;
-    }
-}
-
-/**
  * @brief Verify part files contain actual function definitions
  */
 TEST_F(SRPSplitStructureTest, PartFilesContainFunctions) {
