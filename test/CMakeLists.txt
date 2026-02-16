@@ -2336,6 +2336,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cpp/CMakeLists.txt")
     add_subdirectory(bindings/cpp)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/java/CMakeLists.txt")
+    message(STATUS "Adding Java bindings tests...")
+    add_subdirectory(bindings/java)
+endif()
+
 # ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================
