@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantum_walk)
 
@@ -29,9 +30,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantum_walk)
 static __thread uint32_t g_qwalk_mc_seed = 0;
 
 // Mathematical constants
-#define SQRT2 1.41421356237f
 #define INV_SQRT2 0.70710678118f
-#define PI 3.14159265359f
+#define PI NIMCP_PI_F
 #define PROB_TOLERANCE 1e-5f      // Probability conservation tolerance (relaxed for large networks)
 #define AMPLITUDE_THRESHOLD 1e-8f // Ignore amplitudes below this
 

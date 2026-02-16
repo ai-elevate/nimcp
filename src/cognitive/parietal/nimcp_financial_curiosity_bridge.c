@@ -28,6 +28,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_curiosity_health_agent = NULL;
@@ -156,7 +157,7 @@ static float random_normal(uint32_t* state, float mean, float std) {
     float u1 = random_uniform(state);
     float u2 = random_uniform(state);
     if (u1 < 1e-10f) u1 = 1e-10f;
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
     return mean + std * z;
 }
 
@@ -292,7 +293,7 @@ fin_curiosity_config_t financial_curiosity_bridge_default_config(void) {
 
     /* Selection strategy settings */
     cfg.strategy = FIN_SELECTION_UCB;
-    cfg.exploration_coefficient = 1.41421356f;  /* sqrt(2) */
+    cfg.exploration_coefficient = NIMCP_SQRT2_F;  /* sqrt(2) */
     cfg.epsilon = 0.1f;
     cfg.temperature = NIMCP_TEMPERATURE_DEFAULT;
 

@@ -82,6 +82,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,9 +117,6 @@ struct orientation_hypercolumn_t;
 #define SURROUND_MAX_FIELD_SIZE 256
 
 /** Pi constant */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* ============================================================================
  * Data Structures

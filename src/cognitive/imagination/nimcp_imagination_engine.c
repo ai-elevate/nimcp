@@ -34,6 +34,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(imagination_engine, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -1690,7 +1691,7 @@ int imagination_generate_audio(
         }
 
         size_t li = i % latent_size;
-        float phase = (float)i / (float)audio_size * 2.0f * 3.14159f;
+        float phase = (float)i / (float)audio_size * NIMCP_TWO_PI_F;
         audio_data[i] = latent_data[li] * sinf(phase * (1.0f + li * 0.1f));
         audio_data[i] *= scenario->vividness;
     }

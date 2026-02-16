@@ -15,13 +15,11 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_beta_oscillations, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* ============================================================================
  * INTERNAL STRUCTURES

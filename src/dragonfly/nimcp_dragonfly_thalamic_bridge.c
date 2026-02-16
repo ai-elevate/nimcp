@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_thalamic_bridge)
 
@@ -666,10 +667,10 @@ int dragonfly_thalamic_update(dragonfly_thalamic_bridge_t* bridge) {
             /* Create simple population from target direction */
             float heading = atan2f(target.velocity[1], target.velocity[0]);
             for (int i = 0; i < 16; i++) {
-                float preferred = (float)i * (2.0f * 3.14159f / 16.0f);
+                float preferred = (float)i * (NIMCP_TWO_PI_F / 16.0f);
                 float diff = heading - preferred;
-                while (diff > 3.14159f) diff -= 2.0f * 3.14159f;
-                while (diff < -3.14159f) diff += 2.0f * 3.14159f;
+                while (diff > 3.14159f) diff -= NIMCP_TWO_PI_F;
+                while (diff < -3.14159f) diff += NIMCP_TWO_PI_F;
                 tsdn_population[i] = expf(-diff * diff / 0.5f);
             }
 

@@ -38,6 +38,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gradient_scaling)
 
@@ -658,7 +659,7 @@ float gs_surrogate_value(float x, gs_surrogate_t surrogate, float beta) {
             sum += 0.5f * expf(-(x - offset) * (x - offset) / (2.0f * sigma * sigma));
             sum += 0.5f * expf(-(x + offset) * (x + offset) / (2.0f * sigma * sigma));
 
-            return sum / (sigma * sqrtf(2.0f * 3.14159f));
+            return sum / (sigma * sqrtf(NIMCP_TWO_PI_F));
         }
 
         default:

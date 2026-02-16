@@ -24,6 +24,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "SNN_GPU"
 
@@ -212,7 +213,7 @@ __device__ inline float surrogate_arctan(float x, float beta)
 {
     // Arctan: beta / (pi * (1 + (beta * x)^2))
     float bx = beta * x;
-    return beta / (3.14159265f * (1.0f + bx * bx));
+    return beta / (NIMCP_PI_F * (1.0f + bx * bx));
 }
 
 __device__ inline float surrogate_triangular(float x, float beta)

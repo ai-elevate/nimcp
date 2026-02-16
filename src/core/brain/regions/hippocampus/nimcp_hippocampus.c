@@ -14,9 +14,6 @@
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
@@ -26,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hippo, MESH_ADAPTER_CATEGORY_COGNITIVE)
 

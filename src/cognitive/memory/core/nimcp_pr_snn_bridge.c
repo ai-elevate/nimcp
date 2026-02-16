@@ -205,7 +205,7 @@ static float rng_gaussian(pr_snn_bridge_t bridge, float mean, float stddev) {
     float u1 = rng_uniform(bridge);
     float u2 = rng_uniform(bridge);
     if (u1 < 1e-10f) u1 = 1e-10f;
-    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(M_2PI * u2);
+    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
     return mean + stddev * z0;
 }
 
@@ -1197,7 +1197,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_phase(
     pr_spike_pattern_clear(pattern);
 
     /* Map value to target phase */
-    float target_phase = value * M_2PI;
+    float target_phase = value * NIMCP_TWO_PI_F;
 
     /* Calculate theta period */
     float theta_period_ms = 1000.0f / bridge->config.theta_frequency_hz;
@@ -1214,15 +1214,15 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_phase(
 
         /* Calculate spike times aligned to theta phase */
         float t = 0.0f;
-        float cycle_start = theta_phase / M_2PI * theta_period_ms;
+        float cycle_start = theta_phase / NIMCP_TWO_PI_F * theta_period_ms;
 
         while (t < duration) {
             /* Time within theta cycle for this spike */
             float spike_phase = target_phase + rng_gaussian(bridge, 0.0f, 0.3f);
-            while (spike_phase < 0) spike_phase += M_2PI;
-            while (spike_phase >= M_2PI) spike_phase -= M_2PI;
+            while (spike_phase < 0) spike_phase += NIMCP_TWO_PI_F;
+            while (spike_phase >= NIMCP_TWO_PI_F) spike_phase -= NIMCP_TWO_PI_F;
 
-            float spike_time = cycle_start + (spike_phase / M_2PI) * theta_period_ms;
+            float spike_time = cycle_start + (spike_phase / NIMCP_TWO_PI_F) * theta_period_ms;
 
             if (spike_time >= 0.0f && spike_time < duration) {
                 pr_spike_pattern_add_spike(pattern, spike_time, (uint32_t)n);
@@ -2323,7 +2323,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_phase_lock(
     if (!bridge || !pattern) return PR_SNN_ERROR_NULL_POINTER;
 
     float theta_period = 1000.0f / bridge->config.theta_frequency_hz;
-    float phase_offset = (theta_phase / M_2PI) * theta_period;
+    float phase_offset = (theta_phase / NIMCP_TWO_PI_F) * theta_period;
 
     /* Shift all spike times to align with theta phase */
     for (size_t i = 0; i < pattern->num_spikes; i++) {
@@ -2371,7 +2371,7 @@ NIMCP_EXPORT float pr_snn_compute_plv(
                              (float)(i + 1) / (float)pattern1->num_spikes);
         }
 
-        float phase1 = fmodf(pattern1->spike_times[i], period) / period * M_2PI;
+        float phase1 = fmodf(pattern1->spike_times[i], period) / period * NIMCP_TWO_PI_F;
 
         /* Find nearest spike in pattern2 */
         float min_dt = FLT_MAX;
@@ -2391,7 +2391,7 @@ NIMCP_EXPORT float pr_snn_compute_plv(
         }
 
         if (min_dt < period) {
-            float phase2 = fmodf(pattern2->spike_times[nearest], period) / period * M_2PI;
+            float phase2 = fmodf(pattern2->spike_times[nearest], period) / period * NIMCP_TWO_PI_F;
             float phase_diff = phase1 - phase2;
             sum_cos += cosf(phase_diff);
             sum_sin += sinf(phase_diff);

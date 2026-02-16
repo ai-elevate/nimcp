@@ -16,6 +16,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(physics_lnn_bridge)
 
@@ -470,7 +471,7 @@ int physics_lnn_encode_spikes(
                 /* Phase coding: spike timing relative to oscillation */
                 /* Simplified: use cosine modulation */
                 if (dt < tau) {
-                    float phase = (2.0f * 3.14159f * dt) / tau;
+                    float phase = (NIMCP_TWO_PI_F * dt) / tau;
                     contribution = spike->amplitude * (0.5f + 0.5f * cosf(phase));
                 }
                 break;

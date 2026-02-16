@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_bio_async_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -495,12 +496,12 @@ int hypo_bio_async_broadcast_circadian(
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
 
     msg.phase = phase;
-    msg.phase_normalized = phase / (2.0f * 3.14159265f);
+    msg.phase_normalized = phase / (NIMCP_TWO_PI_F);
     msg.alertness_factor = 0.5f + 0.5f * cosf(phase);  /* Simple model */
     msg.sleep_propensity = 0.5f - 0.5f * cosf(phase);
 
     /* Convert phase to time of day (assuming phase 0 = midnight) */
-    float hours = (phase / (2.0f * 3.14159265f)) * 24.0f;
+    float hours = (phase / (NIMCP_TWO_PI_F)) * 24.0f;
     msg.time_of_day_hours = (uint32_t)hours;
     msg.time_of_day_minutes = (uint32_t)((hours - msg.time_of_day_hours) * 60.0f);
     msg.timestamp_us = get_time_us();

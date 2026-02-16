@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_immune_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -512,11 +513,11 @@ int hypo_immune_bridge_update_circadian(
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Normalize phase to [0, 2π] */
-    while (scn_phase < 0.0f) scn_phase += 2.0f * 3.14159265f;
-    while (scn_phase >= 2.0f * 3.14159265f) scn_phase -= 2.0f * 3.14159265f;
+    while (scn_phase < 0.0f) scn_phase += NIMCP_TWO_PI_F;
+    while (scn_phase >= NIMCP_TWO_PI_F) scn_phase -= NIMCP_TWO_PI_F;
 
     /* Determine circadian immune phase */
-    float normalized = scn_phase / (2.0f * 3.14159265f);
+    float normalized = scn_phase / (NIMCP_TWO_PI_F);
     if (normalized < 0.25f) {
         bridge->circadian_phase = CIRCADIAN_IMMUNE_MORNING;
     } else if (normalized < 0.5f) {
@@ -530,7 +531,7 @@ int hypo_immune_bridge_update_circadian(
     /* Compute modulation factor */
     /* Peak inflammation potential in morning, lowest at night */
     bridge->circadian_modulation = 1.0f + bridge->config.circadian_amplitude *
-        cosf(scn_phase - 0.5f * 3.14159265f);
+        cosf(scn_phase - 0.5f * NIMCP_PI_F);
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;

@@ -20,6 +20,7 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_medulla_bridge)
 
@@ -255,7 +256,7 @@ float snn_medulla_compute_circadian_modulation(const snn_medulla_bridge_t* bridg
     /* Cosine modulation centered on peak phase */
     float phase_diff = (float)phase - peak;
     /* 8 phases in a day, so full cycle = 8 */
-    float angle = (phase_diff / 4.0f) * 3.14159f;
+    float angle = (phase_diff / 4.0f) * NIMCP_PI_F;
     float modulation = amplitude * cosf(angle);
 
     return modulation;

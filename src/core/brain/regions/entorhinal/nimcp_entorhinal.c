@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -29,7 +30,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal, MESH_ADAPTER_CATEGORY_COGNITIVE)
  * INTERNAL CONSTANTS
  *===========================================================================*/
 
-#define PI 3.14159265358979323846f
+#define PI NIMCP_PI_F
 #define TWO_PI (2.0f * PI)
 #define GRID_HEXAGONAL_ANGLE (PI / 3.0f)  /* 60 degrees */
 

@@ -23,6 +23,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_plasticity_bridge)
 
@@ -33,9 +34,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_plasticity_bridge)
 // Constants
 //=============================================================================
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // Local Helpers

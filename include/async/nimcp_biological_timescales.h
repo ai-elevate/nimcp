@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 #include <math.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,9 +73,6 @@ extern "C" {
 // Mathematical Constants
 //=============================================================================
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #ifndef M_E
 #define M_E 2.71828182845904523536

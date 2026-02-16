@@ -1,3 +1,4 @@
+#include "constants/nimcp_math_constants.h"
 /**
  * @file nimcp_frequency_constants.h
  * @brief Centralized frequency constants for NIMCP
@@ -273,10 +274,10 @@ extern "C" {
 #define NIMCP_PERIOD_MS_TO_HZ(ms)           (1000.0f / (ms))
 
 /** @brief Convert angular frequency (rad/s) to Hz */
-#define NIMCP_RAD_TO_HZ(rad)                ((rad) / (2.0f * 3.14159265358979323846f))
+#define NIMCP_RAD_TO_HZ(rad)                ((rad) / (NIMCP_TWO_PI_F))
 
 /** @brief Convert Hz to angular frequency (rad/s) */
-#define NIMCP_HZ_TO_RAD(hz)                 ((hz) * 2.0f * 3.14159265358979323846f)
+#define NIMCP_HZ_TO_RAD(hz)                 ((hz) * NIMCP_TWO_PI_F)
 
 #ifdef __cplusplus
 }

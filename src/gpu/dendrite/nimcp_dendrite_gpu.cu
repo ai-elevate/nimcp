@@ -40,6 +40,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "DENDRITE_GPU"
 
@@ -156,7 +157,7 @@ __global__ void kernel_compute_axial_currents(
 
     // Calculate axial conductance: g_axial = pi * d^2 / (4 * Ra * L)
     float radius = diameter / 2.0f;
-    float g_axial = (3.14159f * radius * radius) / (ra * length) * 1e6f;  // Convert to nS
+    float g_axial = (NIMCP_PI_F * radius * radius) / (ra * length) * 1e6f;  // Convert to nS
 
     float I_total = 0.0f;
 
@@ -174,7 +175,7 @@ __global__ void kernel_compute_axial_currents(
             float child_length = segment_lengths[base_idx + c];
             float child_diameter = segment_diameters[base_idx + c];
             float child_radius = child_diameter / 2.0f;
-            float child_g = (3.14159f * child_radius * child_radius) / (ra * child_length) * 1e6f;
+            float child_g = (NIMCP_PI_F * child_radius * child_radius) / (ra * child_length) * 1e6f;
             I_total += child_g * (V_child - V_segment);
         }
     }

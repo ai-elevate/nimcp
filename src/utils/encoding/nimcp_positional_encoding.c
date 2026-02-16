@@ -34,12 +34,10 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(positional_encoding)
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // Internal Structures

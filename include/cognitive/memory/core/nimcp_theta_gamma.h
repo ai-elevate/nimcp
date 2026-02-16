@@ -100,6 +100,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -139,13 +140,9 @@ extern "C" {
 #define GAMMA_FREQ_DEFAULT          40.0f
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Two pi constant */
-#ifndef M_2PI
-    #define M_2PI 6.28318530717958647692f
+#ifndef NIMCP_TWO_PI_F
 #endif
 
 /** Number of phase bins for PAC computation */

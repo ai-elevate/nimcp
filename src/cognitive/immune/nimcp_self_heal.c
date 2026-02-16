@@ -34,6 +34,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(self_heal, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -995,8 +996,8 @@ int self_heal_extract_features(
     if (antigen->epitope_len > 0) {
         float hash = hash_string_to_float((const char*)antigen->epitope, antigen->epitope_len);
         features->features[idx++] = hash;
-        features->features[idx++] = fmodf(hash * 3.14159f, 1.0f);
-        features->features[idx++] = fmodf(hash * 2.71828f, 1.0f);
+        features->features[idx++] = fmodf(hash * NIMCP_PI_F, 1.0f);
+        features->features[idx++] = fmodf(hash * NIMCP_EULER_F, 1.0f);
         features->features[idx++] = fmodf(hash * 1.61803f, 1.0f);
     } else {
         idx += 4;
@@ -1099,9 +1100,9 @@ int self_heal_extract_features_from_context(
     float region_hash = hash_string_to_float(
         crash_ctx->memory_region, strlen(crash_ctx->memory_region));
     features->features[idx++] = region_hash;
-    features->features[idx++] = fmodf(region_hash * 2.71828f, 1.0f);
-    features->features[idx++] = fmodf(region_hash * 3.14159f, 1.0f);
-    features->features[idx++] = fmodf(region_hash * 1.41421f, 1.0f);
+    features->features[idx++] = fmodf(region_hash * NIMCP_EULER_F, 1.0f);
+    features->features[idx++] = fmodf(region_hash * NIMCP_PI_F, 1.0f);
+    features->features[idx++] = fmodf(region_hash * NIMCP_SQRT2_F, 1.0f);
 
     /* Memory region indicators */
     features->features[idx++] = (strstr(crash_ctx->memory_region, "[heap]") != NULL) ? 1.0f : 0.0f;

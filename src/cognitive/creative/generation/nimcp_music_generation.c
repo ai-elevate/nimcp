@@ -29,6 +29,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(music_generation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -36,7 +37,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(music_generation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #define DEFAULT_SAMPLE_RATE 44100
 #define DEFAULT_BIT_DEPTH 16
 #define DEFAULT_TEMPO 120
-#define PI 3.14159265358979f
+#define PI NIMCP_PI_F
 
 //=============================================================================
 // Config Defaults

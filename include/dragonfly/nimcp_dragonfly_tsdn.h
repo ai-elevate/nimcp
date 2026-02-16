@@ -34,6 +34,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // Constants
@@ -43,7 +44,7 @@ extern "C" {
 #define TSDN_NEURON_COUNT 16
 
 /** Angular spacing between adjacent TSDNs (radians) */
-#define TSDN_ANGULAR_SPACING (2.0f * 3.14159265358979f / TSDN_NEURON_COUNT)
+#define TSDN_ANGULAR_SPACING (NIMCP_TWO_PI_F / TSDN_NEURON_COUNT)
 
 /** Default tuning width for cosine tuning (radians, ~60 degrees FWHM) */
 #define TSDN_DEFAULT_TUNING_WIDTH 1.0472f

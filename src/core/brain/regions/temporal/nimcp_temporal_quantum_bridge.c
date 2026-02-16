@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(temporal_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -492,7 +493,7 @@ int temporal_quantum_bind_multimodal(
     for (uint32_t i = 0; i < min_dim && i < 64; i++) {
         /* Phase difference simulates temporal alignment */
         float phase_diff = visual_features[i] - auditory_features[i];
-        interference += cosf(phase_diff * 3.14159f);
+        interference += cosf(phase_diff * NIMCP_PI_F);
     }
     interference /= (float)min_dim;
 

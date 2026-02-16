@@ -28,6 +28,7 @@
 #include <float.h>
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 /* ============================================================================
  * Internal Constants
@@ -35,7 +36,7 @@
 
 #define LOG_TAG "VAE_IMAG"
 #define COHERENCE_EMA_ALPHA 0.1f
-#define PI 3.14159265359f
+#define PI NIMCP_PI_F
 
 /* ============================================================================
  * Internal Helpers

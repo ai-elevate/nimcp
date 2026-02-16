@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(mirror_self_other, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -576,7 +577,7 @@ bool self_other_classify_agency(
         visual_score = 0.8f;  /* First-person strongly suggests self */
     } else if (sensory) {
         /* Third-person view, angle-dependent */
-        visual_score = 0.2f * (1.0f - fabsf(sensory->visual_angle) / 3.14159f);
+        visual_score = 0.2f * (1.0f - fabsf(sensory->visual_angle) / NIMCP_PI_F);
     }
 
     /* Combine evidence with weights */

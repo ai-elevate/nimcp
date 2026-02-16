@@ -33,6 +33,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(physics_nn, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -212,7 +213,7 @@ static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out) {
         float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
         float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
         if (u1 < 1e-10f) u1 = 1e-10f;
-        float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+        float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
         weights[i] = z * scale;
     }
 }

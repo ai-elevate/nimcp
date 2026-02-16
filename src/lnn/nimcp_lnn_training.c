@@ -30,6 +30,7 @@
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  *===========================================================================*/
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_training)
 
@@ -65,7 +66,7 @@ static float compute_cosine_schedule_lr(
     if (T_max == 0) return base_lr;
     float progress = (float)step / (float)T_max;
     if (progress > 1.0f) progress = 1.0f;
-    return base_lr * 0.5f * (1.0f + cosf(3.14159265f * progress));
+    return base_lr * 0.5f * (1.0f + cosf(NIMCP_PI_F * progress));
 }
 
 /**

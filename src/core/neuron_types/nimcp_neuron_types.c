@@ -33,13 +33,11 @@
 /* Logging module identifier */
 #define LOG_MODULE "NEURON_TYPES"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuron_types)
 
 // Define M_PI if not already defined (for some compilers)
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 // Bio-async module ID
 #define BIO_MODULE_NEURON_TYPES 0x0660

@@ -62,6 +62,7 @@
 #include <string.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surface_quantum_bridge)
 
@@ -74,9 +75,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surface_quantum_bridge)
 
 #define MODULE_NAME "surface_quantum"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // METHOD NAMES
@@ -125,7 +123,7 @@ int surface_quantum_bridge_default_config(surface_quantum_bridge_config_t* confi
     /* QMCTS defaults */
     config->qmcts.num_iterations = 1000;
     config->qmcts.max_depth = 20;
-    config->qmcts.exploration_constant = 1.41421356f;  /* sqrt(2) */
+    config->qmcts.exploration_constant = NIMCP_SQRT2_F;  /* sqrt(2) */
     config->qmcts.rollout_count = 10;
     config->qmcts.use_quantum_rollout = true;
     config->qmcts.quantum_enhancement_factor = 1.5f;

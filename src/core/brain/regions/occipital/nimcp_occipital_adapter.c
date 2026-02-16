@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -306,7 +307,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
         }
 
         /* Initialize Gabor filter for this orientation */
-        float theta = (float)i * 3.14159f / (float)num_orientations;
+        float theta = (float)i * NIMCP_PI_F / (float)num_orientations;
         float sigma = 2.0f;
         float lambda = 4.0f;
         float gamma = 0.5f;
@@ -319,7 +320,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
                 float y_theta = -xp * sinf(theta) + yp * cosf(theta);
                 float gaussian = expf(-(x_theta*x_theta + gamma*gamma*y_theta*y_theta) /
                                       (2.0f * sigma * sigma));
-                float sinusoid = cosf(2.0f * 3.14159f * x_theta / lambda);
+                float sinusoid = cosf(NIMCP_TWO_PI_F * x_theta / lambda);
                 v1->gabor_filters[i][y * V1_GABOR_SIZE + x] = gaussian * sinusoid;
             }
         }
@@ -426,7 +427,7 @@ static bool v1_process(v1_processor_t* v1, const float* input,
                 edge->x = (float)x / (float)width;
                 edge->y = (float)y / (float)height;
                 edge->scale = 1.0f;
-                edge->orientation = (float)max_ori * 3.14159f / (float)v1->num_orientations;
+                edge->orientation = (float)max_ori * NIMCP_PI_F / (float)v1->num_orientations;
                 edge->strength = clamp_f(max_response * att_gain, 0.0f, 1.0f);
                 edge->descriptor = NULL;
                 edge->descriptor_size = 0;
@@ -1233,7 +1234,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
 
     /* Build orientation histogram */
     for (uint32_t i = 0; i < adapter->v1->edge_count; i++) {
-        uint32_t bin = (uint32_t)(adapter->v1->edges[i].orientation * 8.0f / 3.14159f) % 8;
+        uint32_t bin = (uint32_t)(adapter->v1->edges[i].orientation * 8.0f / NIMCP_PI_F) % 8;
         local_result.orientation_histogram[bin]++;
     }
 

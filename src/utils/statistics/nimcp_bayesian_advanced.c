@@ -20,6 +20,7 @@
 #include <float.h>
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -33,7 +34,7 @@
 
 #define BAYES_EPS 1e-10
 #define BAYES_LOG_EPS -23.025850929940457
-#define PI 3.14159265358979323846
+#define PI NIMCP_PI
 #define SQRT_2PI 2.5066282746310002
 
 //=============================================================================

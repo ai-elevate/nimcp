@@ -31,6 +31,7 @@
 
 #define LOG_MODULE "training_pipeline"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(training_data_pipeline)
 
@@ -307,8 +308,8 @@ static int apply_gaussian_noise(
         float u2 = randf(rng);
         if (u1 < 1e-10f) u1 = 1e-10f;
 
-        float z0 = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
-        float z1 = sqrtf(-2.0f * logf(u1)) * sinf(2.0f * 3.14159265f * u2);
+        float z0 = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
+        float z1 = sqrtf(-2.0f * logf(u1)) * sinf(NIMCP_TWO_PI_F * u2);
 
         data[i] += z0 * stddev;
         if (i + 1 < numel) {

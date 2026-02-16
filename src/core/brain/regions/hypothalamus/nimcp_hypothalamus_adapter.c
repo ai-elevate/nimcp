@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -37,9 +38,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_adapter, MESH_ADAPTER_CATEGORY_COGNITI
  * MATHEMATICAL CONSTANTS
  *===========================================================================*/
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #define TWO_PI (2.0f * (float)M_PI)
 
@@ -103,11 +101,11 @@ static float exponential_decay(float current, float target, float rate, float dt
  */
 static hypo_circadian_phase_t phase_to_period(float phase) {
     /* Normalize phase to [0, 2*PI] */
-    while (phase < 0.0f) phase += TWO_PI;
-    while (phase >= TWO_PI) phase -= TWO_PI;
+    while (phase < 0.0f) phase += NIMCP_TWO_PI_F;
+    while (phase >= NIMCP_TWO_PI_F) phase -= NIMCP_TWO_PI_F;
 
     /* Map phase to 24-hour periods (phase 0 = midnight) */
-    float hour = (phase / TWO_PI) * 24.0f;
+    float hour = (phase / NIMCP_TWO_PI_F) * 24.0f;
 
     if (hour < 3.0f) return HYPO_CIRCADIAN_PHASE_LATE_NIGHT;
     if (hour < 6.0f) return HYPO_CIRCADIAN_PHASE_LATE_NIGHT;
@@ -549,18 +547,18 @@ bool hypothalamus_update_circadian(hypothalamus_adapter_t* adapter,
     float delta_hours = (float)delta_time_us / (float)US_PER_HOUR;
 
     /* Calculate phase increment */
-    float phase_increment = (TWO_PI / adapter->config.circadian_period_hours) *
+    float phase_increment = (NIMCP_TWO_PI_F / adapter->config.circadian_period_hours) *
                             delta_hours;
 
     /* Update phase */
     adapter->state.circadian.phase += phase_increment;
 
     /* Normalize phase to [0, 2*PI] */
-    while (adapter->state.circadian.phase >= TWO_PI) {
-        adapter->state.circadian.phase -= TWO_PI;
+    while (adapter->state.circadian.phase >= NIMCP_TWO_PI_F) {
+        adapter->state.circadian.phase -= NIMCP_TWO_PI_F;
     }
     while (adapter->state.circadian.phase < 0.0f) {
-        adapter->state.circadian.phase += TWO_PI;
+        adapter->state.circadian.phase += NIMCP_TWO_PI_F;
     }
 
     /* Update period */
@@ -679,11 +677,11 @@ float hypothalamus_apply_light(hypothalamus_adapter_t* adapter,
     adapter->state.circadian.phase += phase_shift;
 
     /* Normalize */
-    while (adapter->state.circadian.phase >= TWO_PI) {
-        adapter->state.circadian.phase -= TWO_PI;
+    while (adapter->state.circadian.phase >= NIMCP_TWO_PI_F) {
+        adapter->state.circadian.phase -= NIMCP_TWO_PI_F;
     }
     while (adapter->state.circadian.phase < 0.0f) {
-        adapter->state.circadian.phase += TWO_PI;
+        adapter->state.circadian.phase += NIMCP_TWO_PI_F;
     }
 
     /* Also suppress melatonin with bright light */

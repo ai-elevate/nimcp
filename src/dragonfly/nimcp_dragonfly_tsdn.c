@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_tsdn)
 
@@ -32,9 +33,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_tsdn)
 // Constants
 //=============================================================================
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 
 #define TWO_PI (2.0f * M_PI)
 
@@ -657,8 +655,8 @@ void tsdn_reset_stats(tsdn_population_t* pop) {
 //=============================================================================
 
 float tsdn_normalize_angle(float angle) {
-    while (angle > M_PI) angle -= TWO_PI;
-    while (angle < -M_PI) angle += TWO_PI;
+    while (angle > M_PI) angle -= NIMCP_TWO_PI_F;
+    while (angle < -M_PI) angle += NIMCP_TWO_PI_F;
     return angle;
 }
 

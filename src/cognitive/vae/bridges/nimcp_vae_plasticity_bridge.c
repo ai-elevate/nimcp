@@ -26,6 +26,7 @@
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 /* ============================================================================
  * Module Constants
@@ -663,7 +664,7 @@ int vae_plasticity_generate_replay(vae_plasticity_bridge_t* bridge,
             /* Sample from N(0, temp) */
             float u1 = randf() + 1e-6f;
             float u2 = randf();
-            z[d] = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159f * u2) * temp;
+            z[d] = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2) * temp;
         }
 
         /* Decode through VAE using tensor API */

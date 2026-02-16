@@ -28,6 +28,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(motor_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -1813,7 +1814,7 @@ static nimcp_error_t handle_cerebellar_correction(
             trajectory_plan_t* traj = adapter->active_trajectory;
             /* Phase correction adjusts position within movement cycle */
             float phase_time_adjustment = correction->phase_correction *
-                                          (traj->waypoints[traj->num_waypoints - 1].time_ms / (2.0f * 3.14159f));
+                                          (traj->waypoints[traj->num_waypoints - 1].time_ms / (NIMCP_TWO_PI_F));
             traj->elapsed_ms += phase_time_adjustment;
             LOG_DEBUG("[%s] Phase correction applied: %.2f rad -> %.2fms",
                       MOTOR_LOG_MODULE, correction->phase_correction, phase_time_adjustment);

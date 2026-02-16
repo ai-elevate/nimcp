@@ -16,9 +16,10 @@
 #include <math.h>
 #include <time.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_TAG "VAE_AUDIO"
-#define PI 3.14159265359f
+#define PI NIMCP_PI_F
 
 static uint64_t get_time_us(void) {
     struct timespec ts;

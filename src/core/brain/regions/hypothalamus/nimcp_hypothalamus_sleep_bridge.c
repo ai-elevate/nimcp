@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_sleep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -91,7 +92,7 @@ static float compute_circadian_sleep_propensity(float phase_hours) {
     while (phase_hours >= 24.0f) phase_hours -= 24.0f;
 
     /* Sinusoidal model with peak at ~3am (phase 3) and trough at ~3pm (phase 15) */
-    float radians = (phase_hours - 3.0f) * (2.0f * 3.14159f / 24.0f);
+    float radians = (phase_hours - 3.0f) * (NIMCP_TWO_PI_F / 24.0f);
     float propensity = 0.5f + 0.5f * cosf(radians);
 
     return clamp_01(propensity);

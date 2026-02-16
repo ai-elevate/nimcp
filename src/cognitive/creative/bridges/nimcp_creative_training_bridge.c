@@ -28,6 +28,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(creative_training_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -415,7 +416,7 @@ static void simulate_training_step(creative_training_bridge_t* bridge) {
     /* Update learning rate (cosine decay) */
     float progress_ratio = (float)bridge->progress.step / (float)bridge->progress.total_steps;
     bridge->progress.learning_rate = bridge->config.hyperparams.learning_rate *
-                                     (0.5f * (1.0f + cosf(3.14159f * progress_ratio)));
+                                     (0.5f * (1.0f + cosf(NIMCP_PI_F * progress_ratio)));
 
     /* Update overall progress */
     bridge->progress.progress = progress_ratio;

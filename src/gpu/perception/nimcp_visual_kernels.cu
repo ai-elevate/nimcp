@@ -23,6 +23,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "VISUAL_GPU"
 
@@ -55,7 +56,7 @@ __global__ void kernel_gabor_filter_create(
 
     // Gabor function
     float gaussian = expf(-(x_rot * x_rot + gamma * gamma * y_rot * y_rot) / (2.0f * sigma * sigma));
-    float sinusoid = cosf(2.0f * 3.14159265f * x_rot / lambda + psi);
+    float sinusoid = cosf(NIMCP_TWO_PI_F * x_rot / lambda + psi);
 
     filter[y * kernel_size + x] = gaussian * sinusoid;
 }
@@ -122,7 +123,7 @@ bool nimcp_gpu_gabor_filterbank(
                          (kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
         for (int o = 0; o < n_orientations; o++) {
-            float theta = o * 3.14159265f / n_orientations;
+            float theta = o * NIMCP_PI_F / n_orientations;
             kernel_gabor_filter_create<<<filter_grid, filter_block>>>(
                 d_filters + o * kernel_size * kernel_size,
                 kernel_size, sigma, theta, lambda, gamma, 0.0f);
@@ -1203,7 +1204,7 @@ __global__ void kernel_orientation_max_pooling(
 
     int out_idx = y * width + x;
     edge_magnitude[out_idx] = max_response / (float)num_scales;
-    edge_orientation[out_idx] = (float)max_orientation * 3.14159265f / (float)num_orientations;
+    edge_orientation[out_idx] = (float)max_orientation * NIMCP_PI_F / (float)num_orientations;
 }
 
 /**
@@ -1229,8 +1230,8 @@ __global__ void kernel_edge_nms(
     float theta = orientation[y * width + x];
 
     // Quantize orientation to 4 directions
-    float angle = fmodf(theta + 3.14159265f / 8.0f, 3.14159265f);
-    int dir = (int)(angle * 4.0f / 3.14159265f) % 4;
+    float angle = fmodf(theta + NIMCP_PI_F / 8.0f, NIMCP_PI_F);
+    int dir = (int)(angle * 4.0f / NIMCP_PI_F) % 4;
 
     float m1, m2;
     switch (dir) {
@@ -1314,8 +1315,8 @@ __global__ void kernel_contour_integration(
             float ori_diff2 = fabsf(neighbor_ori - connection_angle);
 
             // Wrap angles
-            if (ori_diff1 > 3.14159265f / 2.0f) ori_diff1 = 3.14159265f - ori_diff1;
-            if (ori_diff2 > 3.14159265f / 2.0f) ori_diff2 = 3.14159265f - ori_diff2;
+            if (ori_diff1 > NIMCP_PI_F / 2.0f) ori_diff1 = NIMCP_PI_F - ori_diff1;
+            if (ori_diff2 > NIMCP_PI_F / 2.0f) ori_diff2 = NIMCP_PI_F - ori_diff2;
 
             float ori_weight = expf(-(ori_diff1 * ori_diff1 + ori_diff2 * ori_diff2) /
                                     (2.0f * sigma_ori * sigma_ori));

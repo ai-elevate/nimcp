@@ -83,6 +83,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,14 +114,10 @@ extern "C" {
 #define KURAMOTO_DEFAULT_NOISE_INTENSITY 0.1f
 
 /** Two pi constant */
-#ifndef TWO_PI
-    #define TWO_PI 6.28318530717958647692f
+#ifndef NIMCP_TWO_PI_F
 #endif
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Default synchronization threshold for is_synchronized check */
 #define KURAMOTO_SYNC_THRESHOLD         0.8f

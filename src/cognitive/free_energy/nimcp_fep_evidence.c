@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(fep_evidence, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -403,7 +404,7 @@ int fep_compute_model_accuracy(
 
             float diff = observation[i] - pred;
             log_lik -= 0.5f * (diff * diff / (var + FEP_EVIDENCE_EPSILON) +
-                              safe_log(2.0f * 3.14159f * var));
+                              safe_log(NIMCP_TWO_PI_F * var));
         }
     }
 

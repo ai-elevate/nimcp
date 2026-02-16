@@ -41,6 +41,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "MYELIN_GPU"
 
@@ -200,7 +201,7 @@ __global__ void kernel_cable_theory(
     // r_a = rho_a / (pi * (d/2)^2) where rho_a is axoplasmic resistivity
     // Convert: d in um, we want r_a in Ohm/cm
     float d_cm = d * 1e-4f;  // um to cm
-    float r_a = d_R_A_CYTOPLASM / (3.14159265f * 0.25f * d_cm * d_cm);
+    float r_a = d_R_A_CYTOPLASM / (NIMCP_PI_F * 0.25f * d_cm * d_cm);
 
     // Space constant: lambda = sqrt(r_m * d / (4 * r_a))
     // This gives lambda in cm, convert to um
@@ -1968,7 +1969,7 @@ extern "C" void myelin_cpu_compute_cable_params(
 
             float r_m = 1000.0f + 100.0f * n_lam;
             float c_m = 1.0f * powf(0.9f, (float)n_lam);
-            float r_a = 100.0f / (3.14159265f * 0.25f * d_cm * d_cm);
+            float r_a = 100.0f / (NIMCP_PI_F * 0.25f * d_cm * d_cm);
 
             float lambda_cm = sqrtf(r_m * d_cm / (4.0f * r_a));
             float lambda_um = lambda_cm * 1e4f;

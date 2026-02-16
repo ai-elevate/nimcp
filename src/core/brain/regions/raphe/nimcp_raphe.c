@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(raphe, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -657,7 +658,7 @@ nimcp_raphe_error_t nimcp_raphe_update_sleep_wake(nimcp_raphe_system_t* raphe, f
 
     /* Circadian modulation of wake promotion */
     /* Peak wakefulness around noon (12), minimum around 3am */
-    float circadian_factor = cosf((raphe->sleep_wake.circadian_phase - 12.0f) * 3.14159f / 12.0f);
+    float circadian_factor = cosf((raphe->sleep_wake.circadian_phase - 12.0f) * NIMCP_PI_F / 12.0f);
     raphe->sleep_wake.wake_promotion = 0.5f + 0.3f * circadian_factor -
                                         0.3f * raphe->sleep_wake.sleep_pressure;
     raphe->sleep_wake.wake_promotion = clamp_f(raphe->sleep_wake.wake_promotion, 0.0f, 1.0f);

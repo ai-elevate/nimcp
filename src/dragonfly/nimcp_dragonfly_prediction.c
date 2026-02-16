@@ -19,6 +19,7 @@
 #include <time.h>
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_prediction)
 
@@ -26,9 +27,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_prediction)
 // Constants
 //=============================================================================
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 
 #define STATE_DIM 9   /* pos(3) + vel(3) + accel(3) */
 #define MEAS_DIM  3   /* position only */

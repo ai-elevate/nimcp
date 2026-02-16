@@ -106,7 +106,7 @@ static float random_float(void) {
  * @brief Generate random phase in [0, 2*pi)
  */
 static float random_phase(void) {
-    return random_float() * TWO_PI;
+    return random_float() * NIMCP_TWO_PI_F;
 }
 
 /**
@@ -114,10 +114,10 @@ static float random_phase(void) {
  */
 static float wrap_phase_internal(float phase) {
     while (phase < 0.0f) {
-        phase += TWO_PI;
+        phase += NIMCP_TWO_PI_F;
     }
-    while (phase >= TWO_PI) {
-        phase -= TWO_PI;
+    while (phase >= NIMCP_TWO_PI_F) {
+        phase -= NIMCP_TWO_PI_F;
     }
     return phase;
 }
@@ -1171,7 +1171,7 @@ NIMCP_EXPORT bool kuramoto_compute_order_parameter(kuramoto_system_t* system) {
         /* psi = arg(mean phasor) */
         system->order_parameter_psi = atan2f(mean_sin, mean_cos);
         if (system->order_parameter_psi < 0.0f) {
-            system->order_parameter_psi += TWO_PI;
+            system->order_parameter_psi += NIMCP_TWO_PI_F;
         }
     }
 
@@ -1408,7 +1408,7 @@ NIMCP_EXPORT bool kuramoto_sync_modules(kuramoto_system_t* system,
     float mean_cos = (cosf(phase1) + cosf(phase2)) / 2.0f;
     float mean_phase = atan2f(mean_sin, mean_cos);
     if (mean_phase < 0.0f) {
-        mean_phase += TWO_PI;
+        mean_phase += NIMCP_TWO_PI_F;
     }
 
     system->oscillators[idx1].phase = mean_phase;
@@ -1651,10 +1651,10 @@ NIMCP_EXPORT float kuramoto_phase_difference(float phase1, float phase2) {
 
     /* Wrap to [-pi, pi] */
     while (diff > M_PI) {
-        diff -= TWO_PI;
+        diff -= NIMCP_TWO_PI_F;
     }
     while (diff < -M_PI) {
-        diff += TWO_PI;
+        diff += NIMCP_TWO_PI_F;
     }
 
     return diff;

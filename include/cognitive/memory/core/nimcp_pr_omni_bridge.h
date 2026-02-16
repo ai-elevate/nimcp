@@ -137,6 +137,7 @@
 #include "cognitive/memory/core/nimcp_kuramoto.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "perception/nimcp_omni_sensory_bridge.h"
+#include "constants/nimcp_math_constants.h"
 
 /* Note: theta_gamma.h has its own quaternion and kuramoto forward declarations
  * that conflict with the full definitions. We use forward declaration instead. */
@@ -193,9 +194,6 @@ extern "C" {
 #define PR_OMNI_FUSION_BINDING_INTERSECT 1
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Epsilon for floating-point comparisons */
 #define PR_OMNI_EPSILON                 1e-6f

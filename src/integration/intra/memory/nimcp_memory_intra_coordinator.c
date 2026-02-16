@@ -16,6 +16,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_intra_coordinator)
 
@@ -138,9 +139,9 @@ nimcp_layer_error_t nimcp_memory_intra_update(nimcp_memory_intra_t coord, float 
 
     /* Update theta oscillation (4-8 Hz) */
     if (coord->config.enable_theta_gating) {
-        coord->state.theta_phase += dt * 6.0f * 2.0f * 3.14159f; /* ~6 Hz theta */
-        if (coord->state.theta_phase > 2.0f * 3.14159f) {
-            coord->state.theta_phase -= 2.0f * 3.14159f;
+        coord->state.theta_phase += dt * 6.0f * NIMCP_TWO_PI_F; /* ~6 Hz theta */
+        if (coord->state.theta_phase > NIMCP_TWO_PI_F) {
+            coord->state.theta_phase -= NIMCP_TWO_PI_F;
             coord->stats.theta_cycles++;
         }
     }

@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(reticular, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -1301,8 +1302,8 @@ int reticular_set_circadian_input(nimcp_reticular_t* reticular,
     while (circadian_phase >= 24.0f) circadian_phase -= 24.0f;
 
     /* Compute circadian drive: high during day (6-22), low at night */
-    float phase_rad = (circadian_phase / 24.0f) * 2.0f * 3.14159265f;
-    float base_drive = 0.5f + 0.5f * cosf(phase_rad - 3.14159265f); /* Peak at noon */
+    float phase_rad = (circadian_phase / 24.0f) * NIMCP_TWO_PI_F;
+    float base_drive = 0.5f + 0.5f * cosf(phase_rad - NIMCP_PI_F); /* Peak at noon */
 
     reticular->circadian_drive = base_drive * circadian_amplitude;
 

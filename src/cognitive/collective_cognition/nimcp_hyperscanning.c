@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(hyperscanning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -30,7 +31,7 @@ BRIDGE_BOILERPLATE(hyperscanning, MESH_ADAPTER_CATEGORY_COGNITIVE)
  * Constants
  *===========================================================================*/
 
-#define PI 3.14159265358979323846f
+#define PI NIMCP_PI_F
 
 /** Number of phase history samples for circular statistics PLV */
 #define PLV_HISTORY_SIZE 32

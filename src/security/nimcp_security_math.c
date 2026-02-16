@@ -26,6 +26,7 @@
 
 #define LOG_MODULE "security_math"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_math, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -37,9 +38,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_math, MESH_ADAPTER_CATEGORY_SECURITY)
 #include <time.h>
 #include <pthread.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // Internal Structures

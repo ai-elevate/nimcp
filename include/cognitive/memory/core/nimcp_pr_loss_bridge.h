@@ -150,6 +150,7 @@
 
 /* Training loss functions */
 #include "middleware/training/nimcp_loss_functions.h"
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -165,9 +166,6 @@ extern "C" {
 //=============================================================================
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Default geodesic loss weight */
 #define PR_LOSS_DEFAULT_GEODESIC_WEIGHT      0.3f

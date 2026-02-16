@@ -24,6 +24,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "SLEEP_GPU"
 
@@ -168,13 +169,13 @@ __global__ void kernel_slow_oscillation(
     if (idx >= n) return;
 
     // Slow oscillation: alternating up and down states
-    float phase = 2.0f * 3.14159f * slow_wave_freq * time;
+    float phase = NIMCP_TWO_PI_F * slow_wave_freq * time;
     float so = 0.5f * (1.0f + sinf(phase));
 
     // Nested faster oscillations (spindles during up state)
     float spindle = 0.0f;
     if (so > 0.5f) {
-        spindle = 0.3f * sinf(12.0f * 2.0f * 3.14159f * time);
+        spindle = 0.3f * sinf(12.0f * NIMCP_TWO_PI_F * time);
     }
 
     oscillation[idx] = so + spindle;

@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_medulla_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -117,7 +118,7 @@ static protection_level_t compute_protection_from_drives(hypo_medulla_bridge_t* 
 static float compute_circadian_arousal(float phase_hours) {
     /* Simple sinusoidal circadian rhythm */
     /* Peak arousal around 10:00 and 16:00, low around 03:00 */
-    float radians = (phase_hours - 10.0f) * (2.0f * 3.14159f / 24.0f);
+    float radians = (phase_hours - 10.0f) * (NIMCP_TWO_PI_F / 24.0f);
     float circadian_factor = 0.5f + 0.3f * cosf(radians);  /* 0.2 to 0.8 */
     return circadian_factor;
 }

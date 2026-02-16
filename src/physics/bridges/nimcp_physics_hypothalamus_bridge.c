@@ -16,6 +16,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(physics_hypothalamus_bridge)
 
@@ -79,7 +80,7 @@ static float compute_circadian_multiplier(float phase) {
     while (phase >= 24.0f) phase -= 24.0f;
 
     /* Sinusoidal model: peak at 12:00 (noon), trough at 0:00 (midnight) */
-    float radians = (phase - 6.0f) * (2.0f * 3.14159f / 24.0f);
+    float radians = (phase - 6.0f) * (NIMCP_TWO_PI_F / 24.0f);
     float multiplier = 0.75f + 0.25f * sinf(radians);
 
     return multiplier;

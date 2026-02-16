@@ -26,6 +26,7 @@
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_jepa_health_agent = NULL;
@@ -156,7 +157,7 @@ static float jepa_randf(uint64_t* state) {
 static float jepa_randn(uint64_t* state) {
     float u1 = jepa_randf(state) + 1e-10f;
     float u2 = jepa_randf(state);
-    return sqrtf(-2.0f * logf(u1)) * cosf(6.2831853f * u2);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 //=============================================================================

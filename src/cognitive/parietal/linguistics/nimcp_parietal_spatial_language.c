@@ -16,15 +16,13 @@
 #include <math.h>
 #include <ctype.h>
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_math_constants.h"
 
 /* ============================================================================
  * INTERNAL CONSTANTS
  * ============================================================================ */
 
 /** Pi constant */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /** Degrees to radians */
 #define DEG_TO_RAD(d) ((d) * M_PI / 180.0)

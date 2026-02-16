@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(emotional_tagging, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -297,7 +298,7 @@ float emotional_tag_intensity(const emotional_tag_t* tag)
     float magnitude = sqrtf(val_sq + aro_sq);
 
     // Normalize to [0, 1] (max possible magnitude is sqrt(2))
-    return magnitude / 1.41421356f;  // sqrt(2)
+    return magnitude / NIMCP_SQRT2_F;  // sqrt(2)
 }
 
 /**

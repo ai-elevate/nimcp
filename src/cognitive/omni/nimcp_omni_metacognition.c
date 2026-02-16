@@ -18,6 +18,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(omni_metacognition, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -65,9 +66,6 @@ int omni_metacognition_training_end(void* ctx) {
     return 0;
 }
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* ============================================================================
  * INTERNAL HELPERS

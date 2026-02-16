@@ -16,12 +16,13 @@
 #include <float.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // Internal Constants
 //=============================================================================
 
-#define PI 3.14159265358979323846f
+#define PI NIMCP_PI_F
 #define LOG2E 1.4426950408889634f    // log2(e)
 #define LN2 0.6931471805599453f      // ln(2)
 

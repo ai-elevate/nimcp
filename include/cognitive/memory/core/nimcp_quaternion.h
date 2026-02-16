@@ -80,6 +80,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -101,9 +102,6 @@ extern "C" {
 #define QUAT_SLERP_THRESHOLD 0.9995f
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Half Pi */
 #ifndef M_PI_2

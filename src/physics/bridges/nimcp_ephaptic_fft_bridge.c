@@ -24,6 +24,7 @@
 #include <string.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic_fft_bridge)
 
@@ -34,7 +35,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic_fft_bridge)
 // Internal Constants
 //=============================================================================
 
-#define PI 3.14159265358979323846f
+#define PI NIMCP_PI_F
 #define LN_2 0.693147180559945f
 
 /** Small value for numerical stability */

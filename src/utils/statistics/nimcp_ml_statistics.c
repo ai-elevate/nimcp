@@ -21,6 +21,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // Module Constants
@@ -33,7 +34,7 @@
 #define NB_MAGIC  0x4E420001  /* 'NB\x00\x01' */
 
 #define LOG_MODULE "ML_STATS"
-#define PI_F 3.14159265358979323846f
+#define PI_F NIMCP_PI_F
 
 //=============================================================================
 // Module State

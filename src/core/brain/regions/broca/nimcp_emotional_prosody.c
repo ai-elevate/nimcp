@@ -19,6 +19,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(emotional_prosody, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -332,7 +333,7 @@ bool emotional_prosody_generate_contour(
         float declination = -processor->current_params.pitch_range_hz * 0.3f * progress;
 
         /* Add some natural variation */
-        float variation = sinf(progress * 3.14159f * 4) * processor->current_params.pitch_range_hz * 0.1f;
+        float variation = sinf(progress * NIMCP_PI_F * 4) * processor->current_params.pitch_range_hz * 0.1f;
 
         pt->pitch_hz = processor->current_params.pitch_mean_hz + declination + variation;
         pt->intensity = processor->current_params.intensity_factor;

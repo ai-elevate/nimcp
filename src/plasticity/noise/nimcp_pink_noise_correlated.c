@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_frequency_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_correlated)
 
@@ -86,7 +87,7 @@ static float random_normal(uint32_t* state) {
     // Avoid log(0)
     if (u1 < 1e-10f) u1 = 1e-10f;
 
-    return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 //=============================================================================

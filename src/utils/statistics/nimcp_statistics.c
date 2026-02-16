@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdatomic.h>
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -33,7 +34,7 @@
 // CONSTANTS
 //=============================================================================
 
-#define PI 3.14159265358979323846
+#define PI NIMCP_PI
 #define SQRT_2PI 2.5066282746310002
 #define LN_SQRT_2PI 0.9189385332046727
 #define EULER_GAMMA 0.5772156649015329
@@ -4324,7 +4325,7 @@ nimcp_stats_result_t nimcp_stats_regression_multiple(
     }
 
     // AIC and BIC
-    float log_lik = -(float)n / 2.0f * (logf(2.0f * 3.14159265f * mse) + 1.0f);
+    float log_lik = -(float)n / 2.0f * (logf(NIMCP_TWO_PI_F * mse) + 1.0f);
     result->aic = -2.0f * log_lik + 2.0f * p;
     result->bic = -2.0f * log_lik + logf((float)n) * p;
 

@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_wing_motor)
 
@@ -25,9 +26,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_wing_motor)
 // Constants
 //=============================================================================
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #define TWO_PI (2.0f * (float)M_PI)
 
@@ -48,8 +46,8 @@ static inline float clamp_f(float v, float min, float max) {
 }
 
 static inline float wrap_phase(float phase) {
-    while (phase >= TWO_PI) phase -= TWO_PI;
-    while (phase < 0.0f) phase += TWO_PI;
+    while (phase >= NIMCP_TWO_PI_F) phase -= NIMCP_TWO_PI_F;
+    while (phase < 0.0f) phase += NIMCP_TWO_PI_F;
     return phase;
 }
 
@@ -410,7 +408,7 @@ int dragonfly_wing_motor_step(
     /* Step CPG for each wing */
     for (int i = 0; i < WING_COUNT; i++) {
         /* Advance phase */
-        motor->phase[i] += TWO_PI * motor->frequency[i] * dt_s;
+        motor->phase[i] += NIMCP_TWO_PI_F * motor->frequency[i] * dt_s;
         motor->phase[i] = wrap_phase(motor->phase[i]);
 
         /* Generate wing state from CPG */

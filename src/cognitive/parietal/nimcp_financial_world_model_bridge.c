@@ -46,6 +46,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_world_model_bridge_health_agent = NULL;
@@ -189,7 +190,7 @@ static inline float random_normal(financial_world_model_bridge_t* bridge) {
     float u1 = random_uniform(bridge);
     float u2 = random_uniform(bridge);
     if (u1 < 1e-10f) u1 = 1e-10f;  /* Avoid log(0) */
-    return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 /**

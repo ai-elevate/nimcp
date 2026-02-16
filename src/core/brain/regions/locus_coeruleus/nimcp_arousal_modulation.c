@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(arousal_modulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -317,7 +318,7 @@ int nimcp_arousal_apply_circadian(nimcp_arousal_system_t* system, float time_of_
 
     float drive = 0.0f;
     if (hour < morning_peak) {
-        drive = 0.5f + 0.5f * sinf((hour / morning_peak) * 3.14159f / 2.0f);
+        drive = 0.5f + 0.5f * sinf((hour / morning_peak) * NIMCP_PI_F / 2.0f);
     } else if (hour < afternoon_dip) {
         drive = 1.0f - 0.2f * (hour - morning_peak) / (afternoon_dip - morning_peak);
     } else if (hour < evening_peak) {

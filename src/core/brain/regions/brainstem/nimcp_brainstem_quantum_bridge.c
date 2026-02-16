@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(brainstem_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -175,7 +176,7 @@ static void classical_integrate_sensory(const brainstem_sensory_input_t* visual,
 
     if (auditory && audio_sal > 0.0f) {
         /* Convert azimuth to x direction */
-        float audio_x = sinf(auditory->sound_azimuth * 3.14159f / 180.0f);
+        float audio_x = sinf(auditory->sound_azimuth * NIMCP_PI_F / 180.0f);
         result->attention_direction_x += audio_x * result->auditory_weight;
     }
 

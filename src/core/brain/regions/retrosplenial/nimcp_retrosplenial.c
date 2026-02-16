@@ -32,6 +32,7 @@
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_neural_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(retrosplenial, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -48,7 +49,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(retrosplenial, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 #define US_PER_MS       1000ULL
 #define US_PER_SECOND   1000000ULL
-#define PI              3.14159265358979323846f
+#define PI              NIMCP_PI_F
 #define TWO_PI          (2.0f * PI)
 
 /* Default transform matrix (identity) */

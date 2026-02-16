@@ -18,6 +18,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -29,8 +30,7 @@
 // CONSTANTS
 //=============================================================================
 
-#define PI 3.14159265358979323846
-#define TWO_PI 6.28318530717958647692
+#define PI NIMCP_PI
 
 //=============================================================================
 // Global State
@@ -154,7 +154,7 @@ static void fft_recursive(float* real, float* imag, uint32_t n, int sign) {
     fft_recursive(odd_r, odd_i, n/2, sign);
 
     for (uint32_t k = 0; k < n/2; k++) {
-        float theta = sign * TWO_PI * k / n;
+        float theta = sign * NIMCP_TWO_PI_F * k / n;
         float cos_t = cosf(theta);
         float sin_t = sinf(theta);
 
@@ -431,19 +431,19 @@ nimcp_ts_result_t nimcp_ts_window_function(
                 out[i] = 1.0f;
                 break;
             case NIMCP_TS_WINDOW_HANN:
-                out[i] = 0.5f * (1.0f - cosf(TWO_PI * i / (n - 1)));
+                out[i] = 0.5f * (1.0f - cosf(NIMCP_TWO_PI_F * i / (n - 1)));
                 break;
             case NIMCP_TS_WINDOW_HAMMING:
-                out[i] = 0.54f - 0.46f * cosf(TWO_PI * i / (n - 1));
+                out[i] = 0.54f - 0.46f * cosf(NIMCP_TWO_PI_F * i / (n - 1));
                 break;
             case NIMCP_TS_WINDOW_BLACKMAN:
-                out[i] = 0.42f - 0.5f * cosf(TWO_PI * i / (n - 1))
-                       + 0.08f * cosf(2 * TWO_PI * i / (n - 1));
+                out[i] = 0.42f - 0.5f * cosf(NIMCP_TWO_PI_F * i / (n - 1))
+                       + 0.08f * cosf(2 * NIMCP_TWO_PI_F * i / (n - 1));
                 break;
             case NIMCP_TS_WINDOW_BLACKMAN_HARRIS:
-                out[i] = 0.35875f - 0.48829f * cosf(TWO_PI * i / (n - 1))
-                       + 0.14128f * cosf(2 * TWO_PI * i / (n - 1))
-                       - 0.01168f * cosf(3 * TWO_PI * i / (n - 1));
+                out[i] = 0.35875f - 0.48829f * cosf(NIMCP_TWO_PI_F * i / (n - 1))
+                       + 0.14128f * cosf(2 * NIMCP_TWO_PI_F * i / (n - 1))
+                       - 0.01168f * cosf(3 * NIMCP_TWO_PI_F * i / (n - 1));
                 break;
             case NIMCP_TS_WINDOW_GAUSSIAN: {
                 float sigma = param > 0 ? param : 0.4f;

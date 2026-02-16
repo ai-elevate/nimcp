@@ -16,6 +16,7 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_grief_bridge)
 
@@ -214,7 +215,7 @@ int snn_grief_detect_slow_wave(
     float center_freq = (bridge->config.slow_wave_min_freq + bridge->config.slow_wave_max_freq) / 2.0f;
     slow_wave_state->frequency = center_freq;
     slow_wave_state->amplitude = bridge->state.grief_intensity * 0.8f;
-    slow_wave_state->phase = fmodf(bridge->last_update_time * 0.001f * 2.0f * 3.14159f * center_freq, 2.0f * 3.14159f);
+    slow_wave_state->phase = fmodf(bridge->last_update_time * 0.001f * NIMCP_TWO_PI_F * center_freq, NIMCP_TWO_PI_F);
     slow_wave_state->power = bridge->state.grief_intensity * bridge->state.grief_intensity;
     slow_wave_state->is_active = (bridge->state.grief_intensity > bridge->config.grief_intensity_threshold);
 

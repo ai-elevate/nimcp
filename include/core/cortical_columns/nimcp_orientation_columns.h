@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,9 +49,6 @@ extern "C" {
 #define ORIENTATION_MAX_ORIENTATIONS 64
 
 /** Pi constant */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* ============================================================================
  * Data Structures

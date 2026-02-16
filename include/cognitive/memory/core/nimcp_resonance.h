@@ -79,6 +79,7 @@
 #include "nimcp_quaternion.h"
 #include "nimcp_prime_signature.h"
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,13 +95,9 @@ extern "C" {
 //=============================================================================
 
 /** Pi constant (if not already defined) */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Two times Pi */
-#ifndef M_2PI
-    #define M_2PI 6.28318530717958647692f
+#ifndef NIMCP_TWO_PI_F
 #endif
 
 /** Default weight for Jaccard (prime signature) component */

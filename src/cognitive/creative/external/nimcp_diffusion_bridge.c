@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(diffusion_bridge)
 //=============================================================================
@@ -324,7 +325,7 @@ static void generate_gaussian_noise(float* noise, size_t count, uint64_t seed)
 
         u1 = fmaxf(u1, 1e-10f);
         float radius = sqrtf(-2.0f * logf(u1));
-        float theta = 2.0f * 3.14159265f * u2;
+        float theta = NIMCP_TWO_PI_F * u2;
 
         noise[i] = radius * cosf(theta);
         if (i + 1 < count) {

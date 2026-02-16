@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(phonological_analyzer, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -113,7 +114,7 @@ static void compute_hamming_window(float* window, uint32_t size)
         return;
     }
     for (uint32_t i = 0; i < size; i++) {
-        window[i] = 0.54f - 0.46f * cosf(2.0f * 3.14159265358979f * (float)i / (float)(size - 1));
+        window[i] = 0.54f - 0.46f * cosf(NIMCP_TWO_PI_F * (float)i / (float)(size - 1));
     }
 }
 

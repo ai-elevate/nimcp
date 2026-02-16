@@ -19,6 +19,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/memory/nimcp_memory.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -30,8 +31,7 @@
 // CONSTANTS
 //=============================================================================
 
-#define PI 3.14159265358979323846f
-#define TWO_PI 6.28318530717958647692f
+#define PI NIMCP_PI_F
 #define SQRT_2PI 2.5066282746310002f
 
 //=============================================================================
@@ -1672,7 +1672,7 @@ neural_stats_result_t nimcp_neural_spike_field_coherence(
 
     for (uint32_t f = 0; f < n_frequencies; f++) {
         float freq = result->frequencies[f];
-        float omega = TWO_PI * freq / 1000.0f;  // rad/ms
+        float omega = NIMCP_TWO_PI_F * freq / 1000.0f;  // rad/ms
 
         // Compute phase at each spike time using Hilbert transform approximation
         // For simplicity, use bandpass filtering approach

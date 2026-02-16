@@ -40,6 +40,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(curiosity_enhanced, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -2128,7 +2129,7 @@ static float qmc_gaussian(uint32_t* seed, float mean, float std) {
     /* Avoid log(0) */
     if (u1 < 1e-10f) u1 = 1e-10f;
 
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
     return mean + std * z;
 }
 

@@ -16,6 +16,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_quantum_reasoning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -643,7 +644,7 @@ int nimcp_brain_qreason_solve_sat_mcts(brain_t brain,
         .mcts_iterations = ctx->config.max_grover_iterations > 0 ?
                           ctx->config.max_grover_iterations * 100 : 1000,
         .max_depth = query->cnf.n_variables,
-        .exploration_constant = 1.41421356f,  /* sqrt(2) */
+        .exploration_constant = NIMCP_SQRT2_F,  /* sqrt(2) */
         .use_unit_propagation = true,
         .seed = g_bqr_mc_seed
     };

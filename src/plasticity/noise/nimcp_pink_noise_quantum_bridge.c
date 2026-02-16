@@ -21,6 +21,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_neural_constants.h"
 #include "constants/nimcp_frequency_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_quantum_bridge)
 
@@ -41,7 +42,7 @@ static float normal_random(uint32_t* state) {
     float u1 = uniform_random(state);
     float u2 = uniform_random(state);
     if (u1 < 1e-10f) u1 = 1e-10f;
-    return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 //=============================================================================
@@ -213,7 +214,7 @@ pink_quantum_bridge_t* pink_quantum_create(const pink_quantum_config_t* config) 
     // Initialize magnitudes with random values
     for (uint32_t i = 0; i < bridge->num_frequencies; i++) {
         bridge->magnitudes[i] = bridge->target_spectrum[i] * (0.5f + uniform_random(&bridge->rng_state));
-        bridge->phases[i] = uniform_random(&bridge->rng_state) * 2.0f * 3.14159265f;
+        bridge->phases[i] = uniform_random(&bridge->rng_state) * NIMCP_TWO_PI_F;
     }
 
     init_ternary_coefficients(bridge);
@@ -300,7 +301,7 @@ float pink_quantum_anneal_step(
     }
 
     // Randomize phase
-    bridge->phases[idx] = uniform_random(&bridge->rng_state) * 2.0f * 3.14159265f;
+    bridge->phases[idx] = uniform_random(&bridge->rng_state) * NIMCP_TWO_PI_F;
 
     bridge->quantum_operations++;
     return bridge->energy;
@@ -431,7 +432,7 @@ int pink_quantum_generate_sample(
             // Synthesize sample from spectrum (simplified IFFT)
             float t = (float)bridge->quantum_operations * 0.001f;
             for (uint32_t f = 1; f < 32; f++) {
-                result += bridge->magnitudes[f] * cosf(2.0f * 3.14159f * f * t + bridge->phases[f]);
+                result += bridge->magnitudes[f] * cosf(NIMCP_TWO_PI_F * f * t + bridge->phases[f]);
             }
             result *= bridge->config.amplitude * 0.1f;
             break;
@@ -556,7 +557,7 @@ int pink_quantum_restart_annealing(pink_quantum_bridge_t* bridge) {
     for (uint32_t i = 0; i < bridge->num_frequencies; i++) {
         bridge->magnitudes[i] = bridge->target_spectrum[i] *
                                (0.5f + uniform_random(&bridge->rng_state));
-        bridge->phases[i] = uniform_random(&bridge->rng_state) * 2.0f * 3.14159265f;
+        bridge->phases[i] = uniform_random(&bridge->rng_state) * NIMCP_TWO_PI_F;
     }
     bridge->energy = compute_energy(bridge);
 

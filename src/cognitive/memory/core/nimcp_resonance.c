@@ -78,8 +78,8 @@ static inline float clamp01(float value) {
  * @brief Wrap phase to [0, 2*pi] range
  */
 static inline float wrap_phase(float phase) {
-    while (phase < 0.0f) phase += M_2PI;
-    while (phase >= M_2PI) phase -= M_2PI;
+    while (phase < 0.0f) phase += NIMCP_TWO_PI_F;
+    while (phase >= NIMCP_TWO_PI_F) phase -= NIMCP_TWO_PI_F;
     return phase;
 }
 
@@ -245,8 +245,8 @@ float resonance_phase_coherence(float phase1, float phase2) {
     float diff = phase1 - phase2;
 
     // Wrap difference to [-pi, pi]
-    while (diff > M_PI) diff -= M_2PI;
-    while (diff < -M_PI) diff += M_2PI;
+    while (diff > M_PI) diff -= NIMCP_TWO_PI_F;
+    while (diff < -M_PI) diff += NIMCP_TWO_PI_F;
 
     // PLV = cos(diff), map from [-1, +1] to [0, 1]
     float plv = cosf(diff);

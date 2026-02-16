@@ -38,6 +38,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(personality, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -109,7 +110,7 @@ static void personality_bio_cleanup(void) {
 // Internal Constants
 //=============================================================================
 
-#define PI 3.14159265358979323846
+#define PI NIMCP_PI
 
 //=============================================================================
 // Helper Functions (All < 50 lines, early returns, WHAT-WHY-HOW docs)

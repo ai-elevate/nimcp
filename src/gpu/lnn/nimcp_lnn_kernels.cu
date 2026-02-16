@@ -26,6 +26,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "LNN_GPU"
 
@@ -1480,7 +1481,7 @@ __global__ void kernel_init_weights_xavier(
     float u2 = (float)(state & 0xFFFFFFFF) / 4294967296.0f;
 
     u1 = fmaxf(u1, 1e-7f);  // Avoid log(0)
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 
     weights[idx] = z * scale;
 }
@@ -3345,7 +3346,7 @@ static float cpu_rand_normal(uint64_t* state, float std)
     float u2 = (float)((*state) & 0xFFFFFFFF) / 4294967296.0f;
 
     u1 = fmaxf(u1, 1e-7f);
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
     return z * std;
 }
 

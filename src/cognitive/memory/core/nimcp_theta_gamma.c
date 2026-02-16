@@ -135,8 +135,8 @@ static inline float clamp01(float value) {
  * @brief Wrap phase to [0, 2*pi] range
  */
 static inline float wrap_phase_internal(float phase) {
-    while (phase < 0.0f) phase += M_2PI;
-    while (phase >= M_2PI) phase -= M_2PI;
+    while (phase < 0.0f) phase += NIMCP_TWO_PI_F;
+    while (phase >= NIMCP_TWO_PI_F) phase -= NIMCP_TWO_PI_F;
     return phase;
 }
 
@@ -667,7 +667,7 @@ bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
     float dt_s = ns_to_seconds(dt_ns);
 
     /* Update theta phase: phase += 2π × frequency × dt */
-    float theta_delta = M_2PI * mgr->state.theta_frequency * dt_s;
+    float theta_delta = NIMCP_TWO_PI_F * mgr->state.theta_frequency * dt_s;
     float old_theta_phase = mgr->state.theta_phase;
     mgr->state.theta_phase = wrap_phase_internal(mgr->state.theta_phase + theta_delta);
 
@@ -678,7 +678,7 @@ bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
     }
 
     /* Update gamma phase: phase += 2π × frequency × dt */
-    float gamma_delta = M_2PI * mgr->state.gamma_frequency * dt_s;
+    float gamma_delta = NIMCP_TWO_PI_F * mgr->state.gamma_frequency * dt_s;
     mgr->state.gamma_phase = wrap_phase_internal(mgr->state.gamma_phase + gamma_delta);
 
     /* Modulate gamma amplitude by theta phase (PAC) */
@@ -1021,7 +1021,7 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     clear_pac_histogram(mgr);
 
     /* Bin gamma amplitude by theta phase */
-    float bin_width = M_2PI / (float)num_bins;
+    float bin_width = NIMCP_TWO_PI_F / (float)num_bins;
 
     for (uint32_t i = 0; i < n; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -1140,7 +1140,7 @@ float theta_gamma_preferred_phase(theta_gamma_manager_t manager,
     /* Clear and fill histogram */
     clear_pac_histogram(mgr);
 
-    float bin_width = M_2PI / (float)num_bins;
+    float bin_width = NIMCP_TWO_PI_F / (float)num_bins;
 
     for (uint32_t i = 0; i < n; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -1363,7 +1363,7 @@ float theta_gamma_burst_phase(theta_gamma_manager_t manager,
     /* phase_at_burst = current_phase - (elapsed_samples / sample_rate) * 2π * freq */
     /* Note: This is approximate; for accurate results, track phase history */
     float phase_at_burst = mgr->state.theta_phase -
-                           (sample_time * M_2PI * mgr->state.theta_frequency);
+                           (sample_time * NIMCP_TWO_PI_F * mgr->state.theta_frequency);
 
     return wrap_phase_internal(phase_at_burst);
 }
@@ -1440,7 +1440,7 @@ bool theta_gamma_integrate_kuramoto(theta_gamma_manager_t manager,
 
     /* Set frequency based on current theta */
     if (!kuramoto_set_frequency(kuramoto, module_id,
-                                 mgr->state.theta_frequency * M_2PI)) {
+                                 mgr->state.theta_frequency * NIMCP_TWO_PI_F)) {
         set_error("Failed to set Kuramoto frequency");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: kuramoto_set_phase is NULL");
         return false;

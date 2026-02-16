@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -36,9 +37,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_quantum_bridge, MESH_ADAPTER_CATEGORY_
  * MATHEMATICAL CONSTANTS
  *===========================================================================*/
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /*=============================================================================
  * INTERNAL STRUCTURE

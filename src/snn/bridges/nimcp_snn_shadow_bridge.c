@@ -15,6 +15,7 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_shadow_bridge)
 
@@ -222,8 +223,8 @@ int snn_shadow_detect_background_pattern(
         background_state->frequency = center_freq;
         background_state->amplitude = bridge->state.shadow_activity_level *
                                       bridge->config.background_amplitude_max;
-        background_state->phase = fmodf(bridge->last_update_time * 0.001f * 2.0f * 3.14159f *
-                                       center_freq, 2.0f * 3.14159f);
+        background_state->phase = fmodf(bridge->last_update_time * 0.001f * NIMCP_TWO_PI_F *
+                                       center_freq, NIMCP_TWO_PI_F);
         background_state->coherence = bridge->state.shadow_activity_level *
                                       bridge->state.dmn_activity;
     } else {

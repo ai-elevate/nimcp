@@ -18,6 +18,7 @@
 #include <float.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // MODULE IDENTIFICATION
@@ -59,8 +60,7 @@ extern void sorgqr_(const int* m, const int* n, const int* k, float* a,
 // Constants
 //=============================================================================
 
-#define PI 3.14159265358979323846f
-#define SQRT_2 1.41421356237309504880f
+#define PI NIMCP_PI_F
 
 //=============================================================================
 // Helper Function Declarations

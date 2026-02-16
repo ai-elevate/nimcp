@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_bio_async_bridge)
 
@@ -520,9 +521,9 @@ int dragonfly_bio_async_update(dragonfly_bio_async_bridge_t* bridge, float dt_ms
         default: freq_hz = 60.0f;
     }
 
-    bridge->phase_angle += 2.0f * 3.14159f * freq_hz * dt_ms * 0.001f;
-    if (bridge->phase_angle > 2.0f * 3.14159f) {
-        bridge->phase_angle -= 2.0f * 3.14159f;
+    bridge->phase_angle += NIMCP_TWO_PI_F * freq_hz * dt_ms * 0.001f;
+    if (bridge->phase_angle > NIMCP_TWO_PI_F) {
+        bridge->phase_angle -= NIMCP_TWO_PI_F;
     }
 
     /* Process pending futures */

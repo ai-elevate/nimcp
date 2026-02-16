@@ -17,6 +17,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(intuition_integrations, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -646,7 +647,7 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
             if (ext->detected_trend->has_seasonality && ext->detected_trend->period > 0) {
                 /* Simple sinusoidal overlay */
                 float phase = fmodf(t, ext->detected_trend->period) /
-                              ext->detected_trend->period * 2.0f * 3.14159f;
+                              ext->detected_trend->period * NIMCP_TWO_PI_F;
                 pred += 0.1f * sinf(phase);
             }
 

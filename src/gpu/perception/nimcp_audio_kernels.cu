@@ -26,12 +26,10 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "AUDIO_GPU"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 
 #define BLOCK_SIZE 256
 #define BLOCK_SIZE_2D 16
@@ -1080,7 +1078,7 @@ __global__ void kernel_dct_matrix(float* dct, int n_mfcc, int n_mels)
     if (i >= n_mfcc || j >= n_mels) return;
 
     float scale = sqrtf(2.0f / n_mels);
-    float angle = 3.14159265f * (float)i * ((float)j + 0.5f) / (float)n_mels;
+    float angle = NIMCP_PI_F * (float)i * ((float)j + 0.5f) / (float)n_mels;
     dct[i * n_mels + j] = scale * cosf(angle);
 }
 
@@ -1132,7 +1130,7 @@ __global__ void kernel_hann_window(float* window, int n)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
-        window[idx] = 0.5f * (1.0f - cosf(2.0f * 3.14159265f * idx / (n - 1)));
+        window[idx] = 0.5f * (1.0f - cosf(NIMCP_TWO_PI_F * idx / (n - 1)));
     }
 }
 

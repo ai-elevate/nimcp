@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <math.h>
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +40,7 @@ extern "C" {
  * ============================================================================ */
 
 /** Default exploration constant for UCB1 (sqrt(2)) */
-#define MCTS_DEFAULT_EXPLORATION  1.41421356f
+#define MCTS_DEFAULT_EXPLORATION  NIMCP_SQRT2_F
 
 /** Default discount factor for value backpropagation */
 #define MCTS_DEFAULT_DISCOUNT     0.99f

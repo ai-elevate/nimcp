@@ -23,6 +23,7 @@
 #include <time.h>
 #include <float.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lgss_input_validator, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -638,7 +639,7 @@ nimcp_error_t lgss_input_validator_check_proprio(
         }
         /* Joint positions typically in radians: -2*PI to 2*PI */
         if (!check_range_float(input->joint_positions, input->num_joints,
-                               -6.28318f, 6.28318f)) {
+                               -NIMCP_TWO_PI_F, NIMCP_TWO_PI_F)) {
             result->status = LGSS_INPUT_SUSPICIOUS;
             result->failed_checks |= LGSS_CHECK_RANGE;
             snprintf(result->explanation, sizeof(result->explanation),

@@ -18,6 +18,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_TAG "VAE_VISUAL"
 
@@ -334,7 +335,7 @@ int vae_visual_generate(vae_visual_bridge_t* bridge,
     for (uint32_t i = 0; i < latent_dim; i++) {
         float u1 = (float)nimcp_tl_rand() / RAND_MAX;
         float u2 = (float)nimcp_tl_rand() / RAND_MAX;
-        latent[i] = sqrtf(-2.0f * logf(u1 + 1e-8f)) * cosf(2.0f * 3.14159f * u2) * temperature;
+        latent[i] = sqrtf(-2.0f * logf(u1 + 1e-8f)) * cosf(NIMCP_TWO_PI_F * u2) * temperature;
     }
 
     int ret = vae_visual_decode(bridge, latent, latent_dim, result);

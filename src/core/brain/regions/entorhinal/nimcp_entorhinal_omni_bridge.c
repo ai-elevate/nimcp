@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_omni_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -31,9 +32,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_omni_bridge, MESH_ADAPTER_CATEGORY_COGNI
  * INTERNAL CONSTANTS
  *===========================================================================*/
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #define DEFAULT_MAX_TRACKING_DISTANCE   50.0f
 #define DEFAULT_MIN_TRACKING_DISTANCE   0.1f

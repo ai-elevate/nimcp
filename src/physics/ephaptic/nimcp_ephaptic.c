@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic)
 
@@ -37,7 +38,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic)
 //=============================================================================
 
 /** Two times pi for phase calculations */
-#define TWO_PI 6.283185307179586f
 
 /** Resting membrane potential (mV) */
 #define V_REST -65.0f
@@ -119,8 +119,8 @@ static inline float clamp_f(float value, float min_val, float max_val) {
  * HOW:  Modulo arithmetic
  */
 static inline float wrap_phase(float phase) {
-    while (phase < 0.0f) phase += TWO_PI;
-    while (phase >= TWO_PI) phase -= TWO_PI;
+    while (phase < 0.0f) phase += NIMCP_TWO_PI_F;
+    while (phase >= NIMCP_TWO_PI_F) phase -= NIMCP_TWO_PI_F;
     return phase;
 }
 
@@ -488,7 +488,7 @@ nimcp_error_t nimcp_ephaptic_compute_lfp(
     }
 
     /* Scale by resistivity and geometric factors */
-    float scale = 1.0f / (4.0f * 3.14159f * system->config.extracellular_resistivity);
+    float scale = 1.0f / (4.0f * NIMCP_PI_F * system->config.extracellular_resistivity);
     result->amplitude = fabsf(lfp_sum * scale);
 
     /* Compute LFP phase from weighted phase average */
@@ -728,7 +728,7 @@ nimcp_error_t nimcp_ephaptic_synchronize(
         nimcp_ephaptic_neuron_t* n = &system->neurons[i];
 
         /* Natural oscillation */
-        float d_theta = n->natural_frequency * TWO_PI * dt * 0.001f;  /* dt in ms */
+        float d_theta = n->natural_frequency * NIMCP_TWO_PI_F * dt * 0.001f;  /* dt in ms */
 
         /* Kuramoto coupling: K * r * sin(mean_phase - theta_i) */
         float coupling = K * r * sinf(mean_phase - n->phase);
@@ -753,7 +753,7 @@ nimcp_error_t nimcp_ephaptic_synchronize(
 
     for (uint32_t i = 0; i < system->neuron_count; i++) {
         float phase_diff = fabsf(system->neurons[i].phase - mean_phase);
-        if (phase_diff > 3.14159f) phase_diff = TWO_PI - phase_diff;
+        if (phase_diff > 3.14159f) phase_diff = NIMCP_TWO_PI_F - phase_diff;
 
         if (phase_diff < threshold_rad) {
             sync_count++;

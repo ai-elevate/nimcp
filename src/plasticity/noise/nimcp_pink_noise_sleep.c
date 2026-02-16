@@ -13,6 +13,7 @@
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_frequency_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_sleep)
 
@@ -181,7 +182,7 @@ float pink_sleep_generate_sample(pink_sleep_bridge_t* bridge) {
                 bridge->spindle_phase = 0.0f;
             }
 
-            float spindle = 0.1f * sinf(2.0f * 3.14159f * params->spindle_frequency *
+            float spindle = 0.1f * sinf(NIMCP_TWO_PI_F * params->spindle_frequency *
                                         bridge->spindle_phase / bridge->config.sample_rate);
             sample += spindle;
             bridge->spindle_phase += 1.0f;

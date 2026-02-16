@@ -40,6 +40,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(feature_hypercolumns)
 
@@ -92,7 +93,7 @@ static void feature_hypercolumns_bio_cleanup(void) {
  * Constants
  * ========================================================================== */
 
-#define PI 3.14159265358979323846f
+#define PI NIMCP_PI_F
 #define TWOPI (2.0f * PI)
 #define EPSILON 1e-10f
 #define DEFAULT_TUNING_WIDTH 0.2f

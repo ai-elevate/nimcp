@@ -28,12 +28,10 @@
 #define LOG_MODULE "nimcp_oscillation_detector"
 #define LOG_MODULE_ID 0x0524
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(oscillation_detector)
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 // ============================================================================
 // CONSTANTS

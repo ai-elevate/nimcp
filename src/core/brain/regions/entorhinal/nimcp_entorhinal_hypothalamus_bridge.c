@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_hypothalamus_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -116,7 +117,7 @@ entorhinal_hypothalamus_config_t entorhinal_hypothalamus_default_config(void) {
 
     config.high_motivation_threshold = DEFAULT_HIGH_MOTIVATION_THRESHOLD;
     config.stress_impairment_threshold = DEFAULT_STRESS_IMPAIRMENT_THRESHOLD;
-    config.consolidation_circadian_peak = 3.14159f;  /* Peak during sleep (night) */
+    config.consolidation_circadian_peak = NIMCP_PI_F;  /* Peak during sleep (night) */
 
     return config;
 }
@@ -295,7 +296,7 @@ int entorhinal_hypothalamus_bridge_update(
     if (bridge->config.enable_circadian_modulation) {
         float phase_diff = fabsf(bridge->motivation.circadian_phase -
             bridge->config.consolidation_circadian_peak);
-        if (phase_diff > 3.14159f) phase_diff = 6.28318f - phase_diff;
+        if (phase_diff > 3.14159f) phase_diff = NIMCP_TWO_PI_F - phase_diff;
 
         /* Gaussian around peak */
         float consolidation_factor = expf(-phase_diff * phase_diff * 0.5f);

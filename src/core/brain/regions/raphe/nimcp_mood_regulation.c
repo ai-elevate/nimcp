@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(mood_regulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -145,7 +146,7 @@ int nimcp_mood_update(nimcp_mood_system_t* system, float ht_level, float dt) {
 
     /* 2. Compute circadian contribution */
     float circadian_contribution = system->config.circadian_amplitude *
-                                   sinf(system->circadian_phase * 2.0f * 3.14159f);
+                                   sinf(system->circadian_phase * NIMCP_TWO_PI_F);
 
     /* 3. Compute target valence */
     system->target_valence = ht_mood_contribution + circadian_contribution;

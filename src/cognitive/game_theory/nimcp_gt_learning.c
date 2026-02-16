@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(gt_learning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -944,7 +945,7 @@ nimcp_error_t nimcp_gt_learner_select_action(
                 float u1 = rand_float(&learner->rand_seed);
                 float u2 = rand_float(&learner->rand_seed);
                 if (u1 < 1e-10f) u1 = 1e-10f;
-                float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+                float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 
                 float sample = mean + sqrtf(var) * z;
 

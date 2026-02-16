@@ -21,6 +21,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(mechanical_engineering, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -335,7 +336,7 @@ float mechanical_eng_natural_frequency(
     if (mass <= 0.0f || stiffness <= 0.0f) {
         return 0.0f;
     }
-    return sqrtf(stiffness / mass) / (2.0f * 3.14159265f);
+    return sqrtf(stiffness / mass) / (NIMCP_TWO_PI_F);
 }
 
 void mechanical_eng_free_vibration_result(me_vibration_result_t* result) {
@@ -504,7 +505,7 @@ float mechanical_eng_moment_of_inertia_circle(float diameter) {
 
 
     float r = diameter / 2.0f;
-    return 3.14159265f * r * r * r * r / 4.0f;
+    return NIMCP_PI_F * r * r * r * r / 4.0f;
 }
 
 float mechanical_eng_moment_of_inertia_tube(float outer_d, float inner_d) {
@@ -514,7 +515,7 @@ float mechanical_eng_moment_of_inertia_tube(float outer_d, float inner_d) {
 
     float ro = outer_d / 2.0f;
     float ri = inner_d / 2.0f;
-    return 3.14159265f * (ro * ro * ro * ro - ri * ri * ri * ri) / 4.0f;
+    return NIMCP_PI_F * (ro * ro * ro * ro - ri * ri * ri * ri) / 4.0f;
 }
 
 float mechanical_eng_section_modulus(float moment_of_inertia, float c) {

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "constants/nimcp_math_constants.h"
 
 /* ============================================================================
  * Internal Helpers
@@ -588,7 +589,7 @@ int vae_emotion_generate_with_emotion(vae_emotion_bridge_t* bridge,
         float u1 = (float)nimcp_tl_rand() / RAND_MAX;
         float u2 = (float)nimcp_tl_rand() / RAND_MAX;
         if (u1 < 1e-10f) u1 = 1e-10f;
-        float noise = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+        float noise = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
         result->latent[i] += temperature * noise;
     }
 

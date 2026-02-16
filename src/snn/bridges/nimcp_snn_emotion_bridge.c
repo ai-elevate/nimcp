@@ -16,6 +16,7 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_emotion_bridge)
 
@@ -224,8 +225,8 @@ int snn_emotion_detect_theta(
 
     theta_state->frequency = bridge->config.theta_frequency;
     theta_state->amplitude = bridge->state.decoded_arousal * 0.8f;
-    theta_state->phase = fmodf(bridge->last_update_time * 0.001f * 2.0f * 3.14159f *
-                               bridge->config.theta_frequency, 2.0f * 3.14159f);
+    theta_state->phase = fmodf(bridge->last_update_time * 0.001f * NIMCP_TWO_PI_F *
+                               bridge->config.theta_frequency, NIMCP_TWO_PI_F);
     theta_state->coherence = 0.5f + bridge->state.emotional_intensity * 0.5f;
     theta_state->is_synchronized = (theta_state->coherence > 0.7f);
 

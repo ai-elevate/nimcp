@@ -21,6 +21,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -79,8 +80,8 @@ static float color_distance(float h1, float s1, float h2, float s2) {
 static float orientation_distance(float o1, float o2) {
     float d = fabsf(o1 - o2);
     /* Orientation is periodic with period pi */
-    while (d > 3.14159f / 2.0f) d -= 3.14159f;
-    return fabsf(d) / (3.14159f / 2.0f);
+    while (d > NIMCP_PI_F / 2.0f) d -= NIMCP_PI_F;
+    return fabsf(d) / (NIMCP_PI_F / 2.0f);
 }
 
 /*=============================================================================
@@ -275,7 +276,7 @@ int occipital_quantum_visual_search(
             feature_match *= 1.0f - color_dist;
         }
         if (target->search_by_orientation) {
-            float loc_ori = quantum_randf(&bridge->rng_state) * 3.14159f;
+            float loc_ori = quantum_randf(&bridge->rng_state) * NIMCP_PI_F;
             float ori_dist = orientation_distance(target->target_orientation, loc_ori);
             feature_match *= 1.0f - ori_dist;
         }

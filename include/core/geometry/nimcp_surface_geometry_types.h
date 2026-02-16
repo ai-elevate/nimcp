@@ -34,15 +34,13 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 #include <math.h>  /* For M_PI, fabsf */
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // MATHEMATICAL CONSTANTS
 //=============================================================================
 
 /** Pi constant - define if not available from math.h */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /** Pi as single-precision float for computation */
 #define SURFACE_PI_F ((float)M_PI)

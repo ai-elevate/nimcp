@@ -49,6 +49,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // Forward Declarations
@@ -73,7 +74,7 @@ typedef struct cortical_column_pool cortical_column_pool_t;
 #define DRAGONFLY_CORTICAL_MINICOLUMN_COUNT 16
 
 /** Angular spacing between minicolumns (radians) */
-#define DRAGONFLY_CORTICAL_ANGULAR_SPACING (2.0f * 3.14159265358979f / 16)
+#define DRAGONFLY_CORTICAL_ANGULAR_SPACING (NIMCP_TWO_PI_F / 16)
 
 /** Neurons per minicolumn (typical cortical count) */
 #define DRAGONFLY_CORTICAL_NEURONS_PER_MINICOLUMN 80

@@ -139,6 +139,7 @@
 #include "cognitive/memory/core/nimcp_entanglement.h"
 #include "cognitive/memory/core/nimcp_theta_gamma.h"
 #include "cognitive/memory/core/nimcp_resonance.h"
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -191,9 +192,6 @@ typedef struct nimcp_health_agent nimcp_health_agent_t;
 #define PR_SPEECH_EPSILON               1e-6f
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 //=============================================================================
 // Type Definitions - Enumerations

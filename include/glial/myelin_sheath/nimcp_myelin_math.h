@@ -41,6 +41,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // Mathematical Constants
@@ -48,8 +49,8 @@ extern "C" {
 
 /** @name Biophysical Constants */
 ///@{
-#define NIMCP_MYELIN_MATH_PI            3.14159265358979323846f
-#define NIMCP_MYELIN_MATH_E             2.71828182845904523536f
+#define NIMCP_MYELIN_MATH_PI            NIMCP_PI_F
+#define NIMCP_MYELIN_MATH_E             NIMCP_EULER_F
 #define NIMCP_MYELIN_MATH_EPSILON       1e-9f
 ///@}
 

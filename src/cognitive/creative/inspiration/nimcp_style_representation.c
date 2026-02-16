@@ -27,6 +27,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(style_representation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -513,9 +514,9 @@ int style_repr_embed_visual(style_representer_t* repr,
     for (uint32_t i = 0; i < repr->embedding_dim; i++) {
         float val = 0.0f;
 
-        val += sinf((float)i * avg_r * 3.14159f) * 0.3f;
-        val += cosf((float)i * avg_g * 3.14159f) * 0.3f;
-        val += sinf((float)i * avg_b * 3.14159f + 1.0f) * 0.2f;
+        val += sinf((float)i * avg_r * NIMCP_PI_F) * 0.3f;
+        val += cosf((float)i * avg_g * NIMCP_PI_F) * 0.3f;
+        val += sinf((float)i * avg_b * NIMCP_PI_F + 1.0f) * 0.2f;
         val += cosf((float)i * aspect * 0.1f) * 0.2f;
 
         out->embedding[i] = val;

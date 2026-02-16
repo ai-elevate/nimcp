@@ -48,6 +48,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "SPEECH_CORTEX_GPU"
 
@@ -75,8 +76,7 @@
 // Mathematical Constants
 //=============================================================================
 
-#define PI 3.14159265358979323846f
-#define TWO_PI 6.28318530717958647692f
+#define PI NIMCP_PI_F
 #define LOG_10 2.302585092994046f
 #define MEL_BREAK_FREQ_HZ 700.0f
 #define MEL_HIGH_FREQ_Q 1127.0f
@@ -150,13 +150,13 @@ __global__ void kernel_generate_window(
 
     switch (window_type) {
         case 0: // Hamming
-            window[idx] = 0.54f - 0.46f * cosf(TWO_PI * n / N);
+            window[idx] = 0.54f - 0.46f * cosf(NIMCP_TWO_PI_F * n / N);
             break;
         case 1: // Hann
-            window[idx] = 0.5f * (1.0f - cosf(TWO_PI * n / N));
+            window[idx] = 0.5f * (1.0f - cosf(NIMCP_TWO_PI_F * n / N));
             break;
         case 2: // Blackman
-            window[idx] = 0.42f - 0.5f * cosf(TWO_PI * n / N) + 0.08f * cosf(4.0f * PI * n / N);
+            window[idx] = 0.42f - 0.5f * cosf(NIMCP_TWO_PI_F * n / N) + 0.08f * cosf(4.0f * PI * n / N);
             break;
         case 3: // Rectangular
         default:
@@ -799,7 +799,7 @@ __global__ void kernel_lpc_to_formants(
 
     for (int k = 0; k < spec_size; k++) {
         float freq = (float)k * (float)sample_rate / (2.0f * (float)spec_size);
-        float omega = TWO_PI * freq / (float)sample_rate;
+        float omega = NIMCP_TWO_PI_F * freq / (float)sample_rate;
 
         // Compute 1 / |A(e^jw)|^2
         float re = 1.0f, im = 0.0f;

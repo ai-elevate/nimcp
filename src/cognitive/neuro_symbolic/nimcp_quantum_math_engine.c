@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(quantum_math_engine, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -782,7 +783,7 @@ NIMCP_API nimcp_error_t qme_partition_function(
         result->heat_capacity = beta * beta * energy_var;
 
         /* Estimate log(Z) using thermodynamic integration (simplified) */
-        result->log_Z = -beta * result->mean_energy + 0.5f * dim * logf(2.0f * 3.14159f / beta);
+        result->log_Z = -beta * result->mean_energy + 0.5f * dim * logf(NIMCP_TWO_PI_F / beta);
         result->Z = expf(result->log_Z);
         result->free_energy = -temperature * result->log_Z;
         result->entropy = (result->mean_energy - result->free_energy) / temperature;
@@ -1160,7 +1161,7 @@ NIMCP_API float qme_domain_volume(const qme_domain_t* domain) {
             /* V_n = π^(n/2) / Γ(n/2 + 1) * r^n */
             float n = (float)domain->dim;
             float half_n = n / 2.0f;
-            float log_vol = half_n * logf(3.14159265f) - lgammaf(half_n + 1.0f) +
+            float log_vol = half_n * logf(NIMCP_PI_F) - lgammaf(half_n + 1.0f) +
                            n * logf(domain->radius);
             return expf(log_vol);
         }

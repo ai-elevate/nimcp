@@ -24,6 +24,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_dragonfly_bridge)
 
@@ -1340,7 +1341,7 @@ int swarm_dragonfly_compute_formation_positions(
         case PURSUIT_FORMATION_ENCIRCLE:
             /* Circle around target */
             for (int i = 0; i < num_drones; i++) {
-                float angle = (2.0f * 3.14159f * i) / num_drones;
+                float angle = (NIMCP_TWO_PI_F * i) / num_drones;
                 offsets[i][0] = cosf(angle) * spread * 2.0f;
                 offsets[i][1] = sinf(angle) * spread * 2.0f;
                 offsets[i][2] = 0.0f;

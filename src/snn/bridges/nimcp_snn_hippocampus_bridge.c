@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_hippocampus_bridge)
 
@@ -22,9 +23,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_hippocampus_bridge)
 #define BIO_MODULE_SNN_HIPPOCAMPUS 0x0608
 
 /* Mathematical constants */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #define TWO_PI (2.0 * M_PI)
 
@@ -397,7 +395,7 @@ int snn_hippocampus_bridge_process(
             float distance = compute_distance_3d(position, field_center);
             float phase_shift = (distance / cell->field_radius) *
                                (bridge->config.precession_slope * M_PI / 180.0f);
-            cell->theta_phase = fmodf(bridge->theta_phase + phase_shift, TWO_PI);
+            cell->theta_phase = fmodf(bridge->theta_phase + phase_shift, NIMCP_TWO_PI_F);
         } else {
             cell->theta_phase = bridge->theta_phase;
         }
@@ -431,7 +429,7 @@ int snn_hippocampus_bridge_update(snn_hippocampus_bridge_t* bridge, float dt) {
     if (bridge->theta_active) {
         float theta_period = 1000.0f / bridge->config.theta_frequency; /* ms */
         bridge->theta_time = fmodf(bridge->theta_time + dt, theta_period);
-        bridge->theta_phase = TWO_PI * (bridge->theta_time / theta_period);
+        bridge->theta_phase = NIMCP_TWO_PI_F * (bridge->theta_time / theta_period);
     }
 
     /* Check for ripple conditions */

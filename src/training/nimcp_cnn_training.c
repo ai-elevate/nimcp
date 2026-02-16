@@ -37,6 +37,7 @@
 // Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
 // Avoid including full header to prevent type conflicts
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cnn)
 
@@ -441,7 +442,7 @@ static float cnn_randn(uint32_t* seed) {
     float u2 = ((float)(*seed) / (float)0x7FFFFFFF);
 
     /* Box-Muller transform */
-    return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 /**
@@ -2714,7 +2715,7 @@ nimcp_error_t cnn_augment_batch(nimcp_tensor_t* batch,
                 float u1 = ((float)aug_seed / (float)0x7FFFFFFF) + 1e-10f;
                 aug_seed = (aug_seed * 1103515245 + 12345) & 0x7FFFFFFF;
                 float u2 = (float)aug_seed / (float)0x7FFFFFFF;
-                float noise = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+                float noise = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
                 sample[i] += noise * config->noise_stddev;
             }
         }

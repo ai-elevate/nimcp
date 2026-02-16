@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_visual_bridge)
 
@@ -508,7 +509,7 @@ int dragonfly_visual_bridge_process_features(
             memset(&blob, 0, sizeof(blob));
 
             /* Direction: 0-31 maps to 0-2*PI */
-            float direction = (float)peak_dir_idx * (2.0f * 3.14159f / 32.0f);
+            float direction = (float)peak_dir_idx * (NIMCP_TWO_PI_F / 32.0f);
             /* Speed: 0-31 maps to min_motion_speed to 100 pixels/frame */
             float speed = bridge->config.min_motion_speed +
                          (float)peak_speed_idx * (100.0f / 32.0f);

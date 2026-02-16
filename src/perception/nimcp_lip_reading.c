@@ -22,6 +22,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lip_reading)
 
@@ -748,7 +749,7 @@ bool lip_reading_detect_lip_landmarks(
 
     /* Generate approximate lip contour points */
     for (uint32_t i = 0; i < LIP_READING_MAX_LIP_CONTOUR_POINTS; i++) {
-        float angle = 2.0f * 3.14159f * i / LIP_READING_MAX_LIP_CONTOUR_POINTS;
+        float angle = NIMCP_TWO_PI_F * i / LIP_READING_MAX_LIP_CONTOUR_POINTS;
 
         /* Elliptical approximation for outer lip */
         float rx = roi_width * 0.4f;
@@ -761,7 +762,7 @@ bool lip_reading_detect_lip_landmarks(
 
     /* Generate inner lip contour */
     for (uint32_t i = 0; i < LIP_READING_INNER_CONTOUR_POINTS; i++) {
-        float angle = 2.0f * 3.14159f * i / LIP_READING_INNER_CONTOUR_POINTS;
+        float angle = NIMCP_TWO_PI_F * i / LIP_READING_INNER_CONTOUR_POINTS;
 
         /* Smaller ellipse for inner lip */
         float rx = roi_width * 0.25f;

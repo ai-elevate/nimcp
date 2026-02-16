@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <float.h>  /* For FLT_MAX, overflow protection */
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surface_optimization)
 
@@ -166,9 +167,6 @@ static inline float safe_sqrt(float x) {
 #define SURFACE_OPT_DEFAULT_SEED 0x12345678ULL
 
 /** Pi constant */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // INTERNAL STRUCTURES
@@ -883,7 +881,7 @@ int surface_mcts_default_config(surface_mcts_config_t* config) {
 
     config->num_iterations = 1000;
     config->max_depth = 20;
-    config->exploration_constant = 1.41421356f;  /* sqrt(2) */
+    config->exploration_constant = NIMCP_SQRT2_F;  /* sqrt(2) */
     config->rollout_count = 10;
     config->use_virtual_loss = false;
 

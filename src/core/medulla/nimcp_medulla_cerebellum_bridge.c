@@ -21,15 +21,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(medulla_cerebellum_bridge)
 
 #define LOG_MODULE "MEDULLA_CEREBELLUM_BRIDGE"
 
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* ============================================================================
  * INTERNAL STRUCTURES

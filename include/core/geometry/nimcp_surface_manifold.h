@@ -34,15 +34,13 @@ extern "C" {
 #include <stdbool.h>
 #include <math.h>
 #include "core/geometry/nimcp_surface_geometry_types.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // CONSTANTS
 //=============================================================================
 
 /** Pi constant */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 
 /** Default number of integration points for Gaussian quadrature */
 #define SURFACE_GAUSS_POINTS 16

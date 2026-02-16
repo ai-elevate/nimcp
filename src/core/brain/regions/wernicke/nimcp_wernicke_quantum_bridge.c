@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(wernicke_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -47,7 +48,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(wernicke_quantum_bridge, MESH_ADAPTER_CATEGORY_COGN
 #define DEFAULT_TARGET_SPEEDUP           4.0f
 #define DEFAULT_CLASSICAL_FALLBACK       0.5f
 
-#define PI 3.14159265358979323846f
+#define PI NIMCP_PI_F
 
 /*=============================================================================
  * INTERNAL STRUCTURES

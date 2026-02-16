@@ -30,6 +30,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(fin_mkt, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -93,8 +94,7 @@ static int fin_market_validate_subsystems(const char* operation) {
 //=============================================================================
 
 #define FIN_MKT_EPSILON         NIMCP_EPSILON_ADAM
-#define FIN_MKT_PI              3.14159265358979323846f
-#define FIN_MKT_SQRT2           1.41421356237309504880f
+#define FIN_MKT_PI              NIMCP_PI_F
 #define FIN_MKT_LCG_A           1664525u
 #define FIN_MKT_LCG_C           1013904223u
 #define FIN_MKT_TRADING_DAYS    252

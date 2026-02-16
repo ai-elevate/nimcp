@@ -34,6 +34,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(rand)
 
@@ -54,9 +55,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(rand)
 #define DOUBLE_SCALE (1.0 / 9007199254740992.0)
 
 /** Pi constant for Box-Muller */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /** Pink noise normalization factor for 16 octaves */
 #define PINK_NORM_FACTOR (1.0f / 16.0f)

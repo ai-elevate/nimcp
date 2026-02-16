@@ -29,6 +29,7 @@
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 /* Custom health agent: using pre-existing implementation from header */
 static nimcp_health_agent_t* g_financial_investment_health_agent = NULL;
@@ -83,7 +84,7 @@ static inline void financial_investment_heartbeat_instance(
 
 #define BIO_MODULE_ID  0x0393
 #define EPSILON        NIMCP_EPSILON_ADAM
-#define PI_VAL         3.14159265358979323846f
+#define PI_VAL         NIMCP_PI_F
 
 //=============================================================================
 // Thread-local error string

@@ -27,6 +27,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "OSCILLATIONS_GPU"
 
@@ -42,9 +43,6 @@
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
 #define WARP_SIZE 32
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 
 //=============================================================================
 // Band Frequency Definitions (Hz)

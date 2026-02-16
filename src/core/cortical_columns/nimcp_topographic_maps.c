@@ -40,6 +40,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(topographic_maps)
 
@@ -108,9 +109,6 @@ static void topographic_maps_bio_cleanup(void) {
 #define TOPOGRAPHIC_EPSILON NIMCP_EPSILON_NUMERICAL
 
 /* Mathematical constants */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #ifndef M_LN2
 #define M_LN2 0.69314718055994530942

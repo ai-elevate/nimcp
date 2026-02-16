@@ -10,6 +10,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_monitor)
 
@@ -45,7 +46,7 @@ static void compute_power_spectrum(
      * WHY:  Estimate 1/f^α exponent
      * HOW:  Direct DFT for small windows
      */
-    float pi = 3.14159265358979f;
+    float pi = NIMCP_PI_F;
 
     for (uint32_t k = 1; k < n / 2; k++) {
         float real = 0.0f, imag = 0.0f;

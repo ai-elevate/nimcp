@@ -41,6 +41,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(pr_pink_noise_bridge, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -93,9 +94,6 @@ static inline void pr_pink_bridge_heartbeat_instance(
 #define PR_PINK_EPSILON                 NIMCP_EPSILON_NUMERICAL
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // Thread-Local Error Storage

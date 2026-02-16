@@ -21,6 +21,7 @@
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 /* Error code compatibility aliases */
 
@@ -101,7 +102,7 @@ static float rand_normal(uint32_t* state) {
     /* Avoid log(0) */
     if (u1 < 1e-10f) u1 = 1e-10f;
 
-    return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 /* ============================================================================

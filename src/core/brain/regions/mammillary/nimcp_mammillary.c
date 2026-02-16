@@ -21,13 +21,11 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_frequency_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(mammillary, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /*=============================================================================
  * INTERNAL HELPERS
@@ -1356,10 +1354,10 @@ int mammillary_update_resonance_phase(nimcp_mammillary_t* mb, float theta_phase,
 
     /* Compute head direction-theta synchronization */
     /* HD cells fire in phase with theta rhythm */
-    float hd_phase = fmodf(mb->current_heading, 2.0f * 3.14159265f);
+    float hd_phase = fmodf(mb->current_heading, NIMCP_TWO_PI_F);
     float phase_diff = fabsf(hd_phase - theta_phase);
-    if (phase_diff > 3.14159265f) phase_diff = 2.0f * 3.14159265f - phase_diff;
-    mb->resonance_bridge.hd_theta_sync = 1.0f - (phase_diff / 3.14159265f);
+    if (phase_diff > 3.14159265f) phase_diff = NIMCP_TWO_PI_F - phase_diff;
+    mb->resonance_bridge.hd_theta_sync = 1.0f - (phase_diff / NIMCP_PI_F);
 
     mb->resonance_bridge.synchronized = (mb->resonance_bridge.hd_theta_sync > 0.5f);
 
@@ -1390,11 +1388,11 @@ int mammillary_sync_papez_to_theta(nimcp_mammillary_t* mb) {
     /* Memory consolidation is most effective at specific theta phases */
     float optimal_phase = 0.0f; /* Peak theta for encoding */
     float phase_diff = fabsf(mb->resonance_bridge.theta_phase - optimal_phase);
-    if (phase_diff > 3.14159265f) phase_diff = 2.0f * 3.14159265f - phase_diff;
+    if (phase_diff > 3.14159265f) phase_diff = NIMCP_TWO_PI_F - phase_diff;
 
     /* Modulate Papez circuit activity based on theta phase */
     float coupling = mb->resonance_bridge.papez_coupling;
-    float phase_modulation = 1.0f - (phase_diff / 3.14159265f);
+    float phase_modulation = 1.0f - (phase_diff / NIMCP_PI_F);
 
     /* Apply modulation to consolidation rate */
     if (mb->consolidation_state == CONSOLIDATION_ENCODING ||

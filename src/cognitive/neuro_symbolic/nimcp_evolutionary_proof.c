@@ -23,6 +23,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(evolutionary_proof, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -97,7 +98,7 @@ static float eps_random_uniform(evolutionary_proof_search_t* eps) {
 static float eps_random_normal(evolutionary_proof_search_t* eps) {
     float u1 = eps_random_uniform(eps);
     float u2 = eps_random_uniform(eps);
-    return sqrtf(-2.0f * logf(u1 + 1e-10f)) * cosf(2.0f * 3.14159265f * u2);
+    return sqrtf(-2.0f * logf(u1 + 1e-10f)) * cosf(NIMCP_TWO_PI_F * u2);
 }
 
 static uint32_t eps_random_int(evolutionary_proof_search_t* eps, uint32_t max) {

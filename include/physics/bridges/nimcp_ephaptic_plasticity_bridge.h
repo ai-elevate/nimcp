@@ -56,6 +56,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "common/nimcp_export.h"
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,7 +82,7 @@ extern "C" {
 #define EPHAPTIC_PLASTICITY_DEFAULT_LTP_PHASE       0.0f
 
 /** Default LTD phase range center (radians, trough of theta) */
-#define EPHAPTIC_PLASTICITY_DEFAULT_LTD_PHASE       3.14159f
+#define EPHAPTIC_PLASTICITY_DEFAULT_LTD_PHASE       NIMCP_PI_F
 
 /** Default field scaling gain for learning rate */
 #define EPHAPTIC_PLASTICITY_DEFAULT_FIELD_GAIN      0.1f

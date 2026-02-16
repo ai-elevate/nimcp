@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(jepa_masking, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -136,7 +137,7 @@ static float linear_schedule(float t) {
 
 static float cosine_schedule(float t) {
     /* Cosine annealing: slower at ends, faster in middle */
-    return 0.5f * (1.0f - cosf(t * 3.14159265f));
+    return 0.5f * (1.0f - cosf(t * NIMCP_PI_F));
 }
 
 /* ============================================================================

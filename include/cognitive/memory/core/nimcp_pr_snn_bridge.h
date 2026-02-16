@@ -106,6 +106,7 @@
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "cognitive/memory/core/nimcp_entanglement.h"
 #include "cognitive/memory/core/nimcp_resonance.h"
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -163,13 +164,9 @@ extern "C" {
 #define PR_SNN_EPSILON                      1e-6f
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Two Pi */
-#ifndef M_2PI
-    #define M_2PI 6.28318530717958647692f
+#ifndef NIMCP_TWO_PI_F
 #endif
 
 //=============================================================================

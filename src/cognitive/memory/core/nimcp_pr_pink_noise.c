@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE(pr_pink_noise, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -38,7 +39,6 @@ BRIDGE_BOILERPLATE(pr_pink_noise, MESH_ADAPTER_CATEGORY_MEMORY)
 
 #define MAX_ERROR_LENGTH        256
 #define EPSILON                 1e-10f
-#define TWO_PI                  6.283185307179586f
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -633,8 +633,8 @@ bool pr_quat_pink_set_theta_coupling(
     if (strength > 1.0f) strength = 1.0f;
 
     /* Normalize phase to [0, 2*pi] */
-    while (phase < 0.0f) phase += TWO_PI;
-    while (phase >= TWO_PI) phase -= TWO_PI;
+    while (phase < 0.0f) phase += NIMCP_TWO_PI_F;
+    while (phase >= NIMCP_TWO_PI_F) phase -= NIMCP_TWO_PI_F;
 
     state->theta_phase = phase;
     state->theta_coupling_strength = strength;
@@ -657,11 +657,11 @@ float pr_quat_pink_advance_theta(
 
 
     float dt_s = dt_ms / 1000.0f;
-    state->theta_phase += TWO_PI * state->theta_frequency_hz * dt_s;
+    state->theta_phase += NIMCP_TWO_PI_F * state->theta_frequency_hz * dt_s;
 
     /* Wrap to [0, 2*pi] */
-    while (state->theta_phase >= TWO_PI) {
-        state->theta_phase -= TWO_PI;
+    while (state->theta_phase >= NIMCP_TWO_PI_F) {
+        state->theta_phase -= NIMCP_TWO_PI_F;
     }
 
     return state->theta_phase;

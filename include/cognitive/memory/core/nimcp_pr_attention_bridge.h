@@ -124,6 +124,7 @@
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "cognitive/memory/core/nimcp_resonance.h"
 #include "cognitive/memory/core/nimcp_theta_gamma.h"
+#include "constants/nimcp_math_constants.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -175,9 +176,6 @@ extern "C" {
 #define PR_ATTN_EPSILON                     1e-6f
 
 /** Pi constant */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 //=============================================================================
 // Forward Declarations

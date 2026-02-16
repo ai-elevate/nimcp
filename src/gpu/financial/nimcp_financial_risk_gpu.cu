@@ -34,6 +34,7 @@
 #include "gpu/statistics/nimcp_statistics_gpu.h"  // Central GPU statistics module
 #include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -2712,8 +2713,8 @@ bool fin_risk_gpu_batch(
 
         // Approximate CVaR (for parametric: E[X | X < VaR])
         // For normal distribution: CVaR = mean + std * phi(z) / (1 - confidence)
-        float phi_95 = expf(-z_95 * z_95 / 2.0f) / sqrtf(2.0f * 3.14159f);
-        float phi_99 = expf(-z_99 * z_99 / 2.0f) / sqrtf(2.0f * 3.14159f);
+        float phi_95 = expf(-z_95 * z_95 / 2.0f) / sqrtf(NIMCP_TWO_PI_F);
+        float phi_99 = expf(-z_99 * z_99 / 2.0f) / sqrtf(NIMCP_TWO_PI_F);
         results[p].cvar_95 = -(mean - std_dev * phi_95 / 0.05f);
         results[p].cvar_99 = -(mean - std_dev * phi_99 / 0.01f);
 

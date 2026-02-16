@@ -22,6 +22,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "REGIONS_GPU"
 
@@ -627,7 +628,7 @@ __global__ void kernel_population_code(
     if (neuron_idx >= n_neurons) return;
 
     // Each neuron has preferred direction
-    float preferred_angle = (2.0f * 3.14159f * neuron_idx) / n_neurons;
+    float preferred_angle = (NIMCP_TWO_PI_F * neuron_idx) / n_neurons;
 
     float response = 0.0f;
     for (int d = 0; d < dim; d++) {
@@ -635,8 +636,8 @@ __global__ void kernel_population_code(
         float diff = dir - preferred_angle;
 
         // Wrap angle difference
-        while (diff > 3.14159f) diff -= 2.0f * 3.14159f;
-        while (diff < -3.14159f) diff += 2.0f * 3.14159f;
+        while (diff > 3.14159f) diff -= NIMCP_TWO_PI_F;
+        while (diff < -3.14159f) diff += NIMCP_TWO_PI_F;
 
         response += expf(-diff * diff / (2.0f * sigma * sigma));
     }

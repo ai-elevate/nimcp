@@ -23,6 +23,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "constants/nimcp_math_constants.h"
 
 #define LOG_MODULE "SPEECH_GPU"
 
@@ -428,7 +429,7 @@ __global__ void kernel_durand_kerner_roots(
     // Initialize roots on unit circle (slightly inside to ensure convergence)
     float radius = 0.95f;
     for (int i = 0; i < order; i++) {
-        float angle = 2.0f * 3.14159265f * (float)i / (float)order + 0.1f;
+        float angle = NIMCP_TWO_PI_F * (float)i / (float)order + 0.1f;
         roots_real[i] = radius * cosf(angle);
         roots_imag[i] = radius * sinf(angle);
     }
@@ -536,7 +537,7 @@ __global__ void kernel_roots_to_formants_single(
     float formant_bws[16];
     int n_found = 0;
 
-    const float PI = 3.14159265358979323846f;
+    const float PI = NIMCP_PI_F;
 
     // Extract formants from roots with positive imaginary part inside unit circle
     for (int i = 0; i < order && n_found < 16; i++) {

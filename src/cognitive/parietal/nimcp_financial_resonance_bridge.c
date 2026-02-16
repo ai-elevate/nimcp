@@ -26,9 +26,6 @@
 // Constants
 //=============================================================================
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #define TWO_PI (2.0 * M_PI)
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -36,6 +33,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(fin_resonance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -160,8 +158,8 @@ static inline float clampf(float val, float lo, float hi) {
 //=============================================================================
 
 static inline float wrap_phase(float phase) {
-    while (phase < 0.0f) phase += (float)TWO_PI;
-    while (phase >= (float)TWO_PI) phase -= (float)TWO_PI;
+    while (phase < 0.0f) phase += (float)NIMCP_TWO_PI_F;
+    while (phase >= (float)NIMCP_TWO_PI_F) phase -= (float)NIMCP_TWO_PI_F;
     return phase;
 }
 
@@ -171,8 +169,8 @@ static inline float wrap_phase(float phase) {
 
 static inline float phase_diff(float p1, float p2) {
     float d = p1 - p2;
-    while (d > M_PI) d -= (float)TWO_PI;
-    while (d < -M_PI) d += (float)TWO_PI;
+    while (d > M_PI) d -= (float)NIMCP_TWO_PI_F;
+    while (d < -M_PI) d += (float)NIMCP_TWO_PI_F;
     return fabsf(d);
 }
 

@@ -31,6 +31,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pr_audio_bridge)
 //=============================================================================
@@ -87,13 +88,9 @@ static inline void pr_audio_bridge_heartbeat_instance(
 //=============================================================================
 
 /** Pi if not defined */
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846f
-#endif
 
 /** Two times Pi */
-#ifndef M_2PI
-    #define M_2PI 6.28318530717958647692f
+#ifndef NIMCP_TWO_PI_F
 #endif
 
 /** Internal buffer alignment */

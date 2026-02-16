@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_frequency_constants.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_pink_noise_bridge)
 
@@ -117,7 +118,7 @@ population_pink_config_t population_pink_bridge_default_config(void) {
     // Tuning modulation
     config.tuning_modulation_strength = 0.05f;
     config.min_tuning_width = 0.1f;
-    config.max_tuning_width = 3.14159f;
+    config.max_tuning_width = NIMCP_PI_F;
 
     // Position modulation
     config.position_modulation_strength = 0.01f;

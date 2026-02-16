@@ -33,6 +33,7 @@
 
 #define LOG_MODULE "brain_oscillations"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "constants/nimcp_math_constants.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_oscillations)
 
@@ -81,9 +82,6 @@ static void brain_oscillations_bio_cleanup(void) {
     nimcp_mutex_unlock(&bio_cleanup_mutex);
 }
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 //=============================================================================
 // Internal Structures
