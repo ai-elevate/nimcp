@@ -727,6 +727,43 @@ static PyObject* KnowledgeSystem_domain_name(PyObject* Py_UNUSED(self), PyObject
     return PyUnicode_FromString(name);
 }
 
+/**
+ * @brief KnowledgeSystem.query(query_str) -> str
+ *
+ * Query the knowledge graph and return a text result.
+ * Mirrors the public nimcp_knowledge_query() API.
+ */
+static PyObject* KnowledgeSystem_query(KnowledgeSystemObject* self, PyObject* args)
+{
+    const char* query_str;
+
+    if (!PyArg_ParseTuple(args, "s", &query_str)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_query: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!self->system) {
+        PyErr_SetString(PyExc_RuntimeError, "KnowledgeSystem not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_query: self->system is NULL");
+        return NULL;
+    }
+
+    knowledge_item_t item;
+    memset(&item, 0, sizeof(item));
+
+    bool found;
+
+    Py_BEGIN_ALLOW_THREADS
+    found = knowledge_retrieve(self->system, query_str, &item);
+    Py_END_ALLOW_THREADS
+
+    if (found) {
+        return PyUnicode_FromString(item.definition);
+    } else {
+        return PyUnicode_FromFormat("No knowledge found about '%s'", query_str);
+    }
+}
+
 static PyObject* KnowledgeSystem_repr(KnowledgeSystemObject* self)
 {
     (void)self;
@@ -824,6 +861,17 @@ static PyMethodDef KnowledgeSystem_methods[] = {
      "    domain (int): Domain constant\n"
      "Returns:\n"
      "    str: Domain name"},
+    {"query", (PyCFunction)KnowledgeSystem_query, METH_VARARGS,
+     "Query the knowledge graph\n\n"
+     "Returns a text result with the definition if the concept is found,\n"
+     "or a 'not found' message otherwise.\n\n"
+     "Args:\n"
+     "    query_str (str): Concept or question to query\n"
+     "Returns:\n"
+     "    str: Text result\n\n"
+     "Example:\n"
+     "    result = ks.query('photosynthesis')\n"
+     "    print(result)"},
     {NULL}
 };
 

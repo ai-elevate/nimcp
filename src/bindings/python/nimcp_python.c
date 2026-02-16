@@ -636,6 +636,140 @@ static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args
     return Py_BuildValue("(ff)", utilization, saturation);
 }
 
+//=============================================================================
+// COW Snapshot API (Python Bindings)
+//=============================================================================
+
+static void Brain_snapshot_capsule_destructor(PyObject* capsule)
+{
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+    if (snapshot) {
+        nimcp_brain_snapshot_destroy(snapshot);
+    }
+}
+
+/**
+ * WHAT: Create instant COW snapshot of brain state
+ * WHY:  Enable efficient rollback during training
+ * HOW:  Call nimcp_brain_snapshot_cow, wrap handle in PyCapsule
+ */
+static PyObject* Brain_snapshot_cow(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_cow: self->brain is NULL");
+        return NULL;
+    }
+
+    nimcp_brain_snapshot_t snapshot;
+
+    Py_BEGIN_ALLOW_THREADS
+    snapshot = nimcp_brain_snapshot_cow(self->brain);
+    Py_END_ALLOW_THREADS
+
+    if (!snapshot) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create COW snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain_snapshot_cow: snapshot is NULL");
+        return NULL;
+    }
+
+    return PyCapsule_New(snapshot, "nimcp.brain_snapshot",
+                         Brain_snapshot_capsule_destructor);
+}
+
+/**
+ * WHAT: Restore brain state from COW snapshot
+ * WHY:  Instant rollback to previous state via pointer swapping
+ * HOW:  Extract snapshot handle from PyCapsule, call nimcp_brain_restore_cow
+ */
+static PyObject* Brain_restore_cow(BrainObject* self, PyObject* args) {
+    PyObject* capsule;
+
+    if (!PyArg_ParseTuple(args, "O", &capsule)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_restore_cow: Invalid arguments");
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_restore_cow: self->brain is NULL");
+        return NULL;
+    }
+
+    if (!PyCapsule_IsValid(capsule, "nimcp.brain_snapshot")) {
+        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule from snapshot_cow()");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_restore_cow: invalid capsule");
+        return NULL;
+    }
+
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_restore_cow(self->brain, snapshot);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
+/**
+ * WHAT: Destroy a COW snapshot and release resources
+ * WHY:  Explicit cleanup (snapshots also auto-destroy on GC)
+ * HOW:  Call nimcp_brain_snapshot_destroy, invalidate capsule
+ */
+static PyObject* Brain_destroy_cow_snapshot(BrainObject* self, PyObject* args) {
+    PyObject* capsule;
+
+    if (!PyArg_ParseTuple(args, "O", &capsule)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_destroy_cow_snapshot: Invalid arguments");
+        return NULL;
+    }
+
+    if (!PyCapsule_IsValid(capsule, "nimcp.brain_snapshot")) {
+        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule from snapshot_cow()");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_destroy_cow_snapshot: invalid capsule");
+        return NULL;
+    }
+
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+
+    if (snapshot) {
+        nimcp_brain_snapshot_destroy(snapshot);
+        PyCapsule_SetPointer(capsule, NULL);
+        PyCapsule_SetDestructor(capsule, NULL);
+    }
+
+    Py_RETURN_NONE;
+}
+
+//=============================================================================
+// Brain Probe Broadcasting (Python Bindings)
+//=============================================================================
+
+/**
+ * WHAT: Probe brain metrics and broadcast via bio-async
+ * WHY:  Enable monitoring of brain health across multiple instances
+ * HOW:  Call nimcp_brain_broadcast_probe
+ */
+static PyObject* Brain_broadcast_probe(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_broadcast_probe: self->brain is NULL");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_broadcast_probe(self->brain);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, confidence=1.0) -> loss"},
@@ -658,6 +792,18 @@ static PyMethodDef Brain_methods[] = {
     {"get_utilization_metrics", (PyCFunction)Brain_get_utilization_metrics, METH_NOARGS,
      "Get utilization metrics: get_utilization_metrics() -> (utilization, saturation)"},
 
+    // COW Snapshot API
+    {"snapshot_cow", (PyCFunction)Brain_snapshot_cow, METH_NOARGS,
+     "Create instant COW snapshot: snapshot_cow() -> capsule"},
+    {"restore_cow", (PyCFunction)Brain_restore_cow, METH_VARARGS,
+     "Restore from COW snapshot: restore_cow(snapshot) -> bool"},
+    {"destroy_cow_snapshot", (PyCFunction)Brain_destroy_cow_snapshot, METH_VARARGS,
+     "Destroy COW snapshot: destroy_cow_snapshot(snapshot)"},
+
+    // Probe Broadcasting
+    {"broadcast_probe", (PyCFunction)Brain_broadcast_probe, METH_NOARGS,
+     "Probe brain metrics and broadcast via bio-async: broadcast_probe() -> bool"},
+
     {NULL}
 };
 
@@ -672,6 +818,290 @@ static PyTypeObject BrainType = {
     .tp_init = (initproc)Brain_init,
     .tp_dealloc = (destructor)Brain_dealloc,
     .tp_methods = Brain_methods,
+};
+
+//=============================================================================
+// NeuralNetwork Object Type
+//=============================================================================
+
+typedef struct {
+    PyObject_HEAD
+    nimcp_network_t network;
+} NetworkObject;
+
+static void Network_dealloc(NetworkObject* self) {
+    if (self->network) {
+        nimcp_network_destroy(self->network);
+    }
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject* Network_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+    NetworkObject* self = (NetworkObject*)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->network = NULL;
+    }
+    return (PyObject*)self;
+}
+
+/**
+ * WHAT: Initialize NeuralNetwork with architecture params
+ * WHY:  Create low-level neural network for custom topologies
+ * HOW:  Call nimcp_network_create
+ */
+static int Network_init(NetworkObject* self, PyObject* args, PyObject* kwds) {
+    unsigned int num_inputs, num_outputs, num_hidden;
+    float learning_rate = 0.01F;
+
+    static char* kwlist[] = {"num_inputs", "num_outputs", "num_hidden", "learning_rate", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "III|f", kwlist,
+                                     &num_inputs, &num_outputs, &num_hidden, &learning_rate)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Network_init: Invalid arguments");
+        return -1;
+    }
+
+    self->network = nimcp_network_create(num_inputs, num_outputs, num_hidden, learning_rate);
+
+    if (!self->network) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Network_init: network is NULL");
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Forward pass through network
+ * WHY:  Inference / activation propagation
+ * HOW:  Convert Python list to C array, call nimcp_network_forward
+ */
+static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
+    PyObject* input_list;
+    unsigned int num_outputs;
+
+    if (!PyArg_ParseTuple(args, "OI", &input_list, &num_outputs)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Network_forward: Invalid arguments");
+        return NULL;
+    }
+
+    Py_ssize_t num_inputs;
+    float* inputs = py_list_to_float_array(input_list, &num_inputs);
+    if (!inputs) return NULL;
+
+    float* outputs = (float*)nimcp_malloc(num_outputs * sizeof(float));
+    if (!outputs) {
+        nimcp_free(inputs);
+        return PyErr_NoMemory();
+    }
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_network_forward(self->network, inputs, (uint32_t)num_inputs,
+                                    outputs, num_outputs);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(inputs);
+
+    if (status != NIMCP_OK) {
+        nimcp_free(outputs);
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Network_forward: forward failed");
+        return NULL;
+    }
+
+    PyObject* result = PyList_New(num_outputs);
+    for (unsigned int i = 0; i < num_outputs; i++) {
+        PyList_SET_ITEM(result, i, PyFloat_FromDouble((double)outputs[i]));
+    }
+    nimcp_free(outputs);
+    return result;
+}
+
+/**
+ * WHAT: Train network on a single example
+ * WHY:  Supervised learning with input/target pairs
+ * HOW:  Call nimcp_network_train
+ *
+ * NOTE: Currently a stub in the C API - will be implemented in a future version
+ */
+static PyObject* Network_train(NetworkObject* self, PyObject* args) {
+    PyObject* input_list;
+    PyObject* target_list;
+
+    if (!PyArg_ParseTuple(args, "OO", &input_list, &target_list)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Network_train: Invalid arguments");
+        return NULL;
+    }
+
+    Py_ssize_t num_inputs;
+    float* inputs = py_list_to_float_array(input_list, &num_inputs);
+    if (!inputs) return NULL;
+
+    Py_ssize_t num_targets;
+    float* targets = py_list_to_float_array(target_list, &num_targets);
+    if (!targets) {
+        nimcp_free(inputs);
+        return NULL;
+    }
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_network_train(self->network, inputs, (uint32_t)num_inputs,
+                                  targets, (uint32_t)num_targets);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(inputs);
+    nimcp_free(targets);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "Network-level training not yet implemented in the C API. "
+            "Use Brain.learn() for supervised learning.");
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+static PyMethodDef Network_methods[] = {
+    {"forward", (PyCFunction)Network_forward, METH_VARARGS,
+     "Forward pass: forward(inputs, num_outputs) -> list[float]"},
+    {"train", (PyCFunction)Network_train, METH_VARARGS,
+     "Train on single example: train(inputs, targets) -> bool\n"
+     "Note: Currently a stub - use Brain.learn() for training"},
+    {NULL}
+};
+
+static PyTypeObject NetworkType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "nimcp.NeuralNetwork",
+    .tp_doc = "NIMCP Neural Network - Low-level network operations",
+    .tp_basicsize = sizeof(NetworkObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_new = Network_new,
+    .tp_init = (initproc)Network_init,
+    .tp_dealloc = (destructor)Network_dealloc,
+    .tp_methods = Network_methods,
+};
+
+//=============================================================================
+// KnowledgeSystem Object Type
+//=============================================================================
+
+typedef struct {
+    PyObject_HEAD
+    nimcp_knowledge_t knowledge;
+} KnowledgeObject;
+
+static void Knowledge_dealloc(KnowledgeObject* self) {
+    if (self->knowledge) {
+        nimcp_knowledge_destroy(self->knowledge);
+    }
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject* Knowledge_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+    KnowledgeObject* self = (KnowledgeObject*)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->knowledge = NULL;
+    }
+    return (PyObject*)self;
+}
+
+static int Knowledge_init(KnowledgeObject* self, PyObject* args, PyObject* kwds) {
+    self->knowledge = nimcp_knowledge_create();
+
+    if (!self->knowledge) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Knowledge_init: knowledge is NULL");
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Add a fact to the knowledge graph
+ * WHY:  Build knowledge base with subject-predicate-object triples
+ * HOW:  Call nimcp_knowledge_add_fact
+ */
+static PyObject* Knowledge_add_fact(KnowledgeObject* self, PyObject* args) {
+    const char* subject;
+    const char* predicate;
+    const char* object;
+
+    if (!PyArg_ParseTuple(args, "sss", &subject, &predicate, &object)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Knowledge_add_fact: Invalid arguments");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_knowledge_add_fact(self->knowledge, subject, predicate, object);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+/**
+ * WHAT: Query the knowledge graph
+ * WHY:  Retrieve information about concepts
+ * HOW:  Call nimcp_knowledge_query with pre-allocated buffer
+ */
+static PyObject* Knowledge_query(KnowledgeObject* self, PyObject* args) {
+    const char* query_str;
+
+    if (!PyArg_ParseTuple(args, "s", &query_str)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Knowledge_query: Invalid arguments");
+        return NULL;
+    }
+
+    char result[NIMCP_CMD_BUFFER_SIZE];
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_knowledge_query(self->knowledge, query_str,
+                                    result, NIMCP_CMD_BUFFER_SIZE);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    return PyUnicode_FromString(result);
+}
+
+static PyMethodDef Knowledge_methods[] = {
+    {"add_fact", (PyCFunction)Knowledge_add_fact, METH_VARARGS,
+     "Add fact: add_fact(subject, predicate, object) -> bool"},
+    {"query", (PyCFunction)Knowledge_query, METH_VARARGS,
+     "Query knowledge: query(concept) -> str"},
+    {NULL}
+};
+
+static PyTypeObject KnowledgeType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "nimcp.KnowledgeSystem",
+    .tp_doc = "NIMCP Knowledge System - Knowledge graph with fact storage and querying",
+    .tp_basicsize = sizeof(KnowledgeObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_new = Knowledge_new,
+    .tp_init = (initproc)Knowledge_init,
+    .tp_dealloc = (destructor)Knowledge_dealloc,
+    .tp_methods = Knowledge_methods,
 };
 
 //=============================================================================
@@ -753,7 +1183,15 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
 
     // Prepare types
     if (PyType_Ready(&BrainType) < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: BrainType ready failed");
+        return NULL;
+    }
+    if (PyType_Ready(&NetworkType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: NetworkType ready failed");
+        return NULL;
+    }
+    if (PyType_Ready(&KnowledgeType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: KnowledgeType ready failed");
         return NULL;
     }
 
@@ -768,6 +1206,24 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     Py_INCREF(&BrainType);
     if (PyModule_AddObject(m, "Brain", (PyObject*)&BrainType) < 0) {
         Py_DECREF(&BrainType);
+        Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
+        return NULL;
+    }
+
+    // Add NeuralNetwork type
+    Py_INCREF(&NetworkType);
+    if (PyModule_AddObject(m, "NeuralNetwork", (PyObject*)&NetworkType) < 0) {
+        Py_DECREF(&NetworkType);
+        Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
+        return NULL;
+    }
+
+    // Add KnowledgeSystem type
+    Py_INCREF(&KnowledgeType);
+    if (PyModule_AddObject(m, "KnowledgeSystem", (PyObject*)&KnowledgeType) < 0) {
+        Py_DECREF(&KnowledgeType);
         Py_DECREF(m);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;

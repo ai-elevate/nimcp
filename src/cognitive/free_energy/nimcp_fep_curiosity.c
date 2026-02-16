@@ -868,7 +868,7 @@ int fep_curiosity_training_begin(void* ctx) {
                               "fep_curiosity_training_begin: NULL argument");
         return -1;
     }
-    fep_curiosity_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_begin", 0.0f);
+    fep_curiosity_instance_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_begin", 0.0f);
     (void)ctx;
     return 0;
 }
@@ -880,7 +880,7 @@ int fep_curiosity_training_step(void* ctx, float progress) {
         return -1;
     }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
-    fep_curiosity_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_step", clamped);
+    fep_curiosity_instance_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_step", clamped);
     (void)ctx;
     return 0;
 }
@@ -891,7 +891,7 @@ int fep_curiosity_training_end(void* ctx) {
                               "fep_curiosity_training_end: NULL argument");
         return -1;
     }
-    fep_curiosity_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_end", 1.0f);
+    fep_curiosity_instance_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_end", 1.0f);
     (void)ctx;
     return 0;
 }

@@ -2010,6 +2010,121 @@ static PyObject* Brain_get_pac_modulation(BrainObject* self, PyObject* args)
     return PyFloat_FromDouble((double)pac);
 }
 
+// PyCapsule destructor for COW snapshots
+static void Brain_snapshot_capsule_destructor(PyObject* capsule)
+{
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+    if (snapshot) {
+        nimcp_brain_snapshot_destroy(snapshot);
+    }
+}
+
+// Brain.snapshot_cow() -> capsule
+static PyObject* Brain_snapshot_cow(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_cow: self->brain is NULL");
+        return NULL;
+    }
+
+    nimcp_brain_snapshot_t snapshot;
+
+    Py_BEGIN_ALLOW_THREADS
+    snapshot = nimcp_brain_snapshot_cow(self->brain);
+    Py_END_ALLOW_THREADS
+
+    if (!snapshot) {
+        PyErr_SetString(NIMCPError, "Failed to create COW snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain_snapshot_cow: snapshot is NULL");
+        return NULL;
+    }
+
+    return PyCapsule_New(snapshot, "nimcp.brain_snapshot",
+                         Brain_snapshot_capsule_destructor);
+}
+
+// Brain.restore_cow(snapshot) -> bool
+static PyObject* Brain_restore_cow(BrainObject* self, PyObject* args)
+{
+    PyObject* capsule;
+
+    if (!PyArg_ParseTuple(args, "O", &capsule)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_restore_cow: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_restore_cow: self->brain is NULL");
+        return NULL;
+    }
+
+    if (!PyCapsule_IsValid(capsule, "nimcp.brain_snapshot")) {
+        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_restore_cow: invalid capsule");
+        return NULL;
+    }
+
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_restore_cow(self->brain, snapshot);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
+// Brain.destroy_cow_snapshot(snapshot) -> None
+static PyObject* Brain_destroy_cow_snapshot(BrainObject* Py_UNUSED(self), PyObject* args)
+{
+    PyObject* capsule;
+
+    if (!PyArg_ParseTuple(args, "O", &capsule)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_destroy_cow_snapshot: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!PyCapsule_IsValid(capsule, "nimcp.brain_snapshot")) {
+        PyErr_SetString(PyExc_TypeError, "Expected a brain snapshot capsule");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_destroy_cow_snapshot: invalid capsule");
+        return NULL;
+    }
+
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)PyCapsule_GetPointer(capsule, "nimcp.brain_snapshot");
+
+    if (snapshot) {
+        nimcp_brain_snapshot_destroy(snapshot);
+        PyCapsule_SetPointer(capsule, NULL);
+        PyCapsule_SetDestructor(capsule, NULL);
+    }
+
+    Py_RETURN_NONE;
+}
+
+// Brain.broadcast_probe() -> bool
+static PyObject* Brain_broadcast_probe(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_broadcast_probe: self->brain is NULL");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_broadcast_probe(self->brain);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS | METH_KEYWORDS,
      "Learn from a single example\n\n"
@@ -2483,6 +2598,42 @@ static PyMethodDef Brain_methods[] = {
      "    Brain: New brain instance\n\n"
      "Example:\n"
      "    brain = nimcp.Brain.create_from_config('model.yaml')"},
+
+    /* COW Snapshot API */
+    {"snapshot_cow", (PyCFunction)Brain_snapshot_cow, METH_NOARGS,
+     "Create an instant copy-on-write snapshot\n\n"
+     "Creates a lightweight snapshot that shares memory with the brain.\n"
+     "Only pages that are modified after the snapshot are copied.\n\n"
+     "Returns:\n"
+     "    capsule: Opaque snapshot handle (pass to restore_cow/destroy_cow_snapshot)\n\n"
+     "Example:\n"
+     "    checkpoint = brain.snapshot_cow()\n"
+     "    # ... train ...\n"
+     "    brain.restore_cow(checkpoint)\n"
+     "    brain.destroy_cow_snapshot(checkpoint)"},
+
+    {"restore_cow", (PyCFunction)Brain_restore_cow, METH_VARARGS,
+     "Restore brain state from a COW snapshot\n\n"
+     "Instantly restores brain to the snapshot state via pointer swapping.\n\n"
+     "Args:\n"
+     "    snapshot (capsule): Snapshot from snapshot_cow()\n"
+     "Returns:\n"
+     "    bool: True on success"},
+
+    {"destroy_cow_snapshot", (PyCFunction)Brain_destroy_cow_snapshot, METH_VARARGS,
+     "Destroy a COW snapshot and release references\n\n"
+     "Frees resources held by the snapshot. The capsule becomes invalid.\n"
+     "Note: Snapshots are also auto-destroyed when garbage collected.\n\n"
+     "Args:\n"
+     "    snapshot (capsule): Snapshot to destroy"},
+
+    /* Probe Broadcasting */
+    {"broadcast_probe", (PyCFunction)Brain_broadcast_probe, METH_NOARGS,
+     "Probe brain metrics and broadcast via bio-async\n\n"
+     "Collects brain health metrics and broadcasts them to all\n"
+     "subscribed monitoring systems using the bio-async router.\n\n"
+     "Returns:\n"
+     "    bool: True on success"},
 
     {NULL, NULL, 0, NULL}
 };
@@ -3312,6 +3463,64 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     return (PyObject*)py_network;
 }
 
+// NeuralNetwork.train(inputs, targets) -> bool
+static PyObject* NeuralNetwork_train(NeuralNetworkObject* self, PyObject* args)
+{
+    PyObject* input_list;
+    PyObject* target_list;
+
+    if (!PyArg_ParseTuple(args, "OO", &input_list, &target_list)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_train: PyArg_ParseTuple failed");
+        return NULL;
+    }
+
+    if (!PyList_Check(input_list) || !PyList_Check(target_list)) {
+        PyErr_SetString(PyExc_TypeError, "Both inputs and targets must be lists");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_train: non-list argument");
+        return NULL;
+    }
+
+    Py_ssize_t num_inputs = PyList_Size(input_list);
+    Py_ssize_t num_targets = PyList_Size(target_list);
+
+    float* inputs = (float*)nimcp_malloc(num_inputs * sizeof(float));
+    float* targets = (float*)nimcp_malloc(num_targets * sizeof(float));
+    if (!inputs || !targets) {
+        nimcp_free(inputs);
+        nimcp_free(targets);
+        return PyErr_NoMemory();
+    }
+
+    for (Py_ssize_t i = 0; i < num_inputs; i++) {
+        inputs[i] = (float)PyFloat_AsDouble(PyList_GET_ITEM(input_list, i));
+    }
+    for (Py_ssize_t i = 0; i < num_targets; i++) {
+        targets[i] = (float)PyFloat_AsDouble(PyList_GET_ITEM(target_list, i));
+    }
+
+    if (PyErr_Occurred()) {
+        nimcp_free(inputs);
+        nimcp_free(targets);
+        return NULL;
+    }
+
+    // Call the public API via a temporary network handle
+    // Note: nimcp_network_train is currently a stub in the C API
+    nimcp_status_t status = NIMCP_ERROR;
+
+    // The public API requires nimcp_network_t (opaque wrapper), but Python bindings
+    // hold the internal neural_network_t directly. Since the C API stub doesn't
+    // actually use the internal network, we report the correct error.
+    PyErr_SetString(NIMCPError,
+        "Network-level training not yet implemented in the C API. "
+        "Use Brain.train_step() or Brain.train_batch() for training.");
+    (void)status;
+
+    nimcp_free(inputs);
+    nimcp_free(targets);
+    return NULL;
+}
+
 static PyMethodDef NeuralNetwork_methods[] = {
     {"forward", (PyCFunction)NeuralNetwork_forward, METH_VARARGS,
      "Perform forward pass through the network\n\n"
@@ -3320,6 +3529,16 @@ static PyMethodDef NeuralNetwork_methods[] = {
      "    num_outputs (int): Number of output neurons\n"
      "Returns:\n"
      "    list: Output values"},
+
+    {"train", (PyCFunction)NeuralNetwork_train, METH_VARARGS,
+     "Train network on a single example\n\n"
+     "Note: Low-level network training is not yet implemented in the C API.\n"
+     "Use Brain.train_step() or Brain.train_batch() for training.\n\n"
+     "Args:\n"
+     "    inputs (list): Input values\n"
+     "    targets (list): Target output values\n"
+     "Raises:\n"
+     "    NIMCPError: Always (not yet implemented)"},
 
     {"add_connection", (PyCFunction)NeuralNetwork_add_connection, METH_VARARGS,
      "Add a synaptic connection between neurons\n\n"

@@ -996,7 +996,7 @@ int fep_context_training_begin(void* ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_training_begin: ctx is NULL");
         return -1;
     }
-    fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_begin", 0.0f);
+    fep_context_instance_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_begin", 0.0f);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
     s->num_contexts = 0;
     s->active_confidence = (s->active_confidence > 0.0f) ? s->active_confidence : 0.5f;
@@ -1011,7 +1011,7 @@ int fep_context_training_step(void* ctx, float progress) {
         return -1;
     }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
-    fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_step", clamped);
+    fep_context_instance_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_step", clamped);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
     float p = clamped;
     s->active_confidence += (1.0f - p) * 0.001f;
@@ -1029,7 +1029,7 @@ int fep_context_training_end(void* ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_training_end: ctx is NULL");
         return -1;
     }
-    fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_end", 1.0f);
+    fep_context_instance_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_end", 1.0f);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
     float avg_metric = (s->active_confidence + s->blend_alpha) / 2.0f;
     NIMCP_LOGGING_INFO("fep_context: training complete, avg_metric=%.4f", avg_metric);

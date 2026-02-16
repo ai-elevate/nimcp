@@ -1476,7 +1476,7 @@ int free_energy_training_begin(void* ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_training_begin: ctx is NULL");
         return -1;
     }
-    free_energy_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_begin", 0.0f);
+    free_energy_instance_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_begin", 0.0f);
     fep_system_t* s = (fep_system_t*)ctx;
     s->stats.total_updates = 0;
     s->stats.belief_updates = 0;
@@ -1492,7 +1492,7 @@ int free_energy_training_step(void* ctx, float progress) {
         return -1;
     }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
-    free_energy_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_step", clamped);
+    free_energy_instance_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_step", clamped);
     fep_system_t* s = (fep_system_t*)ctx;
     float p = clamped;
     s->config.belief_learning_rate += (1.0f - p) * 0.001f;
@@ -1517,7 +1517,7 @@ int free_energy_training_end(void* ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_training_end: ctx is NULL");
         return -1;
     }
-    free_energy_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_end", 1.0f);
+    free_energy_instance_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_end", 1.0f);
     fep_system_t* s = (fep_system_t*)ctx;
     float metric_sum = 0.0f;
     metric_sum += s->config.belief_learning_rate;

@@ -931,7 +931,7 @@ int fep_immune_bridge_training_begin(fep_immune_bridge_t* bridge) {
                               "fep_immune_bridge_training_begin: NULL argument");
         return -1;
     }
-    fep_immune_bridge_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_begin", 0.0f);
+    fep_immune_bridge_instance_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("fep_immune_bridge: training begun");
     return 0;
 }
@@ -943,7 +943,7 @@ int fep_immune_bridge_training_step(fep_immune_bridge_t* bridge, float progress)
         return -1;
     }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
-    fep_immune_bridge_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_step", clamped);
+    fep_immune_bridge_instance_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_step", clamped);
     (void)clamped;
     return 0;
 }
@@ -954,7 +954,7 @@ int fep_immune_bridge_training_end(fep_immune_bridge_t* bridge) {
                               "fep_immune_bridge_training_end: NULL argument");
         return -1;
     }
-    fep_immune_bridge_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_end", 1.0f);
+    fep_immune_bridge_instance_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_end", 1.0f);
     NIMCP_LOGGING_INFO("fep_immune_bridge: training complete");
     return 0;
 }

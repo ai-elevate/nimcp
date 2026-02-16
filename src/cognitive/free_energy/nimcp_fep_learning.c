@@ -1259,7 +1259,7 @@ int fep_learning_training_begin(void* ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_training_begin: ctx is NULL");
         return -1;
     }
-    fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_begin", 0.0f);
+    fep_learning_instance_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("fep_learning: training begun");
     return 0;
 }
@@ -1270,7 +1270,7 @@ int fep_learning_training_step(void* ctx, float progress) {
         return -1;
     }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
-    fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_step", clamped);
+    fep_learning_instance_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_step", clamped);
     (void)clamped;
     return 0;
 }
@@ -1280,7 +1280,7 @@ int fep_learning_training_end(void* ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_training_end: ctx is NULL");
         return -1;
     }
-    fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_end", 1.0f);
+    fep_learning_instance_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_end", 1.0f);
     NIMCP_LOGGING_INFO("fep_learning: training complete");
     return 0;
 }

@@ -63,6 +63,16 @@ static inline void surprise_amplifier_set_health_agent_internal(nimcp_health_age
 static inline void surprise_amplifier_heartbeat(const char* op, float progress) {
     (void)op; (void)progress;
 }
+/* Heartbeat instance for training callbacks */
+static inline void surprise_amplifier_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* op, float progress) {
+    if (g_surprise_amplifier_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_amplifier_health_agent, op, progress);
+    }
+    if (instance_agent && instance_agent != g_surprise_amplifier_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, op, progress);
+    }
+}
 
 
 /* ============================================================================

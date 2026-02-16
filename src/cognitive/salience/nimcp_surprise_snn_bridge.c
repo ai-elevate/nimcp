@@ -41,6 +41,10 @@
 
 BRIDGE_BOILERPLATE(surprise_snn, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
+/* Alias: tests reference surprise_snn_bridge_set_health_agent_global */
+void surprise_snn_bridge_set_health_agent_global(void* agent) {
+    surprise_snn_set_health_agent((nimcp_health_agent_t*)agent);
+}
 
 /* ============================================================================
  * Bio-Async Forward Declarations
