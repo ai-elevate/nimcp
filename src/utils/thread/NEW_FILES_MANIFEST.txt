@@ -1,0 +1,213 @@
+=============================================================================
+THREAD MODULE REFACTORING - Single Responsibility Principle
+=============================================================================
+
+Date: 2026-02-16
+Original File: nimcp_thread.c (2,407 lines, 9 concerns)
+
+SPLIT STRATEGY:
+1. nimcp_thread_core.c (NEW) - Thread lifecycle, error handling, init/cleanup (586 lines)
+2. nimcp_thread_mutex.c (EXISTS) - Mutex and spinlock operations (376 lines)
+3. nimcp_thread_rwlock.c (EXISTS) - Read-write lock operations (344 lines)
+4. nimcp_thread_cond.c (EXISTS) - Condition variable operations (262 lines)
+5. nimcp_thread_resource.c (EXISTS) - Named resource locks (306 lines)
+6. nimcp_thread_attrs.c (NEW) - Thread naming and affinity (371 lines)
+
+Total: 6 files, ~2,245 lines (including documentation)
+
+=============================================================================
+FILE: nimcp_thread_core.c (NEW)
+=============================================================================
+Responsibility: Core thread lifecycle, initialization, and error handling
+Dependencies: nimcp_thread_internal.h, platform layer
+Exports to: All other thread modules
+
+Functions:
+- set_thread_error(int error_code, const char* format, ...)
+- nimcp_thread_get_error(void)
+- nimcp_thread_clear_error(void)
+- thread_init_routine(void) [static]
+- nimcp_thread_init(void)
+- nimcp_thread_create(nimcp_thread_t*, void*(*)(void*), void*, const thread_attr_t*)
+- nimcp_thread_join(nimcp_thread_t, void**)
+- nimcp_thread_detach(nimcp_thread_t)
+- nimcp_thread_exit(void*)
+- nimcp_thread_self(void)
+- nimcp_thread_equal(nimcp_thread_t, nimcp_thread_t)
+- nimcp_once(nimcp_once_t*, void(*)(void))
+- nimcp_thread_cleanup(void)
+
+Global State:
+- thread_error (thread-local)
+- resource_table (shared, exported)
+- init_once (static)
+
+=============================================================================
+FILE: nimcp_thread_mutex.c (EXISTING - unchanged)
+=============================================================================
+Responsibility: Mutex and spinlock operations
+Dependencies: nimcp_thread_internal.h, platform mutex layer
+
+Functions:
+- nimcp_mutex_init(nimcp_mutex_t*, const mutex_attr_t*)
+- nimcp_mutex_create(const mutex_attr_t*)
+- nimcp_mutex_destroy(nimcp_mutex_t*)
+- nimcp_mutex_free(nimcp_mutex_t*)
+- nimcp_mutex_lock(nimcp_mutex_t*)
+- nimcp_mutex_trylock(nimcp_mutex_t*)
+- nimcp_mutex_unlock(nimcp_mutex_t*)
+- nimcp_spinlock_init(nimcp_spinlock_t*)
+- nimcp_spinlock_destroy(nimcp_spinlock_t*)
+- nimcp_spinlock_lock(nimcp_spinlock_t*)
+- nimcp_spinlock_unlock(nimcp_spinlock_t*)
+
+=============================================================================
+FILE: nimcp_thread_rwlock.c (EXISTING - unchanged)
+=============================================================================
+Responsibility: Read-write lock operations
+Dependencies: nimcp_thread_internal.h, pthread rwlock
+
+Functions:
+- nimcp_rwlock_init(nimcp_rwlock_t*)
+- nimcp_rwlock_destroy(nimcp_rwlock_t*)
+- nimcp_rwlock_rdlock(nimcp_rwlock_t*)
+- nimcp_rwlock_wrlock(nimcp_rwlock_t*)
+- nimcp_rwlock_unlock(nimcp_rwlock_t*)
+- nimcp_rwlock_tryrdlock(nimcp_rwlock_t*)
+- nimcp_rwlock_trywrlock(nimcp_rwlock_t*)
+- nimcp_rwlock_timedrdlock(nimcp_rwlock_t*, uint32_t)
+- nimcp_rwlock_timedwrlock(nimcp_rwlock_t*, uint32_t)
+
+=============================================================================
+FILE: nimcp_thread_cond.c (EXISTING - unchanged)
+=============================================================================
+Responsibility: Condition variable operations
+Dependencies: nimcp_thread_internal.h, platform cond layer
+
+Functions:
+- nimcp_cond_init(nimcp_cond_t*)
+- nimcp_cond_destroy(nimcp_cond_t*)
+- nimcp_cond_wait(nimcp_cond_t*, nimcp_mutex_t*)
+- nimcp_cond_timedwait(nimcp_cond_t*, nimcp_mutex_t*, uint32_t)
+- nimcp_cond_signal(nimcp_cond_t*)
+- nimcp_cond_broadcast(nimcp_cond_t*)
+
+=============================================================================
+FILE: nimcp_thread_resource.c (EXISTING - unchanged)
+=============================================================================
+Responsibility: Named resource lock management (registry pattern)
+Dependencies: nimcp_thread_internal.h, access to resource_table
+
+Functions:
+- hash_string(const char*) [static]
+- nimcp_get_resource_lock(const char*, nimcp_mutex_t**)
+- nimcp_release_resource_lock(const char*)
+
+External Dependencies:
+- Requires extern resource_lock_table_t resource_table (from nimcp_thread_core.c)
+- Requires extern void set_thread_error(...) (from nimcp_thread_core.c)
+- Requires extern nimcp_result_t nimcp_thread_init() (from nimcp_thread_core.c)
+
+=============================================================================
+FILE: nimcp_thread_attrs.c (NEW)
+=============================================================================
+Responsibility: Thread attributes (naming and CPU affinity)
+Dependencies: nimcp_thread_internal.h, pthread naming/affinity APIs
+
+Functions:
+- nimcp_thread_set_name(const char*)
+- nimcp_thread_get_name(char*, size_t)
+- nimcp_thread_set_affinity(nimcp_thread_t, uint32_t)
+- nimcp_thread_get_affinity(nimcp_thread_t, uint32_t*)
+
+Platform-specific:
+- Linux: pthread_setname_np, pthread_getname_np, pthread_setaffinity_np
+- macOS: pthread_setname_np (different signature), pthread_getname_np
+- Other: Graceful no-op fallbacks
+
+=============================================================================
+FILE: nimcp_thread_internal.h (NEW)
+=============================================================================
+Responsibility: Internal API shared across thread modules
+Contents:
+- Error handling function declarations
+- Resource table accessor (if needed)
+- Shared internal types
+
+Purpose:
+- Avoid circular dependencies
+- Share error handling across modules
+- Keep public API clean (nimcp_thread.h unchanged)
+
+=============================================================================
+REMOVED FROM ORIGINAL nimcp_thread.c:
+=============================================================================
+1. Lines 977-1388: RWlock operations (moved to nimcp_thread_rwlock.c)
+2. Lines 1390-1685: Condition variable operations (moved to nimcp_thread_cond.c)
+3. Lines 1687-2017: Named resource locks (moved to nimcp_thread_resource.c)
+4. Lines 2019-2315: Thread naming and affinity (moved to nimcp_thread_attrs.c)
+5. Mutex operations at top (already in nimcp_thread_mutex.c)
+
+KEPT IN nimcp_thread_core.c:
+1. Lines 1-639: Error handling and TLS
+2. Lines 640-719: Initialization (thread_init_routine, nimcp_thread_init)
+3. Lines 720-968: Thread lifecycle (create, join, detach, exit, self, equal, once)
+4. Lines 2316-2407: Cleanup (nimcp_thread_cleanup)
+
+=============================================================================
+PUBLIC HEADER (UNCHANGED):
+=============================================================================
+File: include/utils/thread/nimcp_thread.h
+Status: NO CHANGES REQUIRED
+Reason: All split is internal implementation, public API remains identical
+
+=============================================================================
+BUILD SYSTEM:
+=============================================================================
+CMakeLists.txt already compiles all these files:
+- nimcp_thread.c (will be REPLACED by nimcp_thread_core.c)
+- nimcp_thread_mutex.c (existing)
+- nimcp_thread_cond.c (existing)
+- nimcp_thread_rwlock.c (existing)
+- nimcp_thread_resource.c (existing)
+- NEW: nimcp_thread_attrs.c (add to CMakeLists.txt)
+
+Action Required:
+1. Rename nimcp_thread.c -> nimcp_thread.c.old (backup)
+2. Rename nimcp_thread_core.c -> nimcp_thread.c (or update CMakeLists.txt)
+3. Add nimcp_thread_attrs.c to src/lib/CMakeLists.txt
+
+=============================================================================
+TESTING STRATEGY:
+=============================================================================
+1. Compile all files: make nimcp -j4
+2. Run thread-specific tests:
+   - ctest -R thread
+   - ctest -R mutex
+   - ctest -R rwlock
+   - ctest -R condition
+3. Full regression: ctest -j3 --timeout 600
+4. Verify no link errors (all symbols resolved)
+
+=============================================================================
+BENEFITS:
+=============================================================================
+1. Single Responsibility: Each file has ONE clear purpose
+2. Easier Testing: Can test mutex logic separate from rwlock logic
+3. Reduced Complexity: ~400-600 lines per file vs 2400 lines
+4. Better Modularity: Clear boundaries between concerns
+5. Maintainability: Changes to rwlock don't affect mutex code
+6. Code Reuse: Error handling shared via internal header
+
+=============================================================================
+SOLID PRINCIPLES APPLIED:
+=============================================================================
+S - Single Responsibility: Each file handles one synchronization primitive
+O - Open/Closed: Can add new lock types without modifying existing files
+L - Liskov Substitution: All implement consistent error handling interface
+I - Interface Segregation: nimcp_thread.h is focused, internal header separate
+D - Dependency Inversion: All depend on abstract platform layer
+
+=============================================================================
+END OF MANIFEST
+=============================================================================

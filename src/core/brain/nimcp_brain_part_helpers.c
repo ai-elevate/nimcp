@@ -1,0 +1,1771 @@
+// nimcp_brain_part_helpers.c - helpers functions
+// Part of nimcp_brain.c (SRP #include-based split)
+// DO NOT compile separately - #included from nimcp_brain.c
+
+
+/**
+ * @brief Publish brain state change event via bio-async
+ *
+ * @param event_type Type of brain event (creation, destruction, etc.)
+ * @param neuron_count Number of neurons (0 if not applicable)
+ * @param channel Neuromodulator channel to use
+ */
+static void brain_publish_state_event(bio_message_type_t event_type,
+                                       uint32_t neuron_count,
+                                       nimcp_bio_channel_type_t channel)
+{
+    // Use atomic load for thread-safe access to global state
+    if (!__atomic_load_n(&g_brain_bio_initialized, __ATOMIC_ACQUIRE) ||
+        !__atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE)) {
+        return;  // Graceful degradation
+    }
+
+    LOG_MODULE_DEBUG("BRAIN", "Publishing state event: type=%d, neurons=%u",
+                     event_type, neuron_count);
+
+    // Create brain state response message
+    bio_msg_brain_state_response_t msg = {0};
+    bio_msg_init_header(&msg.header, event_type, BIO_MODULE_BRAIN,
+                        0, sizeof(msg));  // target=0 (broadcast)
+    msg.header.channel = channel;
+    msg.neuron_count = neuron_count;
+
+    // Publish via router
+    nimcp_error_t result = bio_router_broadcast(g_brain_bio_ctx, &msg, sizeof(msg));
+    if (result != NIMCP_SUCCESS) {
+        LOG_MODULE_WARN("BRAIN", "Failed to publish state event: error=%d", result);
+    }
+}
+
+
+//=============================================================================
+// Strategy Pattern - Task-Specific Behaviors
+//=============================================================================
+
+//=============================================================================
+// Strategy Implementations
+//=============================================================================
+
+/**
+ * @brief Classification strategy - softmax output, cross-entropy loss
+ *
+ * WHY: Classification needs probabilities summing to 1.0
+ * WHEN: Multi-class or binary classification tasks
+ * COMPLEXITY: O(n) for softmax normalization
+ */
+static float strategy_classification_lr(void)
+{
+    return 0.01F;
+}
+
+
+static void strategy_classification_transform(float* output, uint32_t size)
+{
+    // P1-52 FIX: Guard against NULL output pointer
+    if (!output) return;
+    // Guard: size=0 would cause OOB read on output[0]
+    if (size == 0) return;
+
+    // Softmax normalization for probability distribution
+    float max_val = output[0];
+    for (uint32_t i = 1; i < size; i++) {
+        if (output[i] > max_val)
+            max_val = output[i];
+    }
+
+    float sum = 0.0F;
+    for (uint32_t i = 0; i < size; i++) {
+        output[i] = expf(output[i] - max_val);
+        sum += output[i];
+    }
+
+    for (uint32_t i = 0; i < size; i++) {
+        output[i] /= sum;
+    }
+}
+
+
+static float strategy_classification_loss(const float* pred, const float* target, uint32_t size)
+{
+    // Cross-entropy loss
+    float loss = 0.0F;
+    for (uint32_t i = 0; i < size; i++) {
+        if (target[i] > 0.0F) {
+            loss -= target[i] * logf(fmaxf(pred[i], 1e-10F));
+        }
+    }
+    return loss;
+}
+
+
+/**
+ * @brief Regression strategy - linear output, MSE loss
+ *
+ * WHY: Regression predicts continuous values
+ * WHEN: Predicting real-valued outputs
+ * COMPLEXITY: O(n) for MSE calculation
+ */
+static float strategy_regression_lr(void)
+{
+    return 0.005F;
+}
+
+
+static void strategy_regression_transform(float* output, uint32_t size)
+{
+    // No transformation - use raw values
+    (void) output;
+    (void) size;
+}
+
+
+static float strategy_regression_loss(const float* pred, const float* target, uint32_t size)
+{
+    // Guard: Prevent division by zero when size is 0
+    if (size == 0) return 0.0f;
+
+    // Mean squared error
+    float loss = 0.0F;
+    for (uint32_t i = 0; i < size; i++) {
+        float diff = pred[i] - target[i];
+        loss += diff * diff;
+    }
+    return loss / size;
+}
+
+
+/**
+ * @brief Pattern matching strategy - high LR, binary output
+ *
+ * WHY: Pattern matching needs fast adaptation
+ * WHEN: Recognizing specific patterns quickly
+ * COMPLEXITY: O(n)
+ */
+static float strategy_pattern_lr(void)
+{
+    return 0.02F;
+}
+
+
+static void strategy_pattern_transform(float* output, uint32_t size)
+{
+    // Threshold to binary
+    for (uint32_t i = 0; i < size; i++) {
+        output[i] = output[i] > 0.5F ? 1.0F : 0.0F;
+    }
+}
+
+
+static float strategy_pattern_loss(const float* pred, const float* target, uint32_t size)
+{
+    // Guard: Prevent division by zero when size is 0
+    if (size == 0) return 0.0f;
+
+    // Binary cross-entropy
+    float loss = 0.0F;
+    for (uint32_t i = 0; i < size; i++) {
+        float p = fmaxf(fminf(pred[i], 0.9999F), 0.0001F);
+        loss -= target[i] * logf(p) + (1.0F - target[i]) * logf(1.0F - p);
+    }
+    return loss / size;
+}
+
+
+/**
+ * @brief Association learning strategy - Hebbian-focused
+ *
+ * WHY: Association learning uses different plasticity rules
+ * WHEN: Building associative memories
+ * COMPLEXITY: O(n)
+ */
+static float strategy_association_lr(void)
+{
+    return 0.05F;
+}
+
+
+static void strategy_association_transform(float* output, uint32_t size)
+{
+    // Normalize to unit range
+    float max_val = 0.0F;
+    for (uint32_t i = 0; i < size; i++) {
+        if (fabsf(output[i]) > max_val)
+            max_val = fabsf(output[i]);
+    }
+
+    if (max_val > 0.0F) {
+        for (uint32_t i = 0; i < size; i++) {
+            output[i] /= max_val;
+        }
+    }
+}
+
+
+static float strategy_association_loss(const float* pred, const float* target, uint32_t size)
+{
+    // Cosine distance
+    float dot = 0.0F, norm_p = 0.0F, norm_t = 0.0F;
+    for (uint32_t i = 0; i < size; i++) {
+        dot += pred[i] * target[i];
+        norm_p += pred[i] * pred[i];
+        norm_t += target[i] * target[i];
+    }
+    float cosine = dot / (sqrtf(norm_p) * sqrtf(norm_t) + 1e-10F);
+    return 1.0F - cosine;
+}
+
+static float get_default_sparsity(brain_size_t size)
+{
+    switch (size) {
+        case BRAIN_SIZE_TINY:
+            return 0.70F;
+        case BRAIN_SIZE_SMALL:
+            return 0.80F;
+        case BRAIN_SIZE_MEDIUM:
+            return 0.85F;
+        case BRAIN_SIZE_LARGE:
+            return 0.90F;
+        default:
+            return 0.80F;
+    }
+}
+
+
+//=============================================================================
+// Configuration Builders
+//=============================================================================
+
+/**
+ * @brief Build spike parameters for brain configuration
+ *
+ * WHY: Separates spike config from main creation logic
+ * Makes configuration more maintainable and testable
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param sparsity_target Target sparsity level
+ * @return Spike parameters structure
+ */
+static adaptive_spike_params_t build_spike_params(float sparsity_target)
+{
+    adaptive_spike_params_t params = {0};
+    params.k_factor = 0.5F;
+    params.sparsity_target = sparsity_target;
+    params.encoding = SPIKE_ENCODING_INTEGER;
+    params.enable_soft_reset = true;
+    params.enable_adaptation = true;
+    params.adaptation_window = 100;
+    params.min_threshold = 0.0001F;  // Very low to allow tiny outputs from untrained networks
+    params.max_threshold = 10.0F;
+
+
+    return params;
+}
+
+static bool is_cached_input(brain_t brain, const float* features, uint32_t num_features)
+{
+    if (!brain->last_input || !brain->cached_decision) {
+        return false;
+    }
+    if (brain->input_size != num_features) {
+        return false;
+    }
+
+    return memcmp(brain->last_input, features, num_features * sizeof(float)) == 0;
+}
+
+
+/**
+ * @brief Cache decision for input
+ *
+ * WHY: Store decision for potential reuse
+ * Improves batch processing performance
+ *
+ * COMPLEXITY: O(n) for input copy
+ *
+ * @param brain Brain handle
+ * @param features Input to cache
+ * @param num_features Feature count
+ * @param decision Decision to cache
+ */
+static void cache_decision(brain_t brain, const float* features, uint32_t num_features,
+                           brain_decision_t* decision)
+{
+    // CRITICAL: This function must only be called while cache_mutex is locked!
+    // Caller is responsible for mutex protection.
+
+    // Resize input buffer if needed (defensive: handle size changes)
+    if (!brain->last_input || brain->input_size != num_features) {
+        // Allocate new buffer BEFORE freeing old one to maintain consistency
+        float* new_input = nimcp_malloc(num_features * sizeof(float));
+        if (!new_input) {
+            set_error("Failed to allocate cache input buffer");
+            return;
+        }
+
+        // Free old buffer after successful allocation
+        nimcp_free(brain->last_input);
+        brain->last_input = new_input;
+        brain->input_size = num_features;
+    }
+
+    memcpy(brain->last_input, features, num_features * sizeof(float));
+
+    // Create new decision copy FIRST (before freeing old)
+    // This reduces the race window where cached_decision could be NULL
+    // Deep copy: cache owns its own data independently
+    // Thread safety is ensured by cache_mutex held by caller
+    brain_decision_t* new_cached = copy_decision_deep(decision);
+    if (!new_cached) {
+        set_error("Failed to copy decision for cache");
+        return;
+    }
+
+    // Now atomically replace old cached decision
+    brain_decision_t* old_cached = brain->cached_decision;
+    brain->cached_decision = new_cached;
+
+    // Free old decision AFTER replacement (cache always has valid decision)
+    if (old_cached) {
+        brain_free_decision(old_cached);
+    }
+}
+
+static int mutex_lock_with_timeout(nimcp_platform_mutex_t* mutex, uint64_t timeout_us)
+{
+    if (!mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mutex is NULL");
+
+        return -1;
+    }
+
+    uint64_t start_time = nimcp_time_monotonic_us();
+    uint64_t elapsed = 0;
+    uint32_t backoff_us = 100;  // Start with 100 microsecond backoff
+
+    while (elapsed < timeout_us) {
+        // Try to acquire lock without blocking
+        int result = nimcp_platform_mutex_trylock(mutex);
+        if (result == 0) {
+            // Successfully acquired lock
+            return 0;
+        }
+
+        // Lock not available - wait with exponential backoff
+        usleep(backoff_us);
+
+        // Exponential backoff with cap at 10ms
+        backoff_us = (backoff_us * 2 > 10000) ? 10000 : backoff_us * 2;
+
+        elapsed = nimcp_time_monotonic_us() - start_time;
+    }
+
+    // Timeout - log critical error
+    LOG_MODULE_ERROR("BRAIN", "CRITICAL: Mutex lock timeout after %lu us - potential deadlock detected",
+                     (unsigned long)timeout_us);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mutex_lock_with_timeout: operation failed");
+    return -1;
+}
+
+
+/**
+ * @brief Force unlock mutex with recovery logging
+ *
+ * WHAT: Attempts emergency mutex unlock when normal unlock fails
+ * WHY:  Recover from potential deadlock situations
+ * HOW:  Multiple unlock attempts with logging for diagnostics
+ *
+ * WARNING: This should only be called as a last resort when normal
+ * unlock fails. It may indicate a programming error (unlocking mutex
+ * not owned by this thread) or memory corruption.
+ *
+ * @param mutex Mutex to force unlock
+ * @param context Description of where the issue occurred
+ */
+static void force_unlock_with_logging(nimcp_platform_mutex_t* mutex, const char* context)
+{
+    if (!mutex) {
+        return;
+    }
+
+    // Attempt unlock multiple times (some implementations may require it
+    // if mutex was locked recursively or corrupted)
+    for (int attempt = 0; attempt < 3; attempt++) {
+        int result = nimcp_platform_mutex_unlock(mutex);
+        if (result == 0) {
+            LOG_MODULE_WARN("BRAIN", "Emergency unlock succeeded on attempt %d at %s",
+                             attempt + 1, context);
+            return;
+        }
+    }
+
+    // All attempts failed - log critical error
+    LOG_MODULE_ERROR("BRAIN", "CRITICAL: Emergency unlock failed after 3 attempts at %s - "
+                    "system may be in inconsistent state. Consider process restart.",
+                    context);
+
+    // Set error for caller to handle
+    set_error("CRITICAL: Mutex permanently locked at %s - restart recommended", context);
+}
+
+
+//=============================================================================
+// Brain Factory - Creation with Validation
+//=============================================================================
+
+/**
+ * @brief Validate brain creation parameters
+ *
+ * WHY: Guard clause pattern - early exit on invalid input
+ * Prevents invalid state propagation
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param task_name Brain name
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return true if valid
+ */
+static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
+                                     uint32_t num_outputs)
+{
+    if (!task_name) {
+        set_error("task_name cannot be NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_creation_params: task_name is NULL");
+        return false;
+    }
+
+    if (num_inputs == 0) {
+        set_error("num_inputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_inputs is zero");
+        return false;
+    }
+
+    if (num_inputs > 10000) {
+        set_error("num_inputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: validation failed");
+        return false;
+    }
+
+    if (num_outputs == 0) {
+        set_error("num_outputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_outputs is zero");
+        return false;
+    }
+
+    if (num_outputs > 10000) {
+        set_error("num_outputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: validation failed");
+        return false;
+    }
+
+    return true;
+}
+
+
+
+/**
+ * @brief Generate or configure personality from brain config
+ *
+ * WHAT: Create personality profile based on configuration
+ * WHY:  Each brain needs unique personality for individuality
+ * HOW:  Random generation or explicit specification
+ *
+ * @param config Brain configuration with personality settings
+ * @return Allocated personality profile or NULL on error
+ *
+ * COMPLEXITY: O(1)
+ */
+static personality_profile_t* create_personality(const brain_config_t* config)
+{
+    // Guard: NULL check
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
+
+    // Allocate personality profile
+    personality_profile_t* profile = nimcp_malloc(sizeof(personality_profile_t));
+    if (!profile) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "profile is NULL");
+
+        return NULL;
+
+    }
+
+    // Generate personality based on configuration
+    if (config->use_random_personality) {
+        // Random generation with configured probabilities
+        personality_generation_config_t gen_config;
+        gen_config.trait_mean = config->personality_trait_mean;
+        gen_config.trait_stddev = config->personality_trait_stddev;
+        gen_config.female_probability = config->female_probability;
+        gen_config.male_probability = config->male_probability;
+        gen_config.non_binary_probability = config->non_binary_probability;
+        gen_config.seed = config->personality_seed;
+        gen_config.enforce_balanced_traits = false;
+
+        *profile = personality_generate_random(&gen_config);
+    } else {
+        // Explicit specification
+        personality_traits_t traits;
+        traits.openness = config->explicit_openness;
+        traits.conscientiousness = config->explicit_conscientiousness;
+        traits.extraversion = config->explicit_extraversion;
+        traits.agreeableness = config->explicit_agreeableness;
+        traits.neuroticism = config->explicit_neuroticism;
+
+        identity_profile_t identity = {0};
+        identity.gender = (gender_identity_t)config->explicit_gender;
+        identity.sexuality = (sexual_orientation_t)config->explicit_sexuality;
+        identity.gender_certainty = 1.0F;
+        identity.sexuality_certainty = 1.0F;
+        identity.gender_is_core_identity = true;
+        identity.sexuality_is_core_identity = false;
+
+        *profile = personality_create_custom(&traits, &identity);
+    }
+
+    return profile;
+}
+
+
+/**
+ * @brief Convert label to one-hot encoded output vector
+ *
+ * WHY: Transforms string labels to neural network targets
+ * One-hot encoding standard for classification
+ *
+ * COMPLEXITY: O(n) where n = num_outputs
+ *
+ * @param brain Brain handle
+ * @param label Label string
+ * @param output Output buffer
+ * @param confidence Confidence value for label
+ */
+static void label_to_output(brain_t brain, const char* label, float* output, float confidence)
+{
+    uint32_t label_idx = get_or_create_label_index(brain, label);
+
+    memset(output, 0, brain->config.num_outputs * sizeof(float));
+    output[label_idx] = confidence;
+}
+
+
+/**
+ * WHAT: Adapt learning rate based on loss trend (Phase 11: Simple Meta-Learning)
+ * WHY:  Accelerate when loss decreasing, slow down when loss increasing
+ * HOW:  Track loss in rolling window, compute trend, adjust LR
+ *
+ * COMPLEXITY: O(1)
+ *
+ * BIOLOGICAL BASIS:
+ * - Meta-learning: "learning to learn"
+ * - Homeostatic regulation of synaptic plasticity
+ */
+static void adapt_learning_rate_from_loss(brain_t brain, float current_loss)
+{
+    // Guard: NULL check
+    if (!brain) {
+        return;
+    }
+
+    // Guard: Initialize base_learning_rate on first call
+    if (brain->base_learning_rate == 0.0F) {
+        brain->base_learning_rate = brain->config.learning_rate;
+    }
+
+    // P3-50 FIX: Replace magic number 10 with named constant LOSS_HISTORY_SIZE
+    // Store current loss in circular buffer
+    brain->loss_history[brain->loss_history_index] = current_loss;
+    brain->loss_history_index = (brain->loss_history_index + 1) % LOSS_HISTORY_SIZE;
+    if (brain->loss_history_count < LOSS_HISTORY_SIZE) {
+        brain->loss_history_count++;
+    }
+
+    // Need at least 3 samples to compute trend
+    if (brain->loss_history_count < 3) {
+        return;
+    }
+
+    // P2-52 FIX: Read loss_history in correct chronological order.
+    // The circular buffer wraps around, so entry at raw index [0] may not be
+    // the oldest. Compute the start offset for correct chronological access.
+    uint32_t start_offset = (brain->loss_history_count < LOSS_HISTORY_SIZE)
+        ? 0 : brain->loss_history_index;  // Points to oldest entry when full
+
+    // Compute loss trend: recent avg vs older avg
+    float recent_avg = 0.0F;
+    float older_avg = 0.0F;
+    uint32_t half = brain->loss_history_count / 2;
+
+    // Older half (chronologically first entries)
+    for (uint32_t i = 0; i < half; i++) {
+        older_avg += brain->loss_history[(start_offset + i) % LOSS_HISTORY_SIZE];
+    }
+    older_avg /= half;
+
+    // Recent half (chronologically later entries)
+    for (uint32_t i = half; i < brain->loss_history_count; i++) {
+        recent_avg += brain->loss_history[(start_offset + i) % LOSS_HISTORY_SIZE];
+    }
+    recent_avg /= (brain->loss_history_count - half);
+
+    // Compute trend
+    float trend = recent_avg - older_avg;
+
+    // Adapt learning rate
+    if (trend < -0.01F) {
+        brain->config.learning_rate *= 1.05F;  // Accelerate
+    } else if (trend > 0.01F) {
+        brain->config.learning_rate *= 0.9F;   // Slow down
+    }
+
+    // Bounds: [0.1x, 10x] of base rate
+    float min_lr = brain->base_learning_rate * 0.1F;
+    float max_lr = brain->base_learning_rate * 10.0F;
+    if (brain->config.learning_rate < min_lr) {
+        brain->config.learning_rate = min_lr;
+    }
+    if (brain->config.learning_rate > max_lr) {
+        brain->config.learning_rate = max_lr;
+    }
+}
+
+
+/**
+ * @brief Energy function for quantum annealing weight optimization
+ *
+ * WHAT: Compute L2 regularization energy for given weights
+ * WHY:  Simple proxy energy function for weight optimization
+ * HOW:  Sum of squared weights, normalized by dimension
+ *
+ * NOTE: Full implementation would use validation loss
+ *
+ * @param weights Weight vector
+ * @param dim Vector dimension
+ * @param user_data Unused
+ * @return Energy (lower is better)
+ */
+static float quantum_weight_energy(const float* weights, uint32_t dim, void* user_data)
+{
+    (void)user_data;  // Unused
+    float energy = 0.0F;
+    for (uint32_t i = 0; i < dim; i++) {
+        energy += weights[i] * weights[i];
+    }
+    return energy / (float)dim;  // Normalized
+}
+
+
+/**
+ * @brief Learn from single labeled example
+ *
+ * WHY: Primary learning interface - supervised learning
+ * Updates network weights to match label
+ *
+ * COMPLEXITY: O(s*n) where s = sparsity, n = active_neurons
+ * PERFORMANCE: ~0.1-1ms for small networks, ~10ms for large
+ *
+ * @param brain Brain handle
+ * @param features Input features
+ * @param num_features Feature count
+ * @param label Target label
+ * @param confidence Training weight
+ * @return Loss value or -1 on error
+ */
+// brain_learn_example() - MOVED TO: src/core/brain/learning/nimcp_brain_learning.c
+
+/**
+ * @brief Learn from batch of examples
+ *
+ * WHY: More efficient than individual calls
+ * Enables mini-batch gradient descent
+ *
+ * COMPLEXITY: O(m*s*n) where m = num_examples
+ *
+ * @param brain Brain handle
+ * @param examples Array of examples
+ * @param num_examples Example count
+ * @return Average loss or -1 on error
+ */
+// brain_learn_batch() - MOVED TO: src/core/brain/learning/nimcp_brain_learning.c
+
+/**
+ * @brief Apply reward-based reinforcement learning
+ *
+ * WHAT: Apply eligibility-trace-based learning with reward signal
+ * WHY:  Enable temporal credit assignment for RL tasks
+ * HOW:  Call neural_network_apply_reward_learning() with reward and dopamine
+ *
+ * BIOLOGY: Three-factor learning rule (Hebbian + Reward + Dopamine)
+ * - Eligibility traces mark recently active synapses ("synaptic tags")
+ * - Dopamine bursts trigger consolidation ("capture")
+ * - Reward signal modulates weight changes (Frey & Morris 1997)
+ *
+ * COMPLEXITY: O(n × s) where n=neurons, s=synapses_per_neuron
+ * USE CASE: Reinforcement learning, temporal credit assignment
+ *
+ * @param brain Brain handle
+ * @param reward Reward signal (0-1 positive, -1-0 negative)
+ * @return Number of synapses modified
+ */
+// brain_apply_reward_learning() - MOVED TO: src/core/brain/learning/nimcp_brain_learning.c
+
+/**
+ * @brief Learn by querying an LLM teacher
+ *
+ * WHY: Enables distillation from larger models
+ * Brain learns to mimic LLM decisions efficiently
+ *
+ * COMPLEXITY: O(s*n) + LLM query time
+ * USE CASE: Compress LLM knowledge into fast neural network
+ *
+ * @param brain Brain handle
+ * @param input Input features
+ * @param num_features Feature count
+ * @param llm_fn Teacher function
+ * @param llm_context Context for teacher
+ * @return Loss value or -1 on error
+ */
+// brain_learn_from_llm() - MOVED TO: src/core/brain/learning/nimcp_brain_learning.c
+
+//=============================================================================
+// Inference API
+//=============================================================================
+
+/**
+ * @brief Allocate decision structure
+ *
+ * COMPLEXITY: O(1)
+ *
+ * Phase 1.5: Initializes CoW fields - newly allocated decisions own their data
+ */
+static brain_decision_t* allocate_decision(uint32_t output_size)
+{
+    brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
+    if (!decision) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decision is NULL");
+
+        return NULL;
+
+    }
+
+    decision->output_size = output_size;
+    decision->output_vector = nimcp_malloc(output_size * sizeof(float));
+
+    if (!decision->output_vector) {
+        nimcp_free(decision);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_decision: decision->output_vector is NULL");
+        return NULL;
+    }
+
+    // Phase 1.5: Initialize CoW fields - this decision owns its data
+    decision->_cow_refcount = NULL;    // NULL means we own the data
+    decision->_cow_is_shallow = false; // Not a shallow copy
+
+    return decision;
+}
+
+
+/**
+ * @brief Perform forward pass through network
+ *
+ * COMPLEXITY: O(s*n) where s = sparsity
+ *
+ * @param brain Brain handle
+ * @param features Input features
+ * @param num_features Feature count
+ * @param decision Decision to populate
+ * @return Number of active neurons
+ */
+static uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num_features,
+                                     brain_decision_t* decision)
+{
+    uint64_t start_time = nimcp_time_monotonic_us();
+
+    uint32_t active_neurons;
+
+    // Phase 3: Use read-only inference for COW clones to avoid triggering copy
+    if (brain->can_use_readonly) {
+        // COW clone using shared network - read-only inference
+        active_neurons = adaptive_network_forward_readonly(
+            brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    } else {
+        // Original brain or post-COW clone - normal inference with statistics
+        active_neurons = adaptive_network_forward(
+            brain->network, features, num_features, decision->output_vector, decision->output_size, 0);
+    }
+
+    decision->inference_time_us = nimcp_time_elapsed_us(start_time);
+
+    return active_neurons;
+}
+
+
+/**
+ * @brief Find maximum output and determine label
+ *
+ * COMPLEXITY: O(n) where n = num_outputs
+ */
+static void determine_output_label(brain_t brain, brain_decision_t* decision)
+{
+    // P2-50 FIX: Guard against output_size==0 to prevent OOB access on output_vector[0]
+    if (decision->output_size == 0) return;
+
+    uint32_t max_idx = 0;
+    float max_value = decision->output_vector[0];
+
+    for (uint32_t i = 1; i < decision->output_size; i++) {
+        if (decision->output_vector[i] > max_value) {
+            max_value = decision->output_vector[i];
+            max_idx = i;
+        }
+    }
+
+    // Set label
+    if (max_idx < brain->num_output_labels) {
+        strncpy(decision->label, brain->output_labels[max_idx], sizeof(decision->label) - 1);
+    } else {
+        snprintf(decision->label, sizeof(decision->label), "output_%u", max_idx);
+    }
+
+    // P3-51 FIX: Replace magic number with named constant
+    decision->confidence = fminf(max_value / CONFIDENCE_NORMALIZATION_FACTOR, 1.0F);
+}
+
+
+/**
+ * @brief Populate interpretability information
+ *
+ * COMPLEXITY: O(n)
+ */
+static void populate_interpretability(brain_t brain, const float* features, uint32_t num_features,
+                                      uint32_t active_neurons, brain_decision_t* decision)
+{
+    decision->num_active_neurons = active_neurons;
+    decision->sparsity = adaptive_network_get_sparsity(brain->network);
+
+    if (brain->config.enable_explanations) {
+        adaptive_network_explain(brain->network, features, num_features, decision->explanation,
+                                 sizeof(decision->explanation));
+    }
+
+    // Populate active neuron IDs
+    decision->active_neuron_ids = nimcp_malloc(active_neurons * sizeof(uint32_t));
+    if (!decision->active_neuron_ids) {
+        set_error("Failed to allocate active neuron IDs array (%u neurons)", active_neurons);
+        return;  // decision->num_active_neurons is 0, so this is safe
+    }
+    for (uint32_t i = 0; i < active_neurons; i++) {
+        decision->active_neuron_ids[i] = i;
+    }
+}
+
+
+//=============================================================================
+// Mirror Neuron Integration Helpers (Phase 10.11)
+//=============================================================================
+
+/**
+ * @brief Convert brain decision to mirror neuron action
+ *
+ * WHAT: Transform brain decision into action_t for mirror neuron system
+ * WHY:  Enable mirror neurons to learn from brain's own decisions
+ * HOW:  Extract decision features, confidence, and output as action representation
+ *
+ * COMPLEXITY: O(n) where n = num_outputs (feature copying)
+ *
+ * @param decision Brain decision
+ * @param action_id Unique action identifier
+ * @param action_name Human-readable action name
+ * @return action_t struct for mirror neuron system
+ */
+static action_t brain_decision_to_action(const brain_decision_t* decision,
+                                         uint32_t action_id,
+                                         const char* action_name)
+{
+    action_t action;
+    memset(&action, 0, sizeof(action_t));
+
+    if (!decision || !action_name) {
+        return action;
+    }
+
+    action.action_id = action_id;
+    strncpy(action.action_name, action_name, sizeof(action.action_name) - 1);
+    action.agent_id = 0;  // 0 = self
+    action.timestamp = nimcp_time_get_ms();
+    action.confidence = decision->confidence;
+
+    // Use output activations as action features (up to 32)
+    action.num_features = (decision->output_size < 32) ? decision->output_size : 32;
+    for (uint32_t i = 0; i < action.num_features; i++) {
+        action.features[i] = decision->output_vector[i];
+    }
+
+    return action;
+}
+
+
+/**
+ * @brief Convert input features to observed action
+ *
+ * WHAT: Transform input features into action_t for observation pathway
+ * WHY:  Enable mirror neurons to learn from observed patterns
+ * HOW:  Treat input as observed action with features
+ *
+ * COMPLEXITY: O(n) where n = num_features (copying)
+ *
+ * @param features Input features
+ * @param num_features Number of features
+ * @param agent_id ID of agent performing action (0 = self, >0 = other)
+ * @return action_t struct for mirror neuron system
+ */
+static action_t features_to_action(const float* features, uint32_t num_features,
+                                   uint32_t agent_id)
+{
+    action_t action;
+    memset(&action, 0, sizeof(action_t));
+
+    if (!features) {
+        return action;
+    }
+
+    action.action_id = 0;  // Will be assigned by mirror neuron system
+    snprintf(action.action_name, sizeof(action.action_name), "observed_%u", agent_id);
+    action.agent_id = agent_id;
+    action.timestamp = nimcp_time_get_ms();
+    action.confidence = 1.0F;
+
+    // Copy features (up to 32)
+    action.num_features = (num_features < 32) ? num_features : 32;
+    for (uint32_t i = 0; i < action.num_features; i++) {
+        action.features[i] = features[i];
+    }
+
+    return action;
+}
+
+
+/**
+ * @brief Observe action performed by another agent (Phase 10.11)
+ *
+ * WHAT: Record observed action in mirror neuron system for observational learning
+ * WHY:  Enable learning from watching others (imitation, social cognition)
+ * HOW:  Convert input features to observed action and send to mirror neurons
+ *
+ * This is the OBSERVATION PATHWAY for mirror neurons. When the brain observes
+ * another agent performing an action, this function records it for learning.
+ *
+ * USE CASES:
+ * - Robot watching human demonstration
+ * - Agent observing another agent's behavior
+ * - Learning from video/sensor data of actions
+ * - Social learning and imitation
+ *
+ * COMPLEXITY: O(n) where n = num_features
+ * THREAD-SAFE: No (requires external synchronization)
+ *
+ * @param brain Brain handle
+ * @param features Observed action features (sensor data, visual features, etc.)
+ * @param num_features Number of features
+ * @param agent_id ID of agent being observed (must be > 0, as 0 = self)
+ * @return true on success, false on error
+ */
+// brain_observe_action() - MOVED TO: src/core/brain/inference/nimcp_brain_inference.c
+
+/**
+ * @brief Free decision result
+ *
+ * WHY: Proper memory management for decision results
+ * Handles all allocated sub-structures
+ *
+ * COMPLEXITY: O(1)
+ *
+ * @param decision Decision to free
+ */
+// brain_free_decision() - MOVED TO: src/core/brain/inference/nimcp_brain_inference.c
+
+/**
+ * @brief Batch inference
+ *
+ * WHY: More efficient than individual calls for large batches
+ * Enables parallel processing opportunities
+ *
+ * COMPLEXITY: O(m*s*n) where m = num_inputs
+ *
+ * @param brain Brain handle
+ * @param inputs Array of input vectors
+ * @param num_inputs Number of inputs
+ * @param features_per_input Features per input
+ * @param decisions Output decisions array (allocated by caller)
+ * @return true on success
+ */
+// brain_decide_batch() - MOVED TO: src/core/brain/inference/nimcp_brain_inference.c
+
+//=============================================================================
+// Persistence API
+//=============================================================================
+
+/**
+ * @brief Save working memory state to file (Phase 10.2)
+ *
+ * WHAT: Serialize working memory items for COW snapshot persistence
+ * WHY:  Preserve active representations across save/load/snapshot operations
+ * HOW:  Write marker → size/capacity → each item's data
+ *
+ * COMPLEXITY: O(n*m) where n = items, m = avg item size
+ *
+ * @param wm Working memory instance (nullable)
+ * @param file File handle (non-NULL)
+ * @return true on success, false on error
+ */
+static bool save_working_memory_state(working_memory_t* wm, FILE* file)
+{
+    // Guard: NULL file handle
+    if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "save_working_memory_state: file is NULL");
+        return false;
+    }
+
+    bool success = true;
+
+    // Guard: No working memory → write marker and return
+    if (!wm) {
+        uint8_t has_wm = 0;
+        if (fwrite(&has_wm, sizeof(uint8_t), 1, file) != 1) {
+            success = false;
+        }
+        return success;
+    }
+
+    // Write existence marker
+    uint8_t has_wm = 1;
+    if (fwrite(&has_wm, sizeof(uint8_t), 1, file) != 1) {
+        success = false;
+    }
+
+    // Get current state
+    working_memory_stats_t stats;
+    working_memory_get_stats(wm, &stats);
+
+    // Write metadata
+    if (fwrite(&stats.current_size, sizeof(uint32_t), 1, file) != 1) {
+        success = false;
+    }
+    if (fwrite(&stats.capacity, sizeof(uint32_t), 1, file) != 1) {
+        success = false;
+    }
+
+    // Write each item
+    for (uint32_t i = 0; i < stats.current_size; i++) {
+        uint32_t item_size = 0;
+        const float* item = working_memory_get(wm, i, &item_size);
+
+        // Guard: Invalid item → skip
+        if (!item || item_size == 0) {
+            continue;
+        }
+
+        if (fwrite(&item_size, sizeof(uint32_t), 1, file) != 1) {
+            success = false;
+        }
+        if (fwrite(item, sizeof(float), item_size, file) != item_size) {
+            success = false;
+        }
+    }
+
+    return success;
+}
+
+
+/**
+ * @brief Save metadata file
+ *
+ * WHAT: Persist brain configuration and output labels
+ * WHY:  Enable full state reconstruction on load
+ * HOW:  Write config → labels → working memory state
+ *
+ * COMPLEXITY: O(k + n*m) where k = labels, n = WM items, m = item size
+ *
+ * @param brain Brain instance (non-NULL)
+ * @param filepath Base filepath (non-NULL)
+ * @return true on success, false on error
+ */
+static bool save_metadata(brain_t brain, const char* filepath)
+{
+    // Guard: NULL parameters handled by caller
+
+    char meta_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
+
+    FILE* meta_file = fopen(meta_path, "wb");
+    if (!meta_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "save_metadata: meta_file is NULL");
+        return false;
+    }
+
+    bool success = true;
+
+    // Write version header (v1.0 format)
+    nimcp_file_header_t header = {
+        .magic = {NIMCP_MAGIC_0, NIMCP_MAGIC_1, NIMCP_MAGIC_2, NIMCP_MAGIC_3},
+        .version_major = NIMCP_FORMAT_VERSION_MAJOR,
+        .version_minor = NIMCP_FORMAT_VERSION_MINOR,
+        .flags = 0,  // No compression/encryption yet
+        .reserved = 0
+    };
+    if (fwrite(&header, sizeof(nimcp_file_header_t), 1, meta_file) != 1) {
+        success = false;
+    }
+
+    // Write configuration
+    if (fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
+        success = false;
+    }
+
+    // Write output labels
+    for (uint32_t i = 0; i < brain->num_output_labels; i++) {
+        uint32_t len = strlen(brain->output_labels[i]) + 1;
+        if (fwrite(&len, sizeof(uint32_t), 1, meta_file) != 1) {
+            success = false;
+        }
+        if (fwrite(brain->output_labels[i], len, 1, meta_file) != 1) {
+            success = false;
+        }
+    }
+
+    // Phase 10.2: Save working memory state
+    if (!save_working_memory_state(brain->working_memory, meta_file)) {
+        success = false;
+    }
+
+    // Save brain statistics (performance metrics)
+    if (fwrite(&brain->stats, sizeof(brain_stats_t), 1, meta_file) != 1) {
+        success = false;
+    }
+
+    // Save wellbeing state (Phase 9.3)
+    if (fwrite(&brain->last_distress, sizeof(distress_assessment_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->wellbeing_monitoring_enabled, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
+
+    // Save simulation time tracking
+    if (fwrite(&brain->current_time_us, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (fwrite(&brain->last_glial_update_us, sizeof(uint64_t), 1, meta_file) != 1) {
+        success = false;
+    }
+
+    // Save knowledge system state (if exists)
+    bool has_knowledge = (brain->knowledge != NULL);
+    if (fwrite(&has_knowledge, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (has_knowledge) {
+        char knowledge_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
+        knowledge_save(brain->knowledge, knowledge_path);
+    }
+
+    // Save emotional system state (Phase 10.2 - NOT A MODULE)
+    // Note: Emotional tagging uses stateless utility functions, not a system object
+    bool has_emotional = false;  // No emotional_system module (just tagging functions)
+    if (fwrite(&has_emotional, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+
+    // Save executive controller state (Phase 10.3 - if exists)
+    bool has_executive = (brain->executive != NULL);
+    if (fwrite(&has_executive, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (has_executive) {
+        // WHAT: Save executive controller state to separate file
+        // WHY:  Preserve task queue, statistics, and configuration
+        // HOW:  Use executive_save API with dedicated file
+        char executive_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
+        FILE* exec_file = fopen(executive_path, "wb");
+        if (exec_file) {
+            executive_save(brain->executive, exec_file);
+            fclose(exec_file);
+        }
+    }
+
+    // Save sleep system state (Phase 10.4)
+    // Sleep system is embedded struct, always save
+    // TODO: Add sleep_system_save API when available
+    // For now, skip to maintain backward compatibility
+
+    // Save pink noise neuromodulator state (if exists)
+    bool has_pink_noise = (brain->pink_noise != NULL);
+    if (fwrite(&has_pink_noise, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (has_pink_noise) {
+        // WHAT: Save pink noise neuromodulator state to separate file
+        // WHY:  Preserve neuromodulator levels and pink noise generators
+        // HOW:  Use neuromod_pink_save API with dedicated file
+        char pink_noise_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(pink_noise_path, sizeof(pink_noise_path), "%s.pink_noise", filepath);
+        FILE* pink_file = fopen(pink_noise_path, "wb");
+        if (pink_file) {
+            neuromod_pink_save(brain->pink_noise, pink_file);
+            fclose(pink_file);
+        }
+    }
+
+    // Save mirror neurons state (Phase 10.11 - if exists)
+    bool has_mirror_neurons = (brain->mirror_neurons != NULL);
+    if (fwrite(&has_mirror_neurons, sizeof(bool), 1, meta_file) != 1) {
+        success = false;
+    }
+    if (has_mirror_neurons) {
+        // WHAT: Save mirror neuron system state to separate file
+        // WHY:  Preserve learned action associations and statistics
+        // HOW:  Use mirror_neurons_save API with dedicated file
+        char mirror_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
+        FILE* mirror_file = fopen(mirror_path, "wb");
+        if (mirror_file) {
+            mirror_neurons_save(brain->mirror_neurons, mirror_file);
+            fclose(mirror_file);
+        }
+    }
+
+    fclose(meta_file);
+    return success;
+}
+
+
+/**
+ * @brief Save brain to file
+ *
+ * WHY: Enables model persistence across sessions
+ * Saves both network and metadata
+ *
+ * COMPLEXITY: O(n*c) where n = neurons, c = connections
+ *
+ * @param brain Brain handle
+ * @param filepath Path to save to
+ * @return true on success
+ */
+// brain_save() - MOVED TO: src/core/brain/persistence/nimcp_brain_persistence.c
+
+/**
+ * @brief Load single working memory item from file (Phase 10.2)
+ *
+ * WHAT: Deserialize one item and add to working memory buffer
+ * WHY:  Restore individual active representations
+ * HOW:  Read size → allocate → read data → add to buffer → free temp
+ *
+ * COMPLEXITY: O(m) where m = item size
+ *
+ * @param wm Working memory instance (non-NULL)
+ * @param file File handle (non-NULL)
+ * @return true on success, false on error
+ */
+static bool load_working_memory_item(working_memory_t* wm, FILE* file)
+{
+    #define MAX_ITEM_SIZE 10000  // Sanity check limit
+
+    // Guard: NULL parameters
+    if (!wm || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_working_memory_item: required parameter is NULL (wm, file)");
+        return false;
+    }
+
+    uint32_t item_size = 0;
+    if (fread(&item_size, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: validation failed");
+        return false;
+    }
+
+    // Guard: Invalid size
+    if (item_size == 0 || item_size > MAX_ITEM_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: item_size is zero");
+        return false;
+    }
+
+    // Allocate temporary buffer
+    float* item = nimcp_malloc(item_size * sizeof(float));
+    if (!item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "load_working_memory_item: item is NULL");
+        return false;
+    }
+
+    // Read item data
+    if (fread(item, sizeof(float), item_size, file) != item_size) {
+        nimcp_free(item);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: validation failed");
+        return false;
+    }
+
+    // Add to working memory (use default salience since not persisted)
+    const float DEFAULT_SALIENCE = 0.5F;
+    bool success = working_memory_add(wm, item, item_size, DEFAULT_SALIENCE);
+
+    nimcp_free(item);
+    return success;
+
+    #undef MAX_ITEM_SIZE
+}
+
+
+/**
+ * @brief Load working memory state from file (Phase 10.2)
+ *
+ * WHAT: Deserialize working memory items from COW snapshot
+ * WHY:  Restore active representations after load/restore
+ * HOW:  Read marker → initialize if needed → load each item
+ *
+ * COMPLEXITY: O(n*m) where n = items, m = avg item size
+ *
+ * @param brain Brain instance (non-NULL)
+ * @param file File handle (non-NULL)
+ * @return true on success (non-fatal on WM failure)
+ */
+static bool load_working_memory_state(brain_t brain, FILE* file)
+{
+    // Guard: NULL parameters
+    if (!brain || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_working_memory_state: required parameter is NULL (brain, file)");
+        return false;
+    }
+
+    // Read existence marker
+    uint8_t has_wm = 0;
+    if (fread(&has_wm, sizeof(uint8_t), 1, file) != 1) {
+        return true;  // EOF or old format → non-fatal
+    }
+
+    // Guard: No working memory in snapshot
+    if (has_wm == 0) {
+        return true;  // Nothing to load → success
+    }
+
+    // Read metadata
+    uint32_t wm_size = 0, wm_capacity = 0;
+    if (fread(&wm_size, sizeof(uint32_t), 1, file) != 1) {
+        return true;  // Non-fatal
+    }
+    if (fread(&wm_capacity, sizeof(uint32_t), 1, file) != 1) {
+        return true;  // Non-fatal
+    }
+
+    // Initialize working memory if enabled but not yet created
+    if (!brain->working_memory && brain->config.enable_working_memory) {
+        if (!init_working_memory_subsystem(brain)) {
+            LOG_WARN(LOG_MODULE, "Failed to initialize working memory on load");
+            return true;  // Non-fatal: continue without WM
+        }
+    }
+
+    // Guard: Working memory not available
+    if (!brain->working_memory) {
+        return true;  // Skip loading → non-fatal
+    }
+
+    // Load each item
+    for (uint32_t i = 0; i < wm_size; i++) {
+        load_working_memory_item(brain->working_memory, file);
+        // Errors loading individual items are non-fatal
+    }
+
+    return true;
+}
+
+
+/**
+ * @brief Load metadata file
+ *
+ * WHAT: Deserialize brain configuration and output labels
+ * WHY:  Reconstruct full brain state from persistent storage
+ * HOW:  Read config → validate → load labels → load working memory
+ *
+ * COMPLEXITY: O(k + n*m) where k = labels, n = WM items, m = item size
+ *
+ * @param brain Brain instance (non-NULL)
+ * @param filepath Base filepath (non-NULL)
+ * @return true on success, false on error
+ */
+static bool load_metadata(brain_t brain, const char* filepath)
+{
+    char meta_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
+
+    FILE* meta_file = fopen(meta_path, "rb");
+    if (!meta_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_metadata: meta_file is NULL");
+        return false;
+    }
+
+    // Try to read version header
+    nimcp_file_header_t header;
+    size_t header_read = fread(&header, sizeof(nimcp_file_header_t), 1, meta_file);
+
+    bool has_version_header = false;
+    if (header_read == 1) {
+        // Check magic bytes
+        if (header.magic[0] == NIMCP_MAGIC_0 &&
+            header.magic[1] == NIMCP_MAGIC_1 &&
+            header.magic[2] == NIMCP_MAGIC_2 &&
+            header.magic[3] == NIMCP_MAGIC_3) {
+
+            has_version_header = true;
+
+            // Validate version compatibility
+            if (header.version_major != NIMCP_FORMAT_VERSION_MAJOR) {
+                LOG_ERROR(LOG_MODULE, "Incompatible format version %u.%u (expected %u.x)",
+                          header.version_major, header.version_minor,
+                          NIMCP_FORMAT_VERSION_MAJOR);
+                fclose(meta_file);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
+                return false;
+            }
+
+            LOG_INFO(LOG_MODULE, "Loading brain metadata v%u.%u",
+                     header.version_major, header.version_minor);
+
+            // TODO: Handle format flags (compression, encryption)
+            if (header.flags & NIMCP_FORMAT_FLAG_COMPRESSED) {
+                LOG_WARN(LOG_MODULE, "Compressed format not yet supported, skipping");
+            }
+            if (header.flags & NIMCP_FORMAT_FLAG_ENCRYPTED) {
+                LOG_WARN(LOG_MODULE, "Encrypted format not yet supported, skipping");
+            }
+        } else {
+            // Not a versioned file - rewind and read as legacy format
+            has_version_header = false;
+            fseek(meta_file, 0, SEEK_SET);
+        }
+    } else {
+        // File too small for header - legacy format
+        fseek(meta_file, 0, SEEK_SET);
+    }
+
+    if (!has_version_header) {
+        LOG_INFO(LOG_MODULE, "Loading brain metadata (legacy format, no version header)");
+    }
+
+    // Read configuration - failure caught by subsequent field validation
+    if (fread(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
+        LOG_ERROR(LOG_MODULE, "Failed to read brain config from metadata file");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
+        return false;
+    }
+
+    // Validate brain->config fields after reading
+    // Validate learning_rate (float field - NaN/Inf check)
+    if (!nimcp_validate_float_field(&brain->config.learning_rate,
+                                    sizeof(brain->config.learning_rate))) {
+        LOG_ERROR(LOG_MODULE, "Invalid learning_rate in loaded config (NaN or Inf)");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
+        return false;
+    }
+
+    // Validate sparsity_target (float field - NaN/Inf check)
+    if (!nimcp_validate_float_field(&brain->config.sparsity_target,
+                                    sizeof(brain->config.sparsity_target))) {
+        LOG_ERROR(LOG_MODULE, "Invalid sparsity_target in loaded config (NaN or Inf)");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
+        return false;
+    }
+
+    // Validate num_inputs (integer field, range 1-10000)
+    if (!nimcp_validate_integer_field(&brain->config.num_inputs,
+                                      sizeof(brain->config.num_inputs))) {
+        LOG_ERROR(LOG_MODULE, "Invalid num_inputs in loaded config");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
+        return false;
+    }
+    if (brain->config.num_inputs < 1 || brain->config.num_inputs > 10000) {
+        LOG_ERROR(LOG_MODULE, "num_inputs out of range (1-10000): %u", brain->config.num_inputs);
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
+        return false;
+    }
+
+    // Validate num_outputs (integer field, range 1-10000)
+    if (!nimcp_validate_integer_field(&brain->config.num_outputs,
+                                      sizeof(brain->config.num_outputs))) {
+        LOG_ERROR(LOG_MODULE, "Invalid num_outputs in loaded config");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
+        return false;
+    }
+    if (brain->config.num_outputs < 1 || brain->config.num_outputs > 10000) {
+        LOG_ERROR(LOG_MODULE, "num_outputs out of range (1-10000): %u",
+                  brain->config.num_outputs);
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
+        return false;
+    }
+
+    if (fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
+        LOG_ERROR(LOG_MODULE, "Failed to read num_output_labels from metadata file");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
+        return false;
+    }
+
+    // SECURITY: Strict validation limits to prevent buffer overflow attacks
+    #define MAX_OUTPUT_LABELS 10000     // Maximum number of labels
+    #define MAX_LABEL_LENGTH 256        // Maximum length of a single label
+
+    // Validate num_output_labels (range 0-10000, 0 means no labels)
+    if (!nimcp_validate_integer_field(&brain->num_output_labels,
+                                      sizeof(brain->num_output_labels))) {
+        LOG_ERROR(LOG_MODULE, "Invalid num_output_labels in loaded metadata");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
+        return false;
+    }
+    if (brain->num_output_labels > MAX_OUTPUT_LABELS) {
+        LOG_ERROR(LOG_MODULE, "SECURITY: num_output_labels %u exceeds maximum %d - file may be maliciously crafted",
+                  brain->num_output_labels, MAX_OUTPUT_LABELS);
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
+        return false;
+    }
+
+    // Handle case where there are no labels
+    if (brain->num_output_labels == 0) {
+        brain->output_labels = NULL;
+        fclose(meta_file);
+        return true;
+    }
+
+    brain->output_labels = nimcp_malloc(brain->num_output_labels * sizeof(char*));
+    if (!brain->output_labels) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate output_labels array");
+        fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "load_metadata: brain->output_labels is NULL");
+        return false;
+    }
+
+    uint32_t i;
+    for (i = 0; i < brain->num_output_labels; i++) {
+        uint32_t len;
+        if (fread(&len, sizeof(uint32_t), 1, meta_file) != 1) {
+            LOG_ERROR(LOG_MODULE, "Failed to read label length at index %u", i);
+            goto cleanup;
+        }
+
+        // SECURITY: Validate label length to prevent buffer overflow
+        if (len == 0 || len > MAX_LABEL_LENGTH) {
+            LOG_ERROR(LOG_MODULE, "SECURITY: Label %u length %u exceeds maximum %d - file may be maliciously crafted",
+                      i, len, MAX_LABEL_LENGTH);
+            goto cleanup;
+        }
+
+        // Validate integer field integrity
+        if (!nimcp_validate_integer_field(&len, sizeof(len))) {
+            LOG_ERROR(LOG_MODULE, "Invalid label length at index %u", i);
+            goto cleanup;
+        }
+
+        brain->output_labels[i] = nimcp_malloc(len);
+        if (!brain->output_labels[i]) {
+            LOG_ERROR(LOG_MODULE, "Failed to allocate label at index %u", i);
+            goto cleanup;
+        }
+
+        if (fread(brain->output_labels[i], len, 1, meta_file) != 1) {
+            LOG_ERROR(LOG_MODULE, "Failed to read label content at index %u", i);
+            goto cleanup;
+        }
+    }
+
+    // Phase 10.2: Load working memory state
+    load_working_memory_state(brain, meta_file);
+
+    // Load brain statistics (performance metrics)
+    if (fread(&brain->stats, sizeof(brain_stats_t), 1, meta_file) != 1) {
+        // Non-fatal: use default stats if not available (backward compatibility)
+        init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
+                        brain->config.num_inputs, brain->config.learning_rate);
+    }
+
+    // Load wellbeing state (Phase 9.3)
+    if (fread(&brain->last_distress, sizeof(distress_assessment_t), 1, meta_file) == 1 &&
+        fread(&brain->wellbeing_monitoring_enabled, sizeof(bool), 1, meta_file) == 1 &&
+        fread(&brain->wellbeing_check_interval_ms, sizeof(uint64_t), 1, meta_file) == 1 &&
+        fread(&brain->last_wellbeing_check_time, sizeof(uint64_t), 1, meta_file) == 1) {
+        // Successfully loaded wellbeing state
+    }
+
+    // Load simulation time tracking (may not exist in old snapshots)
+    if (fread(&brain->current_time_us, sizeof(uint64_t), 1, meta_file) == 1 &&
+        fread(&brain->last_glial_update_us, sizeof(uint64_t), 1, meta_file) == 1) {
+        // Successfully loaded time tracking
+    } else {
+        // Old snapshot, initialize to 0
+        brain->current_time_us = 0;
+        brain->last_glial_update_us = 0;
+    }
+
+    // Load knowledge system state (if exists)
+    bool has_knowledge = false;
+    if (fread(&has_knowledge, sizeof(bool), 1, meta_file) == 1 && has_knowledge) {
+        char knowledge_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", filepath);
+        brain->knowledge = knowledge_load(knowledge_path);
+        // Non-fatal if knowledge load fails
+    }
+
+    // Load emotional system state (Phase 10.2 - NOT A MODULE)
+    // Note: Emotional tagging uses stateless utility functions, not a system object
+    bool has_emotional = false;
+    if (fread(&has_emotional, sizeof(bool), 1, meta_file) == 1 && has_emotional) {
+        // Placeholder for backward compatibility (old saves might have this flag set)
+        // No action needed - emotional tagging uses stateless functions
+    }
+
+    // Load executive controller state (Phase 10.3 - if exists)
+    bool has_executive = false;
+    if (fread(&has_executive, sizeof(bool), 1, meta_file) == 1 && has_executive) {
+        // WHAT: Load executive controller state from separate file
+        // WHY:  Restore task queue, statistics, and configuration
+        // HOW:  Use executive_load API with dedicated file
+        char executive_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
+        FILE* exec_file = fopen(executive_path, "rb");
+        if (exec_file) {
+            brain->executive = executive_load(exec_file);
+            fclose(exec_file);
+            // Set brain reference for neuromodulation integration
+            if (brain->executive) {
+                executive_set_brain(brain->executive, brain);
+            }
+        }
+    }
+
+    // Load pink noise neuromodulator state (if exists)
+    bool has_pink_noise = false;
+    if (fread(&has_pink_noise, sizeof(bool), 1, meta_file) == 1 && has_pink_noise) {
+        // WHAT: Load pink noise neuromodulator state from separate file
+        // WHY:  Restore neuromodulator levels and pink noise generators
+        // HOW:  Use neuromod_pink_load API with dedicated file
+        char pink_noise_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(pink_noise_path, sizeof(pink_noise_path), "%s.pink_noise", filepath);
+        FILE* pink_file = fopen(pink_noise_path, "rb");
+        if (pink_file) {
+            brain->pink_noise = neuromod_pink_load(pink_file);
+            fclose(pink_file);
+        }
+    }
+
+    // Load mirror neurons state (Phase 10.11 - if exists)
+    bool has_mirror_neurons = false;
+    if (fread(&has_mirror_neurons, sizeof(bool), 1, meta_file) == 1 && has_mirror_neurons) {
+        // WHAT: Load mirror neuron system state from separate file
+        // WHY:  Restore learned action associations and statistics
+        // HOW:  Use mirror_neurons_load API with dedicated file
+        char mirror_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
+        FILE* mirror_file = fopen(mirror_path, "rb");
+        if (mirror_file) {
+            brain->mirror_neurons = mirror_neurons_load(mirror_file);
+            fclose(mirror_file);
+            // Set brain reference for neuromodulation integration
+            if (brain->mirror_neurons) {
+                mirror_neurons_set_brain(brain->mirror_neurons, brain);
+            }
+        }
+    }
+
+    fclose(meta_file);
+    return true;
+
+cleanup:
+    // Free any allocated labels before the failed one
+    for (uint32_t j = 0; j < i; j++) {
+        nimcp_free(brain->output_labels[j]);
+    }
+    nimcp_free(brain->output_labels);
+    brain->output_labels = NULL;
+    fclose(meta_file);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
+    return false;
+}
+
+
+/**
+ * @brief Load brain from file
+ *
+ * WHY: Restores saved brain state
+ * Reconstructs network and metadata
+ *
+ * COMPLEXITY: O(n*c) where n = neurons, c = connections
+ *
+ * @param filepath Path to load from
+ * @return Brain handle or NULL on error
+ */
+// brain_load() - MOVED TO: src/core/brain/persistence/nimcp_brain_persistence.c
+
+//=============================================================================
+// Snapshot API - Named State Snapshots
+//=============================================================================
+
+/**
+ * @brief Create snapshot directory if it doesn't exist
+ *
+ * @param snapshot_dir Directory path
+ * @return true on success, false on error
+ */
+static bool ensure_snapshot_dir(const char* snapshot_dir)
+{
+    if (!snapshot_dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_snapshot_dir: snapshot_dir is NULL");
+        return false;
+    }
+
+    // Try to create directory (will fail silently if already exists)
+    #ifdef _WIN32
+    _mkdir(snapshot_dir);
+    #else
+    mkdir(snapshot_dir, 0755);
+    #endif
+
+    return true;
+}
+
+
+/**
+ * @brief Get default snapshot directory
+ *
+ * @param brain Brain instance
+ * @return Snapshot directory path
+ */
+static const char* get_snapshot_dir(brain_t brain)
+{
+    if (brain->config.snapshot_dir) {
+        return brain->config.snapshot_dir;
+    }
+    return "./snapshots";  // Default
+}

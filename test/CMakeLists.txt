@@ -2351,6 +2351,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/rust/CMakeLists.txt")
     add_subdirectory(bindings/rust)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/go/CMakeLists.txt")
+    message(STATUS "Adding Go bindings tests...")
+    add_subdirectory(bindings/go)
+endif()
+
 # ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================

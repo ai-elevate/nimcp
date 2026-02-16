@@ -72,3 +72,28 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/bbrelin/nimcp/build/src/python/cmake_install.cmake")
 endif()
 
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/home/bbrelin/nimcp/build/src/bindings/cpp/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/home/bbrelin/nimcp/build/src/bindings/java/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/home/bbrelin/nimcp/build/src/bindings/csharp/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/home/bbrelin/nimcp/build/src/bindings/rust/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/home/bbrelin/nimcp/build/src/bindings/go/cmake_install.cmake")
+endif()
+

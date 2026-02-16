@@ -3030,6 +3030,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/middleware/CMakeLists.txt)
     add_subdirectory(middleware)
 endif()
 
+# SRP Split E2E Tests
+add_e2e_test(e2e_test_srp_split
+    ${CMAKE_CURRENT_SOURCE_DIR}/srp_split/test_srp_split_e2e.cpp
+)
+
 # Include Utils E2E test subdirectory (Memory + Health Agent)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     message(STATUS "Adding Utils E2E tests...")

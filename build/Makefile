@@ -302,6 +302,58 @@ nimcp_python/fast:
 .PHONY : nimcp_python/fast
 
 #=============================================================================
+# Target rules for targets named nimcp_jni
+
+# Build rule for target.
+nimcp_jni: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_jni
+.PHONY : nimcp_jni
+
+# fast build rule for target.
+nimcp_jni/fast:
+	$(MAKE) $(MAKESILENT) -f src/bindings/java/CMakeFiles/nimcp_jni.dir/build.make src/bindings/java/CMakeFiles/nimcp_jni.dir/build
+.PHONY : nimcp_jni/fast
+
+#=============================================================================
+# Target rules for targets named nimcp_csharp
+
+# Build rule for target.
+nimcp_csharp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_csharp
+.PHONY : nimcp_csharp
+
+# fast build rule for target.
+nimcp_csharp/fast:
+	$(MAKE) $(MAKESILENT) -f src/bindings/csharp/CMakeFiles/nimcp_csharp.dir/build.make src/bindings/csharp/CMakeFiles/nimcp_csharp.dir/build
+.PHONY : nimcp_csharp/fast
+
+#=============================================================================
+# Target rules for targets named nimcp_rust
+
+# Build rule for target.
+nimcp_rust: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_rust
+.PHONY : nimcp_rust
+
+# fast build rule for target.
+nimcp_rust/fast:
+	$(MAKE) $(MAKESILENT) -f src/bindings/rust/CMakeFiles/nimcp_rust.dir/build.make src/bindings/rust/CMakeFiles/nimcp_rust.dir/build
+.PHONY : nimcp_rust/fast
+
+#=============================================================================
+# Target rules for targets named nimcp_go
+
+# Build rule for target.
+nimcp_go: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_go
+.PHONY : nimcp_go
+
+# fast build rule for target.
+nimcp_go/fast:
+	$(MAKE) $(MAKESILENT) -f src/bindings/go/CMakeFiles/nimcp_go.dir/build.make src/bindings/go/CMakeFiles/nimcp_go.dir/build
+.PHONY : nimcp_go/fast
+
+#=============================================================================
 # Target rules for targets named unit_api_test_api_brain_cow
 
 # Build rule for target.
@@ -3617,6 +3669,19 @@ unit_plasticity_structural_test_structural_plasticity/fast:
 .PHONY : unit_plasticity_structural_test_structural_plasticity/fast
 
 #=============================================================================
+# Target rules for targets named unit_srp_split_test_srp_split_structure
+
+# Build rule for target.
+unit_srp_split_test_srp_split_structure: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_srp_split_test_srp_split_structure
+.PHONY : unit_srp_split_test_srp_split_structure
+
+# fast build rule for target.
+unit_srp_split_test_srp_split_structure/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_srp_split_test_srp_split_structure.dir/build.make test/CMakeFiles/unit_srp_split_test_srp_split_structure.dir/build
+.PHONY : unit_srp_split_test_srp_split_structure/fast
+
+#=============================================================================
 # Target rules for targets named unit_test_brain_full_simulation
 
 # Build rule for target.
@@ -5112,6 +5177,19 @@ integration_plasticity_structural_test_structural_integration/fast:
 .PHONY : integration_plasticity_structural_test_structural_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_srp_split_test_srp_split_internal_integration
+
+# Build rule for target.
+integration_srp_split_test_srp_split_internal_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_srp_split_test_srp_split_internal_integration
+.PHONY : integration_srp_split_test_srp_split_internal_integration
+
+# fast build rule for target.
+integration_srp_split_test_srp_split_internal_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_srp_split_test_srp_split_internal_integration.dir/build.make test/CMakeFiles/integration_srp_split_test_srp_split_internal_integration.dir/build
+.PHONY : integration_srp_split_test_srp_split_internal_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_quantum_test_quantum_walk_integration
 
 # Build rule for target.
@@ -5968,6 +6046,32 @@ regression_plasticity_structural_test_structural_regression: cmake_check_build_s
 regression_plasticity_structural_test_structural_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_structural_test_structural_regression.dir/build.make test/CMakeFiles/regression_plasticity_structural_test_structural_regression.dir/build
 .PHONY : regression_plasticity_structural_test_structural_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_srp_split_test_srp_split_api_regression
+
+# Build rule for target.
+regression_srp_split_test_srp_split_api_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_srp_split_test_srp_split_api_regression
+.PHONY : regression_srp_split_test_srp_split_api_regression
+
+# fast build rule for target.
+regression_srp_split_test_srp_split_api_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_srp_split_test_srp_split_api_regression.dir/build.make test/CMakeFiles/regression_srp_split_test_srp_split_api_regression.dir/build
+.PHONY : regression_srp_split_test_srp_split_api_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_srp_split_test_srp_split_cross_module_regression
+
+# Build rule for target.
+regression_srp_split_test_srp_split_cross_module_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_srp_split_test_srp_split_cross_module_regression
+.PHONY : regression_srp_split_test_srp_split_cross_module_regression
+
+# fast build rule for target.
+regression_srp_split_test_srp_split_cross_module_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_srp_split_test_srp_split_cross_module_regression.dir/build.make test/CMakeFiles/regression_srp_split_test_srp_split_cross_module_regression.dir/build
+.PHONY : regression_srp_split_test_srp_split_cross_module_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_utils_quantum_test_quantum_walk_regression
@@ -8295,6 +8399,19 @@ e2e_test_neuro_symbolic_pipeline: cmake_check_build_system
 e2e_test_neuro_symbolic_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_neuro_symbolic_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_neuro_symbolic_pipeline.dir/build
 .PHONY : e2e_test_neuro_symbolic_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_srp_split
+
+# Build rule for target.
+e2e_test_srp_split: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_srp_split
+.PHONY : e2e_test_srp_split
+
+# fast build rule for target.
+e2e_test_srp_split/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_srp_split.dir/build.make test/e2e/CMakeFiles/e2e_test_srp_split.dir/build
+.PHONY : e2e_test_srp_split/fast
 
 #=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
@@ -38652,6 +38769,71 @@ integration_python_c/fast:
 .PHONY : integration_python_c/fast
 
 #=============================================================================
+# Target rules for targets named cpp_bindings_test
+
+# Build rule for target.
+cpp_bindings_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cpp_bindings_test
+.PHONY : cpp_bindings_test
+
+# fast build rule for target.
+cpp_bindings_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/bindings/cpp/CMakeFiles/cpp_bindings_test.dir/build.make test/bindings/cpp/CMakeFiles/cpp_bindings_test.dir/build
+.PHONY : cpp_bindings_test/fast
+
+#=============================================================================
+# Target rules for targets named java_bindings_test_compile
+
+# Build rule for target.
+java_bindings_test_compile: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 java_bindings_test_compile
+.PHONY : java_bindings_test_compile
+
+# fast build rule for target.
+java_bindings_test_compile/fast:
+	$(MAKE) $(MAKESILENT) -f test/bindings/java/CMakeFiles/java_bindings_test_compile.dir/build.make test/bindings/java/CMakeFiles/java_bindings_test_compile.dir/build
+.PHONY : java_bindings_test_compile/fast
+
+#=============================================================================
+# Target rules for targets named csharp_bindings_test_compile
+
+# Build rule for target.
+csharp_bindings_test_compile: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 csharp_bindings_test_compile
+.PHONY : csharp_bindings_test_compile
+
+# fast build rule for target.
+csharp_bindings_test_compile/fast:
+	$(MAKE) $(MAKESILENT) -f test/bindings/csharp/CMakeFiles/csharp_bindings_test_compile.dir/build.make test/bindings/csharp/CMakeFiles/csharp_bindings_test_compile.dir/build
+.PHONY : csharp_bindings_test_compile/fast
+
+#=============================================================================
+# Target rules for targets named rust_bindings_test_compile
+
+# Build rule for target.
+rust_bindings_test_compile: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rust_bindings_test_compile
+.PHONY : rust_bindings_test_compile
+
+# fast build rule for target.
+rust_bindings_test_compile/fast:
+	$(MAKE) $(MAKESILENT) -f test/bindings/rust/CMakeFiles/rust_bindings_test_compile.dir/build.make test/bindings/rust/CMakeFiles/rust_bindings_test_compile.dir/build
+.PHONY : rust_bindings_test_compile/fast
+
+#=============================================================================
+# Target rules for targets named go_bindings_test_compile
+
+# Build rule for target.
+go_bindings_test_compile: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 go_bindings_test_compile
+.PHONY : go_bindings_test_compile
+
+# fast build rule for target.
+go_bindings_test_compile/fast:
+	$(MAKE) $(MAKESILENT) -f test/bindings/go/CMakeFiles/go_bindings_test_compile.dir/build.make test/bindings/go/CMakeFiles/go_bindings_test_compile.dir/build
+.PHONY : go_bindings_test_compile/fast
+
+#=============================================================================
 # Target rules for targets named integration_tensor_operations
 
 # Build rule for target.
@@ -39421,9 +39603,11 @@ help:
 	@echo "... benchmark_report"
 	@echo "... check"
 	@echo "... cppcheck"
+	@echo "... csharp_bindings_test_compile"
 	@echo "... doc_cortical_columns_integration"
 	@echo "... doc_cortical_substrate_integration"
 	@echo "... e2e_financial_cognitive_all"
+	@echo "... go_bindings_test_compile"
 	@echo "... integration_financial_cognitive_all"
 	@echo "... integration_gpu_financial_all"
 	@echo "... integration_portia_full"
@@ -39432,8 +39616,12 @@ help:
 	@echo "... integration_portia_swarm"
 	@echo "... integration_portia_tier"
 	@echo "... integration_vae_all"
+	@echo "... java_bindings_test_compile"
 	@echo "... lint"
 	@echo "... lint-fix"
+	@echo "... nimcp_csharp"
+	@echo "... nimcp_go"
+	@echo "... nimcp_rust"
 	@echo "... run_all_benchmarks"
 	@echo "... run_bench_benchmark_complex_fft"
 	@echo "... run_bench_benchmark_complex_pac_detection"
@@ -39447,6 +39635,7 @@ help:
 	@echo "... run_subcortical_e2e_tests"
 	@echo "... run_thalamic_e2e_tests"
 	@echo "... run_wernicke_regression"
+	@echo "... rust_bindings_test_compile"
 	@echo "... ternary_e2e_tests"
 	@echo "... test_exception_performance_only"
 	@echo "... test_exception_regression"
@@ -39475,6 +39664,7 @@ help:
 	@echo "... cow_ab_testing"
 	@echo "... cow_inference_server"
 	@echo "... cow_snapshot_learning"
+	@echo "... cpp_bindings_test"
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_attack_simulation"
 	@echo "... e2e_attention_exception"
@@ -39756,6 +39946,7 @@ help:
 	@echo "... e2e_test_spatial_processing"
 	@echo "... e2e_test_speech_enhancement_pipeline"
 	@echo "... e2e_test_split_brain"
+	@echo "... e2e_test_srp_split"
 	@echo "... e2e_test_subcortical_pipeline"
 	@echo "... e2e_test_substrate_bridges_pipeline"
 	@echo "... e2e_test_substrate_gpu_pipeline"
@@ -40266,6 +40457,7 @@ help:
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
 	@echo "... integration_social_fep"
+	@echo "... integration_srp_split_test_srp_split_internal_integration"
 	@echo "... integration_statistics_test_information_theory_integration"
 	@echo "... integration_statistics_test_ml_statistics_integration"
 	@echo "... integration_statistics_test_multivariate_integration"
@@ -40349,6 +40541,7 @@ help:
 	@echo "... multimodal_integration_demo"
 	@echo "... neuromodulation_integration_example"
 	@echo "... nimcp"
+	@echo "... nimcp_jni"
 	@echo "... nimcp_lnn"
 	@echo "... nimcp_middleware"
 	@echo "... nimcp_portia"
@@ -40784,6 +40977,8 @@ help:
 	@echo "... regression_snn_test_numerical_regression"
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_social_fep"
+	@echo "... regression_srp_split_test_srp_split_api_regression"
+	@echo "... regression_srp_split_test_srp_split_cross_module_regression"
 	@echo "... regression_statistics_test_information_theory_regression"
 	@echo "... regression_statistics_test_ml_statistics_regression"
 	@echo "... regression_statistics_test_multivariate_regression"
@@ -42256,6 +42451,7 @@ help:
 	@echo "... unit_snn_test_snn_network"
 	@echo "... unit_snn_test_snn_numerical_stability"
 	@echo "... unit_snn_test_snn_training"
+	@echo "... unit_srp_split_test_srp_split_structure"
 	@echo "... unit_state_manager"
 	@echo "... unit_superhuman_test_superhuman"
 	@echo "... unit_swarm_exception_handling"

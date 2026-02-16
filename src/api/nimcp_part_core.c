@@ -1,0 +1,1185 @@
+// nimcp_part_core.c - core functions
+// Part of nimcp.c (SRP #include-based split)
+// DO NOT compile separately - #included from nimcp.c
+
+
+//=============================================================================
+// Version Functions
+//=============================================================================
+
+const char* nimcp_version(void) {
+    return NIMCP_VERSION_STRING;
+}
+
+
+int nimcp_version_int(void) {
+    return NIMCP_VERSION_MAJOR * 10000 + NIMCP_VERSION_MINOR * 100 + NIMCP_VERSION_PATCH;
+}
+
+
+nimcp_status_t nimcp_brain_learn_example(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const char* label,
+    float confidence)
+{
+    LOG_DEBUG("Learning example: label='%s', num_features=%u, confidence=%.3f",
+              label ? label : "NULL", num_features, confidence);
+
+    /* Exception-integrated parameter validation */
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(label, NIMCP_ERROR_NULL_ARG, "Label is NULL");
+
+    /* === PHASE IS-1: BBB INPUT VALIDATION === */
+    /* Validate external input data through Blood-Brain Barrier before processing */
+    if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
+        brain->internal_brain->bbb_system) {
+        LOG_DEBUG("BBB enabled, validating inputs");
+        bbb_validation_result_t result;
+
+        /* Validate features array (external input data) */
+        if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                               features, num_features * sizeof(float), &result)) {
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_BBB_REJECTED);
+        }
+
+        /* Validate label string (external string input) */
+        if (!bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_BBB_REJECTED);
+        }
+        LOG_DEBUG("BBB validation passed");
+    }
+
+    /* Call internal brain API */
+    LOG_DEBUG("Invoking internal brain_learn_example");
+    float loss = brain_learn_example(brain->internal_brain, features, num_features, label, confidence);
+
+    /* brain_learn_example returns -1.0f on error, >= 0.0f on success */
+    NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR_LEARNING_FAILED,
+                          "Brain learning failed for label");
+
+    set_error("No error");
+    LOG_DEBUG("Learning example completed successfully");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_predict(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    char* out_label,
+    float* out_confidence)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
+
+    // === PHASE IS-1: BBB INPUT VALIDATION ===
+    // Validate external input data through Blood-Brain Barrier before processing
+    if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
+        brain->internal_brain->bbb_system) {
+        bbb_validation_result_t result;
+
+        // Validate features array (external input data)
+        if (!bbb_validate_input(brain->internal_brain->bbb_system,
+                               features, num_features * sizeof(float), &result)) {
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected features: %s", result.reason);
+        }
+    }
+
+    // Call internal brain API
+    brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
+
+    if (!decision) {
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Brain prediction failed");
+    }
+
+    /* P1-48: Use NIMCP_MAX_LABEL_SIZE instead of hardcoded 63 */
+    strncpy(out_label, decision->label, NIMCP_MAX_LABEL_SIZE - 1);
+    out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
+    *out_confidence = decision->confidence;
+
+    // Free decision
+    brain_free_decision(decision);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_infer(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    float* outputs,
+    uint32_t num_outputs)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
+    if (num_features == 0) {
+        set_error("num_features must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+    if (num_outputs == 0) {
+        set_error("num_outputs must be > 0");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Call internal brain API to get decision (which includes output vector)
+    brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
+
+    if (!decision) {
+        set_error("Brain inference failed");
+        return NIMCP_ERROR;
+    }
+
+    // Copy raw output vector
+    uint32_t copy_size = (decision->output_size < num_outputs) ? decision->output_size : num_outputs;
+    for (uint32_t i = 0; i < copy_size; i++) {
+        outputs[i] = decision->output_vector[i];
+    }
+
+    // Fill remaining with zeros if requested more outputs than available
+    for (uint32_t i = copy_size; i < num_outputs; i++) {
+        outputs[i] = 0.0F;
+    }
+
+    // Free decision
+    brain_free_decision(decision);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_brain_t nimcp_brain_snapshot_restore(
+    nimcp_brain_t brain,
+    const char* name)
+{
+    if (!name) {
+        set_error("Snapshot name is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "name is NULL");
+
+        return NULL;
+    }
+
+    // Load from snapshot
+    brain_t restored_brain = brain_restore_snapshot(
+        brain ? brain->internal_brain : NULL,
+        name
+    );
+
+    if (!restored_brain) {
+        set_error("Failed to restore from snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "restored_brain is NULL");
+
+
+        return NULL;
+    }
+
+    // Allocate new handle
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    if (!handle) {
+        set_error("Failed to allocate brain handle");
+        brain_destroy(restored_brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle is NULL");
+
+        return NULL;
+    }
+
+    handle->internal_brain = restored_brain;
+    set_error("No error");
+    return handle;
+}
+
+
+nimcp_status_t nimcp_brain_snapshot_list(
+    nimcp_brain_t brain,
+    nimcp_brain_snapshot_info_t* infos,
+    uint32_t max_count,
+    uint32_t* out_count)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    API_CHECK_THROW(infos, NIMCP_ERROR_NULL_ARG, "Infos array is NULL");
+
+    // Call internal brain list API
+    // Note: brain_snapshot_info_t and nimcp_brain_snapshot_info_t have same layout
+    bool success = brain_list_snapshots(
+        brain->internal_brain,
+        (brain_snapshot_info_t*)infos,
+        max_count,
+        out_count
+    );
+
+    if (!success) {
+        set_error("Failed to list snapshots");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_SUCCESS;
+}
+
+
+nimcp_status_t nimcp_brain_snapshot_delete(
+    nimcp_brain_t brain,
+    const char* name)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    API_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
+
+    // Call internal brain delete API
+    bool success = brain_delete_snapshot(brain->internal_brain, name);
+
+    if (!success) {
+        set_error("Failed to delete snapshot");
+        return NIMCP_ERROR;
+    }
+
+    set_error("No error");
+    return NIMCP_SUCCESS;
+}
+
+
+nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe) {
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain is NULL");
+    NIMCP_CHECK_THROW(probe, NIMCP_ERROR_NULL_ARG, "Probe output structure is NULL");
+
+    // Get internal brain statistics
+    brain_stats_t internal_stats;
+    NIMCP_CHECK_THROW(brain_get_stats(brain->internal_brain, &internal_stats),
+                      NIMCP_ERROR, "Failed to get brain statistics");
+
+    // Map internal stats to public probe structure
+    strncpy(probe->task_name, internal_stats.task_name, sizeof(probe->task_name) - 1);
+    probe->task_name[sizeof(probe->task_name) - 1] = '\0';
+
+    // Map internal size enum to public enum
+    switch (internal_stats.size) {
+        case BRAIN_SIZE_TINY:   probe->size = NIMCP_BRAIN_TINY; break;
+        case BRAIN_SIZE_SMALL:  probe->size = NIMCP_BRAIN_SMALL; break;
+        case BRAIN_SIZE_MEDIUM: probe->size = NIMCP_BRAIN_MEDIUM; break;
+        case BRAIN_SIZE_LARGE:  probe->size = NIMCP_BRAIN_LARGE; break;
+        default:                probe->size = NIMCP_BRAIN_SMALL; break;
+    }
+
+    // P3 FIX: Removed unused brain_config_t internal_config variable (dead code).
+    // Note: We use size as a proxy for task type since internal API doesn't expose it directly
+    probe->task = NIMCP_TASK_CLASSIFICATION; // Default
+
+    probe->num_neurons = internal_stats.num_neurons;
+    probe->num_synapses = internal_stats.num_synapses;
+    probe->num_active_synapses = internal_stats.num_active_synapses;
+
+    probe->total_inferences = internal_stats.total_inferences;
+    probe->total_learning_steps = internal_stats.total_learning_steps;
+
+    probe->avg_sparsity = internal_stats.avg_sparsity;
+    probe->avg_inference_time_us = internal_stats.avg_inference_time_us;
+    probe->current_learning_rate = internal_stats.current_learning_rate;
+
+    probe->accuracy = internal_stats.accuracy;
+    probe->memory_bytes = internal_stats.memory_bytes;
+
+    // Get input/output sizes from internal brain
+    probe->num_inputs = brain_get_num_inputs(brain->internal_brain);
+    probe->num_outputs = brain_get_num_outputs(brain->internal_brain);
+
+    // Get COW statistics from internal brain
+    brain_cow_stats_t cow_stats;
+    if (brain_get_cow_stats(brain->internal_brain, &cow_stats)) {
+        probe->is_cow_clone = cow_stats.is_cow_clone;
+        probe->cow_ref_count = cow_stats.cow_ref_count;
+        probe->cow_shared_bytes = cow_stats.cow_shared_bytes;
+        probe->cow_private_bytes = cow_stats.cow_private_bytes;
+    } else {
+        // Fallback to defaults if COW stats retrieval fails
+        probe->is_cow_clone = false;
+        probe->cow_ref_count = 0;
+        probe->cow_shared_bytes = 0;
+        probe->cow_private_bytes = internal_stats.memory_bytes;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+/**
+ * @brief Broadcast brain probe data via bio-async for decoupled metrics collection
+ *
+ * WHAT: Sends brain probe metrics to all interested subscribers via bio-async
+ * WHY:  Enables loose coupling - metrics module receives data without direct dependency
+ * HOW:  Fills bio_msg_brain_probe_data_t and broadcasts via BIO_MSG_BRAIN_PROBE_DATA
+ *
+ * @param brain Brain handle to probe and broadcast
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain) {
+    NIMCP_CHECK_THROW(brain && brain->internal_brain, NIMCP_ERROR_NULL_ARG, "Invalid brain handle");
+
+    // Get probe data
+    nimcp_brain_probe_t probe;
+    nimcp_status_t status = nimcp_brain_probe(brain, &probe);
+    if (status != NIMCP_OK) {
+        LOG_ERROR("Failed to get brain probe data for broadcast");
+        return status;
+    }
+
+    // Get module context for bio-async
+    bio_module_context_t ctx = get_brain_probe_module_ctx();
+    if (!ctx) {
+        LOG_DEBUG("Bio-router not available, skipping probe broadcast");
+        return NIMCP_OK;  // Not an error - router may not be initialized
+    }
+
+    // Build bio-async message
+    bio_msg_brain_probe_data_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    // Initialize header
+    bio_msg_init_header(&msg.header, BIO_MSG_BRAIN_PROBE_DATA,
+                        BIO_MODULE_BRAIN, BIO_MODULE_ALL,
+                        sizeof(bio_msg_brain_probe_data_t));
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    // Fill probe data
+    msg.brain_id = (uint64_t)(uintptr_t)brain;  // Use pointer as unique ID
+    strncpy(msg.task_name, probe.task_name, sizeof(msg.task_name) - 1);
+    msg.task_name[sizeof(msg.task_name) - 1] = '\0';
+    msg.size = (uint32_t)probe.size;
+    msg.task = (uint32_t)probe.task;
+    msg.num_neurons = probe.num_neurons;
+    msg.num_synapses = probe.num_synapses;
+    msg.num_active_synapses = probe.num_active_synapses;
+    msg.total_inferences = probe.total_inferences;
+    msg.total_learning_steps = probe.total_learning_steps;
+    msg.avg_sparsity = probe.avg_sparsity;
+    msg.avg_inference_time_us = probe.avg_inference_time_us;
+    msg.current_learning_rate = probe.current_learning_rate;
+    msg.accuracy = probe.accuracy;
+    msg.memory_bytes = probe.memory_bytes;
+    msg.num_inputs = probe.num_inputs;
+    msg.num_outputs = probe.num_outputs;
+    msg.is_cow_clone = probe.is_cow_clone;
+    msg.cow_ref_count = probe.cow_ref_count;
+    msg.cow_shared_bytes = probe.cow_shared_bytes;
+    msg.cow_private_bytes = probe.cow_private_bytes;
+
+    // Broadcast to all subscribers (best-effort - failure is non-fatal)
+    nimcp_error_t err = bio_router_broadcast(ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        // Log warning but don't fail - probe data was collected successfully,
+        // broadcast is secondary and optional
+        LOG_DEBUG("Probe broadcast incomplete (some modules may not have received): %d", err);
+    } else {
+        LOG_DEBUG("Brain probe broadcast: brain_id=%llu, neurons=%u, synapses=%u",
+                  (unsigned long long)msg.brain_id, msg.num_neurons, msg.num_synapses);
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Copy-on-Write (COW) Cache API Implementation
+//=============================================================================
+
+/**
+ * WHAT: Clone brain using copy-on-write caching
+ * WHY:  Enable efficient replication with 86% memory savings
+ * HOW:  Use internal brain_clone_cow which shares network structures
+ *
+ * PERFORMANCE: <10ms clone time vs ~1000ms for full copy
+ * MEMORY: ~1MB overhead vs ~50MB for full copy
+ *
+ * Phase 2: True COW sharing via pointer sharing
+ */
+nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
+    // Guard: Validate parameters
+    if (!original) {
+        set_error("NULL brain provided to nimcp_brain_clone_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "original is NULL");
+
+        return NULL;
+    }
+
+    if (!original->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_clone_cow: original->internal_brain is NULL");
+        return NULL;
+    }
+
+    // Allocate handle
+    nimcp_brain_t clone_handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    if (!clone_handle) {
+        set_error("Failed to allocate brain handle for COW clone");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clone_handle is NULL");
+
+        return NULL;
+    }
+
+    // Use internal COW clone function
+    clone_handle->internal_brain = brain_clone_cow(original->internal_brain);
+
+    if (!clone_handle->internal_brain) {
+        set_error("Failed to clone internal brain");
+        nimcp_free(clone_handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_clone_cow: clone_handle->internal_brain is NULL");
+        return NULL;
+    }
+
+    set_error("No error");
+    return clone_handle;
+}
+
+
+/**
+ * WHAT: Create instant snapshot of brain state using COW with advanced reference tracking
+ * WHY:  Enable zero-copy checkpointing for rollback with complete isolation guarantees
+ * HOW:  Use brain_clone_cow with enhanced cache reference tracking for snapshot isolation
+ *
+ * PERFORMANCE: <1ms snapshot time (zero-copy with cache reference)
+ * MEMORY: ~64 bytes overhead + O(1) reference count increment
+ *
+ * IMPLEMENTATION:
+ * 1. Create COW clone using brain_clone_cow (shares network via reference counting)
+ * 2. Track shared memory size for cache statistics
+ * 3. Initialize snapshot refcount for multi-snapshot scenarios
+ * 4. Mark snapshot as isolated to prevent unwanted modifications
+ * 5. Multiple snapshots share underlying network data until modifications
+ *
+ * ADVANCED FEATURES:
+ * - Snapshot isolation: Modifications to original don't affect snapshot
+ * - Reference tracking: Accurate memory usage reporting
+ * - Multi-snapshot support: Create multiple snapshots with shared data
+ */
+nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
+    // Guard: Validate parameters
+    if (!brain) {
+        set_error("NULL brain provided to nimcp_brain_snapshot_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+    }
+
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_snapshot_cow: brain->internal_brain is NULL");
+        return NULL;
+    }
+
+    // Allocate snapshot handle
+    nimcp_brain_snapshot_t snapshot =
+        (nimcp_brain_snapshot_t)nimcp_malloc(sizeof(struct nimcp_brain_snapshot_handle));
+    if (!snapshot) {
+        set_error("Failed to allocate snapshot handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snapshot is NULL");
+
+        return NULL;
+    }
+
+    // WHAT: Capture current stats before creating snapshot
+    // WHY:  Snapshot should preserve stats at snapshot time, not reflect future changes
+    // HOW:  Get stats from original brain before cloning
+    brain_stats_t current_stats;
+    if (!brain_get_stats(brain->internal_brain, &current_stats)) {
+        set_error("Failed to get brain stats for snapshot");
+        nimcp_free(snapshot);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_snapshot_cow: brain_get_stats is NULL");
+        return NULL;
+    }
+
+    // WHAT: Create COW clone of brain
+    // WHY:  Enables zero-copy snapshot with reference counting
+    // HOW:  brain_clone_cow shares network and increments reference count
+    brain_t snapshot_brain = brain_clone_cow(brain->internal_brain);
+
+    if (!snapshot_brain) {
+        set_error("Failed to create COW clone for snapshot");
+        nimcp_free(snapshot);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snapshot_brain is NULL");
+
+
+        return NULL;
+    }
+
+    // CRITICAL: Mark this brain as a snapshot and preserve stats
+    // This prevents brain_get_stats from reading the shared network's current stats
+    brain_mark_as_snapshot(snapshot_brain, &current_stats);
+
+    // WHAT: Calculate shared memory size for tracking
+    // WHY:  Enables accurate memory usage reporting and cache statistics
+    // HOW:  Use the preserved stats to estimate network size
+    size_t shared_size = (size_t)(current_stats.num_neurons * 100 + current_stats.num_synapses * 20);
+
+    // WHAT: Store snapshot with enhanced tracking metadata
+    // WHY:  Track when snapshot was created and memory usage for monitoring
+    // HOW:  Save cloned brain, timestamp, and reference tracking info
+    snapshot->internal_brain_snapshot = snapshot_brain;
+    snapshot->timestamp_us = nimcp_time_monotonic_us();
+    snapshot->shared_memory_size = shared_size;
+    snapshot->snapshot_refcount = 1;  // This snapshot has one reference
+    snapshot->is_isolated = true;     // Snapshot is isolated from original modifications
+
+    // WHAT: Record cache reference for accurate COW statistics
+    // WHY:  Track memory savings achieved by COW snapshots
+    // HOW:  Use nimcp_cache_record_reference with shared memory size
+    if (shared_size > 0) {
+        nimcp_cache_record_reference(shared_size);
+    }
+
+    set_error("No error");
+    return snapshot;
+}
+
+
+/**
+ * WHAT: Restore brain state from COW snapshot
+ * WHY:  Enable instant rollback to previous state
+ * HOW:  Swap brain state with snapshot state
+ *
+ * PERFORMANCE: <1ms restore time (pointer swap)
+ * MEMORY: O(1)
+ */
+nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot_t snapshot) {
+    // Guard: Validate parameters
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to nimcp_brain_restore_cow");
+    API_CHECK_THROW(snapshot, NIMCP_ERROR_NULL_ARG, "NULL snapshot provided to nimcp_brain_restore_cow");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+    API_CHECK_THROW(snapshot->internal_brain_snapshot, NIMCP_ERROR_INVALID,
+                      "Snapshot has NULL internal_brain_snapshot");
+
+    // CRITICAL FIX: Use brain_clone_cow() which properly handles COW refcounting
+    // The snapshot was created via save/load, so it owns its network independently
+    // We can safely clone it, and the clone will share the snapshot's network
+
+    // Save the old brain pointer for cleanup
+    brain_t old_brain = brain->internal_brain;
+
+    // Clone the snapshot to create new brain state (creates COW reference)
+    brain_t new_brain = brain_clone_cow(snapshot->internal_brain_snapshot);
+    NIMCP_CHECK_THROW(new_brain, NIMCP_ERROR, "Failed to clone snapshot for restore");
+
+    // CRITICAL: Mark the restored brain as a snapshot with the same preserved stats
+    // This ensures brain_get_stats returns the snapshot's stats, not the current network stats
+    brain_stats_t snapshot_stats;
+    if (brain_get_stats(snapshot->internal_brain_snapshot, &snapshot_stats)) {
+        brain_mark_as_snapshot(new_brain, &snapshot_stats);
+    }
+
+    // Assign new brain (do this before destroying old brain to avoid use-after-free)
+    brain->internal_brain = new_brain;
+
+    // Now destroy the old brain (will decrement refcounts properly)
+    brain_destroy(old_brain);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Phase 10.2: Working Memory API Implementation
+//=============================================================================
+
+/**
+ * @brief Add item to brain's working memory
+ *
+ * WHAT: Wrapper for working_memory_add() on brain's working memory
+ * WHY:  Provide public API for adding items to working memory
+ * HOW:  Validate brain → Get working memory → Call internal API
+ */
+nimcp_status_t nimcp_brain_working_memory_add(
+    nimcp_brain_t brain,
+    const float* data,
+    uint32_t size,
+    float salience)
+{
+    // Guard: Validate brain
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to working_memory_add");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    // Guard: Validate parameters FIRST (before checking subsystem availability)
+    API_CHECK_THROW(data, NIMCP_ERROR_NULL_ARG, "NULL data provided to working_memory_add");
+    API_CHECK_THROW(size != 0, NIMCP_ERROR_INVALID, "Invalid size (0) provided to working_memory_add");
+
+    // Guard: Check if working memory enabled (after parameter validation)
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    API_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled in brain config");
+
+    // Add to working memory
+    bool success = working_memory_add(wm, data, size, salience);
+    API_CHECK_THROW(success, NIMCP_ERROR, "Failed to add item to working memory");
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+/**
+ * @brief Get item from brain's working memory
+ *
+ * WHAT: Wrapper for working_memory_get() on brain's working memory
+ * WHY:  Provide public API for accessing working memory items
+ * HOW:  Validate brain → Get working memory → Call internal API
+ */
+const float* nimcp_brain_working_memory_get(
+    nimcp_brain_t brain,
+    uint32_t index,
+    uint32_t* size_out)
+{
+    // Guard: Validate brain
+    if (!brain || !brain->internal_brain) {
+        set_error("Invalid brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_working_memory_get: required parameter is NULL (brain, brain->internal_brain)");
+        return NULL;
+    }
+
+    // Guard: Check if working memory enabled
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    if (!wm) {
+        set_error("Working memory not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
+        return NULL;
+    }
+
+    // Get item
+    const float* item = working_memory_get(wm, index, size_out);
+    if (!item) {
+        set_error("Invalid index or empty working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "item is NULL");
+
+        return NULL;
+    }
+
+    set_error("No error");
+    return item;
+}
+
+
+/**
+ * @brief Refresh item in brain's working memory
+ *
+ * WHAT: Wrapper for working_memory_refresh() on brain's working memory
+ * WHY:  Provide public API for preventing decay (rehearsal)
+ * HOW:  Validate brain → Get working memory → Call internal API
+ */
+nimcp_status_t nimcp_brain_working_memory_refresh(
+    nimcp_brain_t brain,
+    uint32_t index)
+{
+    // Guard: Validate brain
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    // Guard: Check if working memory enabled
+    working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
+    API_CHECK_THROW(wm, NIMCP_ERROR_INVALID, "Working memory not enabled");
+
+    // Refresh item
+    bool success = working_memory_refresh(wm, index);
+    API_CHECK_THROW(success, NIMCP_ERROR_INVALID, "Invalid index for refresh");
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_workspace_compete(
+    nimcp_brain_t brain,
+    nimcp_cognitive_module_t module,
+    const float* content,
+    uint32_t content_dim,
+    float strength)
+{
+    // Guard: Validate brain
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to workspace_compete");
+    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    // Guard: Validate parameters FIRST (before checking workspace availability)
+    NIMCP_CHECK_THROW(content, NIMCP_ERROR_NULL_ARG, "NULL content provided to workspace_compete");
+    NIMCP_CHECK_THROW(content_dim != 0, NIMCP_ERROR_INVALID, "Invalid content_dim (0)");
+    NIMCP_CHECK_THROW(strength >= 0.0F && strength <= 1.0F, NIMCP_ERROR_INVALID,
+                      "Strength must be in range [0.0, 1.0]");
+
+    // Guard: Check if global workspace enabled (after parameter validation)
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    NIMCP_CHECK_THROW(workspace, NIMCP_ERROR_INVALID, "Global workspace not enabled in brain config");
+
+    // Convert module enum and compete
+    cognitive_module_t internal_module = convert_module_enum(module);
+    bool won = global_workspace_compete(workspace, internal_module, content, content_dim, strength);
+
+    if (won) {
+        set_error("No error");
+        return NIMCP_OK;
+    } else {
+        set_error("Did not win workspace competition");
+        return NIMCP_ERROR;
+    }
+}
+
+
+nimcp_status_t nimcp_brain_workspace_subscribe(
+    nimcp_brain_t brain,
+    nimcp_cognitive_module_t module)
+{
+    // Guard: Validate brain
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to workspace_subscribe");
+    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    // Guard: Check if global workspace enabled
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    NIMCP_CHECK_THROW(workspace, NIMCP_ERROR_INVALID, "Global workspace not enabled in brain config");
+
+    // Subscribe module
+    cognitive_module_t internal_module = convert_module_enum(module);
+    bool success = global_workspace_subscribe(workspace, internal_module);
+    NIMCP_CHECK_THROW(success, NIMCP_ERROR, "Failed to subscribe module");
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_workspace_unsubscribe(
+    nimcp_brain_t brain,
+    nimcp_cognitive_module_t module)
+{
+    // Guard: Validate brain
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to workspace_unsubscribe");
+    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
+
+    // Guard: Check if global workspace enabled
+    global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
+    NIMCP_CHECK_THROW(workspace, NIMCP_ERROR_INVALID, "Global workspace not enabled in brain config");
+
+    // Unsubscribe module
+    cognitive_module_t internal_module = convert_module_enum(module);
+    bool success = global_workspace_unsubscribe(workspace, internal_module);
+    NIMCP_CHECK_THROW(success, NIMCP_ERROR, "Failed to unsubscribe module");
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_network_forward(
+    nimcp_network_t network,
+    const float* inputs,
+    uint32_t num_inputs,
+    float* outputs,
+    uint32_t num_outputs)
+{
+    NIMCP_CHECK_THROW(network, NIMCP_ERROR_NULL_ARG, "Network handle is NULL");
+    NIMCP_CHECK_THROW(inputs, NIMCP_ERROR_NULL_ARG, "Inputs array is NULL");
+    NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
+
+    // Call internal network API
+    bool success = neural_network_forward(network->internal_network,
+                                         inputs, num_inputs,
+                                         outputs, num_outputs);
+
+    NIMCP_CHECK_THROW(success, NIMCP_ERROR, "Network forward pass failed");
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_network_train(
+    nimcp_network_t network,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets)
+{
+    NIMCP_CHECK_THROW(network, NIMCP_ERROR_NULL_ARG, "Network handle is NULL");
+
+    // Training not yet implemented in internal API
+    NIMCP_THROW(NIMCP_ERROR, "Training not yet implemented");
+    return NIMCP_ERROR;
+}
+
+
+nimcp_status_t nimcp_ethics_check(
+    nimcp_ethics_t ethics,
+    const float* situation,
+    uint32_t num_features,
+    float* out_score)
+{
+    NIMCP_CHECK_THROW(ethics, NIMCP_ERROR_NULL_ARG, "Ethics handle is NULL");
+    NIMCP_CHECK_THROW(situation, NIMCP_ERROR_NULL_ARG, "Situation array is NULL");
+    NIMCP_CHECK_THROW(out_score, NIMCP_ERROR_NULL_ARG, "Output score pointer is NULL");
+
+    /* P2-1: The internal API accepts non-const float* but we guarantee
+     * the features are not modified during evaluation. This const_cast
+     * is safe because ethics_engine_evaluate_action() is read-only.
+     * TODO: Fix internal API to accept const float*. */
+    action_context_t action = {0};
+    action.features = (float*)(uintptr_t)situation;  /* const_cast - see above */
+    action.num_features = num_features;
+    action.affected_agents = NULL;
+    action.num_affected_agents = 0;
+    action.predicted_harm = 0.0F;
+
+    // Evaluate using internal ethics engine
+    ethics_evaluation_t eval = ethics_engine_evaluate_action(ethics->internal_ethics, &action);
+
+    // Convert evaluation to simple score
+    // Golden Rule score: -1 (harmful) to +1 (beneficial)
+    *out_score = eval.golden_rule_score;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_knowledge_add_fact(
+    nimcp_knowledge_t knowledge,
+    const char* subject,
+    const char* predicate,
+    const char* object)
+{
+    NIMCP_CHECK_THROW(knowledge, NIMCP_ERROR_NULL_ARG, "Knowledge handle is NULL");
+    NIMCP_CHECK_THROW(subject && predicate && object, NIMCP_ERROR_NULL_ARG,
+                      "Subject, predicate, or object is NULL");
+
+    // Create a knowledge item from the fact
+    knowledge_item_t item = {0};
+
+    // Use subject as concept
+    strncpy(item.concept_name, subject, sizeof(item.concept_name) - 1);
+
+    // Create definition from predicate and object
+    snprintf(item.definition, sizeof(item.definition), "%s %s", predicate, object);
+
+    // Set defaults
+    item.domain = KNOWLEDGE_DOMAIN_GENERAL;
+    item.confidence = 1.0F;
+    item.examples = NULL;
+    item.num_examples = 0;
+    item.related_concepts = NULL;
+    item.num_related = 0;
+    item.learned_timestamp = 0;
+    item.reinforcement_count = 1;
+
+    // Add to internal knowledge system
+    bool success = knowledge_add_item(knowledge->internal_knowledge, &item);
+
+    NIMCP_CHECK_THROW(success, NIMCP_ERROR, "Failed to add knowledge item");
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_knowledge_query(
+    nimcp_knowledge_t knowledge,
+    const char* query,
+    char* out_result,
+    uint32_t max_result_len)
+{
+    NIMCP_CHECK_THROW(knowledge, NIMCP_ERROR_NULL_ARG, "Knowledge handle is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NULL_ARG, "Query is NULL");
+    NIMCP_CHECK_THROW(out_result, NIMCP_ERROR_NULL_ARG, "Output result buffer is NULL");
+
+    // Try to retrieve knowledge about the query concept
+    knowledge_item_t item;
+    bool found = knowledge_retrieve(knowledge->internal_knowledge, query, &item);
+
+    if (found) {
+        // Return the definition
+        snprintf(out_result, max_result_len, "%s", item.definition);
+    } else {
+        // Concept not found
+        snprintf(out_result, max_result_len, "No knowledge found about '%s'", query);
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_enable_complex_oscillations: brain is NULL");
+        return false;
+    }
+
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_enable_complex_oscillations: brain->internal_brain is NULL");
+        return false;
+    }
+
+    // Get brain's internal structure to access complex oscillation state
+    // Note: This requires brain_internal_t access, which would need to be exposed
+    // For now, we'll use a hypothetical brain configuration function
+    // This would typically be: brain_config_set_complex_oscillations(brain->internal_brain, enable)
+
+    // Since we may not have direct config access, we'll check if it's already enabled
+    // and return true if enabling and already enabled, or if disabling and already disabled
+    bool currently_enabled = brain_complex_oscillation_is_enabled(brain->internal_brain);
+
+    if (enable == currently_enabled) {
+        set_error("No error");
+        return true;
+    }
+
+    // For actual enable/disable, we would need brain_config_t access
+    // This is a placeholder implementation that at least validates the state
+    set_error("Complex oscillation enable/disable requires brain reconfiguration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_enable_complex_oscillations: validation failed");
+    return false;
+}
+
+
+//=============================================================================
+// Phase 2.8: Dynamic Brain Resizing API
+//=============================================================================
+
+bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_resize: brain is NULL");
+        return false;
+    }
+    
+    return brain_resize(brain->internal_brain, new_neuron_count);
+}
+
+
+bool nimcp_brain_auto_resize(nimcp_brain_t brain) {
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_auto_resize: brain is NULL");
+        return false;
+    }
+    
+    return brain_auto_resize(brain->internal_brain);
+}
+
+
+nimcp_status_t nimcp_brain_train_batch(
+    nimcp_brain_t brain,
+    const float* features,
+    const float* targets,
+    uint32_t batch_size,
+    uint32_t num_features,
+    uint32_t num_targets,
+    nimcp_training_result_t* result)
+{
+    NIMCP_CHECK_THROW(brain && features && targets, NIMCP_ERROR_NULL_ARG, "NULL argument provided");
+    NIMCP_CHECK_THROW(batch_size != 0, NIMCP_ERROR_INVALID, "Batch size cannot be zero");
+
+    // Train on each example and average results
+    float total_loss = 0.0F;
+    nimcp_training_result_t step_result = {0};
+
+    for (uint32_t i = 0; i < batch_size; i++) {
+        const float* sample_features = features + (i * num_features);
+        const float* sample_targets = targets + (i * num_targets);
+
+        nimcp_status_t res = nimcp_brain_train_step(
+            brain, sample_features, num_features,
+            sample_targets, num_targets, &step_result);
+
+        if (res != NIMCP_OK) {
+            return res;
+        }
+
+        total_loss += step_result.loss;
+
+        if (step_result.early_stopped) {
+            break;
+        }
+    }
+
+    if (result) {
+        result->loss = total_loss / batch_size;
+        result->learning_rate = step_result.learning_rate;
+        result->step = step_result.step;
+        result->early_stopped = step_result.early_stopped;
+        result->gradient_norm = step_result.gradient_norm;
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_enable_callbacks(
+    nimcp_brain_t brain,
+    const nimcp_callback_config_t* config)
+{
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+
+    training_pipeline_state_t* state = get_training_state(brain);
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_MEMORY, "Failed to get training state");
+
+    // Destroy existing callbacks if present
+    if (state->callbacks) {
+        tcb_destroy(state->callbacks);
+        state->callbacks = NULL;
+    }
+
+    // Build internal config from public config
+    tcb_config_t internal_config = tcb_config_default();
+
+    if (config) {
+        internal_config.enable_auto_checkpoint = config->enable_auto_checkpoint;
+        internal_config.checkpoint_interval = config->checkpoint_interval;
+        internal_config.enable_early_stopping = config->enable_early_stopping;
+        internal_config.patience = config->patience;
+        internal_config.min_delta = config->min_delta;
+        internal_config.divergence_threshold = config->divergence_threshold;
+        if (config->log_interval > 0) {
+            internal_config.enable_auto_logging = true;
+            internal_config.log_interval = config->log_interval;
+        }
+    }
+
+    // Create callback manager
+    state->callbacks = tcb_create(&internal_config);
+    NIMCP_CHECK_THROW(state->callbacks, NIMCP_ERROR_MEMORY, "Failed to create callback manager");
+
+    state->callbacks_enabled = true;
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_disable_callbacks(nimcp_brain_t brain) {
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+
+    training_pipeline_state_t* state = get_training_state(brain);
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID, "No training state");
+
+    state->callbacks_enabled = false;
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+uint32_t nimcp_brain_register_callback(
+    nimcp_brain_t brain,
+    nimcp_callback_event_t event,
+    nimcp_training_callback_fn callback,
+    void* user_data,
+    const char* name)
+{
+    if (!brain) {
+        set_error("Brain handle is NULL");
+        return 0;
+    }
+
+    if (!callback) {
+        set_error("Callback function is NULL");
+        return 0;
+    }
+
+    training_pipeline_state_t* state = get_training_state(brain);
+    if (!state) {
+        set_error("No training state");
+        return 0;
+    }
+
+    // Auto-enable callbacks if not already enabled
+    if (!state->callbacks) {
+        nimcp_status_t res = nimcp_brain_enable_callbacks(brain, NULL);
+        if (res != NIMCP_OK) {
+            return 0;
+        }
+    }
+
+    // Allocate wrapper
+    callback_wrapper_t* wrapper = nimcp_malloc(sizeof(callback_wrapper_t));
+    if (!wrapper) {
+        set_error("Failed to allocate callback wrapper");
+        return 0;
+    }
+
+    wrapper->public_callback = callback;
+    wrapper->user_data = user_data;
+
+    /* P1-47: Find first free slot instead of wrapping counter, to avoid
+     * freeing a live wrapper that's still referenced by the callback manager */
+    nimcp_mutex_lock(&g_callback_wrappers_mutex);
+    uint32_t wrapper_idx = MAX_CALLBACK_WRAPPERS; /* sentinel = not found */
+    for (uint32_t i = 0; i < MAX_CALLBACK_WRAPPERS; i++) {
+        if (g_callback_wrappers[i] == NULL) {
+            wrapper_idx = i;
+            break;
+        }
+    }
+    if (wrapper_idx >= MAX_CALLBACK_WRAPPERS) {
+        nimcp_mutex_unlock(&g_callback_wrappers_mutex);
+        nimcp_free(wrapper);
+        set_error("Callback wrapper table full");
+        return 0;
+    }
+    g_callback_wrappers[wrapper_idx] = wrapper;
+    g_next_wrapper_id++;
+    nimcp_mutex_unlock(&g_callback_wrappers_mutex);
+
+    // Map public event type to internal event type
+    tcb_event_type_t internal_event;
+    switch (event) {
+        case NIMCP_CB_STEP_COMPLETE:    internal_event = TCB_EVENT_STEP_COMPLETE; break;
+        case NIMCP_CB_EPOCH_COMPLETE:   internal_event = TCB_EVENT_EPOCH_COMPLETE; break;
+        case NIMCP_CB_LOSS_COMPUTED:    internal_event = TCB_EVENT_LOSS_COMPUTED; break;
+        case NIMCP_CB_WEIGHTS_UPDATED:  internal_event = TCB_EVENT_WEIGHTS_UPDATED; break;
+        case NIMCP_CB_LR_CHANGED:       internal_event = TCB_EVENT_LR_CHANGED; break;
+        case NIMCP_CB_CONVERGENCE:      internal_event = TCB_EVENT_CONVERGENCE; break;
+        case NIMCP_CB_DIVERGENCE:       internal_event = TCB_EVENT_DIVERGENCE; break;
+        case NIMCP_CB_CHECKPOINT:       internal_event = TCB_EVENT_CHECKPOINT; break;
+        default:                        internal_event = TCB_EVENT_STEP_COMPLETE; break;
+    }
+
+    // Register with internal callback manager
+    tcb_callback_info_t info = {
+        .callback = callback_bridge,
+        .user_data = wrapper,
+        .event_type = internal_event,
+        .mode = TCB_MODE_SYNC,
+        .priority = TCB_PRIORITY_NORMAL,
+        .name = name,
+        .enabled = true
+    };
+
+    uint32_t cb_id = tcb_register(state->callbacks, &info);
+    if (cb_id == 0) {
+        set_error("Failed to register callback");
+        return 0;
+    }
+
+    set_error("No error");
+    return cb_id;
+}
+
+
+nimcp_status_t nimcp_brain_unregister_callback(
+    nimcp_brain_t brain,
+    uint32_t callback_id)
+{
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+
+    training_pipeline_state_t* state = get_training_state(brain);
+    NIMCP_CHECK_THROW(state && state->callbacks, NIMCP_ERROR_INVALID, "Callbacks not enabled");
+
+    // Unregister from internal manager
+    if (!tcb_unregister(state->callbacks, callback_id)) {
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Failed to unregister callback");
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}

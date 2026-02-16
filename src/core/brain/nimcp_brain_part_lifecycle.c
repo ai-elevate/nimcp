@@ -1,0 +1,863 @@
+// nimcp_brain_part_lifecycle.c - lifecycle functions
+// Part of nimcp_brain.c (SRP #include-based split)
+// DO NOT compile separately - #included from nimcp_brain.c
+
+
+/* brain_heartbeat is defined in nimcp_brain_internal.h */
+
+//=============================================================================
+// Bio-Async Message Handlers and Integration
+//=============================================================================
+
+/**
+ * @brief Internal once-only initialization routine for bio-async
+ *
+ * Called exactly once via nimcp_platform_once to avoid race conditions.
+ */
+static void brain_bio_init_once_routine(void)
+{
+    LOG_MODULE_INFO("BRAIN", "Initializing bio-async integration");
+
+    // Register module with bio-router
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_BRAIN,
+        .module_name = "Brain",
+        .inbox_capacity = 512,  // High capacity for brain module
+        .user_data = NULL
+    };
+
+    g_brain_bio_ctx = bio_router_register_module(&info);
+    if (!g_brain_bio_ctx) {
+        LOG_MODULE_ERROR("BRAIN", "Failed to register with bio-router");
+        g_brain_bio_init_result = NIMCP_ERROR_INVALID_PARAM;
+        return;
+    }
+
+    __atomic_store_n(&g_brain_bio_initialized, true, __ATOMIC_RELEASE);
+    LOG_MODULE_INFO("BRAIN", "Bio-async integration initialized successfully");
+    g_brain_bio_init_result = NIMCP_SUCCESS;
+}
+
+
+/**
+ * @brief Initialize bio-async integration for brain module
+ *
+ * WHAT: Registers brain with bio-router and sets up message handlers
+ * WHY:  Enable event-driven inter-module communication
+ * HOW:  Uses nimcp_platform_once for thread-safe one-time initialization
+ *
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t brain_bio_init(void)
+{
+    // Use platform_once for thread-safe one-time initialization
+    nimcp_platform_once(&g_brain_bio_once, brain_bio_init_once_routine);
+    return g_brain_bio_init_result;
+}
+
+
+//=============================================================================
+// Strategy Factory
+//=============================================================================
+
+/**
+ * @brief Create strategy for task type
+ *
+ * WHY: Factory pattern for strategy creation
+ * Centralizes strategy instantiation logic
+ *
+ * COMPLEXITY: O(1) - simple allocation and assignment
+ *
+ * @param task Task type
+ * @return Strategy instance or NULL on error
+ */
+static task_strategy_t* strategy_create(brain_task_t task)
+{
+    task_strategy_t* strategy = nimcp_calloc(1, sizeof(task_strategy_t));
+    if (!strategy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "strategy allocation failed");
+
+        return NULL;
+
+    }
+
+    strategy->task_type = task;
+
+    switch (task) {
+        case BRAIN_TASK_CLASSIFICATION:
+            strategy->get_learning_rate = strategy_classification_lr;
+            strategy->transform_output = strategy_classification_transform;
+            strategy->compute_loss = strategy_classification_loss;
+            break;
+
+        case BRAIN_TASK_REGRESSION:
+            strategy->get_learning_rate = strategy_regression_lr;
+            strategy->transform_output = strategy_regression_transform;
+            strategy->compute_loss = strategy_regression_loss;
+            break;
+
+        case BRAIN_TASK_PATTERN_MATCHING:
+            strategy->get_learning_rate = strategy_pattern_lr;
+            strategy->transform_output = strategy_pattern_transform;
+            strategy->compute_loss = strategy_pattern_loss;
+            break;
+
+        case BRAIN_TASK_ASSOCIATION:
+            strategy->get_learning_rate = strategy_association_lr;
+            strategy->transform_output = strategy_association_transform;
+            strategy->compute_loss = strategy_association_loss;
+            break;
+
+        default:
+            // Default to classification
+            strategy->get_learning_rate = strategy_classification_lr;
+            strategy->transform_output = strategy_classification_transform;
+            strategy->compute_loss = strategy_classification_loss;
+            break;
+    }
+
+    return strategy;
+}
+
+
+/**
+ * @brief Destroy strategy
+ *
+ * COMPLEXITY: O(1)
+ */
+static void strategy_destroy(task_strategy_t* strategy)
+{
+    nimcp_free(strategy);
+}
+
+
+/**
+ * @brief Create brain with preset size and task
+ *
+ * WHY: Factory pattern - single creation entry point
+ * Encapsulates all creation complexity with validation
+ *
+ * COMPLEXITY: O(n) where n = num_neurons
+ * MEMORY: O(n*c) where c = connections per neuron
+ *
+ * PATTERN: Factory pattern with guard clauses
+ *
+ * @param task_name Human-readable name
+ * @param size Brain size preset
+ * @param task Task template
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @return Brain handle or NULL on error
+ */
+// brain_create() - MOVED TO: src/core/brain/factory/nimcp_brain_factory.c
+
+/**
+ * @brief Create brain with custom configuration
+ *
+ * WHY: Allows advanced users to customize all parameters
+ * Delegates to standard factory after validation
+ *
+ * COMPLEXITY: O(n) where n = num_neurons
+ *
+ * @param config Custom configuration
+ * @return Brain handle or NULL on error
+ */
+// brain_create_custom() - MOVED TO: src/core/brain/factory/nimcp_brain_factory.c
+
+/**
+ * @brief Destroy brain and free resources
+ *
+ * WHY: Proper cleanup prevents memory leaks
+ * Handles partial initialization gracefully
+ *
+ * COMPLEXITY: O(n) where n = num_neurons (for network cleanup)
+ *
+ * @param brain Brain to destroy
+ */
+void brain_destroy(brain_t brain)
+{
+    if (!brain)
+        return;
+
+    // Save final snapshot if configured (BEFORE destroying anything)
+    if (brain->config.snapshot_dir && brain->config.save_final_snapshot) {
+        brain_save_snapshot(brain, "final", "Snapshot at brain destruction");
+        // Non-fatal if snapshot fails
+    }
+
+    // Phase 3: Handle network destruction with atomic reference counting
+    //
+    // CONCURRENCY MODEL: Lock-free reference counting using C11 atomics
+    // - atomic_fetch_sub returns the PREVIOUS value before decrement
+    // - If previous value was 1, we just decremented to 0 and are the last holder
+    // - No mutex needed - atomics provide the synchronization
+    //
+    // MEMORY ORDERING:
+    // - ACQ_REL on fetch_sub ensures all prior accesses by other threads
+    //   releasing their references are visible, and our cleanup is visible
+    //   to any (impossible) future readers
+    if (brain->network) {
+        if (brain->owns_network) {
+            // Brain owns the network - destroy immediately
+            adaptive_network_destroy(brain->network);
+        } else if (brain->network_refcount_atomic) {
+            // Brain shares network - atomically decrement refcount
+            _Atomic(uint32_t)* refcount_ptr = brain->network_refcount_atomic;
+            adaptive_network_t network = brain->network;
+
+            // Atomically decrement and get previous value
+            // ACQ_REL ensures proper memory ordering with other threads
+            uint32_t prev_refcount = __atomic_fetch_sub(refcount_ptr, 1, __ATOMIC_ACQ_REL);
+
+            if (prev_refcount == 1) {
+                // We just decremented from 1 to 0 - we are the last holder
+                // All other clones have already completed their brain_destroy() calls.
+                // No synchronization needed - we have exclusive access now.
+                adaptive_network_destroy(network);
+                nimcp_free((void*)refcount_ptr);
+            }
+            // else: prev_refcount > 1, so other clones still exist - just decrement and exit
+        }
+        // else: Neither owns nor has refcount - strange but safe (network leaked)
+    }
+
+    // Strategies are shared (read-only), don't destroy
+    // Only destroy if this is not a COW clone OR if we own it
+    if (brain->strategy && !brain->is_cow_clone) {
+        strategy_destroy(brain->strategy);
+    }
+
+    if (brain->output_labels) {
+        for (uint32_t i = 0; i < brain->num_output_labels; i++) {
+            if (brain->output_labels[i]) {
+                nimcp_free(brain->output_labels[i]);
+            }
+        }
+        nimcp_free(brain->output_labels);
+    }
+
+    // Phase 3: Cleanup distributed cognition coordinator
+    if (brain->distributed) {
+        distrib_cognition_destroy(brain->distributed);
+    }
+
+    // Phase 5/6: Cleanup glial integration
+    if (brain->glial) {
+        glial_integration_destroy(brain->glial);
+        brain->glial = NULL;
+    } else {
+    }
+
+
+    // Phase 5/6: Cleanup myelin sheath network (after glial to avoid dangling pointers)
+    if (brain->myelin_sheath) {
+        myelin_network_destroy(brain->myelin_sheath);
+        brain->myelin_sheath = NULL;
+    } else {
+    }
+
+    // Phase 1.5.6: Cleanup axon network
+    if (brain->axon_network) {
+        axon_network_destroy((axon_network_t*)brain->axon_network);
+        brain->axon_network = NULL;
+    } else {
+    }
+
+    // Phase 1.5.7: Cleanup dendrite network
+    if (brain->dendrite_network) {
+        dendrite_network_destroy((dendrite_network_t*)brain->dendrite_network);
+        brain->dendrite_network = NULL;
+    } else {
+    }
+
+
+    // Phase 8: Cleanup multi-modal subsystems
+    if (brain->visual_cortex) {
+        visual_cortex_destroy(brain->visual_cortex);
+    }
+    if (brain->audio_cortex) {
+        audio_cortex_destroy(brain->audio_cortex);
+    }
+    if (brain->speech_cortex) {
+        speech_cortex_destroy(brain->speech_cortex);
+    }
+    if (brain->multimodal) {
+        multimodal_integration_destroy(brain->multimodal);
+    }
+    if (brain->nlp_network) {
+        nlp_network_destroy(brain->nlp_network);
+    }
+    nimcp_free(brain->visual_feature_buffer);
+    nimcp_free(brain->audio_feature_buffer);
+    nimcp_free(brain->speech_feature_buffer);
+    nimcp_free(brain->integrated_feature_buffer);
+
+
+    // Phase 8.6: Cleanup pink noise neuromodulation
+    if (brain->pink_noise) {
+        neuromod_pink_destroy(brain->pink_noise);
+    }
+
+
+    // Phase EDP-1: Cleanup Event-Driven Plasticity (before plasticity bridge it depends on)
+    if (brain->event_driven_plasticity) {
+        edp_destroy(brain->event_driven_plasticity);
+        brain->event_driven_plasticity = NULL;
+        brain->enable_event_driven_plasticity = false;
+    }
+
+
+    // Phase TPB-1: Cleanup Training-Plasticity Bridge (before neuromodulator system it depends on)
+    if (brain->plasticity_bridge) {
+        tpb_destroy(brain->plasticity_bridge);
+        brain->plasticity_bridge = NULL;
+        brain->enable_plasticity_bridge = false;
+    }
+
+
+    // Phase 10.5: Cleanup neuromodulator system
+    if (brain->neuromodulator_system) {
+        neuromodulator_system_destroy(brain->neuromodulator_system);
+    }
+
+
+    // Phase 3.0: Cleanup multihead attention
+    if (brain->multihead_attention) {
+        multihead_attention_destroy(brain->multihead_attention);
+        brain->multihead_attention = NULL;
+    }
+
+
+    // Phase 2 Middleware: Cleanup spike analysis and population coding
+    if (brain->spike_feature_extractor) {
+        brain_destroy_spike_feature_extractor(brain->spike_feature_extractor);
+        brain->spike_feature_extractor = NULL;
+    }
+    if (brain->population_analyzer) {
+        brain_destroy_population_analyzer(brain->population_analyzer);
+        brain->population_analyzer = NULL;
+    }
+
+
+    // Module Integration: Cleanup brain regions
+    if (brain->brain_regions) {
+        brain_module_destroy(brain->brain_regions);
+        brain->brain_regions = NULL;
+    }
+
+
+    // Phase CC-1: Cleanup cortical columns subsystem (Tier 0.65)
+    // Order: feature hypercolumns → orientation hypercolumns → topographic maps →
+    //        connectivity → laminar → hypercolumns → pool
+    if (brain->feature_hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_feature_hypercolumns; i++) {
+            if (brain->feature_hypercolumns[i]) {
+                feature_hypercolumn_destroy(brain->feature_hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->feature_hypercolumns);
+        brain->feature_hypercolumns = NULL;
+        brain->num_feature_hypercolumns = 0;
+    }
+
+    if (brain->orientation_hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_orientation_hypercolumns; i++) {
+            if (brain->orientation_hypercolumns[i]) {
+                orientation_hypercolumn_destroy(brain->orientation_hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->orientation_hypercolumns);
+        brain->orientation_hypercolumns = NULL;
+        brain->num_orientation_hypercolumns = 0;
+    }
+
+    if (brain->visual_topographic_map) {
+        topographic_map_destroy(brain->visual_topographic_map);
+        brain->visual_topographic_map = NULL;
+    }
+
+    if (brain->auditory_topographic_map) {
+        topographic_map_destroy(brain->auditory_topographic_map);
+        brain->auditory_topographic_map = NULL;
+    }
+
+    if (brain->somatosensory_topographic_map) {
+        topographic_map_destroy(brain->somatosensory_topographic_map);
+        brain->somatosensory_topographic_map = NULL;
+    }
+
+    if (brain->columnar_connectivity) {
+        columnar_connectivity_destroy(brain->columnar_connectivity);
+        brain->columnar_connectivity = NULL;
+    }
+
+    if (brain->laminar_system) {
+        laminar_structure_destroy(brain->laminar_system);
+        brain->laminar_system = NULL;
+    }
+
+    if (brain->hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_hypercolumns; i++) {
+            if (brain->hypercolumns[i]) {
+                hypercolumn_destroy(brain->hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->hypercolumns);
+        brain->hypercolumns = NULL;
+        brain->num_hypercolumns = 0;
+    }
+
+    if (brain->cortical_column_pool) {
+        cortical_column_pool_destroy(brain->cortical_column_pool);
+        brain->cortical_column_pool = NULL;
+    }
+
+    brain->enable_cortical_columns = false;
+
+
+    // Phase 9.0: Cleanup neural logic network
+    if (brain->logic) {
+        neural_logic_destroy(brain->logic);
+    }
+
+
+    // Phase 9.2: Cleanup epistemic filter
+    if (brain->epistemic) {
+        epistemic_filter_destroy(brain->epistemic);
+    }
+
+    // Phase 9.4: Cleanup symbolic logic engine
+    if (brain->symbolic_logic) {
+        symbolic_logic_destroy(brain->symbolic_logic);
+    }
+
+
+    // Phase M3: Cleanup working memory transfer (BEFORE working memory)
+    if (brain->wm_transfer_system) {
+        wm_transfer_destroy(brain->wm_transfer_system);
+        brain->wm_transfer_system = NULL;
+    }
+
+    // Phase 10.1: Cleanup working memory
+    if (brain->working_memory) {
+        working_memory_destroy(brain->working_memory);
+        brain->working_memory = NULL;
+    }
+
+
+    // Phase 10.2: Cleanup memory consolidation
+    if (brain->consolidation) {
+        brain_stop_background_consolidation(brain->consolidation);
+    }
+
+    // Phase 10.3: Cleanup executive functions
+    if (brain->executive) {
+        executive_destroy(brain->executive);
+    }
+
+
+    // Phase 10.2: Cleanup emotional system
+    if (brain->emotional_system) {
+        emotion_system_destroy(brain->emotional_system);
+    }
+
+    // Phase 10.4: Cleanup sleep/wake system
+    if (brain->sleep_system) {
+        sleep_system_destroy(brain->sleep_system);
+    }
+
+
+    // Phase M1: Cleanup engram system
+    if (brain->engram_system) {
+        engram_system_destroy(brain->engram_system);
+    }
+
+    // Phase M2: Cleanup systems consolidation
+    if (brain->systems_consolidation) {
+        systems_consolidation_destroy(brain->systems_consolidation);
+    }
+
+    // Phase M4: Cleanup semantic memory network
+    if (brain->semantic_memory) {
+        semantic_memory_destroy(brain->semantic_memory);
+    }
+
+
+    // Phase 10.6: Cleanup Theory of Mind
+    if (brain->theory_of_mind) {
+        tom_destroy(brain->theory_of_mind);
+    }
+
+    // Phase 10.7: Cleanup Natural Explanations
+    if (brain->explanation_gen) {
+        explanation_generator_destroy(brain->explanation_gen);
+    }
+
+    // Phase 10.8: Cleanup Meta-Learning
+    if (brain->meta_learner) {
+        meta_learner_destroy(brain->meta_learner);
+    }
+
+    // Phase 10.5: Cleanup Mental Health
+    if (brain->mental_health_monitor) {
+        mental_health_destroy(brain->mental_health_monitor);
+    }
+
+    // Phase 10.9: Cleanup Predictive Processing
+    if (brain->predictive_network) {
+        predictive_destroy(brain->predictive_network);
+    }
+
+    // Phase 10.11: Cleanup Mirror Neurons
+    if (brain->mirror_neurons) {
+        mirror_neurons_destroy(brain->mirror_neurons);
+    }
+
+
+    // Cleanup Global Workspace Architecture
+    if (brain->global_workspace) {
+        global_workspace_destroy(brain->global_workspace);
+    }
+
+
+    // CRITICAL FIX: Cleanup cognitive modules (memory leak fix)
+    if (brain->introspection) {
+        introspection_context_destroy(brain->introspection);
+    }
+    if (brain->curiosity) {
+        curiosity_engine_destroy(brain->curiosity);
+    }
+    if (brain->salience) {
+        salience_evaluator_destroy(brain->salience);
+    }
+    if (brain->ethics) {
+        ethics_engine_destroy(brain->ethics);
+    }
+    if (brain->knowledge) {
+        knowledge_system_destroy(brain->knowledge);
+    }
+
+
+    // Phase 11: Part I.2: Cleanup empathetic response engine (before empathy network)
+    if (brain->empathetic_response_engine) {
+        extern void empathetic_response_destroy(void* engine);
+        empathetic_response_destroy(brain->empathetic_response_engine);
+    }
+
+    // Phase 11: Part I.1: Cleanup empathy network
+    if (brain->empathy_network) {
+        empathy_network_destroy(brain->empathy_network);
+    }
+
+    // Phase 12: Cleanup autobiographical memory
+    if (brain->autobio) {
+        autobio_destroy(brain->autobio);
+    }
+
+
+    // Phase 12: Cleanup self-model
+    if (brain->self_model) {
+        self_model_destroy(brain->self_model);
+    }
+
+    // Phase 12: Cleanup personality profile
+    // NOTE: personality_profile_t is assumed to be a flat POD type (no internal allocations).
+    // If personality_profile_t ever gains dynamically allocated fields, this must change
+    // to a dedicated personality_destroy() function to avoid memory leaks.
+    if (brain->personality) {
+        nimcp_free(brain->personality);
+    }
+
+    // Phase 11: Cleanup long-term memory consolidation buffer
+    if (brain->longterm_memory) {
+        for (uint32_t i = 0; i < brain->longterm_count; i++) {
+            if (brain->longterm_memory[i].features) {
+                nimcp_free(brain->longterm_memory[i].features);
+            }
+        }
+        nimcp_free(brain->longterm_memory);
+    }
+
+
+    // Phase 11 Enhancement C1.1: Cleanup quantum annealer
+    if (brain->quantum_annealer) {
+        quantum_annealer_destroy(brain->quantum_annealer);
+    }
+
+    // Phase C4.1: Cleanup quantum-Shannon diffusion
+    if (brain->quantum_shannon_diffusion) {
+        quantum_shannon_destroy((quantum_shannon_diffusion_t*)brain->quantum_shannon_diffusion);
+        brain->quantum_shannon_diffusion = NULL;
+    }
+
+
+    // Phase C4.7: Cleanup cross-modal routing graph
+    if (brain->cross_modal_graph) {
+        cross_modal_destroy_routing_graph(brain->cross_modal_graph);
+        brain->cross_modal_graph = NULL;
+    }
+
+
+    // === PHASE E: CLEANUP HIGHER-ORDER COGNITIVE & SOCIAL SYSTEMS ===
+
+    // Phase E5: Cleanup Shadow Emotions
+    if (brain->shadow_emotions) {
+        shadow_system_destroy(brain->shadow_emotions);
+    }
+
+
+    // Phase E6: Cleanup Bias Detection
+    if (brain->bias_detection) {
+        bias_system_destroy(brain->bias_detection);
+    }
+
+
+    // === PHASE E: CLEANUP FULL EMOTIONAL INTELLIGENCE ===
+
+    // Phase E1: Cleanup Grief and Loss
+    if (brain->grief_system) {
+        grief_system_destroy(brain->grief_system);
+    }
+
+    // Phase E2: Cleanup Joy and Euphoria
+    if (brain->joy_system) {
+        joy_system_destroy(brain->joy_system);
+    }
+
+    // Phase E3: Cleanup Remorse and Regret
+    if (brain->remorse_system) {
+        remorse_regret_system_destroy(brain->remorse_system);
+    }
+
+    // Phase E4: Cleanup Love, Loyalty, Friendship
+    if (brain->social_bond_system) {
+        social_bond_system_destroy(brain->social_bond_system);
+    }
+
+
+    // Community Detection: Cleanup
+    if (brain->functional_modules) {
+        topology_community_structure_free(brain->functional_modules);
+    }
+    if (brain->network_hubs) {
+        hub_structure_free(brain->network_hubs);
+    }
+    if (brain->topology_metrics) {
+        nimcp_free(brain->topology_metrics);
+    }
+
+
+    // Network Analyzer: Cleanup
+    if (brain->network_analyzer) {
+        // Local include to avoid global type conflicts
+        #include "cognitive/analysis/nimcp_network_analysis.h"
+        network_analyzer_destroy((network_analyzer_t*)brain->network_analyzer);
+        brain->network_analyzer = NULL;
+    }
+
+
+    // Universal Event Bus: Cleanup event broadcasting system
+    if (brain->event_bus) {
+        event_bus_destroy(brain->event_bus);
+        brain->event_bus = NULL;
+    }
+
+
+    // Phase 1.5: Cleanup memory pools for hot-path allocations
+    if (brain->decision_struct_pool) {
+        memory_pool_destroy(brain->decision_struct_pool);
+        brain->decision_struct_pool = NULL;
+    }
+    if (brain->output_vector_pool) {
+        memory_pool_destroy(brain->output_vector_pool);
+        brain->output_vector_pool = NULL;
+    }
+    if (brain->active_neuron_ids_pool) {
+        memory_pool_destroy(brain->active_neuron_ids_pool);
+        brain->active_neuron_ids_pool = NULL;
+    }
+
+
+    // === PHASE SC-2: CLEANUP SECURITY RECOVERY BRIDGE ===
+    if (brain->security_bridge) {
+        // Local include to avoid global type conflicts
+        #include "security/nimcp_security_recovery_bridge.h"
+        nimcp_srb_destroy((nimcp_security_recovery_bridge_t*)brain->security_bridge);
+        brain->security_bridge = NULL;
+    }
+
+
+    // === PHASE TM-3: CLEANUP BRAIN-TRAINING INTEGRATION ===
+    // Must be cleaned up BEFORE security integration since it may be registered with security
+    if (brain->training_ctx) {
+        nimcp_brain_training_destroy(brain->training_ctx);
+        brain->training_ctx = NULL;
+    }
+    brain->enable_training_integration = false;
+
+
+    // === PHASE SC-4: CLEANUP UNIVERSAL SECURITY INTEGRATION ===
+    if (brain->security_integration) {
+        // Local include to avoid global type conflicts
+        #include "security/nimcp_security_integration.h"
+
+        // Unregister regions
+        if (brain->sec_region_ids) {
+            for (uint32_t i = 0; i < brain->num_sec_regions; i++) {
+                nimcp_sec_unregister_region(brain->security_integration, brain->sec_region_ids[i]);
+            }
+            nimcp_free(brain->sec_region_ids);
+            brain->sec_region_ids = NULL;
+        }
+
+        // Unregister module
+        if (brain->sec_module_id > 0) {
+            nimcp_sec_unregister_module(brain->security_integration, brain->sec_module_id);
+        }
+
+        // Destroy the security integration context
+        nimcp_sec_integration_destroy(brain->security_integration);
+        brain->security_integration = NULL;
+    }
+
+
+    // === PHASE IS-1: CLEANUP BLOOD-BRAIN BARRIER (BBB) ===
+    if (brain->bbb_enabled && brain->bbb_system) {
+        // Unregister this brain's memory region from BBB
+        if (brain->bbb_memory_region_id > 0) {
+            bbb_unregister_memory_region(brain->bbb_system, brain->bbb_memory_region_id);
+        }
+
+        // Release our reference to the global BBB system
+        nimcp_bbb_release_global_system();
+
+        brain->bbb_system = NULL;
+        brain->bbb_memory_region_id = 0;
+        brain->bbb_enabled = false;
+    }
+
+
+    clear_cache(brain);
+
+    // Destroy cache mutex
+    nimcp_platform_mutex_destroy(&brain->cache_mutex);
+
+
+    // P1-9 FIX: Bio-Async reference-counted cleanup.
+    // Only unregister the GLOBAL bio-async context when the last brain is destroyed.
+    // Without this, the first brain_destroy would break all other brains' bio-async.
+    int prev_ref = __atomic_fetch_sub(&g_brain_bio_ref_count, 1, __ATOMIC_ACQ_REL);
+    if (prev_ref <= 1) {
+        // Last brain - perform global bio-async cleanup
+        bio_module_context_t ctx = __atomic_load_n(&g_brain_bio_ctx, __ATOMIC_ACQUIRE);
+        if (ctx && __atomic_compare_exchange_n(&g_brain_bio_ctx, &ctx, NULL,
+                                               false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+            LOG_MODULE_INFO("BRAIN", "Last brain destroyed - unregistering from bio-async router");
+            bio_router_unregister_module(ctx);
+            __atomic_store_n(&g_brain_bio_initialized, false, __ATOMIC_RELEASE);
+            // Reset platform_once so next brain creation can re-register
+            g_brain_bio_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+        }
+    }
+    // If ref_count > 0, other brains still need the global bio-async context
+
+    // Per-brain bio-async cleanup
+    if (brain->bio_async_enabled) {
+        brain_bio_async_shutdown(brain);
+        brain->bio_async_enabled = false;
+    }
+
+
+    nimcp_free(brain);
+}
+
+
+/**
+ * @brief Clone brain using copy-on-write optimization
+ *
+ * WHAT: Creates lightweight clone sharing network with original
+ * WHY:  Enable efficient replication (86% memory savings)
+ * HOW:  Shares adaptive_network_t, copies metadata
+ *
+ * PERFORMANCE: <10ms vs ~350ms for full copy
+ * MEMORY: ~1MB overhead vs ~50MB for full copy
+ *
+ * @param original Brain to clone
+ * @return Cloned brain or NULL on error
+ */
+// brain_clone_cow() - MOVED TO: src/core/brain/distributed/nimcp_brain_distributed.c
+
+/**
+ * @brief Mark brain as a snapshot with preserved stats
+ *
+ * WHAT: Sets snapshot flag and preserves current stats
+ * WHY:  Snapshots should preserve stats at snapshot time, not reflect future changes
+ * HOW:  Stores current stats in brain->snapshot_stats
+ *
+ * @param brain Brain to mark as snapshot
+ * @param stats Stats to preserve
+ */
+// brain_mark_as_snapshot() - MOVED TO: src/core/brain/distributed/nimcp_brain_distributed.c
+
+//=============================================================================
+// Learning API
+//=============================================================================
+
+/**
+ * @brief Find or create output label index
+ *
+ * WHY: Maps string labels to numeric indices
+ * Enables human-readable classification
+ *
+ * COMPLEXITY: O(k) where k = num_existing_labels
+ * OPTIMIZATION: Linear search sufficient for small label sets
+ *
+ * THREAD SAFETY: Uses cache_mutex for protection. This prevents race conditions
+ * when multiple threads try to create labels concurrently, which could cause
+ * duplicate labels or data corruption.
+ *
+ * @param brain Brain handle
+ * @param label Label string
+ * @return Label index
+ */
+static uint32_t get_or_create_label_index(brain_t brain, const char* label)
+{
+    uint32_t result = 0;
+
+    // THREAD SAFETY FIX: Protect label creation with mutex
+    // Without this, concurrent threads could:
+    // 1. Both see label doesn't exist
+    // 2. Both create the same label at same index
+    // 3. Result in duplicate labels or memory corruption
+    nimcp_platform_mutex_lock(&brain->cache_mutex);
+
+    // Search existing labels - O(k)
+    for (uint32_t i = 0; i < brain->num_output_labels; i++) {
+        if (strcmp(brain->output_labels[i], label) == 0) {
+            result = i;
+            goto done;
+        }
+    }
+
+    // Guard: Check capacity
+    if (brain->num_output_labels >= brain->config.num_outputs) {
+        result = 0;
+        goto done;
+    }
+
+    // Create new label (use nimcp_malloc to match nimcp_free in brain_destroy)
+    size_t label_len = strlen(label);
+    brain->output_labels[brain->num_output_labels] = nimcp_malloc(label_len + 1);
+    if (!brain->output_labels[brain->num_output_labels]) {
+        result = 0;
+        goto done;
+    }
+    strncpy(brain->output_labels[brain->num_output_labels], label, label_len + 1);
+    brain->output_labels[brain->num_output_labels][label_len] = '\0';
+    result = brain->num_output_labels++;
+
+done:
+    nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    return result;
+}
