@@ -2341,6 +2341,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/java/CMakeLists.txt")
     add_subdirectory(bindings/java)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/csharp/CMakeLists.txt")
+    message(STATUS "Adding C# bindings tests...")
+    add_subdirectory(bindings/csharp)
+endif()
+
 # ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================
