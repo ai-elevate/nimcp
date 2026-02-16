@@ -2325,6 +2325,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/python")
 endif()
 
 # ============================================================================
+# C++ Bindings Tests
+# ============================================================================
+# WHAT: GTest suite for idiomatic C++20 bindings (nimcp.hpp)
+# WHY:  Verify RAII wrappers, exceptions, callbacks, and full API coverage
+# HOW:  Header-only library tested via cpp_bindings_test executable
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cpp/CMakeLists.txt")
+    message(STATUS "Adding C++ bindings tests...")
+    add_subdirectory(bindings/cpp)
+endif()
+
+# ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================
 # WHAT: Integration tests for tensor operations, autodiff, and SIMD
