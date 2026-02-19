@@ -251,7 +251,7 @@ int security_immune_fep_reset(security_immune_fep_bridge_t* bridge) {
     memset(&bridge->stats, 0, sizeof(security_immune_fep_stats_t));
 
     /* Reset base */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 

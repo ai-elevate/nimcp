@@ -317,9 +317,8 @@ nimcp_input_validation_t nimcp_security_validate_input(const char* input, size_t
         return NIMCP_INPUT_VALID;  /* Can't report, safe default */
     }
     if (!input) {
-        *threat_level = NIMCP_THREAT_MEDIUM;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_security_validate_input: NULL input treated as injection");
-        return NIMCP_INPUT_CONTAINS_INJECTION;
+        *threat_level = NIMCP_THREAT_NONE;
+        return NIMCP_INPUT_VALID;  /* NULL input is not malicious, just absent */
     }
 
     /* WHAT: Check validation cache first for O(1) lookup

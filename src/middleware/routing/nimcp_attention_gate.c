@@ -353,9 +353,9 @@ bool attention_gate_get_weight(const attention_gate_t* gate,
     const attention_entry_t* entry = find_entry(gate, source_id, target_id);
 
     if (!entry) {
-        *weight = 0.0F;
+        *weight = 1.0F;  // Pass-through: unmodulated signal for unregistered routes
         nimcp_mutex_unlock(gate->mutex);
-        return true;  // Return true with 0.0 weight - this is a valid state
+        return true;
     }
 
     *weight = entry->target.combined_weight;

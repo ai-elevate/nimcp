@@ -2361,6 +2361,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/perl/CMakeLists.txt")
     add_subdirectory(bindings/perl)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/nodejs/CMakeLists.txt")
+    message(STATUS "Adding Node.js bindings tests...")
+    add_subdirectory(bindings/nodejs)
+endif()
+
 # ============================================================================
 # Tensor Operations Integration Tests (Standalone)
 # ============================================================================

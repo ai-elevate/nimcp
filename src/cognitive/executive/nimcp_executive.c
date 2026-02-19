@@ -2909,7 +2909,7 @@ uint32_t* executive_get_mc_seed(void) {
 #define MCTS_PLAN_MAX_ACTIONS 8
 
 /** Maximum nodes for planning tree */
-#define MCTS_PLAN_MAX_NODES 512
+#define MCTS_PLAN_MAX_NODES 4096
 
 /**
  * @brief Planning state for MCTS tree node

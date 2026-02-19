@@ -563,7 +563,8 @@ static bool detection_stage_execute(middleware_context_t* ctx, void* data) {
     for (uint32_t i = 0; i < ctx->num_cached_features; i++) {
         if (ctx->cached_features[i] > PATTERN_THRESHOLD) {
             ctx->detected_patterns[patterns_detected] = i;
-            ctx->pattern_confidences[patterns_detected] = ctx->cached_features[i];
+            float conf = ctx->cached_features[i];
+            ctx->pattern_confidences[patterns_detected] = (conf > 1.0f) ? 1.0f : conf;
             patterns_detected++;
         }
     }

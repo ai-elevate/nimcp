@@ -354,6 +354,32 @@ nimcp_go/fast:
 .PHONY : nimcp_go/fast
 
 #=============================================================================
+# Target rules for targets named nimcp_perl
+
+# Build rule for target.
+nimcp_perl: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_perl
+.PHONY : nimcp_perl
+
+# fast build rule for target.
+nimcp_perl/fast:
+	$(MAKE) $(MAKESILENT) -f src/bindings/perl/CMakeFiles/nimcp_perl.dir/build.make src/bindings/perl/CMakeFiles/nimcp_perl.dir/build
+.PHONY : nimcp_perl/fast
+
+#=============================================================================
+# Target rules for targets named nimcp_nodejs
+
+# Build rule for target.
+nimcp_nodejs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nimcp_nodejs
+.PHONY : nimcp_nodejs
+
+# fast build rule for target.
+nimcp_nodejs/fast:
+	$(MAKE) $(MAKESILENT) -f src/bindings/nodejs/CMakeFiles/nimcp_nodejs.dir/build.make src/bindings/nodejs/CMakeFiles/nimcp_nodejs.dir/build
+.PHONY : nimcp_nodejs/fast
+
+#=============================================================================
 # Target rules for targets named unit_api_test_api_brain_cow
 
 # Build rule for target.
@@ -39621,6 +39647,8 @@ help:
 	@echo "... lint-fix"
 	@echo "... nimcp_csharp"
 	@echo "... nimcp_go"
+	@echo "... nimcp_nodejs"
+	@echo "... nimcp_perl"
 	@echo "... nimcp_rust"
 	@echo "... run_all_benchmarks"
 	@echo "... run_bench_benchmark_complex_fft"

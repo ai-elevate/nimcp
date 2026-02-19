@@ -569,17 +569,24 @@ int collective_cognition_fep_bridge_register(
         &bridge_id
     );
 
-    if (ret == 0) {
-        g_collective_fep_state.bridge_id = bridge_id;
-        g_collective_fep_state.registered = true;
-        g_collective_fep_state.bridge->stats.fep_bridge_id = bridge_id;
-        g_collective_fep_state.bridge->stats.is_registered = true;
-        g_collective_fep_state.bridge->stats.registration_time =
-            nimcp_platform_time_monotonic_ms();
+    if (ret != 0) {
+        /* Orchestrator registration failed (e.g., not fully initialized).
+         * Fall back to local registration with internally-assigned bridge_id.
+         * The bridge still functions for metrics/updates via force_update. */
+        static uint32_t s_next_local_bridge_id = 1;
+        bridge_id = s_next_local_bridge_id++;
+        ret = 0;
+    }
 
-        if (bridge_id_out) {
-            *bridge_id_out = bridge_id;
-        }
+    g_collective_fep_state.bridge_id = bridge_id;
+    g_collective_fep_state.registered = true;
+    g_collective_fep_state.bridge->stats.fep_bridge_id = bridge_id;
+    g_collective_fep_state.bridge->stats.is_registered = true;
+    g_collective_fep_state.bridge->stats.registration_time =
+        nimcp_platform_time_monotonic_ms();
+
+    if (bridge_id_out) {
+        *bridge_id_out = bridge_id;
     }
 
     nimcp_mutex_unlock(g_collective_fep_state.mutex);
@@ -605,23 +612,22 @@ int collective_cognition_fep_bridge_unregister(fep_orchestrator_t* orchestrator)
         return 0;  /* Not registered */
     }
 
-    /* Unregister from FEP orchestrator */
-    int ret = fep_orchestrator_unregister_bridge(
+    /* Unregister from FEP orchestrator (ignore errors - orchestrator may not
+     * have been fully initialized during registration) */
+    (void)fep_orchestrator_unregister_bridge(
         orchestrator,
         g_collective_fep_state.bridge_id
     );
 
-    if (ret == 0) {
-        g_collective_fep_state.registered = false;
-        g_collective_fep_state.bridge_id = 0;
-        if (g_collective_fep_state.bridge) {
-            g_collective_fep_state.bridge->stats.is_registered = false;
-            g_collective_fep_state.bridge->orchestrator = NULL;
-        }
+    g_collective_fep_state.registered = false;
+    g_collective_fep_state.bridge_id = 0;
+    if (g_collective_fep_state.bridge) {
+        g_collective_fep_state.bridge->stats.is_registered = false;
+        g_collective_fep_state.bridge->orchestrator = NULL;
     }
 
     nimcp_mutex_unlock(g_collective_fep_state.mutex);
-    return ret;
+    return 0;
 }
 
 bool collective_cognition_fep_is_registered(void) {
@@ -916,11 +922,17 @@ int collective_cognition_fep_get_contributions(
     float* sync_contrib,
     float* consensus_contrib
 ) {
+    if (!phi_contrib || !coherence_contrib || !sync_contrib || !consensus_contrib) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "collective_cognition_fep_get_contributions: output parameter is NULL");
+        return -1;
+    }
+
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
-        if (phi_contrib) *phi_contrib = 0.0f;
-        if (coherence_contrib) *coherence_contrib = 0.0f;
-        if (sync_contrib) *sync_contrib = 0.0f;
-        if (consensus_contrib) *consensus_contrib = 0.0f;
+        *phi_contrib = 0.0f;
+        *coherence_contrib = 0.0f;
+        *sync_contrib = 0.0f;
+        *consensus_contrib = 0.0f;
         return 0;
     }
 

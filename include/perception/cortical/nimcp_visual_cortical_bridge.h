@@ -104,8 +104,8 @@ extern "C" {
 /** Default tuning width in degrees */
 #define VISUAL_CORTICAL_DEFAULT_TUNING_WIDTH 30.0f
 
-/** Default immune inflammation modulation factor */
-#define VISUAL_CORTICAL_DEFAULT_IMMUNE_FACTOR 1.0f
+/** Default immune inflammation modulation factor (0 = no immune influence) */
+#define VISUAL_CORTICAL_DEFAULT_IMMUNE_FACTOR 0.0f
 
 /* ============================================================================
  * Enumerations

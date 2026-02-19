@@ -114,6 +114,7 @@ perception_immune_context_t* perception_immune_create(
     memset(ctx, 0, sizeof(perception_immune_context_t));
     ctx->immune_system = immune_system;
     ctx->anomaly_capacity = PERCEPTION_IMMUNE_MAX_ANOMALIES;
+    ctx->next_anomaly_id = 1;  /* Start IDs at 1 so 0 means "no anomaly" */
 
     /* Allocate anomaly buffer */
     ctx->anomalies = (perception_anomaly_t*)
@@ -480,6 +481,20 @@ int perception_immune_update_modulation(perception_immune_context_t* ctx) {
     ctx->modulation.il6_level = inflammation_estimate * 0.5f;
     ctx->modulation.tnf_alpha_level = inflammation_estimate * 0.3f;
     ctx->modulation.il10_level = (1.0f - inflammation_estimate) * 0.4f;
+
+    /* Preserve overload protection: don't downgrade inflammation below REGIONAL */
+    if (ctx->modulation.visual_overload_protection &&
+        ctx->modulation.visual_inflammation < INFLAMMATION_REGIONAL) {
+        ctx->modulation.visual_inflammation = INFLAMMATION_REGIONAL;
+    }
+    if (ctx->modulation.audio_overload_protection &&
+        ctx->modulation.audio_inflammation < INFLAMMATION_REGIONAL) {
+        ctx->modulation.audio_inflammation = INFLAMMATION_REGIONAL;
+    }
+    if (ctx->modulation.speech_overload_protection &&
+        ctx->modulation.speech_inflammation < INFLAMMATION_REGIONAL) {
+        ctx->modulation.speech_inflammation = INFLAMMATION_REGIONAL;
+    }
 
     /* Compute gains */
     float visual_factor = compute_inflammation_factor(

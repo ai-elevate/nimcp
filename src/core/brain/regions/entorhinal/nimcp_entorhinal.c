@@ -2002,9 +2002,12 @@ float entorhinal_get_health_status(const nimcp_entorhinal_t* ec) {
         health *= 0.5f;
     }
 
-    /* Ensure we always return a positive value for healthy systems */
+    /* Clamp to [0, 1] range */
     if (health < 0.01f) {
         health = 0.5f;  /* Default baseline health */
+    }
+    if (health > 1.0f) {
+        health = 1.0f;
     }
 
     return health;

@@ -33,7 +33,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromodulator_immune)
  * @return Deviation (-1 to +1, 0 = balanced)
  */
 static float compute_deviation(float current, float baseline) {
-    if (baseline < 0.0001f) return 0.0f;
+    if (baseline < 1e-10f) return 0.0f;
     return (current - baseline) / baseline;
 }
 
@@ -356,11 +356,11 @@ int neuromod_immune_apply_cytokine_effect(
 
     case CYTOKINE_TNFA:
         /* TNF-α: Very strong suppression, increase MAO activity */
-        system->cytokine_effects.tyrosine_hydroxylase_activity *= (1.0f - 0.5f * effect_strength);
-        system->cytokine_effects.tryptophan_hydroxylase_activity *= (1.0f - 0.6f * effect_strength);
-        system->cytokine_effects.dopamine_synthesis_multiplier *= (1.0f - 0.5f * effect_strength);
-        system->cytokine_effects.serotonin_synthesis_multiplier *= (1.0f - 0.6f * effect_strength);
-        system->cytokine_effects.mao_activity *= (1.0f + 0.3f * effect_strength);
+        system->cytokine_effects.tyrosine_hydroxylase_activity *= (1.0f - 0.9f * effect_strength);
+        system->cytokine_effects.tryptophan_hydroxylase_activity *= (1.0f - 1.1f * effect_strength);
+        system->cytokine_effects.dopamine_synthesis_multiplier *= (1.0f - 0.9f * effect_strength);
+        system->cytokine_effects.serotonin_synthesis_multiplier *= (1.0f - 1.1f * effect_strength);
+        system->cytokine_effects.mao_activity *= (1.0f + 0.5f * effect_strength);
         system->cytokine_effects.total_suppressions++;
         break;
 
@@ -446,8 +446,8 @@ int neuromod_immune_apply_proinflammatory_effect(
     system->cytokine_effects.comt_activity *= (1.0f + degradation_increase * 0.8f);
 
     /* Update synthesis multipliers */
-    system->cytokine_effects.dopamine_synthesis_multiplier *= (1.0f - 0.35f * severity);
-    system->cytokine_effects.serotonin_synthesis_multiplier *= (1.0f - 0.45f * severity);
+    system->cytokine_effects.dopamine_synthesis_multiplier *= (1.0f - 0.45f * severity);
+    system->cytokine_effects.serotonin_synthesis_multiplier *= (1.0f - 0.55f * severity);
     system->cytokine_effects.norepinephrine_synthesis_multiplier *= (1.0f + 0.15f * severity);
 
     system->cytokine_effects.total_suppressions++;
@@ -698,6 +698,9 @@ int neuromod_immune_correct_imbalance(
     /* WHAT: Apply homeostatic correction to imbalance
      * WHY:  Restore neuromodulator balance
      * HOW:  Generate corrective immune response
+     *
+     * NOTE: Read imbalance type under lock, then release before calling
+     *       apply_*_effect() to avoid deadlock (those functions lock mutex)
      */
 
     if (!system || !imbalance) {
@@ -709,10 +712,13 @@ int neuromod_immune_correct_imbalance(
         return -1;
     }
 
+    /* Read imbalance type under lock */
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
+    neuromod_imbalance_type_t type = imbalance->type;
+    nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
-    /* Apply correction based on imbalance type */
-    switch (imbalance->type) {
+    /* Apply correction without holding lock (sub-functions acquire it) */
+    switch (type) {
     case NEUROMOD_IMBALANCE_DA_EXCESS:
         /* Suppress dopamine via anti-inflammatory response */
         neuromod_immune_apply_proinflammatory_effect(system, 0.3f);
@@ -734,19 +740,19 @@ int neuromod_immune_correct_imbalance(
         break;
 
     default:
-        nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_correct_imbalance: operation failed");
         return -1;
     }
 
+    /* Mark correction under lock */
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     imbalance->corrective_action_taken = true;
     system->total_corrections++;
-
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
     LOG_MODULE_INFO(NEUROMOD_IMMUNE_MODULE_NAME,
               "Applied homeostatic correction for imbalance: type=%s",
-              neuromod_immune_imbalance_to_string(imbalance->type));
+              neuromod_immune_imbalance_to_string(type));
 
     return 0;
 }
@@ -778,22 +784,23 @@ int neuromod_immune_update(
 
     float dt_sec = delta_ms / 1000.0f;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
-
-    /* 1. Query immune system for cytokine levels */
+    /* 1. Query immune system for cytokine levels (no lock needed for read) */
+    float inflammation_level = 0.0f;
     if (system->immune_system) {
         brain_immune_stats_t immune_stats;
         if (brain_immune_get_stats(system->immune_system, &immune_stats) == 0) {
             /* Map inflammation sites to cytokine concentration */
-            float inflammation_level = (float)immune_stats.inflammation_sites / 10.0f;
+            inflammation_level = (float)immune_stats.inflammation_sites / 10.0f;
             if (inflammation_level > 1.0f) inflammation_level = 1.0f;
-
-            /* Apply pro-inflammatory effects based on inflammation */
-            if (inflammation_level > 0.1f) {
-                neuromod_immune_apply_proinflammatory_effect(system, inflammation_level);
-            }
         }
     }
+
+    /* Apply pro-inflammatory effects (acquires its own lock) */
+    if (inflammation_level > 0.1f) {
+        neuromod_immune_apply_proinflammatory_effect(system, inflammation_level);
+    }
+
+    nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
     /* 2. Update metabolic states with cytokine-modified synthesis rates */
     float da_synth_mod = system->cytokine_effects.dopamine_synthesis_multiplier *

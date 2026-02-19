@@ -793,7 +793,7 @@ int sec_log_fep_reset(sec_log_fep_bridge_t* bridge)
     bridge->last_protection_time = 0;
 
     /* Reset base */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     /* Restore integrity defaults */
     bridge->fep_effects.integrity_level = SEC_LOG_FEP_INTEGRITY_NORMAL;

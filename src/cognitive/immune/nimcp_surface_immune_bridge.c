@@ -255,7 +255,7 @@ int surface_immune_bridge_reset(surface_immune_bridge_t* bridge) {
     bridge->next_antigen_id = 1;
     bridge->next_antibody_id = 1;
 
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     BRIDGE_UNLOCK(bridge);
     return 0;

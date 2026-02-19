@@ -327,11 +327,14 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
     pred->prediction_precision = config->initial_precision;
     pred->training_mode = false;
 
-    /* Build MLP network */
-    if (config->type == JEPA_PREDICTOR_MLP || config->type == JEPA_PREDICTOR_LINEAR) {
+    /* Build MLP network (all predictor types use MLP as the internal representation) */
+    if (config->type == JEPA_PREDICTOR_MLP || config->type == JEPA_PREDICTOR_LINEAR ||
+        config->type == JEPA_PREDICTOR_TRANSFORMER || config->type == JEPA_PREDICTOR_RECURRENT) {
         jepa_mlp_t* mlp = &pred->network.mlp;
 
-        uint32_t actual_layers = (config->type == JEPA_PREDICTOR_LINEAR) ? 1 : config->num_layers;
+        uint32_t actual_layers = (config->type == JEPA_PREDICTOR_LINEAR) ? 1 :
+                                 (config->type == JEPA_PREDICTOR_TRANSFORMER) ? config->num_layers + 1 :
+                                 config->num_layers;
         mlp->num_layers = actual_layers;
 
         /* Allocate layer array */
@@ -465,7 +468,8 @@ void jepa_predictor_destroy(jepa_predictor_t* predictor) {
     jepa_predictor_heartbeat("jepa_predict_destroy", 0.0f);
 
 
-    if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
+    if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+        predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT) {
         jepa_mlp_t* mlp = &predictor->network.mlp;
         if (mlp->layers) {
             for (uint32_t i = 0; i < mlp->num_layers; i++) {
@@ -507,7 +511,8 @@ int jepa_predictor_reset(jepa_predictor_t* predictor) {
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
 
     /* Reinitialize weights */
-    if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
+    if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+        predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT) {
         jepa_mlp_t* mlp = &predictor->network.mlp;
         for (uint32_t i = 0; i < mlp->num_layers; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -554,7 +559,8 @@ int jepa_predictor_predict(jepa_predictor_t* predictor,
                       prediction->latent_dim, predictor->config.output_dim);
 
     /* Forward pass through MLP */
-    if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
+    if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+        predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT) {
         jepa_mlp_t* mlp = &predictor->network.mlp;
         const float* input = context->embedding;
 
@@ -756,7 +762,8 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
-    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+                      predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT,
                       NIMCP_ERROR_NOT_IMPLEMENTED, "backward not implemented for this predictor type");
 
     jepa_mlp_t* mlp = &predictor->network.mlp;
@@ -890,7 +897,8 @@ int jepa_predictor_update_weights(jepa_predictor_t* predictor, float learning_ra
         learning_rate = predictor->config.learning_rate;
     }
 
-    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
+    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR &&
+        predictor->type != JEPA_PREDICTOR_TRANSFORMER && predictor->type != JEPA_PREDICTOR_RECURRENT) {
         return NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
@@ -1098,7 +1106,8 @@ uint32_t jepa_predictor_num_params(const jepa_predictor_t* predictor) {
     jepa_predictor_heartbeat("jepa_predict_num_params", 0.0f);
 
 
-    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
+    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR &&
+        predictor->type != JEPA_PREDICTOR_TRANSFORMER && predictor->type != JEPA_PREDICTOR_RECURRENT) {
         return 0;
     }
 
@@ -1131,7 +1140,8 @@ int jepa_predictor_get_weights(const jepa_predictor_t* predictor,
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(weights, NIMCP_ERROR_NULL_POINTER, "weights is NULL");
     NIMCP_CHECK_THROW(dims, NIMCP_ERROR_NULL_POINTER, "dims is NULL");
-    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+                      predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT,
                       NIMCP_ERROR_NOT_IMPLEMENTED, "get_weights not implemented for this predictor type");
 
     const jepa_mlp_t* mlp = &predictor->network.mlp;
@@ -1157,7 +1167,8 @@ int jepa_predictor_set_weights(jepa_predictor_t* predictor,
 
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(weights, NIMCP_ERROR_NULL_POINTER, "weights is NULL");
-    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+                      predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT,
                       NIMCP_ERROR_NOT_IMPLEMENTED, "set_weights not implemented for this predictor type");
 
     jepa_mlp_t* mlp = &predictor->network.mlp;
@@ -1833,7 +1844,8 @@ int jepa_predictor_qmc_adaptive_anneal(
     NIMCP_CHECK_THROW(contexts, NIMCP_ERROR_NULL_POINTER, "contexts is NULL");
     NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_POINTER, "targets is NULL");
     NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM, "num_samples must be > 0");
-    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR ||
+                      predictor->type == JEPA_PREDICTOR_TRANSFORMER || predictor->type == JEPA_PREDICTOR_RECURRENT,
                       NIMCP_ERROR_NOT_IMPLEMENTED, "QMC adaptive anneal not implemented for this predictor type");
 
     /* Use default config if not provided */

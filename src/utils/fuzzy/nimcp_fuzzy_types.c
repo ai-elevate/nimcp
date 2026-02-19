@@ -418,6 +418,11 @@ int fuzzy_set_create(fuzzy_set_t* set, const char* name,
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_set_create: set is NULL");
         return FUZZY_ERR_NULL;
     }
+    if (!name) {
+        set_error("fuzzy_set_create: name is NULL");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_set_create: name is NULL");
+        return FUZZY_ERR_NULL;
+    }
     if (!mf) {
         set_error("fuzzy_set_create: mf is NULL");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_set_create: mf is NULL");
@@ -425,10 +430,8 @@ int fuzzy_set_create(fuzzy_set_t* set, const char* name,
     }
 
     memset(set, 0, sizeof(fuzzy_set_t));
-    if (name) {
-        strncpy(set->name, name, FUZZY_MAX_NAME_LEN - 1);
-        set->name[FUZZY_MAX_NAME_LEN - 1] = '\0';
-    }
+    strncpy(set->name, name, FUZZY_MAX_NAME_LEN - 1);
+    set->name[FUZZY_MAX_NAME_LEN - 1] = '\0';
     set->mf = *mf;
     set->hedge = hedge;
     set->alpha_cut = 0.0f;
@@ -454,6 +457,11 @@ int fuzzy_variable_create(fuzzy_variable_t* var, const char* name,
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_variable_create: var is NULL");
         return FUZZY_ERR_NULL;
     }
+    if (!name) {
+        set_error("fuzzy_variable_create: name is NULL");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_variable_create: name is NULL");
+        return FUZZY_ERR_NULL;
+    }
     if (universe_min >= universe_max) {
         set_error("fuzzy_variable_create: invalid universe range [%f, %f]",
                   (double)universe_min, (double)universe_max);
@@ -463,10 +471,8 @@ int fuzzy_variable_create(fuzzy_variable_t* var, const char* name,
     }
 
     memset(var, 0, sizeof(fuzzy_variable_t));
-    if (name) {
-        strncpy(var->name, name, FUZZY_MAX_NAME_LEN - 1);
-        var->name[FUZZY_MAX_NAME_LEN - 1] = '\0';
-    }
+    strncpy(var->name, name, FUZZY_MAX_NAME_LEN - 1);
+    var->name[FUZZY_MAX_NAME_LEN - 1] = '\0';
     var->universe_min = universe_min;
     var->universe_max = universe_max;
     var->num_terms = 0;
@@ -588,11 +594,10 @@ int fuzzy_discrete_set_union(const fuzzy_discrete_set_t* a, const fuzzy_discrete
     if (a->resolution != b->resolution) return FUZZY_ERR_DIMENSION_MISMATCH;
     if (!a->values || !b->values) return FUZZY_ERR_NULL;
 
-    /* Auto-allocate output if not already allocated */
-    if (!out->values) {
-        int rc = fuzzy_discrete_set_create(out, a->resolution, a->x_min, a->x_max);
-        if (rc != FUZZY_ERR_OK) return rc;
-    }
+    /* Initialize and allocate output */
+    memset(out, 0, sizeof(fuzzy_discrete_set_t));
+    int rc = fuzzy_discrete_set_create(out, a->resolution, a->x_min, a->x_max);
+    if (rc != FUZZY_ERR_OK) return rc;
 
     for (uint32_t i = 0; i < a->resolution; i++) {
         out->values[i] = (a->values[i] > b->values[i]) ? a->values[i] : b->values[i];
@@ -606,11 +611,10 @@ int fuzzy_discrete_set_intersection(const fuzzy_discrete_set_t* a, const fuzzy_d
     if (a->resolution != b->resolution) return FUZZY_ERR_DIMENSION_MISMATCH;
     if (!a->values || !b->values) return FUZZY_ERR_NULL;
 
-    /* Auto-allocate output if not already allocated */
-    if (!out->values) {
-        int rc = fuzzy_discrete_set_create(out, a->resolution, a->x_min, a->x_max);
-        if (rc != FUZZY_ERR_OK) return rc;
-    }
+    /* Initialize and allocate output */
+    memset(out, 0, sizeof(fuzzy_discrete_set_t));
+    int rc = fuzzy_discrete_set_create(out, a->resolution, a->x_min, a->x_max);
+    if (rc != FUZZY_ERR_OK) return rc;
 
     for (uint32_t i = 0; i < a->resolution; i++) {
         out->values[i] = (a->values[i] < b->values[i]) ? a->values[i] : b->values[i];
@@ -631,7 +635,9 @@ int fuzzy_mf_discretize(const fuzzy_mf_t* mf, float x_min, float x_max,
         return FUZZY_ERR_RESOLUTION;
     }
 
-    if (!out->values) {
+    /* Initialize and allocate output */
+    memset(out, 0, sizeof(fuzzy_discrete_set_t));
+    {
         int rc = fuzzy_discrete_set_create(out, resolution, x_min, x_max);
         if (rc != FUZZY_ERR_OK) return rc;
     }

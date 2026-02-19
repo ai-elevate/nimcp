@@ -156,6 +156,34 @@ static bool run_validators(void);
 // Snapshot API Implementation
 //=============================================================================
 
+/* Callback context for snapshot capture */
+typedef struct {
+    config_snapshot_internal_t* snap;
+} snapshot_capture_ctx_t;
+
+static bool snapshot_capture_entry(const char* key, config_value_type_t type,
+                                    const config_value_t* value, void* user_data) {
+    snapshot_capture_ctx_t* ctx = (snapshot_capture_ctx_t*)user_data;
+    config_snapshot_internal_t* snap = ctx->snap;
+
+    if (snap->entry_count >= MAX_CONFIG_ENTRIES) return false;
+
+    config_entry_snapshot_t* entry = &snap->entries[snap->entry_count];
+    entry->in_use = true;
+    entry->type = type;
+    strncpy(entry->key, key, MAX_KEY_LENGTH - 1);
+    entry->key[MAX_KEY_LENGTH - 1] = '\0';
+
+    if (type == CONFIG_TYPE_STRING && value->string_val) {
+        entry->value.string_val = nimcp_strdup(value->string_val);
+    } else {
+        entry->value = *value;
+    }
+
+    snap->entry_count++;
+    return true;
+}
+
 config_snapshot_t config_create_snapshot(void) {
     LOG_DEBUG("config_create_snapshot: creating snapshot v%u", g_current_version);
 
@@ -176,12 +204,9 @@ config_snapshot_t config_create_snapshot(void) {
 
     nimcp_platform_rwlock_rdlock(&g_atomic_lock);
 
-    // Capture current config state
-    // NOTE: This is a simplified version. Full implementation would need to
-    // integrate with nimcp_dynamic_config.c to access g_config_table
-
-    // For now, we'll just record metadata
-    snap->entry_count = 0;  // TODO: Copy actual config entries
+    /* Capture all current config entries */
+    snapshot_capture_ctx_t ctx = { .snap = snap };
+    config_iterate_entries(snapshot_capture_entry, &ctx);
 
     nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
@@ -242,15 +267,38 @@ bool config_restore_snapshot(config_snapshot_t snap) {
 
     nimcp_platform_rwlock_wrlock(&g_atomic_lock);
 
-    // TODO: Restore config entries from snapshot to g_config_table
-    // This requires integration with nimcp_dynamic_config.c
+    /* Restore each entry from snapshot */
+    for (size_t i = 0; i < s->entry_count; i++) {
+        if (!s->entries[i].in_use) continue;
+
+        const char* key = s->entries[i].key;
+        switch (s->entries[i].type) {
+            case CONFIG_TYPE_INT:
+                config_set_int(key, s->entries[i].value.int_val);
+                break;
+            case CONFIG_TYPE_FLOAT:
+                config_set_float(key, s->entries[i].value.float_val);
+                break;
+            case CONFIG_TYPE_BOOL:
+                config_set_bool(key, s->entries[i].value.bool_val);
+                break;
+            case CONFIG_TYPE_STRING:
+                if (s->entries[i].value.string_val) {
+                    config_set_string(key, s->entries[i].value.string_val);
+                }
+                break;
+            default:
+                break;
+        }
+    }
 
     g_current_version = s->version;
     g_atomic_stats.rollbacks++;
 
     nimcp_platform_rwlock_unlock(&g_atomic_lock);
 
-    LOG_INFO("config_restore_snapshot: restored to v%u", g_current_version);
+    LOG_INFO("config_restore_snapshot: restored to v%u with %zu entries",
+             g_current_version, s->entry_count);
     return true;
 }
 
@@ -797,11 +845,35 @@ size_t config_compare_with_snapshot(config_snapshot_t snap) {
     config_snapshot_internal_t* s = (config_snapshot_internal_t*)snap;
     if (!validate_snapshot(s)) return 0;
 
-    // TODO: Compare current config with snapshot
-    // Requires integration with nimcp_dynamic_config.c
+    size_t diffs = 0;
 
-    LOG_DEBUG("config_compare_with_snapshot: comparison not yet implemented");
-    return 0;
+    for (size_t i = 0; i < s->entry_count; i++) {
+        if (!s->entries[i].in_use) continue;
+
+        const char* key = s->entries[i].key;
+        switch (s->entries[i].type) {
+            case CONFIG_TYPE_INT:
+                if (config_get_int(key, 0) != s->entries[i].value.int_val) diffs++;
+                break;
+            case CONFIG_TYPE_FLOAT:
+                if (config_get_float(key, 0.0) != s->entries[i].value.float_val) diffs++;
+                break;
+            case CONFIG_TYPE_BOOL:
+                if (config_get_bool(key, false) != s->entries[i].value.bool_val) diffs++;
+                break;
+            case CONFIG_TYPE_STRING: {
+                const char* current = config_get_string(key, "");
+                const char* saved = s->entries[i].value.string_val ? s->entries[i].value.string_val : "";
+                if (strcmp(current, saved) != 0) diffs++;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    LOG_DEBUG("config_compare_with_snapshot: found %zu differences", diffs);
+    return diffs;
 }
 
 //=============================================================================

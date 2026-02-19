@@ -301,7 +301,7 @@ void kg_wiring_exception_shutdown(void);
  */
 #define NIMCP_THROW_KG_WIRING(code, module_name, operation, fmt, ...) \
     do { \
-        if (kg_wiring_exceptions_enabled()) { \
+        if (kg_wiring_exceptions_enabled() && nimcp_exception_system_is_initialized()) { \
             nimcp_kg_wiring_exception_t* _kex = nimcp_kg_wiring_exception_create( \
                 (code), \
                 nimcp_exception_get_severity_from_code(code), \
@@ -331,7 +331,7 @@ void kg_wiring_exception_shutdown(void);
  */
 #define NIMCP_THROW_KG_WIRING_CAPACITY(code, module_name, operation, max_count) \
     do { \
-        if (kg_wiring_exceptions_enabled()) { \
+        if (kg_wiring_exceptions_enabled() && nimcp_exception_system_is_initialized()) { \
             nimcp_kg_wiring_exception_t* _kex = nimcp_kg_wiring_exception_create_capacity( \
                 (code), \
                 __FILE__, \
@@ -361,7 +361,7 @@ void kg_wiring_exception_shutdown(void);
  */
 #define NIMCP_THROW_KG_WIRING_STRING(code, module_name, operation, len, max_len) \
     do { \
-        if (kg_wiring_exceptions_enabled()) { \
+        if (kg_wiring_exceptions_enabled() && nimcp_exception_system_is_initialized()) { \
             nimcp_kg_wiring_exception_t* _kex = nimcp_kg_wiring_exception_create_string( \
                 (code), \
                 __FILE__, \

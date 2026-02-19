@@ -871,8 +871,48 @@ static inline uint32_t qreason_forward_chain(
 }
 
 /**
+ * WHAT: Check if a state (bit pattern) satisfies a CNF formula
+ * WHY:  Verify measurement result or scan for satisfying assignments
+ *
+ * @param state Bit pattern representing variable assignment
+ * @param cnf CNF formula
+ * @return true if state satisfies formula
+ */
+static inline bool qreason_state_satisfies_cnf(
+    uint32_t state,
+    const qreason_cnf_t* cnf
+) {
+    for (uint32_t c = 0; c < cnf->n_clauses; c++) {
+        bool clause_sat = false;
+
+        for (uint32_t l = 0; l < cnf->clauses[c].n_literals; l++) {
+            uint32_t var = cnf->clauses[c].literals[l].variable;
+            bool negated = cnf->clauses[c].literals[l].negated;
+            bool var_true = (state >> var) & 1;
+
+            if (negated ? !var_true : var_true) {
+                clause_sat = true;
+                break;
+            }
+        }
+
+        if (!clause_sat) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
  * WHAT: Solve SAT using quantum (Grover-inspired) solver
  * WHY:  Internal function for quantum-only solving
+ *
+ * ALGORITHM:
+ * 1. Initialize uniform superposition
+ * 2. Compute optimal Grover iteration count: pi/4 * sqrt(N/M)
+ * 3. Run Grover iterations (oracle + diffusion) when solutions are rare
+ * 4. Measure highest-probability state
+ * 5. Verify measurement satisfies CNF; if not, scan for satisfying state
  *
  * @param internal Internal context
  * @param cnf CNF formula
@@ -890,23 +930,21 @@ static inline int qreason_quantum_solve_sat_internal(
     /* Check initial satisfaction probability before Grover */
     float initial_prob = qreason_satisfaction_probability(&internal->qstate, cnf);
 
-    /* Grover only helps when solutions are rare (< 50%).
+    /* Compute optimal Grover iteration count: pi/4 * sqrt(N/M)
+     * where N = state_dim, M = estimated number of solutions.
+     * Grover only helps when solutions are rare (< 50%).
      * When solutions are majority, skip Grover to preserve probability. */
     uint32_t iterations = 0;
-    if (initial_prob < 0.5f) {
-        iterations = internal->config.max_grover_iterations;
-        if (iterations == 0) {
-            /* Optimal iterations: pi/4 * sqrt(N/M) where M = solutions */
-            float estimated_solutions = initial_prob * (float)internal->qstate.state_dim;
-            if (estimated_solutions > 0.0f) {
-                float ratio = (float)internal->qstate.state_dim / estimated_solutions;
-                iterations = (uint32_t)(M_PI / 4.0 * sqrtf(ratio));
-                iterations = (iterations < 1) ? 1 : iterations;
-                iterations = (iterations > 20) ? 20 : iterations;
-            } else {
-                iterations = 1;
-            }
-        }
+    if (initial_prob > 0.0f && initial_prob < 0.5f) {
+        float estimated_solutions = initial_prob * (float)internal->qstate.state_dim;
+        float ratio = (float)internal->qstate.state_dim / estimated_solutions;
+        uint32_t optimal = (uint32_t)(M_PI / 4.0 * sqrtf(ratio));
+        if (optimal < 1) optimal = 1;
+
+        /* Cap at max_grover_iterations if set, otherwise use reasonable limit */
+        uint32_t max_iter = internal->config.max_grover_iterations;
+        if (max_iter == 0) max_iter = 20;
+        iterations = (optimal < max_iter) ? optimal : max_iter;
 
         /* Run Grover iterations */
         for (uint32_t i = 0; i < iterations; i++) {
@@ -915,10 +953,36 @@ static inline int qreason_quantum_solve_sat_internal(
         }
     }
 
-    /* Measure result */
+    /* Measure result - find highest probability state */
     uint32_t best_state = qreason_measure(&internal->qstate);
 
-    /* Extract assignment */
+    /* Verify the measured state actually satisfies the CNF.
+     * If not (due to uniform superposition or Grover oscillation),
+     * scan states by probability to find a satisfying one. */
+    if (!qreason_state_satisfies_cnf(best_state, cnf)) {
+        /* Scan all states by descending probability for a satisfying one */
+        float best_sat_prob = -1.0f;
+        uint32_t best_sat_state = best_state;
+        bool found_sat = false;
+
+        for (uint32_t s = 0; s < internal->qstate.state_dim; s++) {
+            if (qreason_state_satisfies_cnf(s, cnf)) {
+                float prob = internal->qstate.amplitudes[s] *
+                            internal->qstate.amplitudes[s];
+                if (prob > best_sat_prob) {
+                    best_sat_prob = prob;
+                    best_sat_state = s;
+                    found_sat = true;
+                }
+            }
+        }
+
+        if (found_sat) {
+            best_state = best_sat_state;
+        }
+    }
+
+    /* Extract assignment from best state */
     for (uint32_t v = 0; v < cnf->n_variables; v++) {
         bool val = (best_state >> v) & 1;
         result->assignment[v] = val ? QREASON_TRUE : QREASON_FALSE;

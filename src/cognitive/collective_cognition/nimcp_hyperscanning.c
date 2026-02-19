@@ -285,8 +285,7 @@ static pair_sync_entry_t* find_pair(
             return &hs->pairs[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pair: operation failed");
-    return NULL;
+    return NULL;  /* Not found is normal */
 }
 
 static pair_sync_entry_t* get_or_create_pair(

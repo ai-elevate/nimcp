@@ -1100,7 +1100,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
 bool signal_handler_uninstall(void)
 {
     if (!g_installed) {
-        return true;  // Nothing to uninstall - safe no-op
+        return false;  // Not installed - nothing to uninstall
     }
 
     /* Process any remaining exceptions before shutdown */

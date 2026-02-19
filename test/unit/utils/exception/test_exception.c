@@ -731,9 +731,10 @@ END_TEST
 
 START_TEST(test_try_catch_with_exception)
 {
-    bool try_executed = false;
-    bool catch_executed = false;
-    nimcp_error_t caught_code = 0;
+    /* Variables modified between setjmp/longjmp must be volatile */
+    volatile bool try_executed = false;
+    volatile bool catch_executed = false;
+    volatile nimcp_error_t caught_code = 0;
 
     NIMCP_TRY {
         try_executed = true;

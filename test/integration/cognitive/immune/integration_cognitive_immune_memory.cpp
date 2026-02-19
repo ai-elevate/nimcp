@@ -347,7 +347,9 @@ TEST_F(MemoryImmuneIntegrationTest, E2E_ImmuneResponseCycle) {
     integration->metrics.inflammation_level = INFLAMMATION_NONE;
     integration->metrics.active_inflammation_sites = 0;
     integration->metrics.immune_phase = IMMUNE_PHASE_RESOLUTION;
-    integration->metrics.il10_concentration = 0.8f;  /* Anti-inflammatory */
+    integration->metrics.il1_concentration = 0.0f;   /* Pro-inflammatory resolved */
+    integration->metrics.tnf_concentration = 0.0f;   /* Pro-inflammatory resolved */
+    integration->metrics.il10_concentration = 0.2f;   /* Anti-inflammatory returning to baseline */
 
     memory_immune_update_state(integration, 10000);
     uint32_t restored_capacity = memory_immune_update_wm_capacity(integration);

@@ -672,17 +672,20 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
 bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
                           size_t expected_size, bbb_validation_result_t* result)
 {
-    /* Use local result when caller passes NULL */
+    /* Use local result if caller didn't provide one */
     bbb_validation_result_t local_result;
-    bbb_validation_result_t* res = result ? result : &local_result;
+    if (!result) {
+        result = &local_result;
+    }
 
     /* Initialize result */
-    memset(res, 0, sizeof(bbb_validation_result_t));
-    res->valid = true;
+    memset(result, 0, sizeof(bbb_validation_result_t));
+    result->valid = true;
 
-    /* When system is NULL, still validate the pointer basics (NULL, low
-       address, alignment) but skip system-specific tracking.  Many callers
-       (e.g. Portia module) pass NULL when no BBB system is available. */
+    bbb_validation_result_t* res = result;
+
+    /* NULL system is acceptable - skip system-specific checks */
+    (void)system;
 
     /* NULL pointer check */
     if (!ptr) {

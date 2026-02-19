@@ -246,9 +246,9 @@ TEST_F(NASAlgorithmTest, EvolutionaryMutation) {
 
     uint32_t orig_layers = arch->n_layers;
 
-    // Apply mutation
+    // Apply mutation - returns count of mutations applied (>= 0)
     int result = auto_arch_mutate(arch, 1.0f, ctx);
-    EXPECT_EQ(result, 0);
+    EXPECT_GE(result, 0);
 
     // Architecture should remain valid after mutation
     EXPECT_GT(arch->n_layers, 0u);

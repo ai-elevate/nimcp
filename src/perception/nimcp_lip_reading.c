@@ -239,6 +239,12 @@ static uint64_t get_timestamp_ms(void) {
     return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
+static double get_timestamp_ms_precise(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+
 static float clamp_float(float value, float min_val, float max_val) {
     if (value < min_val) return min_val;
     if (value > max_val) return max_val;
@@ -1776,7 +1782,7 @@ lip_reading_status_t lip_reading_process_frame(
         return LIP_READING_STATUS_ERROR;
     }
 
-    uint64_t start_time = get_timestamp_ms();
+    double start_time = get_timestamp_ms_precise();
 
     /* 1. Face detection */
     face_detection_result_t face_result;
@@ -1785,7 +1791,7 @@ lip_reading_status_t lip_reading_process_frame(
         return system->status;
     }
 
-    double face_time = (get_timestamp_ms() - start_time);
+    double face_time = (get_timestamp_ms_precise() - start_time);
     system->stats.avg_face_detection_ms =
         (system->stats.avg_face_detection_ms * system->stats.frames_processed +
          face_time) / (system->stats.frames_processed + 1);
@@ -1825,19 +1831,19 @@ lip_reading_status_t lip_reading_process_frame(
     system->temporal_integrator->has_previous = true;
 
     /* 6. Classify viseme */
-    uint64_t class_start = get_timestamp_ms();
+    double class_start = get_timestamp_ms_precise();
     if (!lip_reading_classify_viseme(system, &features, classification)) {
         return system->status;
     }
 
-    double class_time = (get_timestamp_ms() - class_start);
+    double class_time = (get_timestamp_ms_precise() - class_start);
     system->stats.avg_viseme_classification_ms =
         (system->stats.avg_viseme_classification_ms * system->stats.frames_processed +
          class_time) / (system->stats.frames_processed + 1);
 
     /* Update frame counter and timing */
     system->stats.frames_processed++;
-    double total_time = (get_timestamp_ms() - start_time);
+    double total_time = (get_timestamp_ms_precise() - start_time);
     system->stats.avg_total_processing_ms =
         (system->stats.avg_total_processing_ms * (system->stats.frames_processed - 1) +
          total_time) / system->stats.frames_processed;

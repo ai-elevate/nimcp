@@ -402,7 +402,7 @@ int swarm_bio_bridge_reset(swarm_bio_bridge_t* bridge) {
     memset(&bridge->stats, 0, sizeof(swarm_bio_bridge_stats_t));
 
     /* Reset base */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

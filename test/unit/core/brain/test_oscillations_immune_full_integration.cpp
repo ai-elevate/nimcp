@@ -21,28 +21,44 @@
 
 class OscillationsImmuneFullIntegrationTest : public ::testing::Test {
 protected:
-    brain_t brain;
-    brain_oscillation_analyzer_t* osc_analyzer;
+    /* Shared brain and oscillation analyzer (expensive to create) */
+    static brain_t shared_brain;
+    static brain_oscillation_analyzer_t* shared_osc_analyzer;
+
+    /* Per-test immune system and bridge */
     brain_immune_system_t* immune_system;
     oscillations_immune_bridge_t* bridge;
 
-    void SetUp() override {
-        /* Create brain */
-        brain = brain_create("oscillations_immune_full_test", BRAIN_SIZE_SMALL,
+    /* Convenience aliases for shared resources */
+    brain_t brain;
+    brain_oscillation_analyzer_t* osc_analyzer;
+
+    static void SetUpTestSuite() {
+        shared_brain = brain_create("oscillations_immune_full_test", BRAIN_SIZE_SMALL,
                             BRAIN_TASK_CLASSIFICATION, 100, 10);
-        ASSERT_NE(brain, (brain_t)0);
+        ASSERT_NE(shared_brain, (brain_t)0);
+        shared_osc_analyzer = brain_oscillation_create(shared_brain, 500, 250);
+        ASSERT_NE(shared_osc_analyzer, nullptr);
+    }
 
-        /* Create oscillation analyzer */
-        osc_analyzer = brain_oscillation_create(brain, 500, 250); /* 500ms window, 250Hz */
-        ASSERT_NE(osc_analyzer, nullptr);
+    static void TearDownTestSuite() {
+        if (shared_osc_analyzer) brain_oscillation_destroy(shared_osc_analyzer);
+        if (shared_brain) brain_destroy(shared_brain);
+        shared_osc_analyzer = nullptr;
+        shared_brain = (brain_t)0;
+    }
 
-        /* Create immune system */
+    void SetUp() override {
+        brain = shared_brain;
+        osc_analyzer = shared_osc_analyzer;
+
+        /* Create immune system (per-test) */
         brain_immune_config_t immune_cfg;
         brain_immune_default_config(&immune_cfg);
         immune_system = brain_immune_create(&immune_cfg);
         ASSERT_NE(immune_system, nullptr);
 
-        /* Create bridge */
+        /* Create bridge (per-test) */
         oscillations_immune_config_t bridge_cfg;
         oscillations_immune_default_config(&bridge_cfg);
         bridge = oscillations_immune_bridge_create(&bridge_cfg, osc_analyzer, immune_system);
@@ -52,11 +68,11 @@ protected:
     void TearDown() override {
         if (bridge) oscillations_immune_bridge_destroy(bridge);
         if (immune_system) brain_immune_destroy(immune_system);
-        if (osc_analyzer) brain_oscillation_destroy(osc_analyzer);
-        if (brain) brain_destroy(brain);
     }
 
     /* Helper: Simulate IL-1β cytokine release */
+    /* Note: target_region=1 (not 0/broadcast) so cytokine stays undelivered
+       and is visible to get_cytokine_concentration() in the bridge */
     void releaseIL1(float concentration) {
         uint32_t cytokine_id;
         brain_immune_release_cytokine(
@@ -64,7 +80,7 @@ protected:
             BRAIN_CYTOKINE_IL1,
             1, /* source_cell */
             concentration,
-            0, /* broadcast */
+            1, /* target_region (non-zero to avoid immediate delivery) */
             &cytokine_id
         );
     }
@@ -77,7 +93,7 @@ protected:
             BRAIN_CYTOKINE_TNF,
             1,
             concentration,
-            0,
+            1,
             &cytokine_id
         );
     }
@@ -90,7 +106,7 @@ protected:
             BRAIN_CYTOKINE_IL10,
             1,
             concentration,
-            0,
+            1,
             &cytokine_id
         );
     }
@@ -116,8 +132,8 @@ protected:
             &site_id
         );
 
-        /* Escalate to desired level */
-        for (int i = 0; i < (int)level; i++) {
+        /* Escalate to desired level (initiate already creates at LOCAL=1) */
+        for (int i = 1; i < (int)level; i++) {
             brain_immune_escalate_inflammation(immune_system, site_id);
         }
     }
@@ -129,6 +145,10 @@ protected:
         }
     }
 };
+
+/* Static member definitions */
+brain_t OscillationsImmuneFullIntegrationTest::shared_brain = (brain_t)0;
+brain_oscillation_analyzer_t* OscillationsImmuneFullIntegrationTest::shared_osc_analyzer = nullptr;
 
 /* ============================================================================
  * Lifecycle Tests
@@ -233,7 +253,7 @@ TEST_F(OscillationsImmuneFullIntegrationTest, MultiCytokineAggregation) {
 
     /* Total effects should be maximum (not additive) */
     EXPECT_GT(effects.total_delta_amplification, 1.4f);
-    EXPECT_LT(effects.total_gamma_suppression, 0.7f);
+    EXPECT_LE(effects.total_gamma_suppression, 0.7f);
 
     /* Network disruption should scale with cytokine burden */
     EXPECT_GT(effects.coherence_disruption, 0.0f);

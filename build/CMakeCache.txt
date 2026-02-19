@@ -34,7 +34,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=
+CMAKE_BUILD_TYPE:STRING=Release
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -586,6 +586,12 @@ NIMCP_SOURCE_DIR:STATIC=/home/bbrelin/nimcp
 //Enable ThreadSanitizer for race detection
 NIMCP_TSAN:BOOL=OFF
 
+//Path to a program.
+NODE_EXECUTABLE:FILEPATH=/home/bbrelin/.nvm/versions/node/v22.20.0/bin/node
+
+//Path to a program.
+NODE_GYP:FILEPATH=/home/bbrelin/.nvm/versions/node/v22.20.0/bin/node-gyp
+
 //Path to a library.
 OPENSSL_CRYPTO_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libcrypto.so
 
@@ -594,6 +600,9 @@ OPENSSL_INCLUDE_DIR:PATH=/usr/include
 
 //Path to a library.
 OPENSSL_SSL_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libssl.so
+
+//Path to a program.
+PERL_EXECUTABLE:FILEPATH=/usr/bin/perl
 
 //Arguments to supply to pkg-config
 PKG_CONFIG_ARGN:STRING=
@@ -776,7 +785,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=581
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=585
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

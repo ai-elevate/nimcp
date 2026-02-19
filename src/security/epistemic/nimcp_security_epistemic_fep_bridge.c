@@ -511,7 +511,7 @@ int sec_epist_fep_reset(sec_epist_fep_bridge_t* bridge)
     bridge->last_restoration_time = 0;
 
     /* Reset base */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     /* Restore integrity defaults */
     bridge->fep_effects.integrity_level = SEC_EPIST_FEP_INTEGRITY_HEALTHY;

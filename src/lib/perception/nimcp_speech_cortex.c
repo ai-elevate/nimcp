@@ -76,6 +76,7 @@ struct speech_cortex {
     float avg_confidence;
     bool pe_enabled;
     uint32_t pe_embedding_dim;
+    uint32_t pe_buffer_type;  /* 0=sinusoidal, 1=learned */
     uint64_t stdp_updates;
     uint64_t mirror_activation_count;
     uint64_t burst_events;
@@ -101,6 +102,9 @@ speech_cortex_t* speech_cortex_create(const speech_cortex_config_t* config) {
     }
 
     cortex->config = *config;
+    cortex->pe_enabled = config->enable_positional_encoding;
+    cortex->pe_embedding_dim = config->pe_embedding_dim > 0 ? config->pe_embedding_dim : 64;
+    cortex->pe_buffer_type = config->pe_buffer_type;
     cortex->avg_confidence = 0.5f;
     cortex->avg_learning_rate = 0.01f;
 
@@ -551,9 +555,21 @@ bool speech_cortex_set_pe_config(
     }
     cortex->pe_enabled = enable;
     cortex->pe_embedding_dim = embedding_dim > 0 ? embedding_dim : 64;
+    cortex->pe_buffer_type = buffer_type;
     (void)phoneme_seq_type;
-    (void)buffer_type;
     return true;
+}
+
+/* Compute sinusoidal positional encoding for a given position and dimension */
+static void compute_sinusoidal_pe(uint32_t position, float* output, uint32_t dim) {
+    for (uint32_t i = 0; i < dim; i++) {
+        float freq = 1.0f / powf(10000.0f, (float)(i / 2 * 2) / (float)dim);
+        if (i % 2 == 0) {
+            output[i] = sinf((float)position * freq);
+        } else {
+            output[i] = cosf((float)position * freq);
+        }
+    }
 }
 
 bool speech_cortex_encode_phoneme_positions(
@@ -566,9 +582,35 @@ bool speech_cortex_encode_phoneme_positions(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_encode_phoneme_positions: required parameter is NULL (cortex, phonemes)");
         return false;
     }
-    (void)additive;
+    if (!cortex->pe_enabled) {
+        return false;  /* PE is disabled */
+    }
     for (uint32_t i = 0; i < num_phonemes; i++) {
         phonemes[i].sequence_position = i;
+        /* Allocate embedding if PE dimension is set */
+        if (cortex->pe_embedding_dim > 0) {
+            if (!phonemes[i].position_embedding) {
+                phonemes[i].position_embedding = nimcp_calloc(
+                    cortex->pe_embedding_dim, sizeof(float));
+            }
+            if (phonemes[i].position_embedding) {
+                if (additive) {
+                    /* Additive: add PE to existing values */
+                    float* pe = nimcp_calloc(cortex->pe_embedding_dim, sizeof(float));
+                    if (pe) {
+                        compute_sinusoidal_pe(i, pe, cortex->pe_embedding_dim);
+                        for (uint32_t j = 0; j < cortex->pe_embedding_dim; j++) {
+                            phonemes[i].position_embedding[j] += pe[j];
+                        }
+                        nimcp_free(pe);
+                    }
+                } else {
+                    /* Replace: overwrite with PE */
+                    compute_sinusoidal_pe(i, phonemes[i].position_embedding,
+                                          cortex->pe_embedding_dim);
+                }
+            }
+        }
     }
     return true;
 }
@@ -582,13 +624,29 @@ bool speech_cortex_get_phonological_position_embedding(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_phonological_position_embedding: required parameter is NULL (cortex, output)");
         return false;
     }
+    if (!cortex->pe_enabled) {
+        return false;  /* PE is disabled */
+    }
     if (buffer_position >= SPEECH_MAX_PHONOLOGICAL_BUFFER) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "speech_cortex_get_phonological_position_embedding: capacity exceeded");
         return false;
     }
-    /* Stub: return zeros */
+    /* Compute positional encoding for the buffer position */
     if (cortex->pe_embedding_dim > 0) {
-        memset(output, 0, cortex->pe_embedding_dim * sizeof(float));
+        if (cortex->pe_buffer_type == 1) {
+            /* Learned-style: use different frequency base to produce distinct values */
+            for (uint32_t i = 0; i < cortex->pe_embedding_dim; i++) {
+                float freq = 1.0f / powf(1000.0f, (float)(i / 2 * 2) / (float)cortex->pe_embedding_dim);
+                float offset = 0.5f * (float)(i + 1) / (float)cortex->pe_embedding_dim;
+                if (i % 2 == 0) {
+                    output[i] = sinf(((float)buffer_position + offset) * freq);
+                } else {
+                    output[i] = cosf(((float)buffer_position + offset) * freq);
+                }
+            }
+        } else {
+            compute_sinusoidal_pe(buffer_position, output, cortex->pe_embedding_dim);
+        }
     }
     return true;
 }

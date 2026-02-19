@@ -155,12 +155,12 @@ TEST_F(AttentionSubstrateBridgeTest, BioAsyncInitiallyDisconnected) {
 
 TEST_F(AttentionSubstrateBridgeTest, ConnectBioAsyncNull) {
     int result = attention_substrate_connect_bio_async(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 TEST_F(AttentionSubstrateBridgeTest, DisconnectBioAsyncNull) {
     int result = attention_substrate_disconnect_bio_async(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 TEST_F(AttentionSubstrateBridgeTest, IsConnectedNullReturnsFalse) {
@@ -326,13 +326,13 @@ TEST_F(AttentionSubstrateBridgeTest, GetEffectsSuccess) {
 TEST_F(AttentionSubstrateBridgeTest, GetEffectsNullBridge) {
     attention_substrate_effects_t effects;
     int result = attention_substrate_get_effects(nullptr, &effects);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 TEST_F(AttentionSubstrateBridgeTest, GetEffectsNullOutput) {
     createBridge();
     int result = attention_substrate_get_effects(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 /* ============================================================================
@@ -402,13 +402,13 @@ TEST_F(AttentionSubstrateBridgeTest, ImpairmentEventTracked) {
 TEST_F(AttentionSubstrateBridgeTest, GetStatsNullBridge) {
     attention_substrate_stats_t stats;
     int result = attention_substrate_get_stats(nullptr, &stats);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 TEST_F(AttentionSubstrateBridgeTest, GetStatsNullOutput) {
     createBridge();
     int result = attention_substrate_get_stats(bridge, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 /* ============================================================================
@@ -510,7 +510,7 @@ TEST_F(AttentionSubstrateBridgeTest, StatsTrackMinMaxFocus) {
 
 TEST_F(AttentionSubstrateBridgeTest, UpdateNullReturnsError) {
     int result = attention_substrate_update(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  // NIMCP error code (may be positive)
 }
 
 /* ============================================================================

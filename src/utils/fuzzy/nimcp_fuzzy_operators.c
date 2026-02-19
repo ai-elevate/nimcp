@@ -461,10 +461,11 @@ float fuzzy_set_distance(const float* set_a, const float* set_b, uint32_t count)
 float fuzzy_set_inclusion(const float* subset, const float* superset, uint32_t count) {
     if (!subset || !superset || count == 0) return 0.0f;
 
-    /* Degree of inclusion: min_i(max(1-A(i), B(i))) */
+    /* Degree of inclusion via Lukasiewicz implication: min_i(min(1, 1-A(i)+B(i)))
+     * Satisfies reflexivity: A ⊆ A = 1.0 for all fuzzy sets A */
     float result = 1.0f;
     for (uint32_t i = 0; i < count; i++) {
-        float imp = maxf(1.0f - subset[i], superset[i]);
+        float imp = minf(1.0f, 1.0f - subset[i] + superset[i]);
         if (imp < result) result = imp;
     }
     return result;

@@ -179,7 +179,7 @@ int surface_quantum_bridge_reset(surface_quantum_bridge_t* bridge) {
 
     BRIDGE_LOCK(bridge);
 
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
     memset(&bridge->stats, 0, sizeof(surface_quantum_bridge_stats_t));
 
     BRIDGE_UNLOCK(bridge);

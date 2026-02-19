@@ -48,6 +48,7 @@ static void setup_e2e(void)
     // memory formation enabled by default
     g_immune = brain_immune_create(&immune_config);
     ck_assert_ptr_nonnull(g_immune);
+    brain_immune_start(g_immune);
 
     /* Initialize tick orchestrator */
     brain_immune_tick_config_t tick_config;
@@ -70,11 +71,12 @@ static void setup_e2e(void)
     /* Connect systems */
     nimcp_health_agent_connect_immune(g_agent, g_immune);
     brain_immune_tick_connect_health_agent(g_immune, g_agent);
-    nimcp_exception_immune_init(g_immune);
+    nimcp_exception_immune_connect(g_immune);
 }
 
 static void teardown_e2e(void)
 {
+    nimcp_exception_immune_disconnect();
     nimcp_exception_immune_shutdown();
 
     if (g_agent) {
@@ -87,11 +89,31 @@ static void teardown_e2e(void)
 
     if (g_immune) {
         brain_immune_tick_shutdown(g_immune);
+        brain_immune_stop(g_immune);
         brain_immune_destroy(g_immune);
         g_immune = NULL;
     }
 
     nimcp_exception_system_shutdown();
+}
+
+/* ============================================================================
+ * Helper: Queue exception for async tick processing
+ * NIMCP_THROW_TO_IMMUNE processes synchronously (bypasses async queue).
+ * For testing brain_immune_tick, we need to enqueue via present_async.
+ * ============================================================================ */
+static void queue_exception_async(nimcp_error_t code, const char* msg)
+{
+    nimcp_exception_t* ex = nimcp_exception_create(
+        code,
+        nimcp_exception_get_severity_from_code(code),
+        __FILE__, __LINE__, __func__,
+        "%s", msg
+    );
+    if (ex) {
+        nimcp_exception_present_async(ex);
+        nimcp_exception_unref(ex);
+    }
 }
 
 /* ============================================================================
@@ -102,9 +124,9 @@ START_TEST(test_full_error_recovery_cycle)
 {
     printf("E2E Test: Full error recovery cycle\n");
 
-    /* Phase 1: Error occurs - throw exception */
-    printf("  Phase 1: Throwing exception...\n");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Out of memory during neural computation");
+    /* Phase 1: Error occurs - queue exception for tick processing */
+    printf("  Phase 1: Queuing exception for tick...\n");
+    queue_exception_async(NIMCP_ERROR_NO_MEMORY, "Out of memory during neural computation");
 
     /* Phase 2: Exception is queued */
     brain_immune_tick_stats_t stats_before_tick;
@@ -156,14 +178,14 @@ START_TEST(test_concurrent_errors_handling)
     /* Simulate multiple simultaneous errors */
     printf("  Generating concurrent errors...\n");
 
-    /* Error 1: Memory error via exception */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Concurrent error 1: memory");
+    /* Error 1: Memory error via async exception queue */
+    queue_exception_async(NIMCP_ERROR_NO_MEMORY, "Concurrent error 1: memory");
 
-    /* Error 2: IO error via exception */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_NOT_FOUND, "Concurrent error 2: file");
+    /* Error 2: IO error via async exception queue */
+    queue_exception_async(NIMCP_ERROR_FILE_NOT_FOUND, "Concurrent error 2: file");
 
-    /* Error 3: Timeout via exception */
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_TIMEOUT, "Concurrent error 3: timeout");
+    /* Error 3: Timeout via async exception queue */
+    queue_exception_async(NIMCP_ERROR_TIMEOUT, "Concurrent error 3: timeout");
 
     /* Error 4: Anomaly via health agent */
     health_agent_message_t msg1 = nimcp_health_agent_create_message(
@@ -480,12 +502,16 @@ START_TEST(test_error_cascade_stability)
     for (int i = 0; i < 100; i++) {
         /* Alternate between different error types */
         switch (i % 5) {
-            case 0:
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Cascade mem %d", i);
+            case 0: {
+                char buf[64]; snprintf(buf, sizeof(buf), "Cascade mem %d", i);
+                queue_exception_async(NIMCP_ERROR_NO_MEMORY, buf);
                 break;
-            case 1:
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_TIMEOUT, "Cascade timeout %d", i);
+            }
+            case 1: {
+                char buf[64]; snprintf(buf, sizeof(buf), "Cascade timeout %d", i);
+                queue_exception_async(NIMCP_ERROR_TIMEOUT, buf);
                 break;
+            }
             case 2: {
                 health_agent_message_t msg = nimcp_health_agent_create_message(
                     HEALTH_MSG_NAN_DETECTED,
@@ -507,9 +533,11 @@ START_TEST(test_error_cascade_stability)
                 nimcp_health_agent_report_anomaly(g_agent, &msg);
                 break;
             }
-            case 4:
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Cascade param %d", i);
+            case 4: {
+                char buf[64]; snprintf(buf, sizeof(buf), "Cascade param %d", i);
+                queue_exception_async(NIMCP_ERROR_INVALID_PARAM, buf);
                 break;
+            }
         }
     }
 

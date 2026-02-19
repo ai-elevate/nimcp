@@ -157,8 +157,9 @@ TEST_F(NeuromodulatoryIntegrationTest, LC_SNN_Plasticity_Coordinated_Learning) {
 TEST_F(NeuromodulatoryIntegrationTest, VTA_SNN_EncodeReward_ProducesRPE) {
     ASSERT_NE(vta_snn, nullptr);
 
-    /* Encode reward burst (reward=1.0, expected=0.5 -> positive RPE) */
-    EXPECT_EQ(nimcp_vta_snn_encode_reward(vta_snn, 1.0f, 0.5f), 0);
+    /* Encode reward burst (reward=1.0, expected=0.5 -> positive RPE)
+     * Returns spike count (>= 0) for positive RPE, not status code */
+    EXPECT_GE(nimcp_vta_snn_encode_reward(vta_snn, 1.0f, 0.5f), 0);
 
     /* Step simulation */
     EXPECT_EQ(nimcp_vta_snn_step(vta_snn), 0);
@@ -354,8 +355,9 @@ TEST_F(NeuromodulatoryIntegrationTest, VTA_Habenula_Bidirectional_Inhibition) {
     ASSERT_NE(vta_snn, nullptr);
     ASSERT_NE(habenula_snn, nullptr);
 
-    /* VTA signals positive reward (reward > expected) */
-    EXPECT_EQ(nimcp_vta_snn_encode_reward(vta_snn, 1.0f, 0.5f), 0);
+    /* VTA signals positive reward (reward > expected)
+     * Returns spike count (>= 0) for positive RPE */
+    EXPECT_GE(nimcp_vta_snn_encode_reward(vta_snn, 1.0f, 0.5f), 0);
     EXPECT_EQ(nimcp_vta_snn_step(vta_snn), 0);
 
     nimcp_vta_snn_modulation_t vta_mod;

@@ -284,6 +284,11 @@ int brain_immune_sync_memory_to_swarm(
         return -1;
     }
 
+    /* Check if already synced (prevent duplicate memory cells) */
+    if (b_cell->swarm_memory_cell_id != 0) {
+        return 0;  /* Already synced */
+    }
+
     /* Find corresponding antigen to get response type */
     brain_antigen_t* antigen = find_antigen_by_id(system, b_cell->bound_antigen_id);
     if (!antigen) {
@@ -732,10 +737,10 @@ int brain_immune_present_bbb_threat(
 
     uint32_t immune_severity;
     switch (severity) {
-        case SWARM_SEVERITY_LOW:      immune_severity = 3; break;
-        case SWARM_SEVERITY_MEDIUM:   immune_severity = 5; break;
-        case SWARM_SEVERITY_HIGH:     immune_severity = 7; break;
-        case SWARM_SEVERITY_CRITICAL: immune_severity = 10; break;
+        case BBB_SEVERITY_LOW:      immune_severity = 3; break;
+        case BBB_SEVERITY_MEDIUM:   immune_severity = 5; break;
+        case BBB_SEVERITY_HIGH:     immune_severity = 7; break;
+        case BBB_SEVERITY_CRITICAL: immune_severity = 10; break;
         default: immune_severity = 1; break;
     }
 
@@ -1552,7 +1557,17 @@ int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t s
         if (site->resource_allocation > 1.0f) site->resource_allocation = 1.0f;
     }
 
+    /* Capture callback and data under mutex to prevent race condition */
+    brain_immune_inflammation_cb_t inflammation_callback = system->on_inflammation;
+    void* callback_user_data = system->callback_user_data;
+    brain_inflammation_site_t site_copy = *site;  /* Copy for safe callback invocation */
+
     nimcp_mutex_unlock(system->mutex);
+
+    /* Notify registered listeners of escalated inflammation level */
+    if (inflammation_callback) {
+        inflammation_callback(system, &site_copy, callback_user_data);
+    }
 
     /* Alert on escalation */
     brain_immune_broadcast_alert(system, site->triggering_antigen_id, site->level);

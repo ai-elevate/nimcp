@@ -393,8 +393,8 @@ static void wm_inflammation_callback(
     }
 
     while (wm->current_size > effective_capacity) {
-        // Find and evict lowest-salience item
-        int lowest_idx = working_memory_find_lowest_salience(wm, NULL);
+        // Use internal unlocked helpers (mutex already held by this callback)
+        int lowest_idx = find_lowest_salience_index(wm);
         if (lowest_idx < 0) {
             break;  // No more items
         }
@@ -402,7 +402,7 @@ static void wm_inflammation_callback(
         LOG_DEBUG("Evicting item %d due to inflammation (size=%u, effective_cap=%u)",
                   lowest_idx, wm->current_size, effective_capacity);
 
-        working_memory_remove(wm, (uint32_t)lowest_idx);
+        evict_item_at_index(wm, (uint32_t)lowest_idx);
     }
 
     nimcp_platform_mutex_unlock(&wm->mutex);

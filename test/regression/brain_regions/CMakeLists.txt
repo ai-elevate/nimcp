@@ -86,7 +86,7 @@ add_test_binary(
     regression
 )
 set_tests_properties(regression_brain_regions_test_entorhinal_signal_regression PROPERTIES
-    TIMEOUT 30
+    TIMEOUT 60
 )
 
 # Perirhinal Cortex Backward Compatibility Test

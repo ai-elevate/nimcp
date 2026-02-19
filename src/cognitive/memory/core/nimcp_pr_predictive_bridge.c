@@ -364,7 +364,7 @@ pr_pred_error_t pr_predictive_bridge_reset(pr_predictive_bridge_t* bridge) {
     bridge->stats.min_combined_pe = FLT_MAX;
 
     /* Reset base bridge stats */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     BRIDGE_UNLOCK(bridge);
 

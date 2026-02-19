@@ -952,8 +952,9 @@ int visual_cortical_set_immune_factor(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    /* Clamp to valid range: >= 0, no upper limit (allows hyper-sensitivity) */
+    /* Clamp to valid range [0.0, 1.0] */
     if (factor < 0.0f) factor = 0.0f;
+    if (factor > 1.0f) factor = 1.0f;
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_modulation_factor = factor;

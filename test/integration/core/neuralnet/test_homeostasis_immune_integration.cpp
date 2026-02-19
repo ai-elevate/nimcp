@@ -35,6 +35,8 @@ protected:
         config.min_weight = 0.0f;
         config.max_weight = 1.0f;
         config.update_interval = 1;
+        config.input_size = 50;
+        config.output_size = 50;
 
         network = neural_network_create(&config);
         ASSERT_NE(network, nullptr);
@@ -224,13 +226,15 @@ TEST_F(ImmuneHomeostasisIntegrationTest, ChronicInflammation_AccumulatesAllostat
 
     neuron_t* neuron = neural_network_get_neuron(network, 25);
 
-    // Simulate chronic inflammation (multiple episodes)
-    for (int i = 0; i < 5; i++) {
-        neural_network_accumulate_allostatic_load(network, 25, 5000, 0.7f);
+    // Simulate chronic inflammation (many episodes with high severity)
+    // Each episode: load_increment = level * (duration/1000) * 0.001
+    // 50 episodes * 0.9 * 10.0 * 0.001 = 0.45 total load
+    for (int i = 0; i < 50; i++) {
+        neural_network_accumulate_allostatic_load(network, 25, 10000, 0.9f);
     }
 
     // Verify accumulation
-    EXPECT_GT(neuron->homeostatic.allostatic_load, 0.01f);
+    EXPECT_GT(neuron->homeostatic.allostatic_load, 0.1f);
 
     // Verify health degradation
     float health = neural_network_compute_homeostatic_health(network, 25);

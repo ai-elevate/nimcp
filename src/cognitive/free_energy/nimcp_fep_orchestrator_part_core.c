@@ -154,14 +154,19 @@ int fep_orchestrator_register_bridge(
     if (category >= FEP_BRIDGE_CATEGORY_COUNT) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
-    
+
+    /* Validate orchestrator is properly initialized */
+    if (!orchestrator->mutex || !orchestrator->bridges) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
     nimcp_platform_mutex_lock(orchestrator->mutex);
-    
+
     if (orchestrator->bridge_count >= orchestrator->bridge_capacity) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
-    
+
     /* Create entry */
     fep_bridge_entry_t* entry = &orchestrator->bridges[orchestrator->bridge_count];
     entry->bridge_id = orchestrator->next_bridge_id++;
@@ -203,7 +208,12 @@ int fep_orchestrator_unregister_bridge(
 
 
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
-    
+
+    /* Validate orchestrator is properly initialized */
+    if (!orchestrator->mutex || !orchestrator->bridges) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
     /* Find bridge */

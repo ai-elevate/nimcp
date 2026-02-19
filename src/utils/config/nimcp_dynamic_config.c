@@ -895,6 +895,44 @@ static bool dump_entry_callback(const void* key, size_t key_size,
     return true;  // Continue iteration
 }
 
+/* Context for config_iterate_entries */
+typedef struct {
+    config_entry_iterator_fn_t callback;
+    void* user_data;
+    size_t count;
+} config_iterate_context_t;
+
+static bool iterate_entry_adapter(const void* key, size_t key_size,
+                                   void* value, size_t value_size,
+                                   void* user_data) {
+    (void)key_size;
+    (void)value_size;
+    config_iterate_context_t* ctx = (config_iterate_context_t*)user_data;
+    const char* key_str = (const char*)key;
+    config_entry_internal_t* entry = (config_entry_internal_t*)value;
+    if (!key_str || !entry) return true;
+
+    ctx->count++;
+    return ctx->callback(key_str, entry->type, &entry->value, ctx->user_data);
+}
+
+size_t config_iterate_entries(config_entry_iterator_fn_t callback, void* user_data) {
+    if (!callback || !g_config_table) return 0;
+
+    nimcp_platform_rwlock_rdlock(&g_config_lock);
+
+    config_iterate_context_t ctx = {
+        .callback = callback,
+        .user_data = user_data,
+        .count = 0
+    };
+
+    hash_table_iterate(g_config_table, iterate_entry_adapter, &ctx);
+
+    nimcp_platform_rwlock_unlock(&g_config_lock);
+    return ctx.count;
+}
+
 bool config_dump(const char* output_path) {
     if (!output_path) {
         LOG_MODULE_ERROR("config", "config_dump: NULL output path");

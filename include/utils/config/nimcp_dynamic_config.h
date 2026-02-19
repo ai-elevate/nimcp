@@ -267,6 +267,27 @@ config_stats_t config_get_stats(void);
 bool config_dump(const char* output_path);
 
 /**
+ * @brief Callback for config entry iteration
+ *
+ * @param key Config key
+ * @param type Value type
+ * @param value Pointer to value
+ * @param user_data User context
+ * @return true to continue, false to stop
+ */
+typedef bool (*config_entry_iterator_fn_t)(const char* key, config_value_type_t type,
+                                            const config_value_t* value, void* user_data);
+
+/**
+ * @brief Iterate all config entries
+ *
+ * @param callback Iterator callback
+ * @param user_data User context passed to callback
+ * @return Number of entries iterated
+ */
+size_t config_iterate_entries(config_entry_iterator_fn_t callback, void* user_data);
+
+/**
  * @brief Print current config to stdout
  */
 void config_print(void);

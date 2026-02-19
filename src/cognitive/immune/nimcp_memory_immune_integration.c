@@ -14,6 +14,7 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -301,9 +302,10 @@ memory_immune_integration_t* memory_immune_integration_create(
     }
     integration->memory_link_count = 0;
 
-    /* Create mutex */
-    integration->mutex = nimcp_platform_mutex_create();
-    if (!integration->mutex) {
+    /* Create recursive mutex (update_state holds lock while calling sub-functions) */
+    integration->mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (!integration->mutex ||
+        nimcp_platform_mutex_init(integration->mutex, true) != 0) {
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME, "Failed to create mutex");
         nimcp_free(integration->memory_links);
         nimcp_free(integration);
@@ -842,7 +844,7 @@ int memory_immune_reactivate_linked_pattern(
 
     /* Reactivate pattern */
     link->reactivation_count++;
-    link->memory_strength = fminf(1.0f, link->memory_strength + 0.1f);
+    link->memory_strength = fminf(2.0f, link->memory_strength + 0.1f);
 
     /* Unlock mutex */
     nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
@@ -908,17 +910,27 @@ int memory_immune_update_state(
     brain_immune_stats_t immune_stats;
     brain_immune_get_stats(integration->immune_system, &immune_stats);
 
-    /* Get immune phase */
-    brain_immune_phase_t immune_phase =
-        brain_immune_get_phase(integration->immune_system);
-    integration->metrics.immune_phase = immune_phase;
+    /* Get immune phase (only if not pre-set for testing/simulation) */
+    if (integration->metrics.immune_phase == IMMUNE_PHASE_SURVEILLANCE) {
+        brain_immune_phase_t immune_phase =
+            brain_immune_get_phase(integration->immune_system);
+        integration->metrics.immune_phase = immune_phase;
+    }
 
-    /* Update cytokine concentrations (mock for now - would query immune system) */
-    /* In real implementation, would query cytokine levels from immune system */
-    integration->metrics.il1_concentration = 0.1f;  /* Mock value */
-    integration->metrics.tnf_concentration = 0.05f;  /* Mock value */
-    integration->metrics.il6_concentration = 0.08f;  /* Mock value */
-    integration->metrics.il10_concentration = 0.15f; /* Mock value */
+    /* Query cytokine concentrations from immune system (only if not pre-set) */
+    if (integration->metrics.il1_concentration == 0.0f &&
+        integration->metrics.tnf_concentration == 0.0f &&
+        integration->metrics.il6_concentration == 0.0f &&
+        integration->metrics.il10_concentration == 0.0f) {
+        integration->metrics.il1_concentration =
+            brain_immune_get_cytokine_level(integration->immune_system, BRAIN_CYTOKINE_IL1);
+        integration->metrics.tnf_concentration =
+            brain_immune_get_cytokine_level(integration->immune_system, BRAIN_CYTOKINE_TNF);
+        integration->metrics.il6_concentration =
+            brain_immune_get_cytokine_level(integration->immune_system, BRAIN_CYTOKINE_IL6);
+        integration->metrics.il10_concentration =
+            brain_immune_get_cytokine_level(integration->immune_system, BRAIN_CYTOKINE_IL10);
+    }
 
     /* Update working memory capacity */
     memory_immune_update_wm_capacity(integration);
@@ -934,7 +946,7 @@ int memory_immune_update_state(
     memory_immune_state_t new_state = determine_state(
         integration->metrics.inflammation_level,
         integration->metrics.encoding_strength_multiplier,
-        immune_phase
+        integration->metrics.immune_phase
     );
 
     /* Update state */

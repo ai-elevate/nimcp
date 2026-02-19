@@ -226,13 +226,17 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     bridge->suppressed_gamma_threshold = config->suppressed_gamma_threshold;
     bridge->persistence_threshold = config->persistence_threshold;
 
-    /* Create mutex */
+    /* Create mutex (recursive: bridge_update calls sub-functions that also lock) */
     if (bridge_base_init(&bridge->base, 0, "oscillations_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillations_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
+    /* Replace with recursive mutex to prevent deadlock in bridge_update */
+    nimcp_mutex_destroy(bridge->base.mutex);
+    mutex_attr_t recursive_attr = { .type = MUTEX_TYPE_RECURSIVE };
+    nimcp_mutex_init(bridge->base.mutex, &recursive_attr);
 
     LOG_MODULE_INFO("oscillations_immune_bridge", "Bridge created successfully");
     return bridge;
@@ -775,10 +779,15 @@ bool oscillations_immune_is_modulated(const oscillations_immune_bridge_t* bridge
         return false;
     }
 
-    /* Check if any cytokine effects are active */
-    return (bridge->cytokine_effects.total_delta_amplification > 1.1f) ||
-           (bridge->cytokine_effects.total_gamma_suppression < 0.9f) ||
-           (bridge->inflammation_state.current_level > INFLAMMATION_NONE);
+    /* Check if any cytokine modulations have been applied and are significant */
+    if (bridge->cytokine_modulations > 0) {
+        if ((bridge->cytokine_effects.total_delta_amplification > 1.1f) ||
+            (bridge->cytokine_effects.total_gamma_suppression < 0.9f)) {
+            return true;
+        }
+    }
+
+    return (bridge->inflammation_state.current_level > INFLAMMATION_NONE);
 }
 
 float oscillations_immune_get_delta_amplification(

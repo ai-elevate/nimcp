@@ -165,7 +165,7 @@ int surface_geometry_bridge_reset(surface_geometry_bridge_t* bridge) {
     BRIDGE_LOCK(bridge);
 
     /* Reset base statistics */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     /* Reset bridge-specific statistics */
     memset(&bridge->stats, 0, sizeof(surface_geometry_bridge_stats_t));

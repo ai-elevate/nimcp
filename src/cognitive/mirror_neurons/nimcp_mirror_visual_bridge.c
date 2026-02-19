@@ -453,7 +453,7 @@ int mirror_visual_bridge_reset(mirror_visual_bridge_t* bridge) {
     memset(&bridge->stats, 0, sizeof(mirror_visual_stats_t));
 
     /* Reset base stats */
-    bridge_base_reset(&bridge->base);
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

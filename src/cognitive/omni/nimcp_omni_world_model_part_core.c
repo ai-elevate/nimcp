@@ -407,30 +407,62 @@ nimcp_error_t omni_wm_predict_hierarchical(omni_world_model_t* wm,
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
     NIMCP_CHECK_THROW(wm->config.enable_hierarchical, NIMCP_ERROR_NOT_IMPLEMENTED, "hierarchical prediction not enabled");
+    NIMCP_CHECK_THROW(target_level < wm->config.num_levels, NIMCP_ERROR_INVALID_PARAM, "target_level exceeds num_levels");
 
     /* Hierarchical abstraction/concretization */
     uint32_t level_diff = target_level > state->level ?
                           target_level - state->level :
                           state->level - target_level;
 
-    /* Abstract: pool/compress, Concrete: expand/detail */
-    float scale = target_level > state->level ? 0.5f : 2.0f;
-
     memset(result->values, 0, result->dim * sizeof(float));
-    uint32_t min_dim = state->dim < result->dim ? state->dim : result->dim;
 
-    for (uint32_t i = 0; i < min_dim; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && min_dim > 256) {
-            omni_world_model_heartbeat("omni_world_m_loop",
-                             (float)(i + 1) / (float)min_dim);
+    if (target_level == state->level) {
+        /* Same level: identity copy */
+        uint32_t min_dim = state->dim < result->dim ? state->dim : result->dim;
+        for (uint32_t i = 0; i < min_dim; i++) {
+            result->values[i] = state->values[i];
         }
+    } else if (target_level > state->level) {
+        /* Abstraction: pool groups of 2^level_diff values, average, apply tanh */
+        uint32_t pool_factor = 1u << level_diff;
+        uint32_t pooled_count = state->dim / pool_factor;
+        if (pooled_count > result->dim) pooled_count = result->dim;
 
-        result->values[i] = state->values[i] * scale;
+        for (uint32_t i = 0; i < pooled_count; i++) {
+            float sum = 0.0f;
+            for (uint32_t j = 0; j < pool_factor; j++) {
+                uint32_t src_idx = i * pool_factor + j;
+                if (src_idx < state->dim) {
+                    sum += state->values[src_idx];
+                }
+            }
+            float avg = sum / (float)pool_factor;
+            result->values[i] = tanhf(avg);
+        }
+    } else {
+        /* Concretization: linear interpolation to expand */
+        uint32_t expand_factor = 1u << level_diff;
+        uint32_t expanded_max = state->dim * expand_factor;
+        uint32_t fill_dim = expanded_max < result->dim ? expanded_max : result->dim;
+
+        for (uint32_t i = 0; i < fill_dim; i++) {
+            /* Map output index to fractional source position */
+            float src_pos = (float)i / (float)expand_factor;
+            uint32_t src_lo = (uint32_t)src_pos;
+            uint32_t src_hi = src_lo + 1;
+            float frac = src_pos - (float)src_lo;
+
+            float val_lo = (src_lo < state->dim) ? state->values[src_lo] : 0.0f;
+            float val_hi = (src_hi < state->dim) ? state->values[src_hi] : val_lo;
+
+            result->values[i] = val_lo + frac * (val_hi - val_lo);
+        }
     }
 
     result->level = target_level;
-    result->uncertainty = state->uncertainty * (1.0f + 0.1f * level_diff);
+    /* Uncertainty grows logarithmically with level distance */
+    uint32_t info_factor = 1u << level_diff;
+    result->uncertainty = state->uncertainty * (1.0f + 0.15f * logf((float)(info_factor + 1)));
 
     return NIMCP_SUCCESS;
 }
