@@ -42,7 +42,7 @@ int social_bond_fep_bridge_default_config(social_bond_fep_config_t* config) {
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_anxiety_threshold = SOCIAL_FEP_HIGH_PE_THRESHOLD;
     config->trust_precision_factor = SOCIAL_FEP_TRUST_PRECISION_FACTOR;
     config->loyalty_prior_strength = SOCIAL_FEP_LOYALTY_PRIOR_STRENGTH;
@@ -106,7 +106,7 @@ int social_bond_fep_bridge_connect_fep(social_bond_fep_bridge_t* bridge, fep_sys
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -118,7 +118,7 @@ int social_bond_fep_bridge_connect_social(social_bond_fep_bridge_t* bridge, soci
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && social, NIMCP_ERROR_NULL_POINTER, "bridge or social is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && social, NIMCP_ERROR_NULL_POINTER, "bridge or social is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->social_system = social;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -130,7 +130,7 @@ int social_bond_fep_bridge_disconnect(social_bond_fep_bridge_t* bridge) {
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->social_system = NULL;
@@ -143,7 +143,7 @@ int social_bond_fep_trigger_attachment_anxiety(social_bond_fep_bridge_t* bridge,
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_trig", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_attachment) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.current_prediction_error = pe_magnitude;
@@ -162,7 +162,7 @@ int social_bond_fep_modulate_trust_by_precision(social_bond_fep_bridge_t* bridge
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_modu", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_trust_precision) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.num_relationships_tracked = 0;
@@ -179,7 +179,7 @@ int social_bond_fep_trigger_relationship_revision(social_bond_fep_bridge_t* brid
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_trig", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->social_system, NIMCP_ERROR_NULL_POINTER, "bridge or social_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->social_system, NIMCP_ERROR_NULL_POINTER, "bridge or social_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.trust_update_active = true;
     bridge->stats.relationship_revisions++;
@@ -192,7 +192,7 @@ int social_bond_fep_apply_attachment_priors(social_bond_fep_bridge_t* bridge) {
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_appl", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_relationship_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->social_effects.attachment_security_bias = bridge->config.attachment_sensitivity;
@@ -207,7 +207,7 @@ int social_bond_fep_apply_closeness_beliefs(social_bond_fep_bridge_t* bridge) {
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_appl", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_closeness_beliefs) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->social_effects.closeness_prior_strength = bridge->config.closeness_belief_strength;
@@ -222,7 +222,7 @@ int social_bond_fep_update_model_from_betrayal(social_bond_fep_bridge_t* bridge)
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_upda", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_betrayal_updates) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->social_effects.model_beliefs_updated = true;
@@ -236,7 +236,7 @@ int social_bond_fep_bridge_update(social_bond_fep_bridge_t* bridge, uint64_t del
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     social_bond_fep_modulate_trust_by_precision(bridge);
     social_bond_fep_apply_attachment_priors(bridge);
     social_bond_fep_apply_closeness_beliefs(bridge);
@@ -249,7 +249,7 @@ int social_bond_fep_bridge_get_state(const social_bond_fep_bridge_t* bridge, soc
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -261,7 +261,7 @@ int social_bond_fep_bridge_get_stats(const social_bond_fep_bridge_t* bridge, soc
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -273,7 +273,7 @@ int social_bond_fep_bridge_connect_bio_async(social_bond_fep_bridge_t* bridge) {
     love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SOCIAL_BRIDGE,

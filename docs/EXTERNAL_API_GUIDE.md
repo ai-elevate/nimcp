@@ -1494,4 +1494,38 @@ const char* err = nimcp_get_error();
 
 ---
 
-*Last updated: 2026-02-16*
+## Thread Safety
+
+This section documents the thread safety guarantees of the NIMCP public API.
+
+### Summary Table
+
+| Operation | Thread-Safe? | Notes |
+|-----------|-------------|-------|
+| Brain creation/destruction | No | Use a single thread for lifecycle management |
+| Brain predict/infer | Yes | Concurrent reads on the same brain are safe |
+| Brain learn/train | No | Requires external synchronization (e.g., mutex) |
+| Callbacks | N/A | Invoked synchronously from the calling thread |
+| `nimcp_get_error()` | No | Uses a global buffer; use per-thread error checking |
+| COW cloning (`nimcp_brain_clone_cow`) | Yes | Thread-safe reference counting |
+| COW snapshots | Yes | Thread-safe save and restore |
+
+### Details
+
+**Brain Creation and Destruction** -- `nimcp_brain_create()` and `nimcp_brain_destroy()` are NOT thread-safe. Create and destroy brain instances from a single thread. Do not destroy a brain while other threads are using it.
+
+**Brain Predict/Infer** -- `nimcp_brain_predict()` and `nimcp_brain_infer()` are thread-safe for concurrent reads on the same brain instance. Multiple threads can call these functions simultaneously without external synchronization.
+
+**Brain Learn/Train** -- `nimcp_brain_learn_example()`, `nimcp_brain_train_step()`, and `nimcp_brain_train_batch()` are NOT thread-safe. If multiple threads need to train the same brain, you must use external synchronization (e.g., a mutex) to serialize access.
+
+**Callbacks** -- Training callbacks registered via `nimcp_brain_register_callback()` are invoked synchronously from the thread that calls the training function. Callbacks should be fast and non-blocking to avoid impacting training throughput.
+
+**Error Reporting** -- `nimcp_get_error()` returns a pointer to a global static buffer and is NOT thread-safe. In multi-threaded applications, check return codes directly (`nimcp_status_t`) rather than relying on `nimcp_get_error()` for error details.
+
+**Copy-on-Write (COW) Cloning** -- `nimcp_brain_clone_cow()` is thread-safe. The COW mechanism uses atomic reference counting internally.
+
+**Snapshots** -- `nimcp_brain_snapshot_cow()` and `nimcp_brain_restore_cow()` are thread-safe. Snapshot creation and restoration use atomic operations for reference management.
+
+---
+
+*Last updated: 2026-02-19*

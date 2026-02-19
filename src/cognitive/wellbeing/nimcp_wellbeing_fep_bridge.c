@@ -29,7 +29,7 @@ int wellbeing_fep_bridge_default_config(wellbeing_fep_config_t* config) {
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_default_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->chronic_fe_threshold = WELLBEING_FEP_CHRONIC_FE_THRESHOLD;
     config->acute_surprise_threshold = WELLBEING_FEP_ACUTE_SURPRISE_THRESHOLD;
     config->fe_window_ms = WELLBEING_FEP_DISTRESS_FE_WINDOW_MS;
@@ -99,7 +99,7 @@ int wellbeing_fep_bridge_connect_fep(wellbeing_fep_bridge_t* bridge, fep_system_
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_connect_fep", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -112,7 +112,7 @@ int wellbeing_fep_bridge_disconnect(wellbeing_fep_bridge_t* bridge) {
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_disconnect", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -125,7 +125,7 @@ int wellbeing_fep_bridge_update(wellbeing_fep_bridge_t* bridge) {
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_update", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
     bridge->fep_effects.current_free_energy = bridge->state.current_free_energy;
@@ -147,7 +147,7 @@ int wellbeing_fep_bridge_get_state(const wellbeing_fep_bridge_t* bridge,
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_get_state", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -160,7 +160,7 @@ int wellbeing_fep_bridge_get_stats(const wellbeing_fep_bridge_t* bridge,
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_get_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -172,7 +172,7 @@ int wellbeing_fep_bridge_connect_bio_async(wellbeing_fep_bridge_t* bridge) {
     wellbeing_fep_bridge_heartbeat("wellbeing_fe_connect_bio_async", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_WELLBEING_BRIDGE,

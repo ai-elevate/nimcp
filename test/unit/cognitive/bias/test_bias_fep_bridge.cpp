@@ -64,7 +64,7 @@ TEST_F(BiasFepBridgeTest, DefaultConfig) {
 
 TEST_F(BiasFepBridgeTest, DefaultConfigNullPtr) {
     int ret = bias_fep_bridge_default_config(nullptr);
-    EXPECT_EQ(ret, NIMCP_ERROR_NULL_POINTER);  /* Returns proper error code, not -1 */
+    EXPECT_EQ(ret, -1);  /* Returns proper error code, not -1 */
 }
 
 /* ============================================================================

@@ -28,8 +28,8 @@ static mesh_participant_id_t g_memory_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_memory_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t memory_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_memory_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_memory_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "memory_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -75,7 +75,7 @@ int memory_fep_bridge_default_config(memory_fep_config_t* config) {
     memory_fep_bridge_heartbeat("memory_fep_b_default_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->wm_capacity_factor = 1.0f;
     config->consolidation_threshold = MEMORY_FEP_CONSOLIDATION_THRESHOLD;
     config->retrieval_precision_boost = 1.5f;
@@ -132,7 +132,7 @@ int memory_fep_bridge_connect_fep(memory_fep_bridge_t* bridge, fep_system_t* fep
     memory_fep_bridge_heartbeat("memory_fep_b_connect_fep", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -144,7 +144,7 @@ int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memor
     memory_fep_bridge_heartbeat("memory_fep_b_connect_memory", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && memory, NIMCP_ERROR_NULL_POINTER, "bridge or memory is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && memory, NIMCP_ERROR_NULL_POINTER, "bridge or memory is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_system = memory;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -156,7 +156,7 @@ int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_disconnect", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->memory_system = NULL;
@@ -169,7 +169,7 @@ int memory_fep_maintain_wm_beliefs(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_maintain_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_wm_belief_buffer) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.wm_capacity_remaining = (float)MEMORY_FEP_WM_CAPACITY - bridge->state.current_wm_load;
@@ -183,7 +183,7 @@ int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_trigger_c", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_consolidation_replay) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->state.current_wm_load > bridge->config.consolidation_threshold) {
@@ -200,7 +200,7 @@ int memory_fep_boost_retrieval_precision(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_boost_ret", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_retrieval_active_inference) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.retrieval_precision = bridge->config.retrieval_precision_boost;
@@ -214,7 +214,7 @@ int memory_fep_apply_belief_priors(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_apply_bel", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_belief_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_effects.belief_prior_bias = bridge->config.belief_prior_strength;
@@ -229,7 +229,7 @@ int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_apply_tra", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_trace_persistence) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_effects.trace_persistence_factor = bridge->config.memory_trace_persistence;
@@ -242,7 +242,7 @@ int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
     memory_fep_bridge_heartbeat("memory_fep_b_update", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "memory_fep_bridge_update");
@@ -263,7 +263,7 @@ int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_st
     memory_fep_bridge_heartbeat("memory_fep_b_get_state", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -275,7 +275,7 @@ int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_st
     memory_fep_bridge_heartbeat("memory_fep_b_get_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -287,7 +287,7 @@ int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge) {
     memory_fep_bridge_heartbeat("memory_fep_b_connect_bio_async", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_MEMORY_BRIDGE,

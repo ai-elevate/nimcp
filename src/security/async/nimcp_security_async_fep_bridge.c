@@ -332,7 +332,7 @@ int sec_async_fep_compute_effects(sec_async_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

@@ -260,6 +260,11 @@ float snn_stdp_compute_delta_w(const snn_training_ctx_t* ctx,
         return 0.0f;
     }
 
+    /* Clamp non-finite weight to bounds */
+    if (!isfinite(current_weight)) {
+        return 0.0f;
+    }
+
     /* Use default STDP parameters from common.h */
     const float a_plus = NIMCP_DEFAULT_LEARNING_RATE;
     const float a_minus = 0.0105f;

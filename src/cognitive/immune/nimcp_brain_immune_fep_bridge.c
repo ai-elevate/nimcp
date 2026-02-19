@@ -41,8 +41,8 @@ static mesh_participant_id_t g_brain_immune_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_brain_immune_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t brain_immune_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_brain_immune_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_brain_immune_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "brain_immune_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -207,7 +207,7 @@ int brain_immune_fep_default_config(brain_immune_fep_config_t* config) {
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_def", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->cytokine_precision_scale = 1.0f;
     config->enable_precision_modulation = true;
@@ -306,9 +306,9 @@ int brain_immune_fep_update(brain_immune_fep_bridge_t* bridge) {
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_upd", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->immune_system || !bridge->fep_system) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -387,7 +387,7 @@ int brain_immune_fep_apply_to_immune(brain_immune_fep_bridge_t* bridge) {
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_app", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge or immune_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge or immune_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -405,7 +405,7 @@ int brain_immune_fep_apply_to_fep(brain_immune_fep_bridge_t* bridge) {
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_app", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -459,8 +459,8 @@ int brain_immune_fep_assess_threat(
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_ass", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && threat_prob, NIMCP_ERROR_NULL_POINTER, "bridge or threat_prob is NULL");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && threat_prob, NIMCP_ERROR_NULL_POINTER, "bridge or threat_prob is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -496,7 +496,7 @@ int brain_immune_fep_get_stats(
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_get", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -521,7 +521,7 @@ int brain_immune_fep_connect_bio_async(brain_immune_fep_bridge_t* bridge) {
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_con", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

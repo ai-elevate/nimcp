@@ -44,7 +44,7 @@ struct training_module_fep_bridge {
 
 int training_module_fep_default_config(training_module_fep_config_t* config) {
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP parameters */
@@ -184,7 +184,7 @@ int training_module_fep_update(
     float gradient_norm
 ) {
     if (!bridge || !bridge->fep_system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.mutex) {
@@ -263,7 +263,7 @@ int training_module_fep_update(
 
 int training_module_fep_compute_effects(training_module_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.mutex) {
@@ -328,7 +328,7 @@ int training_module_fep_compute_effects(training_module_fep_bridge_t* bridge) {
 
 int training_module_fep_apply_effects(training_module_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Note: In a full implementation, this would modify training module parameters */
@@ -372,7 +372,7 @@ int training_module_fep_get_effects(
     training_module_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -405,7 +405,7 @@ int training_module_fep_get_stats(
     training_module_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -417,7 +417,7 @@ int training_module_fep_get_state(
     training_module_fep_state_t* state
 ) {
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *state = bridge->state;
@@ -430,7 +430,7 @@ int training_module_fep_get_state(
 
 int training_module_fep_connect_bio_async(training_module_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -447,7 +447,7 @@ int training_module_fep_connect_bio_async(training_module_fep_bridge_t* bridge) 
 
 int training_module_fep_disconnect_bio_async(training_module_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->base.bio_async_enabled) {

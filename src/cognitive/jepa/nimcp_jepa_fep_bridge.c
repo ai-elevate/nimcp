@@ -36,8 +36,8 @@ static mesh_participant_id_t g_jepa_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_jepa_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t jepa_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_jepa_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_jepa_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "jepa_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -370,7 +370,7 @@ int jepa_fep_bridge_reset(jepa_fep_bridge_t* bridge) {
     jepa_fep_bridge_heartbeat("jepa_fep_bri_reset", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -418,7 +418,7 @@ int jepa_fep_bridge_register(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_register", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && orchestrator, -1, "bridge or orchestrator is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && orchestrator, -1, "bridge or orchestrator is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -472,7 +472,7 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
     jepa_fep_bridge_heartbeat("jepa_fep_bri_unregister", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -539,7 +539,7 @@ int jepa_fep_update_callback(void* handle) {
 
 
     jepa_fep_bridge_t* bridge = (jepa_fep_bridge_t*)handle;
-    NIMCP_CHECK_THROW(bridge, -1, "bridge handle is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge handle is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -610,7 +610,7 @@ int jepa_fep_bridge_force_update(jepa_fep_bridge_t* bridge) {
     jepa_fep_bridge_heartbeat("jepa_fep_bri_force_update", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -656,7 +656,7 @@ int jepa_fep_bridge_get_stats(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_get_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats_out, -1, "bridge or stats_out is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats_out, -1, "bridge or stats_out is NULL");
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
@@ -670,7 +670,7 @@ int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
     jepa_fep_bridge_heartbeat("jepa_fep_bri_reset_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(jepa_fep_stats_t));
@@ -774,8 +774,8 @@ int jepa_fep_bridge_record_prediction_error(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_record_prediction_er", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
-    NIMCP_CHECK_THROW(prediction_error >= 0.0f, -1, "prediction_error must be non-negative");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(prediction_error >= 0.0f, -1, "prediction_error must be non-negative");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -801,8 +801,8 @@ int jepa_fep_bridge_record_representation_quality(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_record_representatio", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
-    NIMCP_CHECK_THROW(quality >= 0.0f && quality <= 1.0f, -1, "quality must be in range [0,1]");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(quality >= 0.0f && quality <= 1.0f, -1, "quality must be in range [0,1]");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -839,7 +839,7 @@ int jepa_fep_bridge_set_high_fe_callback(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_set_high_fe_callback", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
@@ -858,7 +858,7 @@ int jepa_fep_bridge_set_collapse_callback(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_set_collapse_callbac", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->collapse_callback = callback;
@@ -880,7 +880,7 @@ int jepa_fep_bridge_set_config(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_set_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && config, -1, "bridge or config is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && config, -1, "bridge or config is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
@@ -897,7 +897,7 @@ int jepa_fep_bridge_get_config(
     jepa_fep_bridge_heartbeat("jepa_fep_bri_get_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && config_out, -1, "bridge or config_out is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && config_out, -1, "bridge or config_out is NULL");
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

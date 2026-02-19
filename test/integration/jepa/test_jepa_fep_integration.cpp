@@ -114,7 +114,7 @@ protected:
  */
 TEST_F(JepaFepIntegrationTest, RegisterJepaPredictorWithOrchestrator) {
     // Start orchestrator
-    ASSERT_EQ(fep_orchestrator_start(orchestrator), NIMCP_SUCCESS);
+    ASSERT_EQ(fep_orchestrator_start(orchestrator), 0);
 
     // Define update callback for predictor
     auto predictor_update = [](fep_bridge_handle_t handle) -> int {
@@ -135,7 +135,7 @@ TEST_F(JepaFepIntegrationTest, RegisterJepaPredictorWithOrchestrator) {
         &bridge_id
     );
 
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
     EXPECT_GT(bridge_id, 0);
 
     // Verify bridge is registered
@@ -147,7 +147,7 @@ TEST_F(JepaFepIntegrationTest, RegisterJepaPredictorWithOrchestrator) {
 
     // Cleanup
     EXPECT_EQ(fep_orchestrator_unregister_bridge(orchestrator, bridge_id), NIMCP_SUCCESS);
-    EXPECT_EQ(fep_orchestrator_stop(orchestrator), NIMCP_SUCCESS);
+    EXPECT_EQ(fep_orchestrator_stop(orchestrator), 0);
 }
 
 /**
@@ -163,7 +163,7 @@ TEST_F(JepaFepIntegrationTest, OrchestratorUpdateTriggersJepaUpdate) {
         return NIMCP_SUCCESS;
     };
 
-    ASSERT_EQ(fep_orchestrator_start(orchestrator), NIMCP_SUCCESS);
+    ASSERT_EQ(fep_orchestrator_start(orchestrator), 0);
 
     uint32_t bridge_id = 0;
     ASSERT_EQ(fep_orchestrator_register_bridge(
@@ -320,7 +320,7 @@ TEST_F(JepaFepIntegrationTest, JepaToFepErrorConversion) {
     ASSERT_NE(fep_error.error, nullptr);
 
     int result = jepa_predictor_to_fep_error(predictor, jepa_error, &fep_error);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 
     // Verify FEP error has valid data
     EXPECT_GT(fep_error.magnitude, 0.0f);
@@ -359,7 +359,7 @@ TEST_F(JepaFepIntegrationTest, BeliefUpdateThroughPrediction) {
         prior_variance[i] = 0.5f;  // Moderate uncertainty
     }
     EXPECT_EQ(jepa_latent_set_variance(prior, prior_variance, TEST_LATENT_DIM), NIMCP_SUCCESS);
-    EXPECT_EQ(jepa_latent_update_precision(prior), NIMCP_SUCCESS);
+    EXPECT_EQ(jepa_latent_update_precision(prior), 0);
 
     // Predict posterior from prior (simulating belief update)
     EXPECT_EQ(jepa_predictor_predict(predictor, prior, posterior), NIMCP_SUCCESS);
@@ -450,7 +450,7 @@ TEST_F(JepaFepIntegrationTest, OrchestratorMultipleJepaBridges) {
 
     // These may be NULL if not fully implemented - handle gracefully
 
-    ASSERT_EQ(fep_orchestrator_start(orchestrator), NIMCP_SUCCESS);
+    ASSERT_EQ(fep_orchestrator_start(orchestrator), 0);
 
     // Counter for update tracking
     static int visual_updates = 0;
@@ -513,7 +513,7 @@ TEST_F(JepaFepIntegrationTest, OrchestratorMultipleJepaBridges) {
  * @brief Test JEPA category update interval configuration
  */
 TEST_F(JepaFepIntegrationTest, JepaCategoryUpdateInterval) {
-    ASSERT_EQ(fep_orchestrator_start(orchestrator), NIMCP_SUCCESS);
+    ASSERT_EQ(fep_orchestrator_start(orchestrator), 0);
 
     // Get current JEPA category config
     fep_category_config_t config;
@@ -584,7 +584,7 @@ TEST_F(JepaFepIntegrationTest, FepGuidedJepaTraining) {
         return NIMCP_SUCCESS;
     };
 
-    ASSERT_EQ(fep_orchestrator_start(orchestrator), NIMCP_SUCCESS);
+    ASSERT_EQ(fep_orchestrator_start(orchestrator), 0);
 
     uint32_t bridge_id = 0;
     ASSERT_EQ(fep_orchestrator_register_bridge(
@@ -632,8 +632,8 @@ TEST_F(JepaFepIntegrationTest, PrecisionSimilarityIntegration) {
     }
 
     // Update precision from variance
-    EXPECT_EQ(jepa_latent_update_precision(latent_a), NIMCP_SUCCESS);
-    EXPECT_EQ(jepa_latent_update_precision(latent_b), NIMCP_SUCCESS);
+    EXPECT_EQ(jepa_latent_update_precision(latent_a), 0);
+    EXPECT_EQ(jepa_latent_update_precision(latent_b), 0);
 
     // Precision should be inverse of variance
     EXPECT_GT(latent_a->precision, latent_b->precision);

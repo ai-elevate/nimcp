@@ -122,6 +122,8 @@ typedef struct {
     atomic_uint_fast32_t head;  // Producer writes here
     atomic_uint_fast32_t tail;  // Consumer reads here
 
+    nimcp_mutex_t tail_lock;    // Protects tail advancement (drop_on_full vs dequeue race)
+
     atomic_uint_fast64_t enqueued;  // Total enqueued (stats)
     atomic_uint_fast64_t dequeued;  // Total dequeued (stats)
     atomic_uint_fast64_t dropped;   // Dropped due to full (stats)
@@ -171,6 +173,7 @@ static ring_buffer_t* ring_buffer_create(uint32_t capacity)
     rb->mask = capacity - 1;
     atomic_store(&rb->head, 0);
     atomic_store(&rb->tail, 0);
+    nimcp_mutex_init(&rb->tail_lock, NULL);
     atomic_store(&rb->enqueued, 0);
     atomic_store(&rb->dequeued, 0);
     atomic_store(&rb->dropped, 0);
@@ -202,6 +205,7 @@ static void ring_buffer_destroy(ring_buffer_t* rb)
         nimcp_free(rb->buffer);
     }
 
+    nimcp_mutex_destroy(&rb->tail_lock);
     nimcp_free(rb);
 }
 
@@ -241,14 +245,29 @@ static bool ring_buffer_enqueue(ring_buffer_t* rb, const float* features, uint32
             /**
              * WHAT: Drop oldest entry by advancing tail
              * WHY: Backpressure handling - prefer new data
-             * HOW: Move tail forward, free old entry
+             * HOW: Lock tail_lock to prevent race with consumer dequeue,
+             *      free old entry, advance tail, then unlock
+             *
+             * THREAD-SAFETY: The tail_lock prevents a TOCTOU race where
+             * the consumer reads buffer[tail] while the producer frees it.
+             * Without this lock, the consumer could get a dangling pointer.
              */
-            stream_input_t* old_entry = &rb->buffer[tail];
-            if (old_entry->valid && old_entry->features) {
-                nimcp_free(old_entry->features);
+            nimcp_mutex_lock(&rb->tail_lock);
+            // Re-read tail under lock in case consumer advanced it
+            tail = atomic_load(&rb->tail);
+            next_head = (head + 1) & rb->mask;
+            if (next_head == tail) {
+                // Still full - drop oldest
+                stream_input_t* old_entry = &rb->buffer[tail];
+                if (old_entry->valid && old_entry->features) {
+                    nimcp_free(old_entry->features);
+                    old_entry->features = NULL;
+                }
+                old_entry->valid = false;
+                atomic_store(&rb->tail, (tail + 1) & rb->mask);
+                atomic_fetch_add(&rb->dropped, 1);
             }
-            atomic_store(&rb->tail, (tail + 1) & rb->mask);
-            atomic_fetch_add(&rb->dropped, 1);
+            nimcp_mutex_unlock(&rb->tail_lock);
         } else {
             atomic_fetch_add(&rb->dropped, 1);
             return false;  /* Buffer full is normal operational state */
@@ -307,6 +326,14 @@ static bool ring_buffer_enqueue(ring_buffer_t* rb, const float* features, uint32
 static bool ring_buffer_dequeue(ring_buffer_t* rb, float** features, uint32_t* num_features,
                                 uint64_t* timestamp)
 {
+    /**
+     * WHAT: Lock tail_lock to prevent race with drop_on_full in enqueue
+     * WHY: Both dequeue and drop_on_full read buffer[tail] and advance tail.
+     *      Without mutual exclusion, the producer could free buffer[tail].features
+     *      while the consumer is reading it, causing use-after-free / double-free.
+     */
+    nimcp_mutex_lock(&rb->tail_lock);
+
     uint32_t tail = atomic_load(&rb->tail);
     uint32_t head = atomic_load(&rb->head);
 
@@ -316,6 +343,7 @@ static bool ring_buffer_dequeue(ring_buffer_t* rb, float** features, uint32_t* n
      * HOW: Empty when tail == head
      */
     if (tail == head) {
+        nimcp_mutex_unlock(&rb->tail_lock);
         return false;  /* Buffer empty is normal operational state */
     }
 
@@ -341,6 +369,7 @@ static bool ring_buffer_dequeue(ring_buffer_t* rb, float** features, uint32_t* n
     atomic_store(&rb->tail, (tail + 1) & rb->mask);
     atomic_fetch_add(&rb->dequeued, 1);
 
+    nimcp_mutex_unlock(&rb->tail_lock);
     return true;
 }
 

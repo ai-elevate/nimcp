@@ -309,13 +309,16 @@ TEST_F(CuriosityFEPIntegrationTest, CustomConfigurationEffects) {
     curiosity_fep_bridge_connect_fep(bridge, fep);
     curiosity_fep_bridge_connect_curiosity(bridge, curiosity);
 
-    /* Set prediction error */
-    fep->levels[0].errors.magnitude = 0.5f;
+    /* Set prediction error on all levels (FEP has 3 levels;
+     * epistemic_value = avg_pe * weight, so need avg_pe > 0.25 for result > 0.5) */
+    for (uint32_t l = 0; l < fep->num_levels; l++) {
+        fep->levels[l].errors.magnitude = 0.5f;
+    }
 
     /* Update */
     curiosity_fep_bridge_update(bridge, 100);
 
-    /* Should use higher weight */
+    /* Should use higher weight: avg_pe=0.5 * weight=2.0 = 1.0 > 0.5 */
     EXPECT_GT(bridge->state.current_epistemic_value, 0.5f);
 
     /* Knowledge gap detection should be disabled */

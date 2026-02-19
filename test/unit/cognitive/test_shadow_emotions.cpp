@@ -330,14 +330,17 @@ TEST_F(ShadowEmotionsTest, AssessHubris_NullSystem) {
  * ============================================================================ */
 
 TEST_F(ShadowEmotionsTest, AssessGreed_HighValueLowNecessity) {
-    // WHAT: High value acquisition with low necessity triggers greed
-    // WHY:  Test greed detection
-    // HOW:  High value, low necessity
+    // WHAT: Repeated high value acquisition with low necessity triggers greed
+    // WHY:  Test greed detection -- intensity accumulates over multiple acquisitions
+    // HOW:  High value, low necessity, repeated calls to exceed threshold
 
     system = shadow_system_create(8);
     ASSERT_NE(system, nullptr);
 
-    shadow_assess_greed(system, 0.9f, 0.1f, 0.2f, 1000000);
+    // Each call adds ~0.072 intensity; need multiple acquisitions to exceed 0.5 threshold
+    for (int i = 0; i < 10; i++) {
+        shadow_assess_greed(system, 0.9f, 0.1f, 0.2f, (uint64_t)(1000000 + i * 100000));
+    }
 
     EXPECT_TRUE(shadow_is_active(system, SHADOW_GREED));
     EXPECT_GT(shadow_get_intensity(system, SHADOW_GREED), SHADOW_GREED_THRESHOLD);
@@ -540,19 +543,19 @@ TEST_F(ShadowEmotionsTest, IsCorrecting_NullSystem) {
 TEST_F(ShadowEmotionsTest, ApplyIntervention_CognitiveReframe) {
     // WHAT: Apply cognitive reframing intervention
     // WHY:  Test intervention application
-    // HOW:  Trigger emotion, apply intervention
+    // HOW:  Trigger jealousy (cognitive reframe handles jealousy/hubris), apply intervention
 
     system = shadow_system_create(8);
     ASSERT_NE(system, nullptr);
 
-    // Trigger envy
-    shadow_experience_envy(system, 2, 0.3f, 0.9f, 0.5f, 1000000);
-    ASSERT_TRUE(shadow_is_active(system, SHADOW_ENVY));
+    // Trigger jealousy (cognitive reframe specifically handles jealousy and hubris)
+    shadow_experience_jealousy(system, 1, 0.9f, 0.9f, 1000000);
+    ASSERT_TRUE(shadow_is_active(system, SHADOW_JEALOUSY));
 
     // Apply intervention
     bool applied = shadow_apply_intervention(
         system,
-        SHADOW_ENVY,
+        SHADOW_JEALOUSY,
         SHADOW_INTERVENTION_COGNITIVE_REFRAME,
         2000000
     );

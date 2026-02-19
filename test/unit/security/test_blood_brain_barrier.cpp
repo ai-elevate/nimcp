@@ -367,13 +367,12 @@ TEST_F(BloodBrainBarrierTest, ValidatePointerZeroSize)
 
 TEST_F(BloodBrainBarrierTest, ValidatePointerNullSystem)
 {
-    // NULL system is rejected - validation requires system context
+    // NULL system is acceptable - skip system-specific checks (Portia passes NULL)
     int data = 42;
     bbb_validation_result_t result;
 
     bool valid = bbb_validate_pointer(nullptr, &data, sizeof(data), &result);
-    EXPECT_FALSE(valid);
-    EXPECT_FALSE(result.valid);
+    EXPECT_TRUE(valid);
 }
 
 //=============================================================================

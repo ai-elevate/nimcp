@@ -401,6 +401,7 @@ typedef struct {
     float delta;                /**< Change from last step */
     uint64_t started_ms;        /**< Processing start time */
     uint64_t last_updated_ms;   /**< Last refinement time */
+    bool heap_allocated;        /**< True if allocated by rcog_answer_state_create */
 } rcog_answer_state_t;
 
 /**

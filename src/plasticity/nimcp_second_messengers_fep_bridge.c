@@ -4,6 +4,8 @@
  */
 
 #include "plasticity/nimcp_second_messengers_fep_bridge.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
@@ -81,7 +83,7 @@ void sm_fep_bridge_destroy(sm_fep_bridge_t* bridge) {
 int sm_fep_bridge_connect_fep(sm_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge || !fep) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_fep");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -92,7 +94,7 @@ int sm_fep_bridge_connect_fep(sm_fep_bridge_t* bridge, fep_system_t* fep) {
 int sm_fep_bridge_connect_sm(sm_fep_bridge_t* bridge, second_messenger_system_t* sm) {
     if (!bridge || !sm) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_sm");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sm_system = sm;
@@ -103,7 +105,7 @@ int sm_fep_bridge_connect_sm(sm_fep_bridge_t* bridge, second_messenger_system_t*
 int sm_fep_bridge_disconnect(sm_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in disconnect");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -134,7 +136,7 @@ int sm_fep_trigger_creb_from_efe(sm_fep_bridge_t* bridge, float efe) {
     if (!bridge || !bridge->config.enable_creb_plasticity_coupling) return 0;
     if (!bridge->sm_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "SM system not connected in trigger_creb");
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     /* CREB phosphorylation if expected free energy exceeds threshold */
@@ -154,7 +156,7 @@ float sm_fep_get_plasticity_modulation(const sm_fep_bridge_t* bridge) {
 int sm_fep_bridge_update(sm_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in update");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -216,7 +218,7 @@ int sm_fep_bridge_update(sm_fep_bridge_t* bridge, uint64_t delta_ms) {
 int sm_fep_bridge_get_stats(const sm_fep_bridge_t* bridge, sm_fep_stats_t* stats) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in get_stats");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(sm_fep_stats_t));
@@ -227,16 +229,27 @@ int sm_fep_bridge_get_stats(const sm_fep_bridge_t* bridge, sm_fep_stats_t* stats
 int sm_fep_bridge_connect_bio_async(sm_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in connect_bio_async");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
-    bridge->base.bio_async_enabled = false;
+    if (bridge->base.bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_SECOND_MESSENGERS_BRIDGE,
+        .module_name = "second_messengers_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
+    }
     return 0;
 }
 
 int sm_fep_bridge_disconnect_bio_async(sm_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in disconnect_bio_async");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     bridge->base.bio_async_enabled = false;
     return 0;

@@ -204,6 +204,7 @@ static int mlp_layer_create(jepa_mlp_layer_t* layer, uint32_t in_dim,
         nimcp_free(layer->bias);
         nimcp_free(layer->grad_weights);
         nimcp_free(layer->grad_bias);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mlp_layer_init: gradient buffer allocation failed");
         return NIMCP_ERROR_MEMORY;
     }
     memset(layer->grad_weights, 0, out_dim * in_dim * sizeof(float));

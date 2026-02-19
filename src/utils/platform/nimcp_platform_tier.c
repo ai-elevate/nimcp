@@ -612,9 +612,15 @@ uint32_t platform_tier_recommend_neuron_count(platform_tier_t tier,
     uint32_t recommended = (max_by_memory < config->max_neurons) ?
                            max_by_memory : config->max_neurons;
 
-    // Don't go below tier's initial neuron count
-    if (recommended < config->initial_neurons) {
+    // Don't go below tier's initial neuron count, UNLESS memory is the
+    // bottleneck (bumping above max_by_memory would risk OOM)
+    if (recommended < config->initial_neurons && max_by_memory >= config->initial_neurons) {
         recommended = config->initial_neurons;
+    }
+
+    // Absolute minimum: at least 1 neuron
+    if (recommended == 0) {
+        recommended = 1;
     }
 
     LOG_DEBUG("Recommended neuron count for %s tier: %u "

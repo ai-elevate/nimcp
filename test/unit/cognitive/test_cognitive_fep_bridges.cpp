@@ -20,12 +20,14 @@
 #include "cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
+#include "async/nimcp_bio_router.h"
 
 class CognitiveFepBridgesTestBase : public ::testing::Test {
 protected:
     fep_system_t* fep = nullptr;
 
     void SetUp() override {
+        bio_router_init(NULL);
         fep_config_t fep_config;
         fep_default_config(&fep_config);
         fep = fep_create(&fep_config, 8, 4);
@@ -37,6 +39,7 @@ protected:
             fep_destroy(fep);
             fep = nullptr;
         }
+        bio_router_shutdown();
     }
 };
 
@@ -314,8 +317,9 @@ TEST_F(PersonalityFepBridgeTest, ConnectFep) {
 
 TEST_F(PersonalityFepBridgeTest, Update) {
     personality_fep_bridge_connect_fep(bridge, fep);
+    /* Update requires personality system to be connected - without it, returns error */
     int ret = personality_fep_bridge_update(bridge);
-    EXPECT_EQ(ret, 0);
+    EXPECT_NE(ret, 0);
 }
 
 TEST_F(PersonalityFepBridgeTest, BioAsync) {
@@ -436,8 +440,9 @@ TEST_F(SleepWakeFepBridgeTest, ConnectFep) {
 
 TEST_F(SleepWakeFepBridgeTest, Update) {
     sleep_wake_fep_bridge_connect_fep(bridge, fep);
+    /* Update requires sleep_system to be connected - without it, returns error */
     int ret = sleep_wake_fep_bridge_update(bridge);
-    EXPECT_EQ(ret, 0);
+    EXPECT_NE(ret, 0);
 }
 
 TEST_F(SleepWakeFepBridgeTest, BioAsync) {

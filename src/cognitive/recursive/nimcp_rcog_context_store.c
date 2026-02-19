@@ -748,7 +748,18 @@ rcog_error_t rcog_context_store_list(
     for (int i = 0; i < HASH_TABLE_SIZE && n < max_names; i++) {
         rcog_variable_t* var = store->buckets[i];
         while (var && n < max_names) {
-            names[n++] = var->name;
+            names[n] = nimcp_strdup(var->name);
+            if (!names[n]) {
+                /* Free already-allocated names on OOM */
+                for (size_t j = 0; j < n; j++) {
+                    nimcp_free(names[j]);
+                    names[j] = NULL;
+                }
+                *count = 0;
+                nimcp_mutex_unlock(((rcog_context_store_t*)store)->mutex);
+                return RCOG_ERROR_OUT_OF_MEMORY;
+            }
+            n++;
             var = var->next;
         }
     }
@@ -793,9 +804,16 @@ rcog_error_t rcog_context_store_query(
     memset(result, 0, sizeof(rcog_query_result_t));
     result->dtype = var->dtype;
 
-    size_t output_limit = params->output_limit > 0 ?
-                          params->output_limit :
-                          store->config.output_limit_per_query;
+    /* Use the more restrictive of params limit and store config limit */
+    size_t output_limit;
+    if (params->output_limit > 0 && store->config.output_limit_per_query > 0) {
+        output_limit = params->output_limit < store->config.output_limit_per_query ?
+                       params->output_limit : store->config.output_limit_per_query;
+    } else if (params->output_limit > 0) {
+        output_limit = params->output_limit;
+    } else {
+        output_limit = store->config.output_limit_per_query;
+    }
 
     rcog_error_t err = RCOG_OK;
 
@@ -886,8 +904,10 @@ rcog_error_t rcog_context_store_query(
         case RCOG_ACCESS_TAIL:
             if (var->dtype == RCOG_DTYPE_TEXT) {
                 size_t count = params->count > 0 ? params->count : 10;
-                size_t start = var->size > count ? var->size - count : 0;
-                err = get_text_slice(var->data, var->size, start, var->size,
+                /* var->size includes NUL terminator; use text_len for offset calc */
+                size_t text_len = var->size > 0 ? var->size - 1 : 0;
+                size_t start = text_len > count ? text_len - count : 0;
+                err = get_text_slice(var->data, var->size, start, text_len,
                                      output_limit, result);
             } else {
                 size_t tail_size = params->count > 0 ? params->count : 1024;
@@ -1166,7 +1186,17 @@ rcog_error_t rcog_context_store_get_shared(
         rcog_variable_t* var = store->buckets[i];
         while (var && n < max_names) {
             if (var->shared_with_swarm) {
-                names[n++] = var->name;
+                names[n] = nimcp_strdup(var->name);
+                if (!names[n]) {
+                    for (size_t j = 0; j < n; j++) {
+                        nimcp_free(names[j]);
+                        names[j] = NULL;
+                    }
+                    *count = 0;
+                    nimcp_mutex_unlock(((rcog_context_store_t*)store)->mutex);
+                    return RCOG_ERROR_OUT_OF_MEMORY;
+                }
+                n++;
             }
             var = var->next;
         }

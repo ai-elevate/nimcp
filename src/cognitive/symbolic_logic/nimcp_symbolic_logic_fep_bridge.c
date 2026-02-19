@@ -27,8 +27,8 @@ static mesh_participant_id_t g_symbolic_logic_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_symbolic_logic_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t symbolic_logic_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_symbolic_logic_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_symbolic_logic_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "symbolic_logic_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -71,7 +71,7 @@ int symbolic_logic_fep_bridge_default_config(symbolic_logic_fep_config_t* config
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_default_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_exploration_threshold = LOGIC_FEP_HIGH_PE_THRESHOLD;
     config->proof_precision_factor = LOGIC_FEP_PROOF_PRECISION_FACTOR;
     config->enable_pe_exploration = true;
@@ -122,7 +122,7 @@ int symbolic_logic_fep_bridge_connect_fep(symbolic_logic_fep_bridge_t* bridge, f
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_connect_fep", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -134,7 +134,7 @@ int symbolic_logic_fep_bridge_connect_logic(symbolic_logic_fep_bridge_t* bridge,
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_connect_logic", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && logic, NIMCP_ERROR_NULL_POINTER, "bridge or logic is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && logic, NIMCP_ERROR_NULL_POINTER, "bridge or logic is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic_system = logic;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -146,7 +146,7 @@ int symbolic_logic_fep_bridge_disconnect(symbolic_logic_fep_bridge_t* bridge) {
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_disconnect", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->logic_system = NULL;
@@ -159,7 +159,7 @@ int symbolic_logic_fep_trigger_exploration(symbolic_logic_fep_bridge_t* bridge, 
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_t", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_exploration) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.current_prediction_error = pe_magnitude;
@@ -178,7 +178,7 @@ int symbolic_logic_fep_weight_facts_by_confidence(symbolic_logic_fep_bridge_t* b
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_w", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_salience_precision) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.num_salient_facts = 0;
@@ -191,7 +191,7 @@ int symbolic_logic_fep_validate_beliefs_by_proof(symbolic_logic_fep_bridge_t* br
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_v", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_proof_validation) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic_effects.logic_validating_beliefs = true;
@@ -205,7 +205,7 @@ int symbolic_logic_fep_trigger_revision_from_contradiction(symbolic_logic_fep_br
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_t", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic_effects.belief_revision_triggered = true;
     bridge->stats.belief_revisions++;
@@ -218,7 +218,7 @@ int symbolic_logic_fep_bridge_update(symbolic_logic_fep_bridge_t* bridge, uint64
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_update", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     symbolic_logic_fep_weight_facts_by_confidence(bridge);
     symbolic_logic_fep_validate_beliefs_by_proof(bridge);
     return 0;
@@ -229,7 +229,7 @@ int symbolic_logic_fep_bridge_get_state(const symbolic_logic_fep_bridge_t* bridg
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_get_state", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -241,7 +241,7 @@ int symbolic_logic_fep_bridge_get_stats(const symbolic_logic_fep_bridge_t* bridg
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_get_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -253,7 +253,7 @@ int symbolic_logic_fep_bridge_connect_bio_async(symbolic_logic_fep_bridge_t* bri
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_connect_bio_async", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_LOGIC_BRIDGE,
@@ -354,7 +354,7 @@ int symbolic_logic_fep_bridge_register_with_orchestrator(
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_register_with_orches", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
 
     int result = fep_orchestrator_register_bridge(
         orchestrator,
@@ -383,7 +383,7 @@ int symbolic_logic_fep_bridge_unregister_from_orchestrator(
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_unregister_from_orch", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
 
     /* Note: Need to track bridge_id to unregister properly */
     /* For now, this is a placeholder - full implementation would store bridge_id */

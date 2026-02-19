@@ -278,6 +278,19 @@ int hypo_salience_fep_update(hypo_salience_fep_bridge_t* bridge) {
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
+    /* Sync drive urgencies from stored drive system if available */
+    if (bridge->drive_system) {
+        hypo_drive_system_t ds_state;
+        if (hypo_drive_get_system_state(bridge->drive_system, &ds_state)) {
+            for (int i = 0; i < HYPO_DRIVE_COUNT; i++) {
+                bridge->sal_effects.drive_urgencies[i] = ds_state.drives[i].urgency;
+            }
+            bridge->sal_effects.priority_drive = ds_state.highest_priority;
+            bridge->sal_effects.priority_urgency =
+                ds_state.drives[ds_state.highest_priority].urgency;
+        }
+    }
+
     /* Compute salience weights */
     compute_salience_weights(bridge);
 

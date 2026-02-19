@@ -76,7 +76,7 @@ int security_collective_fep_default_config(security_collective_fep_config_t* con
     /* HOW:  Set thresholds based on expected variance in legitimate behavior */
 
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP thresholds */
@@ -195,7 +195,7 @@ int security_collective_fep_reset(security_collective_fep_bridge_t* bridge) {
     /* HOW:  Zero state/stats, reset precision */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -241,7 +241,7 @@ int security_collective_fep_get_config(
     security_collective_fep_config_t* config
 ) {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *config = bridge->config;
@@ -253,7 +253,7 @@ int security_collective_fep_set_config(
     const security_collective_fep_config_t* config
 ) {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -274,18 +274,18 @@ int security_collective_fep_compute_effects(security_collective_fep_bridge_t* br
     /* HOW:  Process security state through generative model */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (!bridge->fep_system) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     /* Get current FEP state */
@@ -371,7 +371,7 @@ int security_collective_fep_update_from_detection(
     /* HOW:  Convert to FEP observation, update beliefs */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)agent_id;  /* Used for targeted precision updates in future */
@@ -430,7 +430,7 @@ int security_collective_fep_active_inference(
     /* HOW:  Evaluate policies, select EFE-minimizing action */
 
     if (!bridge || !response) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_active_inference) {
@@ -478,7 +478,7 @@ int security_collective_fep_modulate_precision(
     /* HOW:  Update based on detection history and FP rate */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_modulation) {
@@ -551,7 +551,7 @@ int security_collective_fep_report_consensus(
     /* HOW:  Map to prediction error, update beliefs */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)participant_count;  /* Future: weight by participant count */
@@ -591,7 +591,7 @@ int security_collective_fep_report_byzantine(
     /* HOW:  Map to prediction error with high weight */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     return security_collective_fep_update_from_detection(
@@ -608,7 +608,7 @@ int security_collective_fep_report_sybil(
     /* HOW:  Map to prediction error with highest weight */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)suspected_count;  /* Future: scale probability by count */
@@ -626,7 +626,7 @@ int security_collective_fep_report_false_positive(
     /* HOW:  Lower type-specific precision */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.learn_from_false_positives) {
@@ -673,7 +673,7 @@ int security_collective_fep_get_fep_effects(
     fep_to_security_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -685,7 +685,7 @@ int security_collective_fep_get_security_effects(
     security_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->security_effects;
@@ -697,7 +697,7 @@ int security_collective_fep_get_state(
     security_collective_fep_state_t* state
 ) {
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *state = bridge->state;
@@ -709,7 +709,7 @@ int security_collective_fep_get_stats(
     security_collective_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -786,7 +786,7 @@ int security_collective_fep_reset_stats(
     security_collective_fep_bridge_t* bridge
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -804,7 +804,7 @@ int security_collective_fep_connect_bio_async(
     security_collective_fep_bridge_t* bridge
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -826,7 +826,7 @@ int security_collective_fep_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Security collective FEP: bio-async connection failed");
-    return NIMCP_ERROR_OPERATION_FAILED;
+    return -1;
 }
 
 int security_collective_fep_disconnect_bio_async(

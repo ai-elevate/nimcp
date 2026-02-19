@@ -273,7 +273,6 @@ bool speech_cortex_recognize_word(
     word_buffer[0] = '\0';
     if (confidence) *confidence = 0.0f;
     if (buffer_size > 0) word_buffer[0] = '\0';
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_recognize_word: validation failed");
     return false;  /* No word recognized in stub */
 }
 
@@ -414,12 +413,12 @@ bool speech_cortex_request_frequency_boost(speech_cortex_t* cortex,
                                             float* target_freq_hz,
                                             float* bandwidth_hz) {
     if (!cortex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_phoneme_confidence: cortex is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_request_frequency_boost: cortex is NULL");
         return false;
     }
     if (target_freq_hz) *target_freq_hz = 0.0f;
     if (bandwidth_hz) *bandwidth_hz = 0.0f;
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_get_phoneme_confidence: validation failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_request_frequency_boost: validation failed");
     return false;  /* No boost needed in stub */
 }
 

@@ -64,7 +64,7 @@ void swarm_emergence_fep_destroy(swarm_emergence_fep_bridge_t* bridge) {
 }
 
 int swarm_emergence_fep_update(swarm_emergence_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     swarm_emergence_tier_t tier = swarm_emergence_get_tier(bridge->emergence_ctx);
@@ -89,12 +89,12 @@ int swarm_emergence_fep_update(swarm_emergence_fep_bridge_t* bridge) {
 }
 
 int swarm_emergence_fep_apply_modulation(swarm_emergence_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     return 0;
 }
 
 int swarm_emergence_fep_get_effects(const swarm_emergence_fep_bridge_t* bridge, swarm_emergence_fep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -102,7 +102,7 @@ int swarm_emergence_fep_get_effects(const swarm_emergence_fep_bridge_t* bridge, 
 }
 
 int swarm_emergence_fep_get_emergence_effects(const swarm_emergence_fep_bridge_t* bridge, fep_swarm_emergence_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->emergence_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -110,7 +110,7 @@ int swarm_emergence_fep_get_emergence_effects(const swarm_emergence_fep_bridge_t
 }
 
 int swarm_emergence_fep_get_stats(const swarm_emergence_fep_bridge_t* bridge, swarm_emergence_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

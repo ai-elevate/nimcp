@@ -1,7 +1,7 @@
 # NIMCP Documentation Index
 
-**Version**: 2.6.2
-**Last Updated**: 2025-12-31
+**Version**: 2.6.3
+**Last Updated**: 2026-02-19
 
 This is the master index for all NIMCP documentation. For developer workflow and coding standards, see [docs/claude/](claude/) which serves as the primary developer reference.
 
@@ -210,6 +210,7 @@ NIMCP implements a biologically-inspired neural network with:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.6.3 | 2026-02-19 | API evolution infrastructure, thread safety docs |
 | 2.6.2 | 2025-12-31 | Documentation cleanup and reorganization |
 | 2.6.1 | 2025-12-30 | Occipital lobe integration |
 | 2.6.0 | 2025-12-24 | Major refactoring and API updates |

@@ -142,10 +142,10 @@ nimcp_result_t gossip_beliefs_init(gossip_beliefs_t* gb, void* bio_ctx);
  *
  * @param gb Gossip system
  * @param agent_id Agent adopting the belief
- * @param belief Belief to introduce (copied into system)
+ * @param belief Belief to introduce (copied into system, belief_id updated with assigned ID)
  * @return NIMCP_SUCCESS on success, error code otherwise
  */
-int gossip_introduce_belief(gossip_beliefs_t* gb, uint32_t agent_id, const belief_t* belief);
+int gossip_introduce_belief(gossip_beliefs_t* gb, uint32_t agent_id, belief_t* belief);
 
 /**
  * @brief Update certainty of an existing belief

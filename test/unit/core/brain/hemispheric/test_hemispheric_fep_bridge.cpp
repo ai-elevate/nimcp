@@ -132,7 +132,7 @@ TEST_F(HemisphericFepBridgeTest, SetPrecisionValid) {
     ASSERT_NE(bridge, nullptr);
 
     int result = hemispheric_fep_set_precision(bridge, HEMISPHERE_LEFT, 0.75f);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 
     float precision = hemispheric_fep_get_precision(bridge, HEMISPHERE_LEFT);
     EXPECT_FLOAT_EQ(precision, 0.75f);
@@ -188,7 +188,7 @@ TEST_F(HemisphericFepBridgeTest, ResetFreeEnergy) {
 
     // Reset
     int result = hemispheric_fep_reset_free_energy(bridge);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 
     float fe = hemispheric_fep_get_total_free_energy(bridge);
     EXPECT_LT(fe, 0.5f);
@@ -266,7 +266,7 @@ TEST_F(HemisphericFepBridgeTest, TransferAveragesPredictionErrors) {
 
     // Trigger transfer
     int result = hemispheric_fep_trigger_transfer(bridge);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 
     hemisphere_fep_effects_t left_after = hemispheric_fep_get_left_effects(bridge);
     hemisphere_fep_effects_t right_after = hemispheric_fep_get_right_effects(bridge);
@@ -339,7 +339,7 @@ TEST_F(HemisphericFepBridgeTest, UpdateSucceeds) {
     ASSERT_NE(bridge, nullptr);
 
     int result = hemispheric_fep_update(bridge);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 }
 
 TEST_F(HemisphericFepBridgeTest, ApplyModulationSucceeds) {
@@ -347,7 +347,7 @@ TEST_F(HemisphericFepBridgeTest, ApplyModulationSucceeds) {
     ASSERT_NE(bridge, nullptr);
 
     int result = hemispheric_fep_apply_modulation(bridge);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 }
 
 TEST_F(HemisphericFepBridgeTest, UpdateWithNullBridge) {
@@ -418,7 +418,7 @@ TEST_F(HemisphericFepBridgeTest, ConnectBioAsync) {
     ASSERT_NE(bridge, nullptr);
 
     int result = hemispheric_fep_connect_bio_async(bridge);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 }
 
 TEST_F(HemisphericFepBridgeTest, DisconnectBioAsync) {
@@ -427,7 +427,7 @@ TEST_F(HemisphericFepBridgeTest, DisconnectBioAsync) {
 
     hemispheric_fep_connect_bio_async(bridge);
     int result = hemispheric_fep_disconnect_bio_async(bridge);
-    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(result, 0);
 }
 
 TEST_F(HemisphericFepBridgeTest, ConnectBioAsyncNull) {

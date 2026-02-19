@@ -189,6 +189,37 @@ extern "C" {
     } while (0)
 
 /* ============================================================================
+ * FEP Bridge Macros (return -1 for errors, 0 for success)
+ * ============================================================================ */
+
+/**
+ * @brief Check condition, throw, and return -1 if false.
+ *
+ * FEP bridge functions return int (0/-1), not NIMCP_ERROR_* codes.
+ * Use this macro in FEP bridge files instead of NIMCP_CHECK_THROW.
+ */
+#define NIMCP_FEP_CHECK_THROW(cond, code, fmt, ...) \
+    do { \
+        if (!(cond)) { \
+            NIMCP_THROW((code), fmt, ##__VA_ARGS__); \
+            return -1; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check condition, throw to immune, and return -1 if false.
+ *
+ * FEP bridge variant of NIMCP_CHECK_THROW_IMMUNE.
+ */
+#define NIMCP_FEP_CHECK_THROW_IMMUNE(cond, code, fmt, ...) \
+    do { \
+        if (!(cond)) { \
+            NIMCP_THROW_TO_IMMUNE((code), fmt, ##__VA_ARGS__); \
+            return -1; \
+        } \
+    } while (0)
+
+/* ============================================================================
  * Full Immune Recovery Macros
  * ============================================================================ */
 

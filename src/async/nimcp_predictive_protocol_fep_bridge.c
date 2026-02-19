@@ -25,7 +25,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_protocol_fep_bridge)
  * ============================================================================ */
 
 int predictive_protocol_fep_default_config(predictive_protocol_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER,
+    NIMCP_FEP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER,
                        "predictive_protocol_fep_default_config: NULL config");
 
     config->prediction_confidence_threshold = 0.7f;
@@ -117,7 +117,7 @@ void predictive_protocol_fep_destroy(predictive_protocol_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int predictive_protocol_fep_update_effects(predictive_protocol_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER,
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER,
                        "predictive_protocol_fep_update_effects: NULL bridge or fep_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

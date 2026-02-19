@@ -33,8 +33,8 @@ static mesh_participant_id_t g_empathetic_response_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_empathetic_response_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t empathetic_response_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_empathetic_response_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_empathetic_response_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "empathetic_response_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -81,7 +81,7 @@ int empathetic_response_fep_default_config(empathetic_response_fep_config_t* con
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Empathetic Response */
     config->pe_empathy_gain = 1.0f;
@@ -179,7 +179,7 @@ int empathetic_response_fep_connect_fep(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -197,7 +197,7 @@ int empathetic_response_fep_connect_empathy(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->empathetic_system = empathy;
@@ -212,7 +212,7 @@ int empathetic_response_fep_disconnect(empathetic_response_fep_bridge_t* bridge)
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -235,7 +235,7 @@ int empathetic_response_fep_infer_user_state(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_empathy_generation) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -291,7 +291,7 @@ int empathetic_response_fep_modulate_social_precision(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_empathy_precision) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -326,7 +326,7 @@ int empathetic_response_fep_update(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply social precision modulation */
     empathetic_response_fep_modulate_social_precision(bridge);
@@ -357,7 +357,7 @@ int empathetic_response_fep_get_state(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -374,7 +374,7 @@ int empathetic_response_fep_get_stats(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -394,7 +394,7 @@ int empathetic_response_fep_connect_bio_async(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -422,7 +422,7 @@ int empathetic_response_fep_disconnect_bio_async(
     empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -193,7 +193,7 @@ TEST_F(HeartbeatB18UnitTest, HeartbeatCounterIncrements) {
 }
 
 TEST_F(HeartbeatB18UnitTest, ModuleCount) {
-    EXPECT_EQ(B18_MODULE_COUNT, 29u);
+    EXPECT_EQ(B18_MODULE_COUNT, 32u);
 }
 
 TEST_F(HeartbeatB18UnitTest, DoubleSetSameAgentIdempotent) {

@@ -567,7 +567,8 @@ TEST_F(RcogToolRouterWithToolsTest, SearchTools)
     char tools[20][RCOG_ROUTER_MAX_TOOL_NAME];
     size_t count = 0;
 
-    int result = rcog_tool_router_search_tools(router, "l*_test",
+    /* Search uses substring match, not glob patterns */
+    int result = rcog_tool_router_search_tools(router, "_test",
                                                 tools, 20, &count);
     EXPECT_EQ(result, 0);
     EXPECT_GE(count, 3u);  // l1_test, l2_test, l3_test
@@ -673,20 +674,20 @@ TEST(RcogToolRouterStatsTest, StatsNullParams)
 
 TEST(RcogToolRouterUtilityTest, TierName)
 {
-    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_ROOT), "ROOT");
-    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L1_REASONING), "L1_REASONING");
-    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L2_PERCEPTION), "L2_PERCEPTION");
-    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L3_ACTION), "L3_ACTION");
-    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L4_SPECIALIZED), "L4_SPECIALIZED");
+    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_ROOT), "root");
+    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L1_REASONING), "L1_reasoning");
+    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L2_PERCEPTION), "L2_perception");
+    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L3_ACTION), "L3_action");
+    EXPECT_STREQ(rcog_tool_tier_name(RCOG_TIER_L4_SPECIALIZED), "L4_specialized");
 }
 
 TEST(RcogToolRouterUtilityTest, IOTypeName)
 {
-    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_ANY), "ANY");
-    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_TEXT), "TEXT");
-    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_JSON), "JSON");
-    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_BINARY), "BINARY");
-    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_TENSOR), "TENSOR");
+    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_ANY), "any");
+    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_TEXT), "text");
+    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_JSON), "json");
+    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_BINARY), "binary");
+    EXPECT_STREQ(rcog_tool_io_type_name(RCOG_TOOL_IO_TENSOR), "tensor");
 }
 
 TEST(RcogToolRouterUtilityTest, CreateToolRequest)

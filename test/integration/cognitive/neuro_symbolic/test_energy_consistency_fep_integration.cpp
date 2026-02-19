@@ -94,10 +94,10 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ConsistencyCheckProducesFEPInput) {
     /* Check a simple proposition */
     energy_consistency_result_t result;
     nimcp_error_t err = energy_consistency_result_init(&result, 10);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     err = energy_consistency_check_proposition(checker, "P AND P", NULL, &result);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Result should have energy that can be fed to FEP */
     EXPECT_GE(result.total_energy, 0.0f);
@@ -119,7 +119,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ContradictionProducesHighEnergy) {
     energy_consistency_result_init(&result, 10);
 
     nimcp_error_t err = energy_consistency_check_proposition(checker, "P AND NOT P", NULL, &result);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Contradiction should have higher energy than tautology */
     energy_consistency_result_t tautology_result;
@@ -287,7 +287,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeUpdate) {
 
     /* Update with consistency energy */
     nimcp_error_t err = energy_fep_bridge_update(bridge, 0.5f);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Check updated state */
     EXPECT_EQ(bridge->total_updates, 1u);
@@ -295,7 +295,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeUpdate) {
 
     /* Update again */
     err = energy_fep_bridge_update(bridge, 0.3f);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
     EXPECT_EQ(bridge->total_updates, 2u);
 
     energy_fep_bridge_destroy(bridge);
@@ -315,7 +315,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeUpdateFromResult) {
 
     /* Update from result */
     nimcp_error_t err = energy_fep_bridge_update_from_result(bridge, &result);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Bridge should reflect result */
     EXPECT_FLOAT_EQ(bridge->current_energy, 0.7f);
@@ -334,7 +334,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeEffects) {
     /* Get effects */
     energy_fep_bridge_effects_t effects;
     nimcp_error_t err = energy_fep_bridge_get_effects(bridge, &effects);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Effects should be valid */
     EXPECT_GE(effects.prediction_error, 0.0f);
@@ -397,11 +397,11 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeConnectChecker) {
 
     /* Connect checker */
     nimcp_error_t err = energy_fep_bridge_connect_checker(bridge, checker);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Disconnect */
     err = energy_fep_bridge_disconnect_checker(bridge);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     energy_fep_bridge_destroy(bridge);
 }
@@ -417,7 +417,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeConnectFEP) {
 
     /* Disconnect */
     err = energy_fep_bridge_disconnect_fep(bridge);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     energy_fep_bridge_destroy(bridge);
 }
@@ -445,7 +445,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeRepairAction) {
     /* Get repair action */
     int action = -1;
     nimcp_error_t err = energy_fep_bridge_get_repair_action(bridge, &violation, &action);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Action should be recommended */
     EXPECT_GE(action, -1);
@@ -496,7 +496,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ThermodynamicCostComputation) {
 
     nimcp_error_t err = energy_consistency_compute_thermo_cost(
         checker, bits_processed, &atp_cost, &landauer_cost);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Costs should be non-negative */
     EXPECT_GE(atp_cost, 0.0f);
@@ -513,7 +513,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ThermoCostInResult) {
     energy_consistency_result_init(&result, 10);
 
     nimcp_error_t err = energy_consistency_check_proposition(checker, "A AND B", NULL, &result);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Result should include thermodynamic costs */
     EXPECT_GE(result.thermodynamic_cost, 0.0f);
@@ -573,7 +573,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, InflammationModulation) {
 
     /* Apply inflammation */
     nimcp_error_t err = energy_consistency_modulate_inflammation(checker, 0.5f);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Check proposition with inflammation */
     energy_consistency_result_t result;
@@ -592,7 +592,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, FatigueModulation) {
 
     /* Apply fatigue */
     nimcp_error_t err = energy_consistency_modulate_fatigue(checker, 0.7f);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Check proposition with fatigue */
     energy_consistency_result_t result;
@@ -610,7 +610,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ATPModulation) {
 
     /* Apply low ATP */
     nimcp_error_t err = energy_consistency_modulate_atp(checker, 0.3f);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Check proposition with low ATP */
     energy_consistency_result_t result;
@@ -664,7 +664,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ProofTraceConsistencyCheck) {
     energy_consistency_result_init(&result, 10);
 
     nimcp_error_t err = energy_consistency_check_proof(checker, steps, 3, &result);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Valid proof should have low energy */
     EXPECT_GE(result.proof_steps_checked, 0u);
@@ -681,7 +681,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, PairConsistencyCheck) {
     energy_consistency_result_init(&result1, 10);
 
     nimcp_error_t err = energy_consistency_check_pair(checker, "A", "B", &result1);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* A and B are consistent (can both be true) */
     EXPECT_GT(result1.final_consistency, 0.0f);
@@ -691,7 +691,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, PairConsistencyCheck) {
     energy_consistency_result_init(&result2, 10);
 
     err = energy_consistency_check_pair(checker, "A", "NOT A", &result2);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* A and NOT A are inconsistent */
     /* result2.final_consistency may be lower */
@@ -719,7 +719,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, StatisticsAccumulate) {
     /* Get statistics */
     energy_consistency_stats_t stats;
     nimcp_error_t err = energy_consistency_get_stats(checker, &stats);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     EXPECT_EQ(stats.total_checks, 5u);
 }
@@ -804,7 +804,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, ResetClearsState) {
 
     /* Reset */
     nimcp_error_t err = energy_consistency_reset(checker);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Stats should be cleared */
     energy_consistency_stats_t stats_after;
@@ -829,7 +829,7 @@ TEST_F(EnergyConsistencyFEPIntegrationTest, EnergyFEPBridgeReset) {
 
     /* Reset */
     nimcp_error_t err = energy_fep_bridge_reset(bridge);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* State should be cleared */
     EXPECT_EQ(bridge->total_updates, 0u);

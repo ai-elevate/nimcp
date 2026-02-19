@@ -484,12 +484,12 @@ TEST_F(SurpriseAttBridgeTest, ZeroDtNoOp) {
 
 TEST(SurpriseBridgesNullSafety, FepForwardPeNull) {
     int rc = surprise_fep_forward_pe(nullptr, 0.5f, 0x100);
-    EXPECT_EQ(rc, NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER);
+    EXPECT_EQ(rc, -1);  /* FEP bridges return -1 for errors */
 }
 
 TEST(SurpriseBridgesNullSafety, FepModulatePrecisionNull) {
     int rc = surprise_fep_modulate_precision(nullptr);
-    EXPECT_EQ(rc, NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER);
+    EXPECT_EQ(rc, -1);  /* FEP bridges return -1 for errors */
 }
 
 TEST(SurpriseBridgesNullSafety, GwSubmitBroadcastNull) {

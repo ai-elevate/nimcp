@@ -15,7 +15,7 @@
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(oligodendrocytes_fep_bridge)
 
 int oligodendrocytes_fep_default_config(oligodendrocytes_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->temporal_sensitivity = OLIGODENDROCYTES_FEP_DEFAULT_TEMPORAL_SENSITIVITY;
     config->myelination_gain = OLIGODENDROCYTES_FEP_DEFAULT_MYELINATION_GAIN;
     config->g_ratio_precision_factor = 0.8f;
@@ -71,7 +71,7 @@ void oligodendrocytes_fep_destroy(oligodendrocytes_fep_bridge_t* bridge) {
 }
 
 int oligodendrocytes_fep_update_fep_to_oligodendrocyte(oligodendrocytes_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     float free_energy = fep_get_free_energy(bridge->fep_system);
 
@@ -96,7 +96,7 @@ int oligodendrocytes_fep_update_fep_to_oligodendrocyte(oligodendrocytes_fep_brid
 }
 
 int oligodendrocytes_fep_update_oligodendrocyte_to_fep(oligodendrocytes_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge && bridge->oligodendrocyte_network, NIMCP_ERROR_NULL_POINTER, "bridge or oligodendrocyte_network is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->oligodendrocyte_network, NIMCP_ERROR_NULL_POINTER, "bridge or oligodendrocyte_network is NULL");
 
     oligodendrocyte_network_stats_t stats;
     oligodendrocyte_network_get_stats(bridge->oligodendrocyte_network, &stats);
@@ -118,14 +118,14 @@ int oligodendrocytes_fep_update_oligodendrocyte_to_fep(oligodendrocytes_fep_brid
 }
 
 int oligodendrocytes_fep_update(oligodendrocytes_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     int ret = oligodendrocytes_fep_update_fep_to_oligodendrocyte(bridge);
     if (ret != 0) return ret;
     return oligodendrocytes_fep_update_oligodendrocyte_to_fep(bridge);
 }
 
 int oligodendrocytes_fep_apply_modulation(oligodendrocytes_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     bridge->stats.temporal_precision_adjustments++;
     return 0;
 }
@@ -141,7 +141,7 @@ float oligodendrocytes_fep_get_temporal_precision(const oligodendrocytes_fep_bri
 int oligodendrocytes_fep_get_stats(const oligodendrocytes_fep_bridge_t* bridge,
                                    oligodendrocytes_fep_stats_t* stats)
 {
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     memcpy(stats, &bridge->stats, sizeof(oligodendrocytes_fep_stats_t));
     return 0;
 }

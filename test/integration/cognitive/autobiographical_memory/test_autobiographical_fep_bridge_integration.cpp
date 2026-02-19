@@ -72,7 +72,9 @@ TEST_F(AutobiographicalFepBridgeIntegrationTest, HighSurpriseCreatesMemory) {
 
     /* Verify it's a learning-type memory */
     autobiographical_memory_entry_t memory;
-    autobio_get_recent(autobio, 1, &memory, nullptr);
+    uint32_t found = 0;
+    autobio_get_recent(autobio, 1, &memory, &found);
+    ASSERT_GE(found, 1u);
     EXPECT_EQ(AUTOBIO_LEARNING, memory.type);
     EXPECT_GT(memory.importance, 0.0f);
 }
@@ -117,10 +119,10 @@ TEST_F(AutobiographicalFepBridgeIntegrationTest, SurpriseSequenceCreatesTimeline
         autobiographical_fep_encode_surprising_episode(bridge);
     }
 
-    /* Only high-surprise events should be encoded (7.0, 12.0, 15.0) */
+    /* Events at or above threshold (5.0) should be encoded: 7.0, 12.0, 5.0, 15.0 */
     autobio_stats_t stats;
     autobio_get_stats(autobio, &stats);
-    EXPECT_EQ(3, stats.total_memories);
+    EXPECT_EQ(4, stats.total_memories);
 }
 
 /* ============================================================================

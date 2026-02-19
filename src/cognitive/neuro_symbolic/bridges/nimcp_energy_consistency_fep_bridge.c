@@ -28,8 +28,8 @@ static mesh_participant_id_t g_energy_consistency_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_energy_consistency_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t energy_consistency_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_energy_consistency_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_energy_consistency_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "energy_consistency_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -137,7 +137,7 @@ NIMCP_API void energy_fep_bridge_destroy(energy_fep_bridge_t* bridge) {
 NIMCP_API nimcp_error_t energy_fep_bridge_reset(energy_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_reset: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->current_energy = 0.0f;
@@ -154,7 +154,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_reset(energy_fep_bridge_t* bridge) {
 
     memset(&bridge->effects, 0, sizeof(energy_fep_bridge_effects_t));
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_get_default_config(
@@ -162,7 +162,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_default_config(
 
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_default_config: config is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     memset(config, 0, sizeof(energy_fep_bridge_config_t));
@@ -176,7 +176,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_default_config(
     config->enable_active_inference = true;
     config->enable_bio_async = true;
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -189,14 +189,14 @@ NIMCP_API nimcp_error_t energy_fep_bridge_connect_checker(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_connect_checker: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->base.system_a = checker;
     bridge->base.system_a_connected = (checker != NULL);
     bridge->base.bridge_active = (checker != NULL && bridge->base.system_b != NULL);
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_connect_fep(
@@ -205,14 +205,14 @@ NIMCP_API nimcp_error_t energy_fep_bridge_connect_fep(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_connect_fep: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->base.system_b = fep;
     bridge->base.system_b_connected = (fep != NULL);
     bridge->base.bridge_active = (bridge->base.system_a != NULL && fep != NULL);
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_checker(
@@ -220,14 +220,14 @@ NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_checker(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_disconnect_checker: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->base.system_a = NULL;
     bridge->base.system_a_connected = false;
     bridge->base.bridge_active = false;
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_fep(
@@ -235,14 +235,14 @@ NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_fep(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_disconnect_fep: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->base.system_b = NULL;
     bridge->base.system_b_connected = false;
     bridge->base.bridge_active = false;
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -255,7 +255,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_update(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_update: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     /* Compute derivative */
@@ -316,7 +316,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_update(
         bridge->error_signals_sent++;
     }
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_update_from_result(
@@ -325,7 +325,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_update_from_result(
 
     if (!bridge || !result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_update_from_result: bridge or result is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     return energy_fep_bridge_update(bridge, result->total_energy);
@@ -354,11 +354,11 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_effects(
 
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_effects: bridge or effects is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     memcpy(effects, &bridge->effects, sizeof(energy_fep_bridge_effects_t));
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API float energy_fep_bridge_get_prediction_error(
@@ -392,7 +392,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_repair_action(
 
     if (!bridge || !violation || !action) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_repair_action: bridge, violation, or action is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     /* Select action based on violation type and expected free energy reduction */
@@ -411,7 +411,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_repair_action(
             break;
     }
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -423,12 +423,12 @@ NIMCP_API nimcp_error_t energy_fep_bridge_register_bio_async(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_register_bio_async: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     /* Bio-async registration handled by bridge_base */
     bridge->base.bio_async_enabled = true;
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_unregister_bio_async(
@@ -436,11 +436,11 @@ NIMCP_API nimcp_error_t energy_fep_bridge_unregister_bio_async(
 
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_unregister_bio_async: bridge is NULL");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->base.bio_async_enabled = false;
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================

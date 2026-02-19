@@ -21,7 +21,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(rate_limiter_fep_bridge, MESH_ADAPTER_CATEGORY_SECU
 
 int rate_fep_default_config(rate_fep_config_t* config) {
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     config->violation_fe_threshold = RATE_FEP_VIOLATION_THRESHOLD;
@@ -114,11 +114,11 @@ void rate_fep_destroy(rate_fep_bridge_t* bridge) {
 
 int rate_fep_update(rate_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -172,7 +172,7 @@ int rate_fep_check_request(
     bool* allowed
 ) {
     if (!bridge || !allowed) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -205,7 +205,7 @@ int rate_fep_check_request(
 
 int rate_fep_apply_modulation(rate_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_modulation) {
@@ -250,7 +250,7 @@ int rate_fep_report_violation(
     uint32_t violation_count
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -281,7 +281,7 @@ int rate_fep_get_effects(
     rate_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -293,7 +293,7 @@ int rate_fep_get_rate_effects(
     fep_rate_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->rate_effects;
@@ -305,7 +305,7 @@ int rate_fep_get_stats(
     rate_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -326,7 +326,7 @@ float rate_fep_get_violation_score(const rate_fep_bridge_t* bridge) {
 
 int rate_fep_connect_bio_async(rate_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {

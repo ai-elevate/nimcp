@@ -29,7 +29,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(hypo_curiosity_fep_bridge, MESH_ADAPTER_CATEGORY_CO
  * ============================================================================ */
 
 int hypo_curiosity_fep_default_config(hypo_curiosity_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->drive_fe_weight = 1.0f;
     config->prediction_error_gain = 1.5f;
@@ -107,7 +107,7 @@ void hypo_curiosity_fep_destroy(hypo_curiosity_fep_bridge_t* bridge) {
 }
 
 int hypo_curiosity_fep_reset(hypo_curiosity_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -129,7 +129,7 @@ int hypo_curiosity_fep_reset(hypo_curiosity_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int hypo_curiosity_fep_update(hypo_curiosity_fep_bridge_t* bridge, uint64_t delta_ms) {
-    NIMCP_CHECK_THROW(bridge && bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or inactive");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or inactive");
     (void)delta_ms; /* Currently unused but available for time-based updates */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -218,7 +218,7 @@ int hypo_curiosity_fep_update(hypo_curiosity_fep_bridge_t* bridge, uint64_t delt
 int hypo_curiosity_fep_compute_exploration(hypo_curiosity_fep_bridge_t* bridge,
     float curiosity_drive, float* exploration_weight) {
 
-    NIMCP_CHECK_THROW(bridge && exploration_weight, NIMCP_ERROR_NULL_POINTER, "bridge or exploration_weight is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && exploration_weight, NIMCP_ERROR_NULL_POINTER, "bridge or exploration_weight is NULL");
 
     /* Curiosity drive directly scales exploration weight
      * Higher drive = stronger motivation for exploratory policies */
@@ -235,7 +235,7 @@ int hypo_curiosity_fep_compute_exploration(hypo_curiosity_fep_bridge_t* bridge,
 int hypo_curiosity_fep_compute_fe_reduction(hypo_curiosity_fep_bridge_t* bridge,
     float info_gain, float* fe_reduction) {
 
-    NIMCP_CHECK_THROW(bridge && fe_reduction, NIMCP_ERROR_NULL_POINTER, "bridge or fe_reduction is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fe_reduction, NIMCP_ERROR_NULL_POINTER, "bridge or fe_reduction is NULL");
 
     /* Information gain reduces free energy
      * Learning new information satisfies curiosity and reduces uncertainty */
@@ -252,7 +252,7 @@ int hypo_curiosity_fep_compute_fe_reduction(hypo_curiosity_fep_bridge_t* bridge,
 int hypo_curiosity_fep_modulate_precision(hypo_curiosity_fep_bridge_t* bridge,
     float novelty_level, float* precision) {
 
-    NIMCP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
 
     /* Novelty increases precision (heightened attention to novel stimuli)
      * This reflects the biological response of increased attention to novelty */
@@ -276,7 +276,7 @@ int hypo_curiosity_fep_modulate_precision(hypo_curiosity_fep_bridge_t* bridge,
 int hypo_curiosity_fep_report_info_gain(hypo_curiosity_fep_bridge_t* bridge,
     float info_gain) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -309,7 +309,7 @@ int hypo_curiosity_fep_report_info_gain(hypo_curiosity_fep_bridge_t* bridge,
 int hypo_curiosity_fep_report_novelty(hypo_curiosity_fep_bridge_t* bridge,
     float novelty_magnitude) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -339,7 +339,7 @@ int hypo_curiosity_fep_report_novelty(hypo_curiosity_fep_bridge_t* bridge,
 int hypo_curiosity_fep_get_effects(const hypo_curiosity_fep_bridge_t* bridge,
     hypo_curiosity_fep_effects_t* effects) {
 
-    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
     *effects = bridge->fep_effects;
     return 0;
 }
@@ -347,7 +347,7 @@ int hypo_curiosity_fep_get_effects(const hypo_curiosity_fep_bridge_t* bridge,
 int hypo_curiosity_fep_get_stats(const hypo_curiosity_fep_bridge_t* bridge,
     hypo_curiosity_fep_stats_t* stats) {
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
 }
@@ -406,7 +406,7 @@ int hypo_curiosity_fep_process_messages(hypo_curiosity_fep_bridge_t* bridge) {
 int hypo_curiosity_fep_connect_drives(hypo_curiosity_fep_bridge_t* bridge,
     hypo_drive_system_handle_t* drives) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->drive_system = drives;

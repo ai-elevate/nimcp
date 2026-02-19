@@ -231,14 +231,24 @@ TEST_F(HypoFepIntegrationTest, CuriosityBridgeStatistics) {
  * ============================================================================ */
 
 TEST_F(HypoFepIntegrationTest, SalienceBridgeWeightComputation) {
-    /* Set different drive urgencies */
-    set_drive_level(HYPO_DRIVE_HUNGER, TEST_DRIVE_LEVEL_HIGH);
-    set_drive_level(HYPO_DRIVE_THIRST, TEST_DRIVE_LEVEL_LOW);
-    set_drive_level(HYPO_DRIVE_SAFETY, TEST_DRIVE_LEVEL_MODERATE);
+    /* Set drive urgencies directly on the salience bridge for deterministic testing.
+     * The indirect path (set_drive_level -> hypo_drive_update -> salience update)
+     * produces near-equal urgencies because all drives rise to max in 100ms.
+     *
+     * Temporarily disconnect drive_system so hypo_salience_fep_update() doesn't
+     * auto-sync from the real drive system (which would overwrite our values). */
+    hypo_drive_system_handle_t* saved_ds = salience_bridge->drive_system;
+    salience_bridge->drive_system = nullptr;
 
-    /* Update drive system and salience bridge */
-    hypo_drive_update(drive_system, 100000);
+    salience_bridge->sal_effects.drive_urgencies[HYPO_DRIVE_HUNGER] = TEST_DRIVE_LEVEL_HIGH;
+    salience_bridge->sal_effects.drive_urgencies[HYPO_DRIVE_THIRST] = TEST_DRIVE_LEVEL_LOW;
+    salience_bridge->sal_effects.drive_urgencies[HYPO_DRIVE_SAFETY] = TEST_DRIVE_LEVEL_MODERATE;
+
+    /* Update salience bridge (computes weights from urgencies) */
     hypo_salience_fep_update(salience_bridge);
+
+    /* Restore drive system */
+    salience_bridge->drive_system = saved_ds;
 
     /* Get salience weights */
     float weights[HYPO_DRIVE_COUNT];
@@ -296,17 +306,28 @@ TEST_F(HypoFepIntegrationTest, SalienceBridgeConflictDetection) {
 }
 
 TEST_F(HypoFepIntegrationTest, SalienceBridgeUrgencyLevels) {
-    /* Test different urgency levels */
-    set_drive_level(HYPO_DRIVE_SAFETY, TEST_DRIVE_LEVEL_URGENT);
+    /* FE = sum(urgency[i]^2 * drive_fe_weight) + conflict * 5.
+     * With 9 drives and drive_fe_weight=1.0, ELEVATED threshold (5.0) requires
+     * total urgency mass: 9 * 0.95^2 = 8.12 >= 5.0.
+     * Set ALL drives to urgent to produce enough free energy.
+     * Temporarily disconnect drive_system to prevent auto-sync overwriting values. */
+    hypo_drive_system_handle_t* saved_ds = salience_bridge->drive_system;
+    salience_bridge->drive_system = nullptr;
 
-    hypo_drive_update(drive_system, 100000);
+    for (int i = 0; i < HYPO_DRIVE_COUNT; i++) {
+        salience_bridge->sal_effects.drive_urgencies[i] = TEST_DRIVE_LEVEL_URGENT;
+    }
+
     hypo_salience_fep_update(salience_bridge);
+
+    /* Restore drive system */
+    salience_bridge->drive_system = saved_ds;
 
     hypo_salience_fep_effects_t effects;
     int ret = hypo_salience_fep_get_effects(salience_bridge, &effects);
     ASSERT_EQ(0, ret);
 
-    /* With urgent drive, urgency level should be elevated */
+    /* With all drives urgent, urgency level should be elevated */
     EXPECT_GE((int)effects.urgency_level, (int)HYPO_SALIENCE_FEP_LEVEL_ELEVATED);
 }
 
@@ -459,9 +480,13 @@ TEST_F(HypoFepIntegrationTest, FatigueAffectsAllBridges) {
 }
 
 TEST_F(HypoFepIntegrationTest, DriveChangePropagatesAcrossBridges) {
-    /* Set low drive initially */
-    set_drive_level(HYPO_DRIVE_SAFETY, TEST_DRIVE_LEVEL_LOW);
-    hypo_drive_update(drive_system, 100000);
+    /* Temporarily disconnect drive_system to prevent auto-sync overwriting
+     * manually-set urgencies during hypo_salience_fep_update(). */
+    hypo_drive_system_handle_t* saved_ds = salience_bridge->drive_system;
+    salience_bridge->drive_system = nullptr;
+
+    /* Set low urgency initially */
+    salience_bridge->sal_effects.drive_urgencies[HYPO_DRIVE_SAFETY] = TEST_DRIVE_LEVEL_LOW;
     update_all_bridges();
 
     /* Get initial salience weight for safety */
@@ -469,9 +494,11 @@ TEST_F(HypoFepIntegrationTest, DriveChangePropagatesAcrossBridges) {
                                                                    HYPO_DRIVE_SAFETY);
 
     /* Increase safety drive urgently */
-    set_drive_level(HYPO_DRIVE_SAFETY, TEST_DRIVE_LEVEL_URGENT);
-    hypo_drive_update(drive_system, 100000);
+    salience_bridge->sal_effects.drive_urgencies[HYPO_DRIVE_SAFETY] = TEST_DRIVE_LEVEL_URGENT;
     update_all_bridges();
+
+    /* Restore drive system */
+    salience_bridge->drive_system = saved_ds;
 
     /* Get updated salience weight */
     float urgent_safety_salience = hypo_salience_fep_get_weight(salience_bridge,

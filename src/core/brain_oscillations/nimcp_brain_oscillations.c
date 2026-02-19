@@ -30,6 +30,7 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 #define LOG_MODULE "brain_oscillations"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -42,7 +43,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_oscillations)
 //=============================================================================
 
 static bio_module_context_t bio_ctx = NULL;
-static bool bio_async_enabled = false;
+static _Atomic bool bio_async_enabled = false;
 static pthread_once_t bio_init_once = PTHREAD_ONCE_INIT;
 static nimcp_mutex_t bio_cleanup_mutex = NIMCP_MUTEX_INITIALIZER;
 

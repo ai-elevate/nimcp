@@ -173,6 +173,10 @@ int broca_quantum_search_lexicon(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
         return -1;
     }
+    if (!semantic_target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_target is NULL");
+        return -1;
+    }
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
         return -1;
@@ -181,10 +185,11 @@ int broca_quantum_search_lexicon(
 
     memset(result, 0, sizeof(*result));
 
-    /* Build CNF for lexical search problem */
+    /* Build CNF for lexical search problem
+     * Cap at QREASON_QUANTUM_VAR_LIMIT so the quantum solver path is used */
     qreason_cnf_t search_cnf = {0};
-    search_cnf.n_variables = (lexicon_size < QREASON_MAX_VARIABLES) ?
-                             lexicon_size : QREASON_MAX_VARIABLES;
+    search_cnf.n_variables = (lexicon_size < QREASON_QUANTUM_VAR_LIMIT) ?
+                             lexicon_size : QREASON_QUANTUM_VAR_LIMIT;
 
     /* Simple satisfiability: at least one word must match */
     search_cnf.n_clauses = 1;
@@ -275,6 +280,10 @@ int broca_quantum_optimize_syntax(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
         return -1;
     }
+    if (!semantic_content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_content is NULL");
+        return -1;
+    }
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
         return -1;
@@ -283,10 +292,11 @@ int broca_quantum_optimize_syntax(
 
     memset(result, 0, sizeof(*result));
 
-    /* Build CNF for syntax optimization */
+    /* Build CNF for syntax optimization
+     * Cap at QREASON_QUANTUM_VAR_LIMIT so the quantum solver path is used */
     qreason_cnf_t syntax_cnf = {0};
-    syntax_cnf.n_variables = (bridge->config.syntax_alternatives < QREASON_MAX_VARIABLES) ?
-                             bridge->config.syntax_alternatives : QREASON_MAX_VARIABLES;
+    syntax_cnf.n_variables = (bridge->config.syntax_alternatives < QREASON_QUANTUM_VAR_LIMIT) ?
+                             bridge->config.syntax_alternatives : QREASON_QUANTUM_VAR_LIMIT;
 
     /* Each variable represents a syntactic structure choice */
     syntax_cnf.n_clauses = 1;

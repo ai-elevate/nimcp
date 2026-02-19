@@ -150,7 +150,7 @@ TEST_F(CochleaBridgeTest, FEPBridgeLifecycle) {
     if (bridge) {
         // Test reset
         nimcp_error_t err = cochlea_fep_bridge_reset(bridge);
-        EXPECT_EQ(err, NIMCP_SUCCESS);
+        EXPECT_EQ(err, 0);
 
         cochlea_fep_bridge_destroy(bridge);
     }

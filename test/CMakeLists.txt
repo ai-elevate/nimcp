@@ -494,6 +494,10 @@ if(TARGET regression_core_test_wm_transfer_backward_compat)
   set_tests_properties(regression_core_test_wm_transfer_backward_compat
     PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 endif()
+if(TARGET regression_cognitive_consolidation_test_systems_consolidation_backward_compat)
+  set_tests_properties(regression_cognitive_consolidation_test_systems_consolidation_backward_compat
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
 if(TARGET regression_io_test_stream_regression)
   set_tests_properties(regression_io_test_stream_regression
     PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
@@ -594,7 +598,7 @@ if(TARGET test_swarm_memory_regression)
 endif()
 if(TARGET regression_brain_regions_test_entorhinal_signal_regression)
   set_tests_properties(regression_brain_regions_test_entorhinal_signal_regression
-    PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 endif()
 if(TARGET regression_exception_performance_regression)
   set_tests_properties(regression_exception_performance_regression

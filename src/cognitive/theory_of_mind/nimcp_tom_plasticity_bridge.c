@@ -1054,6 +1054,7 @@ int tom_plasticity_bio_async_disconnect(tom_plasticity_bridge_t* bridge) {
 
 bool tom_plasticity_is_bio_async_connected(tom_plasticity_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
         return false;
     }
 

@@ -186,8 +186,9 @@ TEST_F(SymbolicLogicFEPBridgeTest, UpdateWrapper) {
 
 TEST_F(SymbolicLogicFEPBridgeTest, NullSafety) {
     EXPECT_NE(symbolic_logic_fep_bridge_default_config(nullptr), 0);
-    EXPECT_EQ(symbolic_logic_fep_bridge_get_state(nullptr, nullptr), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(symbolic_logic_fep_bridge_get_stats(nullptr, nullptr), NIMCP_ERROR_NULL_POINTER);
+    /* FEP bridge functions return -1 for errors, not NIMCP error codes */
+    EXPECT_EQ(symbolic_logic_fep_bridge_get_state(nullptr, nullptr), -1);
+    EXPECT_EQ(symbolic_logic_fep_bridge_get_stats(nullptr, nullptr), -1);
 
     // Destroy should be safe with NULL
     symbolic_logic_fep_bridge_destroy(nullptr);

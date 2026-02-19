@@ -29,7 +29,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(hypo_global_workspace_fep_bridge, MESH_ADAPTER_CATE
  * ============================================================================ */
 
 int hypo_gw_fep_default_config(hypo_gw_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->drive_fe_weight = 1.0f;
     config->prediction_error_gain = 1.5f;
@@ -107,7 +107,7 @@ void hypo_gw_fep_destroy(hypo_gw_fep_bridge_t* bridge) {
 }
 
 int hypo_gw_fep_reset(hypo_gw_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -129,8 +129,8 @@ int hypo_gw_fep_reset(hypo_gw_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int hypo_gw_fep_update(hypo_gw_fep_bridge_t* bridge, uint64_t delta_ms) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is not active");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is not active");
     (void)delta_ms; /* Currently unused but available for time-based updates */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -223,8 +223,8 @@ int hypo_gw_fep_update(hypo_gw_fep_bridge_t* bridge, uint64_t delta_ms) {
 int hypo_gw_fep_compute_fe(hypo_gw_fep_bridge_t* bridge,
     float attention_demand, float* free_energy) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(free_energy, NIMCP_ERROR_NULL_POINTER, "free_energy is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(free_energy, NIMCP_ERROR_NULL_POINTER, "free_energy is NULL");
 
     /* Attention demand maps to free energy
      * Higher demand = more competition = higher FE */
@@ -244,8 +244,8 @@ int hypo_gw_fep_compute_fe(hypo_gw_fep_bridge_t* bridge,
 int hypo_gw_fep_modulate_precision(hypo_gw_fep_bridge_t* bridge,
     float arousal_level, float* precision) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(precision, NIMCP_ERROR_NULL_POINTER, "precision is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(precision, NIMCP_ERROR_NULL_POINTER, "precision is NULL");
 
     /* Arousal modulates workspace availability/precision
      * Inverted-U relationship: optimal arousal = best precision
@@ -270,8 +270,8 @@ int hypo_gw_fep_modulate_precision(hypo_gw_fep_bridge_t* bridge,
 int hypo_gw_fep_compute_broadcast_priority(hypo_gw_fep_bridge_t* bridge,
     float drive_urgency, float* priority) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(priority, NIMCP_ERROR_NULL_POINTER, "priority is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(priority, NIMCP_ERROR_NULL_POINTER, "priority is NULL");
 
     /* Drive urgency directly scales broadcast priority
      * Higher urgency = higher priority for workspace access */
@@ -296,7 +296,7 @@ int hypo_gw_fep_compute_broadcast_priority(hypo_gw_fep_bridge_t* bridge,
  * ============================================================================ */
 
 int hypo_gw_fep_report_broadcast_win(hypo_gw_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -311,7 +311,7 @@ int hypo_gw_fep_report_broadcast_win(hypo_gw_fep_bridge_t* bridge) {
 }
 
 int hypo_gw_fep_report_broadcast_loss(hypo_gw_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -334,8 +334,8 @@ int hypo_gw_fep_report_broadcast_loss(hypo_gw_fep_bridge_t* bridge) {
 int hypo_gw_fep_get_effects(const hypo_gw_fep_bridge_t* bridge,
     hypo_gw_fep_effects_t* effects) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
     *effects = bridge->fep_effects;
     return 0;
 }
@@ -343,8 +343,8 @@ int hypo_gw_fep_get_effects(const hypo_gw_fep_bridge_t* bridge,
 int hypo_gw_fep_get_stats(const hypo_gw_fep_bridge_t* bridge,
     hypo_gw_fep_stats_t* stats) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     *stats = bridge->stats;
     return 0;
 }
@@ -403,7 +403,7 @@ int hypo_gw_fep_process_messages(hypo_gw_fep_bridge_t* bridge) {
 int hypo_gw_fep_connect_drives(hypo_gw_fep_bridge_t* bridge,
     hypo_drive_system_handle_t* drives) {
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->drive_system = drives;

@@ -1157,8 +1157,8 @@ TEST_F(VisualJepaFepBridgeTest, BioAsyncIsConnected) {
  * HOW:  Call bio-async functions with NULL
  */
 TEST_F(VisualJepaFepBridgeTest, BioAsyncNull) {
-    EXPECT_EQ(visual_jepa_fep_bridge_connect_bio_async(nullptr), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(visual_jepa_fep_bridge_disconnect_bio_async(nullptr), NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(visual_jepa_fep_bridge_connect_bio_async(nullptr), -1);
+    EXPECT_EQ(visual_jepa_fep_bridge_disconnect_bio_async(nullptr), -1);
     EXPECT_FALSE(visual_jepa_fep_bridge_is_bio_async_connected(nullptr));
 }
 

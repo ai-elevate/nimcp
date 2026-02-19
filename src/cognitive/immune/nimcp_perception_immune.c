@@ -14,6 +14,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
@@ -254,7 +255,7 @@ int perception_immune_report_visual_anomaly(
 
 
     perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
-    anomaly->id = ctx->next_anomaly_id++;
+    anomaly->id = __atomic_add_fetch(&ctx->next_anomaly_id, 1, __ATOMIC_SEQ_CST);
     anomaly->type = type;
     anomaly->modality = PERCEPTION_VISUAL;
     anomaly->severity = severity;
@@ -325,7 +326,7 @@ int perception_immune_report_audio_anomaly(
 
 
     perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
-    anomaly->id = ctx->next_anomaly_id++;
+    anomaly->id = __atomic_add_fetch(&ctx->next_anomaly_id, 1, __ATOMIC_SEQ_CST);
     anomaly->type = type;
     anomaly->modality = PERCEPTION_AUDIO;
     anomaly->severity = severity;
@@ -391,7 +392,7 @@ int perception_immune_report_speech_anomaly(
 
 
     perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
-    anomaly->id = ctx->next_anomaly_id++;
+    anomaly->id = __atomic_add_fetch(&ctx->next_anomaly_id, 1, __ATOMIC_SEQ_CST);
     anomaly->type = type;
     anomaly->modality = PERCEPTION_SPEECH;
     anomaly->severity = severity;

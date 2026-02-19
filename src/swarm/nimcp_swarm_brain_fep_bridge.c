@@ -125,7 +125,7 @@ void swarm_brain_fep_destroy(swarm_brain_fep_bridge_t* bridge) {
  * HOW:  Compute collective FE, determine effects in both directions
  */
 int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -133,7 +133,7 @@ int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
     swarm_stats_t swarm_stats;
     if (!swarm_brain_get_stats(bridge->swarm_brain, &swarm_stats)) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_OPERATION_FAILED;
+        return -1;
     }
 
     // Get current emergence tier
@@ -189,7 +189,7 @@ int swarm_brain_fep_update(swarm_brain_fep_bridge_t* bridge) {
  * HOW:  Apply computed effects to swarm brain configuration
  */
 int swarm_brain_fep_apply_modulation(swarm_brain_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -235,7 +235,7 @@ int swarm_brain_fep_process_collective_observation(
     const float* observation,
     uint32_t observation_dim)
 {
-    if (!bridge || !observation) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !observation) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -255,7 +255,7 @@ int swarm_brain_fep_get_effects(
     const swarm_brain_fep_bridge_t* bridge,
     swarm_brain_fep_effects_t* effects)
 {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
@@ -267,7 +267,7 @@ int swarm_brain_fep_get_swarm_effects(
     const swarm_brain_fep_bridge_t* bridge,
     fep_swarm_brain_effects_t* effects)
 {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->swarm_effects;
@@ -279,7 +279,7 @@ int swarm_brain_fep_get_stats(
     const swarm_brain_fep_bridge_t* bridge,
     swarm_brain_fep_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -292,7 +292,7 @@ int swarm_brain_fep_get_stats(
  * ============================================================================ */
 
 int swarm_brain_fep_connect_bio_async(swarm_brain_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

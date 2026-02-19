@@ -62,7 +62,7 @@ void swarm_pheromone_fep_destroy(swarm_pheromone_fep_bridge_t* bridge) {
 }
 
 int swarm_pheromone_fep_update(swarm_pheromone_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     // Compute precision as inverse of free energy (high FE = low precision)
@@ -83,12 +83,12 @@ int swarm_pheromone_fep_update(swarm_pheromone_fep_bridge_t* bridge) {
 }
 
 int swarm_pheromone_fep_apply_modulation(swarm_pheromone_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     return 0;
 }
 
 int swarm_pheromone_fep_get_effects(const swarm_pheromone_fep_bridge_t* bridge, swarm_pheromone_fep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -96,7 +96,7 @@ int swarm_pheromone_fep_get_effects(const swarm_pheromone_fep_bridge_t* bridge, 
 }
 
 int swarm_pheromone_fep_get_pheromone_effects(const swarm_pheromone_fep_bridge_t* bridge, fep_swarm_pheromone_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->pheromone_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -104,7 +104,7 @@ int swarm_pheromone_fep_get_pheromone_effects(const swarm_pheromone_fep_bridge_t
 }
 
 int swarm_pheromone_fep_get_stats(const swarm_pheromone_fep_bridge_t* bridge, swarm_pheromone_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

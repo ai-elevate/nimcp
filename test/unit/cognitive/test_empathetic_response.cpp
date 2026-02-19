@@ -15,6 +15,7 @@
 #include "cognitive/nimcp_empathetic_response.h"
 #include "cognitive/empathetic_response/nimcp_empathetic_response_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
+#include "async/nimcp_bio_router.h"
 
 #include "utils/nimcp_test_base.h"
 
@@ -514,6 +515,7 @@ protected:
 
     void SetUp() override {
         NimcpTestBase::SetUp();
+        bio_router_init(NULL);
 
         // Create FEP system
         fep_config_t fep_config;
@@ -535,6 +537,7 @@ protected:
             fep_destroy(fep);
             fep = nullptr;
         }
+        bio_router_shutdown();
         NimcpTestBase::TearDown();
     }
 };

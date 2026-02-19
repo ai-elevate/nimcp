@@ -62,7 +62,7 @@ void emotional_contagion_fep_destroy(emotional_contagion_fep_bridge_t* bridge) {
 }
 
 int emotional_contagion_fep_update(emotional_contagion_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     // Compute precision as inverse of free energy (high FE = low precision)
@@ -93,12 +93,12 @@ int emotional_contagion_fep_update(emotional_contagion_fep_bridge_t* bridge) {
 }
 
 int emotional_contagion_fep_apply_modulation(emotional_contagion_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     return 0;
 }
 
 int emotional_contagion_fep_get_effects(const emotional_contagion_fep_bridge_t* bridge, emotional_contagion_fep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -106,7 +106,7 @@ int emotional_contagion_fep_get_effects(const emotional_contagion_fep_bridge_t* 
 }
 
 int emotional_contagion_fep_get_contagion_effects(const emotional_contagion_fep_bridge_t* bridge, fep_emotional_contagion_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->contagion_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -114,7 +114,7 @@ int emotional_contagion_fep_get_contagion_effects(const emotional_contagion_fep_
 }
 
 int emotional_contagion_fep_get_stats(const emotional_contagion_fep_bridge_t* bridge, emotional_contagion_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

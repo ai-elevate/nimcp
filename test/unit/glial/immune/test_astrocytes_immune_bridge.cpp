@@ -255,7 +255,7 @@ TEST_F(AstrocytesImmuneBridgeTest, UpdateCallsBothSubfunctions) {
 
 TEST_F(AstrocytesImmuneBridgeTest, UpdateWithZeroTimestep) {
     int result = astro_cell_update(bridge, 0.0f);
-    EXPECT_EQ(result, 0);
+    EXPECT_NE(result, 0);  // Zero timestep is invalid - should return error
 }
 
 //=============================================================================

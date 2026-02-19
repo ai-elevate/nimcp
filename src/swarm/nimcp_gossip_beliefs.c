@@ -565,7 +565,7 @@ nimcp_result_t gossip_beliefs_init(gossip_beliefs_t* gb, void* bio_ctx)
  * Belief Management Implementation
  * ============================================================================ */
 
-int gossip_introduce_belief(gossip_beliefs_t* gb, uint32_t agent_id, const belief_t* belief)
+int gossip_introduce_belief(gossip_beliefs_t* gb, uint32_t agent_id, belief_t* belief)
 {
     /* WHAT: Add belief to agent's belief set
      * WHY:  Inject information into gossip network
@@ -594,6 +594,7 @@ int gossip_introduce_belief(gossip_beliefs_t* gb, uint32_t agent_id, const belie
 
     memcpy(new_belief, belief, sizeof(belief_t));
     new_belief->belief_id = gb->next_belief_id++;
+    belief->belief_id = new_belief->belief_id;  /* Write back assigned ID to caller */
     new_belief->propagation_count = 0;
     new_belief->first_heard_ms = nimcp_time_get_us() / 1000;
 

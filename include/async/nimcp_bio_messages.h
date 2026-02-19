@@ -1888,6 +1888,7 @@ typedef enum {
     BIO_MODULE_FEP_NOISE_BRIDGE,                /**< FEP-noise bridge */
     BIO_MODULE_FEP_PREDICTIVE_PLASTICITY_BRIDGE, /**< FEP-predictive plasticity bridge */
     BIO_MODULE_FEP_STP_BRIDGE,                  /**< FEP-STP bridge */
+    BIO_MODULE_FEP_SECOND_MESSENGERS_BRIDGE,    /**< FEP-second messengers bridge */
     BIO_MODULE_STP_PINK_NOISE_BRIDGE,           /**< STP-pink noise bridge */
     BIO_MODULE_HETEROSYNAPTIC_PINK_NOISE,       /**< Heterosynaptic-pink noise bridge */
 

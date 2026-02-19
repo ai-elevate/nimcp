@@ -52,7 +52,7 @@ int hierarchical_fep_bridge_default_config(hierarchical_fep_config_t* config) {
     hierarchical_fep_bridge_heartbeat("hierarchical_default_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->enable_hierarchical_prediction = true;
     config->enable_pe_propagation = true;
     config->enable_layer_specific_lr = true;
@@ -126,7 +126,7 @@ int hierarchical_fep_bridge_connect_fep(hierarchical_fep_bridge_t* bridge, fep_s
     hierarchical_fep_bridge_heartbeat("hierarchical_connect_fep", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -140,7 +140,7 @@ int hierarchical_fep_bridge_connect_hierarchical(hierarchical_fep_bridge_t* brid
     hierarchical_fep_bridge_heartbeat("hierarchical_connect_hierarchical", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->hierarchical_brain = hbrain;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -153,7 +153,7 @@ int hierarchical_fep_bridge_disconnect(hierarchical_fep_bridge_t* bridge) {
     hierarchical_fep_bridge_heartbeat("hierarchical_disconnect", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->hierarchical_brain = NULL;
@@ -167,7 +167,7 @@ int hierarchical_fep_bridge_update(hierarchical_fep_bridge_t* bridge) {
     hierarchical_fep_bridge_heartbeat("hierarchical_update", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
     /* EWMA update for running average free energy (alpha=0.01, ~99-sample window) */
@@ -183,7 +183,7 @@ int hierarchical_fep_bridge_get_state(const hierarchical_fep_bridge_t* bridge,
     hierarchical_fep_bridge_heartbeat("hierarchical_get_state", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -196,7 +196,7 @@ int hierarchical_fep_bridge_get_stats(const hierarchical_fep_bridge_t* bridge,
     hierarchical_fep_bridge_heartbeat("hierarchical_get_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -208,7 +208,7 @@ int hierarchical_fep_bridge_connect_bio_async(hierarchical_fep_bridge_t* bridge)
     hierarchical_fep_bridge_heartbeat("hierarchical_connect_bio_async", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_HIERARCHICAL_BRIDGE,

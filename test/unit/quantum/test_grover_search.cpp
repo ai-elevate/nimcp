@@ -300,9 +300,10 @@ TEST_F(GroverSearchTest, OptimalIterationsFormula) {
         }
     }
 
-    /* Best iteration should be around 3 for N=16 */
+    /* For N=16, first peak at ~3 (prob=0.961), second peak at ~9 (prob=0.994).
+     * The second peak can exceed the first for small N, so allow either. */
     EXPECT_GE(best_iter, 2);
-    EXPECT_LE(best_iter, 5);
+    EXPECT_LE(best_iter, 10);
     EXPECT_GT(best_prob, 0.9f);
 }
 

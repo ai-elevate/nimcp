@@ -332,7 +332,7 @@ bool working_memory_add_with_emotion(
  * @note Pointer valid until next add/decay/destroy operation
  */
 const float* working_memory_get(
-    const working_memory_t* wm,
+    working_memory_t* wm,
     uint32_t index,
     uint32_t* size
 );
@@ -760,7 +760,7 @@ bool working_memory_signal_stress(
  * @return Index of highest-salience item or -1 if empty
  */
 int working_memory_find_highest_salience(
-    const working_memory_t* wm,
+    working_memory_t* wm,
     float* salience
 );
 
@@ -778,7 +778,7 @@ int working_memory_find_highest_salience(
  * @return Index of lowest-salience item or -1 if empty
  */
 int working_memory_find_lowest_salience(
-    const working_memory_t* wm,
+    working_memory_t* wm,
     float* salience
 );
 

@@ -62,7 +62,7 @@ void collective_workspace_fep_destroy(collective_workspace_fep_bridge_t* bridge)
 }
 
 int collective_workspace_fep_update(collective_workspace_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     // Compute precision as inverse of free energy (high FE = low precision)
@@ -85,12 +85,12 @@ int collective_workspace_fep_update(collective_workspace_fep_bridge_t* bridge) {
 }
 
 int collective_workspace_fep_apply_modulation(collective_workspace_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     return 0;
 }
 
 int collective_workspace_fep_get_effects(const collective_workspace_fep_bridge_t* bridge, collective_workspace_fep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -98,7 +98,7 @@ int collective_workspace_fep_get_effects(const collective_workspace_fep_bridge_t
 }
 
 int collective_workspace_fep_get_workspace_effects(const collective_workspace_fep_bridge_t* bridge, fep_collective_workspace_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->workspace_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -106,7 +106,7 @@ int collective_workspace_fep_get_workspace_effects(const collective_workspace_fe
 }
 
 int collective_workspace_fep_get_stats(const collective_workspace_fep_bridge_t* bridge, collective_workspace_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

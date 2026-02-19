@@ -239,7 +239,7 @@ int hypo_img_fep_update(hypo_img_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

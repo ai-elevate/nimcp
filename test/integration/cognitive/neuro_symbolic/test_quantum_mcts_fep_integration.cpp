@@ -100,7 +100,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, QuantumMCTSActiveInferenceAction) {
     /* Select action using active inference */
     int action = -1;
     nimcp_error_t err = quantum_mcts_active_inference_action(qmcts, belief_state, 4, &action);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Action should be valid (non-negative or specific error code) */
     EXPECT_GE(action, -1);
@@ -149,7 +149,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, QuantumMCTSWithLinkedFEP) {
     quantum_mcts_plan_init(&plan, 10);
 
     err = quantum_mcts_plan(qmcts, state, 4, &plan);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     quantum_mcts_plan_cleanup(&plan);
 }
@@ -175,7 +175,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, ClassicalRolloutPerformance) {
     quantum_mcts_plan_init(&plan, 20);
 
     nimcp_error_t err = quantum_mcts_plan(qmcts, state, 8, &plan);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Get statistics */
     quantum_mcts_stats_t stats;
@@ -206,7 +206,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, QuantumRolloutPerformance) {
     quantum_mcts_plan_init(&plan, 20);
 
     nimcp_error_t err = quantum_mcts_plan(qmcts, state, 8, &plan);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Get statistics */
     quantum_mcts_stats_t stats;
@@ -235,7 +235,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, HybridClassicalQuantumComparison) {
     quantum_mcts_plan_init(&plan, 10);
 
     nimcp_error_t err = quantum_mcts_plan(qmcts, state, 8, &plan);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Get statistics */
     quantum_mcts_stats_t stats;
@@ -327,7 +327,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, QuantumExplorationBoostEffect) {
         quantum_mcts_plan_init(&plan, 5);
 
         nimcp_error_t err = quantum_mcts_plan(test_qmcts, state, 4, &plan);
-        EXPECT_EQ(err, NIMCP_SUCCESS);
+        EXPECT_EQ(err, 0);
 
         /* Higher boost should potentially explore more (check tree depth) */
         uint32_t depth = quantum_mcts_get_depth(test_qmcts);
@@ -380,7 +380,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, QuantumValueEstimation) {
     memset(&amplitude_result, 0, sizeof(amplitude_result));
 
     nimcp_error_t err = quantum_mcts_estimate_value(qmcts, state, 4, &amplitude_result);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Amplitude result should have valid values */
     EXPECT_FALSE(std::isnan(amplitude_result.amplitude));
@@ -435,7 +435,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, PlanningWithFEPIntegration) {
     quantum_mcts_plan_init(&plan, 10);
 
     nimcp_error_t err = quantum_mcts_plan(qmcts, state, 6, &plan);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Plan should have actions */
     EXPECT_GE(plan.num_actions, 0u);
@@ -458,7 +458,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, ActionSelectionWithFEP) {
     int action = -1;
 
     nimcp_error_t err = quantum_mcts_select_action(qmcts, state, 4, &action);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Action should be selected (may be -1 if no valid actions) */
     EXPECT_GE(action, -1);
@@ -477,7 +477,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, TemperatureAffectsExploration) {
 
     /* Set high temperature for more exploration */
     nimcp_error_t err = quantum_mcts_set_temperature(qmcts, 2.0f);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     float state[4] = {0.5f, 0.5f, 0.5f, 0.5f};
     qmcts_plan_t plan_high_temp;
@@ -655,7 +655,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, SimulationStepByStep) {
 
     /* Run additional simulations */
     nimcp_error_t err = quantum_mcts_simulate(qmcts, 5);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     quantum_mcts_stats_t stats;
     quantum_mcts_get_stats(qmcts, &stats);
@@ -715,7 +715,7 @@ TEST_F(QuantumMCTSFEPIntegrationTest, ResetClearsState) {
 
     /* Reset */
     nimcp_error_t err = quantum_mcts_reset(qmcts);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 
     /* Stats should be cleared */
     quantum_mcts_stats_t stats_after;

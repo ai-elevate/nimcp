@@ -39,8 +39,8 @@ static mesh_participant_id_t g_mirror_empathy_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_mirror_empathy_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t mirror_empathy_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_mirror_empathy_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_mirror_empathy_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "mirror_empathy_fep_bridge", MESH_MAX_NAME_LEN - 1);

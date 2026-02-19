@@ -4,6 +4,8 @@
  */
 
 #include "plasticity/predictive/nimcp_predictive_coding_fep_bridge.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "constants/nimcp_constants.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -89,11 +91,11 @@ void predictive_coding_fep_bridge_destroy(predictive_coding_fep_bridge_t* bridge
 int predictive_coding_fep_bridge_connect_fep(predictive_coding_fep_bridge_t* bridge, fep_system_t* fep) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_connect_fep: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (!fep) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_connect_fep: fep is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -104,11 +106,11 @@ int predictive_coding_fep_bridge_connect_fep(predictive_coding_fep_bridge_t* bri
 int predictive_coding_fep_bridge_connect_pc(predictive_coding_fep_bridge_t* bridge, pc_hierarchy_t hierarchy) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_connect_pc: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (!hierarchy) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_connect_pc: hierarchy is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->pc_hierarchy = hierarchy;
@@ -119,7 +121,7 @@ int predictive_coding_fep_bridge_connect_pc(predictive_coding_fep_bridge_t* brid
 int predictive_coding_fep_bridge_disconnect(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_disconnect: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -143,15 +145,15 @@ int predictive_coding_fep_report_errors(predictive_coding_fep_bridge_t* bridge, 
     if (!bridge) {
     BRIDGE_BBB_VALIDATE(bridge, errors, sizeof(*errors));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_report_errors: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (!errors) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_report_errors: errors is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (num_levels == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_coding_fep_report_errors: num_levels is 0");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->pc_effects.prediction_errors) nimcp_free(bridge->pc_effects.prediction_errors);
@@ -170,7 +172,7 @@ int predictive_coding_fep_report_errors(predictive_coding_fep_bridge_t* bridge, 
 int predictive_coding_fep_bridge_update(predictive_coding_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_update: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system && bridge->pc_hierarchy) {
@@ -189,11 +191,11 @@ int predictive_coding_fep_bridge_update(predictive_coding_fep_bridge_t* bridge, 
 int predictive_coding_fep_bridge_get_stats(const predictive_coding_fep_bridge_t* bridge, predictive_coding_fep_stats_t* stats) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_get_stats: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (!stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_get_stats: stats is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(predictive_coding_fep_stats_t));
@@ -204,16 +206,27 @@ int predictive_coding_fep_bridge_get_stats(const predictive_coding_fep_bridge_t*
 int predictive_coding_fep_bridge_connect_bio_async(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_connect_bio_async: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
-    bridge->base.bio_async_enabled = false;
+    if (bridge->base.bio_async_enabled) return 0;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_PREDICTIVE_PLASTICITY_BRIDGE,
+        .module_name = "predictive_coding_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
+    }
     return 0;
 }
 
 int predictive_coding_fep_bridge_disconnect_bio_async(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_bridge_disconnect_bio_async: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     bridge->base.bio_async_enabled = false;
     return 0;

@@ -8,6 +8,8 @@
  */
 
 #include "plasticity/stp/nimcp_stp_fep_bridge.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
@@ -411,9 +413,17 @@ int stp_fep_bridge_connect_bio_async(stp_fep_bridge_t* bridge) {
     }
     if (bridge->base.bio_async_enabled) return 0;
 
-    /* Note: BIO_MODULE_FEP_STP would need to be added to nimcp_bio_messages.h */
-    NIMCP_LOGGING_INFO("Bio-async support for STP-FEP bridge (stub implementation)");
-    bridge->base.bio_async_enabled = false; /* Not yet implemented */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_FEP_STP_BRIDGE,
+        .module_name = "stp_fep_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+    bridge->base.bio_ctx = bio_router_register_module(&info);
+    if (bridge->base.bio_ctx) {
+        bridge->base.bio_async_enabled = true;
+        NIMCP_LOGGING_INFO("Connected STP-FEP bridge to bio-async");
+    }
 
     return 0;
 }

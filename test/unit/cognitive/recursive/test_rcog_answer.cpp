@@ -349,11 +349,11 @@ TEST_F(AnswerRefinerTest, StepNullEvidence)
     rcog_answer_state_t* state = rcog_answer_state_create(refiner, &goal);
     ASSERT_NE(state, nullptr);
 
-    // NULL evidence with count > 0 should fail
+    // NULL evidence with count > 0 is treated as a no-op (momentum-only step)
     rcog_error_t err = rcog_answer_step(refiner, state, NULL, 1);
-    EXPECT_EQ(err, RCOG_ERROR_NULL_POINTER);
+    EXPECT_EQ(err, RCOG_OK);
 
-    // NULL evidence with count = 0 should be OK (no-op)
+    // NULL evidence with count = 0 should also be OK (no-op)
     err = rcog_answer_step(refiner, state, NULL, 0);
     EXPECT_EQ(err, RCOG_OK);
 

@@ -171,6 +171,9 @@ nimcp_exception_recovery_action_t nimcp_exception_get_suggested_recovery(nimcp_e
         case EXCEPTION_CATEGORY_SECURITY:
             return EXCEPTION_RECOVERY_QUARANTINE;
 
+        case EXCEPTION_CATEGORY_COGNITIVE:
+            return EXCEPTION_RECOVERY_REDUCE_LOAD;
+
         default:
             return EXCEPTION_RECOVERY_NONE;
     }

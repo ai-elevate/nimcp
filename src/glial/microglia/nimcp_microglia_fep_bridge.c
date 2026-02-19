@@ -15,7 +15,7 @@
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(microglia_fep_bridge)
 
 int microglia_fep_default_config(microglia_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->precision_threshold = MICROGLIA_FEP_DEFAULT_PRECISION_THRESHOLD;
     config->pe_pruning_gain = MICROGLIA_FEP_DEFAULT_PE_PRUNING_GAIN;
@@ -124,7 +124,7 @@ static int microglia_fep_update_microglia_to_fep_locked(microglia_fep_bridge_t* 
 }
 
 int microglia_fep_update_fep_to_microglia(microglia_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = microglia_fep_update_fep_to_microglia_locked(bridge);
@@ -133,7 +133,7 @@ int microglia_fep_update_fep_to_microglia(microglia_fep_bridge_t* bridge) {
 }
 
 int microglia_fep_update_microglia_to_fep(microglia_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge && bridge->microglia_network, NIMCP_ERROR_NULL_POINTER, "bridge or microglia_network is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->microglia_network, NIMCP_ERROR_NULL_POINTER, "bridge or microglia_network is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = microglia_fep_update_microglia_to_fep_locked(bridge);
@@ -142,8 +142,8 @@ int microglia_fep_update_microglia_to_fep(microglia_fep_bridge_t* bridge) {
 }
 
 int microglia_fep_update(microglia_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(bridge->fep_system && bridge->microglia_network, NIMCP_ERROR_NULL_POINTER, "fep_system or microglia_network is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system && bridge->microglia_network, NIMCP_ERROR_NULL_POINTER, "fep_system or microglia_network is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = microglia_fep_update_fep_to_microglia_locked(bridge);
@@ -155,7 +155,7 @@ int microglia_fep_update(microglia_fep_bridge_t* bridge) {
 }
 
 int microglia_fep_apply_modulation(microglia_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     bridge->stats.precision_guided_prunings++;
     return 0;
 }
@@ -176,7 +176,7 @@ uint32_t microglia_fep_get_synapses_pruned(const microglia_fep_bridge_t* bridge)
 int microglia_fep_get_stats(const microglia_fep_bridge_t* bridge,
                              microglia_fep_stats_t* stats)
 {
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     memcpy(stats, &bridge->stats, sizeof(microglia_fep_stats_t));
     return 0;
 }

@@ -22,6 +22,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Deprecation macro for API evolution */
+#if defined(__GNUC__) || defined(__clang__)
+#define NIMCP_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#elif defined(_MSC_VER)
+#define NIMCP_DEPRECATED(msg) __declspec(deprecated(msg))
+#else
+#define NIMCP_DEPRECATED(msg)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1587,6 +1596,12 @@ float nimcp_get_pac_modulation(
  * @return Error message string (statically allocated)
  */
 const char* nimcp_get_error(void);
+
+/**
+ * @brief Check if the linked library version is compatible with the header version.
+ * @return NIMCP_OK if compatible, NIMCP_ERROR if major version mismatch
+ */
+nimcp_status_t nimcp_version_check(void);
 
 /**
  * @brief Initialize NIMCP library (call once at startup)

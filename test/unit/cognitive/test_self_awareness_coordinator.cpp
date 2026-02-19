@@ -62,7 +62,7 @@ TEST_F(SelfAwarenessCoordinatorTest, DefaultConfigInitialization) {
 
 TEST_F(SelfAwarenessCoordinatorTest, DefaultConfigNullSafe) {
     int ret = sac_default_config(NULL);
-    EXPECT_LT(ret, 0);
+    EXPECT_NE(ret, 0);
 }
 
 // ============================================================================

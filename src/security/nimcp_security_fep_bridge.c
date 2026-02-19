@@ -15,7 +15,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_fep_bridge, MESH_ADAPTER_CATEGORY_SECURITY
 
 
 int security_fep_default_config(security_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->threat_fe_threshold = 10.0f;
     config->skepticism_threshold = 5.0f;
     config->precision_learning_rate = 0.05f;
@@ -68,7 +68,7 @@ void security_fep_destroy(security_fep_bridge_t* bridge) {
 }
 
 int security_fep_update(security_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge && bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or inactive");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or inactive");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
@@ -108,7 +108,7 @@ int security_fep_update(security_fep_bridge_t* bridge) {
 
 int security_fep_validate_input(security_fep_bridge_t* bridge, const char* input,
     nimcp_input_validation_t* result, nimcp_threat_level_t* threat) {
-    NIMCP_CHECK_THROW(bridge && input && result && threat, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_fep_validate_input");
+    NIMCP_FEP_CHECK_THROW(bridge && input && result && threat, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_fep_validate_input");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -162,7 +162,7 @@ int security_fep_apply_modulation(security_fep_bridge_t* bridge) {
 
 int security_fep_report_threat(security_fep_bridge_t* bridge,
     nimcp_threat_level_t level) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->security_effects.threats_detected++;
@@ -181,14 +181,14 @@ int security_fep_report_threat(security_fep_bridge_t* bridge,
 
 int security_fep_get_stats(const security_fep_bridge_t* bridge,
     security_fep_stats_t* stats) {
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
 }
 
 int security_fep_get_effects(const security_fep_bridge_t* bridge,
     security_fep_effects_t* effects) {
-    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
     *effects = bridge->fep_effects;
     return 0;
 }

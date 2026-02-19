@@ -539,7 +539,7 @@ TEST_F(MathIntuitionTest, CheckAnalogy)
 TEST_F(MathIntuitionTest, SolveAnalogyNullHandling)
 {
     analogy_result_t result = math_solve_analogy(nullptr, 1.0f, 2.0f, 3.0f);
-    EXPECT_EQ(result.confidence, 0.0f);
+    EXPECT_EQ(result.confidence, -1.0f);  // Null input returns -1.0f confidence
 }
 
 //=============================================================================

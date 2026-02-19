@@ -161,7 +161,7 @@ static nimcp_error_t bio_message_handler(
 
     security_train_fep_bridge_t* bridge = (security_train_fep_bridge_t*)user_data;
     if (!bridge || !msg) {
-        return NIMCP_ERROR_NULL_ARG;
+        return -1;
     }
 
     /* Increase vigilance on receiving any security message */
@@ -173,7 +173,7 @@ static nimcp_error_t bio_message_handler(
     );
 
     bridge->stats.bio_async_messages_received++;
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================

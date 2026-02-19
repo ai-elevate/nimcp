@@ -92,7 +92,12 @@ TEST(RcogDelegationPoolLifecycleTest, DefaultConfig)
 {
     rcog_delegation_pool_config_t config = rcog_delegation_pool_default_config();
 
-    EXPECT_GT(config.total_workers, 0u);
+    /* Workers are configured per-tier, not via total_workers */
+    uint32_t total = 0;
+    for (int i = 0; i < RCOG_TIER_COUNT; i++) {
+        total += config.tiers[i].num_workers;
+    }
+    EXPECT_GT(total, 0u);
     EXPECT_GT(config.default_task_timeout_ms, 0u);
     EXPECT_GT(config.shutdown_timeout_ms, 0u);
     EXPECT_GT(config.max_pending_tasks, 0u);
@@ -109,14 +114,18 @@ TEST(RcogDelegationPoolLifecycleTest, CreateDefault)
 TEST(RcogDelegationPoolLifecycleTest, CreateWithConfig)
 {
     rcog_delegation_pool_config_t config = rcog_delegation_pool_default_config();
-    config.total_workers = 8;
     config.default_task_timeout_ms = 5000;
     config.enable_work_stealing = true;
+    /* Set per-tier workers (total_workers is not used by create) */
+    for (int i = 0; i < RCOG_TIER_COUNT; i++) {
+        config.tiers[i].num_workers = 2;
+    }
 
     rcog_delegation_pool_t* pool = rcog_delegation_pool_create(&config);
     ASSERT_NE(pool, nullptr);
 
-    EXPECT_EQ(rcog_delegation_pool_get_total_workers(pool), 8u);
+    /* 5 tiers * 2 workers each = 10 total */
+    EXPECT_EQ(rcog_delegation_pool_get_total_workers(pool), (uint32_t)(RCOG_TIER_COUNT * 2));
 
     rcog_delegation_pool_destroy(pool);
 }

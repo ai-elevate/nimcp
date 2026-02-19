@@ -83,12 +83,14 @@ TEST_F(MsgFramingTest, HeaderValidate_InvalidVersion_ReturnsFalse) {
     EXPECT_FALSE(nimcp_msg_header_validate(&header));
 }
 
-TEST_F(MsgFramingTest, HeaderValidate_ExcessivePayloadLen_ReturnsFalse) {
+TEST_F(MsgFramingTest, HeaderValidate_ExcessivePayloadLen_WrapsUint16) {
     nimcp_msg_header_t header;
     nimcp_msg_header_init(&header, MSG_TYPE_NEURAL_STATE, MSG_FLAG_PROTOBUF, 0);
 
-    header.payload_len = NIMCP_MSG_MAX_PAYLOAD + 1;  // Too large
-    EXPECT_FALSE(nimcp_msg_header_validate(&header));
+    // NIMCP_MSG_MAX_PAYLOAD is 65535 (uint16_t max), so +1 wraps to 0
+    // The uint16_t field cannot hold a value exceeding the max payload size
+    header.payload_len = NIMCP_MSG_MAX_PAYLOAD + 1;
+    EXPECT_TRUE(nimcp_msg_header_validate(&header));  // Wraps to 0, which is valid
 }
 
 TEST_F(MsgFramingTest, HeaderValidate_FastPathWrongPayloadLen_ReturnsFalse) {

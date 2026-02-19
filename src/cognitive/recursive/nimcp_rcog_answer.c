@@ -302,10 +302,24 @@ static rcog_error_t compute_evidence_direction(
 
         const rcog_subtask_result_t* e = &evidence[i];
 
-        if (e->status != RCOG_SUBTASK_COMPLETED) continue;
-        if (!e->result_data || e->result_size == 0) continue;
+        /* Accept evidence that is either completed or marked successful */
+        if (e->status != RCOG_SUBTASK_COMPLETED && !e->success) continue;
 
         float weight = e->confidence;
+
+        /* Prefer direct latent representation for answer refinement */
+        if (e->latent && e->latent_dim > 0) {
+            total_weight += weight;
+            size_t dim_to_use = e->latent_dim < latent_dim ? e->latent_dim : latent_dim;
+            for (size_t j = 0; j < dim_to_use; j++) {
+                direction[j] += weight * e->latent[j];
+            }
+            continue;
+        }
+
+        /* Fall back to hashing result_data into latent dimensions */
+        if (!e->result_data || e->result_size == 0) continue;
+
         total_weight += weight;
 
         /* Hash result data into latent dimensions */
@@ -540,6 +554,7 @@ rcog_answer_state_t* rcog_answer_state_create(
         return NULL;
     }
 
+    state->heap_allocated = true;
     return state;
 }
 
@@ -558,7 +573,9 @@ void rcog_answer_state_destroy(rcog_answer_state_t* state)
         nimcp_free(state->content);
     }
 
-    nimcp_free(state);
+    if (state->heap_allocated) {
+        nimcp_free(state);
+    }
 }
 
 rcog_error_t rcog_answer_reset(

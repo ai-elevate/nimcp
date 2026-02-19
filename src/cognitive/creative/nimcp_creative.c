@@ -474,6 +474,7 @@ visual_image_t* visual_image_create(uint32_t width, uint32_t height,
     image->width = width;
     image->height = height;
     image->channels = channels;
+    image->owns_pixels = true;
 
     return image;
 }

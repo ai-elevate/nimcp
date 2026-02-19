@@ -227,7 +227,7 @@ bool working_memory_add_with_emotion(
  * @return Pointer to item data, or NULL on error
  */
 const float* working_memory_get(
-    const working_memory_t* wm,
+    working_memory_t* wm,
     uint32_t index,
     uint32_t* size
 )
@@ -241,16 +241,14 @@ const float* working_memory_get(
     }
 
     // Lock mutex for thread-safe access
-    // NOTE: This is a const function but we need to lock for thread safety
-    // The mutex itself is mutable via nimcp_platform_mutex_lock
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    nimcp_platform_mutex_lock(&wm->mutex);
 
     // Guard: Invalid index (bounds check)
     if (index >= wm->current_size) {
         NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: index (%u >= %u)",
                        index, wm->current_size);
         set_error("Index out of bounds");
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        nimcp_platform_mutex_unlock(&wm->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get: capacity exceeded");
         return NULL;
     }
@@ -261,7 +259,7 @@ const float* working_memory_get(
     }
 
     const float* result = wm->items[index];
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return result;
 }
 
@@ -511,7 +509,7 @@ uint32_t working_memory_decay(
  * @return Index of highest salience item, or -1 if empty
  */
 int working_memory_find_highest_salience(
-    const working_memory_t* wm,
+    working_memory_t* wm,
     float* salience
 )
 {
@@ -523,11 +521,11 @@ int working_memory_find_highest_salience(
     }
 
     // Lock mutex for thread-safe access
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    nimcp_platform_mutex_lock(&wm->mutex);
 
     // Guard: Empty buffer
     if (wm->current_size == 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        nimcp_platform_mutex_unlock(&wm->mutex);
         return -1;
     }
 
@@ -546,7 +544,7 @@ int working_memory_find_highest_salience(
         *salience = max_salience;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return max_index;
 }
 
@@ -565,7 +563,7 @@ int working_memory_find_highest_salience(
  * @return Index of lowest salience item, or -1 if empty
  */
 int working_memory_find_lowest_salience(
-    const working_memory_t* wm,
+    working_memory_t* wm,
     float* salience
 )
 {
@@ -576,11 +574,11 @@ int working_memory_find_lowest_salience(
     }
 
     /* Lock mutex for thread-safe access */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
+    nimcp_platform_mutex_lock(&wm->mutex);
 
     /* Guard: Empty buffer */
     if (wm->current_size == 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        nimcp_platform_mutex_unlock(&wm->mutex);
         return -1;
     }
 
@@ -599,7 +597,7 @@ int working_memory_find_lowest_salience(
         *salience = min_salience;
     }
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+    nimcp_platform_mutex_unlock(&wm->mutex);
     return min_index;
 }
 

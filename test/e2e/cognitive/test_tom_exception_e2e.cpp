@@ -396,7 +396,9 @@ TEST_F(TomExceptionE2ETest, SimulateRealWorldUsagePattern) {
 TEST_F(TomExceptionE2ETest, ExceptionMessagesProvideUsefulContext) {
     tom_fep_bridge_connect_bio_async(nullptr);
     tom_snn_bio_async_disconnect(nullptr);
-    tom_plasticity_is_bio_async_connected(nullptr);
+    /* tom_plasticity_is_bio_async_connected returns bool and does NOT throw
+     * on NULL input (returns false), so use bio_async_connect instead */
+    tom_plasticity_bio_async_connect(nullptr);
 
     EXPECT_EQ(caught_messages.size(), 3u);
 

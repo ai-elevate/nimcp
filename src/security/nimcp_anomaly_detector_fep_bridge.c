@@ -24,7 +24,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(anomaly_detector_fep_bridge, MESH_ADAPTER_CATEGORY_
 int anomaly_fep_default_config(anomaly_fep_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in anomaly_fep_default_config");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     config->anomaly_fe_threshold = ANOMALY_FEP_ANOMALOUS_THRESHOLD;
@@ -116,11 +116,11 @@ void anomaly_fep_destroy(anomaly_fep_bridge_t* bridge) {
 
 int anomaly_fep_update(anomaly_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -169,7 +169,7 @@ int anomaly_fep_detect(
     nimcp_anomaly_result_t* result
 ) {
     if (!bridge || !input || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -234,7 +234,7 @@ int anomaly_fep_detect(
 
 int anomaly_fep_apply_modulation(anomaly_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_modulation) {
@@ -274,7 +274,7 @@ int anomaly_fep_report_detection(
     float confidence
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -310,7 +310,7 @@ int anomaly_fep_report_detection(
 
 int anomaly_fep_report_false_positive(anomaly_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -340,7 +340,7 @@ int anomaly_fep_get_effects(
     anomaly_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -352,7 +352,7 @@ int anomaly_fep_get_anomaly_effects(
     fep_anomaly_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->anomaly_effects;
@@ -364,7 +364,7 @@ int anomaly_fep_get_stats(
     anomaly_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -385,7 +385,7 @@ float anomaly_fep_get_anomaly_score(const anomaly_fep_bridge_t* bridge) {
 
 int anomaly_fep_connect_bio_async(anomaly_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {

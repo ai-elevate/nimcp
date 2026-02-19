@@ -58,7 +58,7 @@ static void update_running_averages(sec_hippo_fep_bridge_t* bridge,
  */
 int sec_hippo_fep_default_config(sec_hippo_fep_config_t* config) {
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP parameters */
@@ -198,7 +198,7 @@ void sec_hippo_fep_destroy(sec_hippo_fep_bridge_t* bridge) {
  */
 int sec_hippo_fep_reset(sec_hippo_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -243,7 +243,7 @@ int sec_hippo_fep_get_config(
     sec_hippo_fep_config_t* config
 ) {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *config = bridge->config;
@@ -260,7 +260,7 @@ int sec_hippo_fep_set_config(
     const sec_hippo_fep_config_t* config
 ) {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -269,7 +269,7 @@ int sec_hippo_fep_set_config(
     if (config->free_energy_threshold <= 0.0f ||
         config->surprise_threshold <= 0.0f) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_PARAM;
+        return -1;
     }
 
     bridge->config = *config;
@@ -289,11 +289,11 @@ int sec_hippo_fep_set_config(
  */
 int sec_hippo_fep_compute_effects(sec_hippo_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -365,7 +365,7 @@ int sec_hippo_fep_update_from_detection(
     sec_hippo_consolidation_status_t consolidation_status
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -457,7 +457,7 @@ int sec_hippo_fep_update_from_detection(
  */
 int sec_hippo_fep_update(sec_hippo_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Suppress unused parameter warning */
@@ -532,7 +532,7 @@ int sec_hippo_fep_detect_threat(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !confidence_out) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -594,7 +594,7 @@ int sec_hippo_fep_get_response(
     float* urgency_out
 ) {
     if (!bridge || !response_out || !urgency_out) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -629,7 +629,7 @@ int sec_hippo_fep_get_response(
  */
 int sec_hippo_fep_report_false_positive(sec_hippo_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -673,7 +673,7 @@ int sec_hippo_fep_get_fep_effects(
     fep_to_security_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -690,7 +690,7 @@ int sec_hippo_fep_get_security_effects(
     security_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->security_effects;
@@ -707,7 +707,7 @@ int sec_hippo_fep_get_state(
     sec_hippo_fep_state_t* state
 ) {
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *state = bridge->state;
@@ -724,7 +724,7 @@ int sec_hippo_fep_get_stats(
     sec_hippo_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -780,7 +780,7 @@ sec_hippo_fep_threat_level_t sec_hippo_fep_get_threat_level(
  */
 int sec_hippo_fep_connect_bio_async(sec_hippo_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {

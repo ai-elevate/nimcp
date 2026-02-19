@@ -2,12 +2,14 @@
 // Part of nimcp_swarm_brain.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp_swarm_brain.c
 
+#define EMERGENCE_COHERENCE_THRESHOLD 0.2f
 
 /**
  * @brief Update workspace entry
  */
 static void workspace_update_entry(collective_workspace_t* ws, uint32_t concept_id, float attention) {
     if (!ws || !ws->entries) return;
+    if (!ws->lock) return;
 
     nimcp_platform_mutex_lock(ws->lock);
 
@@ -66,7 +68,7 @@ static void emergence_update_tier(emergence_context_t* ctx, uint32_t peer_count,
 
     // Require some coherence for highest tier only
     // Note: In test scenarios coherence may be low due to limited workspace activity
-    if (new_tier >= SWARM_TIER_COMPANY && coherence < 0.2F) {
+    if (new_tier >= SWARM_TIER_COMPANY && coherence < EMERGENCE_COHERENCE_THRESHOLD) {
         new_tier = SWARM_TIER_PLATOON;
     }
 

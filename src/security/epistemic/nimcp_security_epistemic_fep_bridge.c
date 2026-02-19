@@ -307,7 +307,7 @@ static float compute_action_efe(
 int sec_epist_fep_default_config(sec_epist_fep_config_t* config)
 {
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP parameters */
@@ -472,7 +472,7 @@ int sec_epist_fep_reset(sec_epist_fep_bridge_t* bridge)
      */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     BRIDGE_LOCK(bridge);
@@ -534,7 +534,7 @@ int sec_epist_fep_get_config(
 )
 {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *config = bridge->config;
@@ -547,7 +547,7 @@ int sec_epist_fep_set_config(
 )
 {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     BRIDGE_LOCK(bridge);
@@ -571,11 +571,11 @@ int sec_epist_fep_compute_effects(sec_epist_fep_bridge_t* bridge)
      */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     BRIDGE_LOCK(bridge);
@@ -715,7 +715,7 @@ int sec_epist_fep_update_from_detection(
      */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)belief_id; /* May be used in future for belief-specific updates */
@@ -809,7 +809,7 @@ int sec_epist_fep_apply_precision_modulation(sec_epist_fep_bridge_t* bridge)
      */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_modulation) {
@@ -882,7 +882,7 @@ int sec_epist_fep_verify_belief(
      */
 
     if (!bridge || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     memset(result, 0, sizeof(sec_epist_fep_result_t));
@@ -996,7 +996,7 @@ int sec_epist_fep_validate_evidence(
      */
 
     if (!bridge || !chain || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     memset(result, 0, sizeof(sec_epist_fep_result_t));
@@ -1105,7 +1105,7 @@ int sec_epist_fep_select_restoration(
      */
 
     if (!bridge || !action_out) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     BRIDGE_LOCK(bridge);
@@ -1166,7 +1166,7 @@ int sec_epist_fep_execute_restoration(
      */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     BRIDGE_LOCK(bridge);
@@ -1257,7 +1257,7 @@ int sec_epist_fep_report_restoration(
      */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)action; /* May use for action-specific learning */
@@ -1304,7 +1304,7 @@ int sec_epist_fep_get_effects(
 )
 {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -1317,7 +1317,7 @@ int sec_epist_fep_get_security_effects(
 )
 {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->sec_effects;
@@ -1330,7 +1330,7 @@ int sec_epist_fep_get_stats(
 )
 {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -1369,7 +1369,7 @@ float sec_epist_fep_get_free_energy(const sec_epist_fep_bridge_t* bridge)
 int sec_epist_fep_reset_stats(sec_epist_fep_bridge_t* bridge)
 {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     BRIDGE_LOCK(bridge);
@@ -1387,7 +1387,7 @@ int sec_epist_fep_reset_stats(sec_epist_fep_bridge_t* bridge)
 int sec_epist_fep_connect_bio_async(sec_epist_fep_bridge_t* bridge)
 {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {

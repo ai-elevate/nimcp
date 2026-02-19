@@ -241,7 +241,7 @@ TEST_F(NumberSenseTest, CompareNullHandling)
 {
     number_comparison_t cmp = number_sense_compare(nullptr, 10.0f, 20.0f);
     EXPECT_EQ(cmp.direction, 0);
-    EXPECT_EQ(cmp.confidence, 0.0f);
+    EXPECT_EQ(cmp.confidence, -1.0f);  // Null input returns -1.0f confidence
 }
 
 //=============================================================================
@@ -348,7 +348,7 @@ TEST_F(NumberSenseTest, ApproximateDivByZero)
 TEST_F(NumberSenseTest, ApproximateArithmeticNullHandling)
 {
     approx_arithmetic_t result = number_sense_approximate_add(nullptr, 10.0f, 20.0f);
-    EXPECT_EQ(result.confidence, 0.0f);
+    EXPECT_EQ(result.confidence, -1.0f);  // Null input returns -1.0f confidence
 }
 
 //=============================================================================

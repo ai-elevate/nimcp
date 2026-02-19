@@ -23,7 +23,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(blood_brain_barrier_fep_bridge, MESH_ADAPTER_CATEGO
 int bbb_fep_default_config(bbb_fep_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in bbb_fep_default_config");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     config->threat_free_energy_threshold = 5.0f;
@@ -187,11 +187,11 @@ static void extract_input_features(
 
 int bbb_fep_update(bbb_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -244,7 +244,7 @@ int bbb_fep_process_input(
     bbb_validation_result_t* result
 ) {
     if (!bridge || !data || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -296,7 +296,7 @@ int bbb_fep_process_input(
 
 int bbb_fep_apply_modulation(bbb_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_modulation) {
@@ -336,7 +336,7 @@ int bbb_fep_report_threat(
     bbb_severity_t severity
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -377,7 +377,7 @@ int bbb_fep_get_effects(
     bbb_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -389,7 +389,7 @@ int bbb_fep_get_bbb_effects(
     fep_bbb_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->bbb_effects;
@@ -401,7 +401,7 @@ int bbb_fep_get_stats(
     bbb_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -422,7 +422,7 @@ float bbb_fep_get_threat_score(const bbb_fep_bridge_t* bridge) {
 
 int bbb_fep_connect_bio_async(bbb_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {

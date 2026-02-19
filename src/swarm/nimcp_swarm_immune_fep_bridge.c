@@ -62,7 +62,7 @@ void swarm_immune_fep_destroy(swarm_immune_fep_bridge_t* bridge) {
 }
 
 int swarm_immune_fep_update(swarm_immune_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
     bridge->fep_effects.threat_sensitivity = 0.5f + fe * 0.5f;
@@ -80,12 +80,12 @@ int swarm_immune_fep_update(swarm_immune_fep_bridge_t* bridge) {
 }
 
 int swarm_immune_fep_apply_modulation(swarm_immune_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     return 0;
 }
 
 int swarm_immune_fep_get_effects(const swarm_immune_fep_bridge_t* bridge, swarm_immune_fep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->fep_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -93,7 +93,7 @@ int swarm_immune_fep_get_effects(const swarm_immune_fep_bridge_t* bridge, swarm_
 }
 
 int swarm_immune_fep_get_immune_effects(const swarm_immune_fep_bridge_t* bridge, fep_swarm_immune_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->immune_effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -101,7 +101,7 @@ int swarm_immune_fep_get_immune_effects(const swarm_immune_fep_bridge_t* bridge,
 }
 
 int swarm_immune_fep_get_stats(const swarm_immune_fep_bridge_t* bridge, swarm_immune_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

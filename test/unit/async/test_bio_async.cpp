@@ -37,6 +37,7 @@ protected:
         nimcp_bio_async_config_t config = nimcp_bio_async_default_config();
         config.enable_logging = false;  // Reduce noise in tests
         config.enable_statistics = true;
+        config.use_real_time = false;  // Use simulation time for deterministic tests
         nimcp_error_t err = nimcp_bio_async_init(&config);
         ASSERT_EQ(err, NIMCP_SUCCESS) << "Failed to initialize bio-async";
     }

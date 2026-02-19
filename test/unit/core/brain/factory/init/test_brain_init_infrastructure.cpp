@@ -193,8 +193,8 @@ TEST_F(BrainInitInfrastructureTest, OutputLabels_StateAfterInit) {
     EXPECT_NE(brain->output_labels, nullptr);
     EXPECT_EQ(brain->num_output_labels, 0u) << "Count should be 0 initially";
 
-    // Labels array should be usable
-    brain->output_labels[0] = const_cast<char*>("label1");
+    // Labels array should be usable - heap-allocate so brain_destroy() can free
+    brain->output_labels[0] = nimcp_strdup("label1");
     brain->num_output_labels = 1;
 
     EXPECT_EQ(brain->num_output_labels, 1u);
@@ -259,8 +259,8 @@ TEST_F(BrainInitInfrastructureTest, ConsistentState_OutputLabels) {
 TEST_F(BrainInitInfrastructureTest, Cleanup_OutputLabels) {
     nimcp_brain_factory_init_output_labels(brain, 5);
 
-    // Set some labels
-    brain->output_labels[0] = const_cast<char*>("label");
+    // Set some labels - heap-allocate so brain_destroy() can free
+    brain->output_labels[0] = nimcp_strdup("label");
     brain->num_output_labels = 1;
 
     // Cleanup handled by TearDown - should not leak or crash

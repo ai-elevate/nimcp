@@ -10,7 +10,7 @@
  * HOW:  Forwards PE/KL to amplifier; reads surprise level to modulate precision
  *
  * NIMCP INTEGRATION PATTERNS:
- * 1. Exception handling (NIMCP_CHECK_THROW_IMMUNE)
+ * 1. Exception handling (NIMCP_FEP_CHECK_THROW)
  * 2. Health agent heartbeat
  * 3. Thread safety (mutex)
  * 4. Logging
@@ -53,8 +53,8 @@ static mesh_participant_id_t g_surprise_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_surprise_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t surprise_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_surprise_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_surprise_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "surprise_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -205,7 +205,7 @@ void surprise_fep_bridge_destroy(surprise_fep_bridge_t* bridge) {
 }
 
 int surprise_fep_bridge_reset(surprise_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in reset");
 
@@ -228,10 +228,10 @@ int surprise_fep_bridge_connect_amplifier(
     surprise_fep_bridge_t* bridge,
     struct surprise_amplifier* amp)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in connect_amplifier");
-    NIMCP_CHECK_THROW_IMMUNE(amp != NULL,
+    NIMCP_FEP_CHECK_THROW(amp != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL amp in connect_amplifier");
 
@@ -249,10 +249,10 @@ int surprise_fep_bridge_connect_fep(
     surprise_fep_bridge_t* bridge,
     void* fep)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in connect_fep");
-    NIMCP_CHECK_THROW_IMMUNE(fep != NULL,
+    NIMCP_FEP_CHECK_THROW(fep != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL fep in connect_fep");
 
@@ -275,7 +275,7 @@ int surprise_fep_forward_pe(
     float prediction_error,
     uint32_t source_module)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in forward_pe");
 
@@ -321,7 +321,7 @@ int surprise_fep_forward_bayesian(
     float kl_divergence,
     uint32_t source_module)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in forward_bayesian");
 
@@ -353,7 +353,7 @@ int surprise_fep_forward_bayesian(
 }
 
 int surprise_fep_modulate_precision(surprise_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in modulate_precision");
 
@@ -403,7 +403,7 @@ float surprise_fep_get_precision_boost(const surprise_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int surprise_fep_bridge_update(surprise_fep_bridge_t* bridge, float dt_seconds) {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in update");
 
@@ -437,10 +437,10 @@ int surprise_fep_bridge_get_effects(
     const surprise_fep_bridge_t* bridge,
     surprise_fep_effects_t* effects_out)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in get_effects");
-    NIMCP_CHECK_THROW_IMMUNE(effects_out != NULL,
+    NIMCP_FEP_CHECK_THROW(effects_out != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL effects_out in get_effects");
 
@@ -452,10 +452,10 @@ int surprise_fep_bridge_get_stats(
     const surprise_fep_bridge_t* bridge,
     surprise_fep_stats_t* stats_out)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in get_stats");
-    NIMCP_CHECK_THROW_IMMUNE(stats_out != NULL,
+    NIMCP_FEP_CHECK_THROW(stats_out != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL stats_out in get_stats");
 
@@ -471,7 +471,7 @@ int surprise_fep_bridge_set_health_agent(
     surprise_fep_bridge_t* bridge,
     struct nimcp_health_agent* agent)
 {
-    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+    NIMCP_FEP_CHECK_THROW(bridge != NULL,
                              NIMCP_SURPRISE_FEP_ERROR_NULL_POINTER,
                              "NULL bridge in set_health_agent");
 

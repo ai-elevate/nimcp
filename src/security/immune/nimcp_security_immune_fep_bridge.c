@@ -87,7 +87,7 @@ int security_immune_fep_default_config(security_immune_fep_config_t* config) {
     /* HOW:  Set thresholds based on expected variance in healthy immune function */
 
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP thresholds */
@@ -219,7 +219,7 @@ int security_immune_fep_reset(security_immune_fep_bridge_t* bridge) {
     /* HOW:  Zero state/stats, reset precision */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -268,7 +268,7 @@ int security_immune_fep_get_config(
     security_immune_fep_config_t* config
 ) {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *config = bridge->config;
@@ -280,7 +280,7 @@ int security_immune_fep_set_config(
     const security_immune_fep_config_t* config
 ) {
     if (!bridge || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -301,11 +301,11 @@ int security_immune_fep_compute_effects(security_immune_fep_bridge_t* bridge) {
     /* HOW:  Process immune state through generative model */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
@@ -417,7 +417,7 @@ int security_immune_fep_update_from_detection(
     /* HOW:  Convert to FEP observation, update beliefs */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)antigen_id;  /* Future: correlate with specific antigens */
@@ -477,7 +477,7 @@ int security_immune_fep_active_inference(
     /* HOW:  Evaluate policies, select EFE-minimizing action */
 
     if (!bridge || !response) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_active_inference) {
@@ -559,7 +559,7 @@ int security_immune_fep_modulate_precision(
     /* HOW:  Update based on cytokines, inflammation, detection history */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_modulation) {
@@ -662,7 +662,7 @@ int security_immune_fep_report_evasion(
     /* HOW:  Map to prediction error, increase precision */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)evasion_method;  /* Future: weight by evasion sophistication */
@@ -682,7 +682,7 @@ int security_immune_fep_report_autoimmune(
     /* HOW:  Map to prediction error, activate regulators */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)target_component;
@@ -702,7 +702,7 @@ int security_immune_fep_report_storm(
     /* HOW:  Map cytokine levels to prediction error */
 
     if (!bridge || !cytokine_levels) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -742,7 +742,7 @@ int security_immune_fep_report_memory_corruption(
     /* HOW:  Map to prediction error, trigger reconsolidation */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     (void)memory_cell_id;
@@ -761,7 +761,7 @@ int security_immune_fep_report_false_positive(
     /* HOW:  Lower type-specific precision */
 
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -819,7 +819,7 @@ int security_immune_fep_sync_cytokines(
     /* HOW:  Read levels from immune system, update effects */
 
     if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -881,7 +881,7 @@ int security_immune_fep_get_fep_effects(
     fep_to_immune_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->fep_effects;
@@ -893,7 +893,7 @@ int security_immune_fep_get_immune_effects(
     immune_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *effects = bridge->immune_effects;
@@ -905,7 +905,7 @@ int security_immune_fep_get_state(
     security_immune_fep_state_t* state
 ) {
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *state = bridge->state;
@@ -917,7 +917,7 @@ int security_immune_fep_get_stats(
     security_immune_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     *stats = bridge->stats;
@@ -1030,7 +1030,7 @@ int security_immune_fep_reset_stats(
     security_immune_fep_bridge_t* bridge
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1048,7 +1048,7 @@ int security_immune_fep_connect_bio_async(
     security_immune_fep_bridge_t* bridge
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -1070,7 +1070,7 @@ int security_immune_fep_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Security immune FEP: bio-async connection failed");
-    return NIMCP_ERROR_OPERATION_FAILED;
+    return -1;
 }
 
 int security_immune_fep_disconnect_bio_async(

@@ -28,8 +28,8 @@ static mesh_participant_id_t g_fractal_cognitive_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_fractal_cognitive_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t fractal_cognitive_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_fractal_cognitive_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_fractal_cognitive_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "fractal_cognitive_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -78,7 +78,7 @@ int fractal_cognitive_fep_bridge_default_config(fractal_cognitive_fep_config_t* 
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_default_config", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->pe_exploration_threshold = FRACTAL_FEP_HIGH_PE_THRESHOLD;
     config->precision_hub_factor = FRACTAL_FEP_HUB_PRECISION_FACTOR;
@@ -170,7 +170,7 @@ int fractal_cognitive_fep_bridge_connect_fep(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_connect_fep", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -192,7 +192,7 @@ int fractal_cognitive_fep_bridge_connect_fractal(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_connect_fractal", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fractal_cache, NIMCP_ERROR_NULL_POINTER, "bridge or fractal_cache is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fractal_cache, NIMCP_ERROR_NULL_POINTER, "bridge or fractal_cache is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fractal_cache = fractal_cache;
@@ -211,7 +211,7 @@ int fractal_cognitive_fep_bridge_disconnect(fractal_cognitive_fep_bridge_t* brid
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_disconnect", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -234,7 +234,7 @@ int fractal_cognitive_fep_trigger_hub_discovery(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_exploration) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -264,7 +264,7 @@ int fractal_cognitive_fep_weight_hubs_by_precision(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_hub_precision) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -293,7 +293,7 @@ int fractal_cognitive_fep_trigger_hierarchy_update(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fractal_cache, NIMCP_ERROR_NULL_POINTER, "bridge or fractal_cache is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fractal_cache, NIMCP_ERROR_NULL_POINTER, "bridge or fractal_cache is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -314,7 +314,7 @@ int fractal_cognitive_fep_apply_hub_priors(fractal_cognitive_fep_bridge_t* bridg
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_hub_beliefs) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -337,7 +337,7 @@ int fractal_cognitive_fep_map_hierarchy_to_fep(fractal_cognitive_fep_bridge_t* b
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_hierarchy_mapping) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -363,7 +363,7 @@ int fractal_cognitive_fep_update_model_structure(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_structure_updates) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -388,7 +388,7 @@ int fractal_cognitive_fep_bridge_update(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_update", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     fractal_cognitive_fep_weight_hubs_by_precision(bridge);
     fractal_cognitive_fep_apply_hub_priors(bridge);
@@ -411,7 +411,7 @@ int fractal_cognitive_fep_bridge_get_state(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_get_state", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -433,7 +433,7 @@ int fractal_cognitive_fep_bridge_get_stats(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_get_stats", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -454,7 +454,7 @@ int fractal_cognitive_fep_bridge_connect_bio_async(
     fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_connect_bio_async", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

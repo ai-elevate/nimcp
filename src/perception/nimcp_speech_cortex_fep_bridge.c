@@ -31,7 +31,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(speech_cortex_fep_bridge)
  * HOW:  Set biologically-plausible thresholds and enable all features
  */
 int speech_cortex_fep_bridge_default_config(speech_cortex_fep_config_t* config) {
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "NULL config in speech_cortex_fep_bridge_default_config");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "NULL config in speech_cortex_fep_bridge_default_config");
 
     config->prediction_error_threshold = SPEECH_FEP_PE_THRESHOLD_MEDIUM;
     config->precision_category_factor = SPEECH_FEP_PRECISION_CATEGORY_DEFAULT;
@@ -46,7 +46,7 @@ int speech_cortex_fep_bridge_default_config(speech_cortex_fep_config_t* config) 
     config->lexical_prediction_sensitivity = 0.7f;
     config->pe_propagation_rate = 0.2f;
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -135,15 +135,15 @@ int speech_cortex_fep_bridge_connect_fep(
     speech_cortex_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_connect_fep");
-    NIMCP_CHECK_THROW(fep, NIMCP_ERROR_NULL_POINTER, "NULL fep in speech_cortex_fep_bridge_connect_fep");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_connect_fep");
+    NIMCP_FEP_CHECK_THROW(fep, NIMCP_ERROR_NULL_POINTER, "NULL fep in speech_cortex_fep_bridge_connect_fep");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " FEP system connected");
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -155,15 +155,15 @@ int speech_cortex_fep_bridge_connect_speech_cortex(
     speech_cortex_fep_bridge_t* bridge,
     speech_cortex_t* speech
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_connect_speech_cortex");
-    NIMCP_CHECK_THROW(speech, NIMCP_ERROR_NULL_POINTER, "NULL speech in speech_cortex_fep_bridge_connect_speech_cortex");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_connect_speech_cortex");
+    NIMCP_FEP_CHECK_THROW(speech, NIMCP_ERROR_NULL_POINTER, "NULL speech in speech_cortex_fep_bridge_connect_speech_cortex");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->speech_cortex = speech;
     nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " Speech cortex connected");
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -178,9 +178,9 @@ int speech_cortex_fep_bridge_connect_speech_cortex(
 int speech_cortex_fep_apply_phoneme_predictions(
     speech_cortex_fep_bridge_t* bridge
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_apply_phoneme_predictions");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_apply_phoneme_predictions");
-    if (!bridge->config.enable_phoneme_predictions) return NIMCP_SUCCESS;
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_apply_phoneme_predictions");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_apply_phoneme_predictions");
+    if (!bridge->config.enable_phoneme_predictions) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -203,7 +203,7 @@ int speech_cortex_fep_apply_phoneme_predictions(
     bridge->effects.novelty_sensitivity = (1.0f - avg_confidence) * 0.5f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -214,9 +214,9 @@ int speech_cortex_fep_apply_phoneme_predictions(
 int speech_cortex_fep_apply_precision_categories(
     speech_cortex_fep_bridge_t* bridge
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_apply_precision_categories");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_apply_precision_categories");
-    if (!bridge->config.enable_precision_categories) return NIMCP_SUCCESS;
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_apply_precision_categories");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_apply_precision_categories");
+    if (!bridge->config.enable_precision_categories) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -243,7 +243,7 @@ int speech_cortex_fep_apply_precision_categories(
         bridge->config.phoneme_precision_sensitivity;
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -254,9 +254,9 @@ int speech_cortex_fep_apply_precision_categories(
 int speech_cortex_fep_apply_motor_predictions(
     speech_cortex_fep_bridge_t* bridge
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_apply_motor_predictions");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_apply_motor_predictions");
-    if (!bridge->config.enable_motor_theory) return NIMCP_SUCCESS;
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_apply_motor_predictions");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_apply_motor_predictions");
+    if (!bridge->config.enable_motor_theory) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -264,7 +264,7 @@ int speech_cortex_fep_apply_motor_predictions(
     /* Would query FEP motor model for articulatory predictions */
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -282,8 +282,8 @@ int speech_cortex_fep_compute_phoneme_prediction_error(
     float confidence,
     float* prediction_error
 ) {
-    NIMCP_CHECK_THROW(bridge && prediction_error, NIMCP_ERROR_NULL_POINTER, "NULL parameter in speech_cortex_fep_compute_phoneme_prediction_error");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_compute_phoneme_prediction_error");
+    NIMCP_FEP_CHECK_THROW(bridge && prediction_error, NIMCP_ERROR_NULL_POINTER, "NULL parameter in speech_cortex_fep_compute_phoneme_prediction_error");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_compute_phoneme_prediction_error");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -323,7 +323,7 @@ int speech_cortex_fep_compute_phoneme_prediction_error(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -336,9 +336,9 @@ int speech_cortex_fep_report_phoneme_observation(
     phoneme_t phoneme,
     float confidence
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_report_phoneme_observation");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_report_phoneme_observation");
-    if (!bridge->config.enable_phoneme_pe_updates) return NIMCP_SUCCESS;
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_report_phoneme_observation");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_report_phoneme_observation");
+    if (!bridge->config.enable_phoneme_pe_updates) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -355,7 +355,7 @@ int speech_cortex_fep_report_phoneme_observation(
     bridge->state.prediction_confidence[SPEECH_FEP_PREDICTION_HORIZON - 1] = 0.0f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -366,8 +366,8 @@ int speech_cortex_fep_report_phoneme_observation(
 int speech_cortex_fep_report_word_boundary(
     speech_cortex_fep_bridge_t* bridge
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_report_word_boundary");
-    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_report_word_boundary");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_report_word_boundary");
+    NIMCP_FEP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in speech_cortex_fep_report_word_boundary");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -375,7 +375,7 @@ int speech_cortex_fep_report_word_boundary(
     bridge->stats.word_recognition_events++;
 
     nimcp_mutex_unlock(bridge->base.mutex);
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -391,7 +391,7 @@ int speech_cortex_fep_bridge_update(
     speech_cortex_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_update");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_update");
 
     /* Apply FEP effects to speech processing */
     speech_cortex_fep_apply_phoneme_predictions(bridge);
@@ -422,7 +422,7 @@ int speech_cortex_fep_bridge_update(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -438,13 +438,13 @@ int speech_cortex_fep_bridge_get_state(
     const speech_cortex_fep_bridge_t* bridge,
     speech_cortex_fep_state_t* state
 ) {
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "NULL parameter in speech_cortex_fep_bridge_get_state");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "NULL parameter in speech_cortex_fep_bridge_get_state");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**
@@ -456,13 +456,13 @@ int speech_cortex_fep_bridge_get_stats(
     const speech_cortex_fep_bridge_t* bridge,
     speech_cortex_fep_stats_t* stats
 ) {
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "NULL parameter in speech_cortex_fep_bridge_get_stats");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "NULL parameter in speech_cortex_fep_bridge_get_stats");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /* ============================================================================
@@ -477,8 +477,8 @@ int speech_cortex_fep_bridge_get_stats(
 int speech_cortex_fep_bridge_connect_bio_async(
     speech_cortex_fep_bridge_t* bridge
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_connect_bio_async");
-    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_connect_bio_async");
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SPEECH_CORTEX_BRIDGE,
@@ -491,7 +491,7 @@ int speech_cortex_fep_bridge_connect_bio_async(
     if (bridge->base.bio_ctx) {
         bridge->base.bio_async_enabled = true;
         NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " Connected to bio-async router");
-        return NIMCP_SUCCESS;
+        return 0;
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available for speech_cortex_fep_bridge");
@@ -506,8 +506,8 @@ int speech_cortex_fep_bridge_connect_bio_async(
 int speech_cortex_fep_bridge_disconnect_bio_async(
     speech_cortex_fep_bridge_t* bridge
 ) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_disconnect_bio_async");
-    if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in speech_cortex_fep_bridge_disconnect_bio_async");
+    if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
@@ -516,7 +516,7 @@ int speech_cortex_fep_bridge_disconnect_bio_async(
 
     bridge->base.bio_async_enabled = false;
     NIMCP_LOGGING_INFO(LOG_MODULE_SPEECH_FEP " Disconnected from bio-async");
-    return NIMCP_SUCCESS;
+    return 0;
 }
 
 /**

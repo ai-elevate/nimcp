@@ -31,7 +31,7 @@ int emotional_tagging_fep_default_config(emotional_tagging_fep_config_t* config)
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP → Emotional Tagging */
     config->pe_valence_gain = EMOTIONAL_TAGGING_FEP_PE_VALENCE_SCALING;
@@ -130,7 +130,7 @@ int emotional_tagging_fep_connect_fep(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -148,7 +148,7 @@ int emotional_tagging_fep_connect_tag(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && tag, NIMCP_ERROR_NULL_POINTER, "bridge or tag is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && tag, NIMCP_ERROR_NULL_POINTER, "bridge or tag is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_tag = tag;
@@ -163,7 +163,7 @@ int emotional_tagging_fep_disconnect(emotional_tagging_fep_bridge_t* bridge) {
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -186,7 +186,7 @@ int emotional_tagging_fep_generate_pe_valence(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_valence_generation) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -218,7 +218,7 @@ int emotional_tagging_fep_generate_precision_arousal(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_arousal) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -250,7 +250,7 @@ int emotional_tagging_fep_generate_surprise_intensity(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_surprise_intensity) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -279,7 +279,7 @@ int emotional_tagging_fep_generate_tag(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -330,7 +330,7 @@ int emotional_tagging_fep_modulate_precision(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_arousal_precision) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -357,7 +357,7 @@ int emotional_tagging_fep_modulate_value(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_valence_value) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -384,7 +384,7 @@ int emotional_tagging_fep_boost_encoding(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_intensity_encoding) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -417,7 +417,7 @@ int emotional_tagging_fep_update(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* FEP → Emotional Tagging (if FEP connected) */
     if (bridge->fep_system) {
@@ -457,7 +457,7 @@ int emotional_tagging_fep_get_state(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -474,7 +474,7 @@ int emotional_tagging_fep_get_stats(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -494,7 +494,7 @@ int emotional_tagging_fep_connect_bio_async(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -522,7 +522,7 @@ int emotional_tagging_fep_disconnect_bio_async(
     emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

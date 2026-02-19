@@ -1106,10 +1106,38 @@ insight_t* intuitive_leap_with_strategy(
 
     insight->id = engine->stats.insights_generated + 1;
 
-    /* Copy problem reference */
+    /* Deep-copy problem so free_insight can safely free all fields */
     insight->original_problem = nimcp_calloc(1, sizeof(problem_t));
     if (insight->original_problem) {
         memcpy(insight->original_problem, problem, sizeof(problem_t));
+        /* Deep-copy heap-owned fields (caller's pointers may be stack-allocated) */
+        insight->original_problem->initial_state = NULL;
+        insight->original_problem->goal_state = NULL;
+        insight->original_problem->constraints = NULL;
+        if (problem->initial_state && problem->state_dim > 0) {
+            insight->original_problem->initial_state =
+                nimcp_calloc(problem->state_dim, sizeof(float));
+            if (insight->original_problem->initial_state) {
+                memcpy(insight->original_problem->initial_state,
+                       problem->initial_state, problem->state_dim * sizeof(float));
+            }
+        }
+        if (problem->goal_state && problem->state_dim > 0) {
+            insight->original_problem->goal_state =
+                nimcp_calloc(problem->state_dim, sizeof(float));
+            if (insight->original_problem->goal_state) {
+                memcpy(insight->original_problem->goal_state,
+                       problem->goal_state, problem->state_dim * sizeof(float));
+            }
+        }
+        if (problem->constraints && problem->num_constraints > 0) {
+            insight->original_problem->constraints =
+                nimcp_calloc(problem->num_constraints, sizeof(float));
+            if (insight->original_problem->constraints) {
+                memcpy(insight->original_problem->constraints,
+                       problem->constraints, problem->num_constraints * sizeof(float));
+            }
+        }
     }
 
     /* Generate solution based on strategy */

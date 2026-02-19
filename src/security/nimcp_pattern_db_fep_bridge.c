@@ -17,7 +17,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(pattern_db_fep_bridge, MESH_ADAPTER_CATEGORY_SECURI
 int pattern_fep_default_config(pattern_fep_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in pattern_fep_default_config");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     config->match_fe_threshold = 5.0f;
     config->surprise_add_threshold = 10.0f;
@@ -69,7 +69,7 @@ void pattern_fep_destroy(pattern_fep_bridge_t* bridge) {
 }
 
 int pattern_fep_update(pattern_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->state.active) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->state.active) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float fe = fep_get_free_energy(bridge->fep_system);
@@ -85,7 +85,7 @@ int pattern_fep_update(pattern_fep_bridge_t* bridge) {
 
 int pattern_fep_match(pattern_fep_bridge_t* bridge, const char* input,
     nimcp_pattern_match_result_t* result) {
-    if (!bridge || !input || !result) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !input || !result) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     nimcp_error_t err = nimcp_pattern_db_match(bridge->pattern_db, input, result);
@@ -125,13 +125,13 @@ int pattern_fep_apply_modulation(pattern_fep_bridge_t* bridge) {
 }
 
 int pattern_fep_get_effects(const pattern_fep_bridge_t* bridge, pattern_fep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !effects) return -1;
     *effects = bridge->fep_effects;
     return 0;
 }
 
 int pattern_fep_get_stats(const pattern_fep_bridge_t* bridge, pattern_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     *stats = bridge->stats;
     return 0;
 }

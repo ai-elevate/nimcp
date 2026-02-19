@@ -24,7 +24,7 @@ BRIDGE_BOILERPLATE(meta_learning_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 int meta_learning_fep_bridge_default_config(meta_learning_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_default_config", 0.0f);
 
@@ -83,7 +83,7 @@ void meta_learning_fep_bridge_destroy(meta_learning_fep_bridge_t* bridge) {
 }
 
 int meta_learning_fep_bridge_connect_fep(meta_learning_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !fep) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_connect_fep", 0.0f);
 
@@ -97,7 +97,7 @@ int meta_learning_fep_bridge_connect_fep(meta_learning_fep_bridge_t* bridge, fep
 
 int meta_learning_fep_bridge_connect_meta_learning(meta_learning_fep_bridge_t* bridge,
                                                     meta_learner_t meta) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_connect_meta_learnin", 0.0f);
 
@@ -110,7 +110,7 @@ int meta_learning_fep_bridge_connect_meta_learning(meta_learning_fep_bridge_t* b
 }
 
 int meta_learning_fep_bridge_disconnect(meta_learning_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_disconnect", 0.0f);
 
@@ -124,7 +124,7 @@ int meta_learning_fep_bridge_disconnect(meta_learning_fep_bridge_t* bridge) {
 }
 
 int meta_learning_fep_bridge_update(meta_learning_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    if (!bridge || !bridge->fep_system) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_update", 0.0f);
 
@@ -140,7 +140,7 @@ int meta_learning_fep_bridge_update(meta_learning_fep_bridge_t* bridge) {
 
 int meta_learning_fep_bridge_get_state(const meta_learning_fep_bridge_t* bridge,
                                         meta_learning_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !state) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_get_state", 0.0f);
 
@@ -153,7 +153,7 @@ int meta_learning_fep_bridge_get_state(const meta_learning_fep_bridge_t* bridge,
 
 int meta_learning_fep_bridge_get_stats(const meta_learning_fep_bridge_t* bridge,
                                         meta_learning_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) return -1;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_get_stats", 0.0f);
 
@@ -165,7 +165,7 @@ int meta_learning_fep_bridge_get_stats(const meta_learning_fep_bridge_t* bridge,
 }
 
 int meta_learning_fep_bridge_connect_bio_async(meta_learning_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) return -1;
     if (bridge->base.bio_async_enabled) return 0;
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_connect_bio_async", 0.0f);

@@ -300,11 +300,11 @@ int sgt_fep_set_config(
  */
 static int sgt_fep_update_unlocked(sgt_fep_bridge_t* bridge) {
     if (!bridge->state.active) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     if (!bridge->fep_system) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     /* Get current FEP state */
@@ -404,7 +404,7 @@ int sgt_fep_compute_effects(
 
     if (!bridge->fep_system) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        return NIMCP_ERROR_INVALID_STATE;
+        return -1;
     }
 
     /* Update internal effects first (already locked) */

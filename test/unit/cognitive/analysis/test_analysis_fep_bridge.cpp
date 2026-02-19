@@ -128,8 +128,8 @@ TEST_F(AnalysisFEPBridgeTest, Update) {
 }
 
 TEST_F(AnalysisFEPBridgeTest, NullPointerHandling) {
-    EXPECT_EQ(analysis_fep_bridge_default_config(nullptr), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(analysis_fep_bridge_connect_fep(nullptr, nullptr), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(analysis_fep_trigger_exploration(nullptr, 1.0f), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(analysis_fep_bridge_get_state(nullptr, nullptr), NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(analysis_fep_bridge_default_config(nullptr), -1);
+    EXPECT_EQ(analysis_fep_bridge_connect_fep(nullptr, nullptr), -1);
+    EXPECT_EQ(analysis_fep_trigger_exploration(nullptr, 1.0f), -1);
+    EXPECT_EQ(analysis_fep_bridge_get_state(nullptr, nullptr), -1);
 }

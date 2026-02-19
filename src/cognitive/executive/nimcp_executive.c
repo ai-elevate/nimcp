@@ -79,6 +79,24 @@ static inline bool exec_has_gpu_mc(void) {
     if (!g_exec_gpu_init_attempted) exec_init_gpu_mc();
     return g_exec_gpu_rng != NULL;
 }
+
+/**
+ * @brief Cleanup GPU resources on library unload
+ * WHY:  g_exec_gpu_ctx and g_exec_gpu_rng are allocated but never freed,
+ *       leaking GPU memory when the library is unloaded or process exits.
+ */
+__attribute__((destructor))
+static void exec_cleanup_gpu_mc(void) {
+    if (g_exec_gpu_rng) {
+        qmc_gpu_rng_destroy(g_exec_gpu_rng);
+        g_exec_gpu_rng = NULL;
+    }
+    if (g_exec_gpu_ctx) {
+        nimcp_gpu_context_destroy(g_exec_gpu_ctx);
+        g_exec_gpu_ctx = NULL;
+    }
+    g_exec_gpu_init_attempted = false;
+}
 #else
 static inline bool exec_has_gpu_mc(void) { return false; }
 #endif
@@ -1346,12 +1364,19 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
         exec->stats.failed_tasks++;
     }
 
-    // Broadcast significant decision to global workspace
+    // Compute workspace broadcast parameters while holding lock
     float confidence = success ? 0.8F : 0.5F;  // Higher confidence for success
     if (exec->active_task->priority >= PRIORITY_HIGH) {
         confidence += 0.1F;  // Boost confidence for high-priority tasks
     }
-    broadcast_decision_to_workspace(exec, exec->active_task, confidence);
+
+    /* DEADLOCK FIX: Copy task data to stack before releasing lock.
+     * WHY:  broadcast_decision_to_workspace() calls global_workspace_compete()
+     *       which acquires the workspace lock. If another thread holds the
+     *       workspace lock and tries to acquire task_mutex, deadlock occurs.
+     * HOW:  Copy needed task data, release lock, then do cross-module calls.
+     */
+    task_descriptor_t task_copy = *exec->active_task;
 
     // Free the completed task (it's no longer in the queue)
     nimcp_free(exec->active_task);
@@ -1368,10 +1393,14 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
         }
     }
 
-    /* Release lock before calling executive_switch_task to avoid deadlock
-     * WHY:  executive_switch_task also acquires the task mutex
+    /* Release lock before cross-module calls to avoid deadlock
+     * WHY:  broadcast_decision_to_workspace acquires workspace lock,
+     *       executive_switch_task acquires task_mutex again
      */
     nimcp_mutex_unlock(&exec->task_mutex);
+
+    // Broadcast to workspace OUTSIDE lock using stack copy
+    broadcast_decision_to_workspace(exec, &task_copy, confidence);
 
     // Switch to next task (outside lock to prevent deadlock)
     if (next_task_id > 0) {

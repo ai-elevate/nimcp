@@ -106,12 +106,14 @@ nimcp_handler_registration_t* TomExceptionRegressionTest::test_handler_reg = nul
 
 TEST_F(TomExceptionRegressionTest, FepBridgeConnectReturnsNullPointerError) {
     int result = tom_fep_bridge_connect_bio_async(nullptr);
-    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    /* FEP bridges return -1 for errors (not NIMCP_ERROR_* codes) */
+    EXPECT_EQ(result, -1);
 }
 
 TEST_F(TomExceptionRegressionTest, FepBridgeDisconnectReturnsNullPointerError) {
     int result = tom_fep_bridge_disconnect_bio_async(nullptr);
-    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    /* FEP bridges return -1 for errors (not NIMCP_ERROR_* codes) */
+    EXPECT_EQ(result, -1);
 }
 
 TEST_F(TomExceptionRegressionTest, FepBridgeIsConnectedReturnsFalse) {
@@ -155,6 +157,7 @@ TEST_F(TomExceptionRegressionTest, PlasticityBridgeIsConnectedReturnsFalse) {
 
 TEST_F(TomExceptionRegressionTest, FepBridgeThrowsCorrectExceptionCode) {
     tom_fep_bridge_connect_bio_async(nullptr);
+    /* Exception code is what's passed to NIMCP_THROW_TO_IMMUNE, not the return value */
     EXPECT_EQ(last_exception_code, NIMCP_ERROR_NULL_POINTER);
 }
 
@@ -239,10 +242,11 @@ TEST_F(TomExceptionRegressionTest, AllBridgesProduceSameErrorCodeForSameConditio
     ResetExceptionState();
     int plasticity_result = tom_plasticity_bio_async_connect(nullptr);
 
-    /* All should return the same error for NULL pointer */
-    EXPECT_EQ(fep_result, snn_result);
+    /* FEP bridges return -1 for errors; non-FEP bridges return NIMCP_ERROR_* codes */
+    EXPECT_EQ(fep_result, -1);
+    /* SNN and plasticity bridges return NIMCP_ERROR_NULL_POINTER */
     EXPECT_EQ(snn_result, plasticity_result);
-    EXPECT_EQ(fep_result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(snn_result, NIMCP_ERROR_NULL_POINTER);
 }
 
 /* ============================================================================

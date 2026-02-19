@@ -123,15 +123,17 @@ TEST_F(BBBApiValidationTest, NullPointer_Rejected) {
     EXPECT_FALSE(bbb_validate_pointer(system_, nullptr, 4, &r));
 }
 
-TEST_F(BBBApiValidationTest, PointerNullSystem_Rejected) {
+TEST_F(BBBApiValidationTest, PointerNullSystem_Accepted) {
+    // NULL system is acceptable - skip system-specific checks (Portia passes NULL)
     int value = 1;
     bbb_validation_result_t r; memset(&r, 0, sizeof(r));
-    EXPECT_FALSE(bbb_validate_pointer(nullptr, &value, sizeof(int), &r));
+    EXPECT_TRUE(bbb_validate_pointer(nullptr, &value, sizeof(int), &r));
 }
 
-TEST_F(BBBApiValidationTest, PointerNullResult_Rejected) {
+TEST_F(BBBApiValidationTest, PointerNullResult_Accepted) {
+    // NULL result is acceptable - uses local buffer internally
     int value = 1;
-    EXPECT_FALSE(bbb_validate_pointer(system_, &value, sizeof(int), nullptr));
+    EXPECT_TRUE(bbb_validate_pointer(system_, &value, sizeof(int), nullptr));
 }
 
 TEST_F(BBBApiValidationTest, ZeroSizePointer_Handled) {

@@ -34,8 +34,8 @@ static mesh_participant_id_t g_emotion_recognition_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_emotion_recognition_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t emotion_recognition_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_emotion_recognition_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_emotion_recognition_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "emotion_recognition_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -82,7 +82,7 @@ int emotion_recognition_fep_default_config(emotion_recognition_fep_config_t* con
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_FEP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Emotion Recognition */
     config->pe_inference_gain = 1.0f;
@@ -188,7 +188,7 @@ int emotion_recognition_fep_connect_fep(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -206,7 +206,7 @@ int emotion_recognition_fep_connect_emotion(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && emotion, NIMCP_ERROR_NULL_POINTER, "bridge or emotion is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && emotion, NIMCP_ERROR_NULL_POINTER, "bridge or emotion is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotion_system = emotion;
@@ -221,7 +221,7 @@ int emotion_recognition_fep_disconnect(emotion_recognition_fep_bridge_t* bridge)
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -244,7 +244,7 @@ int emotion_recognition_fep_infer_emotion(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_emotion_inference) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -310,7 +310,7 @@ int emotion_recognition_fep_modulate_modality_precision(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_confidence) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -367,7 +367,7 @@ int emotion_recognition_fep_update(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update modality precision modulation */
     emotion_recognition_fep_modulate_modality_precision(bridge);
@@ -401,7 +401,7 @@ int emotion_recognition_fep_get_state(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -418,7 +418,7 @@ int emotion_recognition_fep_get_stats(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -438,7 +438,7 @@ int emotion_recognition_fep_connect_bio_async(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -466,7 +466,7 @@ int emotion_recognition_fep_disconnect_bio_async(
     emotion_recognition_fep_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
 
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_FEP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

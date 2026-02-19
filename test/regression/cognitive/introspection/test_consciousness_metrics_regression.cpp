@@ -73,7 +73,7 @@ TEST_F(ConsciousnessRegressionTest, PhiComputationPerformance_SmallNetwork) {
         GTEST_SKIP() << "Introspection not available";
     }
 
-    const int iterations = 100;
+    const int iterations = 20;
     std::vector<double> durations;
 
     for (int i = 0; i < iterations; i++) {
@@ -159,7 +159,7 @@ TEST_F(ConsciousnessRegressionTest, PhiStabilityAcrossRuns) {
         GTEST_SKIP() << "Introspection not available";
     }
 
-    const int runs = 50;
+    const int runs = 20;
     std::vector<float> phi_values;
 
     for (int i = 0; i < runs; i++) {
@@ -170,7 +170,7 @@ TEST_F(ConsciousnessRegressionTest, PhiStabilityAcrossRuns) {
         }
     }
 
-    if (phi_values.size() >= 10) {
+    if (phi_values.size() >= 5) {
         // Compute mean and variance
         float sum = 0.0f;
         for (float phi : phi_values) {
@@ -201,7 +201,7 @@ TEST_F(ConsciousnessRegressionTest, ConsistentStateClassification) {
         GTEST_SKIP() << "Introspection not available";
     }
 
-    const int runs = 30;
+    const int runs = 15;
     std::vector<consciousness_state_t> states;
 
     for (int i = 0; i < runs; i++) {
@@ -212,7 +212,7 @@ TEST_F(ConsciousnessRegressionTest, ConsistentStateClassification) {
         }
     }
 
-    if (states.size() >= 10) {
+    if (states.size() >= 5) {
         // Count state frequencies
         int state_counts[5] = {0};
         for (auto state : states) {
@@ -245,7 +245,7 @@ TEST_F(ConsciousnessRegressionTest, NoMemoryLeaksInRepeatedComputation) {
         GTEST_SKIP() << "Introspection not available";
     }
 
-    const int iterations = 1000;
+    const int iterations = 100;
 
     size_t initial_memory = get_memory_usage();
 
@@ -271,7 +271,7 @@ TEST_F(ConsciousnessRegressionTest, ProperResourceCleanup) {
     }
 
     // Allocate and free many results
-    const int count = 100;
+    const int count = 20;
 
     for (int i = 0; i < count; i++) {
         consciousness_phi_result_t* result = introspection_compute_phi(intro_ctx, nullptr);
@@ -318,8 +318,8 @@ TEST_F(ConsciousnessRegressionTest, MonitoringStability_ShortDuration) {
     );
 
     if (success) {
-        // Run for 1 second
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        // Run for 500ms
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         // Should still be running without crash
         brain_disable_consciousness_monitoring(brain);

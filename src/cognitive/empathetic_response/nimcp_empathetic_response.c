@@ -226,7 +226,6 @@ static bool contains_keywords(const char* text, const char* keywords[])
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_keywords: validation failed");
     return false;
 }
 
@@ -393,10 +392,20 @@ bool empathetic_response_generate(
 
     memset(response, 0, sizeof(empathetic_response_t));
 
-    // Check for crisis
-    uint32_t crisis_flags;
-    float crisis_confidence;
-    empathetic_response_detect_crisis(engine, state->text_input, &crisis_flags, &crisis_confidence);
+    // Check for crisis via text analysis
+    uint32_t crisis_flags = CRISIS_NONE;
+    float crisis_confidence = 0.0f;
+    if (state->text_input) {
+        empathetic_response_detect_crisis(engine, state->text_input, &crisis_flags, &crisis_confidence);
+    }
+
+    // Also check crisis flags set directly on the emotional state
+    if (state->crisis_flags != CRISIS_NONE) {
+        crisis_flags |= state->crisis_flags;
+        if (state->crisis_confidence > crisis_confidence) {
+            crisis_confidence = state->crisis_confidence;
+        }
+    }
 
     // Guard: IMMEDIATE ESCALATION for crisis
     if (crisis_flags != CRISIS_NONE) {

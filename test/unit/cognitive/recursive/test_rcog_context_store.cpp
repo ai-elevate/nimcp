@@ -456,7 +456,7 @@ TEST_F(ContextStoreTest, GetMetadata)
     rcog_error_t err = rcog_context_store_get_metadata(store, "meta_test", &metadata);
     EXPECT_EQ(err, RCOG_OK);
     EXPECT_EQ(metadata.dtype, RCOG_DTYPE_TEXT);
-    EXPECT_EQ(metadata.size, strlen(text));
+    EXPECT_EQ(metadata.size, strlen(text) + 1);  /* set_text stores strlen+1 (includes NUL) */
 }
 
 /**

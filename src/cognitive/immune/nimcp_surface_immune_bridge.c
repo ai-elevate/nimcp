@@ -15,6 +15,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include <stdatomic.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -543,7 +544,7 @@ int surface_immune_validate_branch(
         } else {
             ag = find_empty_antigen_slot(bridge);
             if (ag) {
-                ag->id = bridge->next_antigen_id++;
+                ag->id = __atomic_add_fetch(&bridge->next_antigen_id, 1, __ATOMIC_SEQ_CST);
                 ag->type = SURFACE_ANTIGEN_DEGENERATE_GEOMETRY;
                 ag->severity = SURFACE_SEVERITY_ERROR;
                 ag->branch_point_id = branch->id;
@@ -572,7 +573,7 @@ int surface_immune_validate_branch(
 
         surface_antigen_t* ag = find_empty_antigen_slot(bridge);
         if (ag) {
-            ag->id = bridge->next_antigen_id++;
+            ag->id = __atomic_add_fetch(&bridge->next_antigen_id, 1, __ATOMIC_SEQ_CST);
             ag->type = SURFACE_ANTIGEN_TOPOLOGY_ERROR;
             ag->severity = SURFACE_SEVERITY_CRITICAL;
             ag->branch_point_id = branch->id;
@@ -653,7 +654,7 @@ int surface_immune_present_anomaly(
             return -1;  /* No room */
         }
 
-        ag->id = bridge->next_antigen_id++;
+        ag->id = __atomic_add_fetch(&bridge->next_antigen_id, 1, __ATOMIC_SEQ_CST);
         ag->type = type;
         ag->severity = get_severity_for_type(type);
         ag->branch_point_id = branch_id;
@@ -804,7 +805,7 @@ static int produce_antibody_unlocked(
     }
 
     /* Create new antibody */
-    ab->id = bridge->next_antibody_id++;
+    ab->id = __atomic_add_fetch(&bridge->next_antibody_id, 1, __ATOMIC_SEQ_CST);
     ab->target_type = target_type;
     ab->correction_factor = 0.5f;  /* Start conservative */
     ab->max_correction = 0.2f;

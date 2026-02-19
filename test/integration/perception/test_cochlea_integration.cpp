@@ -209,7 +209,7 @@ TEST_F(CochleaIntegrationTest, FEPBridgeReset) {
     if (!fep) GTEST_SKIP() << "FEP bridge not available";
 
     nimcp_error_t err = cochlea_fep_bridge_reset(fep);
-    EXPECT_EQ(err, NIMCP_SUCCESS);
+    EXPECT_EQ(err, 0);
 }
 
 TEST_F(CochleaIntegrationTest, SleepBridgeReset) {

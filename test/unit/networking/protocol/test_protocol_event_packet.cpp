@@ -344,8 +344,8 @@ TEST_F(EventPacketValidationTest, NoTypeFlags)
     create_valid_packet();
     EVENT_SET_FLAGS(&packet, 0);  // No flags
 
-    // Valid - will default to excitatory during processing
-    ASSERT_TRUE(event_packet_validate(&packet));
+    // Invalid - must have exactly one of excitatory/inhibitory (XOR check)
+    ASSERT_FALSE(event_packet_validate(&packet));
 }
 
 TEST_F(EventPacketValidationTest, PlasticityFlag)

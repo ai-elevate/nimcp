@@ -33,8 +33,8 @@ static mesh_participant_id_t g_attention_fep_bridge_mesh_id = 0;
 static mesh_participant_registry_t* g_attention_fep_bridge_mesh_registry = NULL;
 
 nimcp_error_t attention_fep_bridge_mesh_register(mesh_participant_registry_t* registry) {
-    if (!registry) return NIMCP_ERROR_NULL_POINTER;
-    if (g_attention_fep_bridge_mesh_id != 0) return NIMCP_SUCCESS;
+    if (!registry) return -1;
+    if (g_attention_fep_bridge_mesh_id != 0) return 0;
     mesh_participant_interface_t iface;
     mesh_participant_interface_init(&iface);
     strncpy(iface.module_name, "attention_fep_bridge", MESH_MAX_NAME_LEN - 1);
@@ -81,7 +81,7 @@ BRIDGE_DEFINE_SECURITY_SETTERS(attention_fep_bridge)
 int attention_fep_bridge_default_config(attention_fep_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_default_config: config is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP → Attention */
@@ -178,7 +178,7 @@ int attention_fep_bridge_connect_fep(
 ) {
     if (!bridge || !fep) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_connect_fep: bridge or fep is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -199,7 +199,7 @@ int attention_fep_bridge_connect_attention(
 ) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_connect_attention: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -217,7 +217,7 @@ int attention_fep_bridge_connect_attention(
 int attention_fep_bridge_disconnect(attention_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_disconnect: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -240,7 +240,7 @@ int attention_fep_bridge_disconnect(attention_fep_bridge_t* bridge) {
 int attention_fep_apply_precision_gain_modulation(attention_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_apply_precision_gain_modulation: bridge or fep_system is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_precision_gain_modulation) {
@@ -289,7 +289,7 @@ int attention_fep_surprise_attention_shift(
 ) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_surprise_attention_shift: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_surprise_attention_shift) {
@@ -323,7 +323,7 @@ int attention_fep_surprise_attention_shift(
 int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_efe_info_seeking: bridge or fep_system is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_efe_info_seeking) {
@@ -364,7 +364,7 @@ int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
 int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_apply_attentional_gating: bridge or fep_system is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_attentional_gating) {
@@ -410,7 +410,7 @@ int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
 int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_modulate_learning_rate: bridge or fep_system is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_attention_lr_modulation) {
@@ -453,7 +453,7 @@ int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
 int attention_fep_apply_focus_model_narrowing(attention_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_apply_focus_model_narrowing: bridge or fep_system is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     if (!bridge->config.enable_focus_model_narrowing) {
@@ -494,7 +494,7 @@ int attention_fep_bridge_update(
 ) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_update: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* FEP → Attention */
@@ -539,7 +539,7 @@ int attention_fep_bridge_get_state(
 ) {
     if (!bridge || !state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_get_state: bridge or state is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -559,7 +559,7 @@ int attention_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_get_stats: bridge or stats is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -580,7 +580,7 @@ int attention_fep_bridge_get_stats(
 int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_connect_bio_async: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -609,7 +609,7 @@ int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
 int attention_fep_bridge_disconnect_bio_async(attention_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_disconnect_bio_async: bridge is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (!bridge->base.bio_async_enabled) return 0;
 

@@ -121,6 +121,7 @@ TEST_F(TomExceptionIntegrationTest, SequentialBridgeExceptionsAllCaptured) {
     EXPECT_EQ(exception_codes_in_order.size(), 3u);
 
     for (int code : exception_codes_in_order) {
+        /* Exception codes passed to NIMCP_THROW_TO_IMMUNE are always NIMCP_ERROR_* */
         EXPECT_EQ(code, NIMCP_ERROR_NULL_POINTER);
     }
 }
@@ -242,7 +243,9 @@ TEST_F(TomExceptionIntegrationTest, AllBridgesReturnConsistentErrorCodes) {
     int snn_result = tom_snn_bio_async_connect(nullptr);
     int plasticity_result = tom_plasticity_bio_async_connect(nullptr);
 
-    EXPECT_EQ(fep_result, NIMCP_ERROR_NULL_POINTER);
+    /* FEP bridges return -1 for errors */
+    EXPECT_EQ(fep_result, -1);
+    /* SNN and plasticity bridges return NIMCP_ERROR_* codes */
     EXPECT_EQ(snn_result, NIMCP_ERROR_NULL_POINTER);
     EXPECT_EQ(plasticity_result, NIMCP_ERROR_NULL_POINTER);
 }
