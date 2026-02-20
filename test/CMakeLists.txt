@@ -2714,6 +2714,7 @@ endif()
 #       so the tests actually exist when set_tests_properties is called
 
 # Comprehensive brain tests - these create multiple full brain instances
+# RESOURCE_LOCK prevents OOM when running -j2 alongside other brain tests
 set_tests_properties(
   unit_core_brain_test_brain_comprehensive
   unit_core_brain_test_brain_comprehensive_coverage
@@ -2722,26 +2723,65 @@ set_tests_properties(
   unit_core_brain_test_brain_100_percent_coverage
   unit_core_brain_test_brain_final_coverage
   unit_core_brain_test_brain_final_push_95
-  PROPERTIES TIMEOUT 120
+  PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
 )
 
 # Medium-weight brain tests - single brain instance with extensive validation
 set_tests_properties(
-  unit_core_brain_test_brain_master
-  unit_core_brain_test_brain_cache_threadsafe
-  unit_core_brain_test_brain_network_analyzer
   unit_core_brain_test_brain_persistence
   unit_core_brain_test_brain_error_paths
   unit_core_brain_test_brain_snapshot_operations
   unit_core_brain_test_oscillations_immune_full_integration
   unit_core_brain_test_brain_oscillations_immune_integration
-  PROPERTIES TIMEOUT 90
+  PROPERTIES TIMEOUT 180 RESOURCE_LOCK "brain_heavy"
+)
+# network_analyzer includes LargeBrain_HandlesGracefully (142s)
+set_tests_properties(
+  unit_core_brain_test_brain_network_analyzer
+  PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
+)
+# brain_master includes AllBrainSizesAndTasks (109s) + StressTest + LongRunningSimulation
+set_tests_properties(
+  unit_core_brain_test_brain_master
+  PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
+)
+# brain_cache_threadsafe has 34 tests including a 55s cache-overwrite benchmark
+set_tests_properties(
+  unit_core_brain_test_brain_cache_threadsafe
+  PROPERTIES TIMEOUT 180 RESOURCE_LOCK "brain_heavy"
+)
+
+# Additional brain tests discovered via add_test_binary macro
+set_tests_properties(
+  unit_core_brain_test_brain_finetune
+  unit_core_brain_test_brain_layer_freezing
+  unit_core_brain_test_brain_edge_cases
+  unit_core_brain_test_brain_cycle_coordinator
+  PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
 )
 
 # Hemispheric brain tests - timeouts set in unit/core/brain/hemispheric/CMakeLists.txt
 
 # Factory tests - brain creation and subsystem initialization
-# Timeouts set in unit/core/brain/factory/CMakeLists.txt
+# Timeouts for add_test entries set in unit/core/brain/factory/CMakeLists.txt
+# Auto-discovered duplicates from init/ dir need RESOURCE_LOCK here
+if(TARGET unit_core_brain_factory_init_test_brain_init_basal_ganglia)
+  set_tests_properties(
+    unit_core_brain_factory_init_test_brain_init_basal_ganglia
+    unit_core_brain_factory_init_test_brain_init_hypothalamus
+    unit_core_brain_factory_init_test_brain_init_coordinators
+    unit_core_brain_factory_init_test_brain_init_allocation
+    unit_core_brain_factory_init_test_brain_init_builders
+    unit_core_brain_factory_init_test_brain_init_config
+    unit_core_brain_factory_init_test_brain_init_infrastructure
+    unit_core_brain_factory_init_test_brain_init_integration_config
+    unit_core_brain_factory_init_test_brain_init_network
+    unit_core_brain_factory_init_test_brain_init_subsystems_part1
+    unit_core_brain_factory_init_test_brain_init_subsystems_part2
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy"
+  )
+endif()
+# Factory-managed tests already have RESOURCE_LOCK set in factory/CMakeLists.txt
 
 # Utils async/fault tolerance tests
 # Note: timeout for test_async_checkpoint is set in unit/utils/fault_tolerance/CMakeLists.txt

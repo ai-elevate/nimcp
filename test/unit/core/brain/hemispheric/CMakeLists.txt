@@ -19,7 +19,7 @@ add_test_binary(
 )
 set_tests_properties(unit_core_brain_hemispheric_test PROPERTIES
     TIMEOUT 300
-    RESOURCE_LOCK "hemispheric_brain_heavy"
+    RESOURCE_LOCK "brain_heavy"
 )
 
 # Test: Hemispheric Immune Bridge Tests
@@ -30,7 +30,7 @@ add_test_binary(
 )
 set_tests_properties(unit_core_brain_hemispheric_immune_test PROPERTIES
     TIMEOUT 300
-    RESOURCE_LOCK "hemispheric_brain_heavy"
+    RESOURCE_LOCK "brain_heavy"
 )
 
 # Test: Hemispheric Sleep Bridge Tests
@@ -41,7 +41,7 @@ add_test_binary(
 )
 set_tests_properties(unit_core_brain_hemispheric_sleep_test PROPERTIES
     TIMEOUT 600
-    RESOURCE_LOCK "hemispheric_brain_heavy"
+    RESOURCE_LOCK "brain_heavy"
 )
 
 # Test: Hemispheric FEP Bridge Tests
@@ -50,7 +50,7 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_fep_bridge.cpp
     unit
 )
-set_tests_properties(unit_core_brain_hemispheric_fep_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_hemispheric_fep_test PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # Test: Hemispheric Glial Bridge Tests
 add_test_binary(
@@ -58,7 +58,7 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_glial_bridge.cpp
     unit
 )
-set_tests_properties(unit_core_brain_hemispheric_glial_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_hemispheric_glial_test PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # Test: Hemispheric Injury and Recovery Tests
 add_test_binary(
@@ -66,7 +66,7 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_injury.cpp
     unit
 )
-set_tests_properties(unit_core_brain_hemispheric_injury_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_hemispheric_injury_test PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # Test: Split-Brain Experiments Tests
 add_test_binary(
@@ -74,7 +74,7 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_split_brain_experiments.cpp
     unit
 )
-set_tests_properties(unit_core_brain_split_brain_test PROPERTIES TIMEOUT 300)
+set_tests_properties(unit_core_brain_split_brain_test PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # Test: Hemispheric Memory Optimization Tests (Opt 5, 7)
 add_test_binary(
@@ -84,5 +84,5 @@ add_test_binary(
 )
 set_tests_properties(unit_core_brain_hemispheric_memory_opt_test PROPERTIES
     TIMEOUT 300
-    RESOURCE_LOCK "hemispheric_brain_heavy"
+    RESOURCE_LOCK "brain_heavy"
 )

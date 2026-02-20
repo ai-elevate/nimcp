@@ -475,6 +475,7 @@ gtest_discover_tests(unit_async_bio_router_thread_safety
     PROPERTIES
         LABELS "unit;async;router;thread-safety;toctou"
         TIMEOUT 120
+        RESOURCE_LOCK "brain_heavy"
 )
 
 # ============================================================================

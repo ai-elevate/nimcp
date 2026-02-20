@@ -224,17 +224,21 @@ static void unsubscribe_all_unlocked(cognitive_integration_hub_t hub, uint32_t m
 /**
  * WHAT: Deliver event to all subscribers (unlocked)
  * WHY: Core event delivery logic
+ * NOTE: Skips delivering the event back to the publisher module to prevent
+ *       deadlocks when a bridge holds its own mutex during publish and the
+ *       callback tries to re-acquire that same mutex.
  */
 static int deliver_event_unlocked(cognitive_integration_hub_t hub,
+                                   uint32_t publisher_id,
                                    cognitive_event_type_t event_type,
                                    const cognitive_event_data_t* data) {
     if (!hub || !hub->subscriptions || !data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unsubscribe_all_unlocked: required parameter is NULL (hub, hub->subscriptions, data)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deliver_event_unlocked: required parameter is NULL (hub, hub->subscriptions, data)");
         return -1;
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unsubscribe_all_unlocked: COG_EVENT_TYPE_IS_VALID is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deliver_event_unlocked: COG_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 
@@ -249,6 +253,12 @@ static int deliver_event_unlocked(cognitive_integration_hub_t hub,
         }
 
         if (subs[i].active && subs[i].callback) {
+            /* Skip delivering event back to the publisher to prevent
+             * deadlocks from re-entrant mutex acquisition in callbacks */
+            if (subs[i].subscriber_id == publisher_id) {
+                continue;
+            }
+
             /* Check if subscriber module is active */
             module_entry_t* mod = find_module_unlocked(hub, subs[i].subscriber_id);
             if (mod && mod->info.is_active) {
@@ -748,7 +758,7 @@ int cognitive_hub_publish(cognitive_integration_hub_t hub,
 
     hub->stats.events_published++;
 
-    int result = deliver_event_unlocked(hub, event_type, data);
+    int result = deliver_event_unlocked(hub, publisher_id, event_type, data);
 
     nimcp_mutex_unlock(hub->mutex);
     return result;
@@ -1063,6 +1073,11 @@ int cognitive_hub_publish_to_category(cognitive_integration_hub_t hub,
         }
 
         if (subs[i].active && subs[i].callback) {
+            /* Skip delivering event back to the publisher */
+            if (subs[i].subscriber_id == publisher_id) {
+                continue;
+            }
+
             /* Check if subscriber module is active and in the category */
             module_entry_t* mod = find_module_unlocked(hub, subs[i].subscriber_id);
             if (mod && mod->info.is_active && mod->info.category == category) {

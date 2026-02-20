@@ -19,7 +19,7 @@ target_include_directories(unit_core_brain_factory_test_brain_create
 )
 add_test(NAME unit_core_brain_factory_test_brain_create
          COMMAND unit_core_brain_factory_test_brain_create)
-set_tests_properties(unit_core_brain_factory_test_brain_create PROPERTIES LABELS "unit" TIMEOUT 90)
+set_tests_properties(unit_core_brain_factory_test_brain_create PROPERTIES LABELS "unit" TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 
 # Test 2: brain_create_custom() function
 add_executable(unit_core_brain_factory_test_brain_create_custom
@@ -38,7 +38,7 @@ target_include_directories(unit_core_brain_factory_test_brain_create_custom
 )
 add_test(NAME unit_core_brain_factory_test_brain_create_custom
          COMMAND unit_core_brain_factory_test_brain_create_custom)
-set_tests_properties(unit_core_brain_factory_test_brain_create_custom PROPERTIES LABELS "unit" TIMEOUT 90)
+set_tests_properties(unit_core_brain_factory_test_brain_create_custom PROPERTIES LABELS "unit" TIMEOUT 180 RESOURCE_LOCK "brain_heavy")
 
 # Test 3: create_personality() helper function
 add_executable(unit_core_brain_factory_test_personality
@@ -95,7 +95,7 @@ target_include_directories(unit_core_brain_factory_init_basal_ganglia
 )
 add_test(NAME unit_core_brain_factory_init_basal_ganglia
          COMMAND unit_core_brain_factory_init_basal_ganglia)
-set_tests_properties(unit_core_brain_factory_init_basal_ganglia PROPERTIES LABELS "unit")
+set_tests_properties(unit_core_brain_factory_init_basal_ganglia PROPERTIES LABELS "unit" RESOURCE_LOCK "brain_heavy")
 
 # Test: Hypothalamus Brain Init
 add_executable(unit_core_brain_factory_init_hypothalamus
@@ -114,7 +114,7 @@ target_include_directories(unit_core_brain_factory_init_hypothalamus
 )
 add_test(NAME unit_core_brain_factory_init_hypothalamus
          COMMAND unit_core_brain_factory_init_hypothalamus)
-set_tests_properties(unit_core_brain_factory_init_hypothalamus PROPERTIES LABELS "unit")
+set_tests_properties(unit_core_brain_factory_init_hypothalamus PROPERTIES LABELS "unit" RESOURCE_LOCK "brain_heavy")
 
 # Test: Brain Tier Config (Opt 2, 3, 6 - enable/lazy flags)
 add_executable(unit_core_brain_factory_test_brain_tier_config

@@ -39,7 +39,15 @@ static struct brain_kg* get_router_brain_kg_safe(void) {
  */
 static void init_router_mutex_once(void) {
     nimcp_platform_mutex_init(&g_router_init_mutex, false);
-    nimcp_platform_mutex_init(&g_router_brain_kg_mutex, false);
+    /* RACE FIX: Only create the brain KG mutex once per process lifetime.
+     * Shutdown no longer destroys it (to avoid destroying a mutex while threads
+     * are still blocked on it), so we must not re-initialize it on subsequent
+     * init cycles. The static bool tracks whether the mutex has ever been created;
+     * the atomic flag tracks whether the mutex is currently "open for business". */
+    if (!g_router_brain_kg_mutex_created) {
+        nimcp_platform_mutex_init(&g_router_brain_kg_mutex, false);
+        g_router_brain_kg_mutex_created = true;
+    }
     /* TOCTOU FIX: Use atomic store with release ordering to ensure the mutex
      * initialization is visible to all threads before they see initialized=true. */
     atomic_store_explicit(&g_router_brain_kg_mutex_initialized, true, memory_order_release);

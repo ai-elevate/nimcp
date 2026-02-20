@@ -99,7 +99,7 @@ target_include_directories(unit_cognitive_wellbeing_extended
 )
 add_test(NAME unit_cognitive_wellbeing_extended
          COMMAND unit_cognitive_wellbeing_extended --gtest_brief=1)
-set_tests_properties(unit_cognitive_wellbeing_extended PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180)
+set_tests_properties(unit_cognitive_wellbeing_extended PROPERTIES LABELS "unit;wellbeing" TIMEOUT 180 RESOURCE_LOCK "brain_heavy")
 
 # Real Wellbeing Tests
 add_executable(unit_cognitive_wellbeing_real

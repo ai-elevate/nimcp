@@ -1089,14 +1089,25 @@ TEST_F(BrainCycleCoordinatorTest, FlushToKGWithoutDispatcher) {
 }
 
 TEST_F(BrainCycleCoordinatorTest, FlushToKGWithDispatcher) {
-    int dummy_dispatcher = 1;
+    // Allocate a zeroed buffer large enough for a kg_io_dispatcher_t struct.
+    // The struct is opaque, so we over-allocate. With all fields zeroed,
+    // the internal write queues have capacity=0 so writes fail gracefully
+    // (queue full) rather than dereferencing garbage pointers / corrupting stack.
+    void* fake_dispatcher = calloc(1, 4096);
+    ASSERT_NE(nullptr, fake_dispatcher);
+
     ASSERT_EQ(0, brain_cycle_coordinator_connect_kg(
-        coord, (kg_io_dispatcher_t*)&dummy_dispatcher));
+        coord, (kg_io_dispatcher_t*)fake_dispatcher));
 
     register_cycle(BRAIN_CYCLE_IMMUNE_TICK);
     brain_cycle_coordinator_notify_tick(coord, BRAIN_CYCLE_IMMUNE_TICK, 100);
 
+    // flush_to_kg returns 0 even if individual writes fail (best-effort)
     EXPECT_EQ(0, brain_cycle_coordinator_flush_to_kg(coord));
+
+    // Disconnect before freeing to avoid dangling pointer in coordinator destroy
+    brain_cycle_coordinator_connect_kg(coord, nullptr);
+    free(fake_dispatcher);
 }
 
 TEST_F(BrainCycleCoordinatorTest, DiagnoseNullArgs) {

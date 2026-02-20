@@ -308,18 +308,21 @@ void bio_router_shutdown(void) {
     // Clear brain KG reference
     g_router_brain_kg = NULL;
 
-    /* P1-8 fix: Destroy brain KG mutex before shutdown completes.
-     * TOCTOU FIX: Set the atomic flag to false BEFORE destroying the mutex.
-     * This ensures concurrent get_router_brain_kg_safe() calls see the flag
-     * as false and bail out before attempting to lock the (soon-destroyed) mutex.
-     * Use release ordering so the flag write is visible before mutex destroy. */
+    /* RACE FIX: Clear the brain KG mutex "open for business" flag so no new
+     * readers enter get_router_brain_kg_safe(). We do NOT destroy the mutex
+     * because other threads may still be blocked on nimcp_platform_mutex_lock()
+     * inside get_router_brain_kg_safe(). Destroying a mutex while threads are
+     * blocked on it is undefined behavior (hangs on Linux/glibc). The mutex
+     * persists for the process lifetime (~40 bytes); init_router_mutex_once()
+     * guards against double-initialization via g_router_brain_kg_mutex_created.
+     *
+     * Sequence: lock -> set flag false -> unlock. All blocked readers will
+     * then wake one by one, see flag=false in the re-check, and return NULL. */
     if (atomic_load_explicit(&g_router_brain_kg_mutex_initialized, memory_order_acquire)) {
-        /* Lock the mutex first to drain any concurrent users, then clear flag
-         * while holding the lock so no new users can enter. */
         nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
         atomic_store_explicit(&g_router_brain_kg_mutex_initialized, false, memory_order_release);
         nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
-        nimcp_platform_mutex_destroy(&g_router_brain_kg_mutex);
+        /* Do NOT destroy - blocked readers still need it to wake and drain */
     }
 
     /* P1-1 fix: Reset subsystem once-flags so they re-initialize after shutdown */

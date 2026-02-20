@@ -182,6 +182,7 @@ static struct bio_async_orchestrator* g_router_orchestrator = NULL;
 static struct brain_kg* g_router_brain_kg = NULL;
 static nimcp_platform_mutex_t g_router_brain_kg_mutex;
 static atomic_bool g_router_brain_kg_mutex_initialized = false;
+static bool g_router_brain_kg_mutex_created = false;  /* guards against double pthread_mutex_init */
 
 /* Forward declaration for Phase 7: KG dispatch */
 static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uint32_t timeout_ms);

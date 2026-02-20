@@ -881,6 +881,8 @@ nimcp_result_t emotional_contagion_update_connection(
  * Propagation Functions
  * ============================================================================ */
 
+static void apply_decay_unlocked(emotional_contagion_t* ec, uint64_t delta_ms);
+
 nimcp_result_t emotional_contagion_propagate(
     emotional_contagion_t* ec,
     uint64_t delta_ms) {
@@ -980,8 +982,8 @@ nimcp_result_t emotional_contagion_propagate(
         }
     }
 
-    /* Phase 2: Apply decay to all emotions */
-    emotional_contagion_apply_decay(ec, delta_ms);
+    /* Phase 2: Apply decay to all emotions (already holding mutex) */
+    apply_decay_unlocked(ec, delta_ms);
 
     /* Phase 3: Decay resistances */
     if (ec->config.enable_resistance) {
@@ -1003,14 +1005,8 @@ nimcp_result_t emotional_contagion_propagate(
     return NIMCP_SUCCESS;
 }
 
-nimcp_result_t emotional_contagion_apply_decay(
-    emotional_contagion_t* ec,
-    uint64_t delta_ms) {
-
-    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
-
-    nimcp_platform_mutex_lock(&ec->mutex);
-
+/* Internal: apply decay without locking (caller must hold mutex) */
+static void apply_decay_unlocked(emotional_contagion_t* ec, uint64_t delta_ms) {
     for (size_t h = 0; h < ec->hash_size; h++) {
         agent_entry_t* entry = ec->agent_hash[h];
         while (entry) {
@@ -1029,7 +1025,16 @@ nimcp_result_t emotional_contagion_apply_decay(
             entry = entry->next;
         }
     }
+}
 
+nimcp_result_t emotional_contagion_apply_decay(
+    emotional_contagion_t* ec,
+    uint64_t delta_ms) {
+
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+
+    nimcp_platform_mutex_lock(&ec->mutex);
+    apply_decay_unlocked(ec, delta_ms);
     nimcp_platform_mutex_unlock(&ec->mutex);
 
     return NIMCP_SUCCESS;
