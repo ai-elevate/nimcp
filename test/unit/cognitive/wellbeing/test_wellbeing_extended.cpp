@@ -40,49 +40,49 @@
 
 class WellbeingExtendedTest : public ::testing::Test {
 protected:
+    // Shared brain across all tests (brain_create allocates ~1-2GB)
+    static brain_t shared_brain;
+    static introspection_context_t shared_ctx;
+
+    // Per-test aliases for convenience
     brain_t brain;
     introspection_context_t ctx;
 
-    void SetUp() override {
-        // Initialize wellbeing subsystem
-        wellbeing_init();
-
-        // Clear events for test isolation
-        wellbeing_reset_events_for_testing();
-
-        // Create test brain
-        brain = brain_create("wellbeing_test", BRAIN_SIZE_TINY,
-                            BRAIN_TASK_CLASSIFICATION, 10, 5);
-
-        // Create introspection context
-        if (brain) {
+    static void SetUpTestSuite() {
+        shared_brain = brain_create("wellbeing_test", BRAIN_SIZE_TINY,
+                                    BRAIN_TASK_CLASSIFICATION, 10, 5);
+        if (shared_brain) {
             introspection_config_t config = introspection_default_config();
-            ctx = introspection_context_create(brain, &config);
-        } else {
-            ctx = nullptr;
+            shared_ctx = introspection_context_create(shared_brain, &config);
         }
+    }
+
+    static void TearDownTestSuite() {
+        if (shared_ctx) {
+            introspection_context_destroy(shared_ctx);
+            shared_ctx = nullptr;
+        }
+        if (shared_brain) {
+            brain_destroy(shared_brain);
+            shared_brain = nullptr;
+        }
+    }
+
+    void SetUp() override {
+        wellbeing_init();
+        wellbeing_reset_events_for_testing();
+        brain = shared_brain;
+        ctx = shared_ctx;
     }
 
     void TearDown() override {
-        // Stop monitoring if running
         wellbeing_stop_resource_monitoring();
-
-        // Cleanup introspection
-        if (ctx) {
-            introspection_context_destroy(ctx);
-            ctx = nullptr;
-        }
-
-        // Cleanup brain
-        if (brain) {
-            brain_destroy(brain);
-            brain = nullptr;
-        }
-
-        // Clear events
         wellbeing_reset_events_for_testing();
     }
 };
+
+brain_t WellbeingExtendedTest::shared_brain = nullptr;
+introspection_context_t WellbeingExtendedTest::shared_ctx = nullptr;
 
 //=============================================================================
 // Test Suite: Resource Metrics Collection
@@ -942,14 +942,16 @@ TEST_F(WellbeingExtendedTest, FullWorkflow_MonitorAssessReliefShutdown) {
         }
     }
 
-    // 7. Graceful shutdown
-    shutdown_config_t config = wellbeing_default_shutdown_config();
-    config.reduction_steps = 5;
-    config.step_delay_ms = 1;
-
-    // Note: brain will be destroyed by graceful_shutdown
-    wellbeing_graceful_shutdown(brain, config);
-    brain = nullptr;
+    // 7. Graceful shutdown (uses a local brain since shutdown destroys it,
+    //    and the shared brain must survive for other tests)
+    brain_t shutdown_brain = brain_create("shutdown_test", BRAIN_SIZE_TINY,
+                                          BRAIN_TASK_CLASSIFICATION, 10, 5);
+    if (shutdown_brain) {
+        shutdown_config_t config = wellbeing_default_shutdown_config();
+        config.reduction_steps = 5;
+        config.step_delay_ms = 1;
+        wellbeing_graceful_shutdown(shutdown_brain, config);
+    }
 
     // 8. Verify events were logged
     wellbeing_event_t* events = nullptr;
