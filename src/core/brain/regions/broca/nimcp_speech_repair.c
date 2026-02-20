@@ -621,17 +621,17 @@ bool speech_repair_insert_hesitation(
     size_t input_len = strlen(input);
     if (position > input_len) position = (uint32_t)input_len;
 
-    if (position + strlen(hesitation) + 2 >= output_size) {
+    size_t needed = input_len + strlen(hesitation) + 2;  // +2 for surrounding spaces
+    if (needed >= output_size) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
         return false;
     }
 
-    strncpy(output, input, position);
-    output[position] = '\0';
-    strcat(output, " ");
-    strcat(output, hesitation);
-    strcat(output, " ");
-    strncat(output, input + position, output_size - strlen(output) - 1);
+    int written = snprintf(output, output_size, "%.*s %s %s",
+                           (int)position, input, hesitation, input + position);
+    if (written < 0 || (size_t)written >= output_size) {
+        output[output_size - 1] = '\0';
+    }
 
     return true;
 }

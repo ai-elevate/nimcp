@@ -1270,6 +1270,10 @@ nimcp_error_t nimcp_pattern_db_load(
 
     size_t read_size = fread(content, 1, (size_t)file_size, file);
     fclose(file);
+    if (read_size != (size_t)file_size) {
+        nimcp_free(content);
+        return NIMCP_ERROR;
+    }
     content[read_size] = '\0';
 
     /* SECURITY: Validate basic JSON structure before parsing */

@@ -96,8 +96,13 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
     }
 
     size_t bytes_read = fread(content, 1, file_size, file);
-    content[bytes_read] = '\0';
     fclose(file);
+    if (bytes_read != (size_t)file_size) {
+        nimcp_free(content);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "sbom: incomplete file read");
+        return NIMCP_ERROR_IO;
+    }
+    content[bytes_read] = '\0';
 
     /*
      * Parse SBOM (simplified - production would use full SPDX/CycloneDX parser)

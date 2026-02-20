@@ -79,6 +79,25 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
         return UINT32_MAX;
     }
 
+    // Grow actions buffer if needed (load path may allocate fewer than max_actions)
+    if (mirror->num_actions >= mirror->actions_capacity) {
+        uint32_t new_cap = mirror->actions_capacity == 0 ? 8 : mirror->actions_capacity * 2;
+        if (new_cap > mirror->config.max_actions) {
+            new_cap = mirror->config.max_actions;
+        }
+        action_mapping_t* new_actions = (action_mapping_t*)nimcp_calloc(new_cap, sizeof(action_mapping_t));
+        if (!new_actions) {
+            MIRROR_LOG_ERROR("Mirror neurons: failed to grow actions buffer");
+            return UINT32_MAX;
+        }
+        if (mirror->actions && mirror->num_actions > 0) {
+            memcpy(new_actions, mirror->actions, mirror->num_actions * sizeof(action_mapping_t));
+        }
+        nimcp_free(mirror->actions);
+        mirror->actions = new_actions;
+        mirror->actions_capacity = new_cap;
+    }
+
     // Create new action mapping
     uint32_t idx = mirror->num_actions++;
     action_mapping_t* mapping = &mirror->actions[idx];

@@ -1976,18 +1976,6 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
-    // Update statistics
-    update_inference_stats(brain, decision);
-
-    // Cache decision for future reuse (thread-safe with mutex protection)
-    nimcp_platform_mutex_lock(&brain->cache_mutex);
-    cache_decision(brain, features, num_features, decision);
-    nimcp_platform_mutex_unlock(&brain->cache_mutex);
-
-    // Free the defensive copy of features
-    nimcp_free(local_features);
-    return decision;
-
     // ========================================================================
     // STAGE 7.5: Mental Health Monitoring (Phase 10.5) - Safety-Critical
     // ========================================================================
@@ -2000,8 +1988,6 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                            (const void*)decision, nimcp_time_get_ms());
 
         // Periodic health check (every N decisions)
-        // Use atomic increment for thread-safe stats update
-        __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
         uint32_t check_interval = 100;  // Check every 100 decisions by default
 
         if (brain->stats.total_inferences % check_interval == 0) {
@@ -2222,6 +2208,18 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             }
         }
     }
+
+    // Update statistics (after all post-decision processing)
+    update_inference_stats(brain, decision);
+
+    // Cache decision for future reuse (thread-safe with mutex protection)
+    if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
+        cache_decision(brain, features, num_features, decision);
+        nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    }
+
+    // Free the defensive copy of features
+    nimcp_free(local_features);
 
     brain_clear_error();
     return decision;

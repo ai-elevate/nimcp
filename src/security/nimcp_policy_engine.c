@@ -435,8 +435,12 @@ nimcp_error_t nimcp_policy_engine_load_file(
     }
 
     size_t read = fread(content, 1, size, file);
-    content[read] = '\0';
     fclose(file);
+    if (read != size) {
+        nimcp_free(content);
+        return NIMCP_ERROR_IO;
+    }
+    content[read] = '\0';
 
     // Load policy
     nimcp_error_t result = nimcp_policy_engine_load(engine, content, policy);
@@ -527,8 +531,14 @@ nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine) {
             }
 
             size_t read = fread(content, 1, size, file);
-            content[read] = '\0';
             fclose(file);
+            if (read != size) {
+                nimcp_free(content);
+                errors++;
+                policy = policy->next;
+                continue;
+            }
+            content[read] = '\0';
 
             // Parse and compile
             char* error_msg = NULL;
