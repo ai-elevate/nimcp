@@ -245,6 +245,14 @@ def train_on_local_datasets(
 #=============================================================================
 
 def main():
+    import argparse as _ap
+    _parser = _ap.ArgumentParser(description="NIMCP Local Dataset Training")
+    _parser.add_argument("--brain-path", type=str, default=None,
+                         help="Load existing brain from this .bin file")
+    _parser.add_argument("--output-path", type=str, default=None,
+                         help="Save trained brain to this .bin file")
+    _args = _parser.parse_args()
+
     print("="*60)
     print("🧠 NIMCP LOCAL DATASET TRAINING")
     print("="*60)
@@ -260,42 +268,52 @@ def main():
         print("\n❌ No datasets found. Nothing to train on.")
         return 1
 
-    # Create brain
-    print("\n🧠 Creating NIMCP brain...")
-    print("  Size: MEDIUM (size=2)")
-    print("  Task: CLASSIFICATION (task=0)")
-    print("  Inputs: 512 features")
-    print("  Outputs: 256 classes")
-    print("\n  Cognitive systems: ALL ACTIVE")
-    print("  - Curiosity: 0.95 (Phase 1 - INFANT)")
-    print("  - Skepticism: 0.3 (Phase 1 - permissive, building priors)")
-    print("  - Attention: ACTIVE")
-    print("  - Working Memory: ACTIVE")
-    print("  - Executive Function: ACTIVE")
-    print("  - Memory Consolidation: ACTIVE")
+    # Create or load brain
+    if _args.brain_path and os.path.isfile(_args.brain_path):
+        print(f"\n🧠 Loading existing brain from {_args.brain_path}...")
+        try:
+            brain = nimcp.Brain(
+                'nimcp_phase1', nimcp.BRAIN_MEDIUM, nimcp.TASK_CLASSIFICATION, 512, 256
+            )
+            brain.load(_args.brain_path)
+            print("  ✓ Brain loaded successfully")
+        except Exception as e:
+            print(f"\n  ✗ Failed to load brain: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
+    else:
+        print("\n🧠 Creating NIMCP brain...")
+        print("  Size: MEDIUM (size=2)")
+        print("  Task: CLASSIFICATION (task=0)")
+        print("  Inputs: 512 features")
+        print("  Outputs: 256 classes")
+        print("\n  Cognitive systems: ALL ACTIVE")
+        print("  - Curiosity: 0.95 (Phase 1 - INFANT)")
+        print("  - Skepticism: 0.3 (Phase 1 - permissive, building priors)")
+        print("  - Attention: ACTIVE")
+        print("  - Working Memory: ACTIVE")
+        print("  - Executive Function: ACTIVE")
+        print("  - Memory Consolidation: ACTIVE")
 
-    try:
-        # Create brain using Python bindings v2.7.0
-        # Brain(name, size, task, num_inputs, num_outputs)
-        # size: nimcp.BRAIN_TINY/SMALL/MEDIUM/LARGE (0/1/2/3)
-        # task: nimcp.TASK_CLASSIFICATION/REGRESSION/etc (0/1/...)
-        brain = nimcp.Brain(
-            'nimcp_phase1',        # name
-            nimcp.BRAIN_MEDIUM,    # size = MEDIUM (2)
-            nimcp.TASK_CLASSIFICATION,  # task = CLASSIFICATION (0)
-            512,                   # num_inputs
-            256                    # num_outputs
-        )
-        print("\n  ✓ Brain created successfully")
-        print("  ✓ All cognitive systems initialized in C code")
-        print("  ✓ Epistemic filtering ACTIVE in brain_learn_example()")
-        print("  ✓ Curiosity engine ACTIVE with novelty detection")
+        try:
+            brain = nimcp.Brain(
+                'nimcp_phase1',        # name
+                nimcp.BRAIN_MEDIUM,    # size = MEDIUM (2)
+                nimcp.TASK_CLASSIFICATION,  # task = CLASSIFICATION (0)
+                512,                   # num_inputs
+                256                    # num_outputs
+            )
+            print("\n  ✓ Brain created successfully")
+            print("  ✓ All cognitive systems initialized in C code")
+            print("  ✓ Epistemic filtering ACTIVE in brain_learn_example()")
+            print("  ✓ Curiosity engine ACTIVE with novelty detection")
 
-    except Exception as e:
-        print(f"\n  ✗ Failed to create brain: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
+        except Exception as e:
+            print(f"\n  ✗ Failed to create brain: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
 
     # Train on local datasets
     try:
@@ -311,6 +329,15 @@ def main():
         import traceback
         traceback.print_exc()
         return 1
+
+    # Save trained brain if output path specified
+    if _args.output_path:
+        print(f"\n💾 Saving trained brain to {_args.output_path}...")
+        try:
+            brain.save(_args.output_path)
+            print("  ✓ Brain saved successfully")
+        except Exception as e:
+            print(f"  ✗ Failed to save brain: {e}")
 
     # Cleanup (Python GC will handle brain cleanup automatically)
     print("\n🧹 Cleaning up...")

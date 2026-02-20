@@ -4,6 +4,7 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { TabNav } from './components/layout/TabNav';
 import { BrainCreateModal } from './components/brains/BrainCreateModal';
+import { BrainDetailModal } from './components/brains/BrainDetailModal';
 import { SnapshotPanel } from './components/brains/SnapshotPanel';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { TrainingPage } from './components/training/TrainingPage';
@@ -19,6 +20,7 @@ export default function App() {
   const [activeBrainId, setActiveBrainId] = useState<number | null>(null);
   const [tab, setTab] = useState<Tab>('dashboard');
   const [showCreate, setShowCreate] = useState(false);
+  const [detailBrainId, setDetailBrainId] = useState<number | null>(null);
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
 
   const { probe, history, trainingProgress, connected, send, setChatCallback } =
@@ -60,7 +62,15 @@ export default function App() {
     if (!window.confirm('Delete this brain? This cannot be undone.')) return;
     await brainApi.deleteBrain(id);
     if (activeBrainId === id) setActiveBrainId(null);
+    if (detailBrainId === id) setDetailBrainId(null);
     refreshBrains();
+  };
+
+  const handleRename = async (id: number, name: string) => {
+    try {
+      await brainApi.renameBrain(id, name);
+      refreshBrains();
+    } catch { /* */ }
   };
 
   return (
@@ -74,6 +84,8 @@ export default function App() {
           onSelect={setActiveBrainId}
           onDelete={handleDelete}
           onCreateClick={() => setShowCreate(true)}
+          onRename={handleRename}
+          onShowDetail={setDetailBrainId}
         />
         <div className="main-content">
           <TabNav active={tab} onChange={setTab} />
@@ -98,6 +110,9 @@ export default function App() {
       </div>
       {showCreate && (
         <BrainCreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+      )}
+      {detailBrainId !== null && (
+        <BrainDetailModal brainId={detailBrainId} onClose={() => setDetailBrainId(null)} />
       )}
     </>
   );

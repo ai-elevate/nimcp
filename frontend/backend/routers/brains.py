@@ -1,0 +1,157 @@
+"""Brain CRUD, probe, predict, learn, and snapshot endpoints."""
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+import os
+import tempfile
+
+import nimcp_logger
+from brain_manager import manager
+from config import C_API_TIMEOUT_SECONDS
+from models.brain import BrainCreate, BrainUpdate, BrainPredict, BrainLearn, SnapshotCreate
+from validation import c_api_call
+
+_log = nimcp_logger.get("routers.brains")
+
+router = APIRouter(prefix="/api/brains", tags=["brains"])
+
+
+@router.post("/")
+async def create_brain(req: BrainCreate):
+    try:
+        bid = await c_api_call(
+            manager.create_brain,
+            req.name, req.size, req.task, req.num_inputs, req.num_outputs,
+            timeout=C_API_TIMEOUT_SECONDS,
+        )
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    return {"id": bid, "probe": probe}
+
+
+@router.get("/")
+async def list_brains():
+    return await c_api_call(manager.list_brains, timeout=C_API_TIMEOUT_SECONDS)
+
+
+@router.get("/{bid}")
+async def get_brain(bid: int):
+    detail = await c_api_call(manager.get_brain_detail, bid, timeout=C_API_TIMEOUT_SECONDS)
+    if detail is None:
+        raise HTTPException(404, "Brain not found")
+    return detail
+
+
+@router.patch("/{bid}")
+async def update_brain(bid: int, req: BrainUpdate):
+    ok = await c_api_call(manager.rename_brain, bid, req.name, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(404, "Brain not found")
+    return {"id": bid, "name": req.name}
+
+
+@router.delete("/{bid}")
+async def delete_brain(bid: int):
+    ok = await c_api_call(manager.destroy_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(404, "Brain not found")
+    return {"deleted": bid}
+
+
+@router.get("/{bid}/probe")
+async def probe_brain(bid: int):
+    probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    if probe is None:
+        raise HTTPException(404, "Brain not found")
+    return probe
+
+
+@router.get("/{bid}/probe/history")
+async def probe_history(bid: int):
+    return await c_api_call(manager.get_probe_history, bid, timeout=C_API_TIMEOUT_SECONDS)
+
+
+@router.post("/{bid}/predict")
+async def predict(bid: int, req: BrainPredict):
+    result = await c_api_call(manager.predict, bid, req.features, timeout=C_API_TIMEOUT_SECONDS)
+    if result is None:
+        raise HTTPException(404, "Brain not found")
+    label, confidence = result
+    return {"label": label, "confidence": float(confidence)}
+
+
+@router.post("/{bid}/learn")
+async def learn(bid: int, req: BrainLearn, bg: BackgroundTasks):
+    label_str = str(req.label)
+    result = await c_api_call(
+        manager.learn, bid, req.features, label_str, req.confidence,
+        timeout=C_API_TIMEOUT_SECONDS,
+    )
+    if result is None:
+        raise HTTPException(404, "Brain not found")
+    probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    bg.add_task(manager.save_brain_async, bid)
+    return {"loss": result, "probe": probe}
+
+
+@router.post("/{bid}/snapshots")
+async def create_snapshot(bid: int, req: SnapshotCreate):
+    if not manager.has_brain(bid):
+        raise HTTPException(404, "Brain not found")
+    path = os.path.join(tempfile.gettempdir(), f"nimcp_snap_{bid}_{req.name}.bin")
+    ok = await c_api_call(manager.save_brain, bid, path, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(500, "Failed to save snapshot")
+    manager.register_snapshot(bid, req.name, path)
+    _log.info("Created snapshot '%s' for brain %d", req.name, bid)
+    return {"name": req.name, "path": path}
+
+
+@router.get("/{bid}/snapshots")
+async def list_snapshots(bid: int):
+    if not manager.has_brain(bid):
+        raise HTTPException(404, "Brain not found")
+    return manager.list_snapshot_names(bid)
+
+
+@router.post("/{bid}/snapshots/{name}/restore")
+async def restore_snapshot(bid: int, name: str):
+    path = manager.get_snapshot_path(bid, name)
+    if path is None:
+        raise HTTPException(404, "Snapshot not found")
+    ok = await c_api_call(manager.load_brain, bid, path, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(500, "Failed to restore snapshot")
+    _log.info("Restored snapshot '%s' for brain %d", name, bid)
+    probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    return {"restored": name, "probe": probe}
+
+
+@router.delete("/{bid}/snapshots/{name}")
+async def delete_snapshot(bid: int, name: str):
+    path = manager.get_snapshot_path(bid, name)
+    if path is None:
+        raise HTTPException(404, "Snapshot not found")
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    manager.remove_snapshot(bid, name)
+    _log.info("Deleted snapshot '%s' for brain %d", name, bid)
+    return {"deleted": name}
+
+
+@router.post("/{bid}/cow/snapshot")
+async def cow_snapshot(bid: int):
+    ok = await c_api_call(manager.snapshot_cow, bid, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(404, "Brain not found or COW snapshot failed")
+    return {"snapshot": True}
+
+
+@router.post("/{bid}/cow/restore")
+async def cow_restore(bid: int):
+    ok = await c_api_call(manager.restore_cow, bid, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(404, "Brain not found or COW restore failed")
+    probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    return {"restored": True, "probe": probe}

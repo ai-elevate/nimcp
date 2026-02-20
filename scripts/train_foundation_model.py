@@ -529,6 +529,18 @@ Examples:
         help='Print configuration and exit'
     )
 
+    parser.add_argument(
+        '--brain-path',
+        type=str,
+        help='Load existing brain from this .bin file (overrides --resume)'
+    )
+
+    parser.add_argument(
+        '--output-path',
+        type=str,
+        help='Save trained brain to this .bin file on completion'
+    )
+
     args = parser.parse_args()
 
     # Load configuration
@@ -551,14 +563,24 @@ Examples:
     # Create trainer
     trainer = ProgressiveTrainer(config)
 
-    # Resume from checkpoint if specified
-    if args.resume:
+    # Load existing brain if specified
+    if args.brain_path and os.path.isfile(args.brain_path):
+        print(f"\nLoading brain from: {args.brain_path}")
+        trainer.brain.load(args.brain_path)
+        print("Brain loaded successfully")
+    elif args.resume:
         print(f"\nLoading checkpoint: {args.resume}")
         trainer.brain = nimcp.Brain.load(args.resume)
         print("Checkpoint loaded successfully")
 
     # Run training
     success = trainer.train()
+
+    # Save to output path if specified
+    if args.output_path and success:
+        print(f"\nSaving trained brain to: {args.output_path}")
+        trainer.brain.save(args.output_path)
+        print("Brain saved successfully")
 
     return 0 if success else 1
 

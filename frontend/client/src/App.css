@@ -124,6 +124,32 @@ body {
   transition: opacity 0.15s;
 }
 .brain-card:hover .brain-card-delete { opacity: 1; }
+.brain-card-name-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-white);
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: 4px;
+  padding: 1px 4px;
+  width: 100%;
+  outline: none;
+  margin-bottom: 2px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: 13px;
+}
+.detail-grid > span:nth-child(odd) {
+  color: var(--text-muted);
+}
+.detail-grid > span:nth-child(even) {
+  color: var(--text-white);
+  font-weight: 500;
+}
 
 .sidebar-actions { padding: 12px; }
 

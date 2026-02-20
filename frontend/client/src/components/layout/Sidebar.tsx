@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import type { BrainInfo } from '../../types';
 
 interface Props {
@@ -7,9 +8,42 @@ interface Props {
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
   onCreateClick: () => void;
+  onRename?: (id: number, name: string) => void;
+  onShowDetail?: (id: number) => void;
 }
 
-export function Sidebar({ brains, activeBrainId, trainingBrainId, onSelect, onDelete, onCreateClick }: Props) {
+function InlineName({ name, onCommit, onCancel }: { name: string; onCommit: (v: string) => void; onCancel: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState(name);
+
+  useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== name) onCommit(trimmed);
+    else onCancel();
+  };
+
+  return (
+    <input
+      ref={ref}
+      className="brain-card-name-input"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+        if (e.key === 'Escape') onCancel();
+      }}
+      onClick={(e) => e.stopPropagation()}
+      maxLength={128}
+    />
+  );
+}
+
+export function Sidebar({ brains, activeBrainId, trainingBrainId, onSelect, onDelete, onCreateClick, onRename, onShowDetail }: Props) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">Brains</div>
@@ -22,7 +56,7 @@ export function Sidebar({ brains, activeBrainId, trainingBrainId, onSelect, onDe
             <div
               key={b.id}
               className={cls}
-              onClick={() => onSelect(b.id)}
+              onClick={() => { onSelect(b.id); if (onShowDetail) onShowDetail(b.id); }}
             >
               <button
                 className="brain-card-delete"
@@ -31,7 +65,20 @@ export function Sidebar({ brains, activeBrainId, trainingBrainId, onSelect, onDe
               >
                 x
               </button>
-              <div className="brain-card-name">{b.name}</div>
+              {editingId === b.id ? (
+                <InlineName
+                  name={b.name}
+                  onCommit={(v) => { setEditingId(null); if (onRename) onRename(b.id, v); }}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
+                <div
+                  className="brain-card-name"
+                  onDoubleClick={(e) => { e.stopPropagation(); if (onRename) setEditingId(b.id); }}
+                >
+                  {b.name}
+                </div>
+              )}
               <div className="brain-card-meta">
                 {b.probe ? `${b.probe.num_neurons.toLocaleString()} neurons` : 'Loading...'}
                 {b.probe?.is_cow_clone && ' (COW)'}
