@@ -532,7 +532,7 @@ if(TARGET test_ternary_conversion_regression)
 endif()
 if(TARGET regression_core_integration_test_integration_regression)
   set_tests_properties(regression_core_integration_test_integration_regression
-    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy" LABELS "regression;flaky")
 endif()
 if(TARGET regression_brain_factory)
   set_tests_properties(regression_brain_factory

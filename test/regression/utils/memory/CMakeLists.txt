@@ -47,6 +47,8 @@ target_link_libraries(regression_utils_memory_test_unified_memory_regression
 )
 add_test(NAME regression_utils_memory_test_unified_memory_regression
          COMMAND regression_utils_memory_test_unified_memory_regression)
+set_tests_properties(regression_utils_memory_test_unified_memory_regression PROPERTIES
+    TIMEOUT 120 RESOURCE_LOCK "brain_heavy")
 
 # Memory API Regression Tests (GTest C++)
 add_executable(regression_utils_memory_test_memory_api_regression
@@ -110,3 +112,20 @@ add_test(NAME regression_utils_memory_test_memory_recursion_atomic_regression
          COMMAND regression_utils_memory_test_memory_recursion_atomic_regression)
 set_tests_properties(regression_utils_memory_test_memory_recursion_atomic_regression
                      PROPERTIES TIMEOUT 120 LABELS "regression")
+
+# Hash Table Memory Tracking Regression Tests (linked list → hash table migration)
+add_executable(regression_utils_memory_test_memory_hash_tracking_regression
+    test_memory_hash_tracking_regression.cpp
+)
+target_link_libraries(regression_utils_memory_test_memory_hash_tracking_regression
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+add_test(NAME regression_utils_memory_test_memory_hash_tracking_regression
+         COMMAND regression_utils_memory_test_memory_hash_tracking_regression)
+set_tests_properties(regression_utils_memory_test_memory_hash_tracking_regression
+                     PROPERTIES TIMEOUT 120 LABELS "regression" RESOURCE_LOCK "brain_heavy")

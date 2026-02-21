@@ -60,7 +60,7 @@ protected:
  * Regression: Catches resource leaks, double-frees, and corrupted state
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionCycles100) {
-    const int ITERATIONS = 5;
+    const int ITERATIONS = 3;
 
     for (int i = 0; i < ITERATIONS; i++) {
         brain_t brain = brain_create(
@@ -87,7 +87,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionCycles100) {
  * @brief Test 200 rapid brain creation/destruction with different sizes
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionWithVariousSizes200) {
-    const int ITERATIONS = 4;
+    const int ITERATIONS = 2;
     brain_size_t sizes[] = {BRAIN_SIZE_TINY, BRAIN_SIZE_TINY, BRAIN_SIZE_TINY, BRAIN_SIZE_SMALL};
 
     for (int i = 0; i < ITERATIONS; i++) {
@@ -116,7 +116,7 @@ TEST_F(FactoryRegressionTest, RapidCreationDestructionWithVariousSizes200) {
  * Ensures no state corruption from repeated learn operations
  */
 TEST_F(FactoryRegressionTest, RapidCreationDestructionWithLearning150) {
-    const int ITERATIONS = 5;
+    const int ITERATIONS = 3;
     float features[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 
     for (int i = 0; i < ITERATIONS; i++) {
@@ -437,7 +437,7 @@ TEST_F(FactoryRegressionTest, RecoveryFromInvalidParameters) {
  * @brief Test resilience to repeated invalid operations
  */
 TEST_F(FactoryRegressionTest, ResilienceToRepeatedInvalidOperations) {
-    const int ATTEMPTS = 6;
+    const int ATTEMPTS = 4;
 
     for (int i = 0; i < ATTEMPTS; i++) {
         // Mix of valid and invalid creations

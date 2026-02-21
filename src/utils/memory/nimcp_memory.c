@@ -355,6 +355,30 @@ typedef struct memory_block {
 } memory_block_t;
 
 /**
+ * WHAT: Hash table bucket count for memory tracking
+ * WHY: 16384 buckets → ~128KB overhead, avg 6 entries/bucket at 100K allocs → O(1) lookups
+ * HOW: Power of 2 for fast masking (& instead of %)
+ */
+#define MEMORY_TRACKING_BUCKETS 16384
+
+/**
+ * WHAT: Hash a pointer address to a bucket index using splitmix64 finalizer
+ * WHY: Pointer addresses have structure (alignment, page offsets) that simple mod handles poorly.
+ *      splitmix64's avalanche mixing distributes these patterns uniformly across buckets.
+ * HOW: Cast pointer to uint64_t, apply splitmix64 bit-mixing, mask to bucket count.
+ */
+static inline size_t bucket_index_for_ptr(const void* ptr)
+{
+    uint64_t x = (uint64_t)(uintptr_t)ptr;
+    x ^= x >> 30;
+    x *= 0xbf58476d1ce4e5b9ULL;
+    x ^= x >> 27;
+    x *= 0x94d049bb133111ebULL;
+    x ^= x >> 31;
+    return (size_t)(x & (MEMORY_TRACKING_BUCKETS - 1));
+}
+
+/**
  * WHAT: Global memory tracking state
  * WHY: Single source of truth for all tracking
  * HOW: Singleton pattern with global instance
@@ -365,9 +389,17 @@ typedef struct memory_block {
  * - tracking_enabled: Whether to track allocations
  * - debug_output: Whether to print allocation messages
  * - lock: Mutex for thread safety
- * - blocks: Linked list of active allocations
+ * - block_buckets: Hash table of active allocations (open chaining)
+ * - bucket_count: Number of hash buckets
+ * - block_count: Number of active tracked allocations
  * - patterns: Linked list of size patterns
  * - stats: Cumulative statistics
+ *
+ * WHY HASH TABLE INSTEAD OF LINKED LIST:
+ * - Brain creation with extra modules pushes allocation count past 100K
+ * - Old linked list had O(n) walks capped at MAX_ITERATIONS=100000
+ * - When exceeded, get_guard_size() returned 0 → wrong real_ptr → munmap_chunk crash
+ * - Hash table with 16384 buckets → avg 6 per bucket → effectively O(1) lookups
  *
  * WHY SINGLETON:
  * - Only one memory system per process
@@ -380,7 +412,9 @@ typedef struct {
     bool tracking_enabled;
     bool debug_output;
     nimcp_mutex_t lock;
-    memory_block_t* blocks;
+    memory_block_t** block_buckets;
+    size_t bucket_count;
+    size_t block_count;
     size_pattern_t* patterns;
     nimcp_memory_stats_t stats;
 } memory_state_t;
@@ -408,7 +442,10 @@ typedef struct {
 static memory_state_t g_memory_state = {.CANARY_VALUE = 0xDEADBEEF,
                                         .initialized = false,
                                         .tracking_enabled = false,
-                                        .debug_output = false};
+                                        .debug_output = false,
+                                        .block_buckets = NULL,
+                                        .bucket_count = 0,
+                                        .block_count = 0};
 
 //=============================================================================
 // Internal Helper Functions
@@ -510,7 +547,10 @@ static void init_if_needed(void)
         memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
         g_memory_state.initialized = true;
         g_memory_state.tracking_enabled = true;  // Enable by default for guard_size tracking
-        g_memory_state.blocks = NULL;
+        g_memory_state.block_buckets = (memory_block_t**)calloc(
+            MEMORY_TRACKING_BUCKETS, sizeof(memory_block_t*));
+        g_memory_state.bucket_count = MEMORY_TRACKING_BUCKETS;
+        g_memory_state.block_count = 0;
         g_memory_state.patterns = NULL;
     }
 
@@ -720,44 +760,18 @@ static size_t get_allocation_size(void* ptr)
     // for allocations that were made when tracking WAS enabled.
 
     nimcp_mutex_lock(&g_memory_state.lock);
-    memory_block_t* current = g_memory_state.blocks;
     size_t size = 0;
 
-    /* Cycle detection using Floyd's tortoise-hare algorithm
-     * WHY: Prevents infinite loops on corrupted linked lists
-     * HOW: Fast pointer moves 2x speed, if it catches slow pointer = cycle
-     */
-    memory_block_t* slow = current;
-    memory_block_t* fast = current;
-    bool cycle_detected = false;
-    uint32_t iterations = 0;
-    const uint32_t MAX_ITERATIONS = 100000;
-
-    while (current && iterations < MAX_ITERATIONS) {
-        if (current->ptr == ptr) {
-            size = current->size;
-            break;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        while (current) {
+            if (current->ptr == ptr) {
+                size = current->size;
+                break;
+            }
+            current = current->next;
         }
-
-        /* Cycle detection: advance tortoise and hare */
-        if (slow) slow = slow->next;
-        if (fast) {
-            fast = fast->next;
-            if (fast) fast = fast->next;
-        }
-        if (slow && fast && slow == fast) {
-            cycle_detected = true;
-            break;
-        }
-
-        current = current->next;
-        iterations++;
-    }
-
-    if (cycle_detected) {
-        NIMCP_LOGGING_ERROR("Memory tracking list contains cycle (corrupted data structure)");
-    } else if (iterations >= MAX_ITERATIONS) {
-        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted (exceeded max iterations)");
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -781,18 +795,18 @@ static bool is_tracked_allocation(void* ptr)
     }
 
     nimcp_mutex_lock(&g_memory_state.lock);
-    memory_block_t* current = g_memory_state.blocks;
     bool found = false;
-    uint32_t iterations = 0;
-    const uint32_t MAX_ITERATIONS = 100000;
 
-    while (current && iterations < MAX_ITERATIONS) {
-        if (current->ptr == ptr) {
-            found = true;
-            break;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        while (current) {
+            if (current->ptr == ptr) {
+                found = true;
+                break;
+            }
+            current = current->next;
         }
-        current = current->next;
-        iterations++;
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -825,44 +839,23 @@ static size_t get_guard_size(void* ptr)
     // for allocations that were made when tracking WAS enabled.
 
     nimcp_mutex_lock(&g_memory_state.lock);
-    memory_block_t* current = g_memory_state.blocks;
     size_t guard_size = 0;  // 0 means not found or no guards
     bool found = false;
 
-    /* Cycle detection using Floyd's tortoise-hare algorithm */
-    memory_block_t* slow = current;
-    memory_block_t* fast = current;
-    bool cycle_detected = false;
-    uint32_t iterations = 0;
-    const uint32_t MAX_ITERATIONS = 100000;
-
-    while (current && iterations < MAX_ITERATIONS) {
-        if (current->ptr == ptr) {
-            guard_size = current->guard_size;
-            found = true;
-            break;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        while (current) {
+            if (current->ptr == ptr) {
+                guard_size = current->guard_size;
+                found = true;
+                break;
+            }
+            current = current->next;
         }
-
-        /* Cycle detection: advance tortoise and hare */
-        if (slow) slow = slow->next;
-        if (fast) {
-            fast = fast->next;
-            if (fast) fast = fast->next;
-        }
-        if (slow && fast && slow == fast) {
-            cycle_detected = true;
-            break;
-        }
-
-        current = current->next;
-        iterations++;
     }
 
-    if (cycle_detected) {
-        NIMCP_LOGGING_ERROR("Memory tracking list contains cycle in get_guard_size (corrupted data structure)");
-    } else if (iterations >= MAX_ITERATIONS) {
-        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_guard_size (exceeded max iterations)");
-    } else if (!found) {
+    if (!found) {
         fprintf(stderr, "[DEBUG] get_guard_size: ptr=%p NOT FOUND in tracking list\n", ptr);
     }
 
@@ -895,43 +888,20 @@ static uint64_t get_allocation_lifetime_ms_unlocked(void* ptr)
     if (!ptr)
         return 0;
 
-    memory_block_t* current = g_memory_state.blocks;
     uint64_t lifetime = 0;
 
-    /* Cycle detection using Floyd's tortoise-hare algorithm */
-    memory_block_t* slow = current;
-    memory_block_t* fast = current;
-    bool cycle_detected = false;
-    uint32_t iterations = 0;
-    const uint32_t MAX_ITERATIONS = 100000;
-
-    while (current && iterations < MAX_ITERATIONS) {
-        if (current->ptr == ptr) {
-            timespec_internal_t now;
-            get_current_time(&now);
-            lifetime = timespec_diff_ms(&now, &current->allocation_time);
-            break;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        while (current) {
+            if (current->ptr == ptr) {
+                timespec_internal_t now;
+                get_current_time(&now);
+                lifetime = timespec_diff_ms(&now, &current->allocation_time);
+                break;
+            }
+            current = current->next;
         }
-
-        /* Cycle detection: advance tortoise and hare */
-        if (slow) slow = slow->next;
-        if (fast) {
-            fast = fast->next;
-            if (fast) fast = fast->next;
-        }
-        if (slow && fast && slow == fast) {
-            cycle_detected = true;
-            break;
-        }
-
-        current = current->next;
-        iterations++;
-    }
-
-    if (cycle_detected) {
-        NIMCP_LOGGING_ERROR("Memory tracking list contains cycle in get_allocation_lifetime_ms (corrupted data structure)");
-    } else if (iterations >= MAX_ITERATIONS) {
-        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_allocation_lifetime_ms (exceeded max iterations)");
     }
 
     return lifetime;
@@ -1105,10 +1075,16 @@ static void track_allocation(void* ptr, size_t size, size_t guard_size, const ch
     block->tail_canary = g_memory_state.CANARY_VALUE;
     block->umm_handle = NULL;  // No UMM handle for direct malloc
 
-    // Add to tracking list (head insertion)
+    // Add to hash bucket (head insertion into bucket chain)
     nimcp_mutex_lock(&g_memory_state.lock);
-    block->next = g_memory_state.blocks;
-    g_memory_state.blocks = block;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        block->next = g_memory_state.block_buckets[idx];
+        g_memory_state.block_buckets[idx] = block;
+    } else {
+        block->next = NULL;
+    }
+    g_memory_state.block_count++;
 
     // Update statistics
     g_memory_state.stats.total_allocated += size;
@@ -1163,8 +1139,14 @@ static void track_allocation_with_handle(void* ptr, size_t size, unified_mem_han
     block->umm_handle = handle;  // Store handle for cleanup
 
     nimcp_mutex_lock(&g_memory_state.lock);
-    block->next = g_memory_state.blocks;
-    g_memory_state.blocks = block;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        block->next = g_memory_state.block_buckets[idx];
+        g_memory_state.block_buckets[idx] = block;
+    } else {
+        block->next = NULL;
+    }
+    g_memory_state.block_count++;
 
     g_memory_state.stats.total_allocated += size;
     g_memory_state.stats.current_allocated += size;
@@ -1201,23 +1183,17 @@ static unified_mem_handle_t get_umm_handle(void* ptr)
     unified_mem_handle_t handle = NULL;
 
     nimcp_mutex_lock(&g_memory_state.lock);
-    memory_block_t* current = g_memory_state.blocks;
 
-    // Add iteration counter to prevent infinite loop on corrupted list
-    uint32_t iterations = 0;
-    const uint32_t MAX_ITERATIONS = 100000;
-
-    while (current && iterations < MAX_ITERATIONS) {
-        if (current->ptr == ptr) {
-            handle = current->umm_handle;
-            break;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        while (current) {
+            if (current->ptr == ptr) {
+                handle = current->umm_handle;
+                break;
+            }
+            current = current->next;
         }
-        current = current->next;
-        iterations++;
-    }
-
-    if (iterations >= MAX_ITERATIONS) {
-        NIMCP_LOGGING_ERROR("Memory tracking list may be corrupted in get_umm_handle (exceeded max iterations)");
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -1258,36 +1234,40 @@ static void untrack_allocation(void* ptr)
 
     nimcp_mutex_lock(&g_memory_state.lock);
 
-    memory_block_t* current = g_memory_state.blocks;
-    memory_block_t* prev = NULL;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        memory_block_t* prev = NULL;
 
-    while (current) {
-        if (current->ptr == ptr) {
-            // Remove from list
-            if (prev) {
-                prev->next = current->next;  // Middle/end of list
-            } else {
-                g_memory_state.blocks = current->next;  // Head of list
+        while (current) {
+            if (current->ptr == ptr) {
+                // Remove from bucket chain
+                if (prev) {
+                    prev->next = current->next;
+                } else {
+                    g_memory_state.block_buckets[idx] = current->next;
+                }
+
+                // Update statistics
+                g_memory_state.stats.current_allocated -= current->size;
+                g_memory_state.stats.free_count++;
+                g_memory_state.block_count--;
+
+                // Calculate lifetime for pattern analysis
+                timespec_internal_t now;
+                get_current_time(&now);
+                uint64_t lifetime_ms = timespec_diff_ms(&now, &current->allocation_time);
+
+                // Update patterns
+                update_memory_patterns(current->size, false, lifetime_ms);
+
+                // Free tracking structure
+                free(current);
+                break;
             }
-
-            // Update statistics
-            g_memory_state.stats.current_allocated -= current->size;
-            g_memory_state.stats.free_count++;
-
-            // Calculate lifetime for pattern analysis
-            timespec_internal_t now;
-            get_current_time(&now);
-            uint64_t lifetime_ms = timespec_diff_ms(&now, &current->allocation_time);
-
-            // Update patterns
-            update_memory_patterns(current->size, false, lifetime_ms);
-
-            // Free tracking structure
-            free(current);
-            break;
+            prev = current;
+            current = current->next;
         }
-        prev = current;
-        current = current->next;
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -1335,15 +1315,18 @@ static bool check_double_free(void* ptr)
     }
 
     nimcp_mutex_lock(&g_memory_state.lock);
-    memory_block_t* current = g_memory_state.blocks;
     bool found = false;
 
-    while (current) {
-        if (current->ptr == ptr) {
-            found = true;
-            break;
+    if (g_memory_state.block_buckets) {
+        size_t idx = bucket_index_for_ptr(ptr);
+        memory_block_t* current = g_memory_state.block_buckets[idx];
+        while (current) {
+            if (current->ptr == ptr) {
+                found = true;
+                break;
+            }
+            current = current->next;
         }
-        current = current->next;
     }
 
     nimcp_mutex_unlock(&g_memory_state.lock);
@@ -1944,22 +1927,27 @@ void nimcp_memory_cleanup(void)
 
     nimcp_mutex_lock(&g_memory_state.lock);
 
-    // Free all leaked blocks
-    memory_block_t* current = g_memory_state.blocks;
-    while (current) {
-        memory_block_t* next = current->next;
-        if (g_memory_state.debug_output) {
-            fprintf(stderr, "[MEMORY] Leak detected: %zu bytes at %p\n", current->size,
-                    current->ptr);
+    // Free all leaked blocks from hash buckets
+    if (g_memory_state.block_buckets) {
+        for (size_t i = 0; i < g_memory_state.bucket_count; i++) {
+            memory_block_t* current = g_memory_state.block_buckets[i];
+            while (current) {
+                memory_block_t* next = current->next;
+                if (g_memory_state.debug_output) {
+                    fprintf(stderr, "[MEMORY] Leak detected: %zu bytes at %p\n", current->size,
+                            current->ptr);
+                }
+                // NOTE: Do NOT free the user allocation here - it may already be freed.
+                // Only report the leak and free tracking struct.
+                free(current);
+                current = next;
+            }
         }
-        // NOTE: Do NOT free the user allocation here - it may already be freed.
-        // This was causing double-free errors. Only report the leak and free tracking struct.
-        // The user is responsible for calling nimcp_free on their allocations.
-
-        // Free tracking structure only
-        free(current);
-        current = next;
+        free(g_memory_state.block_buckets);
+        g_memory_state.block_buckets = NULL;
     }
+    g_memory_state.bucket_count = 0;
+    g_memory_state.block_count = 0;
 
     // Free patterns
     size_pattern_t* pattern = g_memory_state.patterns;
@@ -1970,7 +1958,6 @@ void nimcp_memory_cleanup(void)
     }
 
     // Reset state
-    g_memory_state.blocks = NULL;
     g_memory_state.patterns = NULL;
     memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
 
@@ -2046,15 +2033,20 @@ void nimcp_memory_reset_state(void)
 
     nimcp_mutex_lock(&g_memory_state.lock);
 
-    /* WHAT: Free all tracking blocks (but not user memory) */
+    /* WHAT: Free all tracking blocks from hash buckets (but not user memory) */
     /* WHY: Clear tracking list without freeing user allocations */
-    memory_block_t* current = g_memory_state.blocks;
-    while (current) {
-        memory_block_t* next = current->next;
-        free(current); /* Free tracking structure only */
-        current = next;
+    if (g_memory_state.block_buckets) {
+        for (size_t i = 0; i < g_memory_state.bucket_count; i++) {
+            memory_block_t* current = g_memory_state.block_buckets[i];
+            while (current) {
+                memory_block_t* next = current->next;
+                free(current); /* Free tracking structure only */
+                current = next;
+            }
+            g_memory_state.block_buckets[i] = NULL;
+        }
     }
-    g_memory_state.blocks = NULL;
+    g_memory_state.block_count = 0;
 
     /* WHAT: Free all pattern tracking */
     size_pattern_t* pattern = g_memory_state.patterns;
@@ -2131,12 +2123,16 @@ void nimcp_memory_dump_allocations(void)
     printf("Failed allocations: %zu\n", g_memory_state.stats.failed_allocations);
     printf("\nCurrent allocations:\n");
 
-    memory_block_t* current = g_memory_state.blocks;
     uint32_t count = 0;
-    while (current) {
-        printf("  [%u] %p: %zu bytes (from %s:%d in %s())\n", count++, current->ptr, current->size,
-               current->file, current->line, current->function);
-        current = current->next;
+    if (g_memory_state.block_buckets) {
+        for (size_t i = 0; i < g_memory_state.bucket_count; i++) {
+            memory_block_t* current = g_memory_state.block_buckets[i];
+            while (current) {
+                printf("  [%u] %p: %zu bytes (from %s:%d in %s())\n", count++, current->ptr,
+                       current->size, current->file, current->line, current->function);
+                current = current->next;
+            }
+        }
     }
     printf("============================================\n\n");
 
@@ -2164,30 +2160,34 @@ void nimcp_memory_check_leaks(void)
 
     nimcp_mutex_lock(&g_memory_state.lock);
 
-    memory_block_t* current = g_memory_state.blocks;
     size_t total_leaked = 0;
     uint32_t leak_count = 0;
 
-    if (!current) {
-        printf("\n[MEMORY] ✓ No memory leaks detected!\n\n");
+    if (g_memory_state.block_count == 0) {
+        printf("\n[MEMORY] No memory leaks detected!\n\n");
         nimcp_mutex_unlock(&g_memory_state.lock);
         return;
     }
 
     printf("\n========== Memory Leak Report ==========\n");
-    while (current) {
-        printf("[LEAK %u]\n", leak_count + 1);
-        printf("  Address: %p\n", current->ptr);
-        printf("  Size: %zu bytes\n", current->size);
-        printf("  Function: %s()\n", current->function);
-        printf("  Location: %s:%d\n", current->file, current->line);
-        // Use unlocked version since we already hold the lock
-        printf("  Lifetime: %lu ms\n", get_allocation_lifetime_ms_unlocked(current->ptr));
-        printf("\n");
+    if (g_memory_state.block_buckets) {
+        for (size_t i = 0; i < g_memory_state.bucket_count; i++) {
+            memory_block_t* current = g_memory_state.block_buckets[i];
+            while (current) {
+                printf("[LEAK %u]\n", leak_count + 1);
+                printf("  Address: %p\n", current->ptr);
+                printf("  Size: %zu bytes\n", current->size);
+                printf("  Function: %s()\n", current->function);
+                printf("  Location: %s:%d\n", current->file, current->line);
+                // Use unlocked version since we already hold the lock
+                printf("  Lifetime: %lu ms\n", get_allocation_lifetime_ms_unlocked(current->ptr));
+                printf("\n");
 
-        total_leaked += current->size;
-        leak_count++;
-        current = current->next;
+                total_leaked += current->size;
+                leak_count++;
+                current = current->next;
+            }
+        }
     }
 
     printf("Total leaks: %u blocks, %zu bytes\n", leak_count, total_leaked);

@@ -91,6 +91,44 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_memory_tracking_e2e.cpp)
     message(STATUS "    Added: e2e_utils_test_memory_tracking_e2e")
 endif()
 
+# ============================================================================
+# Memory Scalability E2E Tests (Hash Table Migration)
+# ============================================================================
+# WHAT: E2E tests proving brain create/destroy doesn't crash at >100K allocations
+# WHY:  Linked list → hash table migration for memory tracking scalability
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_memory_scalability.cpp)
+    add_executable(e2e_test_memory_scalability
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_memory_scalability.cpp
+        ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
+    )
+    target_include_directories(e2e_test_memory_scalability PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test/e2e
+    )
+    target_link_libraries(e2e_test_memory_scalability PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+    )
+    target_compile_features(e2e_test_memory_scalability PRIVATE cxx_std_20)
+    target_compile_definitions(e2e_test_memory_scalability PRIVATE
+        NIMCP_TESTING
+        NIMCP_E2E_TESTING
+    )
+    add_test(NAME e2e_test_memory_scalability
+             COMMAND e2e_test_memory_scalability)
+    set_tests_properties(e2e_test_memory_scalability PROPERTIES
+        LABELS "e2e;utils;memory;scalability"
+        TIMEOUT 600
+        RESOURCE_LOCK "brain_heavy"
+    )
+    message(STATUS "    Added: e2e_test_memory_scalability")
+endif()
+
 message(STATUS "Added P1-P3 Remediation Utils E2E tests:")
 message(STATUS "  - e2e_utils_test_memory_health_e2e (Memory + Health Agent Integration)")
 message(STATUS "  - e2e_utils_test_memory_tracking_e2e (Memory Tracking + Exception Safety)")
+message(STATUS "  - e2e_test_memory_scalability (Memory Scalability - Hash Table Migration)")

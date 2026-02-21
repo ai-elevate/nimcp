@@ -49,3 +49,7 @@ add_memory_test(test_nimcp_memory_wrapper)
 
 # Atomic recursion guard tests
 add_memory_test(test_memory_recursion_guard)
+
+# Hash table tracking tests (linked list → hash table migration)
+add_memory_test(test_memory_hash_tracking)
+add_memory_test(test_memory_hash_integration)
