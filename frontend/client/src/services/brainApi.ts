@@ -19,6 +19,9 @@ export const renameBrain = (id: number, name: string) =>
 export const deleteBrain = (id: number) =>
   api.delete(`/brains/${id}`);
 
+export const resizeBrain = (id: number, num_neurons: number) =>
+  api.post<{ id: number; num_neurons: number; probe: BrainProbe }>(`/brains/${id}/resize`, { num_neurons });
+
 export const probeBrain = (id: number) =>
   api.get<BrainProbe>(`/brains/${id}/probe`);
 

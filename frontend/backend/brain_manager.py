@@ -203,7 +203,8 @@ class BrainManager:
 
     def create_brain(self, name: str, size: int, task: int,
                      num_inputs: int, num_outputs: int,
-                     dataset: Optional[str] = None) -> int:
+                     dataset: Optional[str] = None,
+                     num_neurons: Optional[int] = None) -> int:
         with self._lock:
             if len(self._brains) >= MAX_BRAIN_COUNT:
                 raise ValueError(f"Maximum brain count ({MAX_BRAIN_COUNT}) reached")
@@ -211,6 +212,8 @@ class BrainManager:
                 name=name, size=size, task=task,
                 num_inputs=num_inputs, num_outputs=num_outputs
             )
+            if num_neurons is not None:
+                brain.resize(num_neurons)
             bid = self._next_id
             self._next_id += 1
             self._brains[bid] = brain
@@ -224,8 +227,20 @@ class BrainManager:
             self._snapshots[bid] = {}
             self._cow_snapshots[bid] = {}
             self._save_brain_to_disk(bid)
-            _log.info("Created brain %d (%s) inputs=%d outputs=%d", bid, name, num_inputs, num_outputs)
+            _log.info("Created brain %d (%s) neurons=%s inputs=%d outputs=%d",
+                      bid, name, num_neurons or "preset", num_inputs, num_outputs)
             return bid
+
+    def resize_brain(self, bid: int, num_neurons: int) -> bool:
+        with self._lock:
+            brain = self._brains.get(bid)
+            if brain is None:
+                return False
+            ok = brain.resize(num_neurons)
+            if ok:
+                self._save_brain_to_disk(bid)
+                _log.info("Resized brain %d to %d neurons", bid, num_neurons)
+            return ok
 
     def destroy_brain(self, bid: int) -> bool:
         with self._lock:

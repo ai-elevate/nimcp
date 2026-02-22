@@ -13,6 +13,11 @@ class BrainCreate(BaseModel):
     task: Optional[int] = Field(default=None, ge=0, le=4, description="0=classification,1=regression,2=pattern,3=sequence,4=association")
     num_inputs: Optional[int] = Field(default=None, ge=1, le=10000)
     num_outputs: Optional[int] = Field(default=None, ge=1, le=1000)
+    num_neurons: Optional[int] = Field(default=None, ge=10, le=500000, description="Custom neuron count (overrides size preset)")
+
+
+class BrainResize(BaseModel):
+    num_neurons: int = Field(ge=10, le=500000)
 
 
 class BrainUpdate(BaseModel):

@@ -6,20 +6,50 @@ interface Props {
   onCreate: (data: BrainCreate) => void;
 }
 
-const SIZES = ['Tiny (100 neurons)', 'Small (1K neurons)', 'Medium (10K neurons)', 'Large (100K neurons)'];
+const SIZE_PRESETS = [
+  { label: 'Tiny', neurons: 100 },
+  { label: 'Small', neurons: 1000 },
+  { label: 'Medium', neurons: 10000 },
+  { label: 'Large', neurons: 100000 },
+  { label: 'Custom', neurons: 0 },
+];
 const TASKS = ['Classification', 'Regression', 'Pattern Matching', 'Sequence', 'Association'];
+
+function formatNeurons(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`;
+  return String(n);
+}
+
+// Log scale: slider 0-1000 maps to 10-500000
+function sliderToNeurons(v: number): number {
+  const min = Math.log(10);
+  const max = Math.log(500000);
+  return Math.round(Math.exp(min + (v / 1000) * (max - min)));
+}
+function neuronsToSlider(n: number): number {
+  const min = Math.log(10);
+  const max = Math.log(500000);
+  return Math.round(((Math.log(n) - min) / (max - min)) * 1000);
+}
 
 export function BrainCreateModal({ onClose, onCreate }: Props) {
   const [name, setName] = useState('brain');
-  const [size, setSize] = useState(1);
+  const [sizeIdx, setSizeIdx] = useState(1);
+  const [customNeurons, setCustomNeurons] = useState(5000);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [task, setTask] = useState<number | undefined>(undefined);
   const [numInputs, setNumInputs] = useState<number | undefined>(undefined);
   const [numOutputs, setNumOutputs] = useState<number | undefined>(undefined);
 
+  const isCustom = sizeIdx === 4;
+  const neuronCount = isCustom ? customNeurons : SIZE_PRESETS[sizeIdx].neurons;
+  // Map to closest size enum for C API (0-3)
+  const sizeEnum = isCustom ? (customNeurons <= 500 ? 0 : customNeurons <= 5000 ? 1 : customNeurons <= 50000 ? 2 : 3) : sizeIdx;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data: BrainCreate = { name, size };
+    const data: BrainCreate = { name, size: sizeEnum };
+    if (isCustom) data.num_neurons = customNeurons;
     if (showAdvanced) {
       if (task !== undefined) data.task = task;
       if (numInputs !== undefined) data.num_inputs = numInputs;
@@ -60,10 +90,41 @@ export function BrainCreateModal({ onClose, onCreate }: Props) {
           </div>
           <div className="form-group">
             <label>Size</label>
-            <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
-              {SIZES.map((s, i) => <option key={i} value={i}>{s}</option>)}
+            <select value={sizeIdx} onChange={(e) => setSizeIdx(Number(e.target.value))}>
+              {SIZE_PRESETS.map((s, i) => (
+                <option key={i} value={i}>
+                  {s.neurons > 0 ? `${s.label} (${formatNeurons(s.neurons)} neurons)` : s.label}
+                </option>
+              ))}
             </select>
           </div>
+          {isCustom && (
+            <div className="form-group">
+              <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                Neurons
+                <span style={{ fontWeight: 'normal', color: 'var(--text-muted)', fontSize: 12 }}>
+                  {neuronCount.toLocaleString()}
+                </span>
+              </label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="range" min={0} max={1000}
+                  value={neuronsToSlider(customNeurons)}
+                  onChange={(e) => setCustomNeurons(sliderToNeurons(Number(e.target.value)))}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number" min={10} max={500000}
+                  value={customNeurons}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (v >= 10 && v <= 500000) setCustomNeurons(v);
+                  }}
+                  style={{ width: 80 }}
+                />
+              </div>
+            </div>
+          )}
           {isAutoDetect && (
             <div style={{ padding: '8px 12px', marginBottom: 12, background: 'rgba(99,102,241,0.1)', borderRadius: 6, fontSize: 12, color: 'var(--text-muted)' }}>
               Conversational brain — ready to chat, learn, and grow
@@ -115,9 +176,9 @@ export function BrainCreateModal({ onClose, onCreate }: Props) {
               </div>
             </>
           )}
-          {size >= 2 && (
+          {neuronCount >= 10000 && (
             <div style={{ padding: '8px 12px', marginBottom: 12, background: 'rgba(245,158,11,0.15)', borderRadius: 6, fontSize: 12, color: 'var(--warning)' }}>
-              Warning: {size === 2 ? 'Medium' : 'Large'} brains allocate {size === 2 ? '~50MB' : '~500MB'} RAM
+              Warning: {formatNeurons(neuronCount)} neurons allocates {neuronCount >= 100000 ? '~500MB+' : '~50MB'} RAM
             </div>
           )}
           <div className="modal-actions">

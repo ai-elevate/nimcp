@@ -6,7 +6,7 @@ import tempfile
 import nimcp_logger
 from brain_manager import manager
 from config import C_API_TIMEOUT_SECONDS
-from models.brain import BrainCreate, BrainUpdate, BrainPredict, BrainLearn, SnapshotCreate
+from models.brain import BrainCreate, BrainUpdate, BrainResize, BrainPredict, BrainLearn, SnapshotCreate
 from validation import c_api_call
 
 _log = nimcp_logger.get("routers.brains")
@@ -24,6 +24,7 @@ async def create_brain(req: BrainCreate):
         bid = await c_api_call(
             manager.create_brain,
             req.name, req.size, task, num_inputs, num_outputs,
+            num_neurons=req.num_neurons,
             timeout=C_API_TIMEOUT_SECONDS,
         )
     except ValueError as e:
@@ -51,6 +52,15 @@ async def update_brain(bid: int, req: BrainUpdate):
     if not ok:
         raise HTTPException(404, "Brain not found")
     return {"id": bid, "name": req.name}
+
+
+@router.post("/{bid}/resize")
+async def resize_brain(bid: int, req: BrainResize):
+    ok = await c_api_call(manager.resize_brain, bid, req.num_neurons, timeout=C_API_TIMEOUT_SECONDS)
+    if not ok:
+        raise HTTPException(404, "Brain not found or resize failed")
+    probe = await c_api_call(manager.probe_brain, bid, timeout=C_API_TIMEOUT_SECONDS)
+    return {"id": bid, "num_neurons": req.num_neurons, "probe": probe}
 
 
 @router.delete("/{bid}")

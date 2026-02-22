@@ -57,6 +57,7 @@ export interface BrainCreate {
   task?: number;
   num_inputs?: number;
   num_outputs?: number;
+  num_neurons?: number;
 }
 
 export interface CognitiveState {
