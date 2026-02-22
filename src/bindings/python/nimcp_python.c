@@ -774,6 +774,64 @@ static PyObject* Brain_broadcast_probe(BrainObject* self, PyObject* args) {
     return PyBool_FromLong(status == NIMCP_OK);
 }
 
+/**
+ * WHAT: Get comprehensive brain metrics as a Python dict
+ * WHY:  Dashboard needs real-time metrics (synapses, memory, learning rate)
+ * HOW:  Call nimcp_brain_probe and build dict from the result
+ */
+static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_brain_probe_t probe;
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_probe(self->brain, &probe);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to probe brain");
+        return NULL;
+    }
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    SET("task_name",              PyUnicode_FromString(probe.task_name));
+    SET("size",                   PyLong_FromLong(probe.size));
+    SET("task",                   PyLong_FromLong(probe.task));
+    SET("num_neurons",            PyLong_FromUnsignedLong(probe.num_neurons));
+    SET("num_synapses",           PyLong_FromUnsignedLong(probe.num_synapses));
+    SET("num_active_synapses",    PyLong_FromUnsignedLong(probe.num_active_synapses));
+    SET("total_inferences",       PyLong_FromUnsignedLongLong(probe.total_inferences));
+    SET("total_learning_steps",   PyLong_FromUnsignedLongLong(probe.total_learning_steps));
+    SET("avg_sparsity",           PyFloat_FromDouble(probe.avg_sparsity));
+    SET("avg_inference_time_us",  PyFloat_FromDouble(probe.avg_inference_time_us));
+    SET("current_learning_rate",  PyFloat_FromDouble(probe.current_learning_rate));
+    SET("accuracy",               PyFloat_FromDouble(probe.accuracy));
+    SET("memory_bytes",           PyLong_FromSize_t(probe.memory_bytes));
+    SET("num_inputs",             PyLong_FromUnsignedLong(probe.num_inputs));
+    SET("num_outputs",            PyLong_FromUnsignedLong(probe.num_outputs));
+    SET("is_cow_clone",           PyBool_FromLong(probe.is_cow_clone));
+    SET("cow_ref_count",          PyLong_FromUnsignedLong(probe.cow_ref_count));
+    SET("cow_shared_bytes",       PyLong_FromSize_t(probe.cow_shared_bytes));
+    SET("cow_private_bytes",      PyLong_FromSize_t(probe.cow_private_bytes));
+
+#undef SET
+
+    return dict;
+}
+
 static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     PyObject* features_list;
     if (!PyArg_ParseTuple(args, "O", &features_list))
@@ -885,7 +943,9 @@ static PyMethodDef Brain_methods[] = {
     {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,
      "Get running label-match accuracy (EMA): get_accuracy() -> float"},
 
-    // Probe Broadcasting
+    // Probe
+    {"probe", (PyCFunction)Brain_probe, METH_NOARGS,
+     "Get brain metrics as dict: probe() -> dict"},
     {"broadcast_probe", (PyCFunction)Brain_broadcast_probe, METH_NOARGS,
      "Probe brain metrics and broadcast via bio-async: broadcast_probe() -> bool"},
 

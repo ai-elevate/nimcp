@@ -664,7 +664,15 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         return false;
     }
 
-    // Transfer neuron states via network API
+    // Get new network's pools for synapse reconstruction
+    sparse_synapse_pool_t new_h_pool = neural_network_get_synapse_handle_pool(new_base);
+    synapse_metadata_pool_t new_m_pool = neural_network_get_synapse_metadata_pool(new_base);
+    synapse_metadata_pool_t old_m_pool = neural_network_get_synapse_metadata_pool(base_network);
+
+    // Transfer neuron states via deep copy (not memcpy)
+    // WHY: sparse_synapse_storage_t contains heap overflow pointers that belong
+    //       to the old network's pools. memcpy would create dangling pointers
+    //       when the old network is destroyed.
     for (uint32_t i = 0; i < current_neuron_count; i++) {
         neuron_t* old_neuron = neural_network_get_neuron(base_network, i);
         neuron_t* new_neuron = neural_network_get_neuron(new_base, i);
@@ -672,24 +680,81 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         if (!old_neuron || !new_neuron) {
             LOG_ERROR("brain_resize: Failed to access neuron %u during transfer", i);
             adaptive_network_destroy(new_network);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (old_neuron, new_neuron)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: neuron access failed");
             return false;
         }
 
-        // Copy neuron state (weights, bias, activation, etc.)
-        // NOTE: This is a deep copy that preserves all learning
-        // The synapses array is part of the neuron_t struct (fixed-size array),
-        // so memcpy copies everything including synapses, incoming_synapses, etc.
+        // Save new neuron's freshly-initialized storage (from adaptive_network_create)
+        sparse_synapse_storage_t saved_outgoing = new_neuron->outgoing;
+        sparse_synapse_storage_t saved_incoming = new_neuron->incoming;
+        void* saved_type_params = new_neuron->type_params;
+        uint32_t* saved_dendrite_ids = new_neuron->dendrite_ids;
+        uint32_t saved_num_dendrites = new_neuron->num_dendrites;
+
+        // Copy all scalar fields (bias, threshold, activation, learning params, etc.)
         memcpy(new_neuron, old_neuron, sizeof(neuron_t));
+
+        // Restore new network's storage — do NOT use old network's heap pointers
+        new_neuron->outgoing = saved_outgoing;
+        new_neuron->incoming = saved_incoming;
+
+        // Clear heap pointers that belong to old network
+        // (type_params/dendrites are rarely used; new neurons start without them)
+        new_neuron->type_params = saved_type_params;
+        new_neuron->dendrite_ids = saved_dendrite_ids;
+        new_neuron->num_dendrites = saved_num_dendrites;
+
+        // Clear the new neuron's default outgoing synapses so we can re-add from old
+        sparse_synapse_storage_cleanup(new_h_pool, &new_neuron->outgoing);
+        sparse_synapse_storage_init(&new_neuron->outgoing);
+
+        // Re-create outgoing synapses on the NEW network's pools
+        uint32_t out_count = NEURON_OUT_COUNT(old_neuron);
+        for (uint32_t j = 0; j < out_count; j++) {
+            synapse_handle_t* old_h = NEURON_OUT_HANDLE(old_neuron, j);
+            if (!old_h) continue;
+
+            // Add handle to new storage with metadata slot
+            int idx = sparse_synapse_add_with_metadata(
+                new_h_pool, new_m_pool, &new_neuron->outgoing,
+                old_h->target_neuron_id, old_h->weight, 0);
+            if (idx < 0) {
+                LOG_WARN("brain_resize: Failed to add synapse %u/%u for neuron %u", j, out_count, i);
+                continue;
+            }
+
+            // Copy handle fields (strength, peer_index)
+            synapse_handle_t* new_h = NEURON_OUT_HANDLE(new_neuron, (uint32_t)idx);
+            if (new_h) {
+                new_h->strength = old_h->strength;
+                new_h->peer_index = old_h->peer_index;
+            }
+
+            // Deep-copy metadata (STP, BCM, eligibility, compute_function, etc.)
+            synapse_t* old_meta = old_m_pool
+                ? sparse_synapse_get_metadata(old_m_pool, old_h)
+                : NULL;
+            synapse_t* new_meta = new_h
+                ? sparse_synapse_get_metadata(new_m_pool, new_h)
+                : NULL;
+            if (old_meta && new_meta) {
+                *new_meta = *old_meta;
+                // BCM/eligibility pointers are shared — NULL them on the copy
+                // so only the old network frees them during destroy
+                new_meta->bcm = NULL;
+                new_meta->eligibility = NULL;
+            }
+        }
     }
 
-    // Step 4: Initialize new neurons
-    // New neurons added beyond current_neuron_count get random initialization
-    uint32_t new_neurons_added = new_neuron_count - current_neuron_count;
-    LOG_INFO("brain_resize: Initializing %u new neurons", new_neurons_added);
+    // Rebuild all incoming synapses from outgoing data + set peer_index cross-refs
+    LOG_INFO("brain_resize: Rebuilding incoming synapses");
+    neural_network_rebuild_incoming(new_base);
 
-    // New neurons are already initialized by adaptive_network_create()
-    // with random weights based on network configuration
+    // Step 4: New neurons beyond current_neuron_count are already initialized
+    // by adaptive_network_create() with random weights
+    uint32_t new_neurons_added = new_neuron_count - current_neuron_count;
+    LOG_INFO("brain_resize: %u new neurons ready (pre-initialized by network create)", new_neurons_added);
 
     // Step 5: Swap networks atomically
     LOG_INFO("brain_resize: Swapping networks");
