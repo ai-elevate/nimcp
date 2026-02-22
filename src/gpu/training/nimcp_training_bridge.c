@@ -18,6 +18,7 @@
  *
  * PERFORMANCE:
  *   Upload/download are O(N*S) where N=neurons, S=avg synapses per neuron.
+ *
  *   Forward pass is GPU-bound: O(sum(layer_sizes[l+1] * layer_sizes[l])).
  *   Loss computation is O(output_size) on GPU.
  */

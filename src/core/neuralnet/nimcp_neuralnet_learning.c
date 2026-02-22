@@ -365,6 +365,20 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 
     uint32_t total_modified = 0;
 
+    // PRE-PASS: Set outgoing synapse traces from current neuron states
+    // WHY: The forward pass (neural_network_forward) sets neuron->state via
+    //      incoming_synapses but never updates outgoing synapse traces.
+    //      Eligibility learning needs syn->trace > 0.1 to trigger updates.
+    //      Set each neuron's outgoing synapse traces to |neuron->state| so
+    //      eligibility-based credit assignment knows which synapses were active.
+    for (uint32_t n = 0; n < network->num_neurons; n++) {
+        float activity = fabsf(network->neurons[n].state);
+        neuron_t* neuron = &network->neurons[n];
+        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            neuron->synapses[s].trace = activity;
+        }
+    }
+
     // Iterate over all neurons in the network
     for (uint32_t neuron_id = 0; neuron_id < network->config.num_neurons; neuron_id++) {
         neuron_t* neuron = &network->neurons[neuron_id];
@@ -432,6 +446,29 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 if (fabsf(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
                     syn->weight = syn->bcm->weight;
                     total_modified++;
+                }
+            }
+        }
+    }
+
+    // POST-PASS: Sync outgoing synapse weights to incoming synapses
+    // WHY: Learning modifies outgoing synapse weights (neuron->synapses[]),
+    //      but neural_network_forward() reads from incoming_synapses[].
+    //      These are separate struct copies — without sync, weight changes
+    //      have no effect on the forward pass.
+    if (total_modified > 0) {
+        for (uint32_t n = 0; n < network->num_neurons; n++) {
+            neuron_t* neuron = &network->neurons[n];
+            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+                synapse_t* out = &neuron->synapses[s];
+                if (out->target_id >= network->num_neurons) continue;
+                neuron_t* target = &network->neurons[out->target_id];
+                for (uint32_t k = 0; k < target->num_incoming; k++) {
+                    if (target->incoming_synapses[k].source_neuron_id == n) {
+                        target->incoming_synapses[k].weight = out->weight;
+                        target->incoming_synapses[k].strength = out->strength;
+                        break;
+                    }
                 }
             }
         }

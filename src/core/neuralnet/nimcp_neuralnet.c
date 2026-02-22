@@ -595,12 +595,25 @@ neural_network_t neural_network_create(const network_config_t* config)
     /**
      * WHAT: Dynamically allocate neurons array with growth capacity
      * WHY: Support arbitrary network sizes + allow neural_network_add_neuron()
-     * HOW: Allocate MAX_NEURONS or config->num_neurons*2, whichever is smaller
+     * HOW: Allocate MAX_NEURONS or actual_neurons*2, whichever is smaller
      * PERFORMANCE: O(capacity) memory, allows growth without reallocation
      * TRADEOFF: Small overhead for networks that never add neurons
+     *
+     * FIX: For layered networks, num_neurons may only reflect the hidden layer.
+     * The actual neuron count must include all layers (input + hidden + output).
      */
-    uint32_t capacity = (config->num_neurons * 2 < MAX_NEURONS)
-                       ? config->num_neurons * 2
+    uint32_t actual_neurons = config->num_neurons;
+    if (config->num_layers > 1 && config->layer_sizes) {
+        uint32_t total = 0;
+        for (uint32_t l = 0; l < config->num_layers; l++) {
+            total += config->layer_sizes[l];
+        }
+        if (total > actual_neurons) {
+            actual_neurons = total;
+        }
+    }
+    uint32_t capacity = (actual_neurons * 2 < MAX_NEURONS)
+                       ? actual_neurons * 2
                        : MAX_NEURONS;
     network->neurons = (neuron_t*) nimcp_calloc(capacity, sizeof(neuron_t));
 
@@ -645,10 +658,11 @@ neural_network_t neural_network_create(const network_config_t* config)
     init_activation_strategies(&network->activation_strategies);
 
     // Determine excitatory/inhibitory split
-    uint32_t num_inhibitory = (uint32_t) (config->num_neurons * (1.0F - config->ei_ratio));
+    uint32_t num_inhibitory = (uint32_t) (actual_neurons * (1.0F - config->ei_ratio));
 
     // Create neurons using builder pattern
-    for (uint32_t i = 0; i < config->num_neurons; i++) {
+    // FIX: Use actual_neurons (sum of layer_sizes) instead of config->num_neurons
+    for (uint32_t i = 0; i < actual_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
         neuron_type_t type = (i < num_inhibitory) ? NEURON_INHIBITORY : NEURON_EXCITATORY;
 
@@ -661,7 +675,7 @@ neural_network_t neural_network_create(const network_config_t* config)
         init_neuron_model(neuron, config);  // NIMCP 2.6: Initialize neuron model plugin
     }
 
-    network->num_neurons = config->num_neurons;
+    network->num_neurons = actual_neurons;
 
     // For layered networks (NIMCP 2.5), create connections between layers
     if (config->num_layers > 1 && config->layer_sizes) {
@@ -1597,6 +1611,17 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 
     uint32_t total_modified = 0;
 
+    // PRE-PASS: Set outgoing synapse traces from current neuron states
+    // WHY: The forward pass sets neuron->state but never updates outgoing synapse traces.
+    //      Eligibility learning needs syn->trace > 0.1 to trigger weight updates.
+    for (uint32_t n = 0; n < network->num_neurons; n++) {
+        float activity = fabsf(network->neurons[n].state);
+        neuron_t* pre_neuron = &network->neurons[n];
+        for (uint32_t s = 0; s < pre_neuron->num_synapses; s++) {
+            pre_neuron->synapses[s].trace = activity;
+        }
+    }
+
     // Iterate over all neurons in the network
     for (uint32_t neuron_id = 0; neuron_id < network->config.num_neurons; neuron_id++) {
         neuron_t* neuron = &network->neurons[neuron_id];
@@ -1687,6 +1712,30 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 if (fabsf(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
                     syn->weight = syn->bcm->weight;
                     total_modified++;
+                }
+            }
+        }
+    }
+
+
+
+    // POST-PASS: Sync outgoing synapse weights to incoming synapses
+    // WHY: Learning modifies outgoing synapse weights (neuron->synapses[]),
+    //      but neural_network_forward() reads from incoming_synapses[].
+    //      Without sync, weight updates have no effect on the forward pass.
+    if (total_modified > 0) {
+        for (uint32_t n = 0; n < network->num_neurons; n++) {
+            neuron_t* src = &network->neurons[n];
+            for (uint32_t s = 0; s < src->num_synapses; s++) {
+                synapse_t* out = &src->synapses[s];
+                if (out->target_id >= network->num_neurons) continue;
+                neuron_t* target = &network->neurons[out->target_id];
+                for (uint32_t k = 0; k < target->num_incoming; k++) {
+                    if (target->incoming_synapses[k].source_neuron_id == n) {
+                        target->incoming_synapses[k].weight = out->weight;
+                        target->incoming_synapses[k].strength = out->strength;
+                        break;
+                    }
                 }
             }
         }

@@ -1633,14 +1633,71 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
                                                 network->base_network);
 
-        // 5. CPU biological plasticity (STDP/BCM) — unchanged
-        float reward = 1.0F / (1.0F + loss);
-        reward *= example->confidence;
-        neural_network_apply_reward_learning(network->base_network, reward,
-                                             learning_rate,
-                                             network->total_learning_steps);
+        // 4.5 Delta rule for output layer: per-output gradient descent
+        // WHY: Biological reward_learning uses a global scalar reward that can't
+        //      differentiate per-output errors. For supervised learning, output
+        //      layer weights need per-output error gradients.
+        // HOW: Δw = lr * error_j * hidden_i * sigmoid'(output_j)
+        //      Applied to BOTH incoming and outgoing synapse copies so the
+        //      POST-PASS in reward_learning preserves these changes.
+        {
+            uint32_t num_layers = network->config.base_config.num_layers;
+            uint32_t* layer_sizes = network->config.base_config.layer_sizes;
+            if (num_layers >= 2 && layer_sizes) {
+                // Compute output layer offset
+                uint32_t output_offset = 0;
+                for (uint32_t l = 0; l < num_layers - 1; l++)
+                    output_offset += layer_sizes[l];
+                uint32_t output_size = layer_sizes[num_layers - 1];
 
-        // 6. Mark weights dirty (STDP modified synapse weights on CPU)
+                // Use boosted learning rate for output layer (only layer being
+                // trained via gradient descent; hidden layer uses random features)
+                float output_lr = learning_rate * 10.0f;
+
+                for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
+                    float error_j = example->target[j] - output[j];
+                    // Sigmoid derivative: σ'(z) = σ(z)(1 - σ(z))
+                    float sig_deriv = output[j] * (1.0f - output[j]);
+                    // Clamp sig_deriv to avoid vanishing gradients at saturation
+                    if (sig_deriv < 0.01f) sig_deriv = 0.01f;
+
+                    neuron_t* out_n = neural_network_get_neuron(
+                        network->base_network, output_offset + j);
+                    if (!out_n) continue;
+
+                    // Update incoming synapses of output neuron
+                    for (uint32_t k = 0; k < out_n->num_incoming; k++) {
+                        synapse_t* in_syn = &out_n->incoming_synapses[k];
+                        neuron_t* src = neural_network_get_neuron(
+                            network->base_network, in_syn->source_neuron_id);
+                        if (!src) continue;
+
+                        float delta = output_lr * error_j * src->state * sig_deriv;
+                        in_syn->weight += delta;
+
+                        // Also update the corresponding outgoing synapse copy
+                        for (uint32_t s = 0; s < src->num_synapses; s++) {
+                            if (src->synapses[s].target_id == output_offset + j) {
+                                src->synapses[s].weight += delta;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Update bias
+                    out_n->bias += output_lr * error_j * sig_deriv;
+                }
+            }
+        }
+
+        // 5. Skip biological reward_learning for supervised GPU path
+        // WHY: Biological learning uses global scalar reward (always positive),
+        //      which overwhelms the gradient-based delta rule above by ~10x.
+        //      The delta rule provides per-output error gradients which are the
+        //      correct signal for supervised classification.
+        // NOTE: For LEARN_MODE_REINFORCEMENT, we would use reward_learning here.
+
+        // 6. Mark weights dirty (learning modified synapse weights on CPU)
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
 
         free_hot_buffer(output);

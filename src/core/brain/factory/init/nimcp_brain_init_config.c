@@ -150,9 +150,9 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
     config.enable_oja = true;
     config.enable_homeostasis = true;
 
-    // SCALABILITY: Disable BCM and eligibility traces by default
+    // SCALABILITY: Disable BCM by default (per-synapse heap allocation overhead)
     config.enable_bcm = false;
-    config.enable_eligibility = false;
+    config.enable_eligibility = true;
 
     // BUGFIX: Set weight bounds to allow random initialization to work
     // Without these, fmaxf(0, fminf(0, weight)) clamps all weights to 0!

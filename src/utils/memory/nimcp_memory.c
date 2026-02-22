@@ -855,9 +855,7 @@ static size_t get_guard_size(void* ptr)
         }
     }
 
-    if (!found) {
-        fprintf(stderr, "[DEBUG] get_guard_size: ptr=%p NOT FOUND in tracking list\n", ptr);
-    }
+    (void)found;  // Tracked guard_size may be 0 if ptr wasn't in list
 
     // Return the tracked guard_size (may be 0 if allocation used no guards)
     // If not found in tracking, return 0 (assume no guards)
