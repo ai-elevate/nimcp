@@ -76,6 +76,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_resize, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_system_resources.h"
 #include "glial/integration/nimcp_glial_integration.h"
@@ -282,18 +283,16 @@ static float compute_weight_saturation(neural_network_t network)
             continue;
         }
 
-        // Validate synapse data before accessing
-        if (!neuron->synapses) {
-            continue;  // Skip neurons with no synapses allocated
-        }
-
-        // Validate num_synapses is reasonable (< 10000 per neuron is sane limit)
-        if (neuron->num_synapses > 10000) {
+        // Validate synapse count is reasonable (< 10000 per neuron is sane limit)
+        uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+        if (nsyn > 10000) {
             continue;  // Skip neurons with garbage synapse count
         }
 
-        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-            float weight = neuron->synapses[j].weight;
+        for (uint32_t j = 0; j < nsyn; j++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, j);
+            if (!h) continue;
+            float weight = h->weight;
             total_weights++;
 
             if (fabsf(weight) > saturation_threshold) {

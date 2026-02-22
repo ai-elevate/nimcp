@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "utils/logging/nimcp_logging.h"
@@ -1120,6 +1121,8 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
                 nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
                                              network->base_network);
                 network->gpu_enabled = true;
+                fprintf(stderr, "[GPU] Training enabled for adaptive network (%u layers)\n",
+                        network->config.base_config.num_layers);
                 NIMCP_LOG_INFO("GPU training enabled for adaptive network (%u layers)",
                                network->config.base_config.num_layers);
             } else {
@@ -1542,6 +1545,20 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     if (!network || !input || !output)
         return 0;
 
+    // Phase GPU: GPU-accelerated forward pass (read-only — no statistics update)
+    if (network->gpu_enabled && network->gpu_weight_cache) {
+        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                         network->base_network);
+        }
+        nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                               input, input_size, output, output_size);
+        uint32_t active_count = process_network_outputs((adaptive_network_t)network, output, output_size);
+        return active_count;
+    }
+
+    // CPU fallback path
+
     // Step 1: Compute adaptive threshold for input
     float input_threshold =
         adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
@@ -1666,19 +1683,21 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     if (!out_n) continue;
 
                     // Update incoming synapses of output neuron
-                    for (uint32_t k = 0; k < out_n->num_incoming; k++) {
-                        synapse_t* in_syn = &out_n->incoming_synapses[k];
+                    for (uint32_t k = 0; k < NEURON_IN_COUNT(out_n); k++) {
+                        synapse_handle_t* in_syn = NEURON_IN_HANDLE(out_n, k);
+                        if (!in_syn) continue;
                         neuron_t* src = neural_network_get_neuron(
-                            network->base_network, in_syn->source_neuron_id);
+                            network->base_network, in_syn->target_neuron_id);
                         if (!src) continue;
 
                         float delta = output_lr * error_j * src->state * sig_deriv;
                         in_syn->weight += delta;
 
                         // Also update the corresponding outgoing synapse copy
-                        for (uint32_t s = 0; s < src->num_synapses; s++) {
-                            if (src->synapses[s].target_id == output_offset + j) {
-                                src->synapses[s].weight += delta;
+                        for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
+                            synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
+                            if (out_syn && out_syn->target_neuron_id == output_offset + j) {
+                                out_syn->weight += delta;
                                 break;
                             }
                         }
@@ -1937,6 +1956,7 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
 
             // Write synaptic weights from base_network (CRITICAL: enables weight persistence)
             if (network->base_network) {
+                synapse_metadata_pool_t save_m_pool = neural_network_get_synapse_metadata_pool(network->base_network);
                 uint32_t base_num_neurons = neural_network_get_num_neurons(network->base_network);
                 FWRITE_CHECKED(&base_num_neurons, sizeof(uint32_t), 1, file);
 
@@ -1945,21 +1965,31 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
                     if (!neuron) continue;
 
                     // Write number of synapses for this neuron
-                    FWRITE_CHECKED(&neuron->num_synapses, sizeof(uint32_t), 1, file);
+                    uint32_t num_syn = NEURON_OUT_COUNT(neuron);
+                    FWRITE_CHECKED(&num_syn, sizeof(uint32_t), 1, file);
 
                     // Write each synapse (weight and key plasticity data)
-                    for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-                        synapse_t* syn = &neuron->synapses[j];
-                        FWRITE_CHECKED(&syn->target_id, sizeof(uint32_t), 1, file);
-                        FWRITE_CHECKED(&syn->weight, sizeof(float), 1, file);
-                        FWRITE_CHECKED(&syn->plasticity, sizeof(float), 1, file);
-                        FWRITE_CHECKED(&syn->trace, sizeof(float), 1, file);
-                        FWRITE_CHECKED(&syn->strength, sizeof(float), 1, file);
-                        FWRITE_CHECKED(&syn->meta_plasticity, sizeof(float), 1, file);
-                        FWRITE_CHECKED(&syn->last_change, sizeof(float), 1, file);
-                        FWRITE_CHECKED(&syn->last_active, sizeof(uint64_t), 1, file);
-                        FWRITE_CHECKED(&syn->enable_stp, sizeof(bool), 1, file);
-                        if (syn->enable_stp) {
+                    for (uint32_t j = 0; j < num_syn; j++) {
+                        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, j);
+                        if (!h) continue;
+                        synapse_t* syn = sparse_synapse_get_metadata(save_m_pool, h);
+                        FWRITE_CHECKED(&h->target_neuron_id, sizeof(uint32_t), 1, file);
+                        FWRITE_CHECKED(&h->weight, sizeof(float), 1, file);
+                        float plasticity = syn ? syn->plasticity : 0.0f;
+                        float trace = syn ? syn->trace : 0.0f;
+                        float strength = h->strength;
+                        float meta_plasticity = syn ? syn->meta_plasticity : 0.0f;
+                        float last_change = syn ? syn->last_change : 0.0f;
+                        uint64_t last_active = syn ? syn->last_active : 0;
+                        bool enable_stp = syn ? syn->enable_stp : false;
+                        FWRITE_CHECKED(&plasticity, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&trace, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&strength, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&meta_plasticity, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&last_change, sizeof(float), 1, file);
+                        FWRITE_CHECKED(&last_active, sizeof(uint64_t), 1, file);
+                        FWRITE_CHECKED(&enable_stp, sizeof(bool), 1, file);
+                        if (enable_stp && syn) {
                             FWRITE_CHECKED(&syn->stp, sizeof(stp_state_t), 1, file);
                         }
                     }
@@ -2256,45 +2286,51 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 }
 
                 // Clear existing synapses and load from file
-                neuron->num_synapses = 0;
+                sparse_synapse_pool_t h_pool = neural_network_get_synapse_handle_pool(network->base_network);
+                synapse_metadata_pool_t m_pool = neural_network_get_synapse_metadata_pool(network->base_network);
+
+                // Actually clear existing outgoing synapses before loading saved ones
+                sparse_synapse_storage_cleanup(h_pool, &neuron->outgoing);
+                sparse_synapse_storage_init(&neuron->outgoing);
 
                 for (uint32_t j = 0; j < num_synapses; j++) {
-                    if (neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
-                        fprintf(stderr, "WARNING: Neuron %u has more synapses than MAX_SYNAPSES_PER_NEURON\n", i);
-                        // Skip remaining synapses for this neuron (non-critical, use (void) cast)
-                        synapse_t dummy;
-                        (void)fread(&dummy.target_id, sizeof(uint32_t), 1, file);
-                        (void)fread(&dummy.weight, sizeof(float), 1, file);
-                        (void)fread(&dummy.plasticity, sizeof(float), 1, file);
-                        (void)fread(&dummy.trace, sizeof(float), 1, file);
-                        (void)fread(&dummy.strength, sizeof(float), 1, file);
-                        (void)fread(&dummy.meta_plasticity, sizeof(float), 1, file);
-                        (void)fread(&dummy.last_change, sizeof(float), 1, file);
-                        (void)fread(&dummy.last_active, sizeof(uint64_t), 1, file);
-                        bool enable_stp = false;
-                        (void)fread(&enable_stp, sizeof(bool), 1, file);
-                        if (enable_stp) {
-                            stp_state_t stp_dummy;
-                            (void)fread(&stp_dummy, sizeof(stp_state_t), 1, file);
+
+                    // Read synapse data into temporaries
+                    uint32_t target_id; float weight, plasticity, trace, strength;
+                    float meta_plasticity, last_change; uint64_t last_active;
+                    bool enable_stp;
+                    if (fread(&target_id, sizeof(uint32_t), 1, file) != 1) break;
+                    if (fread(&weight, sizeof(float), 1, file) != 1) break;
+                    if (fread(&plasticity, sizeof(float), 1, file) != 1) break;
+                    if (fread(&trace, sizeof(float), 1, file) != 1) break;
+                    if (fread(&strength, sizeof(float), 1, file) != 1) break;
+                    if (fread(&meta_plasticity, sizeof(float), 1, file) != 1) break;
+                    if (fread(&last_change, sizeof(float), 1, file) != 1) break;
+                    if (fread(&last_active, sizeof(uint64_t), 1, file) != 1) break;
+                    if (fread(&enable_stp, sizeof(bool), 1, file) != 1) break;
+                    stp_state_t stp_data = {0};
+                    if (enable_stp) {
+                        if (fread(&stp_data, sizeof(stp_state_t), 1, file) != 1) break;
+                    }
+
+                    // Add synapse with metadata to sparse storage
+                    if (sparse_synapse_add_with_metadata(h_pool, m_pool,
+                            &neuron->outgoing, target_id, weight, 0) == 0) {
+                        uint32_t idx = NEURON_OUT_COUNT(neuron) - 1;
+                        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, idx);
+                        if (h) h->strength = strength;
+                        synapse_t* syn = h ? sparse_synapse_get_metadata(m_pool, h) : NULL;
+                        if (syn) {
+                            syn->plasticity = plasticity;
+                            syn->trace = trace;
+                            syn->strength = strength;
+                            syn->meta_plasticity = meta_plasticity;
+                            syn->last_change = last_change;
+                            syn->last_active = last_active;
+                            syn->enable_stp = enable_stp;
+                            if (enable_stp) syn->stp = stp_data;
                         }
-                        continue;
                     }
-
-                    synapse_t* syn = &neuron->synapses[neuron->num_synapses];
-                    if (fread(&syn->target_id, sizeof(uint32_t), 1, file) != 1) break;
-                    if (fread(&syn->weight, sizeof(float), 1, file) != 1) break;
-                    if (fread(&syn->plasticity, sizeof(float), 1, file) != 1) break;
-                    if (fread(&syn->trace, sizeof(float), 1, file) != 1) break;
-                    if (fread(&syn->strength, sizeof(float), 1, file) != 1) break;
-                    if (fread(&syn->meta_plasticity, sizeof(float), 1, file) != 1) break;
-                    if (fread(&syn->last_change, sizeof(float), 1, file) != 1) break;
-                    if (fread(&syn->last_active, sizeof(uint64_t), 1, file) != 1) break;
-                    if (fread(&syn->enable_stp, sizeof(bool), 1, file) != 1) break;
-                    if (syn->enable_stp) {
-                        if (fread(&syn->stp, sizeof(stp_state_t), 1, file) != 1) break;
-                    }
-
-                    neuron->num_synapses++;
                 }
 
                 // Restore full neuron state (CRITICAL: enables exact training resume)
@@ -2322,6 +2358,11 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     }
 
     fclose(file);
+
+    // Rebuild incoming synapses from outgoing for forward pass
+    if (network->base_network) {
+        neural_network_rebuild_incoming(network->base_network);
+    }
 
     // Phase GPU: Initialize GPU acceleration for loaded network
     network->gpu_enabled = false;
@@ -2768,9 +2809,10 @@ float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t f
     }
 
     /* Search for synapse to target neuron */
-    for (uint32_t i = 0; i < from->num_synapses; i++) {
-        if (from->synapses[i].target_id == to_neuron) {
-            return from->synapses[i].weight;
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(from); i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(from, i);
+        if (h && h->target_neuron_id == to_neuron) {
+            return h->weight;
         }
     }
 

@@ -692,7 +692,9 @@ int sparse_synapse_add(
     synapse_handle_t handle = {
         .target_neuron_id = target_neuron_id,
         .weight = weight,
-        .metadata_index = SPARSE_SYNAPSE_NO_METADATA
+        .strength = 1.0F,
+        .metadata_index = SPARSE_SYNAPSE_NO_METADATA,
+        .peer_index = SPARSE_SYNAPSE_NO_PEER
     };
 
     // WHAT: Try to add to embedded array first

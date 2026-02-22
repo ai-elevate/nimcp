@@ -148,6 +148,11 @@ extern "C" {
  */
 #define SPARSE_SYNAPSE_INVALID_HANDLE UINT32_MAX
 
+/**
+ * @brief Invalid peer index sentinel (no cross-reference)
+ */
+#define SPARSE_SYNAPSE_NO_PEER UINT32_MAX
+
 //=============================================================================
 // Core Data Structures
 //=============================================================================
@@ -190,10 +195,10 @@ extern "C" {
  *   - Allocated only when needed (5% of synapses)
  *   - Linked via metadata_index
  *
- * MEMORY LAYOUT (16 bytes with ternary, tightly packed):
- * ┌────────────────────────┬────────────────────────┬────────────────────────┬─────────────────────┐
- * │ target_neuron_id (4B)  │ weight (4B float)      │ metadata_index (4B)    │ ternary fields (4B) │
- * └────────────────────────┴────────────────────────┴────────────────────────┴─────────────────────┘
+ * MEMORY LAYOUT (24 bytes, tightly packed):
+ * ┌──────────────────┬──────────────┬──────────────┬──────────────┬──────────────┬─────────────┐
+ * │ target_id (4B)   │ weight (4B)  │ strength(4B) │ meta_idx(4B) │ peer_idx(4B) │ ternary(4B) │
+ * └──────────────────┴──────────────┴──────────────┴──────────────┴──────────────┴─────────────┘
  *
  * USAGE PATTERN:
  * ```c
@@ -205,14 +210,13 @@ extern "C" {
  * ```
  */
 typedef struct {
-    uint32_t target_neuron_id;  /**< Target neuron index in network */
-    float weight;               /**< Synaptic weight (strength) */
+    uint32_t target_neuron_id;  /**< Target neuron index in network (for incoming: source neuron ID) */
+    float weight;               /**< Synaptic weight */
+    float strength;             /**< Synaptic strength (separate from weight, default 1.0) */
     uint32_t metadata_index;    /**< Index into synapse metadata pool (SPARSE_SYNAPSE_NO_METADATA = none) */
+    uint32_t peer_index;        /**< Cross-ref: outgoing->incoming or incoming->outgoing (SPARSE_SYNAPSE_NO_PEER = none) */
 
     // NIMCP 2.10: Ternary weight support for sparse synapses
-    // WHAT: Optional ternary weight field for memory efficiency
-    // WHY:  When combined with packed storage, reduces weight from 4B to 0.2B
-    // HOW:  Set use_ternary_weight=true to use ternary_weight instead of weight
     trit_t ternary_weight;      /**< Ternary weight {-1, 0, +1} */
     uint8_t use_ternary_weight; /**< Use ternary weight (1) or float weight (0) */
     uint8_t reserved[2];        /**< Padding for alignment */
@@ -227,14 +231,14 @@ typedef struct {
  *
  * MEMORY LAYOUT:
  * ┌────────────────────────────────────────────────────────┐
- * │ embedded[64]: 64 × 12 bytes = 768 bytes (inline)       │
+ * │ embedded[64]: 64 × 24 bytes = 1,536 bytes (inline)     │
  * ├────────────────────────────────────────────────────────┤
  * │ embedded_count: 4 bytes                                │
  * │ overflow: 8 bytes (pointer)                            │
  * │ overflow_count: 4 bytes                                │
  * │ overflow_capacity: 4 bytes                             │
  * └────────────────────────────────────────────────────────┘
- * Total: 788 bytes per neuron (vs 60 KB in dense allocation)
+ * Total: 1,556 bytes per neuron (vs 53 KB in dense allocation)
  *
  * GROWTH STRATEGY:
  * - embedded_count ≤ 64: Store in embedded array (no allocation)

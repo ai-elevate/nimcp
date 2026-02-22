@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "core/topology/nimcp_fractal_topology.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -164,9 +165,10 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
         }
 
         // Add outgoing synapses (connections TO other neurons)
-        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-            synapse_t* syn = &neuron->synapses[s];
-            uint32_t target_id = syn->target_id;
+        for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+            synapse_handle_t* handle = NEURON_OUT_HANDLE(neuron, s);
+            if (!handle) continue;
+            uint32_t target_id = handle->target_neuron_id;
 
             // Validate target_id is within bounds
             if (target_id >= num_neurons) {
@@ -174,7 +176,7 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
                 continue;
             }
 
-            float weight = fabsf(syn->weight);  // Use absolute weight for community detection
+            float weight = fabsf(handle->weight);  // Use absolute weight for community detection
 
             // Grow arrays if needed
             if (node->num_neighbors >= node->capacity) {
@@ -624,7 +626,7 @@ hub_structure_t* community_detect_hubs(
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (!neuron) continue;
 
-        degree[i] = (float)(neuron->num_synapses + neuron->num_incoming);
+        degree[i] = (float)(NEURON_OUT_COUNT(neuron) + NEURON_IN_COUNT(neuron));
         if (degree[i] > max_degree) max_degree = degree[i];
     }
 

@@ -11,6 +11,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -149,7 +150,7 @@ static bool build_adjacency_lists(
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
         // Get neuron and count its outgoing synapses
         neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
-        uint32_t num_synapses = neuron ? neuron->num_synapses : 0;
+        uint32_t num_synapses = neuron ? NEURON_OUT_COUNT(neuron) : 0;
         walker->node_degrees[neuron_id] = num_synapses;
     }
 

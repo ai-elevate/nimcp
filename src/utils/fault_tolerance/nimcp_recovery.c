@@ -17,6 +17,7 @@
 #include "core/brain/nimcp_brain_state.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet_core.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
@@ -262,19 +263,22 @@ static recovery_status_t action_clear_nan(brain_t brain)
     /* Iterate through all neurons and their synapses */
     for (uint32_t n = 0; n < num_neurons; n++) {
         neuron_t* neuron = neural_network_get_neuron(base_net, n);
-        if (!neuron || !neuron->synapses) continue;
+        if (!neuron) continue;
 
-        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-            float weight = neuron->synapses[s].weight;
+        uint32_t out_count = NEURON_OUT_COUNT(neuron);
+        for (uint32_t s = 0; s < out_count; s++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+            if (!h) continue;
+            float weight = h->weight;
 
             /* Check for NaN */
             if (isnan(weight)) {
-                neuron->synapses[s].weight = 0.0f;
+                h->weight = 0.0f;
                 nan_cleared++;
             }
             /* Check for Inf */
             else if (isinf(weight)) {
-                neuron->synapses[s].weight = 0.0f;
+                h->weight = 0.0f;
                 inf_cleared++;
             }
         }

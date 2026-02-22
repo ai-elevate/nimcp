@@ -10,6 +10,7 @@
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/containers/nimcp_graph.h"
 #include "utils/algorithms/nimcp_centrality.h"
 #include "utils/memory/nimcp_memory.h"
@@ -760,25 +761,30 @@ bool topology_generate(
  */
 static float compute_local_clustering(neural_network_t network, uint32_t neuron_id) {
     neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
-    if (!neuron || neuron->num_synapses < 2) {
+    if (!neuron || NEURON_OUT_COUNT(neuron) < 2) {
         return 0.0F;  // Need at least 2 neighbors for triangles
     }
 
-    uint32_t degree = neuron->num_synapses;
+    uint32_t degree = NEURON_OUT_COUNT(neuron);
     uint32_t triangles = 0;
 
     // Count triangles: for each pair of neighbors, check if they're connected
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        uint32_t neighbor_i = neuron->synapses[i].target_id;
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_handle_t* hi = NEURON_OUT_HANDLE(neuron, i);
+        if (!hi) continue;
+        uint32_t neighbor_i = hi->target_neuron_id;
         neuron_t* ni = neural_network_get_neuron(network, neighbor_i);
         if (!ni) continue;
 
-        for (uint32_t j = i + 1; j < neuron->num_synapses; j++) {
-            uint32_t neighbor_j = neuron->synapses[j].target_id;
+        for (uint32_t j = i + 1; j < NEURON_OUT_COUNT(neuron); j++) {
+            synapse_handle_t* hj = NEURON_OUT_HANDLE(neuron, j);
+            if (!hj) continue;
+            uint32_t neighbor_j = hj->target_neuron_id;
 
             // Check if neighbor_i connects to neighbor_j
-            for (uint32_t k = 0; k < ni->num_synapses; k++) {
-                if (ni->synapses[k].target_id == neighbor_j) {
+            for (uint32_t k = 0; k < NEURON_OUT_COUNT(ni); k++) {
+                synapse_handle_t* hk = NEURON_OUT_HANDLE(ni, k);
+                if (hk && hk->target_neuron_id == neighbor_j) {
                     triangles++;
                     break;
                 }
@@ -808,7 +814,7 @@ static float compute_clustering_coefficient(neural_network_t network) {
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
-        if (neuron && neuron->num_synapses >= 2) {
+        if (neuron && NEURON_OUT_COUNT(neuron) >= 2) {
             float local_c = compute_local_clustering(network, i);
             sum_clustering += local_c;
             valid_neurons++;
@@ -851,8 +857,10 @@ static uint32_t bfs_shortest_paths(neural_network_t network, uint32_t source, ui
         if (!neuron) continue;
 
         // Visit all neighbors
-        for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-            uint32_t neighbor = neuron->synapses[i].target_id;
+        for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+            synapse_handle_t* sh = NEURON_OUT_HANDLE(neuron, i);
+            if (!sh) continue;
+            uint32_t neighbor = sh->target_neuron_id;
             if (neighbor >= num_neurons) continue;  // Guard against invalid IDs
 
             // If not visited yet
@@ -921,7 +929,7 @@ static float compute_power_law_fit(neural_network_t network) {
     uint32_t max_degree = 0;
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
-        degrees[i] = neuron ? neuron->num_synapses : 0;
+        degrees[i] = neuron ? NEURON_OUT_COUNT(neuron) : 0;
         if (degrees[i] > max_degree) max_degree = degrees[i];
     }
 
@@ -986,7 +994,7 @@ static float compute_power_law_fit(neural_network_t network) {
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
-        uint32_t degree = neuron ? neuron->num_synapses : 0;
+        uint32_t degree = neuron ? NEURON_OUT_COUNT(neuron) : 0;
         hist2[degree]++;
     }
 
@@ -1035,7 +1043,7 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
-        degrees[i] = neuron ? neuron->num_synapses : 0;
+        degrees[i] = neuron ? NEURON_OUT_COUNT(neuron) : 0;
         total_synapses += degrees[i];
         if (degree_floats) {
             degree_floats[i] = (float)degrees[i];
@@ -1159,7 +1167,7 @@ static float compute_small_world_sigma(neural_network_t network, float clusterin
     uint32_t total_synapses = 0;
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
-        if (neuron) total_synapses += neuron->num_synapses;
+        if (neuron) total_synapses += NEURON_OUT_COUNT(neuron);
     }
 
     uint32_t max_possible_synapses = num_neurons * (num_neurons - 1);
@@ -1224,7 +1232,7 @@ bool topology_compute_stats(
     for (uint32_t i = 0; i < stats->num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (neuron) {
-            uint32_t degree = neuron->num_synapses;
+            uint32_t degree = NEURON_OUT_COUNT(neuron);
             total_synapses += degree;
             sum_degree += (float)degree;
             sum_degree_sq += (float)(degree * degree);
@@ -1342,7 +1350,7 @@ bool topology_fit_power_law(
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (neuron) {
-            degrees[i] = neuron->num_synapses;
+            degrees[i] = NEURON_OUT_COUNT(neuron);
             if (degrees[i] > max_degree) {
                 max_degree = degrees[i];
             }
@@ -1472,9 +1480,10 @@ bool topology_identify_hubs(
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (!neuron) continue;
 
-        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-            synapse_t* syn = &neuron->synapses[j];
-            nimcp_graph_add_edge(graph, i, syn->target_id, fabs(syn->weight));
+        for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+            synapse_handle_t* sh = NEURON_OUT_HANDLE(neuron, j);
+            if (!sh) continue;
+            nimcp_graph_add_edge(graph, i, sh->target_neuron_id, fabs(sh->weight));
         }
     }
 
@@ -1584,9 +1593,10 @@ bool topology_compute_betweenness(
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (!neuron) continue;
 
-        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-            synapse_t* syn = &neuron->synapses[j];
-            nimcp_graph_add_edge(graph, i, syn->target_id, fabs(syn->weight));
+        for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+            synapse_handle_t* sh = NEURON_OUT_HANDLE(neuron, j);
+            if (!sh) continue;
+            nimcp_graph_add_edge(graph, i, sh->target_neuron_id, fabs(sh->weight));
         }
     }
 

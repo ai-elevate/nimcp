@@ -146,8 +146,8 @@ nimcp_status_t nimcp_brain_train_step(
         // Count weights manually
         for (uint32_t n = 0; n < num_neurons; n++) {
             neuron_t* neuron = neural_network_get_neuron(base_net, n);
-            if (neuron && neuron->synapses) {
-                total_weights += neuron->num_synapses;
+            if (neuron) {
+                total_weights += NEURON_OUT_COUNT(neuron);
             }
         }
     }
@@ -194,9 +194,11 @@ nimcp_status_t nimcp_brain_train_step(
     size_t weight_idx = 0;
     for (uint32_t n = 0; n < num_neurons; n++) {
         neuron_t* neuron = neural_network_get_neuron(base_net, n);
-        if (neuron && neuron->synapses) {
-            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-                params[weight_idx++] = neuron->synapses[s].weight;
+        if (neuron) {
+            uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+            for (uint32_t s = 0; s < nsyn; s++) {
+                synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+                params[weight_idx++] = h ? h->weight : 0.0F;
             }
         }
     }
@@ -284,28 +286,29 @@ nimcp_status_t nimcp_brain_train_step(
     }
 
     // === STEP 8: Write updated weights back to network ===
-    // NOTE: Must update BOTH outgoing synapses AND incoming synapses
-    // The forward pass reads from incoming_synapses, but they're separate copies
+    // NOTE: Must update BOTH outgoing handles AND incoming handles via peer_index
+    // The forward pass reads from incoming handles
     if (res == NIMCP_SUCCESS || res == NIMCP_TRAINING_ERROR_EARLY_STOP) {
         weight_idx = 0;
         for (uint32_t n = 0; n < num_neurons; n++) {
             neuron_t* neuron = neural_network_get_neuron(base_net, n);
-            if (neuron && neuron->synapses) {
-                for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            if (neuron) {
+                uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+                for (uint32_t s = 0; s < nsyn; s++) {
                     float new_weight = params[weight_idx++];
-                    neuron->synapses[s].weight = new_weight;
+                    synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, s);
+                    if (!out_h) continue;
+                    out_h->weight = new_weight;
 
-                    // BUGFIX: Also update the corresponding incoming synapse on the target neuron
-                    // The incoming synapse is where forward pass reads from!
-                    uint32_t target_id = neuron->synapses[s].target_id;
-                    if (target_id < num_neurons) {
-                        neuron_t* target_neuron = neural_network_get_neuron(base_net, target_id);
-                        if (target_neuron && target_neuron->incoming_synapses) {
-                            // Find the incoming synapse with source_neuron_id == n
-                            for (uint32_t i = 0; i < target_neuron->num_incoming; i++) {
-                                if (target_neuron->incoming_synapses[i].source_neuron_id == n) {
-                                    target_neuron->incoming_synapses[i].weight = new_weight;
-                                    break;
+                    // Also update corresponding incoming handle via peer_index (O(1))
+                    if (out_h->peer_index != SPARSE_SYNAPSE_NO_PEER) {
+                        uint32_t target_id = out_h->target_neuron_id;
+                        if (target_id < num_neurons) {
+                            neuron_t* target_neuron = neural_network_get_neuron(base_net, target_id);
+                            if (target_neuron) {
+                                synapse_handle_t* in_h = NEURON_IN_HANDLE(target_neuron, out_h->peer_index);
+                                if (in_h) {
+                                    in_h->weight = new_weight;
                                 }
                             }
                         }

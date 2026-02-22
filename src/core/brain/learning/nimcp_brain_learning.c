@@ -37,6 +37,7 @@
 #include <stdbool.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_security.h"
@@ -709,8 +710,8 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             uint32_t total_weights = 0;
             for (uint32_t n = 0; n < num_neurons_to_optimize; n++) {
                 neuron_t* neuron = neural_network_get_neuron(base_net, n);
-                if (neuron && neuron->synapses) {
-                    total_weights += neuron->num_synapses;
+                if (neuron) {
+                    total_weights += NEURON_OUT_COUNT(neuron);
                 }
             }
 
@@ -724,9 +725,11 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                     uint32_t weight_idx = 0;
                     for (uint32_t n = 0; n < num_neurons_to_optimize; n++) {
                         neuron_t* neuron = neural_network_get_neuron(base_net, n);
-                        if (neuron && neuron->synapses) {
-                            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-                                current_weights[weight_idx++] = neuron->synapses[s].weight;
+                        if (neuron) {
+                            uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+                            for (uint32_t s = 0; s < nsyn; s++) {
+                                synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+                                current_weights[weight_idx++] = h ? h->weight : 0.0F;
                             }
                         }
                     }
@@ -740,13 +743,16 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                     weight_idx = 0;
                     for (uint32_t n = 0; n < num_neurons_to_optimize; n++) {
                         neuron_t* neuron = neural_network_get_neuron(base_net, n);
-                        if (neuron && neuron->synapses) {
-                            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+                        if (neuron) {
+                            uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+                            for (uint32_t s = 0; s < nsyn; s++) {
+                                synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+                                if (!h) { weight_idx++; continue; }
                                 // Apply with damping to avoid disrupting learning too much
                                 float alpha = 0.1F;  // Mix 10% optimized, 90% current
-                                neuron->synapses[s].weight =
+                                h->weight =
                                     alpha * optimized_weights[weight_idx] +
-                                    (1.0F - alpha) * neuron->synapses[s].weight;
+                                    (1.0F - alpha) * h->weight;
                                 weight_idx++;
                             }
                         }
@@ -950,9 +956,10 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 uint32_t synapses_per_neuron = 0;
                 for (uint32_t i = 0; i < num_neurons && i < 100; i++) {
                     neuron_t* neuron = neural_network_get_neuron(base_net, i);
-                    if (neuron && neuron->synapses) {
-                        total_synapses += neuron->num_synapses;
-                        if (i == 0) synapses_per_neuron = neuron->num_synapses;
+                    if (neuron) {
+                        uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+                        total_synapses += nsyn;
+                        if (i == 0) synapses_per_neuron = nsyn;
                     }
                 }
 
@@ -963,9 +970,11 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                         uint32_t w_idx = 0;
                         for (uint32_t i = 0; i < num_neurons && i < 100 && w_idx < total_synapses; i++) {
                             neuron_t* neuron = neural_network_get_neuron(base_net, i);
-                            if (neuron && neuron->synapses) {
-                                for (uint32_t s = 0; s < neuron->num_synapses && w_idx < total_synapses; s++) {
-                                    weights[w_idx++] = neuron->synapses[s].weight;
+                            if (neuron) {
+                                uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+                                for (uint32_t s = 0; s < nsyn && w_idx < total_synapses; s++) {
+                                    synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+                                    weights[w_idx++] = h ? h->weight : 0.0F;
                                 }
                             }
                         }

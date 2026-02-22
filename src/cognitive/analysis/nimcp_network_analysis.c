@@ -29,6 +29,7 @@
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/brain/nimcp_brain.h"
 #include <string.h>
@@ -101,18 +102,19 @@ static NimcpGraph* build_graph_from_network(neural_network_t network) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (!neuron) continue;
 
-        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+        uint32_t out_count = NEURON_OUT_COUNT(neuron);
+        for (uint32_t s = 0; s < out_count; s++) {
             /* Phase 8: Loop progress heartbeat */
-            if ((s & 0xFF) == 0 && neuron->num_synapses > 256) {
+            if ((s & 0xFF) == 0 && out_count > 256) {
                 network_analysis_heartbeat("network_anal_loop",
-                                 (float)(s + 1) / (float)neuron->num_synapses);
+                                 (float)(s + 1) / (float)out_count);
             }
 
-            synapse_t* syn = &neuron->synapses[s];
+            synapse_handle_t* syn = NEURON_OUT_HANDLE(neuron, s);
             if (syn) {
                 // Add edge with absolute weight
                 nimcp_weight_t edge_weight = fabsf(syn->weight);
-                nimcp_graph_add_edge(graph, i, syn->target_id, edge_weight);
+                nimcp_graph_add_edge(graph, i, syn->target_neuron_id, edge_weight);
             }
         }
     }
@@ -504,7 +506,7 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
 
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (neuron) {
-            total_synapses += neuron->num_synapses;
+            total_synapses += NEURON_OUT_COUNT(neuron);
         }
     }
 

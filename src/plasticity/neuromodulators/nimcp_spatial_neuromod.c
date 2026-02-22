@@ -30,6 +30,7 @@
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include <stddef.h>  /* for NULL */
@@ -889,9 +890,9 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
         float lap_sum = 0.0F;
 
         // Sum over outgoing synapses (neighbors)
-        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-            synapse_t* syn = &neuron->synapses[s];
-            uint32_t j = syn->target_id;
+        for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+            synapse_handle_t* syn = NEURON_OUT_HANDLE(neuron, s);
+            uint32_t j = syn->target_neuron_id;
 
             if (!is_valid_neuron_id(j, num_neurons)) {
                 continue;  // Skip invalid connections
@@ -902,8 +903,8 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
         }
 
         // Also consider incoming synapses for bidirectional diffusion
-        for (uint32_t s = 0; s < neuron->num_incoming; s++) {
-            synapse_t* syn = &neuron->incoming_synapses[s];
+        for (uint32_t s = 0; s < NEURON_IN_COUNT(neuron); s++) {
+            synapse_handle_t* syn = NEURON_IN_HANDLE(neuron, s);
             // Find source neuron (need to search network - optimization possible)
             // For simplicity, we assume bidirectional diffusion via outgoing only
             // In full implementation, track source_id in synapse
@@ -1212,13 +1213,13 @@ float spatial_neuromod_get_gradient(const spatial_neuromod_field_t* field,
     }
 
     float gradient_sum = 0.0F;
-    uint32_t degree = neuron->num_synapses;
+    uint32_t degree = NEURON_OUT_COUNT(neuron);
 
     if (degree == 0) return 0.0F;
 
     for (uint32_t s = 0; s < degree; s++) {
-        synapse_t* syn = &neuron->synapses[s];
-        uint32_t j = syn->target_id;
+        synapse_handle_t* syn = NEURON_OUT_HANDLE(neuron, s);
+        uint32_t j = syn->target_neuron_id;
 
         if (!is_valid_neuron_id(j, field->num_neurons)) continue;
 

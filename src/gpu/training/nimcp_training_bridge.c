@@ -24,6 +24,7 @@
  */
 
 #include "gpu/training/nimcp_training_bridge.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "gpu/training/nimcp_training_gpu.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -261,16 +262,19 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
             cache->host_bias_buf[i] = neuron->bias;
 
             // Extract incoming synapse weights
-            for (uint32_t j = 0; j < neuron->num_incoming; j++) {
-                synapse_t* syn = &neuron->incoming_synapses[j];
+            for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
+                synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, j);
+                if (!in_h) continue;
 
                 // Convert global source_neuron_id to layer-local index
-                if (syn->source_neuron_id >= src_offset &&
-                    syn->source_neuron_id < src_offset + src_layer_size) {
-                    uint32_t src_local = syn->source_neuron_id - src_offset;
+                // In incoming handles, target_neuron_id stores the source neuron ID
+                uint32_t source_id = in_h->target_neuron_id;
+                if (source_id >= src_offset &&
+                    source_id < src_offset + src_layer_size) {
+                    uint32_t src_local = source_id - src_offset;
 
                     // Effective weight = weight * strength (same as CPU forward pass)
-                    float eff_weight = syn->weight * syn->strength;
+                    float eff_weight = in_h->weight * in_h->strength;
 
                     // Row-major: W[i][src_local] = W[i * src_layer_size + src_local]
                     cache->host_weight_buf[i * src_layer_size + src_local] = eff_weight;
@@ -330,20 +334,22 @@ bool nimcp_gpu_weight_cache_download(nimcp_gpu_weight_cache_t* cache, neural_net
             neuron_t* neuron = neural_network_get_neuron(net, neuron_id);
             if (!neuron) continue;
 
-            for (uint32_t j = 0; j < neuron->num_incoming; j++) {
-                synapse_t* syn = &neuron->incoming_synapses[j];
+            for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
+                synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, j);
+                if (!in_h) continue;
 
-                if (syn->source_neuron_id >= src_offset &&
-                    syn->source_neuron_id < src_offset + src_layer_size) {
-                    uint32_t src_local = syn->source_neuron_id - src_offset;
+                uint32_t source_id = in_h->target_neuron_id;
+                if (source_id >= src_offset &&
+                    source_id < src_offset + src_layer_size) {
+                    uint32_t src_local = source_id - src_offset;
                     float eff_weight = cache->host_weight_buf[i * src_layer_size + src_local];
 
                     // Divide by strength to preserve strength separately
                     // Guard against division by zero
-                    if (fabsf(syn->strength) > 1e-8f) {
-                        syn->weight = eff_weight / syn->strength;
+                    if (fabsf(in_h->strength) > 1e-8f) {
+                        in_h->weight = eff_weight / in_h->strength;
                     } else {
-                        syn->weight = eff_weight;
+                        in_h->weight = eff_weight;
                     }
                 }
             }

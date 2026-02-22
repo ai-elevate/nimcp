@@ -40,6 +40,7 @@
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(checkpoint)
 
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -411,18 +412,23 @@ static bool serialize_brain_state(brain_t brain, uint8_t** buffer, size_t* size)
         offset += sizeof(float);
         memcpy(buf + offset, &neuron->plasticity_rate, sizeof(float));
         offset += sizeof(float);
-        memcpy(buf + offset, &neuron->num_synapses, sizeof(uint32_t));
+        uint32_t num_syn_out = NEURON_OUT_COUNT(neuron);
+        memcpy(buf + offset, &num_syn_out, sizeof(uint32_t));
         offset += sizeof(uint32_t);
 
-        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-            synapse_t* syn = &neuron->synapses[s];
-            memcpy(buf + offset, &syn->target_id, sizeof(uint32_t));
+        synapse_metadata_pool_t ser_mpool = neural_network_get_synapse_metadata_pool(base_net);
+        for (uint32_t s = 0; s < num_syn_out; s++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+            memcpy(buf + offset, &h->target_neuron_id, sizeof(uint32_t));
             offset += sizeof(uint32_t);
-            memcpy(buf + offset, &syn->weight, sizeof(float));
+            memcpy(buf + offset, &h->weight, sizeof(float));
             offset += sizeof(float);
-            memcpy(buf + offset, &syn->plasticity, sizeof(float));
+            float plasticity = 0.0f;
+            synapse_t* meta = sparse_synapse_get_metadata(ser_mpool, h);
+            if (meta) plasticity = meta->plasticity;
+            memcpy(buf + offset, &plasticity, sizeof(float));
             offset += sizeof(float);
-            memcpy(buf + offset, &syn->strength, sizeof(float));
+            memcpy(buf + offset, &h->strength, sizeof(float));
             offset += sizeof(float);
         }
     }
@@ -547,15 +553,21 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
             memcpy(&num_syn, buffer + offset, sizeof(uint32_t));
             offset += sizeof(uint32_t);
 
-            uint32_t syn_restore = (num_syn < neuron->num_synapses) ? num_syn : neuron->num_synapses;
+            uint32_t neuron_out_count = NEURON_OUT_COUNT(neuron);
+            uint32_t syn_restore = (num_syn < neuron_out_count) ? num_syn : neuron_out_count;
+            synapse_metadata_pool_t deser_mpool = neural_network_get_synapse_metadata_pool(base_net);
             for (uint32_t s = 0; s < syn_restore && offset + sizeof(uint32_t) + 3 * sizeof(float) <= size; s++) {
-                memcpy(&neuron->synapses[s].target_id, buffer + offset, sizeof(uint32_t));
+                synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+                memcpy(&h->target_neuron_id, buffer + offset, sizeof(uint32_t));
                 offset += sizeof(uint32_t);
-                memcpy(&neuron->synapses[s].weight, buffer + offset, sizeof(float));
+                memcpy(&h->weight, buffer + offset, sizeof(float));
                 offset += sizeof(float);
-                memcpy(&neuron->synapses[s].plasticity, buffer + offset, sizeof(float));
+                float plasticity;
+                memcpy(&plasticity, buffer + offset, sizeof(float));
                 offset += sizeof(float);
-                memcpy(&neuron->synapses[s].strength, buffer + offset, sizeof(float));
+                synapse_t* meta = sparse_synapse_get_metadata(deser_mpool, h);
+                if (meta) meta->plasticity = plasticity;
+                memcpy(&h->strength, buffer + offset, sizeof(float));
                 offset += sizeof(float);
             }
             for (uint32_t s = syn_restore; s < num_syn; s++) {
@@ -1120,11 +1132,19 @@ bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
         t->avg_activity = s->avg_activity;
         t->plasticity_rate = s->plasticity_rate;
 
-        uint32_t syn_copy = (t->num_synapses < s->num_synapses) ? t->num_synapses : s->num_synapses;
+        uint32_t t_syn = NEURON_OUT_COUNT(t);
+        uint32_t s_syn = NEURON_OUT_COUNT(s);
+        uint32_t syn_copy = (t_syn < s_syn) ? t_syn : s_syn;
+        synapse_metadata_pool_t t_mpool = neural_network_get_synapse_metadata_pool(target_base);
+        synapse_metadata_pool_t s_mpool = neural_network_get_synapse_metadata_pool(source_base);
         for (uint32_t i = 0; i < syn_copy; i++) {
-            t->synapses[i].weight = s->synapses[i].weight;
-            t->synapses[i].plasticity = s->synapses[i].plasticity;
-            t->synapses[i].strength = s->synapses[i].strength;
+            synapse_handle_t* th = NEURON_OUT_HANDLE(t, i);
+            synapse_handle_t* sh = NEURON_OUT_HANDLE(s, i);
+            th->weight = sh->weight;
+            th->strength = sh->strength;
+            synapse_t* t_meta = sparse_synapse_get_metadata(t_mpool, th);
+            synapse_t* s_meta = sparse_synapse_get_metadata(s_mpool, sh);
+            if (t_meta && s_meta) t_meta->plasticity = s_meta->plasticity;
         }
     }
 
@@ -1266,15 +1286,21 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
                 memcpy(&num_syn, data + offset, sizeof(uint32_t));
                 offset += sizeof(uint32_t);
 
-                uint32_t syn_restore = (num_syn < neuron->num_synapses) ? num_syn : neuron->num_synapses;
+                uint32_t neuron_out_cnt = NEURON_OUT_COUNT(neuron);
+                uint32_t syn_restore = (num_syn < neuron_out_cnt) ? num_syn : neuron_out_cnt;
+                synapse_metadata_pool_t part_mpool = neural_network_get_synapse_metadata_pool(base);
                 for (uint32_t s = 0; s < syn_restore && offset + sizeof(uint32_t) + 3 * sizeof(float) <= bytes_read; s++) {
-                    memcpy(&neuron->synapses[s].target_id, data + offset, sizeof(uint32_t));
+                    synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+                    memcpy(&h->target_neuron_id, data + offset, sizeof(uint32_t));
                     offset += sizeof(uint32_t);
-                    memcpy(&neuron->synapses[s].weight, data + offset, sizeof(float));
+                    memcpy(&h->weight, data + offset, sizeof(float));
                     offset += sizeof(float);
-                    memcpy(&neuron->synapses[s].plasticity, data + offset, sizeof(float));
+                    float plasticity;
+                    memcpy(&plasticity, data + offset, sizeof(float));
                     offset += sizeof(float);
-                    memcpy(&neuron->synapses[s].strength, data + offset, sizeof(float));
+                    synapse_t* meta = sparse_synapse_get_metadata(part_mpool, h);
+                    if (meta) meta->plasticity = plasticity;
+                    memcpy(&h->strength, data + offset, sizeof(float));
                     offset += sizeof(float);
                 }
                 for (uint32_t s = syn_restore; s < num_syn; s++) {

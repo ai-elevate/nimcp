@@ -4,6 +4,7 @@
 //=============================================================================
 
 #include "core/topology/nimcp_network_builder.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "api/nimcp_api_exception.h"
@@ -265,7 +266,7 @@ bool network_init_weights_pink_noise(
     uint32_t total_synapses = 0;
 
     for (uint32_t i = 0; i < net->num_neurons; i++) {
-        total_synapses += net->neurons[i].num_synapses;
+        total_synapses += NEURON_OUT_COUNT(&net->neurons[i]);
     }
 
     if (total_synapses == 0) {
@@ -313,9 +314,12 @@ bool network_init_weights_pink_noise(
     for (uint32_t i = 0; i < net->num_neurons; i++) {
         neuron_t* neuron = &net->neurons[i];
 
-        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-            // Set weight = base_weight + pink_noise_sample
-            neuron->synapses[j].weight = base_weight + noise_samples[sample_idx];
+        uint32_t nsyn = NEURON_OUT_COUNT(neuron);
+        for (uint32_t j = 0; j < nsyn; j++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, j);
+            if (h) {
+                h->weight = base_weight + noise_samples[sample_idx];
+            }
             sample_idx++;
         }
     }

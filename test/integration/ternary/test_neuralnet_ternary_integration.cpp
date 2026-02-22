@@ -26,6 +26,7 @@
 
 // Headers have their own extern "C" guards
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
@@ -80,15 +81,17 @@ protected:
         bool success = neural_network_add_connection(network, from, to, float_weight);
         ASSERT_TRUE(success) << "Failed to add connection";
 
-        // Get neuron and set ternary weight on last synapse
+        // Get neuron and set ternary weight on last synapse handle
         neuron_t* neuron = neural_network_get_neuron(network, from);
         ASSERT_NE(neuron, nullptr);
 
-        if (neuron->num_synapses > 0) {
-            synapse_t* syn = &neuron->synapses[neuron->num_synapses - 1];
-            syn->ternary_weight = ternary_weight;
-            syn->use_ternary_weight = true;
-            syn->ternary_scale = scale;
+        uint32_t count = NEURON_OUT_COUNT(neuron);
+        if (count > 0) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, count - 1);
+            h->ternary_weight = ternary_weight;
+            h->use_ternary_weight = true;
+            synapse_t* meta = neural_network_get_out_meta(network, neuron, count - 1);
+            if (meta) meta->ternary_scale = scale;
         }
     }
 };
@@ -135,22 +138,22 @@ TEST_F(NeuralNetTernaryIntegrationTest, TernaryWeightConsistency) {
 
     neuron_t* neuron = neural_network_get_neuron(network, 0);
     ASSERT_NE(neuron, nullptr);
-    ASSERT_GT(neuron->num_synapses, 0u);
+    ASSERT_GT(NEURON_OUT_COUNT(neuron), 0u);
 
-    synapse_t* syn = &neuron->synapses[neuron->num_synapses - 1];
+    synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, NEURON_OUT_COUNT(neuron) - 1);
 
     // Verify ternary weight matches expected dequantized value
-    float dequant = trit_dequantize_weight(syn->ternary_weight, scale, -scale);
+    float dequant = trit_dequantize_weight(h->ternary_weight, scale, -scale);
     EXPECT_FLOAT_EQ(dequant, scale) << "TRIT_POSITIVE should dequantize to positive scale";
 
     // Test negative
-    syn->ternary_weight = TRIT_NEGATIVE;
-    dequant = trit_dequantize_weight(syn->ternary_weight, scale, -scale);
+    h->ternary_weight = TRIT_NEGATIVE;
+    dequant = trit_dequantize_weight(h->ternary_weight, scale, -scale);
     EXPECT_FLOAT_EQ(dequant, -scale) << "TRIT_NEGATIVE should dequantize to negative scale";
 
     // Test zero
-    syn->ternary_weight = TRIT_UNKNOWN;
-    dequant = trit_dequantize_weight(syn->ternary_weight, scale, -scale);
+    h->ternary_weight = TRIT_UNKNOWN;
+    dequant = trit_dequantize_weight(h->ternary_weight, scale, -scale);
     EXPECT_FLOAT_EQ(dequant, 0.0f) << "TRIT_UNKNOWN should dequantize to zero";
 }
 
@@ -170,7 +173,7 @@ TEST_F(NeuralNetTernaryIntegrationTest, TernaryWeightPropagation) {
     for (int i = 0; i < 5; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         ASSERT_NE(neuron, nullptr);
-        EXPECT_GT(neuron->num_synapses, 0u) << "Neuron " << i << " should have synapses";
+        EXPECT_GT(NEURON_OUT_COUNT(neuron), 0u) << "Neuron " << i << " should have synapses";
     }
 
     // Run forward pass
@@ -203,14 +206,14 @@ TEST_F(NeuralNetTernaryIntegrationTest, MixedFloatTernaryWeights) {
 
     ASSERT_NE(n0, nullptr);
     ASSERT_NE(n3, nullptr);
-    ASSERT_GT(n0->num_synapses, 0u);
-    ASSERT_GT(n3->num_synapses, 0u);
+    ASSERT_GT(NEURON_OUT_COUNT(n0), 0u);
+    ASSERT_GT(NEURON_OUT_COUNT(n3), 0u);
 
     // Float synapse should not use ternary
-    EXPECT_FALSE(n0->synapses[n0->num_synapses - 1].use_ternary_weight);
+    EXPECT_FALSE(NEURON_OUT_HANDLE(n0, NEURON_OUT_COUNT(n0) - 1)->use_ternary_weight);
 
     // Ternary synapse should use ternary
-    EXPECT_TRUE(n3->synapses[n3->num_synapses - 1].use_ternary_weight);
+    EXPECT_TRUE(NEURON_OUT_HANDLE(n3, NEURON_OUT_COUNT(n3) - 1)->use_ternary_weight);
 
     // Run forward pass with mixed configuration
     float inputs[10] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
@@ -244,11 +247,11 @@ TEST_F(NeuralNetTernaryIntegrationTest, LayerWiseTernaryConfiguration) {
         ASSERT_NE(layer1_neuron, nullptr);
         ASSERT_NE(layer2_neuron, nullptr);
 
-        if (layer1_neuron->num_synapses > 0) {
-            EXPECT_FALSE(layer1_neuron->synapses[layer1_neuron->num_synapses - 1].use_ternary_weight);
+        if (NEURON_OUT_COUNT(layer1_neuron) > 0) {
+            EXPECT_FALSE(NEURON_OUT_HANDLE(layer1_neuron, NEURON_OUT_COUNT(layer1_neuron) - 1)->use_ternary_weight);
         }
-        if (layer2_neuron->num_synapses > 0) {
-            EXPECT_TRUE(layer2_neuron->synapses[layer2_neuron->num_synapses - 1].use_ternary_weight);
+        if (NEURON_OUT_COUNT(layer2_neuron) > 0) {
+            EXPECT_TRUE(NEURON_OUT_HANDLE(layer2_neuron, NEURON_OUT_COUNT(layer2_neuron) - 1)->use_ternary_weight);
         }
     }
 }
@@ -271,15 +274,17 @@ TEST_F(NeuralNetTernaryIntegrationTest, FloatToTernaryConversion) {
     for (int i = 0; i < 5; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         ASSERT_NE(neuron, nullptr);
-        ASSERT_GT(neuron->num_synapses, 0u);
+        uint32_t nc = NEURON_OUT_COUNT(neuron);
+        ASSERT_GT(nc, 0u);
 
-        synapse_t* syn = &neuron->synapses[neuron->num_synapses - 1];
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, nc - 1);
 
         // Quantize float weight to ternary
-        trit_t ternary = trit_from_float_threshold(syn->weight, threshold);
-        syn->ternary_weight = ternary;
-        syn->use_ternary_weight = true;
-        syn->ternary_scale = 1.0f;
+        trit_t ternary = trit_from_float_threshold(h->weight, threshold);
+        h->ternary_weight = ternary;
+        h->use_ternary_weight = true;
+        synapse_t* meta = neural_network_get_out_meta(network, neuron, nc - 1);
+        if (meta) meta->ternary_scale = 1.0f;
     }
 
     // Verify conversions
@@ -293,8 +298,8 @@ TEST_F(NeuralNetTernaryIntegrationTest, FloatToTernaryConversion) {
 
     for (int i = 0; i < 5; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
-        synapse_t* syn = &neuron->synapses[neuron->num_synapses - 1];
-        EXPECT_EQ(syn->ternary_weight, expected[i])
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, NEURON_OUT_COUNT(neuron) - 1);
+        EXPECT_EQ(h->ternary_weight, expected[i])
             << "Weight " << weights[i] << " should convert to " << (int)expected[i];
     }
 }
@@ -386,10 +391,10 @@ TEST_F(NeuralNetTernaryIntegrationTest, TernaryVectorWeightIntegration) {
     for (size_t i = 0; i < num_weights; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, (uint32_t)i);
         ASSERT_NE(neuron, nullptr);
-        ASSERT_GT(neuron->num_synapses, 0u);
+        ASSERT_GT(NEURON_OUT_COUNT(neuron), 0u);
 
         trit_t vec_weight = trit_vector_get(weight_vec, i);
-        trit_t syn_weight = neuron->synapses[neuron->num_synapses - 1].ternary_weight;
+        trit_t syn_weight = NEURON_OUT_HANDLE(neuron, NEURON_OUT_COUNT(neuron) - 1)->ternary_weight;
         EXPECT_EQ(syn_weight, vec_weight) << "Synapse weight should match vector weight at index " << i;
     }
 

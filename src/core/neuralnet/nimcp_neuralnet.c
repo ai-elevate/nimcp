@@ -38,6 +38,8 @@
  */
 
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_sparse_synapse.h"         // NIMCP 2.11: Sparse synapse pools
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"  // NIMCP 2.11: Accessor macros
 #include "core/synapse_compute/nimcp_synapse_compute.h"  // NIMCP 2.7: Programmable synapses
 #include "core/synapse_types/nimcp_synapse_types.h"      // NIMCP 2.8.7: Synapse type system
 #include "core/neuron_models/nimcp_neuron_model.h"
@@ -168,6 +170,10 @@ struct neural_network_struct {
     // Bio-async integration
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    // Sparse synapse pools (NIMCP 2.11: Memory-efficient synapse storage)
+    sparse_synapse_pool_t synapse_handle_pool;
+    synapse_metadata_pool_t synapse_metadata_pool;
 };
 
 //=============================================================================
@@ -182,7 +188,7 @@ static void init_activation_strategies(activation_strategy_table_t* table);
 // Membrane and dynamics
 static float compute_membrane_potential(neuron_t* neuron, neural_network_t network);
 static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp);
-static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp);
+static void update_synaptic_traces(neural_network_t network, neuron_t* neuron, uint64_t timestamp);
 
 // Learning rules
 static float compute_stdp_update(float dt, const stdp_params_t* params);
@@ -191,7 +197,7 @@ static float compute_oja_weight_update(float pre_activity, float post_activity,
 
 // Homeostasis
 static float compute_homeostatic_factor(neuron_t* neuron, float current_activity);
-static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp);
+static void update_meta_plasticity(neural_network_t network, neuron_t* neuron, uint64_t timestamp);
 static void normalize_synaptic_weights(neuron_t* neuron);
 
 // Neuron initialization helpers
@@ -417,13 +423,9 @@ static void init_neuron_activity_tracking(neuron_t* neuron)
     memset(neuron->spike_history, 0, sizeof(spike_record_t) * SPIKE_HISTORY_LENGTH);
     memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
 
-    // Initialize outgoing synapses
-    neuron->num_synapses = 0;
-    memset(neuron->synapses, 0, sizeof(synapse_t) * MAX_SYNAPSES_PER_NEURON);
-
-    // Initialize incoming synapses (bidirectional tracking)
-    neuron->num_incoming = 0;
-    memset(neuron->incoming_synapses, 0, sizeof(synapse_t) * MAX_SYNAPSES_PER_NEURON);
+    // Initialize sparse synapse storage (NIMCP 2.11)
+    sparse_synapse_storage_init(&neuron->outgoing);
+    sparse_synapse_storage_init(&neuron->incoming);
 }
 
 /**
@@ -677,6 +679,24 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     network->num_neurons = actual_neurons;
 
+    // NIMCP 2.11: Create sparse synapse pools
+    // Handle pool: sized for overflow handles (10% of neurons * 64 overflow each)
+    {
+        sparse_synapse_pool_config_t hpool_cfg = sparse_synapse_pool_default_config();
+        hpool_cfg.pool_size = (actual_neurons < 100) ? 5000 : actual_neurons * 64;
+        hpool_cfg.enable_statistics = true;
+        hpool_cfg.thread_safe = true;
+        network->synapse_handle_pool = sparse_synapse_pool_create(&hpool_cfg);
+
+        // Metadata pool: every synapse gets metadata (STP enabled by default)
+        // Estimate: avg 32 synapses/neuron * 2 directions
+        synapse_metadata_pool_config_t mpool_cfg = synapse_metadata_pool_default_config();
+        mpool_cfg.pool_size = (actual_neurons < 100) ? 10000 : actual_neurons * 64;
+        mpool_cfg.enable_statistics = true;
+        mpool_cfg.thread_safe = true;
+        network->synapse_metadata_pool = synapse_metadata_pool_create(&mpool_cfg);
+    }
+
     // For layered networks (NIMCP 2.5), create connections between layers
     if (config->num_layers > 1 && config->layer_sizes) {
         uint32_t offset = 0;
@@ -798,30 +818,25 @@ void neural_network_destroy(neural_network_t network)
             neuron_t* neuron = &network->neurons[i];
             if (i == 0) {
             }
-            for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-                if (i == 0 && j % 10 == 0) {
-                }
-                synapse_t* syn = &neuron->synapses[j];
-                if (i == 0 && j < 5) {
-                }
+            for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+                synapse_t* syn = NEURON_OUT_META(network, neuron, j);
+                if (!syn) continue;
                 if (syn->bcm) {
-                    if (i == 0 && j < 5) {
-                    }
                     nimcp_free(syn->bcm);
-                    if (i == 0 && j < 5) {
-                    }
                     syn->bcm = NULL;
                 }
                 if (syn->eligibility) {
-                    if (i == 0 && j < 5) {
-                    }
                     nimcp_free(syn->eligibility);
-                    if (i == 0 && j < 5) {
-                    }
                     syn->eligibility = NULL;
                 }
-                if (i == 0 && j < 5) {
-                }
+            }
+            // Incoming metadata shares BCM/eligibility pointers — NULL them
+            // to prevent double-free (outgoing already freed them above)
+            for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
+                synapse_t* in_syn = NEURON_IN_META(network, neuron, j);
+                if (!in_syn) continue;
+                in_syn->bcm = NULL;
+                in_syn->eligibility = NULL;
             }
 
             // Note: incoming_synapses share BCM/eligibility state with outgoing synapses,
@@ -829,29 +844,29 @@ void neural_network_destroy(neural_network_t network)
         }
     }
 
-    /**
-     * WHAT: Free dynamically allocated neurons array
-     * WHY: neurons is now heap-allocated, must be freed
-     * HOW: Use nimcp_free on neurons pointer
-     */
+    // NIMCP 2.11: Cleanup sparse synapse storage per neuron, then destroy pools
+    if (network->neurons && network->synapse_handle_pool) {
+        for (uint32_t i = 0; i < network->num_neurons; i++) {
+            neuron_t* neuron = &network->neurons[i];
+            sparse_synapse_storage_cleanup(network->synapse_handle_pool, &neuron->outgoing);
+            sparse_synapse_storage_cleanup(network->synapse_handle_pool, &neuron->incoming);
+        }
+    }
+    if (network->synapse_metadata_pool) {
+        synapse_metadata_pool_destroy(network->synapse_metadata_pool);
+    }
+    if (network->synapse_handle_pool) {
+        sparse_synapse_pool_destroy(network->synapse_handle_pool);
+    }
+
     if (network->neurons) {
         nimcp_free(network->neurons);
     }
 
-    /**
-     * WHAT: Free layer_sizes array if allocated (NIMCP 2.5 layered networks)
-     * WHY: Deep-copied config arrays must be freed
-     * HOW: Check if layer_sizes was allocated, then free
-     */
     if (network->config.layer_sizes) {
         nimcp_free((void*) network->config.layer_sizes);
     }
 
-    /**
-     * WHAT: Free network structure itself
-     * WHY: Final cleanup step
-     * HOW: Free the network pointer
-     */
     nimcp_free(network);
 }
 
@@ -999,11 +1014,11 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
     // COMPLEXITY: O(S) where S = num incoming synapses (was O(N×S))
     // SPEEDUP: 10-100x for large networks (N > 1000)
 
-    for (uint32_t i = 0; i < neuron->num_incoming; i++) {
-        synapse_t* incoming_syn = &neuron->incoming_synapses[i];
+    for (uint32_t i = 0; i < NEURON_IN_COUNT(neuron); i++) {
+        synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, i);
 
-        // In incoming synapse, target_id stores the SOURCE neuron ID
-        uint32_t src_id = incoming_syn->target_id;
+        // In incoming handle, target_neuron_id stores the SOURCE neuron ID
+        uint32_t src_id = in_h->target_neuron_id;
 
         if (src_id >= network->num_neurons) {
             continue;  // Safety check
@@ -1016,25 +1031,28 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
         float pre_activity =
             (src_neuron->state > src_neuron->threshold) ? src_neuron->state : 0.0F;
 
+        // Get metadata for advanced features (STP, compute functions, embeddings)
+        synapse_t* incoming_meta = NEURON_IN_META(network, neuron, i);
+
         // NIMCP 2.6: Apply STP modulation if enabled
         float stp_modulation = 1.0F;
-        if (incoming_syn->enable_stp) {
+        if (incoming_meta && incoming_meta->enable_stp) {
             // Update STP continuous decay
-            stp_update(&incoming_syn->stp, network->network_time);
+            stp_update(&incoming_meta->stp, network->network_time);
 
             // Get modulation factor (u × x)
-            stp_modulation = stp_get_modulation(&incoming_syn->stp);
+            stp_modulation = stp_get_modulation(&incoming_meta->stp);
 
             // Process spike if presynaptic neuron is firing
             if (pre_activity > 0.0F) {
-                stp_process_spike(&incoming_syn->stp, network->network_time);
+                stp_process_spike(&incoming_meta->stp, network->network_time);
             }
         }
 
         // NIMCP 2.7: Programmable synapse computation (MAJOR FEATURE!)
         // If synapse has custom compute function, use it; otherwise default computation
         float synaptic_transmission;
-        if (incoming_syn->compute_function != NULL) {
+        if (incoming_meta && incoming_meta->compute_function != NULL) {
             // Custom computation - synapse decides how to compute transmission
             // This enables attention, semantic similarity, gating, etc.
 
@@ -1050,8 +1068,8 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
                 .custom_data_size = 0
             };
 
-            synaptic_transmission = incoming_syn->compute_function(
-                incoming_syn,
+            synaptic_transmission = incoming_meta->compute_function(
+                incoming_meta,
                 src_neuron,
                 neuron,
                 pre_activity,
@@ -1059,18 +1077,18 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
             );
         } else {
             // Default computation (backward compatible with NIMCP 2.0-2.6)
-            synaptic_transmission = pre_activity * incoming_syn->weight *
-                                   incoming_syn->strength * stp_modulation;
+            synaptic_transmission = pre_activity * in_h->weight *
+                                   in_h->strength * stp_modulation;
         }
 
         // ENHANCEMENT 1: Semantic embedding routing
         // WHAT: Modulate transmission by semantic relevance
         // WHY: Route information through semantically relevant synapses (70% faster)
         // HOW: Use cached semantic_relevance if embeddings enabled
-        if (incoming_syn->semantic_embedding && incoming_syn->embedding_dim > 0) {
+        if (incoming_meta && incoming_meta->semantic_embedding && incoming_meta->embedding_dim > 0) {
             // Use cached relevance (computed during context update)
             // Relevance in [0,1]: 0=irrelevant, 1=highly relevant
-            float semantic_modulation = 0.5F + 0.5F * incoming_syn->semantic_relevance;
+            float semantic_modulation = 0.5F + 0.5F * incoming_meta->semantic_relevance;
             synaptic_transmission *= semantic_modulation;
         }
 
@@ -1086,7 +1104,7 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
                 (glial_integration_t*)network->glial_integration,
                 src_id,                    // Presynaptic neuron ID
                 neuron->id,                // Postsynaptic neuron ID
-                incoming_syn->weight,      // Synaptic weight
+                in_h->weight,              // Synaptic weight
                 network->network_time      // Timestamp
             );
         }
@@ -1227,14 +1245,14 @@ static void update_activity_history(neuron_t* neuron, float new_state, uint64_t 
  * WHY: Extracted dynamics updates for clarity
  * COMPLEXITY: O(s) where s = num_synapses
  */
-static void update_neuron_dynamics(neuron_t* neuron, uint64_t timestamp)
+static void update_neuron_dynamics(neural_network_t network, neuron_t* neuron, uint64_t timestamp)
 {
     // Guard clause: Validate input
     if (!neuron)
         return;
 
     update_calcium_dynamics(neuron, timestamp);
-    update_synaptic_traces(neuron, timestamp);
+    update_synaptic_traces(network, neuron, timestamp);
 }
 
 /**
@@ -1366,7 +1384,7 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
 
     // Update activity tracking and dynamics (always happens)
     update_activity_history(neuron, new_state, timestamp);
-    update_neuron_dynamics(neuron, timestamp);
+    update_neuron_dynamics(network, neuron, timestamp);
 
     neuron->last_update = timestamp;
     return true;
@@ -1395,30 +1413,34 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
     }
 
     // Calculate weight updates using Oja's rule
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, i);
+        synapse_t* syn = NEURON_OUT_META(network, neuron, i);
+        if (!syn) continue;
 
         // Get post-synaptic average activity (target of synapse)
-        float y = network->neurons[syn->target_id].avg_activity;
+        float y = network->neurons[out_h->target_neuron_id].avg_activity;
 
         // Compute weight update using Oja's rule: Δw = α(y*x - y²*w)
-        float delta_w = compute_oja_weight_update(x, y, syn->weight, &neuron->oja_params);
+        float delta_w = compute_oja_weight_update(x, y, out_h->weight, &neuron->oja_params);
 
         // Apply weight update with meta-plasticity
-        float new_weight = syn->weight + delta_w * syn->meta_plasticity;
+        float new_weight = out_h->weight + delta_w * syn->meta_plasticity;
 
         // Apply weight constraints
         new_weight =
             fmaxf(network->config.min_weight, fminf(network->config.max_weight, new_weight));
 
         // Update weight if change is significant
-        if (fabs(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-            syn->weight = new_weight;
+        if (fabs(new_weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+            out_h->weight = new_weight;
+            syn->weight = new_weight;  // Keep metadata in sync
             modified++;
         }
 
         // Update synaptic strength
-        syn->strength = fminf(syn->strength * (1.0F + delta_w), MAX_SYNAPTIC_STRENGTH);
+        out_h->strength = fminf(out_h->strength * (1.0F + delta_w), MAX_SYNAPTIC_STRENGTH);
+        syn->strength = out_h->strength;  // Keep metadata in sync
     }
 
     // Normalize weights periodically
@@ -1475,15 +1497,17 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
     // WHAT: Iterate over all outgoing synapses from this neuron
     // WHY: Apply STDP to each connection based on spike timing
     // HOW: Loop through synapse array, compute STDP for each
-    for (uint32_t i = 0; i < pre_neuron->num_synapses; i++) {
-        synapse_t* syn = &pre_neuron->synapses[i];
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(pre_neuron); i++) {
+        synapse_handle_t* out_h = NEURON_OUT_HANDLE(pre_neuron, i);
+        synapse_t* syn = NEURON_OUT_META(network, pre_neuron, i);
+        if (!syn) continue;
 
         // WHAT: Get postsynaptic neuron (target of this synapse)
         // WHY: Need post-spike time for STDP calculation
-        // HOW: Access target neuron using target_id from synapse
+        // HOW: Access target neuron using target_neuron_id from handle
         // FIX: This was previously assigned to pre_neuron (bug!)
         // CONST: post_neuron is read-only (only access last_spike)
-        const neuron_t* post_neuron = &network->neurons[syn->target_id];
+        const neuron_t* post_neuron = &network->neurons[out_h->target_neuron_id];
 
         // Guard: Skip if either neuron never spiked
         if (pre_neuron->last_spike == 0 || post_neuron->last_spike == 0) {
@@ -1516,7 +1540,7 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // WHAT: Apply weight update with meta-plasticity modulation
         // WHY: Meta-plasticity prevents runaway learning
         // HOW: Add weighted delta to current weight
-        float new_weight = syn->weight + delta_w * syn->meta_plasticity;
+        float new_weight = out_h->weight + delta_w * syn->meta_plasticity;
 
         // WHAT: Clamp weight to configured bounds
         // WHY: Prevent weights from growing unbounded
@@ -1527,8 +1551,9 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // WHAT: Update weight if change is significant
         // WHY: Avoid tiny updates that don't affect computation
         // HOW: Check if |Δw| exceeds threshold before applying
-        if (fabs(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-            syn->weight = new_weight;
+        if (fabs(new_weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+            out_h->weight = new_weight;
+            syn->weight = new_weight;  // Keep metadata in sync
             modified++;
         }
 
@@ -1554,8 +1579,9 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
 
             // Update synaptic weight from BCM (overrides STDP if BCM makes larger change)
             // This ensures homeostatic stability takes precedence
-            if (fabs(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                syn->weight = syn->bcm->weight;
+            if (fabs(syn->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                out_h->weight = syn->bcm->weight;
+                syn->weight = syn->bcm->weight;  // Keep metadata in sync
             }
         }
     }
@@ -1617,8 +1643,9 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
     for (uint32_t n = 0; n < network->num_neurons; n++) {
         float activity = fabsf(network->neurons[n].state);
         neuron_t* pre_neuron = &network->neurons[n];
-        for (uint32_t s = 0; s < pre_neuron->num_synapses; s++) {
-            pre_neuron->synapses[s].trace = activity;
+        for (uint32_t s = 0; s < NEURON_OUT_COUNT(pre_neuron); s++) {
+            synapse_t* trace_syn = NEURON_OUT_META(network, pre_neuron, s);
+            if (trace_syn) trace_syn->trace = activity;
         }
     }
 
@@ -1637,8 +1664,10 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
         }
 
         // Step 3: Apply eligibility-trace-based learning with reward signal
-        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
-            synapse_t* syn = &neuron->synapses[syn_idx];
+        for (uint32_t syn_idx = 0; syn_idx < NEURON_OUT_COUNT(neuron); syn_idx++) {
+            synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, syn_idx);
+            synapse_t* syn = NEURON_OUT_META(network, neuron, syn_idx);
+            if (!syn) continue;
 
             // Update eligibility traces
             if (syn->enable_eligibility && syn->eligibility) {
@@ -1666,7 +1695,7 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 }
 
                 // Apply eligibility-based weight update
-                float old_weight = syn->weight;
+                float old_weight = out_h->weight;
                 eligibility_apply_reward(
                     syn,
                     syn->eligibility,
@@ -1675,23 +1704,28 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                     dopamine     // Dopamine gates learning
                 );
 
+                // Sync metadata weight back to handle
+                out_h->weight = syn->weight;
+
                 // ===================================================================
                 // BIOLOGICAL SECURITY: Validate weight change (Phase 11)
                 // ===================================================================
                 // Check if weight change exceeds biological plausibility
                 // Reject suspicious updates to prevent synaptic poisoning attacks
-                if (!nimcp_security_validate_weight_change(old_weight, syn->weight,
+                if (!nimcp_security_validate_weight_change(old_weight, out_h->weight,
                                                           NIMCP_MAX_WEIGHT_DELTA_PER_STEP)) {
                     // SECURITY: Reject suspicious weight change
-                    syn->weight = old_weight;  // Revert to safe value
+                    out_h->weight = old_weight;  // Revert to safe value
+                    syn->weight = old_weight;
                     continue;  // Skip this synapse
                 }
 
                 // Clamp weights to valid range
-                syn->weight = fmaxf(network->config.min_weight,
-                                  fminf(network->config.max_weight, syn->weight));
+                out_h->weight = fmaxf(network->config.min_weight,
+                                  fminf(network->config.max_weight, out_h->weight));
+                syn->weight = out_h->weight;
 
-                if (fabsf(syn->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
+                if (fabsf(out_h->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
                     total_modified++;
                 }
             }
@@ -1701,7 +1735,7 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 bcm_params_t bcm_params = bcm_params_cortical();
                 float dt = 1.0F;  // Time step in seconds
 
-                const neuron_t* post_neuron = &network->neurons[syn->target_id];
+                const neuron_t* post_neuron = &network->neurons[out_h->target_neuron_id];
                 float pre_activity = neuron->state;       // Presynaptic activity
                 float post_activity = post_neuron->state; // Postsynaptic activity
 
@@ -1709,7 +1743,8 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 bcm_apply_rule(syn->bcm, pre_activity, post_activity, dt, &bcm_params);
 
                 // Sync BCM weight to synapse weight
-                if (fabsf(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                if (fabsf(syn->bcm->weight - out_h->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    out_h->weight = syn->bcm->weight;
                     syn->weight = syn->bcm->weight;
                     total_modified++;
                 }
@@ -1719,22 +1754,23 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 
 
 
-    // POST-PASS: Sync outgoing synapse weights to incoming synapses
-    // WHY: Learning modifies outgoing synapse weights (neuron->synapses[]),
-    //      but neural_network_forward() reads from incoming_synapses[].
+    // POST-PASS: Sync outgoing synapse weights to incoming synapses via peer_index
+    // WHY: Learning modifies outgoing synapse weights,
+    //      but neural_network_forward() reads from incoming handles.
     //      Without sync, weight updates have no effect on the forward pass.
+    // OPTIMIZATION: O(S) per neuron using peer_index (was O(S^2))
     if (total_modified > 0) {
         for (uint32_t n = 0; n < network->num_neurons; n++) {
             neuron_t* src = &network->neurons[n];
-            for (uint32_t s = 0; s < src->num_synapses; s++) {
-                synapse_t* out = &src->synapses[s];
-                if (out->target_id >= network->num_neurons) continue;
-                neuron_t* target = &network->neurons[out->target_id];
-                for (uint32_t k = 0; k < target->num_incoming; k++) {
-                    if (target->incoming_synapses[k].source_neuron_id == n) {
-                        target->incoming_synapses[k].weight = out->weight;
-                        target->incoming_synapses[k].strength = out->strength;
-                        break;
+            for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
+                synapse_handle_t* out_h = NEURON_OUT_HANDLE(src, s);
+                if (out_h->target_neuron_id >= network->num_neurons) continue;
+                neuron_t* target = &network->neurons[out_h->target_neuron_id];
+                if (out_h->peer_index != SPARSE_SYNAPSE_NO_PEER) {
+                    synapse_handle_t* in_h = sparse_synapse_get(&target->incoming, out_h->peer_index);
+                    if (in_h) {
+                        in_h->weight = out_h->weight;
+                        in_h->strength = out_h->strength;
                     }
                 }
             }
@@ -1786,17 +1822,21 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
     neuron->homeostatic_factor = compute_homeostatic_factor(neuron, current_activity);
 
     // Apply homeostatic scaling to synapses
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, i);
 
         // Scale synaptic strength based on activity error
         float strength_adjustment =
             neuron->homeostatic.strength * activity_error * neuron->homeostatic_factor;
 
-        syn->strength *= (1.0F + strength_adjustment);
+        out_h->strength *= (1.0F + strength_adjustment);
 
         // Constrain synaptic strength
-        syn->strength = fmaxf(0.0F, fminf(MAX_SYNAPTIC_STRENGTH, syn->strength));
+        out_h->strength = fmaxf(0.0F, fminf(MAX_SYNAPTIC_STRENGTH, out_h->strength));
+
+        // Keep metadata in sync
+        synapse_t* syn = NEURON_OUT_META(network, neuron, i);
+        if (syn) syn->strength = out_h->strength;
     }
 
     // Update adaptation based on activity
@@ -1830,7 +1870,7 @@ static float compute_homeostatic_factor(neuron_t* neuron, float current_activity
 /**
  * @brief Update meta-plasticity based on activity patterns
  */
-static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp)
+static void update_meta_plasticity(neural_network_t network, neuron_t* neuron, uint64_t timestamp)
 {
     // Compute activity variance over history window
     float mean_activity = neuron->avg_activity;
@@ -1843,8 +1883,9 @@ static void update_meta_plasticity(neuron_t* neuron, uint64_t timestamp)
     variance /= HISTORY_WINDOW;
 
     // Update meta-plasticity for each synapse
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_t* syn = NEURON_OUT_META(network, neuron, i);
+        if (!syn) continue;
 
         // Compute stability measure
         float stability = expf(-variance * META_PLASTICITY_RATE);
@@ -1878,7 +1919,7 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
         neural_network_apply_homeostasis(network, i, timestamp);
 
         // Update meta-plasticity
-        update_meta_plasticity(neuron, timestamp);
+        update_meta_plasticity(network, neuron, timestamp);
 
         // Compute contribution to global variance
         float activity_diff = neuron->avg_activity - neuron->homeostatic.target_activity;
@@ -1923,8 +1964,9 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, f
 
     // Update synaptic traces (but don't propagate immediately)
     // Synaptic inputs will be computed when target neurons are updated
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_t* syn = NEURON_OUT_META(network, neuron, i);
+        if (!syn) continue;
 
         // Update synaptic trace for STDP
         syn->trace += 1.0F;
@@ -1941,10 +1983,11 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, f
 /**
  * @brief Update synaptic traces for STDP
  */
-static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp)
+static void update_synaptic_traces(neural_network_t network, neuron_t* neuron, uint64_t timestamp)
 {
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_t* syn = NEURON_OUT_META(network, neuron, i);
+        if (!syn) continue;
 
         // Compute time since last update
         float dt = (float) (timestamp - syn->last_active);
@@ -2083,7 +2126,7 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
         }
 
         // Update traces and dynamics
-        update_synaptic_traces(neuron, timestamp);
+        update_synaptic_traces(network, neuron, timestamp);
         update_calcium_dynamics(neuron, timestamp);
 
         // WHAT: Reset external current after processing
@@ -2116,114 +2159,131 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
     neuron_t* from_neuron = &network->neurons[from_id];
     neuron_t* to_neuron = &network->neurons[to_id];
 
-    // Check if we have room for new synapse (both forward and reverse)
-    if (from_neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
+    // Clamp weight to config bounds
+    float clamped_weight = fmaxf(network->config.min_weight, fminf(network->config.max_weight, weight));
+
+    // Add OUTGOING synapse handle + metadata via sparse API
+    int out_rc = sparse_synapse_add_with_metadata(
+        network->synapse_handle_pool,
+        network->synapse_metadata_pool,
+        &from_neuron->outgoing,
+        to_id,
+        clamped_weight,
+        SYNAPSE_GENERIC  // Default type; typed variant sets it later
+    );
+    if (out_rc != 0) {
+        return false;  // Pool exhausted
+    }
+
+    // Get newly-added outgoing handle and metadata
+    uint32_t out_idx = NEURON_OUT_COUNT(from_neuron) - 1;
+    synapse_handle_t* out_h = NEURON_OUT_HANDLE(from_neuron, out_idx);
+    out_h->strength = 1.0F;
+    synapse_t* syn = NEURON_OUT_META(network, from_neuron, out_idx);
+
+    // Initialize outgoing metadata
+    if (syn) {
+        syn->target_id = to_id;
+        syn->weight = clamped_weight;
+        syn->plasticity = 1.0F;
+        syn->last_change = 0.0F;
+        syn->last_active = network->network_time;
+        syn->strength = 1.0F;
+        syn->meta_plasticity = 1.0F;
+        syn->trace = 0.0F;
+        syn->source_neuron_id = from_id;
+        syn->axon_id = 0;
+
+        // NIMCP 2.6: Initialize STP (Short-Term Plasticity)
+        stp_preset_t preset = (from_neuron->type == NEURON_EXCITATORY)
+                            ? STP_PRESET_DEPRESSING
+                            : STP_PRESET_FACILITATING;
+        stp_params_t stp_params = stp_get_preset_params(preset);
+        stp_init(&syn->stp, &stp_params, network->network_time);
+        syn->enable_stp = true;
+
+        // Phase 11: Initialize BCM
+        if (network->config.enable_bcm) {
+            syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
+            if (syn->bcm) {
+                *syn->bcm = bcm_synapse_init(syn->weight, 0.5F);
+                syn->enable_bcm = true;
+            } else {
+                syn->enable_bcm = false;
+            }
+        } else {
+            syn->bcm = NULL;
+            syn->enable_bcm = false;
+        }
+
+        // Phase 11: Initialize Eligibility Traces
+        if (network->config.enable_eligibility) {
+            syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
+            if (syn->eligibility) {
+                eligibility_trace_init(syn->eligibility, network->network_time);
+                syn->enable_eligibility = true;
+            } else {
+                syn->enable_eligibility = false;
+            }
+        } else {
+            syn->eligibility = NULL;
+            syn->enable_eligibility = false;
+        }
+    }
+
+    // Add INCOMING synapse handle + metadata via sparse API
+    int in_rc = sparse_synapse_add_with_metadata(
+        network->synapse_handle_pool,
+        network->synapse_metadata_pool,
+        &to_neuron->incoming,
+        from_id,           // In incoming handle, target_neuron_id stores source
+        clamped_weight,
+        SYNAPSE_GENERIC
+    );
+    if (in_rc != 0) {
+        // Rollback outgoing (best effort)
+        sparse_synapse_remove_with_metadata(
+            network->synapse_handle_pool,
+            network->synapse_metadata_pool,
+            &from_neuron->outgoing, out_idx);
         return false;
     }
 
-    if (to_neuron->num_incoming >= MAX_SYNAPSES_PER_NEURON) {
-        return false;
+    // Get newly-added incoming handle and metadata
+    uint32_t in_idx = NEURON_IN_COUNT(to_neuron) - 1;
+    synapse_handle_t* in_h = NEURON_IN_HANDLE(to_neuron, in_idx);
+    in_h->strength = 1.0F;
+    synapse_t* incoming_meta = NEURON_IN_META(network, to_neuron, in_idx);
+
+    // Initialize incoming metadata (mirror of outgoing)
+    if (incoming_meta && syn) {
+        incoming_meta->target_id = from_id;
+        incoming_meta->weight = clamped_weight;
+        incoming_meta->plasticity = syn->plasticity;
+        incoming_meta->last_change = syn->last_change;
+        incoming_meta->last_active = syn->last_active;
+        incoming_meta->strength = syn->strength;
+        incoming_meta->meta_plasticity = syn->meta_plasticity;
+        incoming_meta->trace = syn->trace;
+        incoming_meta->source_neuron_id = from_id;
+        incoming_meta->axon_id = 0;
+        incoming_meta->stp = syn->stp;
+        incoming_meta->enable_stp = syn->enable_stp;
+        // Share BCM and eligibility state (both directions use same pointers)
+        incoming_meta->bcm = syn->bcm;
+        incoming_meta->enable_bcm = syn->enable_bcm;
+        incoming_meta->eligibility = syn->eligibility;
+        incoming_meta->enable_eligibility = syn->enable_eligibility;
     }
 
-    // Initialize new OUTGOING synapse (forward edge)
-    synapse_t* syn = &from_neuron->synapses[from_neuron->num_synapses];
-    syn->target_id = to_id;
-    syn->weight = fmaxf(network->config.min_weight, fminf(network->config.max_weight, weight));
-    syn->plasticity = 1.0F;
-    syn->last_change = 0.0F;
-    syn->last_active = network->network_time;
-    syn->strength = 1.0F;
-    syn->meta_plasticity = 1.0F;
-    syn->trace = 0.0F;
-
-    // Axon integration - Initialize source neuron and axon references
-    syn->source_neuron_id = from_id;  // Pre-synaptic neuron
-    syn->axon_id = 0;                 // 0 = no axon (direct connection, backward compatible)
-
-    // NIMCP 2.6: Initialize STP (Short-Term Plasticity)
-    // Default: Depressing synapse for excitatory connections
-    stp_preset_t preset = (from_neuron->type == NEURON_EXCITATORY)
-                        ? STP_PRESET_DEPRESSING
-                        : STP_PRESET_FACILITATING;
-    stp_params_t stp_params = stp_get_preset_params(preset);
-    stp_init(&syn->stp, &stp_params, network->network_time);
-    syn->enable_stp = true;  // Enable STP by default
-
-    // Phase 11: Initialize BCM (Homeostatic Plasticity)
-    // CONDITIONAL ALLOCATION: Only allocate if enabled in config
-    // WHY: BCM requires per-synapse heap allocation
-    // SCALABILITY: 1M neurons × 256 synapses × sizeof(bcm_synapse_t) = massive overhead
-    // SOLUTION: Lazy initialization - only allocate when feature is enabled
-    if (network->config.enable_bcm) {
-        syn->bcm = (bcm_synapse_t*)nimcp_calloc(1, sizeof(bcm_synapse_t));
-        if (syn->bcm) {
-            *syn->bcm = bcm_synapse_init(syn->weight, 0.5F);  // Initial threshold = 0.5
-            syn->enable_bcm = true;
-        } else {
-            syn->enable_bcm = false;  // Disable if allocation failed
-        }
-    } else {
-        // Disabled by config - no allocation
-        syn->bcm = NULL;
-        syn->enable_bcm = false;
-    }
-
-    // Phase 11: Initialize Eligibility Traces (Temporal Credit Assignment)
-    // CONDITIONAL ALLOCATION: Only allocate if enabled in config
-    // WHY: Eligibility traces require per-synapse heap allocation
-    // SCALABILITY: 1M neurons × 256 synapses × sizeof(eligibility_trace_t) = massive overhead
-    // SOLUTION: Lazy initialization - only allocate when feature is enabled
-    if (network->config.enable_eligibility) {
-        syn->eligibility = (eligibility_trace_t*)nimcp_calloc(1, sizeof(eligibility_trace_t));
-        if (syn->eligibility) {
-            eligibility_trace_init(syn->eligibility, network->network_time);
-            syn->enable_eligibility = true;
-        } else {
-            syn->enable_eligibility = false;  // Disable if allocation failed
-        }
-    } else {
-        // Disabled by config - no allocation
-        syn->eligibility = NULL;
-        syn->enable_eligibility = false;
-    }
-
-    from_neuron->num_synapses++;
-
-    // OPTIMIZATION: Add INCOMING synapse (reverse edge) for O(S) input summation
-    // DESIGN PATTERN: Bidirectional Association
-    // WHY: Enables O(S) lookup instead of O(N×S) scan
-    synapse_t* incoming_syn = &to_neuron->incoming_synapses[to_neuron->num_incoming];
-    incoming_syn->target_id = from_id;  // In reverse edge, target_id stores source
-    incoming_syn->weight = syn->weight;  // Same weight as forward edge
-    incoming_syn->plasticity = syn->plasticity;
-    incoming_syn->last_change = syn->last_change;
-    incoming_syn->last_active = syn->last_active;
-    incoming_syn->strength = syn->strength;
-    incoming_syn->meta_plasticity = syn->meta_plasticity;
-    incoming_syn->trace = syn->trace;
-
-    // Axon integration - Initialize source neuron and axon references (same as forward edge)
-    incoming_syn->source_neuron_id = from_id;  // Pre-synaptic neuron
-    incoming_syn->axon_id = 0;                 // 0 = no axon (direct connection, backward compatible)
-
-    // NIMCP 2.6: Copy STP state to incoming synapse
-    incoming_syn->stp = syn->stp;
-    incoming_syn->enable_stp = syn->enable_stp;
-
-    // Phase 11: Copy BCM state to incoming synapse
-    incoming_syn->bcm = syn->bcm;  // Share BCM state (both directions use same threshold)
-    incoming_syn->enable_bcm = syn->enable_bcm;
-
-    // Phase 11: Copy eligibility trace to incoming synapse
-    incoming_syn->eligibility = syn->eligibility;  // Share eligibility trace
-    incoming_syn->enable_eligibility = syn->enable_eligibility;
-
-    to_neuron->num_incoming++;
+    // Set peer_index on both handles for O(1) cross-reference
+    out_h->peer_index = in_idx;
+    in_h->peer_index = out_idx;
 
     // Update weight norm to reflect new synapse
     float sum_weights = 0.0F;
-    for (uint32_t i = 0; i < from_neuron->num_synapses; i++) {
-        sum_weights += fabsf(from_neuron->synapses[i].weight);
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(from_neuron); i++) {
+        sum_weights += fabsf(NEURON_OUT_HANDLE(from_neuron, i)->weight);
     }
     from_neuron->weight_norm = sum_weights;
 
@@ -2239,19 +2299,20 @@ static void normalize_synaptic_weights(neuron_t* neuron)
     float max_weight = 0.0F;
 
     // Calculate sum and find maximum weight
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        sum_weights += fabs(neuron->synapses[i].weight);
-        max_weight = fmaxf(max_weight, fabs(neuron->synapses[i].weight));
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+        sum_weights += fabs(h->weight);
+        max_weight = fmaxf(max_weight, fabs(h->weight));
     }
 
     if (sum_weights > EPSILON) {
         // Normalize weights while preserving sign
         float norm_factor = neuron->oja_params.target_norm / sum_weights;
 
-        for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-            synapse_t* syn = &neuron->synapses[i];
-            float sign = (syn->weight >= 0.0F) ? 1.0F : -1.0F;
-            syn->weight = sign * fabs(syn->weight) * norm_factor;
+        for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+            float sign = (h->weight >= 0.0F) ? 1.0F : -1.0F;
+            h->weight = sign * fabs(h->weight) * norm_factor;
         }
 
         // After normalization, weight_norm should be target_norm
@@ -2272,23 +2333,63 @@ uint32_t neural_network_prune_synapses(neural_network_t network, float threshold
 
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
-        uint32_t write_idx = 0;
 
-        // Compact synapse array, removing weak synapses
-        for (uint32_t read_idx = 0; read_idx < neuron->num_synapses; read_idx++) {
-            synapse_t* syn = &neuron->synapses[read_idx];
+        // Iterate in reverse to safely use swap-and-pop removal
+        for (int32_t idx = (int32_t)NEURON_OUT_COUNT(neuron) - 1; idx >= 0; idx--) {
+            synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, (uint32_t)idx);
+            if (!out_h) continue;
 
-            if (fabs(syn->weight) * syn->strength >= threshold) {
-                if (write_idx != read_idx) {
-                    memcpy(&neuron->synapses[write_idx], syn, sizeof(synapse_t));
+            if (fabs(out_h->weight) * out_h->strength < threshold) {
+                // Also remove the peer incoming synapse
+                if (out_h->peer_index != SPARSE_SYNAPSE_NO_PEER &&
+                    out_h->target_neuron_id < network->num_neurons) {
+                    neuron_t* target = &network->neurons[out_h->target_neuron_id];
+                    uint32_t peer_idx = out_h->peer_index;
+
+                    // Before removing incoming, update the moved handle's peer
+                    uint32_t last_in = NEURON_IN_COUNT(target) - 1;
+                    if (peer_idx != last_in && last_in < NEURON_IN_COUNT(target)) {
+                        // The last incoming handle will be swapped to peer_idx
+                        synapse_handle_t* last_in_h = NEURON_IN_HANDLE(target, last_in);
+                        if (last_in_h && last_in_h->peer_index != SPARSE_SYNAPSE_NO_PEER &&
+                            last_in_h->target_neuron_id < network->num_neurons) {
+                            // Update the outgoing handle that points to the moved incoming
+                            neuron_t* src_of_last = &network->neurons[last_in_h->target_neuron_id];
+                            synapse_handle_t* out_peer = sparse_synapse_get(&src_of_last->outgoing, last_in_h->peer_index);
+                            if (out_peer) {
+                                out_peer->peer_index = peer_idx;
+                            }
+                        }
+                    }
+
+                    sparse_synapse_remove_with_metadata(
+                        network->synapse_handle_pool,
+                        network->synapse_metadata_pool,
+                        &target->incoming, peer_idx);
                 }
-                write_idx++;
-            } else {
+
+                // Before removing outgoing, update the moved handle's peer
+                uint32_t last_out = NEURON_OUT_COUNT(neuron) - 1;
+                if ((uint32_t)idx != last_out && last_out < NEURON_OUT_COUNT(neuron)) {
+                    synapse_handle_t* last_out_h = NEURON_OUT_HANDLE(neuron, last_out);
+                    if (last_out_h && last_out_h->peer_index != SPARSE_SYNAPSE_NO_PEER &&
+                        last_out_h->target_neuron_id < network->num_neurons) {
+                        neuron_t* tgt_of_last = &network->neurons[last_out_h->target_neuron_id];
+                        synapse_handle_t* in_peer = sparse_synapse_get(&tgt_of_last->incoming, last_out_h->peer_index);
+                        if (in_peer) {
+                            in_peer->peer_index = (uint32_t)idx;
+                        }
+                    }
+                }
+
+                sparse_synapse_remove_with_metadata(
+                    network->synapse_handle_pool,
+                    network->synapse_metadata_pool,
+                    &neuron->outgoing, (uint32_t)idx);
+
                 pruned_count++;
             }
         }
-
-        neuron->num_synapses = write_idx;
     }
 
     return pruned_count;
@@ -2335,12 +2436,12 @@ void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id)
     printf("  Threshold: %.3f\n", neuron->threshold);
     printf("  Calcium: %.3f\n", neuron->calcium_concentration);
     printf("  Activity: %.3f\n", neuron->avg_activity);
-    printf("  Synapses: %u\n", neuron->num_synapses);
+    printf("  Synapses: %u\n", NEURON_OUT_COUNT(neuron));
 
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
-        printf("    Synapse %u -> %u: w=%.3f, s=%.3f\n", neuron_id, syn->target_id, syn->weight,
-               syn->strength);
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+        printf("    Synapse %u -> %u: w=%.3f, s=%.3f\n", neuron_id, h->target_neuron_id, h->weight,
+               h->strength);
     }
 }
 
@@ -2365,10 +2466,15 @@ void neural_network_reset(neural_network_t network)
         memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
 
         // Reset synaptic traces
-        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-            neuron->synapses[j].trace = 0.0F;
-            neuron->synapses[j].strength = 1.0F;
-            neuron->synapses[j].meta_plasticity = 1.0F;
+        for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, j);
+            h->strength = 1.0F;
+            synapse_t* syn = NEURON_OUT_META(network, neuron, j);
+            if (syn) {
+                syn->trace = 0.0F;
+                syn->strength = 1.0F;
+                syn->meta_plasticity = 1.0F;
+            }
         }
     }
 
@@ -2432,6 +2538,81 @@ neuron_t* neural_network_get_neuron(neural_network_t network, uint32_t neuron_id
     return &network->neurons[neuron_id];
 }
 
+synapse_t* neural_network_get_out_meta(neural_network_t network, neuron_t* neuron, uint32_t index)
+{
+    if (!network || !neuron) return NULL;
+    return _neuron_meta_from_pool(network->synapse_metadata_pool, &neuron->outgoing, index);
+}
+
+synapse_t* neural_network_get_in_meta(neural_network_t network, neuron_t* neuron, uint32_t index)
+{
+    if (!network || !neuron) return NULL;
+    return _neuron_meta_from_pool(network->synapse_metadata_pool, &neuron->incoming, index);
+}
+
+bool neural_network_rebuild_incoming(neural_network_t network)
+{
+    if (!network) return false;
+
+    // Clear all incoming storage
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        neuron_t* n = &network->neurons[i];
+        sparse_synapse_storage_cleanup(network->synapse_handle_pool, &n->incoming);
+        sparse_synapse_storage_init(&n->incoming);
+    }
+
+    // Rebuild from outgoing data
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        neuron_t* src = &network->neurons[i];
+        uint32_t out_count = NEURON_OUT_COUNT(src);
+        for (uint32_t s = 0; s < out_count; s++) {
+            synapse_handle_t* out_h = NEURON_OUT_HANDLE(src, s);
+            if (!out_h || out_h->target_neuron_id >= network->num_neurons) continue;
+            neuron_t* tgt = &network->neurons[out_h->target_neuron_id];
+
+            // Get outgoing metadata to copy STP and other state
+            synapse_t* out_meta = NEURON_OUT_META(network, src, s);
+
+            // Add incoming handle with metadata
+            uint32_t meta_idx = SPARSE_SYNAPSE_NO_METADATA;
+            if (out_meta) {
+                meta_idx = synapse_metadata_pool_allocate(network->synapse_metadata_pool);
+                if (meta_idx != UINT32_MAX) {
+                    synapse_t* in_meta = synapse_metadata_pool_get(network->synapse_metadata_pool, meta_idx);
+                    if (in_meta) {
+                        *in_meta = *out_meta;
+                        in_meta->source_neuron_id = i;
+                        in_meta->target_id = out_h->target_neuron_id;
+                        // Reset incoming STP to resting state (x=1, u=U).
+                        // Incoming STP evolves independently during forward pass
+                        // and cannot be reconstructed from outgoing STP state.
+                        if (in_meta->enable_stp) {
+                            stp_reset(&in_meta->stp, 0);
+                        }
+                    }
+                }
+            }
+
+            uint32_t in_idx = sparse_synapse_add(
+                network->synapse_handle_pool, &tgt->incoming,
+                i,  // source neuron id stored in target_neuron_id field
+                out_h->weight);
+            if (in_idx != UINT32_MAX) {
+                synapse_handle_t* in_h = NEURON_IN_HANDLE(tgt, in_idx);
+                if (in_h) {
+                    in_h->strength = out_h->strength;
+                    in_h->metadata_index = meta_idx;
+                    in_h->peer_index = s;
+                    in_h->ternary_weight = out_h->ternary_weight;
+                    in_h->use_ternary_weight = out_h->use_ternary_weight;
+                    out_h->peer_index = in_idx;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 /**
  * @brief Add a new neuron to the network
  */
@@ -2491,7 +2672,7 @@ uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neu
         return 0;
 
     neuron_t* neuron = &network->neurons[neuron_id];
-    update_meta_plasticity(neuron, timestamp);
+    update_meta_plasticity(network, neuron, timestamp);
     return 1;
 }
 
@@ -2539,7 +2720,7 @@ void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, 
     if (!network || neuron_id >= network->num_neurons)
         return;
 
-    update_synaptic_traces(&network->neurons[neuron_id], timestamp);
+    update_synaptic_traces(network, &network->neurons[neuron_id], timestamp);
 }
 
 /**
@@ -2660,15 +2841,16 @@ void neural_network_get_weight_statistics(neural_network_t network, uint32_t neu
     neuron_t* neuron = &network->neurons[neuron_id];
     float sum = 0.0F, sum_sq = 0.0F;
 
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        float w = neuron->synapses[i].weight;
+    for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
+        float w = NEURON_OUT_HANDLE(neuron, i)->weight;
         sum += w;
         sum_sq += w * w;
     }
 
-    if (neuron->num_synapses > 0) {
-        *mean = sum / neuron->num_synapses;
-        float variance = (sum_sq / neuron->num_synapses) - (*mean * *mean);
+    uint32_t n_syn = NEURON_OUT_COUNT(neuron);
+    if (n_syn > 0) {
+        *mean = sum / n_syn;
+        float variance = (sum_sq / n_syn) - (*mean * *mean);
         *std_dev = sqrtf(fmaxf(0.0F, variance));
     } else {
         *mean = 0.0F;
@@ -2708,13 +2890,15 @@ bool neural_network_get_stats(neural_network_t network, network_stats_t* stats)
         // Sum up neuron properties
         total_activity += neuron->avg_activity;
         total_calcium += neuron->calcium_concentration;
-        total_synapses += neuron->num_synapses;
+        total_synapses += NEURON_OUT_COUNT(neuron);
 
         // Calculate synapse averages
-        for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-            total_weight += neuron->synapses[j].weight;
-            total_strength += neuron->synapses[j].strength;
-            total_plasticity += neuron->synapses[j].plasticity;
+        for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE((neuron_t*)neuron, j);
+            total_weight += h->weight;
+            total_strength += h->strength;
+            synapse_t* meta = NEURON_OUT_META(network, (neuron_t*)neuron, j);
+            total_plasticity += meta ? meta->plasticity : 1.0F;
         }
     }
 
@@ -2809,11 +2993,13 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 // The outgoing synapses point TO next layer neurons, not FROM previous layer
                 float activation = neuron->bias;
 
-                for (uint32_t j = 0; j < neuron->num_incoming; j++) {
-                    synapse_t* syn = &neuron->incoming_synapses[j];
-                    if (syn->source_neuron_id < network->num_neurons) {
-                        float pre_activity = network->neurons[syn->source_neuron_id].state;
-                        activation += pre_activity * syn->weight * syn->strength;
+                for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
+                    synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, j);
+                    synapse_t* in_meta = NEURON_IN_META(network, neuron, j);
+                    uint32_t src_id = in_meta ? in_meta->source_neuron_id : in_h->target_neuron_id;
+                    if (src_id < network->num_neurons) {
+                        float pre_activity = network->neurons[src_id].state;
+                        activation += pre_activity * in_h->weight * in_h->strength;
                     }
                 }
 
@@ -2906,7 +3092,7 @@ uint32_t neural_network_get_incoming_synapse_count(neural_network_t network, uin
         return 0;
     }
 
-    return network->neurons[neuron_id].num_incoming;
+    return NEURON_IN_COUNT(&network->neurons[neuron_id]);
 }
 
 /**
@@ -2937,9 +3123,26 @@ uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t
         return 0;
     }
 
-    neuron_t* neuron = &network->neurons[neuron_id];
-    *out_synapses = neuron->incoming_synapses;
-    return neuron->num_incoming;
+    // NIMCP 2.11: Sparse storage doesn't provide a contiguous synapse_t array.
+    // Return count; callers should use NEURON_IN_HANDLE / NEURON_IN_META macros.
+    *out_synapses = NULL;
+    return NEURON_IN_COUNT(&network->neurons[neuron_id]);
+}
+
+//=============================================================================
+// NIMCP 2.11: Sparse synapse pool accessors
+//=============================================================================
+
+sparse_synapse_pool_t neural_network_get_synapse_handle_pool(neural_network_t network)
+{
+    if (!network) return NULL;
+    return network->synapse_handle_pool;
+}
+
+synapse_metadata_pool_t neural_network_get_synapse_metadata_pool(neural_network_t network)
+{
+    if (!network) return NULL;
+    return network->synapse_metadata_pool;
 }
 
 //=============================================================================
@@ -3110,8 +3313,11 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
     neuron_t* from_neuron = &network->neurons[from_id];
     neuron_t* to_neuron = &network->neurons[to_id];
 
-    synapse_t* syn = &from_neuron->synapses[from_neuron->num_synapses - 1];
-    synapse_t* incoming_syn = &to_neuron->incoming_synapses[to_neuron->num_incoming - 1];
+    uint32_t out_last = NEURON_OUT_COUNT(from_neuron) - 1;
+    uint32_t in_last = NEURON_IN_COUNT(to_neuron) - 1;
+    synapse_t* syn = NEURON_OUT_META(network, from_neuron, out_last);
+    synapse_t* incoming_syn = NEURON_IN_META(network, to_neuron, in_last);
+    if (!syn || !incoming_syn) return false;
 
     // 3. Set synapse type
     syn->type = type;
@@ -3341,12 +3547,12 @@ ternary_weight_matrix_t* neural_network_export_ternary_weights(
     for (uint32_t from_id = 0; from_id < network->num_neurons; from_id++) {
         neuron_t* neuron = &network->neurons[from_id];
 
-        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
-            synapse_t* syn = &neuron->synapses[syn_idx];
-            uint32_t to_id = syn->target_id;
+        for (uint32_t syn_idx = 0; syn_idx < NEURON_OUT_COUNT(neuron); syn_idx++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, syn_idx);
+            uint32_t to_id = h->target_neuron_id;
 
             // Quantize weight to ternary
-            trit_t trit_weight = synapse_weight_to_ternary(syn->weight, threshold);
+            trit_t trit_weight = synapse_weight_to_ternary(h->weight, threshold);
 
             // Store in matrix
             trit_matrix_set(twm->weights, from_id, to_id, trit_weight);
@@ -3374,19 +3580,24 @@ int neural_network_import_ternary_weights(
     for (uint32_t from_id = 0; from_id < network->num_neurons; from_id++) {
         neuron_t* neuron = &network->neurons[from_id];
 
-        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
-            synapse_t* syn = &neuron->synapses[syn_idx];
-            uint32_t to_id = syn->target_id;
+        for (uint32_t syn_idx = 0; syn_idx < NEURON_OUT_COUNT(neuron); syn_idx++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, syn_idx);
+            uint32_t to_id = h->target_neuron_id;
 
             // Get ternary weight from matrix
             trit_t trit_weight = trit_matrix_get(twm->weights, from_id, to_id);
 
             // Dequantize to float
-            syn->weight = synapse_ternary_to_weight(
+            float new_w = synapse_ternary_to_weight(
                 trit_weight,
                 twm->positive_scale,
                 twm->negative_scale
             );
+            h->weight = new_w;
+
+            // Keep metadata in sync
+            synapse_t* syn = NEURON_OUT_META(network, neuron, syn_idx);
+            if (syn) syn->weight = new_w;
 
             imported++;
         }

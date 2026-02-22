@@ -4,6 +4,7 @@
 #include "io/serialization/nimcp_network_serialization.h"
 #include "io/serialization/nimcp_encryption.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <time.h>
@@ -103,14 +104,14 @@ static bool write_network_header(NimcpSerializer* serializer, bool compress);
 static bool write_network_metadata(NimcpSerializer* serializer, neural_network_t network);
 static bool write_network_config(NimcpSerializer* serializer, const network_config_t* config);
 static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron);
-static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse);
+static bool write_synapse(NimcpSerializer* serializer, const synapse_handle_t* synapse);
 static uint32_t calculate_checksum(const uint8_t* data, size_t length);
 
 static bool read_network_header(NimcpSerializer* serializer, uint8_t* version, uint8_t* flags);
 static bool read_network_metadata(NimcpSerializer* serializer, neural_network_t network);
 static bool read_network_config(NimcpSerializer* serializer, network_config_t* config);
 static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron);
-static bool read_synapse(NimcpSerializer* serializer, synapse_t* synapse);
+static bool read_synapse(NimcpSerializer* serializer, synapse_handle_t* synapse);
 
 //=============================================================================
 // Error Messages
@@ -207,7 +208,7 @@ nimcp_network_serial_result_t nimcp_network_serialize(
         if (!write_neuron(serializer, &network->neurons[i])) {
             return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
         }
-        total_synapses += network->neurons[i].num_synapses;
+        total_synapses += NEURON_OUT_COUNT(&network->neurons[i]);
     }
 
     // Calculate and write checksum
@@ -600,9 +601,12 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
             if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
             return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
         }
-        total_synapses += network->neurons[i].num_synapses;
+        total_synapses += NEURON_OUT_COUNT(&network->neurons[i]);
     }
     network->num_neurons = num_neurons;
+
+    // Rebuild incoming synapses from outgoing data for forward pass
+    neural_network_rebuild_incoming(network);
 
     // Verify checksum
     uint32_t stored_checksum = nimcp_read_uint32(working_serializer);
@@ -889,12 +893,14 @@ static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
     }
 
     // Write synapses
-    if (!nimcp_write_uint32(serializer, neuron->num_synapses)) {
+    uint32_t out_count = NEURON_OUT_COUNT(neuron);
+    if (!nimcp_write_uint32(serializer, out_count)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: serializer write failed");
         return false;
     }
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        if (!write_synapse(serializer, &neuron->synapses[i])) {
+    for (uint32_t i = 0; i < out_count; i++) {
+        synapse_handle_t* handle = NEURON_OUT_HANDLE((neuron_t*)neuron, i);
+        if (!write_synapse(serializer, handle)) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: synapse serialization failed");
             return false;
         }
@@ -904,9 +910,9 @@ static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
     return true;
 }
 
-static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
+static bool write_synapse(NimcpSerializer* serializer, const synapse_handle_t* synapse)
 {
-    if (!nimcp_write_uint32(serializer, synapse->target_id)) {
+    if (!nimcp_write_uint32(serializer, synapse->target_neuron_id)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
@@ -914,15 +920,15 @@ static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
-    if (!nimcp_write_float(serializer, synapse->plasticity)) {
+    if (!nimcp_write_float(serializer, 0.0f)) {  // plasticity: not in handle
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
-    if (!nimcp_write_float(serializer, synapse->last_change)) {
+    if (!nimcp_write_float(serializer, 0.0f)) {  // last_change: not in handle
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
-    if (!nimcp_write_uint64(serializer, synapse->last_active)) {
+    if (!nimcp_write_uint64(serializer, 0)) {  // last_active: not in handle
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
@@ -930,11 +936,11 @@ static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
-    if (!nimcp_write_float(serializer, synapse->meta_plasticity)) {
+    if (!nimcp_write_float(serializer, 0.0f)) {  // meta_plasticity: not in handle
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
-    if (!nimcp_write_float(serializer, synapse->trace)) {
+    if (!nimcp_write_float(serializer, 0.0f)) {  // trace: not in handle
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: serializer write failed");
         return false;
     }
@@ -1060,17 +1066,20 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
         return false;  // Corrupted data
     }
 
-    neuron->num_synapses = num_synapses;
+    // Initialize sparse outgoing storage and populate from serialized data
+    sparse_synapse_storage_init(&neuron->outgoing);
 
     for (uint32_t i = 0; i < num_synapses; i++) {
-        if (!read_synapse(serializer, &neuron->synapses[i])) {
+        synapse_handle_t* handle = &neuron->outgoing.embedded[i];
+        if (!read_synapse(serializer, handle)) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_neuron: synapse deserialization failed");
             return false;
         }
+        neuron->outgoing.embedded_count++;
     }
 
     // Initialize non-serialized fields to defaults
-    neuron->num_incoming = 0;
+    sparse_synapse_storage_init(&neuron->incoming);
 
     // BBB: Validate external input
     // WHAT: Check input for security threats before processing
@@ -1088,19 +1097,24 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
     return !nimcp_serializer_has_error(serializer);
 }
 
-static bool read_synapse(NimcpSerializer* serializer, synapse_t* synapse)
+static bool read_synapse(NimcpSerializer* serializer, synapse_handle_t* synapse)
 {
-    synapse->target_id = nimcp_read_uint32(serializer);
+    synapse->target_neuron_id = nimcp_read_uint32(serializer);
     synapse->weight = nimcp_read_float(serializer);
-    synapse->plasticity = nimcp_read_float(serializer);
-    synapse->last_change = nimcp_read_float(serializer);
-    synapse->last_active = nimcp_read_uint64(serializer);
+    (void)nimcp_read_float(serializer);   // plasticity: not in handle, skip
+    (void)nimcp_read_float(serializer);   // last_change: not in handle, skip
+    (void)nimcp_read_uint64(serializer);  // last_active: not in handle, skip
     synapse->strength = nimcp_read_float(serializer);
-    synapse->meta_plasticity = nimcp_read_float(serializer);
-    synapse->trace = nimcp_read_float(serializer);
+    (void)nimcp_read_float(serializer);   // meta_plasticity: not in handle, skip
+    (void)nimcp_read_float(serializer);   // trace: not in handle, skip
 
-    // Initialize STP to disabled
-    synapse->enable_stp = false;
+    // Initialize remaining handle fields to defaults
+    synapse->metadata_index = SPARSE_SYNAPSE_NO_METADATA;
+    synapse->peer_index = SPARSE_SYNAPSE_NO_PEER;
+    synapse->ternary_weight = 0;
+    synapse->use_ternary_weight = 0;
+    synapse->reserved[0] = 0;
+    synapse->reserved[1] = 0;
 
     return !nimcp_serializer_has_error(serializer);
 }

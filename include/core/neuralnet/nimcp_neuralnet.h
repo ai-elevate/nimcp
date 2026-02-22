@@ -6,6 +6,7 @@
 #include "common/nimcp_export.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_types/nimcp_neuron_types.h"  // Phase 8.7: Specialized neuron types
+#include "core/neuralnet/nimcp_sparse_synapse.h"   // NIMCP 2.11: Sparse synapse storage
 #include "plasticity/stp/nimcp_stp.h"
 #include "plasticity/bcm/nimcp_bcm.h"  // Phase 11: BCM homeostatic plasticity
 #include "utils/ternary/nimcp_ternary.h"  // Ternary weight support
@@ -276,15 +277,10 @@ typedef struct neuron_struct {
     stdp_params_t stdp_params;         /**< STDP parameters */
     homeostatic_params_t homeostatic;  /**< Homeostatic parameters */
 
-    // Synaptic connections (outgoing edges)
-    synapse_t synapses[MAX_SYNAPSES_PER_NEURON];
-    uint32_t num_synapses;
-
-    // Bidirectional tracking: incoming synapses (OPTIMIZATION for O(S) input summation)
-    // DESIGN PATTERN: Bidirectional Association
-    // WHY: Eliminates O(N×S) scan in sum_synaptic_inputs, now O(S)
-    synapse_t incoming_synapses[MAX_SYNAPSES_PER_NEURON];
-    uint32_t num_incoming;
+    // NIMCP 2.11: Sparse synapse storage (replaces fixed arrays)
+    // Memory reduction: 106,496 bytes → ~3,112 bytes per neuron (97% savings)
+    sparse_synapse_storage_t outgoing;   /**< Outgoing synapses (embedded[64] + overflow) */
+    sparse_synapse_storage_t incoming;   /**< Incoming synapses (for O(S) forward pass) */
 
     // Plasticity parameters
     float plasticity_rate;       /**< Learning rate for plasticity */
@@ -408,6 +404,26 @@ uint32_t neural_network_get_num_neurons(neural_network_t network);
  * @return Pointer to neuron, or NULL if invalid
  */
 neuron_t* neural_network_get_neuron(neural_network_t network, uint32_t neuron_id);
+
+/**
+ * @brief Get outgoing synapse metadata via network pool
+ * @param network Network instance (owns the metadata pool)
+ * @param neuron Neuron pointer
+ * @param index Synapse index within neuron's outgoing storage
+ * @return synapse_t* metadata pointer, or NULL
+ */
+synapse_t* neural_network_get_out_meta(neural_network_t network, neuron_t* neuron, uint32_t index);
+
+/**
+ * @brief Get incoming synapse metadata via network pool
+ */
+synapse_t* neural_network_get_in_meta(neural_network_t network, neuron_t* neuron, uint32_t index);
+
+/**
+ * @brief Rebuild all incoming synapses from outgoing data
+ * Call after deserialization to populate incoming handles for the forward pass.
+ */
+bool neural_network_rebuild_incoming(neural_network_t network);
 
 // NIMCP 2.5 - Forward pass for inference
 bool neural_network_forward(neural_network_t network, const float* inputs, uint32_t input_size,
@@ -612,6 +628,20 @@ uint32_t neural_network_get_incoming_synapse_count(neural_network_t network, uin
  */
 uint32_t neural_network_get_incoming_synapses(neural_network_t network, uint32_t neuron_id,
                                                const synapse_t** out_synapses);
+
+//=============================================================================
+// Sparse synapse pool accessors (NIMCP 2.11)
+//=============================================================================
+
+/**
+ * @brief Get synapse handle pool for external code that needs to add/remove synapses
+ */
+sparse_synapse_pool_t neural_network_get_synapse_handle_pool(neural_network_t network);
+
+/**
+ * @brief Get synapse metadata pool for external code that needs full synapse_t access
+ */
+synapse_metadata_pool_t neural_network_get_synapse_metadata_pool(neural_network_t network);
 
 //=============================================================================
 // ENHANCEMENT 1: Synapse Semantic Embeddings API

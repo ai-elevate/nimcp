@@ -28,6 +28,7 @@ static void api_set_error(const char* fmt, ...);
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/strategy/nimcp_brain_strategy.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "core/neuralnet/nimcp_neuralnet_backprop.h"  // Backprop for gradient-based training
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"

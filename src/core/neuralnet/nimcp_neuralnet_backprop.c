@@ -26,6 +26,7 @@
  */
 
 #include "core/neuralnet/nimcp_neuralnet_backprop.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -199,7 +200,7 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
 
     for (uint32_t n = 0; n < network->num_neurons; n++) {
         neuron_t* neuron = &network->neurons[n];
-        ctx->total_weights += neuron->num_synapses;
+        ctx->total_weights += NEURON_OUT_COUNT(neuron);
     }
 
     /* Neurons excluding input layer */
@@ -308,9 +309,9 @@ bool backprop_forward(backprop_ctx_t* ctx,
             float z = neuron->bias;
 
             /* Sum inputs from incoming synapses */
-            for (uint32_t s = 0; s < neuron->num_incoming; s++) {
-                synapse_t* syn = &neuron->incoming_synapses[s];
-                uint32_t src_id = syn->source_neuron_id;
+            for (uint32_t s = 0; s < NEURON_IN_COUNT(neuron); s++) {
+                synapse_handle_t* syn = NEURON_IN_HANDLE(neuron, s);
+                uint32_t src_id = syn->target_neuron_id;
 
                 /* Find which layer and index the source is in */
                 float src_activation = 0.0f;
@@ -322,7 +323,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
             }
 
             /* If no incoming synapses, use outgoing synapses from previous layer neurons */
-            if (neuron->num_incoming == 0) {
+            if (NEURON_IN_COUNT(neuron) == 0) {
                 /* Previous layer neurons have outgoing synapses to this layer */
                 uint32_t prev_offset = 0;
                 for (uint32_t k = 0; k < l - 1; k++) {
@@ -334,9 +335,10 @@ bool backprop_forward(backprop_ctx_t* ctx,
                     if (prev_neuron_id >= network->num_neurons) continue;
 
                     neuron_t* prev_neuron = &network->neurons[prev_neuron_id];
-                    for (uint32_t s = 0; s < prev_neuron->num_synapses; s++) {
-                        if (prev_neuron->synapses[s].target_id == neuron_id) {
-                            z += prev_neuron->synapses[s].weight *
+                    for (uint32_t s = 0; s < NEURON_OUT_COUNT(prev_neuron); s++) {
+                        synapse_handle_t* sh = NEURON_OUT_HANDLE(prev_neuron, s);
+                        if (sh->target_neuron_id == neuron_id) {
+                            z += sh->weight *
                                  ctx->activations[l - 1].post_activation[j];
                         }
                     }
@@ -451,13 +453,14 @@ bool backprop_backward(backprop_ctx_t* ctx,
 
             if (curr_neuron) {
                 /* Check outgoing synapses from current neuron */
-                for (uint32_t s = 0; s < curr_neuron->num_synapses; s++) {
-                    uint32_t target_id = curr_neuron->synapses[s].target_id;
+                for (uint32_t s = 0; s < NEURON_OUT_COUNT(curr_neuron); s++) {
+                    synapse_handle_t* sh = NEURON_OUT_HANDLE(curr_neuron, s);
+                    uint32_t target_id = sh->target_neuron_id;
 
                     /* If target is in next layer */
                     if (target_id >= next_offset && target_id < next_offset + next_layer_size) {
                         uint32_t next_idx = target_id - next_offset;
-                        float w = curr_neuron->synapses[s].weight;
+                        float w = sh->weight;
                         delta_sum += w * layer_deltas[l + 1][next_idx];
                     }
                 }
@@ -493,8 +496,9 @@ bool backprop_backward(backprop_ctx_t* ctx,
             float a_source = ctx->activations[l].post_activation[i];
 
             /* For each outgoing synapse */
-            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-                uint32_t target_id = neuron->synapses[s].target_id;
+            for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
+                synapse_handle_t* sh = NEURON_OUT_HANDLE(neuron, s);
+                uint32_t target_id = sh->target_neuron_id;
 
                 /* Find which layer the target is in */
                 uint32_t target_layer = 0;

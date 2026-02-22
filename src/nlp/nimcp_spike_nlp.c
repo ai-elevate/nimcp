@@ -23,6 +23,7 @@
  */
 
 #include "nlp/nimcp_spike_nlp.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -405,7 +406,7 @@ bool spike_nlp_process_sentence(
         // WHY: Scale-free networks have hub neurons with high degree
         // HOW: Threshold at 10 synapses (empirically chosen)
         // NOTE: Future improvement could use betweenness centrality
-        if (neuron->num_synapses > 10) {
+        if (NEURON_OUT_COUNT(neuron) > 10) {
             hub_activity_sum += neuron->avg_activity;
             hub_count++;
         }

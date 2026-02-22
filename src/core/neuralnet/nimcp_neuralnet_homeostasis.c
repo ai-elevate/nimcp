@@ -5,6 +5,7 @@
 
 #include "core/neuralnet/nimcp_neuralnet_homeostasis.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
@@ -108,12 +109,15 @@ static float compute_homeostatic_factor(neuron_t* neuron, float current_activity
 
 static void normalize_synaptic_weights(neuron_t* neuron)
 {
-    if (!neuron || neuron->num_synapses == 0)
+    uint32_t count = NEURON_OUT_COUNT(neuron);
+    if (!neuron || count == 0)
         return;
 
     float sum_sq = 0.0f;
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        float w = neuron->synapses[i].weight;
+    for (uint32_t i = 0; i < count; i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+        if (!h) continue;
+        float w = h->weight;
         sum_sq += w * w;
     }
 
@@ -126,8 +130,10 @@ static void normalize_synaptic_weights(neuron_t* neuron)
     float target_norm = neuron->oja_params.target_norm;
     if (norm > target_norm * 1.5f) {
         float scale = target_norm / norm;
-        for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-            neuron->synapses[i].weight *= scale;
+        for (uint32_t i = 0; i < count; i++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+            if (!h) continue;
+            h->weight *= scale;
         }
     }
 }
