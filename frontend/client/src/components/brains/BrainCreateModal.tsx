@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { BrainCreate } from '../../types';
 
 interface Props {
@@ -30,10 +30,29 @@ export function BrainCreateModal({ onClose, onCreate }: Props) {
 
   const isAutoDetect = !showAdvanced || (task === undefined && numInputs === undefined && numOutputs === undefined);
 
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">Create Brain</div>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+        <div className="modal-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Create Brain
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)',
+              fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+            }}
+            aria-label="Close"
+          >&times;</button>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Name</label>

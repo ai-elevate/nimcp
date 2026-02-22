@@ -9,7 +9,7 @@ Adapts to the actual nimcp Python API:
   - brain.snapshot_cow() -> capsule
   - brain.restore_cow(capsule) -> bool
   - brain.save(path) / brain.load(path)
-  - No brain.probe() returning dict; we build metrics ourselves.
+  - brain.probe() -> dict with full C-level metrics
 """
 import json
 import os
@@ -300,53 +300,38 @@ class BrainManager:
     # --- Probe ---
 
     def _build_probe(self, bid: int) -> Optional[dict]:
-        """Build a probe-like dict from available API calls + tracked stats."""
+        """Get probe from C brain.probe() and overlay Python-tracked stats."""
         brain = self._brains.get(bid)
         if brain is None:
             return None
-        meta = self._metadata[bid]
         stats = self._stats[bid]
 
         try:
-            neuron_count = brain.get_neuron_count()
+            probe = brain.probe()
         except Exception as exc:
-            _log.debug("get_neuron_count failed for brain %d: %s", bid, exc)
-            neuron_count = 0
+            _log.debug("brain.probe() failed for brain %d: %s", bid, exc)
+            return None
 
+        # utilization not in C probe struct — fetch separately
         try:
-            utilization, saturation = brain.get_utilization_metrics()
-        except Exception as exc:
-            _log.debug("get_utilization_metrics failed for brain %d: %s", bid, exc)
-            utilization, saturation = 0.0, 0.0
+            utilization, _saturation = brain.get_utilization_metrics()
+        except Exception:
+            utilization = 0.0
+        probe["utilization"] = utilization
 
-        accuracy = (stats.total_correct / stats.total_inferences) if stats.total_inferences > 0 else 0.0
-        avg_inference_us = 0.0
+        # Fields not in C probe struct — always set from Python stats
+        probe["last_loss"] = stats.last_loss
+
+        # Overlay Python-tracked stats that accumulate across session
+        if stats.total_inferences > 0:
+            probe["total_inferences"] = stats.total_inferences
+            probe["accuracy"] = stats.total_correct / stats.total_inferences
+        if stats.total_learning_steps > 0:
+            probe["total_learning_steps"] = stats.total_learning_steps
         if stats.inference_times:
-            avg_inference_us = sum(stats.inference_times) / len(stats.inference_times)
+            probe["avg_inference_time_us"] = sum(stats.inference_times) / len(stats.inference_times)
 
-        return {
-            "task_name": meta.name,
-            "size": meta.size,
-            "task": meta.task,
-            "num_neurons": neuron_count,
-            "num_synapses": 0,
-            "num_active_synapses": 0,
-            "total_inferences": stats.total_inferences,
-            "total_learning_steps": stats.total_learning_steps,
-            "avg_sparsity": saturation,
-            "avg_inference_time_us": avg_inference_us,
-            "current_learning_rate": 0.001,
-            "accuracy": accuracy,
-            "memory_bytes": 0,
-            "num_inputs": meta.num_inputs,
-            "num_outputs": meta.num_outputs,
-            "utilization": utilization,
-            "last_loss": stats.last_loss,
-            "is_cow_clone": meta.parent_id is not None,
-            "cow_ref_count": 0,
-            "cow_shared_bytes": 0,
-            "cow_private_bytes": 0,
-        }
+        return probe
 
     def list_brains(self) -> list[dict]:
         with self._lock:
