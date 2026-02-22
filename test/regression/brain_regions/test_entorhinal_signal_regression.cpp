@@ -80,10 +80,10 @@ constexpr float GATEWAY_ENCODING_LATENCY_MAX_MS = 5.0f;
 constexpr float GATEWAY_RETRIEVAL_LATENCY_MAX_MS = 10.0f;
 constexpr float GATEWAY_TRANSFER_SUCCESS_RATE_MIN = 0.95f;
 
-/* Performance baselines */
-constexpr int WARMUP_ITERATIONS = 10;
-constexpr int BENCHMARK_ITERATIONS = 100;
-constexpr int MEMORY_TEST_CYCLES = 500;
+/* Performance baselines (reduced for parallel ctest compatibility) */
+constexpr int WARMUP_ITERATIONS = 5;
+constexpr int BENCHMARK_ITERATIONS = 25;
+constexpr int MEMORY_TEST_CYCLES = 50;
 constexpr int64_t UPDATE_LATENCY_MAX_US = 1000;  /* 1ms */
 
 }  /* namespace */

@@ -2746,6 +2746,19 @@ unit_integration_inter_test_neuromod_wm_bridge/fast:
 .PHONY : unit_integration_inter_test_neuromod_wm_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_integration_inter_test_physics_chemistry_bridge
+
+# Build rule for target.
+unit_integration_inter_test_physics_chemistry_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_integration_inter_test_physics_chemistry_bridge
+.PHONY : unit_integration_inter_test_physics_chemistry_bridge
+
+# fast build rule for target.
+unit_integration_inter_test_physics_chemistry_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_integration_inter_test_physics_chemistry_bridge.dir/build.make test/CMakeFiles/unit_integration_inter_test_physics_chemistry_bridge.dir/build
+.PHONY : unit_integration_inter_test_physics_chemistry_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_integration_intra_test_biology_intra_coordinator
 
 # Build rule for target.
@@ -3056,6 +3069,19 @@ unit_optimization_quantum_annealing_test_quantum_annealing: cmake_check_build_sy
 unit_optimization_quantum_annealing_test_quantum_annealing/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_optimization_quantum_annealing_test_quantum_annealing.dir/build.make test/CMakeFiles/unit_optimization_quantum_annealing_test_quantum_annealing.dir/build
 .PHONY : unit_optimization_quantum_annealing_test_quantum_annealing/fast
+
+#=============================================================================
+# Target rules for targets named unit_optimization_quantum_annealing_test_quantum_ternary
+
+# Build rule for target.
+unit_optimization_quantum_annealing_test_quantum_ternary: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_optimization_quantum_annealing_test_quantum_ternary
+.PHONY : unit_optimization_quantum_annealing_test_quantum_ternary
+
+# fast build rule for target.
+unit_optimization_quantum_annealing_test_quantum_ternary/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_optimization_quantum_annealing_test_quantum_ternary.dir/build.make test/CMakeFiles/unit_optimization_quantum_annealing_test_quantum_ternary.dir/build
+.PHONY : unit_optimization_quantum_annealing_test_quantum_ternary/fast
 
 #=============================================================================
 # Target rules for targets named unit_optimization_test_cross_modal
@@ -4694,6 +4720,19 @@ integration_core_topology_topology_integration_tests: cmake_check_build_system
 integration_core_topology_topology_integration_tests/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_topology_topology_integration_tests.dir/build.make test/CMakeFiles/integration_core_topology_topology_integration_tests.dir/build
 .PHONY : integration_core_topology_topology_integration_tests/fast
+
+#=============================================================================
+# Target rules for targets named integration_embodiment_test_embodiment_integration
+
+# Build rule for target.
+integration_embodiment_test_embodiment_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_embodiment_test_embodiment_integration
+.PHONY : integration_embodiment_test_embodiment_integration
+
+# fast build rule for target.
+integration_embodiment_test_embodiment_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_embodiment_test_embodiment_integration.dir/build.make test/CMakeFiles/integration_embodiment_test_embodiment_integration.dir/build
+.PHONY : integration_embodiment_test_embodiment_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_information_test_quantum_shannon_integration
@@ -10895,6 +10934,19 @@ e2e_utils_test_memory_tracking_e2e: cmake_check_build_system
 e2e_utils_test_memory_tracking_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/utils/CMakeFiles/e2e_utils_test_memory_tracking_e2e.dir/build.make test/e2e/utils/CMakeFiles/e2e_utils_test_memory_tracking_e2e.dir/build
 .PHONY : e2e_utils_test_memory_tracking_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_memory_scalability
+
+# Build rule for target.
+e2e_test_memory_scalability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_memory_scalability
+.PHONY : e2e_test_memory_scalability
+
+# fast build rule for target.
+e2e_test_memory_scalability/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/utils/CMakeFiles/e2e_test_memory_scalability.dir/build.make test/e2e/utils/CMakeFiles/e2e_test_memory_scalability.dir/build
+.PHONY : e2e_test_memory_scalability/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -24482,6 +24534,32 @@ unit_utils_memory_test_memory_recursion_guard/fast:
 .PHONY : unit_utils_memory_test_memory_recursion_guard/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_memory_test_memory_hash_tracking
+
+# Build rule for target.
+unit_utils_memory_test_memory_hash_tracking: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_memory_test_memory_hash_tracking
+.PHONY : unit_utils_memory_test_memory_hash_tracking
+
+# fast build rule for target.
+unit_utils_memory_test_memory_hash_tracking/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_memory_hash_tracking.dir/build.make test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_memory_hash_tracking.dir/build
+.PHONY : unit_utils_memory_test_memory_hash_tracking/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_memory_test_memory_hash_integration
+
+# Build rule for target.
+unit_utils_memory_test_memory_hash_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_memory_test_memory_hash_integration
+.PHONY : unit_utils_memory_test_memory_hash_integration
+
+# fast build rule for target.
+unit_utils_memory_test_memory_hash_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_memory_hash_integration.dir/build.make test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_memory_hash_integration.dir/build
+.PHONY : unit_utils_memory_test_memory_hash_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_memory_test_brain_pools_integration
 
 # Build rule for target.
@@ -24597,6 +24675,19 @@ regression_utils_memory_test_memory_recursion_atomic_regression: cmake_check_bui
 regression_utils_memory_test_memory_recursion_atomic_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_memory_recursion_atomic_regression.dir/build.make test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_memory_recursion_atomic_regression.dir/build
 .PHONY : regression_utils_memory_test_memory_recursion_atomic_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_memory_test_memory_hash_tracking_regression
+
+# Build rule for target.
+regression_utils_memory_test_memory_hash_tracking_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_memory_test_memory_hash_tracking_regression
+.PHONY : regression_utils_memory_test_memory_hash_tracking_regression
+
+# fast build rule for target.
+regression_utils_memory_test_memory_hash_tracking_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_memory_hash_tracking_regression.dir/build.make test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_memory_hash_tracking_regression.dir/build
+.PHONY : regression_utils_memory_test_memory_hash_tracking_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_constants_test
@@ -35610,6 +35701,19 @@ regression_gpu_test_gpu_recovery_validation_regression/fast:
 .PHONY : regression_gpu_test_gpu_recovery_validation_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_gpu_test_visual_processing_regression
+
+# Build rule for target.
+regression_gpu_test_visual_processing_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_visual_processing_regression
+.PHONY : regression_gpu_test_visual_processing_regression
+
+# fast build rule for target.
+regression_gpu_test_visual_processing_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build
+.PHONY : regression_gpu_test_visual_processing_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_gpu_test_gpu_neuron_backward_compat
 
 # Build rule for target.
@@ -35712,19 +35816,6 @@ regression_gpu_test_substrate_gpu_regression: cmake_check_build_system
 regression_gpu_test_substrate_gpu_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_substrate_gpu_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_substrate_gpu_regression.dir/build
 .PHONY : regression_gpu_test_substrate_gpu_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_visual_processing_regression
-
-# Build rule for target.
-regression_gpu_test_visual_processing_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_visual_processing_regression
-.PHONY : regression_gpu_test_visual_processing_regression
-
-# fast build rule for target.
-regression_gpu_test_visual_processing_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build
-.PHONY : regression_gpu_test_visual_processing_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_gpu_test_gpu_walkthrough_fixes
@@ -38093,6 +38184,32 @@ unit_chemistry_ph_test_ph_dynamics/fast:
 .PHONY : unit_chemistry_ph_test_ph_dynamics/fast
 
 #=============================================================================
+# Target rules for targets named unit_chemistry_ph_test_buffer_systems
+
+# Build rule for target.
+unit_chemistry_ph_test_buffer_systems: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_ph_test_buffer_systems
+.PHONY : unit_chemistry_ph_test_buffer_systems
+
+# fast build rule for target.
+unit_chemistry_ph_test_buffer_systems/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/chemistry/ph/CMakeFiles/unit_chemistry_ph_test_buffer_systems.dir/build.make test/unit/chemistry/ph/CMakeFiles/unit_chemistry_ph_test_buffer_systems.dir/build
+.PHONY : unit_chemistry_ph_test_buffer_systems/fast
+
+#=============================================================================
+# Target rules for targets named unit_chemistry_ph_test_proton_pumps
+
+# Build rule for target.
+unit_chemistry_ph_test_proton_pumps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_ph_test_proton_pumps
+.PHONY : unit_chemistry_ph_test_proton_pumps
+
+# fast build rule for target.
+unit_chemistry_ph_test_proton_pumps/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/chemistry/ph/CMakeFiles/unit_chemistry_ph_test_proton_pumps.dir/build.make test/unit/chemistry/ph/CMakeFiles/unit_chemistry_ph_test_proton_pumps.dir/build
+.PHONY : unit_chemistry_ph_test_proton_pumps/fast
+
+#=============================================================================
 # Target rules for targets named unit_chemistry_gasotransmitters_test_nitric_oxide
 
 # Build rule for target.
@@ -39908,6 +40025,7 @@ help:
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_footprint"
 	@echo "... e2e_test_memory_immune_pipeline"
+	@echo "... e2e_test_memory_scalability"
 	@echo "... e2e_test_memory_snn_plasticity_pipeline"
 	@echo "... e2e_test_mental_health_guardian"
 	@echo "... e2e_test_mesh_bootstrap"
@@ -40244,6 +40362,7 @@ help:
 	@echo "... integration_dragonfly_medulla"
 	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_eidetic_memory"
+	@echo "... integration_embodiment_test_embodiment_integration"
 	@echo "... integration_emotion_immune_pipeline"
 	@echo "... integration_energy_consistency_fep"
 	@echo "... integration_error_propagation"
@@ -41063,6 +41182,7 @@ help:
 	@echo "... regression_utils_memory_test_brain_pools_regression"
 	@echo "... regression_utils_memory_test_layer_pools_regression"
 	@echo "... regression_utils_memory_test_memory_api_regression"
+	@echo "... regression_utils_memory_test_memory_hash_tracking_regression"
 	@echo "... regression_utils_memory_test_memory_recursion_atomic_regression"
 	@echo "... regression_utils_memory_test_p1p3_regression"
 	@echo "... regression_utils_memory_test_unified_memory_regression"
@@ -41423,7 +41543,9 @@ help:
 	@echo "... unit_brain_test_state_manager"
 	@echo "... unit_chemistry_exception_handling"
 	@echo "... unit_chemistry_gasotransmitters_test_nitric_oxide"
+	@echo "... unit_chemistry_ph_test_buffer_systems"
 	@echo "... unit_chemistry_ph_test_ph_dynamics"
+	@echo "... unit_chemistry_ph_test_proton_pumps"
 	@echo "... unit_cognitive_analysis_test_analysis_fep_bridge"
 	@echo "... unit_cognitive_analysis_test_network_analysis"
 	@echo "... unit_cognitive_analysis_test_network_analyzer_integration"
@@ -42121,6 +42243,7 @@ help:
 	@echo "... unit_integration_inter_test_neuromod_plasticity_bridge"
 	@echo "... unit_integration_inter_test_neuromod_reasoning_bridge"
 	@echo "... unit_integration_inter_test_neuromod_wm_bridge"
+	@echo "... unit_integration_inter_test_physics_chemistry_bridge"
 	@echo "... unit_integration_intra_test_biology_intra_coordinator"
 	@echo "... unit_integration_intra_test_chemistry_intra_coordinator"
 	@echo "... unit_integration_intra_test_physics_intra_coordinator"
@@ -42253,6 +42376,7 @@ help:
 	@echo "... unit_nlp_test_multimodal_integration_real"
 	@echo "... unit_ofc_test"
 	@echo "... unit_optimization_quantum_annealing_test_quantum_annealing"
+	@echo "... unit_optimization_quantum_annealing_test_quantum_ternary"
 	@echo "... unit_optimization_test_cross_modal"
 	@echo "... unit_optimization_test_dynamic_adaptation"
 	@echo "... unit_optimization_test_multi_objective"
@@ -42583,6 +42707,8 @@ help:
 	@echo "... unit_utils_memory_test_layer_pools"
 	@echo "... unit_utils_memory_test_memory"
 	@echo "... unit_utils_memory_test_memory_alignment"
+	@echo "... unit_utils_memory_test_memory_hash_integration"
+	@echo "... unit_utils_memory_test_memory_hash_tracking"
 	@echo "... unit_utils_memory_test_memory_leaks"
 	@echo "... unit_utils_memory_test_memory_pool"
 	@echo "... unit_utils_memory_test_memory_recursion_guard"

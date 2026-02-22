@@ -56,6 +56,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"  // Phase 11: Eligibility traces
 #include "plasticity/bcm/nimcp_bcm.h"  // Phase 11: BCM homeostatic plasticity
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Phase 11: Neuromodulator system
+#include "gpu/execution/nimcp_gpu_detect.h"          // Phase GPU: GPU detection
+#include "gpu/context/nimcp_gpu_context.h"           // Phase GPU: GPU context
+#include "gpu/training/nimcp_training_bridge.h"      // Phase GPU: Weight cache + forward pass
 
 //=============================================================================
 // Constants and Configuration
@@ -301,6 +304,12 @@ struct adaptive_network_struct {
     bool uses_cow_states;                    // True if neuron states use COW
     page_cow_region_t cow_states_region;     // COW region for neuron states
     page_cow_view_t cow_states_view;         // View into COW states region
+
+    // GPU acceleration (Phase GPU)
+    // WHY: Forward pass + loss on GPU when available, CPU bio-plasticity unchanged
+    struct nimcp_gpu_context_s* gpu_ctx;
+    struct nimcp_gpu_weight_cache_s* gpu_weight_cache;
+    bool gpu_enabled;
 };
 
 //=============================================================================
@@ -1093,6 +1102,33 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     network->label_map = NULL;
     network->num_labels = 0;
 
+    // Phase GPU: Initialize GPU acceleration (GPU-default, CPU fallback)
+    network->gpu_enabled = false;
+    network->gpu_ctx = NULL;
+    network->gpu_weight_cache = NULL;
+    if (gpu_is_available() &&
+        network->config.base_config.num_layers >= 2 &&
+        network->config.base_config.layer_sizes) {
+        network->gpu_ctx = nimcp_gpu_context_create_auto();
+        if (network->gpu_ctx) {
+            network->gpu_weight_cache = nimcp_gpu_weight_cache_create(
+                network->gpu_ctx,
+                network->base_network,
+                network->config.base_config.layer_sizes,
+                network->config.base_config.num_layers);
+            if (network->gpu_weight_cache) {
+                nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                             network->base_network);
+                network->gpu_enabled = true;
+                NIMCP_LOG_INFO("GPU training enabled for adaptive network (%u layers)",
+                               network->config.base_config.num_layers);
+            } else {
+                nimcp_gpu_context_destroy(network->gpu_ctx);
+                network->gpu_ctx = NULL;
+            }
+        }
+    }
+
     return network;
 }
 
@@ -1150,6 +1186,16 @@ void adaptive_network_destroy(adaptive_network_t network)
     // Guard clause: Validate input
     if (!network)
         return;
+
+    // Phase GPU: Clean up GPU resources before base network
+    if (network->gpu_weight_cache) {
+        nimcp_gpu_weight_cache_destroy(network->gpu_weight_cache);
+        network->gpu_weight_cache = NULL;
+    }
+    if (network->gpu_ctx) {
+        nimcp_gpu_context_destroy(network->gpu_ctx);
+        network->gpu_ctx = NULL;
+    }
 
     // Destroy base network
     if (network->base_network) {
@@ -1420,6 +1466,27 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     if (!network || !input || !output)
         return 0;
 
+    // Phase GPU: GPU-accelerated forward pass
+    if (network->gpu_enabled && network->gpu_weight_cache) {
+        // Re-upload weights if CPU biological learning modified them
+        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                         network->base_network);
+        }
+
+        // GPU forward pass (spike conversion not needed — GPU handles raw floats)
+        nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                               input, input_size, output, output_size);
+
+        // Still run adaptive thresholding + sparsity tracking on CPU
+        uint32_t active_count = process_network_outputs(network, output, output_size);
+        update_running_sparsity(network, active_count, output_size);
+        network->total_inferences++;
+        return active_count;
+    }
+
+    // CPU fallback path (original code)
+
     // Step 1: Compute adaptive threshold for input
     float input_threshold =
         adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
@@ -1539,6 +1606,50 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     if (!network || !example)
         return -1.0F;
 
+    // Phase GPU: GPU-accelerated learning path
+    if (network->gpu_enabled && network->gpu_weight_cache &&
+        (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION)) {
+        // 1. Sync weights to GPU if CPU biological learning modified them
+        if (network->gpu_weight_cache->weights_dirty_on_cpu) {
+            nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                         network->base_network);
+        }
+
+        // 2. GPU forward pass
+        float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
+        if (!output) return -1.0F;
+
+        nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                               example->input, example->input_size,
+                               output, example->target_size);
+
+        // 3. GPU MSE loss computation
+        float loss = nimcp_gpu_compute_loss(network->gpu_weight_cache,
+                                            output, example->target,
+                                            example->target_size);
+        if (loss < 0.0F) loss = 0.0F;  // Fallback on GPU error
+
+        // 4. Download activations so CPU bio-plasticity can read neuron states
+        nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
+                                                network->base_network);
+
+        // 5. CPU biological plasticity (STDP/BCM) — unchanged
+        float reward = 1.0F / (1.0F + loss);
+        reward *= example->confidence;
+        neural_network_apply_reward_learning(network->base_network, reward,
+                                             learning_rate,
+                                             network->total_learning_steps);
+
+        // 6. Mark weights dirty (STDP modified synapse weights on CPU)
+        network->gpu_weight_cache->weights_dirty_on_cpu = true;
+
+        free_hot_buffer(output);
+        network->total_learning_steps++;
+        return loss;
+    }
+
+    // CPU fallback path (original code)
+
     // Forward pass to get current output (Phase MP: use pool)
     float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
     if (!output) {
@@ -1578,6 +1689,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // Compute reward signal from error
             // High error → low reward, low error → high reward
             // Reward in [0, 1] where 1 = perfect, 0 = maximum error
+            {
             float reward = 1.0F / (1.0F + loss);  // Bounded reward signal
             reward *= example->confidence;         // Scale by example confidence
 
@@ -1586,6 +1698,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             uint64_t current_time = network->total_learning_steps;
 
             neural_network_apply_reward_learning(base, reward, learning_rate, current_time);
+            }
             break;
 
         case LEARN_MODE_UNSUPERVISED:
@@ -1600,11 +1713,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
             // Apply reinforcement learning with eligibility traces
             // Reward comes directly from confidence
+            {
             neural_network_t base_rl = network->base_network;
             uint64_t time_rl = network->total_learning_steps;
             float rl_reward = example->confidence;  // Direct reward signal
 
             neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
+            }
             break;
     }
 
@@ -2150,6 +2265,32 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     }
 
     fclose(file);
+
+    // Phase GPU: Initialize GPU acceleration for loaded network
+    network->gpu_enabled = false;
+    network->gpu_ctx = NULL;
+    network->gpu_weight_cache = NULL;
+    if (gpu_is_available() &&
+        network->config.base_config.num_layers >= 2 &&
+        network->config.base_config.layer_sizes) {
+        network->gpu_ctx = nimcp_gpu_context_create_auto();
+        if (network->gpu_ctx) {
+            network->gpu_weight_cache = nimcp_gpu_weight_cache_create(
+                network->gpu_ctx,
+                network->base_network,
+                network->config.base_config.layer_sizes,
+                network->config.base_config.num_layers);
+            if (network->gpu_weight_cache) {
+                nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
+                                             network->base_network);
+                network->gpu_enabled = true;
+            } else {
+                nimcp_gpu_context_destroy(network->gpu_ctx);
+                network->gpu_ctx = NULL;
+            }
+        }
+    }
+
     return network;
 }
 

@@ -47,6 +47,15 @@ add_gpu_regression_test(test_gpu_stub_regression)
 # HOW:  Test recovery config, context lifecycle, parameter correction
 add_gpu_regression_test(test_gpu_recovery_validation_regression)
 
+# =============================================================================
+# GPU Visual Processing Regression Tests (no CUDA required)
+# =============================================================================
+# WHAT: Regression tests for GPU visual processing (V1-V5, saliency)
+# WHY:  Prevent reintroduction of visual processing bugs (numerical, API)
+# HOW:  Test struct layouts, function signatures, edge cases, memory safety
+# NOTE: Test has CPU fallback via has_gpu_ flag — runs on CPU-only systems
+add_gpu_regression_test(test_visual_processing_regression)
+
 # Guard: CUDA toolkit required for remaining GPU regression tests
 if(NOT CUDAToolkit_FOUND)
     message(STATUS "  Skipping CUDA GPU regression tests (CUDA toolkit not found)")
@@ -102,14 +111,6 @@ add_gpu_regression_test(test_broca_gpu_regression)
 # WHY:  Prevent reintroduction of substrate GPU bugs (numerical stability, memory)
 # HOW:  Test numerical stability, GPU/CPU equivalence, edge cases
 add_gpu_regression_test(test_substrate_gpu_regression)
-
-# =============================================================================
-# GPU Visual Processing Regression Tests
-# =============================================================================
-# WHAT: Regression tests for GPU visual processing (V1-V5, saliency)
-# WHY:  Prevent reintroduction of visual processing bugs (numerical, API)
-# HOW:  Test struct layouts, function signatures, edge cases, memory safety
-add_gpu_regression_test(test_visual_processing_regression)
 
 # =============================================================================
 # GPU Walkthrough Fixes Regression Tests

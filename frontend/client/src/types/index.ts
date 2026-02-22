@@ -54,9 +54,23 @@ export interface BrainDetail {
 export interface BrainCreate {
   name: string;
   size: number;
-  task: number;
-  num_inputs: number;
-  num_outputs: number;
+  task?: number;
+  num_inputs?: number;
+  num_outputs?: number;
+}
+
+export interface CognitiveState {
+  confidence: number;
+  label: string;
+  utilization: number;
+  sparsity: number;
+  neuron_count: number;
+  total_inferences: number;
+  total_learning_steps: number;
+  explanation: string;
+  output_vector: number[];
+  num_active_neurons: number;
+  inference_time_us: number;
 }
 
 export interface TrainingConfig {
@@ -98,6 +112,7 @@ export interface DatasetInfo {
   num_classes: number;
   description: string;
   total_examples: number;
+  is_builtin: boolean;
 }
 
 export interface ChatMessage {
@@ -113,6 +128,7 @@ export interface ChatMessage {
   num_active_neurons?: number;
   inference_time_us?: number;
   output_vector?: number[];
+  cognitive_state?: CognitiveState;
 }
 
 export interface WSMessage {

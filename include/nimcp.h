@@ -238,6 +238,22 @@ nimcp_status_t nimcp_brain_learn_example(
 );
 
 /**
+ * @brief Get the loss value from the most recent learn_example call
+ *
+ * @param brain Brain handle
+ * @return Loss value (>= 0.0 on success, -1.0 if no learning has occurred)
+ */
+float nimcp_brain_get_last_loss(nimcp_brain_t brain);
+
+/**
+ * @brief Get running label-match accuracy (EMA)
+ *
+ * @param brain Brain handle
+ * @return Running accuracy [0.0, 1.0] or 0.0 if brain is NULL
+ */
+float nimcp_brain_get_accuracy(nimcp_brain_t brain);
+
+/**
  * @brief Make a decision/prediction
  *
  * @param brain Brain handle
@@ -282,6 +298,36 @@ nimcp_status_t nimcp_brain_infer(
     uint32_t num_features,
     float* outputs,
     uint32_t num_outputs
+);
+
+/**
+ * @brief Run full cognitive pipeline and return complete decision data
+ *
+ * Unlike nimcp_brain_predict() which only returns label+confidence,
+ * this function returns the full brain_decision_t contents including
+ * explanation text, output vector, active neuron count, and sparsity.
+ *
+ * @param brain Brain handle
+ * @param features Input feature array
+ * @param num_features Number of features
+ * @param out_label Buffer for predicted label (min 64 bytes)
+ * @param out_confidence Pointer to store confidence
+ * @param out_explanation Buffer for explanation text (min 256 bytes)
+ * @param out_output_vector Buffer for raw output vector
+ * @param out_output_size In: buffer capacity, Out: actual output size
+ * @param out_num_active_neurons Pointer to store active neuron count
+ * @param out_sparsity Pointer to store sparsity value
+ * @param out_inference_time_us Pointer to store inference time in microseconds
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_decide_full(
+    nimcp_brain_t brain,
+    const float* features, uint32_t num_features,
+    char* out_label, float* out_confidence,
+    char* out_explanation,
+    float* out_output_vector, uint32_t* out_output_size,
+    uint32_t* out_num_active_neurons, float* out_sparsity,
+    uint64_t* out_inference_time_us
 );
 
 /**

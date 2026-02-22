@@ -16,10 +16,14 @@ router = APIRouter(prefix="/api/brains", tags=["brains"])
 
 @router.post("/")
 async def create_brain(req: BrainCreate):
+    # Apply conversational defaults when fields are omitted
+    task = req.task if req.task is not None else 4          # TASK_ASSOCIATION
+    num_inputs = req.num_inputs if req.num_inputs is not None else 128
+    num_outputs = req.num_outputs if req.num_outputs is not None else 32
     try:
         bid = await c_api_call(
             manager.create_brain,
-            req.name, req.size, req.task, req.num_inputs, req.num_outputs,
+            req.name, req.size, task, num_inputs, num_outputs,
             timeout=C_API_TIMEOUT_SECONDS,
         )
     except ValueError as e:

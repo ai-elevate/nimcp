@@ -77,6 +77,7 @@ static void api_set_error(const char* fmt, ...);
 
 struct nimcp_brain_handle {
     brain_t internal_brain;  // Wraps internal brain_t
+    float last_loss;         // Loss from most recent learn_example call
 };
 
 struct nimcp_network_handle {

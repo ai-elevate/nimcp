@@ -258,6 +258,92 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
     return Py_BuildValue("(sf)", label, confidence);
 }
 
+// Brain.decide_full(features) -> dict with full cognitive decision data
+static PyObject* Brain_decide_full(BrainObject* self, PyObject* args)
+{
+    PyObject* features_list;
+
+    if (!PyArg_ParseTuple(args, "O", &features_list)) {
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        return NULL;
+    }
+
+    if (!PyList_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t num_features = PyList_Size(features_list);
+    if (num_features <= 0) {
+        PyErr_SetString(PyExc_ValueError, "features list must not be empty");
+        return NULL;
+    }
+
+    float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
+    if (!features) {
+        return PyErr_NoMemory();
+    }
+
+    for (Py_ssize_t i = 0; i < num_features; i++) {
+        PyObject* item = PyList_GetItem(features_list, i);
+        features[i] = (float)PyFloat_AsDouble(item);
+        if (PyErr_Occurred()) {
+            nimcp_free(features);
+            return NULL;
+        }
+    }
+
+    // Output buffers
+    char label[64];
+    float confidence;
+    char explanation[256];
+    float output_vector[1024];
+    uint32_t output_size = 1024;
+    uint32_t num_active_neurons = 0;
+    float sparsity = 0.0f;
+    uint64_t inference_time_us = 0;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_decide_full(
+        self->brain, features, (uint32_t)num_features,
+        label, &confidence, explanation,
+        output_vector, &output_size,
+        &num_active_neurons, &sparsity, &inference_time_us);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(features);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to run decide_full");
+        return NULL;
+    }
+
+    // Build output vector list
+    uint32_t vec_len = (output_size < 1024) ? output_size : 1024;
+    PyObject* vec_list = PyList_New(vec_len);
+    for (uint32_t i = 0; i < vec_len; i++) {
+        PyList_SetItem(vec_list, i, PyFloat_FromDouble(output_vector[i]));
+    }
+
+    // Build result dict
+    PyObject* result = PyDict_New();
+    PyDict_SetItemString(result, "label", PyUnicode_FromString(label));
+    PyDict_SetItemString(result, "confidence", PyFloat_FromDouble(confidence));
+    PyDict_SetItemString(result, "explanation", PyUnicode_FromString(explanation));
+    PyDict_SetItemString(result, "output_vector", vec_list);
+    PyDict_SetItemString(result, "num_active_neurons", PyLong_FromUnsignedLong(num_active_neurons));
+    PyDict_SetItemString(result, "sparsity", PyFloat_FromDouble(sparsity));
+    PyDict_SetItemString(result, "inference_time_us", PyLong_FromUnsignedLongLong(inference_time_us));
+
+    Py_DECREF(vec_list);
+    return result;
+}
+
 // Brain.clone_cow() -> Brain
 static PyObject* Brain_clone_cow(BrainObject* self, PyObject* Py_UNUSED(ignored))
 {
@@ -2634,6 +2720,14 @@ static PyMethodDef Brain_methods[] = {
      "subscribed monitoring systems using the bio-async router.\n\n"
      "Returns:\n"
      "    bool: True on success"},
+
+    {"decide_full", (PyCFunction)Brain_decide_full, METH_VARARGS,
+     "Run full cognitive pipeline and return complete decision data\n\n"
+     "Args:\n"
+     "    features (list): Input feature vector\n"
+     "Returns:\n"
+     "    dict: {label, confidence, explanation, output_vector,\n"
+     "           num_active_neurons, sparsity, inference_time_us}"},
 
     {NULL, NULL, 0, NULL}
 };

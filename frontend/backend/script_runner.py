@@ -117,6 +117,11 @@ async def _run_script(run: ScriptRun, script_path: str):
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
 
+    # Pass HuggingFace token if available (for streaming training)
+    hf_token = os.environ.get("HF_TOKEN")
+    if hf_token:
+        env["HF_TOKEN"] = hf_token
+
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,

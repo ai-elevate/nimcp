@@ -10,9 +10,9 @@ class BrainCreate(BaseModel):
         pattern=r'^[a-zA-Z0-9][a-zA-Z0-9_ \-]*$',
     )
     size: int = Field(default=1, ge=0, le=3, description="0=tiny,1=small,2=medium,3=large")
-    task: int = Field(default=0, ge=0, le=4, description="0=classification,1=regression,2=pattern,3=sequence,4=association")
-    num_inputs: int = Field(default=4, ge=1, le=10000)
-    num_outputs: int = Field(default=3, ge=1, le=1000)
+    task: Optional[int] = Field(default=None, ge=0, le=4, description="0=classification,1=regression,2=pattern,3=sequence,4=association")
+    num_inputs: Optional[int] = Field(default=None, ge=1, le=10000)
+    num_outputs: Optional[int] = Field(default=None, ge=1, le=1000)
 
 
 class BrainUpdate(BaseModel):

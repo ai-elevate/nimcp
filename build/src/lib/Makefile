@@ -32345,6 +32345,30 @@ __/gpu/training/nimcp_optimizer_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_optimizer_kernels.cu.s
 .PHONY : __/gpu/training/nimcp_optimizer_kernels.cu.s
 
+__/gpu/training/nimcp_training_bridge.o: __/gpu/training/nimcp_training_bridge.c.o
+.PHONY : __/gpu/training/nimcp_training_bridge.o
+
+# target to build an object file
+__/gpu/training/nimcp_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_training_bridge.c.o
+.PHONY : __/gpu/training/nimcp_training_bridge.c.o
+
+__/gpu/training/nimcp_training_bridge.i: __/gpu/training/nimcp_training_bridge.c.i
+.PHONY : __/gpu/training/nimcp_training_bridge.i
+
+# target to preprocess a source file
+__/gpu/training/nimcp_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_training_bridge.c.i
+.PHONY : __/gpu/training/nimcp_training_bridge.c.i
+
+__/gpu/training/nimcp_training_bridge.s: __/gpu/training/nimcp_training_bridge.c.s
+.PHONY : __/gpu/training/nimcp_training_bridge.s
+
+# target to generate assembly for a file
+__/gpu/training/nimcp_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/training/nimcp_training_bridge.c.s
+.PHONY : __/gpu/training/nimcp_training_bridge.c.s
+
 __/information/nimcp_cross_modal.o: __/information/nimcp_cross_modal.c.o
 .PHONY : __/information/nimcp_cross_modal.o
 
@@ -54427,6 +54451,9 @@ help:
 	@echo "... __/gpu/training/nimcp_optimizer_kernels.o"
 	@echo "... __/gpu/training/nimcp_optimizer_kernels.i"
 	@echo "... __/gpu/training/nimcp_optimizer_kernels.s"
+	@echo "... __/gpu/training/nimcp_training_bridge.o"
+	@echo "... __/gpu/training/nimcp_training_bridge.i"
+	@echo "... __/gpu/training/nimcp_training_bridge.s"
 	@echo "... __/information/nimcp_cross_modal.o"
 	@echo "... __/information/nimcp_cross_modal.i"
 	@echo "... __/information/nimcp_cross_modal.s"

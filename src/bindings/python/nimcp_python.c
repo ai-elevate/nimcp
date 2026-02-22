@@ -72,6 +72,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
                                              const char* operation,
                                              float progress);
 
+/** Shutdown guard — set by nimcp.shutdown(), prevents Brain_dealloc crash */
+static int g_py_shutdown_called = 0;
+
 /** Global health agent for python module */
 static nimcp_health_agent_t* g_python_health_agent = NULL;
 
@@ -164,7 +167,7 @@ typedef struct {
  * HOW:  Call nimcp_brain_destroy, free Python object memory
  */
 static void Brain_dealloc(BrainObject* self) {
-    if (self->brain) {
+    if (self->brain && !g_py_shutdown_called) {
         nimcp_brain_destroy(self->brain);
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -265,8 +268,9 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    /* Return 0.0 as loss placeholder - actual loss is not returned by the API */
-    return PyFloat_FromDouble(0.0);
+    /* Return actual loss from the C learning engine */
+    float loss = nimcp_brain_get_last_loss(self->brain);
+    return PyFloat_FromDouble((double)loss);
 }
 
 /**
@@ -770,6 +774,83 @@ static PyObject* Brain_broadcast_probe(BrainObject* self, PyObject* args) {
     return PyBool_FromLong(status == NIMCP_OK);
 }
 
+static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
+    PyObject* features_list;
+    if (!PyArg_ParseTuple(args, "O", &features_list))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_features;
+    float* features = py_list_to_float_array(features_list, &num_features);
+    if (!features)
+        return NULL;
+
+    char label[64];
+    float confidence;
+    char explanation[256];
+    float output_vector[1024];
+    uint32_t output_size = 1024;
+    uint32_t num_active_neurons = 0;
+    float sparsity = 0.0f;
+    uint64_t inference_time_us = 0;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_decide_full(
+        self->brain, features, (uint32_t)num_features,
+        label, &confidence, explanation,
+        output_vector, &output_size,
+        &num_active_neurons, &sparsity, &inference_time_us);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(features);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "decide_full failed");
+        return NULL;
+    }
+
+    uint32_t vec_len = (output_size < 1024) ? output_size : 1024;
+    PyObject* vec_list = PyList_New(vec_len);
+    for (uint32_t i = 0; i < vec_len; i++)
+        PyList_SetItem(vec_list, i, PyFloat_FromDouble(output_vector[i]));
+
+    PyObject* result = PyDict_New();
+    PyObject* tmp;
+    tmp = PyUnicode_FromString(label);
+    PyDict_SetItemString(result, "label", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(confidence);
+    PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
+    tmp = PyUnicode_FromString(explanation);
+    PyDict_SetItemString(result, "explanation", tmp); Py_DECREF(tmp);
+    PyDict_SetItemString(result, "output_vector", vec_list); Py_DECREF(vec_list);
+    tmp = PyLong_FromUnsignedLong(num_active_neurons);
+    PyDict_SetItemString(result, "num_active_neurons", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(sparsity);
+    PyDict_SetItemString(result, "sparsity", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromUnsignedLongLong(inference_time_us);
+    PyDict_SetItemString(result, "inference_time_us", tmp); Py_DECREF(tmp);
+
+    return result;
+}
+
+/**
+ * WHAT: Get running label-match accuracy (EMA)
+ * WHY:  Monitor training progress with a meaningful metric
+ * HOW:  Call nimcp_brain_get_accuracy
+ */
+static PyObject* Brain_get_accuracy(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float accuracy = nimcp_brain_get_accuracy(self->brain);
+    return PyFloat_FromDouble((double)accuracy);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, confidence=1.0) -> loss"},
@@ -800,9 +881,17 @@ static PyMethodDef Brain_methods[] = {
     {"destroy_cow_snapshot", (PyCFunction)Brain_destroy_cow_snapshot, METH_VARARGS,
      "Destroy COW snapshot: destroy_cow_snapshot(snapshot)"},
 
+    // Training metrics
+    {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,
+     "Get running label-match accuracy (EMA): get_accuracy() -> float"},
+
     // Probe Broadcasting
     {"broadcast_probe", (PyCFunction)Brain_broadcast_probe, METH_NOARGS,
      "Probe brain metrics and broadcast via bio-async: broadcast_probe() -> bool"},
+
+    // Full cognitive decision
+    {"decide_full", (PyCFunction)Brain_decide_full, METH_VARARGS,
+     "Run full cognitive pipeline: decide_full(features) -> dict"},
 
     {NULL}
 };
@@ -830,7 +919,7 @@ typedef struct {
 } NetworkObject;
 
 static void Network_dealloc(NetworkObject* self) {
-    if (self->network) {
+    if (self->network && !g_py_shutdown_called) {
         nimcp_network_destroy(self->network);
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -999,7 +1088,7 @@ typedef struct {
 } KnowledgeObject;
 
 static void Knowledge_dealloc(KnowledgeObject* self) {
-    if (self->knowledge) {
+    if (self->knowledge && !g_py_shutdown_called) {
         nimcp_knowledge_destroy(self->knowledge);
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -1139,6 +1228,7 @@ static PyObject* nimcp_initialize(PyObject* self, PyObject* args) {
  * HOW:  Call nimcp_shutdown()
  */
 static PyObject* nimcp_shutdown_lib(PyObject* self, PyObject* args) {
+    g_py_shutdown_called = 1;
     nimcp_shutdown();
     Py_RETURN_NONE;
 }

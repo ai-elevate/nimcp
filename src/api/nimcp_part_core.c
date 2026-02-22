@@ -60,9 +60,26 @@ nimcp_status_t nimcp_brain_learn_example(
     NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR_LEARNING_FAILED,
                           "Brain learning failed for label");
 
+    /* Store loss for retrieval via nimcp_brain_get_last_loss() */
+    brain->last_loss = loss;
+
     set_error("No error");
-    LOG_DEBUG("Learning example completed successfully");
+    LOG_DEBUG("Learning example completed successfully (loss=%.6f)", loss);
     return NIMCP_OK;
+}
+
+
+float nimcp_brain_get_last_loss(nimcp_brain_t brain)
+{
+    if (!brain) return -1.0F;
+    return brain->last_loss;
+}
+
+
+float nimcp_brain_get_accuracy(nimcp_brain_t brain)
+{
+    if (!brain || !brain->internal_brain) return 0.0F;
+    return brain->internal_brain->stats.running_accuracy;
 }
 
 
@@ -153,6 +170,53 @@ nimcp_status_t nimcp_brain_infer(
     brain_free_decision(decision);
 
     set_error("No error");
+    return NIMCP_OK;
+}
+
+
+nimcp_status_t nimcp_brain_decide_full(
+    nimcp_brain_t brain,
+    const float* features, uint32_t num_features,
+    char* out_label, float* out_confidence,
+    char* out_explanation,
+    float* out_output_vector, uint32_t* out_output_size,
+    uint32_t* out_num_active_neurons, float* out_sparsity,
+    uint64_t* out_inference_time_us)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence is NULL");
+
+    brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
+    if (!decision) {
+        set_error("Brain decide_full failed");
+        return NIMCP_ERROR;
+    }
+
+    strncpy(out_label, decision->label, 63);
+    out_label[63] = '\0';
+    *out_confidence = decision->confidence;
+
+    if (out_explanation) {
+        strncpy(out_explanation, decision->explanation, 255);
+        out_explanation[255] = '\0';
+    }
+
+    if (out_output_vector && out_output_size) {
+        uint32_t cap = *out_output_size;
+        uint32_t copy_n = (decision->output_size < cap) ? decision->output_size : cap;
+        for (uint32_t i = 0; i < copy_n; i++) {
+            out_output_vector[i] = decision->output_vector[i];
+        }
+        *out_output_size = decision->output_size;
+    }
+
+    if (out_num_active_neurons) *out_num_active_neurons = decision->num_active_neurons;
+    if (out_sparsity) *out_sparsity = decision->sparsity;
+    if (out_inference_time_us) *out_inference_time_us = decision->inference_time_us;
+
+    brain_free_decision(decision);
     return NIMCP_OK;
 }
 

@@ -22,12 +22,7 @@ set(NIMCP_CORE_SOURCES
     # Public API facade (unified interface for all bindings) - REFACTORED (2025-12-08)
     # SRP Refactoring: 3024 lines split into focused API modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp.c                    # Core API (full implementation)
-    # DISABLED: Agent-created files with duplicate functions (originals not cleaned up)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_brain_api.c         # Brain lifecycle (create, destroy, learn, predict) - 480 lines
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_snapshot_api.c      # Snapshot & COW operations - 400 lines
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_cognitive_api.c     # Working memory, workspace, resize - 550 lines
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_subsystems_api.c    # Network, ethics, knowledge - 350 lines
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../api/nimcp_oscillation_api.c   # Complex oscillations & phasor analysis - 280 lines
+    # Note: API functions are in nimcp.c via #include'd nimcp_part_*.c files
 
     # Core brain components
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain.c
@@ -2174,6 +2169,8 @@ set(NIMCP_CORE_SOURCES
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_tensorrt.c>
     # GPU training stubs (loss functions, optimizers, gradient ops, backward passes)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_training.c>
+    # GPU training bridge (weight cache + forward pass dispatch - always compiled, uses GPU stubs as fallback)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_training_bridge.c
 
     # Kernel backend CPU implementation (always compiled - provides CPU fallback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend.c

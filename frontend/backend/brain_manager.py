@@ -22,6 +22,7 @@ from typing import Optional
 import nimcp
 
 import nimcp_logger
+from cognitive_response import CognitiveInterpreter
 from config import MAX_BRAIN_COUNT, PROBE_HISTORY_SIZE, BRAIN_STORAGE_DIR
 
 _log = nimcp_logger.get("brain_manager")
@@ -100,6 +101,7 @@ class BrainManager:
         self._stats: dict[int, BrainStats] = {}
         self._probe_history: dict[int, deque] = {}
         self._next_id = 0
+        self._interpreters: dict[int, CognitiveInterpreter] = {}
         self._snapshots: dict[int, dict] = {}  # brain_id -> {name: path}
         self._cow_snapshots: dict[int, dict] = {}  # brain_id -> {name: capsule}
 
@@ -183,6 +185,7 @@ class BrainManager:
                     self._metadata[bid] = meta
                     self._stats[bid] = stats
                     self._probe_history[bid] = deque(maxlen=PROBE_HISTORY_SIZE)
+                    self._interpreters[bid] = CognitiveInterpreter(brain_name=meta.name)
                     self._snapshots[bid] = {}
                     self._cow_snapshots[bid] = {}
                     if bid > max_id:
@@ -217,6 +220,7 @@ class BrainManager:
             )
             self._stats[bid] = BrainStats()
             self._probe_history[bid] = deque(maxlen=PROBE_HISTORY_SIZE)
+            self._interpreters[bid] = CognitiveInterpreter(brain_name=name)
             self._snapshots[bid] = {}
             self._cow_snapshots[bid] = {}
             self._save_brain_to_disk(bid)
@@ -231,6 +235,7 @@ class BrainManager:
             del self._metadata[bid]
             del self._stats[bid]
             del self._probe_history[bid]
+            self._interpreters.pop(bid, None)
             self._snapshots.pop(bid, None)
             self._cow_snapshots.pop(bid, None)
             self._delete_brain_from_disk(bid)
@@ -402,6 +407,101 @@ class BrainManager:
             stats.inference_times.append(elapsed_us)
             return result  # dict with label, confidence, explanation, sparsity, etc.
 
+    def _get_interpreter(self, bid: int) -> Optional["CognitiveInterpreter"]:
+        """Get or create the cognitive interpreter for a brain, syncing baselines."""
+        meta = self._metadata.get(bid)
+        if meta is None:
+            return None
+        interpreter = self._interpreters.get(bid)
+        if interpreter is None:
+            stats = self._stats[bid]
+            interpreter = CognitiveInterpreter(brain_name=meta.name)
+            # Sync baselines so pre-existing training isn't mistaken for new growth
+            interpreter._last_learning_steps = stats.total_learning_steps
+            interpreter._last_inferences = stats.total_inferences
+            self._interpreters[bid] = interpreter
+        return interpreter
+
+    def converse(self, bid: int, text: str) -> Optional[dict]:
+        """Run full cognitive pipeline and return conversational response."""
+        with self._lock:
+            brain = self._brains.get(bid)
+            if brain is None:
+                return None
+            meta = self._metadata[bid]
+            stats = self._stats[bid]
+            interpreter = self._get_interpreter(bid)
+            if interpreter is None:
+                return None
+
+            features = interpreter.encode_text(text, meta.num_inputs, interpreter.history)
+            cognitive_state = interpreter.interpret(brain, features, text, interpreter.history)
+            stats_dict = {
+                "total_inferences": stats.total_inferences,
+                "total_learning_steps": stats.total_learning_steps,
+            }
+            response = interpreter.generate_response(cognitive_state, text, interpreter.history, stats_dict)
+            interpreter.add_to_history("user", text)
+            interpreter.add_to_history("brain", response)
+
+            stats.total_inferences += 1
+            return {
+                "message": response,
+                "cognitive_state": cognitive_state,
+            }
+
+    def teach_conversational(self, bid: int, text: str, label: str) -> Optional[dict]:
+        """Teach the brain via the cognitive interpreter."""
+        with self._lock:
+            brain = self._brains.get(bid)
+            if brain is None:
+                return None
+            stats = self._stats[bid]
+            interpreter = self._get_interpreter(bid)
+            if interpreter is None:
+                return None
+
+            result = interpreter.teach(brain, text, label)
+            stats.total_learning_steps += 1
+            if result.get("loss") is not None:
+                stats.last_loss = result["loss"]
+                stats.losses.append(result["loss"])
+            return result
+
+    def introspect(self, bid: int) -> Optional[dict]:
+        """Ask the brain to describe its own state."""
+        with self._lock:
+            brain = self._brains.get(bid)
+            if brain is None:
+                return None
+            stats = self._stats[bid]
+            interpreter = self._get_interpreter(bid)
+            if interpreter is None:
+                return None
+
+            # Build cognitive_state dict from brain metrics
+            try:
+                neuron_count = brain.get_neuron_count()
+            except Exception:
+                neuron_count = 0
+            try:
+                utilization, _ = brain.get_utilization_metrics()
+            except Exception:
+                utilization = 0.0
+
+            cognitive_state = {
+                "neuron_count": neuron_count,
+                "utilization": utilization,
+            }
+            stats_dict = {
+                "total_inferences": stats.total_inferences,
+                "total_learning_steps": stats.total_learning_steps,
+                "accuracy": (stats.total_correct / stats.total_inferences) if stats.total_inferences > 0 else 0.0,
+                "last_loss": stats.last_loss,
+            }
+            response = interpreter.generate_introspection(cognitive_state, stats_dict)
+            return {"message": response}
+
     def learn(self, bid: int, features: list[float], label: str, confidence: float = 1.0) -> Optional[float]:
         with self._lock:
             brain = self._brains.get(bid)
@@ -508,6 +608,7 @@ class BrainManager:
             self._metadata.clear()
             self._stats.clear()
             self._probe_history.clear()
+            self._interpreters.clear()
             self._snapshots.clear()
             self._cow_snapshots.clear()
 

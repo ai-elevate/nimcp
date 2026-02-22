@@ -10,18 +10,58 @@ import { DashboardPage } from './components/dashboard/DashboardPage';
 import { TrainingPage } from './components/training/TrainingPage';
 import { ChatPage } from './components/chat/ChatPage';
 import { DatasetPage } from './components/datasets/DatasetPage';
+import { LoginPage } from './components/auth/LoginPage';
+import { RegisterPage } from './components/auth/RegisterPage';
 import { useBrainProbe } from './hooks/useBrainProbe';
+import api from './services/api';
 import * as brainApi from './services/brainApi';
 import { listDatasets } from './services/datasetApi';
 import './App.css';
 
+type AuthPage = 'login' | 'register';
+
+function applyAuth(username: string, password: string) {
+  const token = btoa(`${username}:${password}`);
+  api.defaults.headers.common['Authorization'] = `Basic ${token}`;
+}
+
+function loadSavedAuth(): { username: string; password: string } | null {
+  try {
+    const saved = sessionStorage.getItem('nimcp_auth');
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  // Also check URL credentials (existing behavior)
+  const url = new URL(window.location.href);
+  if (url.username) {
+    return { username: decodeURIComponent(url.username), password: decodeURIComponent(url.password) };
+  }
+  return null;
+}
+
 export default function App() {
+  const savedAuth = loadSavedAuth();
+  const [authed, setAuthed] = useState(!!savedAuth);
+  const [authPage, setAuthPage] = useState<AuthPage>('login');
   const [brains, setBrains] = useState<BrainInfo[]>([]);
   const [activeBrainId, setActiveBrainId] = useState<number | null>(null);
   const [tab, setTab] = useState<Tab>('dashboard');
   const [showCreate, setShowCreate] = useState(false);
   const [detailBrainId, setDetailBrainId] = useState<number | null>(null);
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
+
+  // Apply saved credentials on mount
+  useEffect(() => {
+    if (savedAuth) {
+      applyAuth(savedAuth.username, savedAuth.password);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleLogin = useCallback((username: string, password: string) => {
+    applyAuth(username, password);
+    sessionStorage.setItem('nimcp_auth', JSON.stringify({ username, password }));
+    setAuthed(true);
+  }, []);
 
   const { probe, history, trainingProgress, connected, send, setChatCallback } =
     useBrainProbe(activeBrainId);
@@ -73,6 +113,23 @@ export default function App() {
     } catch { /* */ }
   };
 
+  if (!authed) {
+    if (authPage === 'register') {
+      return (
+        <RegisterPage
+          onRegistered={(u, p) => { handleLogin(u, p); }}
+          onSwitchToLogin={() => setAuthPage('login')}
+        />
+      );
+    }
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onSwitchToRegister={() => setAuthPage('register')}
+      />
+    );
+  }
+
   return (
     <>
       <Header />
@@ -97,7 +154,7 @@ export default function App() {
               </>
             )}
             {tab === 'training' && (
-              <TrainingPage brainId={activeBrainId} datasets={datasets} trainingProgress={trainingProgress} />
+              <TrainingPage brainId={activeBrainId} datasets={datasets} trainingProgress={trainingProgress} onRefresh={refreshDatasets} />
             )}
             {tab === 'chat' && (
               <ChatPage brainId={activeBrainId} send={send} connected={connected} setChatCallback={setChatCallback} />

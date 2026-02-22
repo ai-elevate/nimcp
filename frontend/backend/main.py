@@ -20,32 +20,26 @@ from config import (
     DEV_MODE, LOG_LEVEL, SSL_CERTFILE, SSL_KEYFILE,
 )
 from brain_manager import manager
+import user_store
 from ws.handler import websocket_handler
 from ws.probe_streamer import probe_loop
-from routers import brains, training, datasets, chat, system, scripts
+from routers import auth, brains, training, datasets, chat, system, scripts
 
 _log = nimcp_logger.get("main")
 
 
 def _check_basic_auth(request: Request) -> bool:
-    """Validate HTTP Basic Auth credentials against bcrypt hash."""
-    auth = request.headers.get("authorization", "")
-    if not auth.startswith("Basic "):
+    """Validate HTTP Basic Auth credentials against user store."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Basic "):
         return False
     try:
-        decoded = base64.b64decode(auth[6:]).decode("utf-8")
-        user, _, password = decoded.partition(":")
+        decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
+        username, _, password = decoded.partition(":")
     except Exception as exc:
         _log.warning("Auth decode error: %s", exc)
         return False
-    if not secrets.compare_digest(user, AUTH_USER):
-        return False
-    try:
-        from passlib.hash import bcrypt
-        return bcrypt.verify(password, AUTH_PASS_HASH)
-    except Exception as exc:
-        _log.warning("Auth verify error: %s", exc)
-        return False
+    return user_store.verify(username, password)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -71,17 +65,31 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
 
 class BasicAuthMiddleware(BaseHTTPMiddleware):
-    """Require HTTP Basic Auth on all requests when credentials are configured."""
+    """Require HTTP Basic Auth on API/WS requests when credentials are configured.
+
+    Static files (the React app) are served without auth so the frontend
+    can render its own login/register pages.  Only /api/* and /ws/* are
+    protected — with /api/auth/* exempted for login and registration.
+    """
+
     async def dispatch(self, request: Request, call_next):
         if not AUTH_PASS_HASH:
+            return await call_next(request)
+        path = request.url.path
+        # Let the React app and its assets through — auth is handled in-app
+        if not (path.startswith("/api/") or path.startswith("/ws/")):
+            return await call_next(request)
+        # Auth endpoints are public (login, register)
+        if path.startswith("/api/auth/"):
             return await call_next(request)
         if _check_basic_auth(request):
             return await call_next(request)
         _log.warning("Auth failed: %s %s", request.method, request.url.path)
-        return Response(
+        # Return 401 WITHOUT WWW-Authenticate header to prevent the
+        # browser's native Basic Auth popup — the React app handles login.
+        return JSONResponse(
             status_code=401,
-            headers={"WWW-Authenticate": 'Basic realm="NIMCP Dashboard"'},
-            content="Unauthorized",
+            content={"detail": "Unauthorized"},
         )
 
 
@@ -145,6 +153,7 @@ elif DEV_MODE:
     )
 
 # REST routers
+app.include_router(auth.router)
 app.include_router(brains.router)
 app.include_router(training.router)
 app.include_router(datasets.router)
@@ -153,16 +162,29 @@ app.include_router(system.router)
 app.include_router(scripts.router)
 
 
-# WebSocket (auth checked before accept — browser sends Authorization on upgrade)
+# WebSocket — check Authorization header OR ?auth= query param
 @app.websocket("/ws/{brain_id}")
 async def ws_endpoint(ws: WebSocket, brain_id: int):
     if AUTH_PASS_HASH:
-        # Build a fake Request to reuse the auth checker
+        # Try the Authorization header first (e.g. URL-embedded credentials)
         from starlette.requests import Request as StarletteRequest
         scope = ws.scope.copy()
         scope["type"] = "http"
         fake_req = StarletteRequest(scope)
-        if not _check_basic_auth(fake_req):
+        authed = _check_basic_auth(fake_req)
+        # Fall back to ?auth= query param (base64-encoded user:pass)
+        if not authed:
+            from urllib.parse import parse_qs
+            qs = parse_qs(ws.scope.get("query_string", b"").decode())
+            token = qs.get("auth", [None])[0]
+            if token:
+                try:
+                    decoded = base64.b64decode(token).decode("utf-8")
+                    username, _, password = decoded.partition(":")
+                    authed = user_store.verify(username, password)
+                except Exception:
+                    pass
+        if not authed:
             await ws.close(code=4401, reason="Unauthorized")
             return
     await websocket_handler(ws, brain_id)

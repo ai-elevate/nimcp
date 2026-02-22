@@ -86,26 +86,43 @@ extern bbb_system_t nimcp_bbb_get_global_system(void);
  */
 uint32_t nimcp_brain_learning_get_or_create_label_index(brain_t brain, const char* label)
 {
+    uint32_t result = 0;
+
+    // THREAD SAFETY FIX: Protect label creation with mutex
+    // Without this, concurrent threads could:
+    // 1. Both see label doesn't exist
+    // 2. Both create the same label at same index
+    // 3. Result in buffer overflow past output_labels capacity → heap corruption
+    nimcp_platform_mutex_lock(&brain->cache_mutex);
+
     // Search existing labels - O(k)
     for (uint32_t i = 0; i < brain->num_output_labels; i++) {
         if (strcmp(brain->output_labels[i], label) == 0) {
-            return i;
+            result = i;
+            goto done;
         }
     }
 
     // Guard: Check capacity
     if (brain->num_output_labels >= brain->config.num_outputs) {
-        return 0;
+        result = 0;
+        goto done;
     }
 
     // Create new label (use nimcp_malloc to match nimcp_free in brain_destroy)
     size_t label_len = strlen(label);
     brain->output_labels[brain->num_output_labels] = nimcp_malloc(label_len + 1);
-    if (!brain->output_labels[brain->num_output_labels])
-        return 0;
+    if (!brain->output_labels[brain->num_output_labels]) {
+        result = 0;
+        goto done;
+    }
     strncpy(brain->output_labels[brain->num_output_labels], label, label_len + 1);
     brain->output_labels[brain->num_output_labels][label_len] = '\0';
-    return brain->num_output_labels++;
+    result = brain->num_output_labels++;
+
+done:
+    nimcp_platform_mutex_unlock(&brain->cache_mutex);
+    return result;
 }
 
 /**
@@ -497,20 +514,43 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         }
     }
 
-    // Compute task-specific loss using strategy
-    // Get network prediction to compute task-specific loss
+    // Post-learning evaluation: MSE between updated network output and target
     float* prediction = nimcp_malloc(brain->config.num_outputs * sizeof(float));
     if (prediction) {
-        // Forward pass to get current prediction
+        // Forward pass AFTER weight update to measure post-learning accuracy
         adaptive_network_forward(brain->network, features, num_features, prediction,
-                                brain->config.num_outputs, 0);  // timestamp = 0
+                                brain->config.num_outputs, 0);
 
-        // Compute task-specific loss using strategy
-        float task_loss = brain->strategy->compute_loss(prediction, target,
-                                                       brain->config.num_outputs);
+        // MSE loss: meaningful metric that tracks actual output-target convergence
+        float post_mse = 0.0F;
+        uint32_t pred_argmax = 0;
+        float pred_max = prediction[0];
+        for (uint32_t i = 0; i < brain->config.num_outputs; i++) {
+            float error = prediction[i] - target[i];
+            post_mse += error * error;
+            if (prediction[i] > pred_max) {
+                pred_max = prediction[i];
+                pred_argmax = i;
+            }
+        }
+        post_mse /= brain->config.num_outputs;
+        network_loss = post_mse;
 
-        // Use task-specific loss (more meaningful for the specific task)
-        network_loss = task_loss;
+        // Track label-match accuracy: does argmax(output) match argmax(target)?
+        uint32_t target_argmax = 0;
+        float target_max = target[0];
+        for (uint32_t i = 1; i < brain->config.num_outputs; i++) {
+            if (target[i] > target_max) {
+                target_max = target[i];
+                target_argmax = i;
+            }
+        }
+        bool label_match = (pred_argmax == target_argmax);
+
+        // Update running accuracy (exponential moving average, alpha=0.01)
+        float match_val = label_match ? 1.0F : 0.0F;
+        brain->stats.running_accuracy =
+            brain->stats.running_accuracy * 0.99F + match_val * 0.01F;
 
         nimcp_free(prediction);
     }

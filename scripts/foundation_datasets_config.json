@@ -1,68 +1,23 @@
 {
-  "description": "Comprehensive dataset configuration for NIMCP Foundation Models covering all 9 knowledge domains",
-  "version": "1.0",
+  "description": "Comprehensive dataset configuration for NIMCP Foundation Models covering all 10 knowledge domains",
+  "version": "3.0",
   "datasets": [
     {
-      "name": "ethics_commonsense",
-      "domain": "ethics",
+      "name": "fineweb_10bt",
+      "domain": "language",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "hendrycks/ethics",
-      "hf_subset": "commonsense",
-      "description": "Commonsense moral judgments - AllenAI ETHICS dataset"
+      "hf_dataset": "HuggingFaceFW/fineweb",
+      "hf_subset": "sample-10BT",
+      "description": "FineWeb 10B token sample — high-quality web text (~28GB, largest dataset)"
     },
     {
-      "name": "ethics_deontology",
-      "domain": "ethics",
+      "name": "openwebtext",
+      "domain": "language",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "hendrycks/ethics",
-      "hf_subset": "deontology",
-      "description": "Duty-based ethical reasoning"
-    },
-    {
-      "name": "ethics_justice",
-      "domain": "ethics",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "hendrycks/ethics",
-      "hf_subset": "justice",
-      "description": "Fairness and justice scenarios"
-    },
-    {
-      "name": "ethics_virtue",
-      "domain": "ethics",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "hendrycks/ethics",
-      "hf_subset": "virtue",
-      "description": "Virtue ethics - character-based morality"
-    },
-    {
-      "name": "moral_stories",
-      "domain": "ethics",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "demelin/moral_stories",
-      "description": "Moral narratives with norm violations and consequences"
-    },
-    {
-      "name": "philosophy_texts_sample",
-      "domain": "philosophy",
-      "priority": 1,
-      "type": "custom",
-      "url": "https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv",
-      "description": "Project Gutenberg philosophy texts (will be filtered)",
-      "note": "Requires custom filtering for philosophy subject"
-    },
-    {
-      "name": "world_history_events",
-      "domain": "history",
-      "priority": 1,
-      "type": "url",
-      "url": "https://raw.githubusercontent.com/datasets/historical-events/master/data/historical-events.csv",
-      "description": "Major historical events timeline",
-      "extract_to": "history_events"
+      "hf_dataset": "openwebtext",
+      "description": "OpenWebText corpus — Reddit-curated web pages (~8M documents, ~12GB)"
     },
     {
       "name": "wikitext103",
@@ -71,7 +26,7 @@
       "type": "huggingface",
       "hf_dataset": "wikitext",
       "hf_subset": "wikitext-103-raw-v1",
-      "description": "WikiText-103 language modeling dataset (100M words)"
+      "description": "WikiText-103 language modeling dataset (100M words, ~500MB)"
     },
     {
       "name": "squad_v2",
@@ -79,7 +34,7 @@
       "priority": 1,
       "type": "huggingface",
       "hf_dataset": "squad_v2",
-      "description": "Stanford Question Answering Dataset v2.0"
+      "description": "Stanford Question Answering Dataset v2.0 (~130K examples)"
     },
     {
       "name": "commonsense_qa",
@@ -87,87 +42,15 @@
       "priority": 1,
       "type": "huggingface",
       "hf_dataset": "commonsense_qa",
-      "description": "Commonsense question answering"
+      "description": "Commonsense question answering (~12K examples)"
     },
     {
-      "name": "mmlu_physics",
-      "domain": "physics",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "college_physics",
-      "description": "MMLU college physics questions"
-    },
-    {
-      "name": "mmlu_astronomy",
-      "domain": "physics",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "astronomy",
-      "description": "MMLU astronomy questions"
-    },
-    {
-      "name": "mmlu_chemistry",
-      "domain": "chemistry",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "college_chemistry",
-      "description": "MMLU college chemistry questions"
-    },
-    {
-      "name": "mmlu_biology",
-      "domain": "biology",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "college_biology",
-      "description": "MMLU college biology questions"
-    },
-    {
-      "name": "mmlu_psychology",
-      "domain": "psychology",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "psychology",
-      "description": "MMLU professional psychology questions"
-    },
-    {
-      "name": "mmlu_sociology",
-      "domain": "anthropology",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "sociology",
-      "description": "MMLU sociology questions - human societies and behaviors"
-    },
-    {
-      "name": "mmlu_world_religions",
-      "domain": "anthropology",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "world_religions",
-      "description": "World religions and cultural practices"
-    },
-    {
-      "name": "social_chem",
-      "domain": "anthropology",
-      "priority": 2,
-      "type": "huggingface",
-      "hf_dataset": "social_chem",
-      "description": "Social norms and rules of thumb (if available on HF)"
-    },
-    {
-      "name": "tiny_shakespeare",
+      "name": "open_orca",
       "domain": "language",
-      "priority": 2,
-      "type": "url",
-      "url": "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt",
-      "description": "Shakespeare text for language patterns",
-      "extract_to": "tiny_shakespeare"
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "Open-Orca/OpenOrca",
+      "description": "Large instruction-response dataset (~4M examples, ~2.7GB)"
     },
     {
       "name": "mmlu_mathematics",
@@ -177,6 +60,62 @@
       "hf_dataset": "cais/mmlu",
       "hf_subset": "college_mathematics",
       "description": "Mathematical reasoning (cross-domain with language)"
+    },
+    {
+      "name": "github_code_2025",
+      "domain": "programming",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "nick007x/github-code-2025",
+      "description": "1.5M+ curated GitHub repositories from 2025 code ecosystem"
+    },
+    {
+      "name": "livecodebench",
+      "domain": "programming",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "bzantium/livecodebench",
+      "description": "6,281 competitive programming problems from LeetCode/CodeForces/AtCoder"
+    },
+    {
+      "name": "code_contests",
+      "domain": "programming",
+      "priority": 2,
+      "type": "huggingface",
+      "hf_dataset": "deepmind/code_contests",
+      "description": "4,040 competitive programming problems (AlphaCode training data)"
+    },
+    {
+      "name": "hellaswag",
+      "domain": "ethics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "hellaswag",
+      "description": "Commonsense reasoning about situations and consequences (~40K examples)"
+    },
+    {
+      "name": "social_chemistry",
+      "domain": "ethics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "tasksource/social-chemestry-101",
+      "description": "Social norms and moral rules of thumb (355K examples)"
+    },
+    {
+      "name": "prosocial_dialog",
+      "domain": "ethics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "allenai/prosocial-dialog",
+      "description": "Prosocial conversations with safety labels and moral rules of thumb (58K examples)"
+    },
+    {
+      "name": "hh_rlhf",
+      "domain": "ethics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "Anthropic/hh-rlhf",
+      "description": "Human helpfulness and harmlessness preference data (161K examples)"
     },
     {
       "name": "mmlu_us_history",
@@ -197,6 +136,51 @@
       "description": "World history questions and knowledge"
     },
     {
+      "name": "mmlu_european_history",
+      "domain": "history",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_european_history",
+      "description": "European history questions and knowledge"
+    },
+    {
+      "name": "mmlu_high_school_psychology",
+      "domain": "psychology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_psychology",
+      "description": "MMLU high school psychology (590 questions)"
+    },
+    {
+      "name": "mmlu_professional_psychology",
+      "domain": "psychology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "professional_psychology",
+      "description": "MMLU professional psychology (612 questions)"
+    },
+    {
+      "name": "mmlu_sociology",
+      "domain": "anthropology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "sociology",
+      "description": "MMLU sociology questions - human societies and behaviors"
+    },
+    {
+      "name": "mmlu_world_religions",
+      "domain": "anthropology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "world_religions",
+      "description": "World religions and cultural practices"
+    },
+    {
       "name": "mmlu_prehistory",
       "domain": "anthropology",
       "priority": 1,
@@ -206,69 +190,54 @@
       "description": "Prehistory and early human development"
     },
     {
-      "name": "palmx_culture",
+      "name": "culturebank",
       "domain": "anthropology",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "UBC-NLP/palmx_2025_subtask1_culture",
-      "description": "Arab culture, customs, history, geography across 22 Arab League countries"
+      "hf_dataset": "SALT-NLP/CultureBank",
+      "description": "23K cultural knowledge examples across 36 topic categories (MIT license)"
     },
     {
-      "name": "mmmu_history",
-      "domain": "history",
+      "name": "mmlu_biology",
+      "domain": "biology",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "MMMU/MMMU",
-      "hf_subset": "History",
-      "description": "Multimodal history understanding (313 examples)"
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_biology",
+      "description": "MMLU college biology questions"
     },
     {
-      "name": "mmmu_sociology",
-      "domain": "anthropology",
+      "name": "mmlu_chemistry",
+      "domain": "chemistry",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "MMMU/MMMU",
-      "hf_subset": "Sociology",
-      "description": "Multimodal sociology understanding (287 examples)"
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_chemistry",
+      "description": "MMLU college chemistry questions"
     },
     {
-      "name": "github_code_2025",
-      "domain": "programming",
+      "name": "mmlu_physics",
+      "domain": "physics",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "nick007x/github-code-2025",
-      "description": "1.5M+ curated GitHub repositories from 2025 code ecosystem"
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_physics",
+      "description": "MMLU college physics questions"
     },
     {
-      "name": "the_stack",
-      "domain": "programming",
-      "priority": 2,
-      "type": "huggingface",
-      "hf_dataset": "bigcode/the-stack",
-      "description": "6TB permissively-licensed code in 358 programming languages (BigCode Project)"
-    },
-    {
-      "name": "livecodebench",
-      "domain": "programming",
+      "name": "mmlu_astronomy",
+      "domain": "physics",
       "priority": 1,
       "type": "huggingface",
-      "hf_dataset": "livecodebench/code_generation_lite",
-      "description": "880 programming problems from May 2023 to Jan 2025"
-    },
-    {
-      "name": "github_code",
-      "domain": "programming",
-      "priority": 2,
-      "type": "huggingface",
-      "hf_dataset": "codeparrot/github-code",
-      "description": "115M code files from GitHub in 32 programming languages (1TB total)"
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "astronomy",
+      "description": "MMLU astronomy questions"
     }
   ],
   "training_order": [
     "language",
     "programming",
     "ethics",
-    "philosophy",
     "history",
     "psychology",
     "anthropology",
@@ -277,11 +246,11 @@
     "physics"
   ],
   "notes": {
-    "curriculum_strategy": "Start with language fundamentals, add programming/code understanding, then human/social sciences, then natural sciences",
-    "dataset_selection": "Prioritized HuggingFace datasets for ease of download and standardized format",
-    "coverage": "All 10 domains covered: language, programming, ethics, philosophy, history, psychology, anthropology, biology, chemistry, physics",
-    "total_datasets": 31,
-    "priority_1_datasets": 26,
-    "new_additions": "Added history (3 datasets), anthropology (2 datasets), and programming (4 datasets) based on 2025 research"
+    "curriculum_strategy": "Start with massive language corpora (FineWeb 28GB + OpenWebText 12GB), add code, then social/ethical, then STEM",
+    "dataset_selection": "ALL datasets verified streaming=True with datasets v4.5+ — no legacy scripts, no gated access",
+    "coverage": "9 domains: language, programming, ethics, history, psychology, anthropology, biology, chemistry, physics",
+    "estimated_total_size": "~45GB raw text (FineWeb 28GB + OpenWebText 12GB + github_code_2025 + Orca 2.7GB + others)",
+    "total_datasets": 27,
+    "version": "v3.0 — all broken datasets replaced with verified working alternatives"
   }
 }

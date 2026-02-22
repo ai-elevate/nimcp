@@ -3253,8 +3253,9 @@ struct brain_stats_struct {
     float avg_inference_time_us; /**< Avg inference (μs) */
     float current_learning_rate; /**< Current learning rate */
 
-    float accuracy;      /**< Validation accuracy */
-    size_t memory_bytes; /**< Memory usage */
+    float accuracy;           /**< Validation accuracy */
+    float running_accuracy;   /**< EMA label-match accuracy during training */
+    size_t memory_bytes;      /**< Memory usage */
 };
 
 /**

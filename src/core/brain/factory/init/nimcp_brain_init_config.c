@@ -254,6 +254,16 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->male_probability = 0.0F;
     config->non_binary_probability = 0.0F;
 
+    // Cognitive pipeline flags (enable stages in brain_decide)
+    // Enables 4 additional stages: natural explanations, curiosity,
+    // executive control, and epistemic filtering. Other flags
+    // (predictive_processing, ethics, emotional_tagging, mental_health,
+    // sleep_wake) have module re-registration issues in multi-brain tests.
+    config->enable_natural_explanations = !minimal;
+    config->enable_curiosity = !minimal;
+    config->enable_executive_control = !minimal;
+    config->enable_epistemic_filter = !minimal;
+
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = !minimal;
     config->enable_oscillations = false;
