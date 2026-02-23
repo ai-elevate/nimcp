@@ -44,7 +44,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum number of tracked opponents */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_TOM_MAX_OPPONENTS 32
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_TOM_MAX_OPPONENTS 16
@@ -55,7 +55,7 @@ extern "C" {
 #endif
 
 /** Maximum action history per opponent */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_TOM_MAX_HISTORY 256
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_TOM_MAX_HISTORY 128

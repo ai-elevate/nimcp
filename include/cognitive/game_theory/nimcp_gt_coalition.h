@@ -56,7 +56,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum coalitions in a structure (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_COALITIONS 32
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_COALITIONS 16
@@ -67,7 +67,7 @@ extern "C" {
 #endif
 
 /** Maximum preference orderings per player */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_PREFERENCES 64
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_PREFERENCES 32

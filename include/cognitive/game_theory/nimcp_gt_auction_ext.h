@@ -44,7 +44,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum items in combinatorial auction */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_COMBO_ITEMS 32
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_COMBO_ITEMS 16
@@ -55,7 +55,7 @@ extern "C" {
 #endif
 
 /** Maximum bundle bids */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_BUNDLE_BIDS 256
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_BUNDLE_BIDS 128
@@ -66,7 +66,7 @@ extern "C" {
 #endif
 
 /** Maximum orders in double auction */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_ORDERS 512
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_ORDERS 256
@@ -77,7 +77,7 @@ extern "C" {
 #endif
 
 /** Maximum trades in double auction */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_TRADES 256
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_TRADES 128

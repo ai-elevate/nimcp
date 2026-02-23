@@ -57,7 +57,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum states for Q-table (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_STATES 4096
     #define NIMCP_GT_MAX_ACTIONS 64
     #define NIMCP_GT_MAX_INFO_SETS 2048

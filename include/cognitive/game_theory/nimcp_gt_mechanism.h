@@ -38,7 +38,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum types per player (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_TYPES 32
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_TYPES 16
@@ -49,7 +49,7 @@ extern "C" {
 #endif
 
 /** Maximum signals in signaling game (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_SIGNALS 64
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_SIGNALS 32
@@ -60,7 +60,7 @@ extern "C" {
 #endif
 
 /** Maximum equilibrium iterations for Bayesian games */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_BAYESIAN_MAX_ITER 2000
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_BAYESIAN_MAX_ITER 1000

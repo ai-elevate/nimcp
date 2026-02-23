@@ -391,11 +391,41 @@ class StreamingDatasetProcessor:
         except Exception:
             return None
 
-    def train_on_batch(self, batch: List[tuple], progress: TrainingProgress):
+    def extract_with_metadata(self, example: Dict, domain: str) -> Optional[Dict]:
+        """
+        WHAT: Extract features, label, and metadata from dataset example
+        WHY:  Socratic training needs metadata (domain, raw text) for
+              active learning stages (explanation grading, research, etc.)
+        HOW:  Same extraction as extract_features_and_label + raw text + domain
+        """
+        try:
+            result = self._extract_text_and_label(example, domain)
+            if result is None:
+                return None
+
+            text, label = result
+            if not text or not text.strip():
+                return None
+
+            if len(text) > 2000:
+                text = text[:2000]
+
+            features = self.encode_text(text, self.num_inputs)
+            return {
+                "features": features,
+                "label": label,
+                "domain": domain,
+                "text": text[:500],  # Keep truncated copy for grading
+            }
+        except Exception:
+            return None
+
+    def train_on_batch(self, batch: List[tuple], progress: TrainingProgress,
+                       socratic=None, domain: str = "general"):
         """
         WHAT: Train brain on a batch of examples
         WHY:  Incremental learning from streaming data
-        HOW:  Extract features, call brain.learn()
+        HOW:  Extract features, call brain.learn() (or socratic.train_example())
         """
         if not batch:
             return
@@ -409,7 +439,11 @@ class StreamingDatasetProcessor:
         first_error_logged = False
         for features, label in batch:
             try:
-                loss = self.brain.learn(features, str(label))
+                if socratic:
+                    result = socratic.train_example(features, str(label), domain)
+                    loss = result.get("loss")
+                else:
+                    loss = self.brain.learn(features, str(label))
                 if loss is not None:
                     total_loss += float(loss)
                 trained_count += 1

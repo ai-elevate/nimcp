@@ -83,7 +83,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum players in a game (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_PLAYERS 32
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_PLAYERS 16
@@ -94,7 +94,7 @@ extern "C" {
 #endif
 
 /** Maximum items in multi-item auction (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_AUCTION_ITEMS 64
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_AUCTION_ITEMS 32
@@ -105,7 +105,7 @@ extern "C" {
 #endif
 
 /** Maximum iterations for equilibrium computation */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_ITERATIONS 1000
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_ITERATIONS 500

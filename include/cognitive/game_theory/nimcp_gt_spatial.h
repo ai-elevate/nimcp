@@ -62,7 +62,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum nodes in spatial game (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_SPATIAL_MAX_NODES         10000
     #define NIMCP_SPATIAL_MAX_NEIGHBORS     100
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM

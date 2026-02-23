@@ -63,6 +63,23 @@ extern "C" {
 #endif
 
 //=============================================================================
+// Platform Tier Preprocessor Constants
+//=============================================================================
+// WHAT: Preprocessor-visible tier values for #if directives
+// WHY:  C preprocessor #if cannot see enum values (treats them as 0)
+//       This caused ALL tier-conditional buffer sizes to use MINIMAL values,
+//       leading to stack buffer overflows (e.g., 32-byte label buffer + 63-byte strncpy)
+// HOW:  Define macros with same values as the enum, used in nimcp_tier_optimization.h
+
+#define PLATFORM_TIER_BASIC_VALUE        0
+#define PLATFORM_TIER_MINIMAL_VALUE      1
+#define PLATFORM_TIER_CONSTRAINED_VALUE  2
+#define PLATFORM_TIER_MEDIUM_VALUE       3
+#define PLATFORM_TIER_FULL_VALUE         4
+#define PLATFORM_TIER_NEUROMORPHIC_VALUE 5
+#define PLATFORM_TIER_QUANTUM_VALUE      6
+
+//=============================================================================
 // Platform Tier Enumeration
 //=============================================================================
 

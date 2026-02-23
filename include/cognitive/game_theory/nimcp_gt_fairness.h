@@ -59,7 +59,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum number of items for MMS computation (tier-scaled due to O(2^n)) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_FAIRNESS_MAX_MMS_ITEMS 20
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_FAIRNESS_MAX_MMS_ITEMS 15

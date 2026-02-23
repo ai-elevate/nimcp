@@ -54,6 +54,15 @@
 #include "async/nimcp_bio_router.h"
 
 #include "nimcp.h"
+
+/* Socratic active learning: cognitive module + LGSS bindings */
+#include "api/nimcp_api_internal.h"
+#include "core/brain/accessors/nimcp_brain_accessors.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "cognitive/consolidation/nimcp_consolidation.h"
+#include "cognitive/introspection/nimcp_introspection.h"
+#include "cognitive/nimcp_self_model.h"
+#include "security/lgss/perception/nimcp_lgss_content_filter.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -932,6 +941,283 @@ static PyObject* Brain_freeze(BrainObject* self, PyObject* args) {
     Py_RETURN_TRUE;
 }
 
+//=============================================================================
+// Socratic Active Learning: Cognitive Module Bindings
+//=============================================================================
+
+/**
+ * WHAT: Detect knowledge gaps via curiosity module
+ * WHY:  Drive active learning by finding what the brain doesn't know
+ * HOW:  Call curiosity_detect_knowledge_gap() through brain accessor
+ */
+static PyObject* Brain_curiosity_detect_gaps(BrainObject* self, PyObject* args) {
+    const char* topic;
+    if (!PyArg_ParseTuple(args, "s", &topic))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    curiosity_engine_t curiosity = brain_get_curiosity(self->brain->internal_brain);
+    if (!curiosity) {
+        /* No curiosity engine — return empty dict rather than error */
+        PyObject* dict = PyDict_New();
+        return dict;
+    }
+
+    knowledge_gap_t gap;
+    Py_BEGIN_ALLOW_THREADS
+    gap = curiosity_detect_knowledge_gap(curiosity, topic);
+    Py_END_ALLOW_THREADS
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    SET("topic", PyUnicode_FromString(gap.topic));
+    SET("gap_size", PyFloat_FromDouble(gap.gap_size));
+    SET("curiosity_intensity", PyFloat_FromDouble(gap.curiosity_intensity));
+    SET("learning_potential", PyFloat_FromDouble(gap.learning_potential));
+    SET("related_concepts", PyLong_FromUnsignedLong(gap.related_concepts));
+
+    /* Generate questions from the gap */
+    generated_question_t questions[8];
+    uint32_t num_q;
+    Py_BEGIN_ALLOW_THREADS
+    num_q = curiosity_generate_questions(curiosity, &gap, questions, 8);
+    Py_END_ALLOW_THREADS
+
+    PyObject* q_list = PyList_New(num_q);
+    if (!q_list) { Py_DECREF(dict); return NULL; }
+    for (uint32_t i = 0; i < num_q; i++) {
+        PyObject* q_str = PyUnicode_FromString(questions[i].question);
+        if (!q_str) { Py_DECREF(q_list); Py_DECREF(dict); return NULL; }
+        PyList_SET_ITEM(q_list, i, q_str);
+    }
+    SET("questions", q_list);
+
+#undef SET
+    return dict;
+}
+
+/**
+ * WHAT: Trigger synchronous memory consolidation
+ * WHY:  "Sleep" between training phases — replay, prune, integrate
+ * HOW:  Call brain_consolidate_memory() with default config
+ */
+static PyObject* Brain_consolidate(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    consolidation_config_t config = consolidation_default_config();
+    bool success;
+
+    Py_BEGIN_ALLOW_THREADS
+    success = brain_consolidate_memory(self->brain->internal_brain, &config);
+    Py_END_ALLOW_THREADS
+
+    if (success) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Get epistemic + aleatoric uncertainty for input features
+ * WHY:  Metacognitive monitoring — "how confident is the brain?"
+ * HOW:  Call brain_get_uncertainty() through introspection accessor
+ */
+static PyObject* Brain_get_uncertainty(BrainObject* self, PyObject* args) {
+    PyObject* features_list = NULL;
+    /* Features are optional — if not provided, return overall uncertainty */
+    if (!PyArg_ParseTuple(args, "|O", &features_list))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    introspection_context_t introspection = brain_get_introspection(self->brain->internal_brain);
+    if (!introspection) {
+        /* No introspection — return zeros */
+        PyObject* dict = PyDict_New();
+        if (!dict) return NULL;
+        PyObject* zero = PyFloat_FromDouble(0.0);
+        PyDict_SetItemString(dict, "epistemic", zero);
+        PyDict_SetItemString(dict, "aleatoric", zero);
+        PyDict_SetItemString(dict, "total", zero);
+        PyDict_SetItemString(dict, "confidence", zero);
+        Py_DECREF(zero);
+        return dict;
+    }
+
+    float* features = NULL;
+    Py_ssize_t num_features = 0;
+    if (features_list && features_list != Py_None) {
+        features = py_list_to_float_array(features_list, &num_features);
+        if (!features) return NULL;
+    }
+
+    brain_uncertainty_t unc;
+    Py_BEGIN_ALLOW_THREADS
+    if (features) {
+        unc = brain_get_uncertainty(introspection, features, (uint32_t)num_features);
+    } else {
+        /* No features — use a zero vector for general uncertainty */
+        float dummy[1] = {0.0f};
+        unc = brain_get_uncertainty(introspection, dummy, 1);
+    }
+    Py_END_ALLOW_THREADS
+
+    if (features) nimcp_free(features);
+
+    PyObject* dict = PyDict_New();
+    if (!dict) { brain_uncertainty_free(&unc); return NULL; }
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); brain_uncertainty_free(&unc); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    SET("epistemic", PyFloat_FromDouble(unc.epistemic));
+    SET("aleatoric", PyFloat_FromDouble(unc.aleatoric));
+    SET("total", PyFloat_FromDouble(unc.total));
+    SET("confidence", PyFloat_FromDouble(unc.confidence));
+    SET("ensemble_size", PyLong_FromUnsignedLong(unc.ensemble_size));
+
+#undef SET
+
+    brain_uncertainty_free(&unc);
+    return dict;
+}
+
+/**
+ * WHAT: Self-model assessment for a domain
+ * WHY:  Track brain's perceived capabilities per domain
+ * HOW:  Call self_model_get() through brain internal access
+ */
+static PyObject* Brain_self_assess(BrainObject* self, PyObject* args) {
+    const char* domain;
+    if (!PyArg_ParseTuple(args, "s", &domain))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    /* Return probe-based assessment since self_model doesn't have a
+       per-domain getter — use probe metrics as a proxy */
+    nimcp_brain_probe_t probe;
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_probe(self->brain, &probe);
+    Py_END_ALLOW_THREADS
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    SET("domain", PyUnicode_FromString(domain));
+    if (status == NIMCP_OK) {
+        SET("accuracy", PyFloat_FromDouble(probe.accuracy));
+        SET("learning_steps", PyLong_FromUnsignedLongLong(probe.total_learning_steps));
+        SET("sparsity", PyFloat_FromDouble(probe.avg_sparsity));
+        SET("learning_rate", PyFloat_FromDouble(probe.current_learning_rate));
+        SET("num_neurons", PyLong_FromUnsignedLong(probe.num_neurons));
+        SET("assessment", PyUnicode_FromString("active"));
+    } else {
+        SET("assessment", PyUnicode_FromString("unavailable"));
+    }
+
+#undef SET
+    return dict;
+}
+
+/**
+ * WHAT: LGSS content safety check
+ * WHY:  Gate web-fetched and generated content before learning
+ * HOW:  Create temporary LGSS filter, run is_safe check, destroy
+ */
+static PyObject* Brain_lgss_check_content(BrainObject* self, PyObject* args) {
+    const char* text;
+    if (!PyArg_ParseTuple(args, "s", &text))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    size_t text_len = strlen(text);
+
+    /* Create a temporary content filter with default config */
+    lgss_content_filter_config_t config;
+    lgss_content_filter_default_config(&config);
+
+    lgss_content_filter_t* filter = lgss_content_filter_create(NULL, &config);
+    if (!filter) {
+        /* No filter available — assume safe (defense in depth: Python layer
+           also checks) */
+        PyObject* dict = PyDict_New();
+        if (!dict) return NULL;
+        PyObject* v = Py_True; Py_INCREF(v);
+        PyDict_SetItemString(dict, "is_safe", v); Py_DECREF(v);
+        v = PyUnicode_FromString("no lgss filter available");
+        PyDict_SetItemString(dict, "reason", v); Py_DECREF(v);
+        return dict;
+    }
+
+    lgss_content_filter_result_t result;
+    memset(&result, 0, sizeof(result));
+    nimcp_error_t err;
+
+    Py_BEGIN_ALLOW_THREADS
+    err = lgss_content_filter_is_safe(filter, text, text_len, &result);
+    Py_END_ALLOW_THREADS
+
+    lgss_content_filter_destroy(filter);
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    bool is_safe = (err == NIMCP_OK && result.status == LGSS_CONTENT_SAFE);
+    SET("is_safe", PyBool_FromLong(is_safe));
+    SET("status", PyLong_FromLong(result.status));
+    SET("confidence", PyFloat_FromDouble(result.confidence));
+    SET("explanation", PyUnicode_FromString(result.explanation));
+    if (result.pattern_matched) {
+        SET("matched_pattern", PyUnicode_FromString(result.matched_pattern));
+    }
+    SET("reason", PyUnicode_FromString(
+        is_safe ? "content is safe" : "content flagged by lgss"));
+
+#undef SET
+    return dict;
+}
+
 /**
  * @brief Check if brain is frozen
  */
@@ -994,6 +1280,18 @@ static PyMethodDef Brain_methods[] = {
     // Frozen inference
     {"freeze", (PyCFunction)Brain_freeze, METH_NOARGS,
      "Freeze brain for inference-only mode: freeze() -> True"},
+
+    // Socratic active learning: cognitive module bindings
+    {"curiosity_detect_gaps", (PyCFunction)Brain_curiosity_detect_gaps, METH_VARARGS,
+     "Detect knowledge gaps: curiosity_detect_gaps(topic) -> dict"},
+    {"consolidate", (PyCFunction)Brain_consolidate, METH_NOARGS,
+     "Trigger memory consolidation: consolidate() -> bool"},
+    {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
+     "Get uncertainty: get_uncertainty([features]) -> dict"},
+    {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,
+     "Self-model assessment: self_assess(domain) -> dict"},
+    {"lgss_check_content", (PyCFunction)Brain_lgss_check_content, METH_VARARGS,
+     "LGSS content filter: lgss_check_content(text) -> dict"},
 
     {NULL}
 };

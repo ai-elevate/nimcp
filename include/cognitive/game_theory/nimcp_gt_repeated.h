@@ -39,7 +39,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum history length (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_REPEATED_MAX_HISTORY 1024
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_REPEATED_MAX_HISTORY 512

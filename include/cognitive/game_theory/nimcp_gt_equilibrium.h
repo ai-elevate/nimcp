@@ -44,7 +44,7 @@ extern "C" {
 //=============================================================================
 
 /** Maximum strategies per player (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_STRATEGIES 64
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_STRATEGIES 32
@@ -55,7 +55,7 @@ extern "C" {
 #endif
 
 /** Maximum equilibria to find (tier-scaled) */
-#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL
+#if NIMCP_BUILD_TIER == PLATFORM_TIER_FULL_VALUE
     #define NIMCP_GT_MAX_EQUILIBRIA 32
 #elif NIMCP_BUILD_TIER == PLATFORM_TIER_MEDIUM
     #define NIMCP_GT_MAX_EQUILIBRIA 16
