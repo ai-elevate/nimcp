@@ -213,6 +213,24 @@ nimcp_brain_t nimcp_brain_create(
 );
 
 /**
+ * @brief Create brain with explicit neuron count (bypasses size preset)
+ *
+ * @param name Human-readable name
+ * @param task Task template (NIMCP_TASK_CLASSIFICATION, etc.)
+ * @param num_inputs Input dimension
+ * @param num_outputs Output dimension
+ * @param neuron_count Exact number of hidden neurons
+ * @return Brain handle or NULL on error
+ */
+nimcp_brain_t nimcp_brain_create_with_neurons(
+    const char* name,
+    nimcp_brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    uint32_t neuron_count
+);
+
+/**
  * @brief Destroy a brain and free all resources
  *
  * @param brain Brain handle

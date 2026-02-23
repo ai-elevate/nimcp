@@ -1840,6 +1840,9 @@ typedef struct {
     float creative_quality_threshold;             /**< Minimum quality score for generation (0-1, default: 0.7) */
     uint32_t creative_max_regeneration;           /**< Max regeneration attempts on quality fail (default: 3) */
     float creative_copyright_threshold;           /**< Max similarity to known works (0-1, default: 0.8) */
+
+    // Direct neuron count override
+    uint32_t neuron_count;                        /**< If >0, override size-preset neuron count */
 } brain_config_t;
 
 /**

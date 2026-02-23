@@ -174,6 +174,11 @@ struct neural_network_struct {
     // Sparse synapse pools (NIMCP 2.11: Memory-efficient synapse storage)
     sparse_synapse_pool_t synapse_handle_pool;
     synapse_metadata_pool_t synapse_metadata_pool;
+
+    // Bulk allocation for large networks — reduces 2M tracked allocs to 2
+    spike_record_t* spike_history_bulk;   // Single contiguous spike history allocation
+    float* activity_history_bulk;         // Single contiguous activity history allocation
+    uint32_t bulk_neuron_count;           // Neurons using bulk arrays (0 = individual allocs)
 };
 
 //=============================================================================
@@ -206,6 +211,8 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
 static void init_neuron_learning_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_homeostatic_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity, uint32_t activity_capacity);
+static void init_neuron_activity_tracking_bulk(neuron_t* neuron, uint32_t spike_capacity, uint32_t activity_capacity,
+                                               spike_record_t* spike_buf, float* activity_buf);
 static void init_neuron_model(neuron_t* neuron, const network_config_t* config);
 
 //=============================================================================
@@ -460,6 +467,31 @@ static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capac
 }
 
 /**
+ * @brief Initialize activity tracking with pre-allocated bulk buffers
+ *
+ * WHY: For large networks (>5K neurons), individual nimcp_calloc per neuron
+ *      creates millions of tracked allocations through a mutex-locked hash table.
+ *      Bulk allocation reduces 2M tracked allocs to 2, enabling 1M neuron creation.
+ */
+static void init_neuron_activity_tracking_bulk(neuron_t* neuron, uint32_t spike_capacity, uint32_t activity_capacity,
+                                               spike_record_t* spike_buf, float* activity_buf)
+{
+    if (!neuron) return;
+
+    neuron->spike_history_capacity = spike_capacity;
+    neuron->spike_history_index = 0;
+    neuron->spike_history_count = 0;
+    neuron->avg_activity = 0.0F;
+    neuron->spike_history = spike_buf;  // Points into bulk array
+
+    neuron->activity_history_capacity = activity_capacity;
+    neuron->activity_history = activity_buf;  // Points into bulk array
+
+    sparse_synapse_storage_init(&neuron->outgoing);
+    sparse_synapse_storage_init(&neuron->incoming);
+}
+
+/**
  * @brief Initialize neuron model (Izhikevich, LIF, etc.)
  *
  * WHAT: Creates neuron dynamics model based on config
@@ -645,9 +677,14 @@ neural_network_t neural_network_create(const network_config_t* config)
             actual_neurons = total;
         }
     }
-    uint32_t capacity = (actual_neurons * 2 < MAX_NEURONS)
-                       ? actual_neurons * 2
-                       : MAX_NEURONS;
+    // Growth headroom: 2x for small networks, 10% for large (saves GB of memory)
+    uint32_t capacity;
+    if (actual_neurons > 100000) {
+        capacity = actual_neurons + actual_neurons / 10;  // 10% headroom
+    } else {
+        capacity = actual_neurons * 2;
+    }
+    if (capacity > MAX_NEURONS) capacity = MAX_NEURONS;
     network->neurons = (neuron_t*) nimcp_calloc(capacity, sizeof(neuron_t));
 
     // Guard clause: Check neurons allocation
@@ -697,6 +734,27 @@ neural_network_t neural_network_create(const network_config_t* config)
     // FIX: Use actual_neurons (sum of layer_sizes) instead of config->num_neurons
     uint32_t spike_cap = resolve_spike_history_capacity(config);
     uint32_t activity_cap = resolve_activity_history_capacity(config);
+
+    // Bulk allocation for large networks: 2 allocs instead of 2*N
+    // WHY: nimcp_calloc tracks each allocation in a mutex-locked hash table.
+    //      For 1M neurons, 2M individual callocs takes 30+ minutes.
+    //      Bulk allocation reduces this to 2 callocs (~instant).
+    bool use_bulk = (actual_neurons > 5000);
+    if (use_bulk) {
+        network->spike_history_bulk = (spike_record_t*)nimcp_calloc(
+            (size_t)actual_neurons * spike_cap, sizeof(spike_record_t));
+        network->activity_history_bulk = (float*)nimcp_calloc(
+            (size_t)actual_neurons * activity_cap, sizeof(float));
+        if (!network->spike_history_bulk || !network->activity_history_bulk) {
+            LOG_WARN("Bulk allocation failed for %u neurons, falling back to per-neuron", actual_neurons);
+            if (network->spike_history_bulk) { nimcp_free(network->spike_history_bulk); network->spike_history_bulk = NULL; }
+            if (network->activity_history_bulk) { nimcp_free(network->activity_history_bulk); network->activity_history_bulk = NULL; }
+            use_bulk = false;
+        } else {
+            network->bulk_neuron_count = actual_neurons;
+        }
+    }
+
     for (uint32_t i = 0; i < actual_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
         neuron_type_t type = (i < num_inhibitory) ? NEURON_INHIBITORY : NEURON_EXCITATORY;
@@ -706,7 +764,15 @@ neural_network_t neural_network_create(const network_config_t* config)
 
         init_neuron_learning_params(neuron, config);
         init_neuron_homeostatic_params(neuron, config);
-        init_neuron_activity_tracking(neuron, spike_cap, activity_cap);
+
+        if (use_bulk) {
+            init_neuron_activity_tracking_bulk(neuron, spike_cap, activity_cap,
+                &network->spike_history_bulk[(size_t)i * spike_cap],
+                &network->activity_history_bulk[(size_t)i * activity_cap]);
+        } else {
+            init_neuron_activity_tracking(neuron, spike_cap, activity_cap);
+        }
+
         init_neuron_model(neuron, config);  // NIMCP 2.6: Initialize neuron model plugin
     }
 
@@ -834,27 +900,26 @@ void neural_network_destroy(neural_network_t network)
         LOG_INFO(LOG_MODULE, "Bio-async unregistered for neuralnet");
     }
 
-    /**
-     * WHAT: Cleanup neuron models (NIMCP 2.6)
-     * WHY: Plugin models allocate their own state
-     * HOW: Call neuron_model_destroy for each model
-     */
-    if (network->neurons) {
+    // Fast-path destroy for bulk-allocated networks with no per-neuron heap state
+    // WHY: For 1M neurons with deferred wiring, iterating all neurons just to
+    //       check NULL pointers thrashes 3.4 GB of cache for no work. Skip it.
+    bool has_per_neuron_heap = false;
+    if (network->neurons && network->num_neurons > 0) {
+        // Sample first neuron to detect if any per-neuron heap state exists
+        neuron_t* first = &network->neurons[0];
+        if (first->model || NEURON_OUT_COUNT(first) > 0 || NEURON_IN_COUNT(first) > 0) {
+            has_per_neuron_heap = true;
+        }
+    }
+
+    if (has_per_neuron_heap && network->neurons) {
         for (uint32_t i = 0; i < network->num_neurons; i++) {
-            if (i % 100 == 0) {
-            }
             if (network->neurons[i].model) {
                 neuron_model_destroy(network->neurons[i].model);
                 network->neurons[i].model = NULL;
             }
 
-            // Phase 11: Cleanup BCM plasticity state for all synapses
-            // WHAT: Free dynamically allocated BCM state
-            // WHY: BCM state is heap-allocated, must be freed to prevent leaks
-            // HOW: Iterate through outgoing synapses and free BCM state
             neuron_t* neuron = &network->neurons[i];
-            if (i == 0) {
-            }
             for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
                 synapse_t* syn = NEURON_OUT_META(network, neuron, j);
                 if (!syn) continue;
@@ -867,23 +932,27 @@ void neural_network_destroy(neural_network_t network)
                     syn->eligibility = NULL;
                 }
             }
-            // Incoming metadata shares BCM/eligibility pointers — NULL them
-            // to prevent double-free (outgoing already freed them above)
             for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
                 synapse_t* in_syn = NEURON_IN_META(network, neuron, j);
                 if (!in_syn) continue;
                 in_syn->bcm = NULL;
                 in_syn->eligibility = NULL;
             }
-
-            // Note: incoming_synapses share BCM/eligibility state with outgoing synapses,
-            // so we don't free them for incoming (would be double-free)
         }
     }
 
-    // Free spike history ring buffers and activity history buffers
+    // Free spike/activity history: bulk arrays first, then individual stragglers
+    if (network->spike_history_bulk) {
+        nimcp_free(network->spike_history_bulk);
+        network->spike_history_bulk = NULL;
+    }
+    if (network->activity_history_bulk) {
+        nimcp_free(network->activity_history_bulk);
+        network->activity_history_bulk = NULL;
+    }
     if (network->neurons) {
-        for (uint32_t i = 0; i < network->num_neurons; i++) {
+        uint32_t bulk_count = network->bulk_neuron_count;
+        for (uint32_t i = bulk_count; i < network->num_neurons; i++) {
             if (network->neurons[i].spike_history) {
                 nimcp_free(network->neurons[i].spike_history);
                 network->neurons[i].spike_history = NULL;
@@ -895,8 +964,8 @@ void neural_network_destroy(neural_network_t network)
         }
     }
 
-    // NIMCP 2.11: Cleanup sparse synapse storage per neuron, then destroy pools
-    if (network->neurons && network->synapse_handle_pool) {
+    // Sparse synapse storage cleanup: skip for networks with no connections
+    if (has_per_neuron_heap && network->neurons && network->synapse_handle_pool) {
         for (uint32_t i = 0; i < network->num_neurons; i++) {
             neuron_t* neuron = &network->neurons[i];
             sparse_synapse_storage_cleanup(network->synapse_handle_pool, &neuron->outgoing);

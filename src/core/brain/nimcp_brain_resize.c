@@ -89,6 +89,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_resize, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "utils/thread/nimcp_thread_rand.h"
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 #include <string.h>
 
 //=============================================================================
@@ -638,7 +639,15 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
                    new_config.base_config.num_neurons,
                    (void*)new_config.base_config.layer_sizes);
 
+    struct timespec ts_start, ts_end;
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
+
     adaptive_network_t new_network = adaptive_network_create(&new_config);
+
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double create_secs = (ts_end.tv_sec - ts_start.tv_sec) + (ts_end.tv_nsec - ts_start.tv_nsec) / 1e9;
+    LOG_INFO("brain_resize: adaptive_network_create took %.1fs", create_secs);
+    fprintf(stderr, "[TIMING] adaptive_network_create: %.1fs\n", create_secs);
 
     // Free our temporary layer_sizes copy (adaptive_network_create makes its own deep copy)
     if (new_layer_sizes) {
@@ -677,6 +686,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     // WHY: sparse_synapse_storage_t contains heap overflow pointers that belong
     //       to the old network's pools. memcpy would create dangling pointers
     //       when the old network is destroyed.
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     for (uint32_t i = 0; i < current_neuron_count; i++) {
         neuron_t* old_neuron = neural_network_get_neuron(base_network, i);
         neuron_t* new_neuron = neural_network_get_neuron(new_base, i);
@@ -765,6 +775,11 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         }
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double transfer_secs = (ts_end.tv_sec - ts_start.tv_sec) + (ts_end.tv_nsec - ts_start.tv_nsec) / 1e9;
+    LOG_INFO("brain_resize: Neuron transfer took %.1fs", transfer_secs);
+    fprintf(stderr, "[TIMING] neuron_transfer: %.1fs\n", transfer_secs);
+
     // Step 4: Wire new neurons with sparse random connectivity
     // WHY: skip_layer_wiring=true means adaptive_network_create() allocated neurons
     //       but didn't run the O(N*M) dense wiring loop. We wire only new neurons
@@ -774,22 +789,37 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         const uint32_t conns_per_neuron = 16;
         LOG_INFO("brain_resize: Wiring %u new neurons with %u sparse connections each",
                  new_neurons_added, conns_per_neuron);
+        clock_gettime(CLOCK_MONOTONIC, &ts_start);
         for (uint32_t i = current_neuron_count; i < new_neuron_count; i++) {
+            neuron_t* neuron = neural_network_get_neuron(new_base, i);
+            if (!neuron) continue;
             for (uint32_t c = 0; c < conns_per_neuron; c++) {
                 uint32_t target = nimcp_tl_rand() % new_neuron_count;
                 if (target == i) {
                     target = (target + 1) % new_neuron_count;
                 }
                 float weight = ((float)nimcp_tl_rand() / (float)RAND_MAX) - 0.5F;
-                neural_network_add_connection(new_base, i, target, weight);
+                sparse_synapse_add_with_metadata(
+                    new_h_pool, new_m_pool, &neuron->outgoing, target, weight, 0);
             }
         }
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double wire_secs = (ts_end.tv_sec - ts_start.tv_sec) + (ts_end.tv_nsec - ts_start.tv_nsec) / 1e9;
+    LOG_INFO("brain_resize: Sparse wiring took %.1fs (%u neurons × %u conns)",
+             wire_secs, new_neurons_added, 16);
+    fprintf(stderr, "[TIMING] sparse_wiring: %.1fs (%u neurons)\n", wire_secs, new_neurons_added);
+
     // Rebuild all incoming synapses from outgoing data + set peer_index cross-refs
     // Done once after both old neuron transfer AND new sparse wiring
     LOG_INFO("brain_resize: Rebuilding incoming synapses");
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     neural_network_rebuild_incoming(new_base);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double rebuild_secs = (ts_end.tv_sec - ts_start.tv_sec) + (ts_end.tv_nsec - ts_start.tv_nsec) / 1e9;
+    LOG_INFO("brain_resize: rebuild_incoming took %.1fs", rebuild_secs);
+    fprintf(stderr, "[TIMING] rebuild_incoming: %.1fs\n", rebuild_secs);
 
     LOG_INFO("brain_resize: %u new neurons wired with sparse connectivity", new_neurons_added);
 
@@ -802,16 +832,22 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     brain->config.size = BRAIN_SIZE_CUSTOM;  // Now using custom size
 
     // Step 6.5: Update subsystems that hold network references
-    // CRITICAL FIX: Call helper function in nimcp_brain.c which has full struct access
-    // This avoids struct offset bugs from incomplete struct definition
     LOG_INFO("brain_resize: Updating subsystems for new network");
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     if (!brain_resize_update_subsystems_internal(brain, new_base, new_neuron_count)) {
         LOG_WARN("brain_resize: Subsystem update returned failure, but continuing");
     }
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double subsys_secs = (ts_end.tv_sec - ts_start.tv_sec) + (ts_end.tv_nsec - ts_start.tv_nsec) / 1e9;
+    fprintf(stderr, "[TIMING] subsystem_update: %.1fs\n", subsys_secs);
 
     // Step 7: Clean up old network
     LOG_INFO("brain_resize: Destroying old network");
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     adaptive_network_destroy(old_network_copy);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    double destroy_secs = (ts_end.tv_sec - ts_start.tv_sec) + (ts_end.tv_nsec - ts_start.tv_nsec) / 1e9;
+    fprintf(stderr, "[TIMING] old_network_destroy: %.1fs\n", destroy_secs);
 
     LOG_INFO("brain_resize: Growth complete. New capacity: %u neurons (%.1fx growth)",
              new_neuron_count,

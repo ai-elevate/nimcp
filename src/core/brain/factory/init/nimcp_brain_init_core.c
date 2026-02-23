@@ -82,6 +82,9 @@ extern nimcp_error_t mesh_brain_integration_get_stats(
     mesh_brain_integration_stats_t* stats);
 
 #define LOG_MODULE "BRAIN_INIT_CORE"
+#include "utils/thread/nimcp_thread_rand.h"
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -170,11 +173,24 @@ adaptive_network_t nimcp_brain_factory_create_brain_network(uint32_t num_inputs,
         return NULL;
     }
 
+    // Skip dense O(N*M) wiring for large networks — use sparse init instead
+    bool needs_sparse_wiring = (num_neurons > 5000);
+    if (needs_sparse_wiring) {
+        net_config.base_config.skip_layer_wiring = true;
+    }
+
     adaptive_network_t network = adaptive_network_create(&net_config);
 
     // Free our copy of layer_sizes - adaptive_network_create makes its own deep copy
     if (net_config.base_config.layer_sizes) {
         nimcp_free((void*)net_config.base_config.layer_sizes);
+    }
+
+    // For large networks, wiring is deferred to training — connections form
+    // organically via plasticity. This avoids millions of pool allocations
+    // that bottleneck on the memory tracking system.
+    if (network && needs_sparse_wiring) {
+        LOG_INFO("Large network (%u neurons) — initial wiring deferred to training", num_neurons);
     }
 
     return network;

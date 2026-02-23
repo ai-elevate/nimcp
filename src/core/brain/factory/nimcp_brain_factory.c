@@ -480,7 +480,9 @@ brain_t brain_create_custom(const brain_config_t* config)
     }
 
     // Create neural network
-    uint32_t num_neurons = nimcp_brain_factory_get_neuron_count(config->size);
+    uint32_t num_neurons = (config->neuron_count > 0)
+        ? config->neuron_count
+        : nimcp_brain_factory_get_neuron_count(config->size);
     brain->network = nimcp_brain_factory_create_brain_network(
         config->num_inputs, config->num_outputs, num_neurons,
         config->sparsity_target, config->neuron_integration);

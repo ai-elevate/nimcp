@@ -204,17 +204,23 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
     int task = NIMCP_TASK_CLASSIFICATION;
     unsigned int num_inputs = 10;
     unsigned int num_outputs = 10;
+    unsigned int neuron_count = 0;
 
-    static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs", NULL};
+    static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs", "neuron_count", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiII", kwlist,
-                                     &name, &size, &task, &num_inputs, &num_outputs)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIII", kwlist,
+                                     &name, &size, &task, &num_inputs, &num_outputs, &neuron_count)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_init: Invalid arguments");
         return -1;
     }
 
-    self->brain = nimcp_brain_create(name, (nimcp_brain_size_t)size,
-                                     (nimcp_brain_task_t)task, num_inputs, num_outputs);
+    if (neuron_count > 0) {
+        self->brain = nimcp_brain_create_with_neurons(name, (nimcp_brain_task_t)task,
+                                                       num_inputs, num_outputs, neuron_count);
+    } else {
+        self->brain = nimcp_brain_create(name, (nimcp_brain_size_t)size,
+                                         (nimcp_brain_task_t)task, num_inputs, num_outputs);
+    }
 
     if (!self->brain) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_NOT_INITIALIZED, 0, "python_binding",

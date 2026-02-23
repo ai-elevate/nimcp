@@ -209,6 +209,48 @@ void nimcp_brain_destroy(nimcp_brain_t brain) {
 }
 
 
+nimcp_brain_t nimcp_brain_create_with_neurons(
+    const char* name,
+    nimcp_brain_task_t task,
+    uint32_t num_inputs,
+    uint32_t num_outputs,
+    uint32_t neuron_count)
+{
+    LOG_INFO("Creating brain with %u neurons: name='%s', task=%d, inputs=%u, outputs=%u",
+             neuron_count, name ? name : "NULL", task, num_inputs, num_outputs);
+
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
+
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
+                               "Failed to allocate brain handle");
+
+    brain_size_t internal_size = BRAIN_SIZE_LARGE;
+    brain_task_t internal_task = (brain_task_t)task;
+
+    // Build config with neuron_count override
+    brain_config_t config = {0};
+    task_strategy_t* strategy = strategy_create(internal_task);
+    if (!strategy) {
+        nimcp_free(handle);
+        return NULL;
+    }
+    nimcp_brain_factory_init_brain_config(&config, name, internal_size, internal_task,
+                                          num_inputs, num_outputs, strategy);
+    strategy_destroy(strategy);
+    config.neuron_count = neuron_count;
+
+    handle->internal_brain = brain_create_custom(&config);
+    if (!handle->internal_brain) {
+        nimcp_free(handle);
+        return NULL;
+    }
+
+    set_error("No error");
+    LOG_INFO("Brain '%s' created with %u neurons (handle=%p)", name, neuron_count, (void*)handle);
+    return handle;
+}
+
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
         set_error("Config filepath is NULL");
