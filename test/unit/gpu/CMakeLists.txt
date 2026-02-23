@@ -29,6 +29,9 @@ add_gpu_test(test_multigpu_bounds)
 # GPU stub false positive throw tests (no CUDA required)
 add_gpu_test(test_gpu_stub_no_false_throws)
 
+# GPU inference optimization unit tests (no CUDA required — GTEST_SKIP if no GPU)
+add_gpu_test(test_gpu_inference_unit)
+
 # Softmax numerical stability tests (CPU backend, no CUDA required)
 add_gpu_test(test_softmax_numerical_stability)
 

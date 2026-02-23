@@ -143,6 +143,7 @@ struct recovery_executive_internal;
 //=============================================================================
 #include "middleware/brain_integration.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/thread/nimcp_thread_pool.h"
 
 //=============================================================================
 // Specialized Brain Regions
@@ -1490,6 +1491,12 @@ struct brain_struct {
     // Provides tensor-based batch operations for large-scale simulations.
     //
     struct substrate_gpu_context* substrate_gpu_ctx;                  // Unified substrate GPU context
+
+    //=========================================================================
+    // GPU Inference Optimization (Phase GPU-INF)
+    //=========================================================================
+    nimcp_thread_pool_t* inference_pool;                              // Thread pool for parallel cognitive stages
+    bool frozen;                                                      // Frozen inference mode — no learning
 
     // =========================================================================
     // PRIME RESONANT MEMORY SYSTEM (Content-Addressable Consolidation)

@@ -1,6 +1,6 @@
 {
-  "description": "Comprehensive dataset configuration for NIMCP Foundation Models covering all 10 knowledge domains",
-  "version": "3.0",
+  "description": "Comprehensive dataset configuration for NIMCP Foundation Models covering all human knowledge domains",
+  "version": "4.0",
   "datasets": [
     {
       "name": "fineweb_10bt",
@@ -232,25 +232,192 @@
       "hf_dataset": "cais/mmlu",
       "hf_subset": "astronomy",
       "description": "MMLU astronomy questions"
+    },
+
+    {
+      "name": "mmlu_clinical_knowledge",
+      "domain": "medicine",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "clinical_knowledge",
+      "description": "Clinical medicine questions (~265 Q)"
+    },
+    {
+      "name": "mmlu_medical_genetics",
+      "domain": "medicine",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "medical_genetics",
+      "description": "Genetics and hereditary disease (~100 Q)"
+    },
+    {
+      "name": "mmlu_anatomy",
+      "domain": "medicine",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "anatomy",
+      "description": "Human anatomy (~135 Q)"
+    },
+    {
+      "name": "mmlu_college_medicine",
+      "domain": "medicine",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_medicine",
+      "description": "General medical knowledge (~173 Q)"
+    },
+    {
+      "name": "mmlu_professional_medicine",
+      "domain": "medicine",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "professional_medicine",
+      "description": "Clinical practice (~272 Q)"
+    },
+
+    {
+      "name": "mmlu_philosophy",
+      "domain": "philosophy",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "philosophy",
+      "description": "Major philosophical traditions (~311 Q)"
+    },
+    {
+      "name": "mmlu_moral_scenarios",
+      "domain": "philosophy",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "moral_scenarios",
+      "description": "Ethical decision-making (~895 Q)"
+    },
+    {
+      "name": "mmlu_moral_disputes",
+      "domain": "philosophy",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "moral_disputes",
+      "description": "Controversial moral questions (~346 Q)"
+    },
+    {
+      "name": "mmlu_formal_logic",
+      "domain": "philosophy",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "formal_logic",
+      "description": "Logical reasoning (~126 Q)"
+    },
+
+    {
+      "name": "mmlu_high_school_geography",
+      "domain": "literature",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_geography",
+      "description": "Cultural geography (~198 Q)"
+    },
+    {
+      "name": "gutenberg_english",
+      "domain": "literature",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "manu/project_gutenberg",
+      "description": "Public domain literature from Project Gutenberg (~50K books)"
+    },
+    {
+      "name": "tinystories",
+      "domain": "literature",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "roneneldan/TinyStories",
+      "description": "Simple narrative structure (~2.1M stories)"
+    },
+    {
+      "name": "booksum",
+      "domain": "literature",
+      "priority": 2,
+      "type": "huggingface",
+      "hf_dataset": "kmfoda/booksum",
+      "description": "Book and chapter summaries (~12K summaries)"
+    },
+
+    {
+      "name": "mmlu_human_sexuality",
+      "domain": "social_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "human_sexuality",
+      "description": "Human behavior and identity (~131 Q)"
+    },
+    {
+      "name": "mmlu_international_law",
+      "domain": "social_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "international_law",
+      "description": "Law and governance (~121 Q)"
+    },
+    {
+      "name": "mmlu_jurisprudence",
+      "domain": "social_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "jurisprudence",
+      "description": "Legal philosophy (~108 Q)"
+    },
+    {
+      "name": "mmlu_public_relations",
+      "domain": "social_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "public_relations",
+      "description": "Social communication (~110 Q)"
+    },
+    {
+      "name": "mmlu_nutrition",
+      "domain": "social_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "nutrition",
+      "description": "Health and diet (~306 Q)"
     }
   ],
   "training_order": [
     "language",
+    "literature",
     "programming",
     "ethics",
+    "philosophy",
     "history",
     "psychology",
     "anthropology",
+    "social_sciences",
+    "medicine",
     "biology",
     "chemistry",
     "physics"
   ],
   "notes": {
-    "curriculum_strategy": "Start with massive language corpora (FineWeb 28GB + OpenWebText 12GB), add code, then social/ethical, then STEM",
+    "curriculum_strategy": "Start with language + literature, add code, then ethics/philosophy, then social/historical, then STEM/medicine",
     "dataset_selection": "ALL datasets verified streaming=True with datasets v4.5+ — no legacy scripts, no gated access",
-    "coverage": "9 domains: language, programming, ethics, history, psychology, anthropology, biology, chemistry, physics",
-    "estimated_total_size": "~45GB raw text (FineWeb 28GB + OpenWebText 12GB + github_code_2025 + Orca 2.7GB + others)",
-    "total_datasets": 27,
-    "version": "v3.0 — all broken datasets replaced with verified working alternatives"
+    "coverage": "13 domains: language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics",
+    "estimated_total_size": "~50GB+ raw text (FineWeb 28GB + OpenWebText 12GB + Gutenberg + TinyStories + others)",
+    "total_datasets": 45,
+    "version": "v4.0 — expanded to 13 domains with medicine, philosophy, literature, social sciences"
   }
 }

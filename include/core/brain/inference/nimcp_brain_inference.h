@@ -114,6 +114,26 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
 bool brain_observe_action(brain_t brain, const float* features, uint32_t num_features,
                           uint32_t agent_id);
 
+//=============================================================================
+// Frozen Inference Network
+//=============================================================================
+
+/**
+ * @brief Freeze brain for inference-only mode
+ *
+ * @param brain Brain handle
+ * @return true on success
+ */
+bool brain_freeze(brain_t brain);
+
+/**
+ * @brief Check if brain is frozen
+ *
+ * @param brain Brain handle
+ * @return true if frozen
+ */
+bool brain_is_frozen(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

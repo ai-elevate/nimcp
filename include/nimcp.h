@@ -358,6 +358,26 @@ nimcp_status_t nimcp_brain_decide_full(
 nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath);
 
 /**
+ * @brief Freeze brain for inference-only mode
+ *
+ * Disables learning, locks weights, and optimizes for fast inference.
+ * After freezing: learning rate = 0, GPU weight cache is finalized,
+ * eligibility traces freed, weight dirty flag cleared.
+ *
+ * @param brain Brain handle
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_freeze(nimcp_brain_t brain);
+
+/**
+ * @brief Check if brain is frozen
+ *
+ * @param brain Brain handle
+ * @return true if brain is in frozen inference-only mode
+ */
+bool nimcp_brain_is_frozen(nimcp_brain_t brain);
+
+/**
  * @brief Load brain from file
  *
  * @param filepath Path to saved brain file

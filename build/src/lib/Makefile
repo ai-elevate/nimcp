@@ -18305,6 +18305,30 @@ __/core/brain/factory/init/nimcp_brain_init_gpu.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_gpu_inference.o: __/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu_inference.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_gpu_inference.i: __/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu_inference.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_gpu_inference.s: __/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu_inference.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu_inference.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_health_agent.o: __/core/brain/factory/init/nimcp_brain_init_health_agent.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.o
 
@@ -19888,6 +19912,30 @@ __/core/brain/nimcp_brain_multimodal.s: __/core/brain/nimcp_brain_multimodal.c.s
 __/core/brain/nimcp_brain_multimodal.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_multimodal.c.s
 .PHONY : __/core/brain/nimcp_brain_multimodal.c.s
+
+__/core/brain/nimcp_brain_parallel_stages.o: __/core/brain/nimcp_brain_parallel_stages.c.o
+.PHONY : __/core/brain/nimcp_brain_parallel_stages.o
+
+# target to build an object file
+__/core/brain/nimcp_brain_parallel_stages.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_parallel_stages.c.o
+.PHONY : __/core/brain/nimcp_brain_parallel_stages.c.o
+
+__/core/brain/nimcp_brain_parallel_stages.i: __/core/brain/nimcp_brain_parallel_stages.c.i
+.PHONY : __/core/brain/nimcp_brain_parallel_stages.i
+
+# target to preprocess a source file
+__/core/brain/nimcp_brain_parallel_stages.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_parallel_stages.c.i
+.PHONY : __/core/brain/nimcp_brain_parallel_stages.c.i
+
+__/core/brain/nimcp_brain_parallel_stages.s: __/core/brain/nimcp_brain_parallel_stages.c.s
+.PHONY : __/core/brain/nimcp_brain_parallel_stages.s
+
+# target to generate assembly for a file
+__/core/brain/nimcp_brain_parallel_stages.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_parallel_stages.c.s
+.PHONY : __/core/brain/nimcp_brain_parallel_stages.c.s
 
 __/core/brain/nimcp_brain_processing.o: __/core/brain/nimcp_brain_processing.c.o
 .PHONY : __/core/brain/nimcp_brain_processing.o
@@ -31792,6 +31840,30 @@ __/gpu/snn/nimcp_snn_kernels.s: __/gpu/snn/nimcp_snn_kernels.cu.s
 __/gpu/snn/nimcp_snn_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/snn/nimcp_snn_kernels.cu.s
 .PHONY : __/gpu/snn/nimcp_snn_kernels.cu.s
+
+__/gpu/sparse/nimcp_sparse_kernels.o: __/gpu/sparse/nimcp_sparse_kernels.cu.o
+.PHONY : __/gpu/sparse/nimcp_sparse_kernels.o
+
+# target to build an object file
+__/gpu/sparse/nimcp_sparse_kernels.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/sparse/nimcp_sparse_kernels.cu.o
+.PHONY : __/gpu/sparse/nimcp_sparse_kernels.cu.o
+
+__/gpu/sparse/nimcp_sparse_kernels.i: __/gpu/sparse/nimcp_sparse_kernels.cu.i
+.PHONY : __/gpu/sparse/nimcp_sparse_kernels.i
+
+# target to preprocess a source file
+__/gpu/sparse/nimcp_sparse_kernels.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/sparse/nimcp_sparse_kernels.cu.i
+.PHONY : __/gpu/sparse/nimcp_sparse_kernels.cu.i
+
+__/gpu/sparse/nimcp_sparse_kernels.s: __/gpu/sparse/nimcp_sparse_kernels.cu.s
+.PHONY : __/gpu/sparse/nimcp_sparse_kernels.s
+
+# target to generate assembly for a file
+__/gpu/sparse/nimcp_sparse_kernels.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/sparse/nimcp_sparse_kernels.cu.s
+.PHONY : __/gpu/sparse/nimcp_sparse_kernels.cu.s
 
 __/gpu/spike_event/nimcp_spike_event.o: __/gpu/spike_event/nimcp_spike_event.c.o
 .PHONY : __/gpu/spike_event/nimcp_spike_event.o
@@ -52696,6 +52768,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu_inference.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu_inference.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu_inference.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_health_agent.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_health_agent.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_health_agent.s"
@@ -52894,6 +52969,9 @@ help:
 	@echo "... __/core/brain/nimcp_brain_multimodal.o"
 	@echo "... __/core/brain/nimcp_brain_multimodal.i"
 	@echo "... __/core/brain/nimcp_brain_multimodal.s"
+	@echo "... __/core/brain/nimcp_brain_parallel_stages.o"
+	@echo "... __/core/brain/nimcp_brain_parallel_stages.i"
+	@echo "... __/core/brain/nimcp_brain_parallel_stages.s"
 	@echo "... __/core/brain/nimcp_brain_processing.o"
 	@echo "... __/core/brain/nimcp_brain_processing.i"
 	@echo "... __/core/brain/nimcp_brain_processing.s"
@@ -54382,6 +54460,9 @@ help:
 	@echo "... __/gpu/snn/nimcp_snn_kernels.o"
 	@echo "... __/gpu/snn/nimcp_snn_kernels.i"
 	@echo "... __/gpu/snn/nimcp_snn_kernels.s"
+	@echo "... __/gpu/sparse/nimcp_sparse_kernels.o"
+	@echo "... __/gpu/sparse/nimcp_sparse_kernels.i"
+	@echo "... __/gpu/sparse/nimcp_sparse_kernels.s"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.o"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.i"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.s"

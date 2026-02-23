@@ -180,6 +180,12 @@ void brain_destroy(brain_t brain)
     if (!brain)
         return;
 
+    // Destroy inference thread pool (before subsystems that tasks might reference)
+    if (brain->inference_pool) {
+        nimcp_pool_destroy(brain->inference_pool);
+        brain->inference_pool = NULL;
+    }
+
     // Save final snapshot if configured (BEFORE destroying anything)
     if (brain->config.snapshot_dir && brain->config.save_final_snapshot) {
         brain_save_snapshot(brain, "final", "Snapshot at brain destruction");

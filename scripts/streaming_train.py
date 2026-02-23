@@ -335,6 +335,25 @@ class StreamingDatasetProcessor:
             label = 0
             return (text, label)
 
+        # --- TinyStories format (roneneldan/TinyStories): story field ---
+        if 'story' in example:
+            text = str(example['story'])
+            if not text.strip():
+                return None
+            label = 0
+            return (text, label)
+
+        # --- BookSum format (kmfoda/booksum): summary_text + chapter ---
+        if 'summary_text' in example or 'summary' in example:
+            text = str(example.get('summary_text', example.get('summary', '')))
+            chapter = example.get('chapter', example.get('book_name', ''))
+            if chapter:
+                text = f"{chapter}: {text}"
+            if not text.strip():
+                return None
+            label = 0
+            return (text, label)
+
         # --- Fallback: concatenate all string fields ---
         parts = []
         label = 0

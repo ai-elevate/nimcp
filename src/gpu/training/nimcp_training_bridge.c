@@ -24,6 +24,7 @@
  */
 
 #include "gpu/training/nimcp_training_bridge.h"
+#include "gpu/sparse/nimcp_sparse_gpu.h"
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "gpu/training/nimcp_training_gpu.h"
 #include "utils/memory/nimcp_memory.h"
@@ -60,11 +61,13 @@ static uint32_t* compute_layer_offsets(const uint32_t* layer_sizes, uint32_t num
 
 /**
  * @brief Find the maximum layer sizes for scratch buffer allocation
+ *
+ * Only computes max_bias and max_activation — weights are now sparse
+ * with dynamically-grown COO/CSR scratch buffers.
  */
 static void find_max_sizes(const uint32_t* layer_sizes, uint32_t num_layers,
-                           size_t* max_weight, size_t* max_bias, size_t* max_activation)
+                           size_t* max_bias, size_t* max_activation)
 {
-    *max_weight = 0;
     *max_bias = 0;
     *max_activation = 0;
 
@@ -75,8 +78,6 @@ static void find_max_sizes(const uint32_t* layer_sizes, uint32_t num_layers,
     }
 
     for (uint32_t l = 0; l < num_layers - 1; l++) {
-        size_t w = (size_t)layer_sizes[l + 1] * layer_sizes[l];
-        if (w > *max_weight) *max_weight = w;
         if (layer_sizes[l + 1] > *max_bias) *max_bias = layer_sizes[l + 1];
     }
 }
@@ -93,6 +94,54 @@ static void clamp_host_buffer(float* buf, uint32_t size)
         if (buf[i] > 1.0f) buf[i] = 1.0f;
         else if (buf[i] < -1.0f) buf[i] = -1.0f;
     }
+}
+
+/**
+ * @brief Ensure COO/CSR scratch buffers can hold the given sizes
+ *
+ * Uses 2x doubling strategy to amortize reallocation cost.
+ *
+ * @param cache Weight cache owning the scratch buffers
+ * @param nnz Required COO entry count
+ * @param rows Required row count (for CSR row_ptrs = rows+1)
+ * @return true on success, false on allocation failure
+ */
+static bool ensure_coo_capacity(nimcp_gpu_weight_cache_t* cache, size_t nnz, size_t rows)
+{
+    // Grow COO arrays (values, row_idx, col_idx) if needed
+    if (nnz > cache->host_coo_capacity) {
+        size_t new_cap = cache->host_coo_capacity ? cache->host_coo_capacity : 1024;
+        while (new_cap < nnz) new_cap *= 2;
+
+        float* new_vals = nimcp_realloc(cache->host_coo_values, new_cap * sizeof(float));
+        int* new_rows   = nimcp_realloc(cache->host_coo_row_idx, new_cap * sizeof(int));
+        int* new_cols   = nimcp_realloc(cache->host_coo_col_idx, new_cap * sizeof(int));
+        if (!new_vals || !new_rows || !new_cols) {
+            // Partial realloc — keep old pointers (realloc preserves old on failure)
+            if (new_vals) cache->host_coo_values  = new_vals;
+            if (new_rows) cache->host_coo_row_idx = new_rows;
+            if (new_cols) cache->host_coo_col_idx = new_cols;
+            return false;
+        }
+        cache->host_coo_values  = new_vals;
+        cache->host_coo_row_idx = new_rows;
+        cache->host_coo_col_idx = new_cols;
+        cache->host_coo_capacity = new_cap;
+    }
+
+    // Grow CSR row_ptrs if needed (rows + 1 entries)
+    size_t row_ptrs_needed = rows + 1;
+    if (row_ptrs_needed > cache->host_csr_row_ptrs_capacity) {
+        size_t new_cap = cache->host_csr_row_ptrs_capacity ? cache->host_csr_row_ptrs_capacity : 256;
+        while (new_cap < row_ptrs_needed) new_cap *= 2;
+
+        int* new_ptrs = nimcp_realloc(cache->host_csr_row_ptrs, new_cap * sizeof(int));
+        if (!new_ptrs) return false;
+        cache->host_csr_row_ptrs = new_ptrs;
+        cache->host_csr_row_ptrs_capacity = new_cap;
+    }
+
+    return true;
 }
 
 //=============================================================================
@@ -117,6 +166,10 @@ nimcp_gpu_weight_cache_t* nimcp_gpu_weight_cache_create(
     cache->weights_dirty_on_cpu = true;
     cache->last_sync_step = 0;
 
+    // Create sparse context for cuSPARSE operations
+    cache->sparse_ctx = nimcp_sparse_ctx_create(ctx);
+    if (!cache->sparse_ctx) goto fail;
+
     // Copy layer sizes
     cache->layer_sizes = nimcp_calloc(num_layers, sizeof(uint32_t));
     if (!cache->layer_sizes) goto fail;
@@ -138,27 +191,24 @@ nimcp_gpu_weight_cache_t* nimcp_gpu_weight_cache_create(
         }
     }
 
-    // Allocate per-transition tensor arrays (num_layers - 1 transitions)
+    // Allocate per-transition arrays (num_layers - 1 transitions)
     uint32_t num_transitions = num_layers - 1;
-    cache->weights = nimcp_calloc(num_transitions, sizeof(nimcp_gpu_tensor_t*));
+
+    // Sparse weights: NULL-initialized, populated during upload
+    cache->sparse_weights = nimcp_calloc(num_transitions, sizeof(nimcp_sparse_tensor_t*));
+    if (!cache->sparse_weights) goto fail;
+
+    // Dense bias tensors
     cache->biases = nimcp_calloc(num_transitions, sizeof(nimcp_gpu_tensor_t*));
-    if (!cache->weights || !cache->biases) goto fail;
+    if (!cache->biases) goto fail;
 
     // Allocate per-layer activation arrays
     cache->activations = nimcp_calloc(num_layers, sizeof(nimcp_gpu_tensor_t*));
     if (!cache->activations) goto fail;
 
-    // Create GPU tensors for each layer transition
+    // Create GPU tensors for bias vectors (sparse weights created during upload)
     for (uint32_t l = 0; l < num_transitions; l++) {
         uint32_t rows = layer_sizes[l + 1];  // output neurons
-        uint32_t cols = layer_sizes[l];       // input neurons
-
-        // Weight matrix: (rows x cols) = (layer_sizes[l+1] x layer_sizes[l])
-        size_t w_dims[2] = { rows, cols };
-        cache->weights[l] = nimcp_gpu_tensor_create(ctx, w_dims, 2, NIMCP_GPU_PRECISION_FP32);
-        if (!cache->weights[l]) goto fail;
-
-        // Bias vector: (rows)
         size_t b_dims[1] = { rows };
         cache->biases[l] = nimcp_gpu_tensor_create(ctx, b_dims, 1, NIMCP_GPU_PRECISION_FP32);
         if (!cache->biases[l]) goto fail;
@@ -171,16 +221,22 @@ nimcp_gpu_weight_cache_t* nimcp_gpu_weight_cache_create(
         if (!cache->activations[l]) goto fail;
     }
 
-    // Allocate host scratch buffers (reused across upload/download calls)
+    // Allocate host scratch buffers for bias and activation (reused across calls)
+    // COO/CSR scratch buffers are grown dynamically on first upload
     find_max_sizes(layer_sizes, num_layers,
-                   &cache->host_weight_buf_size,
                    &cache->host_bias_buf_size,
                    &cache->host_activation_buf_size);
 
-    cache->host_weight_buf = nimcp_calloc(cache->host_weight_buf_size, sizeof(float));
+    cache->host_coo_values  = NULL;
+    cache->host_coo_row_idx = NULL;
+    cache->host_coo_col_idx = NULL;
+    cache->host_csr_row_ptrs = NULL;
+    cache->host_coo_capacity = 0;
+    cache->host_csr_row_ptrs_capacity = 0;
+
     cache->host_bias_buf = nimcp_calloc(cache->host_bias_buf_size, sizeof(float));
     cache->host_activation_buf = nimcp_calloc(cache->host_activation_buf_size, sizeof(float));
-    if (!cache->host_weight_buf || !cache->host_bias_buf || !cache->host_activation_buf) goto fail;
+    if (!cache->host_bias_buf || !cache->host_activation_buf) goto fail;
 
     NIMCP_LOG_INFO("GPU weight cache created: %u layers, %u transitions",
                    num_layers, num_transitions);
@@ -197,13 +253,20 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
 
     uint32_t num_transitions = (cache->num_layers > 1) ? cache->num_layers - 1 : 0;
 
-    // Free GPU weight/bias tensors
-    if (cache->weights) {
+    // Free sparse weight tensors
+    if (cache->sparse_weights) {
         for (uint32_t l = 0; l < num_transitions; l++) {
-            if (cache->weights[l]) nimcp_gpu_tensor_destroy(cache->weights[l]);
+            if (cache->sparse_weights[l]) nimcp_sparse_tensor_destroy(cache->sparse_weights[l]);
         }
-        nimcp_free(cache->weights);
+        nimcp_free(cache->sparse_weights);
     }
+
+    // Free sparse context
+    if (cache->sparse_ctx) {
+        nimcp_sparse_ctx_destroy(cache->sparse_ctx);
+    }
+
+    // Free GPU bias tensors
     if (cache->biases) {
         for (uint32_t l = 0; l < num_transitions; l++) {
             if (cache->biases[l]) nimcp_gpu_tensor_destroy(cache->biases[l]);
@@ -223,7 +286,10 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
     nimcp_free(cache->layer_sizes);
     nimcp_free(cache->layer_offsets);
     nimcp_free(cache->layer_activations);
-    nimcp_free(cache->host_weight_buf);
+    nimcp_free(cache->host_coo_values);
+    nimcp_free(cache->host_coo_row_idx);
+    nimcp_free(cache->host_coo_col_idx);
+    nimcp_free(cache->host_csr_row_ptrs);
     nimcp_free(cache->host_bias_buf);
     nimcp_free(cache->host_activation_buf);
 
@@ -246,52 +312,79 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
         uint32_t dst_offset = cache->layer_offsets[l + 1];
         uint32_t src_offset = cache->layer_offsets[l];
 
-        // Zero the scratch buffers
-        size_t w_count = (size_t)dst_layer_size * src_layer_size;
-        memset(cache->host_weight_buf, 0, w_count * sizeof(float));
         memset(cache->host_bias_buf, 0, dst_layer_size * sizeof(float));
 
-        // Extract weights from neuron incoming_synapses into row-major matrix
-        // W[i][j] = effective weight from pre-neuron j to post-neuron i
+        // --- Pass 1: Count nnz and extract biases ---
+        size_t nnz = 0;
         for (uint32_t i = 0; i < dst_layer_size; i++) {
             uint32_t neuron_id = dst_offset + i;
             neuron_t* neuron = neural_network_get_neuron(net, neuron_id);
             if (!neuron) continue;
 
-            // Extract bias
             cache->host_bias_buf[i] = neuron->bias;
 
-            // Extract incoming synapse weights
             for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
                 synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, j);
                 if (!in_h) continue;
 
-                // Convert global source_neuron_id to layer-local index
-                // In incoming handles, target_neuron_id stores the source neuron ID
+                uint32_t source_id = in_h->target_neuron_id;
+                if (source_id >= src_offset &&
+                    source_id < src_offset + src_layer_size) {
+                    nnz++;
+                }
+            }
+        }
+
+        // Ensure COO/CSR scratch buffers are large enough
+        if (nnz > 0 && !ensure_coo_capacity(cache, nnz, dst_layer_size)) {
+            return false;
+        }
+
+        // --- Pass 2: Fill COO arrays ---
+        size_t k = 0;
+        for (uint32_t i = 0; i < dst_layer_size; i++) {
+            uint32_t neuron_id = dst_offset + i;
+            neuron_t* neuron = neural_network_get_neuron(net, neuron_id);
+            if (!neuron) continue;
+
+            for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
+                synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, j);
+                if (!in_h) continue;
+
                 uint32_t source_id = in_h->target_neuron_id;
                 if (source_id >= src_offset &&
                     source_id < src_offset + src_layer_size) {
                     uint32_t src_local = source_id - src_offset;
-
-                    // Effective weight = weight * strength (same as CPU forward pass)
                     float eff_weight = in_h->weight * in_h->strength;
 
-                    // Row-major: W[i][src_local] = W[i * src_layer_size + src_local]
-                    cache->host_weight_buf[i * src_layer_size + src_local] = eff_weight;
+                    cache->host_coo_values[k]  = eff_weight;
+                    cache->host_coo_row_idx[k] = (int)i;
+                    cache->host_coo_col_idx[k] = (int)src_local;
+                    k++;
                 }
-                // Synapses from other layers are skip connections — not in this matrix
             }
         }
 
-        // Upload weight matrix to GPU
-        size_t w_dims[2] = { dst_layer_size, src_layer_size };
-        nimcp_gpu_tensor_t* w_upload = nimcp_gpu_tensor_from_host(
-            cache->ctx, cache->host_weight_buf, w_dims, 2, NIMCP_GPU_PRECISION_FP32);
-        if (!w_upload) return false;
+        // --- Upload sparse weights via COO → CSR ---
+        // Destroy previous sparse tensor for this layer
+        if (cache->sparse_weights[l]) {
+            nimcp_sparse_tensor_destroy(cache->sparse_weights[l]);
+            cache->sparse_weights[l] = NULL;
+        }
 
-        // Swap: destroy old GPU tensor, replace with uploaded one
-        nimcp_gpu_tensor_destroy(cache->weights[l]);
-        cache->weights[l] = w_upload;
+        if (nnz > 0) {
+            cache->sparse_weights[l] = nimcp_sparse_from_coo(
+                cache->sparse_ctx,
+                cache->host_coo_values,
+                cache->host_coo_row_idx,
+                cache->host_coo_col_idx,
+                (int)dst_layer_size,
+                (int)src_layer_size,
+                (int)nnz,
+                SPARSE_FORMAT_CSR);
+            if (!cache->sparse_weights[l]) return false;
+        }
+        // nnz == 0: sparse_weights[l] stays NULL (valid empty transition)
 
         // Upload bias vector to GPU
         size_t b_dims[1] = { dst_layer_size };
@@ -320,19 +413,33 @@ bool nimcp_gpu_weight_cache_download(nimcp_gpu_weight_cache_t* cache, neural_net
         uint32_t dst_offset = cache->layer_offsets[l + 1];
         uint32_t src_offset = cache->layer_offsets[l];
 
-        // Download weight matrix from GPU
-        size_t w_count = (size_t)dst_layer_size * src_layer_size;
-        memset(cache->host_weight_buf, 0, w_count * sizeof(float));
+        // Skip empty transitions
+        if (!cache->sparse_weights[l]) continue;
 
-        if (!nimcp_gpu_tensor_to_host(cache->weights[l], cache->host_weight_buf)) {
+        int nnz = nimcp_sparse_nnz(cache->sparse_weights[l]);
+        if (nnz == 0) continue;
+
+        // Ensure scratch buffers can hold the CSR data
+        if (!ensure_coo_capacity(cache, (size_t)nnz, (size_t)dst_layer_size)) {
             return false;
         }
 
-        // Write back to synapse structs
+        // Download CSR data from GPU to host
+        if (!nimcp_sparse_to_host_csr(cache->sparse_weights[l],
+                                       cache->host_coo_values,
+                                       cache->host_coo_col_idx,
+                                       cache->host_csr_row_ptrs)) {
+            return false;
+        }
+
+        // Write back to synapse structs using CSR structure
         for (uint32_t i = 0; i < dst_layer_size; i++) {
             uint32_t neuron_id = dst_offset + i;
             neuron_t* neuron = neural_network_get_neuron(net, neuron_id);
             if (!neuron) continue;
+
+            int row_start = cache->host_csr_row_ptrs[i];
+            int row_end   = cache->host_csr_row_ptrs[i + 1];
 
             for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
                 synapse_handle_t* in_h = NEURON_IN_HANDLE(neuron, j);
@@ -341,11 +448,18 @@ bool nimcp_gpu_weight_cache_download(nimcp_gpu_weight_cache_t* cache, neural_net
                 uint32_t source_id = in_h->target_neuron_id;
                 if (source_id >= src_offset &&
                     source_id < src_offset + src_layer_size) {
-                    uint32_t src_local = source_id - src_offset;
-                    float eff_weight = cache->host_weight_buf[i * src_layer_size + src_local];
+                    int src_local = (int)(source_id - src_offset);
+
+                    // Linear scan CSR row for matching column
+                    float eff_weight = 0.0f;
+                    for (int p = row_start; p < row_end; p++) {
+                        if (cache->host_coo_col_idx[p] == src_local) {
+                            eff_weight = cache->host_coo_values[p];
+                            break;
+                        }
+                    }
 
                     // Divide by strength to preserve strength separately
-                    // Guard against division by zero
                     if (fabsf(in_h->strength) > 1e-8f) {
                         in_h->weight = eff_weight / in_h->strength;
                     } else {
@@ -411,17 +525,27 @@ bool nimcp_gpu_forward_pass(
     // Step 2: Forward pass through each layer transition
     uint32_t num_transitions = cache->num_layers - 1;
     for (uint32_t l = 0; l < num_transitions; l++) {
-        // y = W[l] @ a[l]  (GEMV: matrix-vector multiply)
-        // activations[l+1] = alpha * weights[l] @ activations[l] + beta * activations[l+1]
-        // With alpha=1.0, beta=0.0: pure GEMV
-        if (!nimcp_gpu_gemv(cache->ctx,
-                            cache->weights[l],      // A = W[l] (rows x cols)
-                            cache->activations[l],  // x = a[l] (cols)
-                            cache->activations[l + 1], // y = a[l+1] (rows)
-                            1.0f, 0.0f, false)) {
-            NIMCP_LOG_ERROR("GPU GEMV failed for layer %u", l);
-            return false;
+        // y = W[l] @ a[l]  (SpMV: sparse matrix-vector multiply)
+        // Replaces dense GEMV — O(nnz) instead of O(N*M)
+        if (cache->sparse_weights[l]) {
+            nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
+                cache->sparse_ctx,
+                cache->sparse_weights[l],       // A = W[l] sparse CSR
+                cache->activations[l],          // x = a[l] (cols)
+                1.0f, 0.0f,
+                cache->activations[l + 1]);     // y = a[l+1] (rows)
+
+            if (!mv_result) {
+                NIMCP_LOG_ERROR("GPU SpMV failed for layer %u", l);
+                return false;
+            }
+            // If SpMV returned a new tensor, swap it in
+            if (mv_result != cache->activations[l + 1]) {
+                nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+                cache->activations[l + 1] = mv_result;
+            }
         }
+        // else: sparse_weights[l] is NULL (empty transition) — skip to bias add
 
         // Add bias: a[l+1] = a[l+1] + b[l]
         if (!nimcp_gpu_add(cache->ctx,
@@ -534,4 +658,161 @@ float nimcp_gpu_compute_loss(
     nimcp_gpu_tensor_destroy(target_tensor);
 
     return ok ? loss : -1.0f;
+}
+
+//=============================================================================
+// Batched GPU Forward Pass
+//=============================================================================
+
+bool nimcp_gpu_forward_pass_batch(
+    nimcp_gpu_weight_cache_t* cache,
+    const float* inputs,
+    uint32_t batch_size,
+    uint32_t input_size,
+    float* outputs,
+    uint32_t output_size)
+{
+    if (!cache || !inputs || !outputs || batch_size == 0) return false;
+    if (input_size != cache->layer_sizes[0]) return false;
+    if (output_size != cache->layer_sizes[cache->num_layers - 1]) return false;
+
+    // For batch_size == 1, delegate to single forward pass
+    if (batch_size == 1) {
+        return nimcp_gpu_forward_pass(cache, inputs, input_size, outputs, output_size);
+    }
+
+    // Upload input batch as 2D tensor [batch_size x input_size]
+    size_t in_dims[2] = { batch_size, input_size };
+    nimcp_gpu_tensor_t* act = nimcp_gpu_tensor_from_host(
+        cache->ctx, inputs, in_dims, 2, NIMCP_GPU_PRECISION_FP32);
+    if (!act) return false;
+
+    uint32_t num_transitions = cache->num_layers - 1;
+
+    // Allocate host scratch for batched clamp
+    size_t max_layer = 0;
+    for (uint32_t l = 0; l <= num_transitions; l++) {
+        if (cache->layer_sizes[l] > max_layer)
+            max_layer = cache->layer_sizes[l];
+    }
+    float* clamp_buf = (float*)malloc(batch_size * max_layer * sizeof(float));
+    if (!clamp_buf) {
+        nimcp_gpu_tensor_destroy(act);
+        return false;
+    }
+
+    for (uint32_t l = 0; l < num_transitions; l++) {
+        uint32_t out_size = cache->layer_sizes[l + 1];
+
+        // SpMM: result = W[l] @ act^T, then transpose back
+        // nimcp_sparse_mm_batched expects: A [out x in] sparse, B [in x batch] dense
+        // Our act is [batch x in], so we need B = act^T [in x batch]
+        // Result C = [out x batch], then transpose to [batch x out]
+        //
+        // Alternative: process per-sample on GPU (still faster than CPU)
+        // Use per-sample SpMV loop on GPU for correctness, given sparse_mm_batched
+        // expects column-major B which our row-major doesn't match directly.
+
+        // Per-sample SpMV within the batch — still GPU-accelerated
+        size_t out_dims[2] = { batch_size, out_size };
+        nimcp_gpu_tensor_t* next_act = nimcp_gpu_tensor_create(
+            cache->ctx, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
+        if (!next_act) {
+            nimcp_gpu_tensor_destroy(act);
+            free(clamp_buf);
+            return false;
+        }
+
+        // Download current activations to host for per-sample processing
+        float* act_host = (float*)malloc(batch_size * cache->layer_sizes[l] * sizeof(float));
+        if (!act_host) {
+            nimcp_gpu_tensor_destroy(act);
+            nimcp_gpu_tensor_destroy(next_act);
+            free(clamp_buf);
+            return false;
+        }
+        nimcp_gpu_tensor_to_host(act, act_host);
+
+        float* out_host = (float*)malloc(batch_size * out_size * sizeof(float));
+        if (!out_host) {
+            nimcp_gpu_tensor_destroy(act);
+            nimcp_gpu_tensor_destroy(next_act);
+            free(act_host);
+            free(clamp_buf);
+            return false;
+        }
+
+        // Process each sample through the single-layer GPU SpMV
+        for (uint32_t s = 0; s < batch_size; s++) {
+            const float* sample_in = act_host + s * cache->layer_sizes[l];
+            float* sample_out = out_host + s * out_size;
+
+            size_t sv_in_dims[1] = { cache->layer_sizes[l] };
+            nimcp_gpu_tensor_t* sv_input = nimcp_gpu_tensor_from_host(
+                cache->ctx, sample_in, sv_in_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!sv_input) { sample_out[0] = 0; continue; }
+
+            size_t sv_out_dims[1] = { out_size };
+            nimcp_gpu_tensor_t* sv_output = nimcp_gpu_tensor_create(
+                cache->ctx, sv_out_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!sv_output) { nimcp_gpu_tensor_destroy(sv_input); continue; }
+
+            // SpMV
+            if (cache->sparse_weights[l]) {
+                nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
+                    cache->sparse_ctx,
+                    cache->sparse_weights[l],
+                    sv_input, 1.0f, 0.0f, sv_output);
+                if (mv_result && mv_result != sv_output) {
+                    nimcp_gpu_tensor_destroy(sv_output);
+                    sv_output = mv_result;
+                }
+            }
+
+            // Add bias
+            nimcp_gpu_add(cache->ctx, sv_output, cache->biases[l], sv_output);
+
+            // Activation
+            activation_type_t atype = cache->layer_activations[l + 1];
+            switch (atype) {
+                case ACTIVATION_SIGMOID:
+                    nimcp_gpu_sigmoid(cache->ctx, sv_output, sv_output); break;
+                case ACTIVATION_TANH:
+                    nimcp_gpu_tanh(cache->ctx, sv_output, sv_output); break;
+                case ACTIVATION_RELU:
+                    nimcp_gpu_relu(cache->ctx, sv_output, sv_output); break;
+                case ACTIVATION_LEAKY_RELU:
+                    nimcp_gpu_leaky_relu(cache->ctx, sv_output, sv_output, 0.01f); break;
+                default:
+                    nimcp_gpu_tanh(cache->ctx, sv_output, sv_output); break;
+            }
+
+            // Download and clamp
+            nimcp_gpu_tensor_to_host(sv_output, sample_out);
+            clamp_host_buffer(sample_out, out_size);
+
+            nimcp_gpu_tensor_destroy(sv_input);
+            nimcp_gpu_tensor_destroy(sv_output);
+        }
+
+        // Upload clamped batch result back to GPU
+        nimcp_gpu_tensor_destroy(act);
+        nimcp_gpu_tensor_destroy(next_act);
+        free(act_host);
+
+        act = nimcp_gpu_tensor_from_host(
+            cache->ctx, out_host, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
+        free(out_host);
+
+        if (!act) {
+            free(clamp_buf);
+            return false;
+        }
+    }
+
+    // Download final output
+    nimcp_gpu_tensor_to_host(act, outputs);
+    nimcp_gpu_tensor_destroy(act);
+    free(clamp_buf);
+    return true;
 }

@@ -311,6 +311,10 @@ struct adaptive_network_struct {
     struct nimcp_gpu_context_s* gpu_ctx;
     struct nimcp_gpu_weight_cache_s* gpu_weight_cache;
     bool gpu_enabled;
+
+    // Frozen network (Phase GPU-INF)
+    // WHY: Disable learning and lock weights for inference-only mode
+    bool frozen;
 };
 
 //=============================================================================
@@ -1103,6 +1107,9 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
     network->label_map = NULL;
     network->num_labels = 0;
 
+    // Phase GPU-INF: Frozen state init
+    network->frozen = false;
+
     // Phase GPU: Initialize GPU acceleration (GPU-default, CPU fallback)
     network->gpu_enabled = false;
     network->gpu_ctx = NULL;
@@ -1623,6 +1630,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     if (!network || !example)
         return -1.0F;
 
+    // Frozen network rejects learning
+    if (network->frozen)
+        return 0.0F;
+
     // Phase GPU: GPU-accelerated learning path
     if (network->gpu_enabled && network->gpu_weight_cache &&
         (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION)) {
@@ -1762,18 +1773,62 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // COMPLEXITY: O(N×S) where N = neurons, S = synapses per neuron
             // =================================================================
 
-            // Compute reward signal from error
-            // High error → low reward, low error → high reward
-            // Reward in [0, 1] where 1 = perfect, 0 = maximum error
+            // Delta rule for output layer: per-output gradient descent
+            // WHY: global reward_learning applies a scalar reward uniformly to ALL
+            //      1M+ synapses with no information about which outputs were wrong.
+            //      The delta rule provides per-output error gradients — same logic
+            //      as the GPU path (lines 1664-1721).
+            // HOW: Δw = lr * error_j * hidden_i * sigmoid'(output_j)
             {
-            float reward = 1.0F / (1.0F + loss);  // Bounded reward signal
-            reward *= example->confidence;         // Scale by example confidence
+                uint32_t num_layers = network->config.base_config.num_layers;
+                uint32_t* layer_sizes = network->config.base_config.layer_sizes;
+                if (num_layers >= 2 && layer_sizes) {
+                    // Compute output layer offset
+                    uint32_t output_offset = 0;
+                    for (uint32_t l = 0; l < num_layers - 1; l++)
+                        output_offset += layer_sizes[l];
+                    uint32_t output_size = layer_sizes[num_layers - 1];
 
-            // Apply biological plasticity to all synapses
-            neural_network_t base = network->base_network;
-            uint64_t current_time = network->total_learning_steps;
+                    // Boosted learning rate for output layer (only layer trained
+                    // via gradient descent; hidden layers use random features)
+                    float output_lr = learning_rate * 10.0f;
 
-            neural_network_apply_reward_learning(base, reward, learning_rate, current_time);
+                    for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
+                        float error_j = example->target[j] - output[j];
+                        // Sigmoid derivative: σ'(z) = σ(z)(1 - σ(z))
+                        float sig_deriv = output[j] * (1.0f - output[j]);
+                        // Clamp to avoid vanishing gradients at saturation
+                        if (sig_deriv < 0.01f) sig_deriv = 0.01f;
+
+                        neuron_t* out_n = neural_network_get_neuron(
+                            network->base_network, output_offset + j);
+                        if (!out_n) continue;
+
+                        // Update incoming synapses of output neuron
+                        for (uint32_t k = 0; k < NEURON_IN_COUNT(out_n); k++) {
+                            synapse_handle_t* in_syn = NEURON_IN_HANDLE(out_n, k);
+                            if (!in_syn) continue;
+                            neuron_t* src = neural_network_get_neuron(
+                                network->base_network, in_syn->target_neuron_id);
+                            if (!src) continue;
+
+                            float delta = output_lr * error_j * src->state * sig_deriv;
+                            in_syn->weight += delta;
+
+                            // Also update the corresponding outgoing synapse copy
+                            for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
+                                synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
+                                if (out_syn && out_syn->target_neuron_id == output_offset + j) {
+                                    out_syn->weight += delta;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Update bias
+                        out_n->bias += output_lr * error_j * sig_deriv;
+                    }
+                }
             }
             break;
 
@@ -2723,6 +2778,62 @@ neural_network_t adaptive_network_get_base_network(adaptive_network_t network)
 
     }
     return network->base_network;
+}
+
+//=============================================================================
+// GPU Inference Accessors
+//=============================================================================
+
+void adaptive_network_set_gpu_context(adaptive_network_t network, struct nimcp_gpu_context_s* ctx)
+{
+    if (!network) return;
+    // Don't destroy existing — brain owns the context, not us
+    network->gpu_ctx = ctx;
+}
+
+void adaptive_network_set_gpu_weight_cache(adaptive_network_t network, struct nimcp_gpu_weight_cache_s* cache)
+{
+    if (!network) return;
+    // Destroy existing cache if we owned one
+    if (network->gpu_weight_cache && network->gpu_weight_cache != cache) {
+        nimcp_gpu_weight_cache_destroy(network->gpu_weight_cache);
+    }
+    network->gpu_weight_cache = cache;
+}
+
+void adaptive_network_set_gpu_enabled(adaptive_network_t network, bool enabled)
+{
+    if (!network) return;
+    network->gpu_enabled = enabled;
+}
+
+bool adaptive_network_is_gpu_enabled(adaptive_network_t network)
+{
+    if (!network) return false;
+    return network->gpu_enabled;
+}
+
+//=============================================================================
+// Frozen Network Support
+//=============================================================================
+
+void adaptive_network_freeze(adaptive_network_t network)
+{
+    if (!network) return;
+
+    // Mark frozen
+    network->frozen = true;
+
+    // Clear dirty flag — weights are final
+    if (network->gpu_weight_cache) {
+        network->gpu_weight_cache->weights_dirty_on_cpu = false;
+    }
+}
+
+bool adaptive_network_is_frozen(adaptive_network_t network)
+{
+    if (!network) return false;
+    return network->frozen;
 }
 
 /**

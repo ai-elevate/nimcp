@@ -1671,6 +1671,10 @@ typedef struct {
     bool gpu_enable_async;                /**< Enable async GPU operations (default: true) */
     uint32_t gpu_batch_size;              /**< Preferred batch size for GPU ops (default: 256) */
 
+    // === GPU INFERENCE OPTIMIZATION ===
+    uint32_t inference_threads;           /**< Thread pool size for parallel stages (0 = auto/4, >0 = explicit) */
+    bool force_serial_inference;          /**< Disable parallel cognitive stages (default: false) */
+
     // === PHASE 4 NEUROMODULATORY NUCLEI CONFIGURATION ===
     /**
      * Phase 4 Neuromodulatory Nuclei Configuration

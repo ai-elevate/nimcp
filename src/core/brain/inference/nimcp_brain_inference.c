@@ -60,6 +60,8 @@
 #include "async/nimcp_future.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_thread_pool.h"
+#include "gpu/training/nimcp_training_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -467,17 +469,77 @@ void brain_free_decision(brain_decision_t* decision)
  * @param decisions Output decisions array (allocated by caller)
  * @return true on success
  */
+/**
+ * @brief Task context for parallel CPU batch inference
+ */
+typedef struct {
+    brain_t brain;
+    const float* features;
+    uint32_t num_features;
+    brain_decision_t* decision;
+    bool success;
+} batch_decide_task_t;
+
+/**
+ * @brief Worker function for parallel CPU batch inference
+ */
+static void batch_decide_worker(void* arg)
+{
+    batch_decide_task_t* task = (batch_decide_task_t*)arg;
+    brain_decision_t* result = brain_decide(task->brain, task->features, task->num_features);
+    if (result) {
+        memcpy(task->decision, result, sizeof(brain_decision_t));
+        result->output_vector = NULL;
+        result->active_neuron_ids = NULL;
+        brain_free_decision(result);
+        task->success = true;
+    } else {
+        task->success = false;
+    }
+}
+
 bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs,
                         uint32_t features_per_input, brain_decision_t* decisions)
 {
     // Guard: Validate parameters
-    // P2-55 FIX: Also reject features_per_input==0 which would cause zero-size inference
     if (!brain || !inputs || !decisions || num_inputs == 0 || features_per_input == 0) {
         set_error("Invalid parameters to brain_decide_batch");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide_batch: required parameter is NULL or zero (brain, inputs, decisions, num_inputs, features_per_input)");
         return false;
     }
 
+    // CPU parallel path: use thread pool for batch >= 4 when pool exists
+    if (num_inputs >= 4 && brain->inference_pool) {
+        batch_decide_task_t* tasks = nimcp_calloc(num_inputs, sizeof(batch_decide_task_t));
+        if (!tasks) {
+            // Fall through to serial path
+            goto serial_path;
+        }
+
+        for (uint32_t i = 0; i < num_inputs; i++) {
+            tasks[i].brain = brain;
+            tasks[i].features = inputs[i];
+            tasks[i].num_features = features_per_input;
+            tasks[i].decision = &decisions[i];
+            tasks[i].success = false;
+            nimcp_pool_submit(brain->inference_pool, batch_decide_worker, &tasks[i]);
+        }
+        nimcp_pool_wait(brain->inference_pool);
+
+        bool all_ok = true;
+        for (uint32_t i = 0; i < num_inputs; i++) {
+            if (!tasks[i].success) { all_ok = false; break; }
+        }
+        nimcp_free(tasks);
+
+        if (all_ok) {
+            brain_clear_error();
+            return true;
+        }
+        // If any failed, fall through to serial
+    }
+
+serial_path:
     for (uint32_t i = 0; i < num_inputs; i++) {
         brain_decision_t* decision = brain_decide(brain, inputs[i], features_per_input);
 
@@ -487,12 +549,6 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
         }
 
         memcpy(&decisions[i], decision, sizeof(brain_decision_t));
-        // P1-45 FIX: brain_decision_t has internal allocations (output_vector,
-        // active_neuron_ids). Must use brain_free_decision() which handles these,
-        // not nimcp_free() which only frees the struct itself.
-        // Note: Since we memcpy'd the decision contents first, we need to NULL out
-        // the internal pointers before freeing, so brain_free_decision doesn't
-        // free data that decisions[i] now owns.
         decision->output_vector = NULL;
         decision->active_neuron_ids = NULL;
         brain_free_decision(decision);
@@ -500,6 +556,43 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
 
     brain_clear_error();
     return true;
+}
+
+//=============================================================================
+// Frozen Inference Network
+//=============================================================================
+
+bool brain_freeze(brain_t brain)
+{
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_freeze: brain is NULL");
+        return false;
+    }
+
+    if (brain->frozen) {
+        return true;  // Already frozen
+    }
+
+    // Freeze the adaptive network (zeros learning, frees traces)
+    if (brain->network) {
+        // Ensure GPU weight cache is up-to-date before freezing
+        if (adaptive_network_is_gpu_enabled(brain->network)) {
+            neural_network_t base = adaptive_network_get_base_network(brain->network);
+            const adaptive_network_config_t* cfg = adaptive_network_get_config(brain->network);
+            (void)base; (void)cfg;  // GPU cache already managed by adaptive network
+        }
+        adaptive_network_freeze(brain->network);
+    }
+
+    brain->frozen = true;
+    LOG_INFO("Brain frozen for inference-only mode");
+    return true;
+}
+
+bool brain_is_frozen(brain_t brain)
+{
+    if (!brain) return false;
+    return brain->frozen;
 }
 
 /**

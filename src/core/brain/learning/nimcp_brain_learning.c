@@ -402,7 +402,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     //
     // COMPLEXITY: O(1)
     float epistemic_confidence_multiplier = 1.0F;  // Default: no adjustment
-    if (brain->epistemic) {
+    if (brain->epistemic && confidence < 1.0F) {
         // Initialize evidence structure (assume moderate quality by default)
         claim_evidence_t evidence;
         epistemic_evidence_init(&evidence);

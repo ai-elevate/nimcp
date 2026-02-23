@@ -8609,6 +8609,19 @@ e2e_gpu_test_e2e_visual_processing_gpu/fast:
 .PHONY : e2e_gpu_test_e2e_visual_processing_gpu/fast
 
 #=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_gpu_inference_pipeline
+
+# Build rule for target.
+e2e_gpu_test_e2e_gpu_inference_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_gpu_inference_pipeline
+.PHONY : e2e_gpu_test_e2e_gpu_inference_pipeline
+
+# fast build rule for target.
+e2e_gpu_test_e2e_gpu_inference_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_gpu_inference_pipeline.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_gpu_inference_pipeline.dir/build
+.PHONY : e2e_gpu_test_e2e_gpu_inference_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_fuzzy_controller_gpu
 
 # Build rule for target.
@@ -28187,6 +28200,19 @@ test_homeostasis_immune_integration/fast:
 .PHONY : test_homeostasis_immune_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_spike_ring_buffer
+
+# Build rule for target.
+test_spike_ring_buffer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_spike_ring_buffer
+.PHONY : test_spike_ring_buffer
+
+# fast build rule for target.
+test_spike_ring_buffer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/neuralnet/CMakeFiles/test_spike_ring_buffer.dir/build.make test/unit/core/neuralnet/CMakeFiles/test_spike_ring_buffer.dir/build
+.PHONY : test_spike_ring_buffer/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_neuralnet_homeostasis_immune
 
 # Build rule for target.
@@ -28198,6 +28224,19 @@ integration_core_neuralnet_homeostasis_immune: cmake_check_build_system
 integration_core_neuralnet_homeostasis_immune/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_homeostasis_immune.dir/build.make test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_homeostasis_immune.dir/build
 .PHONY : integration_core_neuralnet_homeostasis_immune/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_neuralnet_spike_ring_buffer
+
+# Build rule for target.
+integration_core_neuralnet_spike_ring_buffer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_neuralnet_spike_ring_buffer
+.PHONY : integration_core_neuralnet_spike_ring_buffer
+
+# fast build rule for target.
+integration_core_neuralnet_spike_ring_buffer/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_spike_ring_buffer.dir/build.make test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_spike_ring_buffer.dir/build
+.PHONY : integration_core_neuralnet_spike_ring_buffer/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_dendrite_test_dendrite
@@ -28328,6 +28367,19 @@ regression_core_neuron_types_regression: cmake_check_build_system
 regression_core_neuron_types_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/neuron_types/CMakeFiles/regression_core_neuron_types_regression.dir/build.make test/regression/core/neuron_types/CMakeFiles/regression_core_neuron_types_regression.dir/build
 .PHONY : regression_core_neuron_types_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_neuralnet_spike_ring_buffer
+
+# Build rule for target.
+regression_core_neuralnet_spike_ring_buffer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_neuralnet_spike_ring_buffer
+.PHONY : regression_core_neuralnet_spike_ring_buffer
+
+# fast build rule for target.
+regression_core_neuralnet_spike_ring_buffer/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/neuralnet/CMakeFiles/regression_core_neuralnet_spike_ring_buffer.dir/build.make test/regression/core/neuralnet/CMakeFiles/regression_core_neuralnet_spike_ring_buffer.dir/build
+.PHONY : regression_core_neuralnet_spike_ring_buffer/fast
 
 #=============================================================================
 # Target rules for targets named unit_security_test_blood_brain_barrier
@@ -34271,6 +34323,19 @@ unit_gpu_test_gpu_stub_no_false_throws/fast:
 .PHONY : unit_gpu_test_gpu_stub_no_false_throws/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_gpu_inference_unit
+
+# Build rule for target.
+unit_gpu_test_gpu_inference_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_gpu_inference_unit
+.PHONY : unit_gpu_test_gpu_inference_unit
+
+# fast build rule for target.
+unit_gpu_test_gpu_inference_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_inference_unit.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_inference_unit.dir/build
+.PHONY : unit_gpu_test_gpu_inference_unit/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_test_softmax_numerical_stability
 
 # Build rule for target.
@@ -35506,6 +35571,19 @@ integration_gpu_test_visual_processing_gpu/fast:
 .PHONY : integration_gpu_test_visual_processing_gpu/fast
 
 #=============================================================================
+# Target rules for targets named integration_gpu_test_gpu_inference_integration
+
+# Build rule for target.
+integration_gpu_test_gpu_inference_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_gpu_inference_integration
+.PHONY : integration_gpu_test_gpu_inference_integration
+
+# fast build rule for target.
+integration_gpu_test_gpu_inference_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_inference_integration.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_inference_integration.dir/build
+.PHONY : integration_gpu_test_gpu_inference_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_integration
 
 # Build rule for target.
@@ -35712,6 +35790,19 @@ regression_gpu_test_visual_processing_regression: cmake_check_build_system
 regression_gpu_test_visual_processing_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build
 .PHONY : regression_gpu_test_visual_processing_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_inference_regression
+
+# Build rule for target.
+regression_gpu_test_gpu_inference_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_inference_regression
+.PHONY : regression_gpu_test_gpu_inference_regression
+
+# fast build rule for target.
+regression_gpu_test_gpu_inference_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_inference_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_inference_regression.dir/build
+.PHONY : regression_gpu_test_gpu_inference_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_gpu_test_gpu_neuron_backward_compat
@@ -39905,6 +39996,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_financial_complete"
 	@echo "... e2e_gpu_test_e2e_financial_workflow_gpu"
 	@echo "... e2e_gpu_test_e2e_fuzzy_controller_gpu"
+	@echo "... e2e_gpu_test_e2e_gpu_inference_pipeline"
 	@echo "... e2e_gpu_test_e2e_gpu_recovery_pipeline"
 	@echo "... e2e_gpu_test_e2e_inference_pipeline_gpu"
 	@echo "... e2e_gpu_test_e2e_learning_pipeline_gpu"
@@ -40348,6 +40440,7 @@ help:
 	@echo "... integration_core_integration_test_wm_transfer_integration"
 	@echo "... integration_core_medulla"
 	@echo "... integration_core_neuralnet_homeostasis_immune"
+	@echo "... integration_core_neuralnet_spike_ring_buffer"
 	@echo "... integration_core_neuron_models_test_cognitive_neuron_integration"
 	@echo "... integration_core_synapse_compute_test_three_factor_network_learning"
 	@echo "... integration_core_topology_topology_integration_tests"
@@ -40408,6 +40501,7 @@ help:
 	@echo "... integration_gpu_test_gpu_cpu_equivalence"
 	@echo "... integration_gpu_test_gpu_cpu_fallback_integration"
 	@echo "... integration_gpu_test_gpu_execution_mode_integration"
+	@echo "... integration_gpu_test_gpu_inference_integration"
 	@echo "... integration_gpu_test_gpu_integration"
 	@echo "... integration_gpu_test_gpu_neuron_integration"
 	@echo "... integration_gpu_test_gpu_spike_event_integration"
@@ -40845,6 +40939,7 @@ help:
 	@echo "... regression_core_geometry_surface"
 	@echo "... regression_core_integration_test_integration_regression"
 	@echo "... regression_core_medulla"
+	@echo "... regression_core_neuralnet_spike_ring_buffer"
 	@echo "... regression_core_neuron_types_regression"
 	@echo "... regression_core_pass3_fixes"
 	@echo "... regression_core_substrate_bridges"
@@ -40901,6 +40996,7 @@ help:
 	@echo "... regression_gpu_test_broca_gpu_regression"
 	@echo "... regression_gpu_test_gpu_bounds_regression"
 	@echo "... regression_gpu_test_gpu_execution_mode_backward_compat"
+	@echo "... regression_gpu_test_gpu_inference_regression"
 	@echo "... regression_gpu_test_gpu_neuron_backward_compat"
 	@echo "... regression_gpu_test_gpu_neuron_regression"
 	@echo "... regression_gpu_test_gpu_pass3_fixes"
@@ -41435,6 +41531,7 @@ help:
 	@echo "... test_sparse_synapse"
 	@echo "... test_spatial_processing_e2e"
 	@echo "... test_speech_production_e2e"
+	@echo "... test_spike_ring_buffer"
 	@echo "... test_split_brain_e2e"
 	@echo "... test_swarm_brain"
 	@echo "... test_swarm_brain_fep_bridge"
@@ -42140,6 +42237,7 @@ help:
 	@echo "... unit_gpu_test_dragonfly_vision_kernels"
 	@echo "... unit_gpu_test_emotion_kernels"
 	@echo "... unit_gpu_test_execution_mode"
+	@echo "... unit_gpu_test_gpu_inference_unit"
 	@echo "... unit_gpu_test_gpu_neuron"
 	@echo "... unit_gpu_test_gpu_stub_no_false_throws"
 	@echo "... unit_gpu_test_graph_gpu"

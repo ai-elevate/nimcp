@@ -1,0 +1,16 @@
+{"phase": 1, "dataset": "Wine", "epoch": 1, "accuracy": 0.4157303370786517, "best_accuracy": 0.4157303370786517, "total_trained": 178, "timestamp": 1771839008.5297403, "elapsed_s": 39.89121747016907}
+{"phase": 1, "dataset": "Wine", "epoch": 5, "accuracy": 0.398876404494382, "best_accuracy": 0.4157303370786517, "total_trained": 890, "timestamp": 1771839166.3520799, "elapsed_s": 197.7135570049286}
+{"phase": 1, "dataset": "Wine", "epoch": 10, "accuracy": 0.398876404494382, "best_accuracy": 0.4157303370786517, "total_trained": 1780, "timestamp": 1771839406.7375524, "elapsed_s": 438.0990295410156}
+{"phase": 1, "dataset": "Wine", "epoch": 15, "accuracy": 0.398876404494382, "best_accuracy": 0.4157303370786517, "total_trained": 2670, "timestamp": 1771839650.1151338, "elapsed_s": 681.476610660553}
+{"phase": 1, "dataset": "Wine", "epoch": 20, "accuracy": 0.398876404494382, "best_accuracy": 0.4157303370786517, "total_trained": 3560, "timestamp": 1771839895.289405, "elapsed_s": 926.6508820056915}
+{"phase": 1, "dataset": "Wine", "epoch": 25, "accuracy": 0.398876404494382, "best_accuracy": 0.4157303370786517, "total_trained": 4450, "timestamp": 1771840144.8989353, "elapsed_s": 1176.2604122161865}
+{"phase": 1, "dataset": "Wine", "epoch": 30, "accuracy": 0.398876404494382, "best_accuracy": 0.4157303370786517, "total_trained": 5340, "timestamp": 1771840396.0164545, "elapsed_s": 1427.37793135643}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 1, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 5909, "timestamp": 1771840558.3406372, "elapsed_s": 1589.7021141052246}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 5, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 8185, "timestamp": 1771841222.8443706, "elapsed_s": 2254.2058475017548}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 10, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 11030, "timestamp": 1771842080.9956706, "elapsed_s": 3112.3571474552155}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 15, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 13875, "timestamp": 1771842975.2609513, "elapsed_s": 4006.6224279403687}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 20, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 16720, "timestamp": 1771843903.3948662, "elapsed_s": 4934.756343126297}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 25, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 19565, "timestamp": 1771844864.5054731, "elapsed_s": 5895.866950273514}
+{"phase": 1, "dataset": "Breast Cancer", "epoch": 30, "accuracy": 0.6274165202108963, "best_accuracy": 0.6274165202108963, "total_trained": 22410, "timestamp": 1771845854.0840573, "elapsed_s": 6885.445534229279}
+{"phase": 1, "dataset": "Fashion-MNIST", "epoch": 1, "accuracy": 0.1, "best_accuracy": 0.1, "total_trained": 22910, "timestamp": 1771846028.5996034, "elapsed_s": 7059.961080312729}
+{"phase": 1, "dataset": "Fashion-MNIST", "epoch": 5, "accuracy": 0.1, "best_accuracy": 0.1, "total_trained": 24910, "timestamp": 1771846745.6106782, "elapsed_s": 7776.972155094147}

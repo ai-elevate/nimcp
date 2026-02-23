@@ -416,13 +416,21 @@ bool backprop_backward(backprop_ctx_t* ctx,
     uint32_t out_layer = num_layers - 1;
     uint32_t out_size = ctx->activations[out_layer].size;
 
+    /* Compute output layer neuron offset */
+    uint32_t out_offset = 0;
+    for (uint32_t k = 0; k < out_layer; k++) {
+        out_offset += ctx->activations[k].size;
+    }
+
     for (uint32_t i = 0; i < out_size && i < output_size; i++) {
         float z = ctx->activations[out_layer].pre_activation[i];
 
-        /* For softmax + cross-entropy, derivative simplifies to (a - target) */
-        /* For other activations, use chain rule: dL/dz = dL/da * da/dz */
-        /* Since output_gradients is dL/da, multiply by activation derivative */
-        float grad_activation = activation_derivative(z, ACTIVATION_SIGMOID);
+        /* Use the neuron's actual activation type instead of hardcoded sigmoid */
+        activation_type_t act_type = ACTIVATION_SIGMOID;
+        if (out_offset + i < network->num_neurons) {
+            act_type = network->neurons[out_offset + i].activation_type;
+        }
+        float grad_activation = activation_derivative(z, act_type);
         layer_deltas[out_layer][i] = output_gradients[i] * grad_activation;
     }
 
@@ -466,9 +474,10 @@ bool backprop_backward(backprop_ctx_t* ctx,
                 }
             }
 
-            /* Multiply by activation derivative */
+            /* Multiply by activation derivative (use neuron's actual type) */
             float z = ctx->activations[l].pre_activation[i];
-            float deriv = activation_derivative(z, ACTIVATION_SIGMOID);
+            activation_type_t act_type = curr_neuron ? curr_neuron->activation_type : ACTIVATION_SIGMOID;
+            float deriv = activation_derivative(z, act_type);
             layer_deltas[l][i] = delta_sum * deriv;
         }
     }

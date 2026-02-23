@@ -915,6 +915,38 @@ static PyObject* Brain_get_accuracy(BrainObject* self, PyObject* args) {
     return PyFloat_FromDouble((double)accuracy);
 }
 
+/**
+ * @brief Freeze brain for inference-only mode
+ */
+static PyObject* Brain_freeze(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    nimcp_status_t status = nimcp_brain_freeze(self->brain);
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to freeze brain");
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+/**
+ * @brief Check if brain is frozen
+ */
+static PyObject* Brain_get_is_frozen(BrainObject* self, void* closure) {
+    (void)closure;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    if (nimcp_brain_is_frozen(self->brain)) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS,
      "Learn from example: learn(features, label, confidence=1.0) -> loss"},
@@ -959,6 +991,16 @@ static PyMethodDef Brain_methods[] = {
     {"decide_full", (PyCFunction)Brain_decide_full, METH_VARARGS,
      "Run full cognitive pipeline: decide_full(features) -> dict"},
 
+    // Frozen inference
+    {"freeze", (PyCFunction)Brain_freeze, METH_NOARGS,
+     "Freeze brain for inference-only mode: freeze() -> True"},
+
+    {NULL}
+};
+
+static PyGetSetDef Brain_getsetters[] = {
+    {"is_frozen", (getter)Brain_get_is_frozen, NULL,
+     "True if brain is frozen for inference-only mode", NULL},
     {NULL}
 };
 
@@ -973,6 +1015,7 @@ static PyTypeObject BrainType = {
     .tp_init = (initproc)Brain_init,
     .tp_dealloc = (destructor)Brain_dealloc,
     .tp_methods = Brain_methods,
+    .tp_getset = Brain_getsetters,
 };
 
 //=============================================================================

@@ -56,6 +56,17 @@ add_gpu_regression_test(test_gpu_recovery_validation_regression)
 # NOTE: Test has CPU fallback via has_gpu_ flag — runs on CPU-only systems
 add_gpu_regression_test(test_visual_processing_regression)
 
+# =============================================================================
+# GPU Inference Optimization Regression Tests (no CUDA required)
+# =============================================================================
+# WHAT: Regression tests for GPU inference features (freeze, dirty flag, stability)
+# WHY:  Prevent regressions in freeze/unfreeze, weight upload, inference stability
+# HOW:  Test frozen vs unfrozen equivalence, repeated stability, train-freeze cycles
+add_gpu_regression_test(test_gpu_inference_regression)
+set_tests_properties(regression_gpu_test_gpu_inference_regression
+    PROPERTIES RESOURCE_LOCK "brain_heavy"
+)
+
 # Guard: CUDA toolkit required for remaining GPU regression tests
 if(NOT CUDAToolkit_FOUND)
     message(STATUS "  Skipping CUDA GPU regression tests (CUDA toolkit not found)")

@@ -549,6 +549,63 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
  */
 neural_network_t adaptive_network_get_base_network(adaptive_network_t network);
 
+//=============================================================================
+// GPU Inference Accessors
+//=============================================================================
+
+// Forward declarations for GPU types (avoid header dependency)
+struct nimcp_gpu_context_s;
+struct nimcp_gpu_weight_cache_s;
+
+/**
+ * @brief Set GPU context on adaptive network (for brain-level GPU sharing)
+ * @param network Adaptive network
+ * @param ctx GPU context (ownership NOT transferred — brain owns it)
+ */
+void adaptive_network_set_gpu_context(adaptive_network_t network, struct nimcp_gpu_context_s* ctx);
+
+/**
+ * @brief Set GPU weight cache on adaptive network
+ * @param network Adaptive network
+ * @param cache GPU weight cache (ownership transferred to network)
+ */
+void adaptive_network_set_gpu_weight_cache(adaptive_network_t network, struct nimcp_gpu_weight_cache_s* cache);
+
+/**
+ * @brief Set GPU enabled flag on adaptive network
+ * @param network Adaptive network
+ * @param enabled Whether GPU is enabled
+ */
+void adaptive_network_set_gpu_enabled(adaptive_network_t network, bool enabled);
+
+/**
+ * @brief Check if adaptive network has GPU enabled
+ * @param network Adaptive network
+ * @return true if GPU inference is active
+ */
+bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
+
+//=============================================================================
+// Frozen Network Support
+//=============================================================================
+
+/**
+ * @brief Freeze the network — disable learning, lock weights
+ *
+ * After freezing: learning rate = 0, eligibility traces freed,
+ * BCM state freed, weight dirty flag cleared. GPU cache is final.
+ *
+ * @param network Adaptive network
+ */
+void adaptive_network_freeze(adaptive_network_t network);
+
+/**
+ * @brief Check if network is frozen
+ * @param network Adaptive network
+ * @return true if frozen
+ */
+bool adaptive_network_is_frozen(adaptive_network_t network);
+
 #ifdef __cplusplus
 }
 #endif

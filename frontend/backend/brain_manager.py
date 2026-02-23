@@ -27,6 +27,20 @@ from config import MAX_BRAIN_COUNT, PROBE_HISTORY_SIZE, BRAIN_STORAGE_DIR
 
 _log = nimcp_logger.get("brain_manager")
 
+# Athena pretrained baseline — auto-applied to new brains when available
+_ATHENA_SEARCH_PATHS = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "models", "pretrained", "athena", "v1.0", "athena.bin"),
+    os.path.join(os.path.dirname(__file__), "..", "..", "models", "pretrained", "athena", "v1.0",
+                 "nimcp_athena_foundation_v1.0.nimcp"),
+    os.path.expanduser("~/.nimcp/models/pretrained/athena/v1.0/athena.bin"),
+]
+_ATHENA_BASELINE_PATH: Optional[str] = None
+for _p in _ATHENA_SEARCH_PATHS:
+    _p = os.path.normpath(_p)
+    if os.path.isfile(_p):
+        _ATHENA_BASELINE_PATH = _p
+        break
+
 SIZE_LABELS = {0: "Tiny", 1: "Small", 2: "Medium", 3: "Large"}
 TASK_LABELS = {0: "Classification", 1: "Regression", 2: "Pattern Matching", 3: "Sequence", 4: "Association"}
 
@@ -214,6 +228,13 @@ class BrainManager:
             )
             if num_neurons is not None:
                 brain.resize(num_neurons)
+            # Auto-apply Athena pretrained baseline if available
+            if _ATHENA_BASELINE_PATH:
+                try:
+                    brain.load(_ATHENA_BASELINE_PATH)
+                    _log.info("Applied Athena baseline from %s", _ATHENA_BASELINE_PATH)
+                except Exception as exc:
+                    _log.debug("Athena baseline load skipped: %s", exc)
             bid = self._next_id
             self._next_id += 1
             self._brains[bid] = brain

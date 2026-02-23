@@ -92,6 +92,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_language.c         # Unified language layer orchestration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_collective_cognition.c # Collective cognition subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu_inference.c   # GPU inference weight cache init
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
@@ -99,6 +100,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_association_learning.c  # Association learning (A→B implications)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_circuit_compilation.c   # Neural circuit compilation (symbolic→neural)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_inference.c   # Prediction, forward propagation, results (502 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_parallel_stages.c     # Parallel cognitive stage dispatch
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_quantum_reasoning.c # Quantum SAT solving for logical inference
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_kg_snapshot.c # KG-based snapshot persistence (Phase SNAPSHOT-KG)
@@ -2146,6 +2148,7 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/sparse/nimcp_sparse_kernels.cu>
     # Kernel backend CUDA registration (wires CUDA kernels to unified backend interface)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend_cuda.cu>
 

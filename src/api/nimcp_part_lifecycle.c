@@ -183,6 +183,21 @@ nimcp_brain_t nimcp_brain_create(
     return handle;
 }
 
+nimcp_status_t nimcp_brain_freeze(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    bool ok = brain_freeze(brain->internal_brain);
+    return ok ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+bool nimcp_brain_is_frozen(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) {
+        return false;
+    }
+    return brain_is_frozen(brain->internal_brain);
+}
+
 void nimcp_brain_destroy(nimcp_brain_t brain) {
     if (!brain) {
         set_error("nimcp_brain_destroy: NULL brain handle");

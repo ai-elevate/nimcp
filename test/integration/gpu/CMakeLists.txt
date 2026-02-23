@@ -130,6 +130,19 @@ else()
 endif()
 
 # =============================================================================
+# GPU Inference Optimization Integration Tests
+# =============================================================================
+# WHAT: Integration tests for GPU inference pipeline (freeze, batch, determinism)
+# WHY:  Verify GPU inference features work end-to-end with brain API
+# HOW:  Create brains, train, freeze, predict — no CUDA required (GTEST_SKIP)
+add_gpu_integration_test(test_gpu_inference_integration)
+set_tests_properties(integration_gpu_test_gpu_inference_integration
+    PROPERTIES
+        TIMEOUT 600
+        RESOURCE_LOCK "brain_heavy"
+)
+
+# =============================================================================
 # Existing GPU Integration Tests
 # =============================================================================
 # These tests were already present in the directory

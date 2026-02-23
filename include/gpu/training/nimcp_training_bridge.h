@@ -38,6 +38,7 @@
 
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "gpu/sparse/nimcp_sparse_gpu.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 
 #ifdef __cplusplus
@@ -67,7 +68,8 @@ typedef struct nimcp_gpu_weight_cache_s {
     uint32_t* layer_offsets;               /**< Neuron index offset per layer */
 
     // Per-layer GPU tensors (num_layers - 1 transitions)
-    nimcp_gpu_tensor_t** weights;          /**< W[l] = (layer_sizes[l+1] x layer_sizes[l]) */
+    nimcp_sparse_tensor_t** sparse_weights; /**< W[l] = CSR sparse (layer_sizes[l+1] x layer_sizes[l]) */
+    nimcp_sparse_ctx_t* sparse_ctx;         /**< cuSPARSE context for sparse operations */
     nimcp_gpu_tensor_t** biases;           /**< b[l] = (layer_sizes[l+1]) */
     nimcp_gpu_tensor_t** activations;      /**< a[l] = (layer_sizes[l]) per-layer output */
 
@@ -79,10 +81,14 @@ typedef struct nimcp_gpu_weight_cache_s {
     uint64_t last_sync_step;               /**< Last step weights were synced */
 
     // Host-side scratch buffers (reused across uploads)
-    float* host_weight_buf;                /**< Largest weight matrix buffer */
+    float* host_coo_values;                /**< COO/CSR values scratch [max_nnz] */
+    int*   host_coo_row_idx;               /**< COO row indices scratch [max_nnz] */
+    int*   host_coo_col_idx;               /**< COO/CSR col indices scratch [max_nnz] */
+    int*   host_csr_row_ptrs;              /**< CSR row pointers scratch [max_rows+1] */
+    size_t host_coo_capacity;              /**< Allocated COO entry capacity */
+    size_t host_csr_row_ptrs_capacity;     /**< Allocated row_ptrs capacity */
     float* host_bias_buf;                  /**< Largest bias vector buffer */
     float* host_activation_buf;            /**< Largest activation vector buffer */
-    size_t host_weight_buf_size;           /**< Size of weight buffer in floats */
     size_t host_bias_buf_size;             /**< Size of bias buffer in floats */
     size_t host_activation_buf_size;       /**< Size of activation buffer in floats */
 } nimcp_gpu_weight_cache_t;
@@ -206,6 +212,33 @@ NIMCP_EXPORT float nimcp_gpu_compute_loss(
     const float* output,
     const float* target,
     uint32_t size
+);
+
+//=============================================================================
+// Batched GPU Forward Pass
+//=============================================================================
+
+/**
+ * @brief Run batched forward pass on GPU
+ *
+ * Processes multiple input vectors in a single GPU operation using SpMM
+ * (sparse matrix-matrix multiply) instead of per-sample SpMV.
+ *
+ * @param cache Weight cache (weights must be uploaded)
+ * @param inputs Input data row-major [batch_size × input_size] (host memory)
+ * @param batch_size Number of samples in batch
+ * @param input_size Input vector size (must match layer_sizes[0])
+ * @param outputs Output buffer row-major [batch_size × output_size] (host memory)
+ * @param output_size Output vector size (must match layer_sizes[last])
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_forward_pass_batch(
+    nimcp_gpu_weight_cache_t* cache,
+    const float* inputs,
+    uint32_t batch_size,
+    uint32_t input_size,
+    float* outputs,
+    uint32_t output_size
 );
 
 #ifdef __cplusplus

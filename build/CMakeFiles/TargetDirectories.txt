@@ -766,6 +766,7 @@
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_snn_pipeline_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_inference_pipeline_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_visual_processing_gpu.dir
+/home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_gpu_inference_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_fuzzy_controller_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_financial_workflow_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_financial_complete.dir
@@ -4694,6 +4695,7 @@
 /home/bbrelin/nimcp/build/test/regression/core/cortical_columns/substrate/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_sparse_synapse.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_homeostasis_immune_integration.dir
+/home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test_spike_ring_buffer.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/rebuild_cache.dir
@@ -4702,6 +4704,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/core/neuralnet/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_homeostasis_immune.dir
+/home/bbrelin/nimcp/build/test/integration/core/neuralnet/CMakeFiles/integration_core_neuralnet_spike_ring_buffer.dir
 /home/bbrelin/nimcp/build/test/integration/core/neuralnet/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/neuralnet/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/neuralnet/CMakeFiles/rebuild_cache.dir
@@ -4768,6 +4771,14 @@
 /home/bbrelin/nimcp/build/test/regression/core/neuron_types/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/regression/core/neuron_types/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/core/neuron_types/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/regression_core_neuralnet_spike_ring_buffer.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/regression/core/neuralnet/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_blood_brain_barrier.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_bbb_immune_integration.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_security.dir
@@ -5792,6 +5803,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_spike_event.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_multigpu_bounds.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_stub_no_false_throws.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_inference_unit.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_softmax_numerical_stability.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_quantum_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_inference_kernels.dir
@@ -6048,6 +6060,7 @@
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_kernel_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_substrate_gpu_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_visual_processing_gpu.dir
+/home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_inference_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_execution_mode_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_neuron_integration.dir
@@ -6176,6 +6189,7 @@
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_stub_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_recovery_validation_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir
+/home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_inference_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_multigpu_regression.dir
