@@ -86,6 +86,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_resize, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread_rand.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -532,6 +533,9 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     adaptive_network_config_t new_config = {0};
     memcpy(&new_config, old_config, sizeof(adaptive_network_config_t));
 
+    // Skip dense layer wiring — resize will wire new neurons sparsely instead
+    new_config.base_config.skip_layer_wiring = true;
+
     // DEBUG: Log new config spike params after memcpy
     LOG_INFO("brain_resize: new_config k_factor=%f, min_threshold=%f, max_threshold=%f",
                    new_config.spike_params.k_factor,
@@ -761,14 +765,33 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         }
     }
 
+    // Step 4: Wire new neurons with sparse random connectivity
+    // WHY: skip_layer_wiring=true means adaptive_network_create() allocated neurons
+    //       but didn't run the O(N*M) dense wiring loop. We wire only new neurons
+    //       with 16 random connections each — orders of magnitude faster.
+    uint32_t new_neurons_added = new_neuron_count - current_neuron_count;
+    if (new_neurons_added > 0) {
+        const uint32_t conns_per_neuron = 16;
+        LOG_INFO("brain_resize: Wiring %u new neurons with %u sparse connections each",
+                 new_neurons_added, conns_per_neuron);
+        for (uint32_t i = current_neuron_count; i < new_neuron_count; i++) {
+            for (uint32_t c = 0; c < conns_per_neuron; c++) {
+                uint32_t target = nimcp_tl_rand() % new_neuron_count;
+                if (target == i) {
+                    target = (target + 1) % new_neuron_count;
+                }
+                float weight = ((float)nimcp_tl_rand() / (float)RAND_MAX) - 0.5F;
+                neural_network_add_connection(new_base, i, target, weight);
+            }
+        }
+    }
+
     // Rebuild all incoming synapses from outgoing data + set peer_index cross-refs
+    // Done once after both old neuron transfer AND new sparse wiring
     LOG_INFO("brain_resize: Rebuilding incoming synapses");
     neural_network_rebuild_incoming(new_base);
 
-    // Step 4: New neurons beyond current_neuron_count are already initialized
-    // by adaptive_network_create() with random weights
-    uint32_t new_neurons_added = new_neuron_count - current_neuron_count;
-    LOG_INFO("brain_resize: %u new neurons ready (pre-initialized by network create)", new_neurons_added);
+    LOG_INFO("brain_resize: %u new neurons wired with sparse connectivity", new_neurons_added);
 
     // Step 5: Swap networks atomically
     LOG_INFO("brain_resize: Swapping networks");

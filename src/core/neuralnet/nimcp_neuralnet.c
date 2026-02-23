@@ -731,7 +731,8 @@ neural_network_t neural_network_create(const network_config_t* config)
     }
 
     // For layered networks (NIMCP 2.5), create connections between layers
-    if (config->num_layers > 1 && config->layer_sizes) {
+    // Skip dense wiring when called from resize (skip_layer_wiring=true)
+    if (config->num_layers > 1 && config->layer_sizes && !config->skip_layer_wiring) {
         uint32_t offset = 0;
         for (uint32_t layer = 0; layer < config->num_layers - 1; layer++) {
             uint32_t curr_layer_size = config->layer_sizes[layer];
@@ -751,7 +752,10 @@ neural_network_t neural_network_create(const network_config_t* config)
 
             offset = next_layer_offset;
         }
+    }
 
+    // Activation types — always set for layered networks (even when wiring is skipped)
+    if (config->num_layers > 1 && config->layer_sizes) {
         // TRAINING FIX: Set activation types for gradient-based training
         // ACTIVATION_ADAPTIVE creates dead neurons (output=0 if below threshold)
         // For gradient-based training, we need differentiable activations

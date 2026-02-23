@@ -371,6 +371,7 @@ typedef struct {
     ternary_pack_mode_t ternary_pack_mode;  /**< Packing mode for ternary weight matrices */
     uint32_t spike_history_capacity;     /**< 0 = use SPIKE_HISTORY_DEFAULT_CAPACITY */
     uint32_t activity_history_capacity;  /**< 0 = use ACTIVITY_HISTORY_DEFAULT_CAPACITY */
+    bool skip_layer_wiring;              /**< Skip dense layer wiring during create (for resize) */
 } network_config_t;
 
 /**
