@@ -1,6 +1,6 @@
 {
-  "description": "Comprehensive dataset configuration for NIMCP Foundation Models covering all human knowledge domains",
-  "version": "4.0",
+  "description": "Comprehensive dataset configuration for NIMCP Foundation Models — 23 domains (20 text + 3 multimodal)",
+  "version": "5.0",
   "datasets": [
     {
       "name": "fineweb_10bt",
@@ -163,15 +163,6 @@
       "description": "MMLU professional psychology (612 questions)"
     },
     {
-      "name": "mmlu_sociology",
-      "domain": "anthropology",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "sociology",
-      "description": "MMLU sociology questions - human societies and behaviors"
-    },
-    {
       "name": "mmlu_world_religions",
       "domain": "anthropology",
       "priority": 1,
@@ -181,21 +172,21 @@
       "description": "World religions and cultural practices"
     },
     {
-      "name": "mmlu_prehistory",
-      "domain": "anthropology",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "prehistory",
-      "description": "Prehistory and early human development"
-    },
-    {
       "name": "culturebank",
       "domain": "anthropology",
       "priority": 1,
       "type": "huggingface",
       "hf_dataset": "SALT-NLP/CultureBank",
       "description": "23K cultural knowledge examples across 36 topic categories (MIT license)"
+    },
+    {
+      "name": "mmlu_human_aging",
+      "domain": "anthropology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "human_aging",
+      "description": "MMLU human aging — biological and cultural aging (~223 Q)"
     },
     {
       "name": "mmlu_biology",
@@ -233,7 +224,6 @@
       "hf_subset": "astronomy",
       "description": "MMLU astronomy questions"
     },
-
     {
       "name": "mmlu_clinical_knowledge",
       "domain": "medicine",
@@ -279,7 +269,6 @@
       "hf_subset": "professional_medicine",
       "description": "Clinical practice (~272 Q)"
     },
-
     {
       "name": "mmlu_philosophy",
       "domain": "philosophy",
@@ -316,16 +305,6 @@
       "hf_subset": "formal_logic",
       "description": "Logical reasoning (~126 Q)"
     },
-
-    {
-      "name": "mmlu_high_school_geography",
-      "domain": "literature",
-      "priority": 1,
-      "type": "huggingface",
-      "hf_dataset": "cais/mmlu",
-      "hf_subset": "high_school_geography",
-      "description": "Cultural geography (~198 Q)"
-    },
     {
       "name": "gutenberg_english",
       "domain": "literature",
@@ -350,7 +329,15 @@
       "hf_dataset": "kmfoda/booksum",
       "description": "Book and chapter summaries (~12K summaries)"
     },
-
+    {
+      "name": "mmlu_high_school_geography",
+      "domain": "literature",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_geography",
+      "description": "Cultural geography (~198 Q)"
+    },
     {
       "name": "mmlu_human_sexuality",
       "domain": "social_sciences",
@@ -395,6 +382,250 @@
       "hf_dataset": "cais/mmlu",
       "hf_subset": "nutrition",
       "description": "Health and diet (~306 Q)"
+    },
+
+    {
+      "name": "mmlu_global_facts",
+      "domain": "humanities",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "global_facts",
+      "description": "MMLU global facts — world knowledge (~100 Q)"
+    },
+    {
+      "name": "mmlu_miscellaneous",
+      "domain": "humanities",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "miscellaneous",
+      "description": "MMLU miscellaneous — cross-domain knowledge (~783 Q)"
+    },
+    {
+      "name": "mmlu_hs_macroeconomics",
+      "domain": "humanities",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_macroeconomics",
+      "description": "MMLU high school macroeconomics (~390 Q)"
+    },
+
+    {
+      "name": "mmlu_professional_accounting",
+      "domain": "finance",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "professional_accounting",
+      "description": "MMLU professional accounting (~282 Q)"
+    },
+    {
+      "name": "financial_phrasebank",
+      "domain": "finance",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "financial_phrasebank",
+      "hf_subset": "sentences_allagree",
+      "description": "Financial sentiment classification — 4,845 bank/finance sentences"
+    },
+    {
+      "name": "sujet_finance",
+      "domain": "finance",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "sujet-ai/Sujet-Finance-Instruct-177k",
+      "description": "177K finance instruction-response pairs"
+    },
+
+    {
+      "name": "crypto_news",
+      "domain": "cryptocurrency",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "Bybit/crypto-news",
+      "description": "Cryptocurrency news articles for sentiment and topic classification"
+    },
+    {
+      "name": "crypto_tweets",
+      "domain": "cryptocurrency",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "StephanAkkworken/crypto-tweets-labeled",
+      "description": "Labeled cryptocurrency tweets — sentiment analysis"
+    },
+
+    {
+      "name": "mmlu_sociology",
+      "domain": "sociology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "sociology",
+      "description": "MMLU sociology — social structures and institutions (~201 Q)"
+    },
+    {
+      "name": "mmlu_hs_government",
+      "domain": "sociology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_government_and_politics",
+      "description": "MMLU high school government and politics (~193 Q)"
+    },
+    {
+      "name": "mmlu_us_foreign_policy",
+      "domain": "sociology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "us_foreign_policy",
+      "description": "MMLU US foreign policy (~100 Q)"
+    },
+
+    {
+      "name": "mmlu_prehistory",
+      "domain": "paleontology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "prehistory",
+      "description": "MMLU prehistory — early life, fossils, evolution (~381 Q)"
+    },
+    {
+      "name": "mmlu_college_biology_evolution",
+      "domain": "paleontology",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "college_biology",
+      "description": "MMLU college biology — evolution and paleobiology subset"
+    },
+
+    {
+      "name": "mmlu_econometrics",
+      "domain": "economics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "econometrics",
+      "description": "MMLU econometrics — statistical economics (~114 Q)"
+    },
+    {
+      "name": "mmlu_macroeconomics",
+      "domain": "economics",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_macroeconomics",
+      "description": "MMLU macroeconomics — GDP, fiscal, monetary (~390 Q)"
+    },
+
+    {
+      "name": "mmlu_hs_geography",
+      "domain": "earth_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "high_school_geography",
+      "description": "MMLU geography — physical and human geography (~198 Q)"
+    },
+    {
+      "name": "mmlu_astronomy_earth",
+      "domain": "earth_sciences",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "cais/mmlu",
+      "hf_subset": "astronomy",
+      "description": "MMLU astronomy — planetary science, earth in solar system (~152 Q)"
+    },
+
+    {
+      "name": "esc50",
+      "domain": "audio",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "ashraq/esc50",
+      "description": "ESC-50 environmental sound classification — 50 classes, 2000 5-second clips",
+      "modality": "audio"
+    },
+    {
+      "name": "common_voice",
+      "domain": "audio",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "mozilla-foundation/common_voice_17_0",
+      "hf_subset": "en",
+      "description": "Mozilla Common Voice — crowdsourced speech recognition",
+      "modality": "audio"
+    },
+    {
+      "name": "gtzan",
+      "domain": "audio",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "marsyas/gtzan",
+      "description": "GTZAN music genre classification — 10 genres, 1000 30-second clips",
+      "modality": "audio"
+    },
+
+    {
+      "name": "cifar100",
+      "domain": "visual",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "uoft-cs/cifar100",
+      "description": "CIFAR-100 — 100 object classes, 60K 32x32 color images",
+      "modality": "visual"
+    },
+    {
+      "name": "fashion_mnist",
+      "domain": "visual",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "zalando-datasets/fashion_mnist",
+      "description": "Fashion-MNIST — 10 clothing classes, 70K 28x28 grayscale images",
+      "modality": "visual"
+    },
+    {
+      "name": "svhn",
+      "domain": "visual",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "ufldl-stanford/svhn",
+      "hf_subset": "cropped_digits",
+      "description": "SVHN — street view house numbers, 10 digit classes",
+      "modality": "visual"
+    },
+
+    {
+      "name": "timit",
+      "domain": "speech",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "timit_asr",
+      "description": "TIMIT — phoneme-labeled read speech corpus, 630 speakers",
+      "modality": "speech"
+    },
+    {
+      "name": "ljspeech",
+      "domain": "speech",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "keithito/lj_speech",
+      "description": "LJ Speech — single speaker, 24 hours of read speech",
+      "modality": "speech"
+    },
+    {
+      "name": "spoken_wikipedia",
+      "domain": "speech",
+      "priority": 1,
+      "type": "huggingface",
+      "hf_dataset": "Ekzamen/spoken_wikipedia",
+      "hf_subset": "en",
+      "description": "Spoken Wikipedia — speech+text pairs from Wikipedia articles",
+      "modality": "speech"
     }
   ],
   "training_order": [
@@ -410,14 +641,26 @@
     "medicine",
     "biology",
     "chemistry",
-    "physics"
+    "physics",
+    "humanities",
+    "finance",
+    "cryptocurrency",
+    "sociology",
+    "paleontology",
+    "economics",
+    "earth_sciences",
+    "audio",
+    "visual",
+    "speech"
   ],
   "notes": {
-    "curriculum_strategy": "Start with language + literature, add code, then ethics/philosophy, then social/historical, then STEM/medicine",
+    "curriculum_strategy": "All 23 domains taught simultaneously by parallel instructor agents. Training order used for staggered startup.",
     "dataset_selection": "ALL datasets verified streaming=True with datasets v4.5+ — no legacy scripts, no gated access",
-    "coverage": "13 domains: language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics",
-    "estimated_total_size": "~50GB+ raw text (FineWeb 28GB + OpenWebText 12GB + Gutenberg + TinyStories + others)",
-    "total_datasets": 45,
-    "version": "v4.0 — expanded to 13 domains with medicine, philosophy, literature, social sciences"
+    "coverage": "23 domains: 20 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech)",
+    "new_in_v5": "Added 10 domains: humanities (3 datasets), finance (3), cryptocurrency (2), sociology (3), paleontology (2), economics (2), earth_sciences (2), audio (3), visual (3), speech (3)",
+    "multimodal_note": "Audio/visual/speech datasets require sensory cortex Python bindings (audio_cortex_process, visual_cortex_process, speech_cortex_process). Fallback feature extraction used if bindings unavailable.",
+    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB)",
+    "total_datasets": 68,
+    "version": "v5.0 — 23 domains, parallel school training, multimodal support"
   }
 }

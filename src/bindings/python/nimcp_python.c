@@ -57,12 +57,16 @@
 
 /* Socratic active learning: cognitive module + LGSS bindings */
 #include "api/nimcp_api_internal.h"
+#include "core/brain/nimcp_brain_internal.h"  /* brain_struct access for cortex fields */
 #include "core/brain/accessors/nimcp_brain_accessors.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/nimcp_self_model.h"
 #include "security/lgss/perception/nimcp_lgss_content_filter.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -1151,6 +1155,209 @@ static PyObject* Brain_self_assess(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Process audio through the brain's audio cortex
+ * WHY:  Extract MFCC + mel features from raw audio for multimodal training
+ * HOW:  Call audio_cortex_process() on the brain's audio cortex (GIL released)
+ *
+ * @param samples Python list of float audio samples
+ * @return Python list of float features, or empty list if cortex unavailable
+ */
+static PyObject* Brain_audio_cortex_process(BrainObject* self, PyObject* args) {
+    PyObject* samples_list;
+    if (!PyArg_ParseTuple(args, "O", &samples_list))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_samples;
+    float* samples = py_list_to_float_array(samples_list, &num_samples);
+    if (!samples) return NULL;
+
+    /* Access audio cortex from internal brain */
+    brain_t ib = self->brain->internal_brain;
+    if (!ib || !ib->audio_cortex) {
+        nimcp_free(samples);
+        /* Return empty list — cortex not initialized */
+        return PyList_New(0);
+    }
+
+    /* Query feature dimension */
+    uint32_t feat_dim = audio_cortex_get_feature_dim(ib->audio_cortex);
+    if (feat_dim == 0) feat_dim = 128;
+
+    float* features = (float*)nimcp_calloc(feat_dim, sizeof(float));
+    if (!features) {
+        nimcp_free(samples);
+        return PyErr_NoMemory();
+    }
+
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = audio_cortex_process(ib->audio_cortex, samples,
+                                    (uint32_t)num_samples, 1, features);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(samples);
+
+    if (!success) {
+        nimcp_free(features);
+        return PyList_New(0);
+    }
+
+    /* Build Python list */
+    PyObject* result = PyList_New(feat_dim);
+    if (!result) { nimcp_free(features); return NULL; }
+    for (uint32_t i = 0; i < feat_dim; i++) {
+        PyObject* val = PyFloat_FromDouble((double)features[i]);
+        if (!val) { Py_DECREF(result); nimcp_free(features); return NULL; }
+        PyList_SET_ITEM(result, i, val);
+    }
+    nimcp_free(features);
+    return result;
+}
+
+/**
+ * WHAT: Process image through the brain's visual cortex
+ * WHY:  Extract V1 Gabor filter features from raw pixels for visual training
+ * HOW:  Call visual_cortex_process() on the brain's visual cortex (GIL released)
+ *
+ * @param pixels Python list of float pixel values [0-1] or [0-255]
+ * @param width Image width
+ * @param height Image height
+ * @param channels Number of channels (1=grayscale, 3=RGB)
+ * @return Python list of float features, or empty list if cortex unavailable
+ */
+static PyObject* Brain_visual_cortex_process(BrainObject* self, PyObject* args) {
+    PyObject* pixels_list;
+    unsigned int width, height, channels;
+    if (!PyArg_ParseTuple(args, "OIII", &pixels_list, &width, &height, &channels))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_pixels;
+    float* pixels_float = py_list_to_float_array(pixels_list, &num_pixels);
+    if (!pixels_float) return NULL;
+
+    /* Visual cortex expects uint8_t* image — convert float [0,1] to [0,255] */
+    uint8_t* pixels = (uint8_t*)nimcp_malloc((size_t)num_pixels);
+    if (!pixels) {
+        nimcp_free(pixels_float);
+        return PyErr_NoMemory();
+    }
+    for (Py_ssize_t i = 0; i < num_pixels; i++) {
+        float v = pixels_float[i];
+        if (v <= 1.0f && v >= 0.0f) v *= 255.0f;
+        pixels[i] = (uint8_t)(v > 255.0f ? 255 : (v < 0.0f ? 0 : v));
+    }
+    nimcp_free(pixels_float);
+
+    /* Access visual cortex from internal brain */
+    brain_t ib = self->brain->internal_brain;
+    if (!ib || !ib->visual_cortex) {
+        nimcp_free(pixels);
+        return PyList_New(0);
+    }
+
+    uint32_t feat_dim = visual_cortex_get_feature_dim(ib->visual_cortex);
+    if (feat_dim == 0) feat_dim = 128;
+
+    float* features = (float*)nimcp_calloc(feat_dim, sizeof(float));
+    if (!features) {
+        nimcp_free(pixels);
+        return PyErr_NoMemory();
+    }
+
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = visual_cortex_process(ib->visual_cortex, pixels,
+                                     width, height, channels, features);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(pixels);
+
+    if (!success) {
+        nimcp_free(features);
+        return PyList_New(0);
+    }
+
+    PyObject* result = PyList_New(feat_dim);
+    if (!result) { nimcp_free(features); return NULL; }
+    for (uint32_t i = 0; i < feat_dim; i++) {
+        PyObject* val = PyFloat_FromDouble((double)features[i]);
+        if (!val) { Py_DECREF(result); nimcp_free(features); return NULL; }
+        PyList_SET_ITEM(result, i, val);
+    }
+    nimcp_free(features);
+    return result;
+}
+
+/**
+ * WHAT: Process audio through the brain's speech cortex
+ * WHY:  Extract phoneme + prosody features from speech for speech training
+ * HOW:  Call speech_cortex_process() on the brain's speech cortex (GIL released)
+ *
+ * @param samples Python list of float audio samples
+ * @return Python list of float features, or empty list if cortex unavailable
+ */
+static PyObject* Brain_speech_cortex_process(BrainObject* self, PyObject* args) {
+    PyObject* samples_list;
+    if (!PyArg_ParseTuple(args, "O", &samples_list))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_samples;
+    float* samples = py_list_to_float_array(samples_list, &num_samples);
+    if (!samples) return NULL;
+
+    brain_t ib = self->brain->internal_brain;
+    if (!ib || !ib->speech_cortex) {
+        nimcp_free(samples);
+        return PyList_New(0);
+    }
+
+    /* Speech cortex feature dim from brain config, fallback to 128 */
+    uint32_t feat_dim = ib->config.speech_feature_dim;
+    if (feat_dim == 0) feat_dim = 128;
+
+    float* features = (float*)nimcp_calloc(feat_dim, sizeof(float));
+    if (!features) {
+        nimcp_free(samples);
+        return PyErr_NoMemory();
+    }
+
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = speech_cortex_process(ib->speech_cortex, samples,
+                                     (uint32_t)num_samples, features);
+    Py_END_ALLOW_THREADS
+
+    nimcp_free(samples);
+
+    if (!success) {
+        nimcp_free(features);
+        return PyList_New(0);
+    }
+
+    PyObject* result = PyList_New(feat_dim);
+    if (!result) { nimcp_free(features); return NULL; }
+    for (uint32_t i = 0; i < feat_dim; i++) {
+        PyObject* val = PyFloat_FromDouble((double)features[i]);
+        if (!val) { Py_DECREF(result); nimcp_free(features); return NULL; }
+        PyList_SET_ITEM(result, i, val);
+    }
+    nimcp_free(features);
+    return result;
+}
+
+/**
  * WHAT: LGSS content safety check
  * WHY:  Gate web-fetched and generated content before learning
  * HOW:  Create temporary LGSS filter, run is_safe check, destroy
@@ -1292,6 +1499,14 @@ static PyMethodDef Brain_methods[] = {
      "Self-model assessment: self_assess(domain) -> dict"},
     {"lgss_check_content", (PyCFunction)Brain_lgss_check_content, METH_VARARGS,
      "LGSS content filter: lgss_check_content(text) -> dict"},
+
+    // Sensory cortex bindings for multimodal training
+    {"audio_cortex_process", (PyCFunction)Brain_audio_cortex_process, METH_VARARGS,
+     "Process audio through audio cortex: audio_cortex_process(samples) -> list of features"},
+    {"visual_cortex_process", (PyCFunction)Brain_visual_cortex_process, METH_VARARGS,
+     "Process image through visual cortex: visual_cortex_process(pixels, width, height, channels) -> list of features"},
+    {"speech_cortex_process", (PyCFunction)Brain_speech_cortex_process, METH_VARARGS,
+     "Process audio through speech cortex: speech_cortex_process(samples) -> list of features"},
 
     {NULL}
 };

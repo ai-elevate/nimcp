@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 """
-NIMCP Athena Foundation Model Training — Socratic Active Learning
-==================================================================
+NIMCP Athena Foundation Model Training — Parallel School
+=========================================================
 
 WHAT: Train a 1M-neuron brain called "Athena" to serve as the pretrained
       baseline for all future brains.
 WHY:  Every new brain should start from a trained baseline rather than
       random initialization — dramatically faster convergence on new tasks.
-HOW:  4-phase Socratic active learning pipeline:
-      Phase 1: Worksheets — built-in benchmarks with predict-before-learn
-      Phase 2: Guided Study — HuggingFace streaming with domain mastery tracking
-      Phase 3: Research — web-augmented learning (safety-gated) for advanced domains
-      Phase 4: Creative Exam — content creation, self-grading, final consolidation
+HOW:  3-phase parallel school pipeline:
+      Phase 0: Orientation — built-in benchmarks with predict-before-learn (warm-up)
+      Phase 1: Parallel School — 23 instructor agents teach simultaneously
+               (20 text + 3 multimodal domains, 7 teaching methods each)
+      Phase 2: Final Exam — creativity test, hard-item review, save
+
+Full NIMCP system engaged: 67+ cognitive modules, 32 brain regions, 3 sensory
+cortices, mesh network, bio-async router, plasticity orchestrator, glial system,
+security system — all active during every predict/learn call.
 
 Layers:
   Layer 1 (SocraticTrainer): Predict → adaptive confidence → teach → replay
-  Layer 2 (ActiveLearner):   Worksheets → explain → research → create
-  Layer 3 (CognitiveOrchestrator): Curiosity, introspection, consolidation
-  Layer 4 (SafetyGate):      Python pre-filter + C LGSS content filter
+  Layer 2 (InstructorAgent): 7 teaching methods per domain
+  Layer 3 (School):          23 parallel instructors, recess, dashboard
+  Layer 4 (DataSkeptic):     7-dimension data quality grading
+  Layer 5 (SafetyGate):      Python pre-filter + C LGSS content filter
 
 Designed to run via nohup:
   nohup python3 scripts/train_athena.py > athena_training.log 2>&1 &
@@ -104,6 +109,15 @@ from active_learner import ActiveLearner
 
 print("[Athena] Socratic active learning layers loaded")
 
+# Parallel school system
+try:
+    from school import School, SchoolConfig
+    SCHOOL_AVAILABLE = True
+    print("[Athena] Parallel school system loaded")
+except ImportError:
+    SCHOOL_AVAILABLE = False
+    print("[Athena] WARNING: school module not available — fallback to sequential")
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -118,7 +132,8 @@ ATHENA_CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints" / "athena"
 ATHENA_LOG_DIR = PROJECT_ROOT / "logs"
 
 # Training hyperparameters
-PHASE1_EPOCHS = 30        # Epochs per built-in dataset
+PHASE0_EPOCHS = 5          # Quick warm-up epochs for orientation
+PHASE1_EPOCHS = 30         # Epochs per built-in dataset (legacy sequential mode)
 PHASE2_MAX_PER_DATASET = 50_000   # Max examples per streaming dataset
 PHASE2_BATCH_SIZE = 1000          # Streaming batch size
 PHASE2_CHECKPOINT_INTERVAL = 10_000  # Checkpoint every N examples
@@ -153,7 +168,123 @@ class AthenaLogger:
 
 
 # ---------------------------------------------------------------------------
-# Phase 1: Worksheets — Built-in Benchmark Datasets (Socratic)
+# Phase 0: Orientation — Quick warm-up on built-in benchmarks
+# ---------------------------------------------------------------------------
+
+def phase0_orientation(brain, socratic: SocraticTrainer,
+                       cognitive: CognitiveOrchestrator,
+                       logger: AthenaLogger):
+    """
+    Phase 0: Quick warm-up on built-in benchmarks before parallel school.
+    Fewer epochs than full Phase 1 — just enough to initialize domain
+    representations so instructors start with a non-random brain.
+    """
+    if not BENCHMARKS_AVAILABLE:
+        logger.log("Phase 0 SKIPPED — benchmark_datasets not available")
+        return 0
+
+    logger.log("=" * 70)
+    logger.log("PHASE 0: Orientation (Quick Warm-Up)")
+    logger.log("=" * 70)
+
+    ml_datasets = [
+        ("Wine", WineDataset()),
+        ("Breast Cancer", BreastCancerDataset()),
+        ("Fashion-MNIST", FashionMNISTDataset()),
+    ]
+
+    qa_datasets = [
+        ("MMLU", MMLUDataset()),
+        ("ARC-Easy", ARCDataset()),
+        ("HellaSwag", HellaSwagDataset()),
+        ("Winogrande", WinograndeDataset()),
+    ]
+
+    all_datasets = []
+    for name, ds in ml_datasets:
+        examples = ds.get_examples()
+        adapted = []
+        for ex in examples:
+            feats = ex["features"]
+            if len(feats) < ATHENA_NUM_INPUTS:
+                feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+            elif len(feats) > ATHENA_NUM_INPUTS:
+                feats = feats[:ATHENA_NUM_INPUTS]
+            adapted.append({"features": feats, "label": ex["label"]})
+        all_datasets.append((name, adapted))
+
+    for name, ds in qa_datasets:
+        all_datasets.append((name, ds.get_examples()))
+
+    total_trained = 0
+    for ds_name, examples in all_datasets:
+        logger.log(f"  {ds_name}: {len(examples)} examples × {PHASE0_EPOCHS} epochs")
+        for epoch in range(PHASE0_EPOCHS):
+            batch = [(ex["features"], str(ex["label"])) for ex in examples]
+            result = socratic.train_batch_socratic(batch, ds_name.lower())
+            total_trained += result["batch_size"]
+
+    # Quick consolidation
+    cognitive.consolidate()
+    logger.log(f"Phase 0 complete — {total_trained:,} warm-up steps")
+    return total_trained
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: Parallel School — 23 Instructor Agents
+# ---------------------------------------------------------------------------
+
+def phase1_parallel_school(brain, socratic: SocraticTrainer,
+                           cognitive: CognitiveOrchestrator,
+                           logger: AthenaLogger, total_trained: int):
+    """
+    Phase 1: 23 parallel instructor agents teach simultaneously.
+    20 text domains + 3 multimodal (audio, visual, speech).
+    """
+    if not SCHOOL_AVAILABLE:
+        logger.log("Phase 1 (parallel school) SKIPPED — school module not available")
+        logger.log("Falling back to sequential Phase 2...")
+        return total_trained
+
+    logger.log("\n" + "=" * 70)
+    logger.log("PHASE 1: Parallel School (23 Instructors)")
+    logger.log("=" * 70)
+
+    config_file = SCRIPT_DIR / "foundation_datasets_config.json"
+    if not config_file.exists():
+        logger.log(f"Phase 1 SKIPPED — {config_file} not found")
+        return total_trained
+
+    school_config = SchoolConfig(
+        recess_interval_s=300.0,
+        report_interval_s=30.0,
+        checkpoint_interval_s=600.0,
+        max_training_time_s=82800.0,  # 23h (leave 1h for final exam)
+        graduation_mastery=0.85,
+        max_examples_per_dataset=PHASE2_MAX_PER_DATASET,
+        startup_stagger_s=2.0,
+        num_inputs=ATHENA_NUM_INPUTS,
+        num_outputs=ATHENA_NUM_OUTPUTS,
+    )
+
+    school = School(brain, school_config, logger)
+    school.setup(config_file)
+    school.start()
+
+    # Get report card
+    report_card = school.get_report_card()
+    logger.log(f"\n{report_card['domain_report']}")
+
+    school_examples = report_card.get("total_examples", 0)
+    total_trained += school_examples
+    logger.log(f"\nPhase 1 complete — {school_examples:,} school examples, "
+                f"{total_trained:,} total")
+
+    return total_trained, report_card
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 Legacy: Worksheets — Built-in Benchmark Datasets (Socratic)
 # ---------------------------------------------------------------------------
 
 def phase1_worksheets(brain, socratic: SocraticTrainer,
@@ -747,7 +878,7 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
         "version": "1.0",
         "size": "athena",
         "type": "foundation",
-        "description": "1M-neuron pretrained foundation model — Socratic active learning",
+        "description": "1M-neuron pretrained foundation model — parallel school training",
         "architecture": {
             "neurons": ATHENA_NEURONS,
             "topology": "scale_free",
@@ -758,8 +889,14 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
             "total_examples": total_trained,
             "training_date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "training_framework": f"NIMCP {nimcp.version()}",
-            "method": "socratic_active_learning",
+            "training_mode": "parallel_school" if SCHOOL_AVAILABLE else "sequential_legacy",
+            "num_instructors": 23 if SCHOOL_AVAILABLE else 0,
+            "method": "parallel_school_7_teaching_methods",
             "phases": [
+                "orientation_warmup",
+                "parallel_school_23_instructors",
+                "creative_exam_consolidation",
+            ] if SCHOOL_AVAILABLE else [
                 "worksheets_socratic",
                 "guided_study_streaming",
                 "curiosity_research",
@@ -767,8 +904,9 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
             ],
             "layers": [
                 "SocraticTrainer (predict-before-learn, Leitner replay)",
-                "ActiveLearner (4-stage progressive)",
-                "CognitiveOrchestrator (curiosity, introspection, consolidation)",
+                "InstructorAgent (7 teaching methods per domain)",
+                "School (23 parallel instructors, recess, dashboard)",
+                "DataSkeptic (7-dimension quality grading)",
                 "SafetyGate (Python pre-filter + C LGSS)",
             ],
             "domain_masteries": socratic.mastery.all_masteries(),
@@ -815,12 +953,13 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
 def main():
     logger = AthenaLogger(ATHENA_LOG_DIR)
     logger.log("=" * 70)
-    logger.log("ATHENA FOUNDATION MODEL TRAINING — SOCRATIC ACTIVE LEARNING")
+    logger.log("ATHENA FOUNDATION MODEL TRAINING — PARALLEL SCHOOL")
     logger.log(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.log(f"Target neurons: {ATHENA_NEURONS:,}")
     logger.log(f"Inputs: {ATHENA_NUM_INPUTS}, Outputs: {ATHENA_NUM_OUTPUTS}")
     logger.log(f"Model output: {ATHENA_MODEL_PATH}")
-    logger.log("Layers: Socratic + Active + Cognitive + Safety")
+    logger.log(f"Training mode: {'parallel_school' if SCHOOL_AVAILABLE else 'sequential_legacy'}")
+    logger.log("Layers: Socratic + Instructor + School + DataSkeptic + Safety")
     logger.log("=" * 70)
 
     # Create checkpoint directory
@@ -842,53 +981,83 @@ def main():
     )
     logger.log(f"Neuron count: {brain.get_neuron_count():,}")
 
-    # Initialize 4-layer active learning system
-    logger.log("Initializing Socratic active learning layers...")
+    # Verify GPU status
+    try:
+        probe = brain.probe()
+        gpu_status = probe.get("gpu_available", False)
+        logger.log(f"GPU enabled: {gpu_status}")
+    except Exception:
+        logger.log("GPU status: unknown (probe unavailable)")
+
+    # Initialize active learning layers
+    logger.log("Initializing active learning layers...")
     socratic = SocraticTrainer(brain, SocraticConfig())
     safety = SafetyGate(brain, SafetyConfig())
     cognitive = CognitiveOrchestrator(brain)
     active_learner = ActiveLearner(brain, socratic, safety, cognitive)
     logger.log("  Layer 1: SocraticTrainer (predict-before-learn, Leitner replay)")
-    logger.log("  Layer 2: ActiveLearner (4-stage progressive)")
-    logger.log("  Layer 3: CognitiveOrchestrator (curiosity, introspection, consolidation)")
-    logger.log(f"  Layer 4: SafetyGate (LGSS={safety._has_lgss})")
+    logger.log("  Layer 2: InstructorAgent (7 teaching methods per domain)")
+    logger.log("  Layer 3: School (23 parallel instructors)")
+    logger.log("  Layer 4: DataSkeptic (7-dimension quality grading)")
+    logger.log(f"  Layer 5: SafetyGate (LGSS={safety._has_lgss})")
 
     # Save initial checkpoint
     initial_ckpt = ATHENA_CHECKPOINT_DIR / "athena_initial.bin"
     brain.save(str(initial_ckpt))
     logger.log(f"Initial checkpoint saved: {initial_ckpt}")
 
-    # Phase 1: Worksheets (Socratic predict-before-learn)
-    total_trained = phase1_worksheets(brain, socratic, cognitive, logger)
+    report_card = None
 
-    p1_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase1.bin"
-    brain.save(str(p1_ckpt))
-    logger.log(f"Phase 1 checkpoint saved: {p1_ckpt}")
+    if SCHOOL_AVAILABLE:
+        # ===== NEW PIPELINE: Parallel School =====
 
-    # Phase 2: Guided Study (Socratic streaming)
-    total_trained = phase2_guided_study(brain, socratic, cognitive,
-                                         logger, total_trained)
+        # Phase 0: Orientation (quick warm-up on built-in benchmarks)
+        total_trained = phase0_orientation(brain, socratic, cognitive, logger)
 
-    p2_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase2.bin"
-    brain.save(str(p2_ckpt))
-    logger.log(f"Phase 2 checkpoint saved: {p2_ckpt}")
+        p0_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase0.bin"
+        brain.save(str(p0_ckpt))
+        logger.log(f"Phase 0 checkpoint saved: {p0_ckpt}")
 
-    # Phase 3: Research (curiosity-driven exploration)
-    total_trained = phase3_research(brain, active_learner, socratic,
-                                     cognitive, logger, total_trained)
+        # Phase 1: Parallel School (23 instructors)
+        result = phase1_parallel_school(brain, socratic, cognitive,
+                                        logger, total_trained)
+        if isinstance(result, tuple):
+            total_trained, report_card = result
+        else:
+            total_trained = result
 
-    p3_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase3.bin"
-    brain.save(str(p3_ckpt))
-    logger.log(f"Phase 3 checkpoint saved: {p3_ckpt}")
+        p1_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_school.bin"
+        brain.save(str(p1_ckpt))
+        logger.log(f"School checkpoint saved: {p1_ckpt}")
 
-    # Phase 4: Creative Exam + Final Consolidation + Save
+    else:
+        # ===== LEGACY PIPELINE: Sequential phases =====
+        logger.log("Using legacy sequential pipeline (school module not available)")
+
+        total_trained = phase1_worksheets(brain, socratic, cognitive, logger)
+        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase1.bin"))
+
+        total_trained = phase2_guided_study(brain, socratic, cognitive,
+                                             logger, total_trained)
+        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase2.bin"))
+
+        total_trained = phase3_research(brain, active_learner, socratic,
+                                         cognitive, logger, total_trained)
+        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase3.bin"))
+
+    # Phase 2 (Final): Creative Exam + Final Consolidation + Save
     total_trained = phase4_exam_and_save(brain, active_learner, socratic,
                                           cognitive, logger, total_trained)
 
     # Done
     elapsed = time.time() - logger.start_time
     logger.log("\n" + "=" * 70)
-    logger.log("ATHENA SOCRATIC TRAINING COMPLETE")
+    logger.log("ATHENA TRAINING COMPLETE")
+    logger.log(f"Training mode: {'parallel_school' if SCHOOL_AVAILABLE else 'sequential_legacy'}")
+    if report_card:
+        logger.log(f"Instructors: {report_card.get('num_instructors', 0)}")
+        logger.log(f"Graduated: {report_card.get('graduated', 0)}/"
+                    f"{report_card.get('total_domains', 0)} domains")
     logger.log(f"Total training steps: {total_trained:,}")
     logger.log(f"Total time: {elapsed/3600:.2f} hours")
     logger.log(f"Model saved to: {ATHENA_MODEL_PATH}")
