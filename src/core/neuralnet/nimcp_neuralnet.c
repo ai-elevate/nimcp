@@ -205,7 +205,7 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
                                          uint64_t creation_time);
 static void init_neuron_learning_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_homeostatic_params(neuron_t* neuron, const network_config_t* config);
-static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity);
+static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity, uint32_t activity_capacity);
 static void init_neuron_model(neuron_t* neuron, const network_config_t* config);
 
 //=============================================================================
@@ -223,6 +223,19 @@ static uint32_t resolve_spike_history_capacity(const network_config_t* config) {
     if (config && config->spike_history_capacity > 0)
         return config->spike_history_capacity;
     return SPIKE_HISTORY_DEFAULT_CAPACITY;
+}
+
+/**
+ * @brief Resolve activity history capacity from config
+ *
+ * WHAT: Determine buffer capacity for activity history
+ * WHY: Allow per-network configuration with sensible default
+ * HOW: Use config value if > 0, else ACTIVITY_HISTORY_DEFAULT_CAPACITY
+ */
+static uint32_t resolve_activity_history_capacity(const network_config_t* config) {
+    if (config && config->activity_history_capacity > 0)
+        return config->activity_history_capacity;
+    return ACTIVITY_HISTORY_DEFAULT_CAPACITY;
 }
 
 /**
@@ -425,7 +438,7 @@ static void init_neuron_homeostatic_params(neuron_t* neuron, const network_confi
  * WHY: Separates memory initialization from parameter setting
  * COMPLEXITY: O(1) - fixed-size arrays
  */
-static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity)
+static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity, uint32_t activity_capacity)
 {
     // Guard clause: Validate input
     if (!neuron)
@@ -436,7 +449,10 @@ static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capac
     neuron->spike_history_count = 0;
     neuron->avg_activity = 0.0F;
     neuron->spike_history = (spike_record_t*)nimcp_calloc(spike_capacity, sizeof(spike_record_t));
-    memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
+
+    // Activity history: heap-allocated dynamic buffer
+    neuron->activity_history_capacity = activity_capacity;
+    neuron->activity_history = (float*)nimcp_calloc(activity_capacity, sizeof(float));
 
     // Initialize sparse synapse storage (NIMCP 2.11)
     sparse_synapse_storage_init(&neuron->outgoing);
@@ -680,6 +696,7 @@ neural_network_t neural_network_create(const network_config_t* config)
     // Create neurons using builder pattern
     // FIX: Use actual_neurons (sum of layer_sizes) instead of config->num_neurons
     uint32_t spike_cap = resolve_spike_history_capacity(config);
+    uint32_t activity_cap = resolve_activity_history_capacity(config);
     for (uint32_t i = 0; i < actual_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
         neuron_type_t type = (i < num_inhibitory) ? NEURON_INHIBITORY : NEURON_EXCITATORY;
@@ -689,7 +706,7 @@ neural_network_t neural_network_create(const network_config_t* config)
 
         init_neuron_learning_params(neuron, config);
         init_neuron_homeostatic_params(neuron, config);
-        init_neuron_activity_tracking(neuron, spike_cap);
+        init_neuron_activity_tracking(neuron, spike_cap, activity_cap);
         init_neuron_model(neuron, config);  // NIMCP 2.6: Initialize neuron model plugin
     }
 
@@ -860,12 +877,16 @@ void neural_network_destroy(neural_network_t network)
         }
     }
 
-    // Free spike history ring buffers
+    // Free spike history ring buffers and activity history buffers
     if (network->neurons) {
         for (uint32_t i = 0; i < network->num_neurons; i++) {
             if (network->neurons[i].spike_history) {
                 nimcp_free(network->neurons[i].spike_history);
                 network->neurons[i].spike_history = NULL;
+            }
+            if (network->neurons[i].activity_history) {
+                nimcp_free(network->neurons[i].activity_history);
+                network->neurons[i].activity_history = NULL;
             }
         }
     }
@@ -1250,19 +1271,21 @@ static void apply_learning_rules(neural_network_t network, uint32_t neuron_id, n
 static void update_activity_history(neuron_t* neuron, float new_state, uint64_t timestamp)
 {
     // Guard clause: Validate input
-    if (!neuron)
+    if (!neuron || !neuron->activity_history || neuron->activity_history_capacity == 0)
         return;
 
+    uint32_t cap = neuron->activity_history_capacity;
+
     // Record current activity
-    uint32_t history_idx = timestamp % HISTORY_WINDOW;
+    uint32_t history_idx = timestamp % cap;
     neuron->activity_history[history_idx] = new_state;
 
     // Compute running average - single pass O(w)
     float sum_activity = 0.0F;
-    for (uint32_t i = 0; i < HISTORY_WINDOW; i++) {
+    for (uint32_t i = 0; i < cap; i++) {
         sum_activity += neuron->activity_history[i];
     }
-    neuron->avg_activity = sum_activity / HISTORY_WINDOW;
+    neuron->avg_activity = sum_activity / cap;
 }
 
 /**
@@ -1827,10 +1850,13 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
 
     // Compute current average activity
     float current_activity = 0.0F;
-    for (uint32_t i = 0; i < HISTORY_WINDOW; i++) {
-        current_activity += neuron->activity_history[i];
+    uint32_t act_cap = neuron->activity_history_capacity;
+    if (neuron->activity_history && act_cap > 0) {
+        for (uint32_t i = 0; i < act_cap; i++) {
+            current_activity += neuron->activity_history[i];
+        }
+        current_activity /= act_cap;
     }
-    current_activity /= HISTORY_WINDOW;
 
     // Compute activity error
     float activity_error = neuron->homeostatic.target_activity - current_activity;
@@ -1901,12 +1927,15 @@ static void update_meta_plasticity(neural_network_t network, neuron_t* neuron, u
     // Compute activity variance over history window
     float mean_activity = neuron->avg_activity;
     float variance = 0.0F;
+    uint32_t act_cap = neuron->activity_history_capacity;
 
-    for (uint32_t i = 0; i < HISTORY_WINDOW; i++) {
-        float diff = neuron->activity_history[i] - mean_activity;
-        variance += diff * diff;
+    if (neuron->activity_history && act_cap > 0) {
+        for (uint32_t i = 0; i < act_cap; i++) {
+            float diff = neuron->activity_history[i] - mean_activity;
+            variance += diff * diff;
+        }
+        variance /= act_cap;
     }
-    variance /= HISTORY_WINDOW;
 
     // Update meta-plasticity for each synapse
     for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
@@ -2498,7 +2527,10 @@ void neural_network_reset(neural_network_t network)
         neuron->spike_history_count = 0;
         if (neuron->spike_history)
             memset(neuron->spike_history, 0, sizeof(spike_record_t) * neuron->spike_history_capacity);
-        memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
+
+        // Reset activity history (dynamic buffer)
+        if (neuron->activity_history)
+            memset(neuron->activity_history, 0, sizeof(float) * neuron->activity_history_capacity);
 
         // Reset synaptic traces
         for (uint32_t j = 0; j < NEURON_OUT_COUNT(neuron); j++) {
@@ -2688,6 +2720,11 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
     neuron->spike_history_index = 0;
     neuron->spike_history_count = 0;
     neuron->spike_history = (spike_record_t*)nimcp_calloc(spike_cap, sizeof(spike_record_t));
+
+    // Allocate activity history buffer
+    uint32_t activity_cap = resolve_activity_history_capacity(&network->config);
+    neuron->activity_history_capacity = activity_cap;
+    neuron->activity_history = (float*)nimcp_calloc(activity_cap, sizeof(float));
 
     network->num_neurons++;
     return new_id;

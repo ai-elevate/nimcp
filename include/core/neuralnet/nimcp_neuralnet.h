@@ -89,6 +89,7 @@ extern "C" {
 #define MAX_SYNAPSES_PER_NEURON 256
 #define SPIKE_HISTORY_LENGTH 1000
 #define SPIKE_HISTORY_DEFAULT_CAPACITY 128
+#define ACTIVITY_HISTORY_DEFAULT_CAPACITY 32
 #define HISTORY_WINDOW 100
 #define WEIGHT_UPDATE_THRESHOLD 1e-6f
 #define ACTIVITY_THRESHOLD 1e-5f
@@ -294,7 +295,8 @@ typedef struct neuron_struct {
     uint32_t spike_history_capacity;     /**< Ring buffer capacity */
     uint32_t spike_history_index;        /**< Current write position */
     uint32_t spike_history_count;        /**< Valid entries, saturates at capacity */
-    float activity_history[HISTORY_WINDOW];
+    float* activity_history;             /**< Dynamic activity history buffer (heap-allocated) */
+    uint32_t activity_history_capacity;  /**< Activity history buffer capacity */
     float avg_activity;     /**< Average activity level */
     uint64_t last_spike;    /**< Last spike timestamp */
     uint64_t last_update;   /**< Last state update timestamp */
@@ -367,7 +369,8 @@ typedef struct {
     float ternary_positive_scale;      /**< Scale for +1 weights (default 1.0) */
     float ternary_negative_scale;      /**< Scale for -1 weights (default -1.0) */
     ternary_pack_mode_t ternary_pack_mode;  /**< Packing mode for ternary weight matrices */
-    uint32_t spike_history_capacity;  /**< 0 = use SPIKE_HISTORY_DEFAULT_CAPACITY */
+    uint32_t spike_history_capacity;     /**< 0 = use SPIKE_HISTORY_DEFAULT_CAPACITY */
+    uint32_t activity_history_capacity;  /**< 0 = use ACTIVITY_HISTORY_DEFAULT_CAPACITY */
 } network_config_t;
 
 /**

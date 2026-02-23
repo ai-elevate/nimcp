@@ -692,6 +692,8 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         uint32_t saved_num_dendrites = new_neuron->num_dendrites;
         spike_record_t* saved_spike_history = new_neuron->spike_history;
         uint32_t saved_spike_capacity = new_neuron->spike_history_capacity;
+        float* saved_activity_history = new_neuron->activity_history;
+        uint32_t saved_activity_capacity = new_neuron->activity_history_capacity;
 
         // Copy all scalar fields (bias, threshold, activation, learning params, etc.)
         memcpy(new_neuron, old_neuron, sizeof(neuron_t));
@@ -711,6 +713,10 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         new_neuron->spike_history_capacity = saved_spike_capacity;
         new_neuron->spike_history_count = 0;
         new_neuron->spike_history_index = 0;
+
+        // Restore activity history buffer (transient runtime data — reset is correct)
+        new_neuron->activity_history = saved_activity_history;
+        new_neuron->activity_history_capacity = saved_activity_capacity;
 
         // Clear the new neuron's default outgoing synapses so we can re-add from old
         sparse_synapse_storage_cleanup(new_h_pool, &new_neuron->outgoing);

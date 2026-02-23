@@ -228,15 +228,31 @@ float synapse_compute_attention(
 
     #define ATTENTION_DIM 16
 
+    // Guard: activity_history must be allocated
+    if (!post_neuron->activity_history || !pre_neuron->activity_history ||
+        post_neuron->activity_history_capacity == 0 || pre_neuron->activity_history_capacity == 0)
+        return syn->weight * pre_activity;
+
     // Option 1: Use neuron activity history as query/key
     float query[ATTENTION_DIM];
     float key[ATTENTION_DIM];
 
     // Extract last ATTENTION_DIM activity values as embeddings
-    for (uint32_t i = 0; i < ATTENTION_DIM; i++) {
-        uint32_t idx = (HISTORY_WINDOW - ATTENTION_DIM + i) % HISTORY_WINDOW;
-        query[i] = post_neuron->activity_history[idx];
-        key[i] = pre_neuron->activity_history[idx];
+    uint32_t post_cap = post_neuron->activity_history_capacity;
+    uint32_t pre_cap = pre_neuron->activity_history_capacity;
+    uint32_t post_dim = (ATTENTION_DIM <= post_cap) ? ATTENTION_DIM : post_cap;
+    uint32_t pre_dim = (ATTENTION_DIM <= pre_cap) ? ATTENTION_DIM : pre_cap;
+    uint32_t dim = (post_dim < pre_dim) ? post_dim : pre_dim;
+
+    // Zero-initialize in case dim < ATTENTION_DIM
+    memset(query, 0, sizeof(query));
+    memset(key, 0, sizeof(key));
+
+    for (uint32_t i = 0; i < dim; i++) {
+        uint32_t post_idx = (post_cap - dim + i) % post_cap;
+        uint32_t pre_idx = (pre_cap - dim + i) % pre_cap;
+        query[i] = post_neuron->activity_history[post_idx];
+        key[i] = pre_neuron->activity_history[pre_idx];
     }
 
     // Option 2: Use global state if provided

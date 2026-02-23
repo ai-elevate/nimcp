@@ -311,6 +311,76 @@ TEST_F(SpikeRingBufferTest, AverageActivityWithRingBuffer) {
 }
 
 //=============================================================================
+// Activity History Buffer Tests
+//=============================================================================
+
+TEST_F(SpikeRingBufferTest, ActivityHistoryAllocated) {
+    // WHAT: Verify activity_history is heap-allocated on network create
+    // WHY:  Dynamic buffer replaces fixed array, must be allocated
+    // HOW:  Create network, check first neuron's activity_history fields
+    network_config_t config = make_default_config(10);
+    network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    neuron_t* neuron = neural_network_get_neuron(network, 0);
+    ASSERT_NE(neuron, nullptr);
+
+    EXPECT_NE(neuron->activity_history, nullptr)
+        << "activity_history must be heap-allocated";
+    EXPECT_GT(neuron->activity_history_capacity, 0u)
+        << "activity_history_capacity must be positive";
+}
+
+TEST_F(SpikeRingBufferTest, ActivityHistoryCustomCapacity) {
+    // WHAT: Verify config.activity_history_capacity is honored
+    // WHY:  Users need control over per-neuron activity buffer size
+    // HOW:  Set config capacity to 16, verify neuron has capacity=16
+    network_config_t config = make_default_config(10);
+    config.activity_history_capacity = 16;
+    network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    neuron_t* neuron = neural_network_get_neuron(network, 0);
+    ASSERT_NE(neuron, nullptr);
+
+    EXPECT_EQ(neuron->activity_history_capacity, 16u)
+        << "Neuron activity_history_capacity should match config";
+}
+
+TEST_F(SpikeRingBufferTest, ActivityHistoryReset) {
+    // WHAT: Write values to activity_history, reset, verify zeroed
+    // WHY:  Reset must clear dynamic buffer contents
+    // HOW:  Manually write values, call reset, check all zeros
+    network_config_t config = make_default_config(10);
+    config.activity_history_capacity = 8;
+    network = neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    neuron_t* neuron = neural_network_get_neuron(network, 0);
+    ASSERT_NE(neuron, nullptr);
+    ASSERT_NE(neuron->activity_history, nullptr);
+
+    // Write non-zero values
+    for (uint32_t i = 0; i < neuron->activity_history_capacity; i++) {
+        neuron->activity_history[i] = 1.0f + (float)i;
+    }
+
+    // Reset network
+    neural_network_reset(network);
+
+    // Verify all values are zeroed
+    neuron = neural_network_get_neuron(network, 0);
+    ASSERT_NE(neuron, nullptr);
+    for (uint32_t i = 0; i < neuron->activity_history_capacity; i++) {
+        EXPECT_FLOAT_EQ(neuron->activity_history[i], 0.0f)
+            << "activity_history[" << i << "] should be zero after reset";
+    }
+    // Buffer pointer should still be valid
+    EXPECT_NE(neuron->activity_history, nullptr)
+        << "Reset should NOT free the activity buffer";
+}
+
+//=============================================================================
 // Size and Scale Tests
 //=============================================================================
 

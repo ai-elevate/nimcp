@@ -33,9 +33,9 @@ TEST(SpikeRingBufferRegression, MemoryFootprint) {
     // WHY:  Dynamic spike history replaced fixed spike_record_t[1000] array,
     //       reducing per-neuron cost from ~19KB to ~3-4KB
     // HOW:  Static size check
-    EXPECT_LT(sizeof(neuron_t), 5000u)
-        << "neuron_t should be < 5000 bytes; dynamic spike history "
-           "replaces the old fixed-size array";
+    EXPECT_LT(sizeof(neuron_t), 4600u)
+        << "neuron_t should be < 4600 bytes; dynamic spike + activity history "
+           "replace the old fixed-size arrays";
 
     // Log actual size for documentation
     printf("  [INFO] sizeof(neuron_t) = %zu bytes\n", sizeof(neuron_t));
@@ -43,6 +43,8 @@ TEST(SpikeRingBufferRegression, MemoryFootprint) {
     printf("  [INFO] NIMCP_MAX_NEURONS = %u\n", NIMCP_MAX_NEURONS);
     printf("  [INFO] SPIKE_HISTORY_DEFAULT_CAPACITY = %u\n",
            SPIKE_HISTORY_DEFAULT_CAPACITY);
+    printf("  [INFO] ACTIVITY_HISTORY_DEFAULT_CAPACITY = %u\n",
+           ACTIVITY_HISTORY_DEFAULT_CAPACITY);
 }
 
 //=============================================================================

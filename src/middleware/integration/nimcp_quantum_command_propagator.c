@@ -164,8 +164,10 @@ static bool apply_command_to_neuron(
             // Reset activity history and calcium for this neuron
             neuron->avg_activity = 0.0F;
             neuron->calcium_concentration = 0.0F;
-            for (int i = 0; i < HISTORY_WINDOW; i++) {
-                neuron->activity_history[i] = 0.0F;
+            if (neuron->activity_history) {
+                for (uint32_t i = 0; i < neuron->activity_history_capacity; i++) {
+                    neuron->activity_history[i] = 0.0F;
+                }
             }
             break;
 
