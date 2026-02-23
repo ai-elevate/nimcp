@@ -1093,6 +1093,7 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
     }
     */
     neuron->spike_history_index = 0;
+    neuron->spike_history_count = 0;
 
     return !nimcp_serializer_has_error(serializer);
 }

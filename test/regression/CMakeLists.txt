@@ -62,3 +62,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cross_module/CMakeLists.txt)
     message(STATUS "Adding Cross-Module Walkthrough Fixes Regression tests...")
     add_subdirectory(cross_module)
 endif()
+
+# =============================================================================
+# Neuralnet Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/neuralnet/CMakeLists.txt)
+    message(STATUS "Adding Neuralnet Regression tests...")
+    add_subdirectory(core/neuralnet)
+endif()

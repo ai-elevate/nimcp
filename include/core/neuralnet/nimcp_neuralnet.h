@@ -85,9 +85,10 @@ extern "C" {
  * WHY: Support BRAIN_SIZE_LARGE (100K neurons) while preventing unbounded allocation
  * HOW: Neurons array is dynamically allocated up to MAX_NEURONS
  */
-#define MAX_NEURONS 100000  // Support BRAIN_SIZE_LARGE (100K neurons)
+#define MAX_NEURONS 2000000  // Support up to 2M neurons after spike history optimization
 #define MAX_SYNAPSES_PER_NEURON 256
 #define SPIKE_HISTORY_LENGTH 1000
+#define SPIKE_HISTORY_DEFAULT_CAPACITY 128
 #define HISTORY_WINDOW 100
 #define WEIGHT_UPDATE_THRESHOLD 1e-6f
 #define ACTIVITY_THRESHOLD 1e-5f
@@ -289,8 +290,10 @@ typedef struct neuron_struct {
     float weight_norm;           /**< Current norm of weights */
 
     // Activity tracking
-    spike_record_t spike_history[SPIKE_HISTORY_LENGTH];
-    uint32_t spike_history_index;
+    spike_record_t* spike_history;       /**< Dynamic ring buffer (heap-allocated) */
+    uint32_t spike_history_capacity;     /**< Ring buffer capacity */
+    uint32_t spike_history_index;        /**< Current write position */
+    uint32_t spike_history_count;        /**< Valid entries, saturates at capacity */
     float activity_history[HISTORY_WINDOW];
     float avg_activity;     /**< Average activity level */
     uint64_t last_spike;    /**< Last spike timestamp */
@@ -364,6 +367,7 @@ typedef struct {
     float ternary_positive_scale;      /**< Scale for +1 weights (default 1.0) */
     float ternary_negative_scale;      /**< Scale for -1 weights (default -1.0) */
     ternary_pack_mode_t ternary_pack_mode;  /**< Packing mode for ternary weight matrices */
+    uint32_t spike_history_capacity;  /**< 0 = use SPIKE_HISTORY_DEFAULT_CAPACITY */
 } network_config_t;
 
 /**

@@ -271,7 +271,7 @@ extern "C" {
 //==============================================================================
 
 /** Maximum number of neurons in any layer (safety limit) */
-#define NIMCP_MAX_NEURONS 1000000
+#define NIMCP_MAX_NEURONS 4000000
 
 /** Maximum number of layers (safety limit) */
 #define NIMCP_MAX_LAYERS 1000

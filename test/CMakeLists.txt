@@ -1639,6 +1639,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neuron_types")
     add_subdirectory(regression/core/neuron_types)
 endif()
 
+# Neuralnet Regression Tests (Spike Ring Buffer)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neuralnet")
+    message(STATUS "Adding neuralnet regression tests...")
+    add_subdirectory(regression/core/neuralnet)
+endif()
+
 # ============================================================================
 # Security Tests (Phase SC-1: Security Coverage Framework)
 # ============================================================================

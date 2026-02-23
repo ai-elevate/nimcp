@@ -205,12 +205,25 @@ static void init_neuron_basic_properties(neuron_t* neuron, uint32_t id, neuron_t
                                          uint64_t creation_time);
 static void init_neuron_learning_params(neuron_t* neuron, const network_config_t* config);
 static void init_neuron_homeostatic_params(neuron_t* neuron, const network_config_t* config);
-static void init_neuron_activity_tracking(neuron_t* neuron);
+static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity);
 static void init_neuron_model(neuron_t* neuron, const network_config_t* config);
 
 //=============================================================================
 // Activation Function Implementations - Strategy Pattern
 //=============================================================================
+
+/**
+ * @brief Resolve spike history capacity from config
+ *
+ * WHAT: Determine ring buffer capacity for spike history
+ * WHY: Allow per-network configuration with sensible default
+ * HOW: Use config value if > 0, else SPIKE_HISTORY_DEFAULT_CAPACITY
+ */
+static uint32_t resolve_spike_history_capacity(const network_config_t* config) {
+    if (config && config->spike_history_capacity > 0)
+        return config->spike_history_capacity;
+    return SPIKE_HISTORY_DEFAULT_CAPACITY;
+}
 
 /**
  * @brief Sigmoid activation: 1 / (1 + e^(-x))
@@ -412,15 +425,17 @@ static void init_neuron_homeostatic_params(neuron_t* neuron, const network_confi
  * WHY: Separates memory initialization from parameter setting
  * COMPLEXITY: O(1) - fixed-size arrays
  */
-static void init_neuron_activity_tracking(neuron_t* neuron)
+static void init_neuron_activity_tracking(neuron_t* neuron, uint32_t spike_capacity)
 {
     // Guard clause: Validate input
     if (!neuron)
         return;
 
+    neuron->spike_history_capacity = spike_capacity;
     neuron->spike_history_index = 0;
+    neuron->spike_history_count = 0;
     neuron->avg_activity = 0.0F;
-    memset(neuron->spike_history, 0, sizeof(spike_record_t) * SPIKE_HISTORY_LENGTH);
+    neuron->spike_history = (spike_record_t*)nimcp_calloc(spike_capacity, sizeof(spike_record_t));
     memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
 
     // Initialize sparse synapse storage (NIMCP 2.11)
@@ -664,6 +679,7 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     // Create neurons using builder pattern
     // FIX: Use actual_neurons (sum of layer_sizes) instead of config->num_neurons
+    uint32_t spike_cap = resolve_spike_history_capacity(config);
     for (uint32_t i = 0; i < actual_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
         neuron_type_t type = (i < num_inhibitory) ? NEURON_INHIBITORY : NEURON_EXCITATORY;
@@ -673,7 +689,7 @@ neural_network_t neural_network_create(const network_config_t* config)
 
         init_neuron_learning_params(neuron, config);
         init_neuron_homeostatic_params(neuron, config);
-        init_neuron_activity_tracking(neuron);
+        init_neuron_activity_tracking(neuron, spike_cap);
         init_neuron_model(neuron, config);  // NIMCP 2.6: Initialize neuron model plugin
     }
 
@@ -841,6 +857,16 @@ void neural_network_destroy(neural_network_t network)
 
             // Note: incoming_synapses share BCM/eligibility state with outgoing synapses,
             // so we don't free them for incoming (would be double-free)
+        }
+    }
+
+    // Free spike history ring buffers
+    if (network->neurons) {
+        for (uint32_t i = 0; i < network->num_neurons; i++) {
+            if (network->neurons[i].spike_history) {
+                nimcp_free(network->neurons[i].spike_history);
+                network->neurons[i].spike_history = NULL;
+            }
         }
     }
 
@@ -1943,13 +1969,18 @@ bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, f
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
-    // Record spike in history
+    // Record spike in history (dynamic ring buffer)
+    if (!neuron->spike_history || neuron->spike_history_capacity == 0)
+        return true;  // No buffer allocated — skip recording
+
     uint32_t idx = neuron->spike_history_index;
     neuron->spike_history[idx].timestamp = timestamp;
     neuron->spike_history[idx].magnitude = magnitude;
 
-    // Update spike history index
-    neuron->spike_history_index = (idx + 1) % SPIKE_HISTORY_LENGTH;
+    // Update spike history index (ring buffer wrap)
+    neuron->spike_history_index = (idx + 1) % neuron->spike_history_capacity;
+    if (neuron->spike_history_count < neuron->spike_history_capacity)
+        neuron->spike_history_count++;
 
     // Update last spike time
     neuron->last_spike = timestamp;
@@ -2068,11 +2099,13 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
 
     // Only iterate if we have meaningful time progression
     if (current_time > 0) {
-        for (uint32_t i = 0; i < SPIKE_HISTORY_LENGTH; i++) {
-            // Check if spike is within window and is a real spike (non-zero magnitude)
-            if (neuron->spike_history[i].timestamp >= window_start &&
-                neuron->spike_history[i].magnitude != 0.0F) {
-                spike_count++;
+        if (neuron->spike_history) {
+            for (uint32_t i = 0; i < neuron->spike_history_capacity; i++) {
+                // Check if spike is within window and is a real spike (non-zero magnitude)
+                if (neuron->spike_history[i].timestamp >= window_start &&
+                    neuron->spike_history[i].magnitude != 0.0F) {
+                    spike_count++;
+                }
             }
         }
     }
@@ -2460,9 +2493,11 @@ void neural_network_reset(neural_network_t network)
         neuron->calcium_concentration = 0.0F;
         neuron->avg_activity = 0.0F;
 
-        // Reset spike history
+        // Reset spike history (dynamic ring buffer)
         neuron->spike_history_index = 0;
-        memset(neuron->spike_history, 0, sizeof(spike_record_t) * SPIKE_HISTORY_LENGTH);
+        neuron->spike_history_count = 0;
+        if (neuron->spike_history)
+            memset(neuron->spike_history, 0, sizeof(spike_record_t) * neuron->spike_history_capacity);
         memset(neuron->activity_history, 0, sizeof(float) * HISTORY_WINDOW);
 
         // Reset synaptic traces
@@ -2646,6 +2681,13 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
 
     // NIMCP 2.6: Initialize neuron model (uses network config)
     init_neuron_model(neuron, &network->config);
+
+    // Allocate spike history ring buffer
+    uint32_t spike_cap = resolve_spike_history_capacity(&network->config);
+    neuron->spike_history_capacity = spike_cap;
+    neuron->spike_history_index = 0;
+    neuron->spike_history_count = 0;
+    neuron->spike_history = (spike_record_t*)nimcp_calloc(spike_cap, sizeof(spike_record_t));
 
     network->num_neurons++;
     return new_id;

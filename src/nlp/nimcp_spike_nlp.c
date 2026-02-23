@@ -383,9 +383,11 @@ bool spike_nlp_process_sentence(
             // WHAT: Count recent spikes in history buffer
             // WHY: Recent spikes represent current semantic state
             // HOW: Check timestamp field (non-zero = valid spike)
-            for (uint32_t s = 0; s < SPIKE_HISTORY_LENGTH; s++) {
-                if (neuron->spike_history[s].timestamp > 0) {
-                    result->output_spikes++;
+            if (neuron->spike_history) {
+                for (uint32_t s = 0; s < neuron->spike_history_capacity; s++) {
+                    if (neuron->spike_history[s].timestamp > 0) {
+                        result->output_spikes++;
+                    }
                 }
             }
         }
@@ -582,9 +584,11 @@ uint32_t spike_nlp_extract_output_pattern(
         // WHAT: Extract spikes from neuron's history buffer
         // WHY: Recent spikes encode current semantic state
         // HOW: Check timestamp field (non-zero = valid spike)
-        for (uint32_t s = 0; s < SPIKE_HISTORY_LENGTH && spike_count < max_spikes; s++) {
-            if (neuron->spike_history[s].timestamp > 0) {
-                spike_times[spike_count++] = neuron->spike_history[s].timestamp;
+        if (neuron->spike_history) {
+            for (uint32_t s = 0; s < neuron->spike_history_capacity && spike_count < max_spikes; s++) {
+                if (neuron->spike_history[s].timestamp > 0) {
+                    spike_times[spike_count++] = neuron->spike_history[s].timestamp;
+                }
             }
         }
     }

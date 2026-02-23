@@ -15,3 +15,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_homeostasis_immune_integration.cpp
     unit
 )
+
+# Test 3: Spike Ring Buffer
+add_test_binary(
+    test_spike_ring_buffer
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_spike_ring_buffer.cpp
+    unit
+)
