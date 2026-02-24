@@ -1686,6 +1686,15 @@ struct brain_struct {
     bool creative_enabled;                                  // Creative system enabled
     bool creative_lazy_init;                                // Defer initialization
     uint64_t last_creative_update_us;                       // Last update timestamp
+
+    // === COGNITIVE OUTPUT RUBRIC ===
+    //
+    // Two-tier quality evaluation for brain_decide() outputs.
+    // Rubric evaluator is lazy-initialized on first nimcp_brain_rubric() call.
+    // last_decision caches the most recent brain_decide() result for rubric access.
+    //
+    struct rubric_evaluator* rubric_evaluator;   // Lazy-init rubric evaluator (NULL until first use)
+    brain_decision_t* last_decision;             // Cached pointer to most recent decision
 };
 
 //=============================================================================

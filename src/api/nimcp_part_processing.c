@@ -353,6 +353,56 @@ nimcp_status_t nimcp_brain_train_step(
                                (cb_action == TCB_ACTION_STOP_TRAINING);
         result->learning_rate = current_lr;
         result->gradient_norm = gradient_norm;
+        result->rubric_evaluated = false;
+        result->rubric_score = 0.0f;
+        result->rubric_grade = ' ';
+        result->rubric_grade_modifier = ' ';
+    }
+
+    /* Rubric evaluation (at configured interval) */
+    if (result && state->rubric_enabled && state->rubric_interval > 0 &&
+        (state->step_count % state->rubric_interval) == 0) {
+
+        const float* rub_feat = state->rubric_validation_features
+                                ? state->rubric_validation_features
+                                : features;
+        uint32_t rub_nfeat = state->rubric_validation_features
+                             ? state->rubric_validation_num_features
+                             : num_features;
+
+        /* Full cognitive pipeline -> rubric */
+        char rub_label[NIMCP_MAX_LABEL_SIZE];
+        float rub_conf;
+        nimcp_status_t pred_rc = nimcp_brain_predict(brain, rub_feat, rub_nfeat,
+                                                      rub_label, &rub_conf);
+        if (pred_rc == NIMCP_OK) {
+            nimcp_rubric_t rubric;
+            if (nimcp_brain_rubric(brain, &rubric) == NIMCP_OK) {
+                /* Update stats */
+                state->rubric_eval_count++;
+                state->rubric_score_sum += rubric.overall_score;
+                if (rubric.overall_score < state->rubric_min_observed)
+                    state->rubric_min_observed = rubric.overall_score;
+                if (rubric.overall_score > state->rubric_max_observed)
+                    state->rubric_max_observed = rubric.overall_score;
+                state->rubric_last = rubric;
+
+                result->rubric_evaluated = true;
+                result->rubric_score = rubric.overall_score;
+                result->rubric_grade = rubric.grade;
+                result->rubric_grade_modifier = rubric.grade_modifier;
+
+                /* Broadcast (best-effort) */
+                nimcp_brain_broadcast_rubric(brain);
+
+                /* Threshold check */
+                if (state->rubric_stop_on_threshold &&
+                    state->rubric_min_score > 0.0f &&
+                    rubric.overall_score < state->rubric_min_score) {
+                    result->early_stopped = true;
+                }
+            }
+        }
     }
 
     // Fire step complete callback

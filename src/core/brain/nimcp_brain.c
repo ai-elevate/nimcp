@@ -86,6 +86,10 @@
 #include "plasticity/attention/nimcp_attention.h"               // Multihead attention mechanism
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "cognitive/nimcp_fractal_cognitive.h"                  // NIMCP 2.7 Phase 8.5: Fractal topology cognitive integration
+// Forward declarations for rubric evaluator (avoids including rubric.h which
+// has brain_decision_t forward decl conflicting with the anonymous struct definition)
+struct rubric_evaluator;
+void rubric_evaluator_destroy(struct rubric_evaluator* eval);
 
 // Phase 8: Multi-Modal Integration
 #include "core/integration/nimcp_multimodal_integration.h"

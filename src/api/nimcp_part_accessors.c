@@ -337,7 +337,13 @@ nimcp_training_config_t nimcp_training_config_default(void) {
         // LNN defaults
         .lnn_method = NIMCP_LNN_TRAIN_ADJOINT,
         .lnn_bptt_truncation = 100,
-        .lnn_use_adjoint_checkpointing = true
+        .lnn_use_adjoint_checkpointing = true,
+
+        // Rubric defaults
+        .enable_rubric = false,
+        .rubric_interval = 0,
+        .rubric_min_score = 0.0F,
+        .rubric_stop_on_threshold = false
     };
     return config;
 }
@@ -511,6 +517,16 @@ nimcp_status_t nimcp_brain_configure_training(
     // Store network type in internal brain for dispatch during train_step
     internal->active_network_type = config->network_type;
 
+    // Configure rubric integration
+    state->rubric_enabled = config->enable_rubric;
+    state->rubric_interval = config->rubric_interval;
+    state->rubric_min_score = config->rubric_min_score;
+    state->rubric_stop_on_threshold = config->rubric_stop_on_threshold;
+    state->rubric_eval_count = 0;
+    state->rubric_score_sum = 0.0;
+    state->rubric_min_observed = 1.0f;
+    state->rubric_max_observed = 0.0f;
+
     state->configured = true;
     state->step_count = 0;
 
@@ -550,6 +566,63 @@ nimcp_status_t nimcp_brain_get_training_stats(
         } else {
             *current_lr = internal->config.learning_rate;
         }
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Rubric Training Integration API
+//=============================================================================
+
+nimcp_status_t nimcp_brain_set_rubric_validation(
+    nimcp_brain_t brain, const float* features, uint32_t num_features)
+{
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_CHECK_THROW(num_features > 0, NIMCP_ERROR_INVALID, "num_features must be > 0");
+
+    training_pipeline_state_t* state = get_training_state(brain);
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_MEMORY, "Failed to get training state");
+
+    /* Free previous validation features */
+    if (state->rubric_validation_features) {
+        nimcp_free(state->rubric_validation_features);
+    }
+
+    /* Copy features */
+    state->rubric_validation_features = nimcp_malloc(num_features * sizeof(float));
+    if (!state->rubric_validation_features) {
+        state->rubric_validation_num_features = 0;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate rubric validation features");
+    }
+    memcpy(state->rubric_validation_features, features, num_features * sizeof(float));
+    state->rubric_validation_num_features = num_features;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_rubric_training_stats(
+    nimcp_brain_t brain,
+    uint64_t* eval_count, float* min_score, float* max_score,
+    float* avg_score, nimcp_rubric_t* last_rubric)
+{
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+
+    training_pipeline_state_t* state = get_training_state(brain);
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID, "No training state found");
+
+    if (eval_count) *eval_count = state->rubric_eval_count;
+    if (min_score)  *min_score  = state->rubric_eval_count > 0 ? state->rubric_min_observed : 0.0f;
+    if (max_score)  *max_score  = state->rubric_eval_count > 0 ? state->rubric_max_observed : 0.0f;
+    if (avg_score)  *avg_score  = state->rubric_eval_count > 0
+                                  ? (float)(state->rubric_score_sum / state->rubric_eval_count)
+                                  : 0.0f;
+    if (last_rubric && state->rubric_eval_count > 0) {
+        *last_rubric = state->rubric_last;
     }
 
     set_error("No error");

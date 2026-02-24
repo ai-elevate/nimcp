@@ -14771,6 +14771,19 @@ unit_cognitive_test_remorse_regret/fast:
 .PHONY : unit_cognitive_test_remorse_regret/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_rubric
+
+# Build rule for target.
+unit_cognitive_test_rubric: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_rubric
+.PHONY : unit_cognitive_test_rubric
+
+# fast build rule for target.
+unit_cognitive_test_rubric/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir/build
+.PHONY : unit_cognitive_test_rubric/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
 
 # Build rule for target.
@@ -34310,6 +34323,19 @@ unit_gpu_test_multigpu_bounds/fast:
 .PHONY : unit_gpu_test_multigpu_bounds/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_neuron_bridge
+
+# Build rule for target.
+unit_gpu_test_neuron_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_neuron_bridge
+.PHONY : unit_gpu_test_neuron_bridge
+
+# fast build rule for target.
+unit_gpu_test_neuron_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_neuron_bridge.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_neuron_bridge.dir/build
+.PHONY : unit_gpu_test_neuron_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_test_gpu_stub_no_false_throws
 
 # Build rule for target.
@@ -41873,6 +41899,7 @@ help:
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
 	@echo "... unit_cognitive_test_remorse_regret"
+	@echo "... unit_cognitive_test_rubric"
 	@echo "... unit_cognitive_test_salience_attention_bridge"
 	@echo "... unit_cognitive_test_salience_attention_fep_bridge"
 	@echo "... unit_cognitive_test_security_cognitive_hub_bridge"
@@ -42252,6 +42279,7 @@ help:
 	@echo "... unit_gpu_test_myelin_gpu"
 	@echo "... unit_gpu_test_network_detect"
 	@echo "... unit_gpu_test_neuromodulator_kernels"
+	@echo "... unit_gpu_test_neuron_bridge"
 	@echo "... unit_gpu_test_occipital_gpu_bridge"
 	@echo "... unit_gpu_test_oscillations_kernels"
 	@echo "... unit_gpu_test_perception_gpu"

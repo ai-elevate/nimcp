@@ -1091,6 +1091,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_lgss_loader.c  # LGSS A1: JSON loader
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/bridges/nimcp_symbolic_logic_plasticity_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_fep_bridge.c
+    # Cognitive Output Rubric (human-style quality evaluation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/rubric/nimcp_rubric.c
     # Core FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column_fep_bridge.c
     # Glial FEP Bridges

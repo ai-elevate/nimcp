@@ -1213,6 +1213,9 @@ typedef enum {
     BIO_MSG_VALUE_MERKLE_ROOT_UPDATE,                /**< Merkle root updated */
     BIO_MSG_VALUE_ATTESTATION_CHAIN,                 /**< Attestation chain extended */
 
+    /* Cognitive Output Rubric (0x7100 - 0x710F) */
+    BIO_MSG_RUBRIC_DATA = 0x7100,                    /**< Rubric evaluation broadcast */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1428,6 +1431,9 @@ typedef enum {
     BIO_MODULE_MIRROR_SELF_OTHER,                   /**< Self-Other distinction (agency, body schema) */
     BIO_MODULE_MIRROR_VICARIOUS_REWARD,             /**< Vicarious reward bridge (basal ganglia) */
     BIO_MODULE_MIRROR_HABITUATION,                  /**< Habituation module (response attenuation) */
+
+    /* Cognitive Output Rubric (0x02B0) */
+    BIO_MODULE_RUBRIC = 0x02B0,                     /**< Cognitive output rubric evaluator */
 
     /* Wellbeing submodules (0x0280-0x028F) */
     BIO_MODULE_WELLBEING_MENTAL_HEALTH = 0x0280,
@@ -3067,6 +3073,42 @@ typedef struct {
     uint64_t cow_shared_bytes;       /**< Bytes shared via COW */
     uint64_t cow_private_bytes;      /**< Bytes private to this brain */
 } bio_msg_brain_probe_data_t;
+
+/**
+ * @brief Cognitive output rubric broadcast message
+ *
+ * Two-tier quality evaluation of brain_decide() output.
+ * Broadcast via BIO_MSG_RUBRIC_DATA for decoupled monitoring.
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t brain_id;               /**< Unique brain instance ID */
+
+    /* Tier 1: Structural */
+    float internal_consistency;
+    float confidence_calibration;
+    float completeness;
+    float reasoning_chain_quality;
+    float epistemic_quality;
+    float ethical_alignment;
+    float tier1_score;
+
+    /* Tier 2: Qualitative */
+    float originality;
+    float integration_depth;
+    float communication_clarity;
+    float engagement_quality;
+    float empathetic_accuracy;
+    float information_density;
+    float tier2_score;
+
+    /* Overall */
+    float overall_score;
+    char  grade;
+    char  grade_modifier;
+    uint32_t subsystems_available;
+    uint64_t evaluation_time_us;
+} bio_msg_rubric_data_t;
 
 /*=============================================================================
  * PERCEPTION MESSAGES

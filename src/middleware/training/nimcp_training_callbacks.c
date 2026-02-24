@@ -10,6 +10,7 @@
  */
 
 #include "middleware/training/nimcp_training_callbacks.h"
+#include "nimcp.h"  /* nimcp_rubric_t, nimcp_brain_predict, nimcp_brain_rubric */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -920,6 +921,45 @@ tcb_action_t tcb_builtin_progress_bar(const tcb_event_t* event) {
         if (m->batch == m->total_batches) {
             printf("\n");
         }
+    }
+
+    return TCB_ACTION_CONTINUE;
+}
+
+tcb_action_t tcb_builtin_rubric_evaluator(const tcb_event_t* event) {
+    if (!event || !event->user_data) return TCB_ACTION_CONTINUE;
+
+    tcb_rubric_context_t* ctx = (tcb_rubric_context_t*)event->user_data;
+    if (!ctx->brain) return TCB_ACTION_CONTINUE;
+
+    /* Interval gating: only evaluate every N steps */
+    if (ctx->interval > 0 && (event->metrics.step % ctx->interval) != 0) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    /* Need validation features to run predict */
+    if (!ctx->validation_features || ctx->num_features == 0) {
+        return TCB_ACTION_CONTINUE;
+    }
+
+    char label[64];
+    float confidence;
+    nimcp_status_t rc = nimcp_brain_predict((nimcp_brain_t)ctx->brain, ctx->validation_features,
+                                             ctx->num_features, label, &confidence);
+    if (rc != NIMCP_OK) return TCB_ACTION_CONTINUE;
+
+    nimcp_rubric_t rubric;
+    rc = nimcp_brain_rubric((nimcp_brain_t)ctx->brain, &rubric);
+    if (rc != 0) return TCB_ACTION_CONTINUE;
+
+    /* Update context stats */
+    ctx->eval_count++;
+    ctx->last_score = rubric.overall_score;
+    ctx->last_grade = rubric.grade;
+
+    /* Threshold check */
+    if (ctx->min_score > 0.0f && rubric.overall_score < ctx->min_score) {
+        return TCB_ACTION_STOP_TRAINING;
     }
 
     return TCB_ACTION_CONTINUE;

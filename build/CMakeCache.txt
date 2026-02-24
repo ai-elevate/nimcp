@@ -34,7 +34,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_BUILD_TYPE:STRING=Debug
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -571,6 +571,9 @@ NIMCP_COVERAGE:BOOL=OFF
 //Disable CUDA support even if toolkit is found
 NIMCP_DISABLE_CUDA:BOOL=OFF
 
+//Disable Neuron/Inferentia support even if NRT is found
+NIMCP_DISABLE_NEURON:BOOL=OFF
+
 //Enable cppcheck during build
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
 
@@ -591,6 +594,9 @@ NODE_EXECUTABLE:FILEPATH=/home/bbrelin/.nvm/versions/node/v22.20.0/bin/node
 
 //Path to a program.
 NODE_GYP:FILEPATH=/home/bbrelin/.nvm/versions/node/v22.20.0/bin/node-gyp
+
+//Path to a library.
+NRT_LIBRARY:FILEPATH=NRT_LIBRARY-NOTFOUND
 
 //Path to a library.
 OPENSSL_CRYPTO_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libcrypto.so

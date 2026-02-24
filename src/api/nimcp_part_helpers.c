@@ -84,6 +84,11 @@ static void clear_training_state(nimcp_brain_t brain) {
                 backprop_destroy(g_training_states[i].state.backprop);
                 g_training_states[i].state.backprop = NULL;
             }
+            // Free rubric validation features if present
+            if (g_training_states[i].state.rubric_validation_features) {
+                nimcp_free(g_training_states[i].state.rubric_validation_features);
+                g_training_states[i].state.rubric_validation_features = NULL;
+            }
             g_training_states[i].brain = NULL;
             memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
             nimcp_mutex_unlock(&g_training_states_mutex);

@@ -48,6 +48,7 @@ static void api_set_error(const char* fmt, ...);
 #include "middleware/training/nimcp_training_callbacks.h"          // Training callbacks
 #include "training/nimcp_training_dispatch.h"                      // SNN/LNN/CNN/Adaptive dispatch
 #include "plasticity/adaptive/nimcp_adaptive.h"                    // Adaptive network
+#include "cognitive/rubric/nimcp_rubric.h"                         // Cognitive output rubric
 #include "utils/platform/nimcp_platform_once.h"                    // Thread-safe init
 #include "utils/thread/nimcp_atomic.h"                             // Atomic operations
 #include "utils/exception/nimcp_exception_macros.h"
@@ -166,6 +167,19 @@ typedef struct {
     tcb_context_t* callbacks;         /**< Training callback manager */
     bool callbacks_enabled;           /**< Whether to fire callbacks */
     backprop_ctx_t* backprop;         /**< Backpropagation context for weight gradients */
+
+    /* Rubric tracking */
+    bool rubric_enabled;
+    uint32_t rubric_interval;
+    float rubric_min_score;
+    bool rubric_stop_on_threshold;
+    float* rubric_validation_features;       /**< User-provided validation features (owned) */
+    uint32_t rubric_validation_num_features;
+    uint64_t rubric_eval_count;
+    double rubric_score_sum;
+    float rubric_min_observed;
+    float rubric_max_observed;
+    nimcp_rubric_t rubric_last;
 } training_pipeline_state_t;
 
 // Global map from brain handle to training state (simple approach for now)

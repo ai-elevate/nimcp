@@ -15089,6 +15089,30 @@ __/cognitive/remorse/nimcp_remorse_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/remorse/nimcp_remorse_thalamic_bridge.c.s
 .PHONY : __/cognitive/remorse/nimcp_remorse_thalamic_bridge.c.s
 
+__/cognitive/rubric/nimcp_rubric.o: __/cognitive/rubric/nimcp_rubric.c.o
+.PHONY : __/cognitive/rubric/nimcp_rubric.o
+
+# target to build an object file
+__/cognitive/rubric/nimcp_rubric.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/rubric/nimcp_rubric.c.o
+.PHONY : __/cognitive/rubric/nimcp_rubric.c.o
+
+__/cognitive/rubric/nimcp_rubric.i: __/cognitive/rubric/nimcp_rubric.c.i
+.PHONY : __/cognitive/rubric/nimcp_rubric.i
+
+# target to preprocess a source file
+__/cognitive/rubric/nimcp_rubric.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/rubric/nimcp_rubric.c.i
+.PHONY : __/cognitive/rubric/nimcp_rubric.c.i
+
+__/cognitive/rubric/nimcp_rubric.s: __/cognitive/rubric/nimcp_rubric.c.s
+.PHONY : __/cognitive/rubric/nimcp_rubric.s
+
+# target to generate assembly for a file
+__/cognitive/rubric/nimcp_rubric.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/rubric/nimcp_rubric.c.s
+.PHONY : __/cognitive/rubric/nimcp_rubric.c.s
+
 __/cognitive/salience/nimcp_salience.o: __/cognitive/salience/nimcp_salience.c.o
 .PHONY : __/cognitive/salience/nimcp_salience.o
 
@@ -31456,6 +31480,78 @@ __/gpu/neuron/nimcp_gpu_neuron.s: __/gpu/neuron/nimcp_gpu_neuron.c.s
 __/gpu/neuron/nimcp_gpu_neuron.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_gpu_neuron.c.s
 .PHONY : __/gpu/neuron/nimcp_gpu_neuron.c.s
+
+__/gpu/neuron/nimcp_neuron_backend_ops.o: __/gpu/neuron/nimcp_neuron_backend_ops.c.o
+.PHONY : __/gpu/neuron/nimcp_neuron_backend_ops.o
+
+# target to build an object file
+__/gpu/neuron/nimcp_neuron_backend_ops.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_backend_ops.c.o
+.PHONY : __/gpu/neuron/nimcp_neuron_backend_ops.c.o
+
+__/gpu/neuron/nimcp_neuron_backend_ops.i: __/gpu/neuron/nimcp_neuron_backend_ops.c.i
+.PHONY : __/gpu/neuron/nimcp_neuron_backend_ops.i
+
+# target to preprocess a source file
+__/gpu/neuron/nimcp_neuron_backend_ops.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_backend_ops.c.i
+.PHONY : __/gpu/neuron/nimcp_neuron_backend_ops.c.i
+
+__/gpu/neuron/nimcp_neuron_backend_ops.s: __/gpu/neuron/nimcp_neuron_backend_ops.c.s
+.PHONY : __/gpu/neuron/nimcp_neuron_backend_ops.s
+
+# target to generate assembly for a file
+__/gpu/neuron/nimcp_neuron_backend_ops.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_backend_ops.c.s
+.PHONY : __/gpu/neuron/nimcp_neuron_backend_ops.c.s
+
+__/gpu/neuron/nimcp_neuron_bridge.o: __/gpu/neuron/nimcp_neuron_bridge.c.o
+.PHONY : __/gpu/neuron/nimcp_neuron_bridge.o
+
+# target to build an object file
+__/gpu/neuron/nimcp_neuron_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_bridge.c.o
+.PHONY : __/gpu/neuron/nimcp_neuron_bridge.c.o
+
+__/gpu/neuron/nimcp_neuron_bridge.i: __/gpu/neuron/nimcp_neuron_bridge.c.i
+.PHONY : __/gpu/neuron/nimcp_neuron_bridge.i
+
+# target to preprocess a source file
+__/gpu/neuron/nimcp_neuron_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_bridge.c.i
+.PHONY : __/gpu/neuron/nimcp_neuron_bridge.c.i
+
+__/gpu/neuron/nimcp_neuron_bridge.s: __/gpu/neuron/nimcp_neuron_bridge.c.s
+.PHONY : __/gpu/neuron/nimcp_neuron_bridge.s
+
+# target to generate assembly for a file
+__/gpu/neuron/nimcp_neuron_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_bridge.c.s
+.PHONY : __/gpu/neuron/nimcp_neuron_bridge.c.s
+
+__/gpu/neuron/nimcp_neuron_context.o: __/gpu/neuron/nimcp_neuron_context.c.o
+.PHONY : __/gpu/neuron/nimcp_neuron_context.o
+
+# target to build an object file
+__/gpu/neuron/nimcp_neuron_context.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_context.c.o
+.PHONY : __/gpu/neuron/nimcp_neuron_context.c.o
+
+__/gpu/neuron/nimcp_neuron_context.i: __/gpu/neuron/nimcp_neuron_context.c.i
+.PHONY : __/gpu/neuron/nimcp_neuron_context.i
+
+# target to preprocess a source file
+__/gpu/neuron/nimcp_neuron_context.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_context.c.i
+.PHONY : __/gpu/neuron/nimcp_neuron_context.c.i
+
+__/gpu/neuron/nimcp_neuron_context.s: __/gpu/neuron/nimcp_neuron_context.c.s
+.PHONY : __/gpu/neuron/nimcp_neuron_context.s
+
+# target to generate assembly for a file
+__/gpu/neuron/nimcp_neuron_context.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/neuron/nimcp_neuron_context.c.s
+.PHONY : __/gpu/neuron/nimcp_neuron_context.c.s
 
 __/gpu/nimcp_multigpu.o: __/gpu/nimcp_multigpu.c.o
 .PHONY : __/gpu/nimcp_multigpu.o
@@ -52366,6 +52462,9 @@ help:
 	@echo "... __/cognitive/remorse/nimcp_remorse_thalamic_bridge.o"
 	@echo "... __/cognitive/remorse/nimcp_remorse_thalamic_bridge.i"
 	@echo "... __/cognitive/remorse/nimcp_remorse_thalamic_bridge.s"
+	@echo "... __/cognitive/rubric/nimcp_rubric.o"
+	@echo "... __/cognitive/rubric/nimcp_rubric.i"
+	@echo "... __/cognitive/rubric/nimcp_rubric.s"
 	@echo "... __/cognitive/salience/nimcp_salience.o"
 	@echo "... __/cognitive/salience/nimcp_salience.i"
 	@echo "... __/cognitive/salience/nimcp_salience.s"
@@ -54412,6 +54511,15 @@ help:
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.o"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.i"
 	@echo "... __/gpu/neuron/nimcp_gpu_neuron.s"
+	@echo "... __/gpu/neuron/nimcp_neuron_backend_ops.o"
+	@echo "... __/gpu/neuron/nimcp_neuron_backend_ops.i"
+	@echo "... __/gpu/neuron/nimcp_neuron_backend_ops.s"
+	@echo "... __/gpu/neuron/nimcp_neuron_bridge.o"
+	@echo "... __/gpu/neuron/nimcp_neuron_bridge.i"
+	@echo "... __/gpu/neuron/nimcp_neuron_bridge.s"
+	@echo "... __/gpu/neuron/nimcp_neuron_context.o"
+	@echo "... __/gpu/neuron/nimcp_neuron_context.i"
+	@echo "... __/gpu/neuron/nimcp_neuron_context.s"
 	@echo "... __/gpu/nimcp_multigpu.o"
 	@echo "... __/gpu/nimcp_multigpu.i"
 	@echo "... __/gpu/nimcp_multigpu.s"

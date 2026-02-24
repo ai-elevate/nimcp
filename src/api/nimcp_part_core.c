@@ -120,7 +120,13 @@ nimcp_status_t nimcp_brain_predict(
     out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
     *out_confidence = decision->confidence;
 
-    // Free decision
+    // Deep-copy decision for rubric access (last_decision owns this copy)
+    if (brain->internal_brain->last_decision) {
+        brain_free_decision(brain->internal_brain->last_decision);
+    }
+    brain->internal_brain->last_decision = copy_decision_deep(decision);
+
+    // Free original decision (caller's copy)
     brain_free_decision(decision);
 
     set_error("No error");
@@ -508,6 +514,132 @@ nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain) {
     } else {
         LOG_DEBUG("Brain probe broadcast: brain_id=%llu, neurons=%u, synapses=%u",
                   (unsigned long long)msg.brain_id, msg.num_neurons, msg.num_synapses);
+    }
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
+//=============================================================================
+// Cognitive Output Rubric API Implementation
+//=============================================================================
+
+nimcp_status_t nimcp_brain_rubric(nimcp_brain_t brain, nimcp_rubric_t* rubric) {
+    NIMCP_CHECK_THROW(brain && brain->internal_brain, NIMCP_ERROR_NULL_ARG, "Invalid brain handle");
+    NIMCP_CHECK_THROW(rubric, NIMCP_ERROR_NULL_ARG, "Rubric output structure is NULL");
+
+    brain_t ib = brain->internal_brain;
+
+    /* Lazy-init rubric evaluator on first call */
+    if (!ib->rubric_evaluator) {
+        ib->rubric_evaluator = rubric_evaluator_create(NULL);
+        if (!ib->rubric_evaluator) {
+            set_error("Failed to create rubric evaluator");
+            return NIMCP_ERROR_MEMORY;
+        }
+    }
+
+    /* Need a decision to evaluate */
+    if (!ib->last_decision) {
+        set_error("No decision to evaluate — call predict or decide_full first");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* Run evaluation */
+    rubric_result_t result;
+    int rc = rubric_evaluate_decision(ib->rubric_evaluator, ib,
+                                       ib->last_decision, &result);
+    if (rc != 0) {
+        set_error("Rubric evaluation failed");
+        return NIMCP_ERROR;
+    }
+
+    /* Map internal result to public flat struct */
+    rubric->internal_consistency   = result.tier1.internal_consistency;
+    rubric->confidence_calibration = result.tier1.confidence_calibration;
+    rubric->completeness           = result.tier1.completeness;
+    rubric->reasoning_chain_quality = result.tier1.reasoning_chain_quality;
+    rubric->epistemic_quality      = result.tier1.epistemic_quality;
+    rubric->ethical_alignment      = result.tier1.ethical_alignment;
+    rubric->tier1_score            = result.tier1.tier1_score;
+
+    rubric->originality            = result.tier2.originality;
+    rubric->integration_depth      = result.tier2.integration_depth;
+    rubric->communication_clarity  = result.tier2.communication_clarity;
+    rubric->engagement_quality     = result.tier2.engagement_quality;
+    rubric->empathetic_accuracy    = result.tier2.empathetic_accuracy;
+    rubric->information_density    = result.tier2.information_density;
+    rubric->tier2_score            = result.tier2.tier2_score;
+
+    rubric->overall_score          = result.overall_score;
+    rubric->grade                  = result.grade;
+    rubric->grade_modifier         = result.grade_modifier;
+    rubric->subsystems_available   = result.subsystems_available;
+    rubric->evaluation_time_us     = result.evaluation_time_us;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_broadcast_rubric(nimcp_brain_t brain) {
+    NIMCP_CHECK_THROW(brain && brain->internal_brain, NIMCP_ERROR_NULL_ARG, "Invalid brain handle");
+
+    /* Get rubric data */
+    nimcp_rubric_t rubric;
+    nimcp_status_t status = nimcp_brain_rubric(brain, &rubric);
+    if (status != NIMCP_OK) {
+        LOG_ERROR("Failed to get rubric data for broadcast");
+        return status;
+    }
+
+    /* Get module context for bio-async */
+    bio_module_context_t ctx = get_brain_probe_module_ctx();
+    if (!ctx) {
+        LOG_DEBUG("Bio-router not available, skipping rubric broadcast");
+        return NIMCP_OK;
+    }
+
+    /* Build bio-async message */
+    bio_msg_rubric_data_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    bio_msg_init_header(&msg.header, BIO_MSG_RUBRIC_DATA,
+                        BIO_MODULE_RUBRIC, BIO_MODULE_ALL,
+                        sizeof(bio_msg_rubric_data_t));
+    msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+
+    msg.brain_id = (uint64_t)(uintptr_t)brain;
+
+    /* Tier 1 */
+    msg.internal_consistency   = rubric.internal_consistency;
+    msg.confidence_calibration = rubric.confidence_calibration;
+    msg.completeness           = rubric.completeness;
+    msg.reasoning_chain_quality = rubric.reasoning_chain_quality;
+    msg.epistemic_quality      = rubric.epistemic_quality;
+    msg.ethical_alignment      = rubric.ethical_alignment;
+    msg.tier1_score            = rubric.tier1_score;
+
+    /* Tier 2 */
+    msg.originality            = rubric.originality;
+    msg.integration_depth      = rubric.integration_depth;
+    msg.communication_clarity  = rubric.communication_clarity;
+    msg.engagement_quality     = rubric.engagement_quality;
+    msg.empathetic_accuracy    = rubric.empathetic_accuracy;
+    msg.information_density    = rubric.information_density;
+    msg.tier2_score            = rubric.tier2_score;
+
+    /* Overall */
+    msg.overall_score          = rubric.overall_score;
+    msg.grade                  = rubric.grade;
+    msg.grade_modifier         = rubric.grade_modifier;
+    msg.subsystems_available   = rubric.subsystems_available;
+    msg.evaluation_time_us     = rubric.evaluation_time_us;
+
+    /* Broadcast */
+    nimcp_error_t err = bio_router_broadcast(ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_DEBUG("Rubric broadcast incomplete: %d", err);
     }
 
     set_error("No error");

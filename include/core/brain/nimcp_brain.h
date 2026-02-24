@@ -2784,7 +2784,7 @@ float brain_learn_from_llm(brain_t brain, const float* input, uint32_t num_featu
  * When copy_decision() is called, the copy shares data with the original
  * via reference counting. Data is only deep-copied when modified.
  */
-typedef struct {
+typedef struct brain_decision {
     char label[64];       /**< Decision label */
     float confidence;     /**< Confidence (0-1) */
     float* output_vector; /**< Raw output vector */
@@ -2819,6 +2819,14 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
  * @param decision Decision to free
  */
 void brain_free_decision(brain_decision_t* decision);
+
+/**
+ * @brief Deep copy a brain decision (independent copy, no COW sharing)
+ *
+ * @param source Decision to copy
+ * @return New independent decision copy, or NULL on failure
+ */
+brain_decision_t* copy_decision_deep(const brain_decision_t* source);
 
 /**
  * @brief Observe action performed by another agent (Phase 10.11)

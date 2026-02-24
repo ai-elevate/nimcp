@@ -490,6 +490,12 @@ typedef struct {
     nimcp_lnn_train_method_t lnn_method;   /**< LNN training method (default: ADJOINT) */
     uint32_t lnn_bptt_truncation;          /**< BPTT truncation length (default: 100) */
     bool lnn_use_adjoint_checkpointing;    /**< Memory-efficient checkpointing (default: true) */
+
+    /* Rubric integration (cognitive quality monitoring during training) */
+    bool enable_rubric;                /**< Enable periodic rubric evaluation (default: false) */
+    uint32_t rubric_interval;          /**< Steps between evaluations (0 = epoch-only, default: 0) */
+    float rubric_min_score;            /**< Minimum acceptable score [0-1] (0.0 = no threshold) */
+    bool rubric_stop_on_threshold;     /**< Stop training if score < min (default: false) */
 } nimcp_training_config_t;
 
 /**
@@ -501,6 +507,12 @@ typedef struct {
     uint32_t step;             /**< Training step number */
     bool early_stopped;        /**< True if early stopping triggered */
     float gradient_norm;       /**< Gradient norm (if clipping enabled) */
+
+    /* Rubric (populated only when evaluated this step) */
+    bool rubric_evaluated;             /**< True if rubric was evaluated this step */
+    float rubric_score;                /**< Overall rubric score [0-1] */
+    char rubric_grade;                 /**< Letter grade A/B/C/D/F */
+    char rubric_grade_modifier;        /**< +/-/space */
 } nimcp_training_result_t;
 
 /**
@@ -1015,6 +1027,100 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
  * @return NIMCP_OK on success, error code otherwise
  */
 nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain);
+
+//=============================================================================
+// Cognitive Output Rubric - Human-Style Quality Evaluation
+//=============================================================================
+
+/**
+ * @brief Rubric evaluation result — flat public struct
+ *
+ * Two-tier quality assessment of brain_decide() output:
+ *   Tier 1 (Structural): rule-based, automatable checks
+ *   Tier 2 (Qualitative): holistic, subsystem-dependent scores
+ *
+ * Grade scale: A+ (>=0.93) through F (<0.50)
+ */
+typedef struct {
+    /* Tier 1: Structural */
+    float internal_consistency;      /**< [0-1] Output vector self-agreement */
+    float confidence_calibration;    /**< [0-1] Confidence vs running accuracy */
+    float completeness;              /**< [0-1] Non-zero output coverage */
+    float reasoning_chain_quality;   /**< [0-1] Explanation depth & structure */
+    float epistemic_quality;         /**< [0-1] Evidence quality */
+    float ethical_alignment;         /**< [0-1] Golden Rule alignment */
+    float tier1_score;               /**< Weighted aggregate of Tier 1 */
+
+    /* Tier 2: Qualitative */
+    float originality;               /**< [0-1] Creative novelty */
+    float integration_depth;         /**< [0-1] Cross-system breadth */
+    float communication_clarity;     /**< [0-1] Label specificity + readability */
+    float engagement_quality;        /**< [0-1] Berlyne hedonic + arousal */
+    float empathetic_accuracy;       /**< [0-1] Mirror neuron match quality */
+    float information_density;       /**< [0-1] Normalized Shannon entropy */
+    float tier2_score;               /**< Weighted aggregate of Tier 2 */
+
+    /* Overall */
+    float overall_score;             /**< [0-1] Weighted combination of tiers */
+    char  grade;                     /**< A/B/C/D/F */
+    char  grade_modifier;            /**< +/-/space */
+    uint32_t subsystems_available;   /**< Bitmask of available subsystems */
+    uint64_t evaluation_time_us;     /**< Wall-clock evaluation time */
+} nimcp_rubric_t;
+
+/**
+ * @brief Evaluate quality of last brain decision using two-tier rubric
+ *
+ * WHAT: Grades brain output like a professor grading an essay
+ * WHY:  Unified quality metric combining structural + qualitative dimensions
+ * HOW:  Calls internal subsystems (epistemic, ethics, aesthetic, mirror neurons)
+ *       and aggregates into a single grade. Missing subsystems score 0.5 (neutral).
+ *
+ * Must be called AFTER nimcp_brain_predict() or nimcp_brain_decide_full().
+ *
+ * @param brain Brain handle
+ * @param rubric Output rubric result
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_rubric(nimcp_brain_t brain, nimcp_rubric_t* rubric);
+
+/**
+ * @brief Broadcast rubric data via bio-async message system
+ *
+ * @param brain Brain handle (must have been rubric'd first)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_broadcast_rubric(nimcp_brain_t brain);
+
+/**
+ * @brief Set dedicated validation features for rubric evaluation during training
+ *
+ * When set, rubric evaluations during training use these features instead of
+ * the current training step's features. Features are copied internally.
+ *
+ * @param brain Brain handle
+ * @param features Validation feature array (copied internally)
+ * @param num_features Number of features
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_set_rubric_validation(
+    nimcp_brain_t brain, const float* features, uint32_t num_features);
+
+/**
+ * @brief Get rubric statistics accumulated during training
+ *
+ * @param brain Brain handle
+ * @param eval_count Output: number of rubric evaluations
+ * @param min_score Output: minimum observed score
+ * @param max_score Output: maximum observed score
+ * @param avg_score Output: average score
+ * @param last_rubric Output: most recent rubric result (NULL to skip)
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_get_rubric_training_stats(
+    nimcp_brain_t brain,
+    uint64_t* eval_count, float* min_score, float* max_score,
+    float* avg_score, nimcp_rubric_t* last_rubric);
 
 //=============================================================================
 // Copy-on-Write (COW) Cache API - Efficient Memory Sharing

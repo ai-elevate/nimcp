@@ -243,6 +243,17 @@ void brain_destroy(brain_t brain)
         nimcp_free(brain->output_labels);
     }
 
+    // Cleanup rubric evaluator (lazy-initialized, may be NULL)
+    if (brain->rubric_evaluator) {
+        rubric_evaluator_destroy(brain->rubric_evaluator);
+        brain->rubric_evaluator = NULL;
+    }
+    // last_decision is now an owning deep-copy (managed by API layer)
+    if (brain->last_decision) {
+        brain_free_decision(brain->last_decision);
+        brain->last_decision = NULL;
+    }
+
     // Phase 3: Cleanup distributed cognition coordinator
     if (brain->distributed) {
         distrib_cognition_destroy(brain->distributed);

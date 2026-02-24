@@ -634,6 +634,32 @@ NIMCP_EXPORT tcb_action_t tcb_builtin_gradient_monitor(const tcb_event_t* event)
  */
 NIMCP_EXPORT tcb_action_t tcb_builtin_progress_bar(const tcb_event_t* event);
 
+/**
+ * @brief Context for built-in rubric evaluator callback
+ */
+typedef struct {
+    void* brain;                       /**< nimcp_brain_t (void* to avoid header dep) */
+    const float* validation_features;  /**< Features for predict (non-owning) */
+    uint32_t num_features;
+    uint32_t interval;                 /**< Evaluate every N steps (0 = every call) */
+    float min_score;                   /**< Threshold (0 = no threshold) */
+    /* Output */
+    float last_score;
+    char last_grade;
+    uint64_t eval_count;
+} tcb_rubric_context_t;
+
+/**
+ * @brief Built-in rubric evaluator callback
+ *
+ * Calls nimcp_brain_predict() + nimcp_brain_rubric() at the configured interval.
+ * Returns TCB_ACTION_STOP_TRAINING if score is below threshold.
+ *
+ * @param event Event data (user_data must be tcb_rubric_context_t*)
+ * @return TCB_ACTION_CONTINUE or TCB_ACTION_STOP_TRAINING
+ */
+NIMCP_EXPORT tcb_action_t tcb_builtin_rubric_evaluator(const tcb_event_t* event);
+
 #ifdef __cplusplus
 }
 #endif

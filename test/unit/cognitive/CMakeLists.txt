@@ -2139,3 +2139,40 @@ gtest_discover_tests(unit_cognitive_test_remorse_regret
         LABELS "unit;cognitive;remorse;regret"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Cognitive Output Rubric Tests
+# ============================================================================
+# WHAT: Unit tests for two-tier quality evaluation of brain_decide() outputs
+# WHY:  Verify structural + qualitative scoring, grade derivation, API paths
+# HOW:  Test evaluator lifecycle, dimension scorers, grade boundaries, public API
+# ============================================================================
+
+add_executable(unit_cognitive_test_rubric
+    test_rubric.cpp
+)
+
+target_link_libraries(unit_cognitive_test_rubric
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_rubric
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_rubric PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_rubric
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;rubric"
+        TIMEOUT 120
+)

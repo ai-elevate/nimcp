@@ -1814,6 +1814,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_self_awareness_feedback.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_shadow_emotions.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_remorse_regret.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
@@ -5802,6 +5803,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_neuron.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_spike_event.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_multigpu_bounds.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_neuron_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_stub_no_false_throws.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_inference_unit.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_softmax_numerical_stability.dir

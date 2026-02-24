@@ -888,6 +888,156 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     return dict;
 }
 
+/**
+ * WHAT: Evaluate quality of last brain decision using two-tier rubric
+ * WHY:  Human-style grading (A+ through F) of cognitive output quality
+ * HOW:  Call nimcp_brain_rubric and build dict from all 15 scores + grade
+ */
+static PyObject* Brain_rubric(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_rubric_t rubric;
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_rubric(self->brain, &rubric);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        status == NIMCP_ERROR_INVALID
+                            ? "No decision to evaluate — call predict() first"
+                            : "Failed to evaluate rubric");
+        return NULL;
+    }
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    /* Tier 1 */
+    SET("internal_consistency",   PyFloat_FromDouble(rubric.internal_consistency));
+    SET("confidence_calibration", PyFloat_FromDouble(rubric.confidence_calibration));
+    SET("completeness",           PyFloat_FromDouble(rubric.completeness));
+    SET("reasoning_chain_quality", PyFloat_FromDouble(rubric.reasoning_chain_quality));
+    SET("epistemic_quality",      PyFloat_FromDouble(rubric.epistemic_quality));
+    SET("ethical_alignment",      PyFloat_FromDouble(rubric.ethical_alignment));
+    SET("tier1_score",            PyFloat_FromDouble(rubric.tier1_score));
+
+    /* Tier 2 */
+    SET("originality",            PyFloat_FromDouble(rubric.originality));
+    SET("integration_depth",      PyFloat_FromDouble(rubric.integration_depth));
+    SET("communication_clarity",  PyFloat_FromDouble(rubric.communication_clarity));
+    SET("engagement_quality",     PyFloat_FromDouble(rubric.engagement_quality));
+    SET("empathetic_accuracy",    PyFloat_FromDouble(rubric.empathetic_accuracy));
+    SET("information_density",    PyFloat_FromDouble(rubric.information_density));
+    SET("tier2_score",            PyFloat_FromDouble(rubric.tier2_score));
+
+    /* Overall */
+    SET("overall_score",          PyFloat_FromDouble(rubric.overall_score));
+
+    /* Grade as string (e.g., "A+", "B-", "C") */
+    char grade_str[3] = { rubric.grade, rubric.grade_modifier == ' ' ? '\0' : rubric.grade_modifier, '\0' };
+    SET("grade",                  PyUnicode_FromString(grade_str));
+
+    SET("subsystems_available",   PyLong_FromUnsignedLong(rubric.subsystems_available));
+    SET("evaluation_time_us",     PyLong_FromUnsignedLongLong(rubric.evaluation_time_us));
+
+#undef SET
+
+    return dict;
+}
+
+static PyObject* Brain_set_rubric_validation(BrainObject* self, PyObject* args) {
+    PyObject* features_list;
+    if (!PyArg_ParseTuple(args, "O", &features_list))
+        return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    Py_ssize_t num_features;
+    float* features = py_list_to_float_array(features_list, &num_features);
+    if (!features)
+        return NULL;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_set_rubric_validation(self->brain, features, (uint32_t)num_features);
+    Py_END_ALLOW_THREADS
+
+    free(features);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to set rubric validation features");
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_training_rubric(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    uint64_t eval_count = 0;
+    float min_score = 0.0f, max_score = 0.0f, avg_score = 0.0f;
+    nimcp_rubric_t last_rubric;
+    memset(&last_rubric, 0, sizeof(last_rubric));
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_get_rubric_training_stats(
+        self->brain, &eval_count, &min_score, &max_score, &avg_score, &last_rubric);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get rubric training stats");
+        return NULL;
+    }
+
+    if (eval_count == 0) {
+        Py_RETURN_NONE;
+    }
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    PyDict_SetItemString(dict, (key), v); \
+    Py_DECREF(v); \
+} while (0)
+
+    SET("eval_count", PyLong_FromUnsignedLongLong(eval_count));
+    SET("min_score",  PyFloat_FromDouble(min_score));
+    SET("max_score",  PyFloat_FromDouble(max_score));
+    SET("avg_score",  PyFloat_FromDouble(avg_score));
+    SET("last_score", PyFloat_FromDouble(last_rubric.overall_score));
+
+    char grade_str[3] = { last_rubric.grade,
+                          last_rubric.grade_modifier == ' ' ? '\0' : last_rubric.grade_modifier,
+                          '\0' };
+    SET("last_grade", PyUnicode_FromString(grade_str));
+
+#undef SET
+
+    return dict;
+}
+
 static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     PyObject* features_list;
     if (!PyArg_ParseTuple(args, "O", &features_list))
@@ -1518,6 +1668,14 @@ static PyMethodDef Brain_methods[] = {
      "Get brain metrics as dict: probe() -> dict"},
     {"broadcast_probe", (PyCFunction)Brain_broadcast_probe, METH_NOARGS,
      "Probe brain metrics and broadcast via bio-async: broadcast_probe() -> bool"},
+
+    // Rubric (cognitive output quality evaluation)
+    {"rubric", (PyCFunction)Brain_rubric, METH_NOARGS,
+     "Evaluate quality of last decision: rubric() -> dict with 15 scores + grade"},
+    {"set_rubric_validation", (PyCFunction)Brain_set_rubric_validation, METH_VARARGS,
+     "Set validation features for rubric during training: set_rubric_validation(features) -> True"},
+    {"training_rubric", (PyCFunction)Brain_training_rubric, METH_NOARGS,
+     "Get rubric stats from training: training_rubric() -> dict or None"},
 
     // Full cognitive decision
     {"decide_full", (PyCFunction)Brain_decide_full, METH_VARARGS,
