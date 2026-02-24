@@ -1512,11 +1512,23 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
                                          network->base_network);
         }
 
-        // GPU forward pass (spike conversion not needed — GPU handles raw floats)
-        nimcp_gpu_forward_pass(network->gpu_weight_cache,
-                               input, input_size, output, output_size);
+        // Spike encoding with FIXED threshold to preserve magnitude discrimination.
+        // The adaptive threshold (mean_abs / k_factor) normalizes per-input, making
+        // uniform inputs like [0.9]*N and [0.1]*N produce identical spike patterns.
+        // A fixed threshold preserves magnitude: 0.9/0.1=9 spikes vs 0.1/0.1=1 spike.
+        float fixed_threshold = network->config.spike_params.min_threshold;
+        if (fixed_threshold <= 0.0f) fixed_threshold = 0.1f;  // safe default
 
-        // Still run adaptive thresholding + sparsity tracking on CPU
+        float* spike_input = convert_input_to_spikes(input, input_size, fixed_threshold,
+                                                     network->config.spike_params.encoding);
+        if (!spike_input) return 0;
+
+        nimcp_gpu_forward_pass(network->gpu_weight_cache,
+                               spike_input, input_size, output, output_size);
+
+        free_hot_buffer(spike_input);
+
+        // Adaptive thresholding + sparsity tracking on CPU
         uint32_t active_count = process_network_outputs(network, output, output_size);
         update_running_sparsity(network, active_count, output_size);
         network->total_inferences++;
@@ -1637,6 +1649,41 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     return active_count;
 }
 
+/**
+ * @brief Raw forward pass — spike encoding + network forward, NO output thresholding
+ *
+ * WHAT: Same as adaptive_network_forward() but skips process_network_outputs()
+ * WHY:  predict_fast needs raw network output for accurate argmax classification.
+ *       The adaptive thresholding zeros out below-threshold outputs which collapses
+ *       all predictions to the same class.
+ * HOW:  Steps 1-3 of adaptive_network_forward(), skip step 4-5
+ */
+uint32_t adaptive_network_forward_raw(adaptive_network_t network, const float* input,
+                                      uint32_t input_size, float* output, uint32_t output_size)
+{
+    if (!network || !input || !output)
+        return 0;
+
+    // Spike encoding (must match learning forward pass)
+    float input_threshold =
+        adaptive_compute_threshold(input, input_size, network->config.spike_params.k_factor);
+    float* spike_input = convert_input_to_spikes(input, input_size, input_threshold,
+                                                 network->config.spike_params.encoding);
+    if (!spike_input)
+        return 0;
+
+    // Forward pass through base network
+    neural_network_forward(network->base_network, spike_input, input_size, output, output_size);
+    free_hot_buffer(spike_input);
+
+    // Count non-zero outputs (informational, no thresholding applied)
+    uint32_t active = 0;
+    for (uint32_t i = 0; i < output_size; i++) {
+        if (fabsf(output[i]) > 1e-6f) active++;
+    }
+    return active;
+}
+
 //=============================================================================
 // Sparsity and Pruning
 //=============================================================================
@@ -1684,13 +1731,24 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                          network->base_network);
         }
 
-        // 2. GPU forward pass
+        // 2. Spike-encode input with fixed threshold (preserves magnitude discrimination)
+        float fixed_threshold = network->config.spike_params.min_threshold;
+        if (fixed_threshold <= 0.0f) fixed_threshold = 0.1f;
+
+        float* spike_input = convert_input_to_spikes(example->input, example->input_size,
+                                                     fixed_threshold,
+                                                     network->config.spike_params.encoding);
+        if (!spike_input) return -1.0F;
+
+        // 3. GPU forward pass with spike-encoded input
         float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
-        if (!output) return -1.0F;
+        if (!output) { free_hot_buffer(spike_input); return -1.0F; }
 
         nimcp_gpu_forward_pass(network->gpu_weight_cache,
-                               example->input, example->input_size,
+                               spike_input, example->input_size,
                                output, example->target_size);
+
+        free_hot_buffer(spike_input);
 
         // 3. GPU MSE loss computation
         float loss = nimcp_gpu_compute_loss(network->gpu_weight_cache,
@@ -1702,13 +1760,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
                                                 network->base_network);
 
-        // 4.5 Delta rule for output layer: per-output gradient descent
-        // WHY: Biological reward_learning uses a global scalar reward that can't
-        //      differentiate per-output errors. For supervised learning, output
-        //      layer weights need per-output error gradients.
-        // HOW: Δw = lr * error_j * hidden_i * sigmoid'(output_j)
-        //      Applied to BOTH incoming and outgoing synapse copies so the
-        //      POST-PASS in reward_learning preserves these changes.
+        // 4.5 Delta rule for output layer + hidden layer backprop
         {
             uint32_t num_layers = network->config.base_config.num_layers;
             uint32_t* layer_sizes = network->config.base_config.layer_sizes;
@@ -1719,22 +1771,18 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     output_offset += layer_sizes[l];
                 uint32_t output_size = layer_sizes[num_layers - 1];
 
-                // Use boosted learning rate for output layer (only layer being
-                // trained via gradient descent; hidden layer uses random features)
+                // Output layer learning rate (boosted for classification)
                 float output_lr = learning_rate * 10.0f;
 
                 for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
                     float error_j = example->target[j] - output[j];
-                    // Sigmoid derivative: σ'(z) = σ(z)(1 - σ(z))
                     float sig_deriv = output[j] * (1.0f - output[j]);
-                    // Clamp sig_deriv to avoid vanishing gradients at saturation
                     if (sig_deriv < 0.01f) sig_deriv = 0.01f;
 
                     neuron_t* out_n = neural_network_get_neuron(
                         network->base_network, output_offset + j);
                     if (!out_n) continue;
 
-                    // Update incoming synapses of output neuron
                     for (uint32_t k = 0; k < NEURON_IN_COUNT(out_n); k++) {
                         synapse_handle_t* in_syn = NEURON_IN_HANDLE(out_n, k);
                         if (!in_syn) continue;
@@ -1743,9 +1791,11 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         if (!src) continue;
 
                         float delta = output_lr * error_j * src->state * sig_deriv;
+                        if (delta > 0.1f) delta = 0.1f;
+                        if (delta < -0.1f) delta = -0.1f;
                         in_syn->weight += delta;
 
-                        // Also update the corresponding outgoing synapse copy
+                        // Update outgoing synapse copy
                         for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
                             synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
                             if (out_syn && out_syn->target_neuron_id == output_offset + j) {
@@ -1755,18 +1805,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         }
                     }
 
-                    // Update bias
                     out_n->bias += output_lr * error_j * sig_deriv;
                 }
             }
         }
-
-        // 5. Skip biological reward_learning for supervised GPU path
-        // WHY: Biological learning uses global scalar reward (always positive),
-        //      which overwhelms the gradient-based delta rule above by ~10x.
-        //      The delta rule provides per-output error gradients which are the
-        //      correct signal for supervised classification.
-        // NOTE: For LEARN_MODE_REINFORCEMENT, we would use reward_learning here.
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
@@ -1814,61 +1856,156 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // COMPLEXITY: O(N×S) where N = neurons, S = synapses per neuron
             // =================================================================
 
-            // Delta rule for output layer: per-output gradient descent
-            // WHY: global reward_learning applies a scalar reward uniformly to ALL
-            //      1M+ synapses with no information about which outputs were wrong.
-            //      The delta rule provides per-output error gradients — same logic
-            //      as the GPU path (lines 1664-1721).
-            // HOW: Δw = lr * error_j * hidden_i * sigmoid'(output_j)
+            // Full backpropagation through all layers (sparse-efficient)
+            // WHY: Output-layer-only delta rule can't learn non-linear features.
+            //      Backprop through hidden layers enables feature learning.
+            // HOW: Standard backprop adapted for sparse connectivity:
+            //      - Only neurons with active synapses get updated
+            //      - O(synapses) per layer, not O(neurons²)
             {
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    // Compute output layer offset
-                    uint32_t output_offset = 0;
-                    for (uint32_t l = 0; l < num_layers - 1; l++)
-                        output_offset += layer_sizes[l];
+                    // Compute layer offsets
+                    uint32_t layer_offsets[num_layers];
+                    layer_offsets[0] = 0;
+                    for (uint32_t l = 1; l < num_layers; l++)
+                        layer_offsets[l] = layer_offsets[l-1] + layer_sizes[l-1];
+
                     uint32_t output_size = layer_sizes[num_layers - 1];
+                    uint32_t output_offset = layer_offsets[num_layers - 1];
 
-                    // Boosted learning rate for output layer (only layer trained
-                    // via gradient descent; hidden layers use random features)
-                    float output_lr = learning_rate * 10.0f;
+                    // Allocate delta buffers for current and next layer
+                    // (reuse hot buffer pool to avoid malloc per learn call)
+                    uint32_t max_layer = 0;
+                    for (uint32_t l = 0; l < num_layers; l++)
+                        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
 
+                    float* delta_cur = (float*)alloc_hot_buffer(max_layer * sizeof(float));
+                    float* delta_prev = (float*)alloc_hot_buffer(max_layer * sizeof(float));
+                    if (!delta_cur || !delta_prev) {
+                        if (delta_cur) free_hot_buffer(delta_cur);
+                        if (delta_prev) free_hot_buffer(delta_prev);
+                        break;
+                    }
+
+                    // --- Output layer deltas ---
                     for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
                         float error_j = example->target[j] - output[j];
-                        // Sigmoid derivative: σ'(z) = σ(z)(1 - σ(z))
                         float sig_deriv = output[j] * (1.0f - output[j]);
-                        // Clamp to avoid vanishing gradients at saturation
                         if (sig_deriv < 0.01f) sig_deriv = 0.01f;
+                        delta_cur[j] = error_j * sig_deriv;
+                    }
 
-                        neuron_t* out_n = neural_network_get_neuron(
-                            network->base_network, output_offset + j);
-                        if (!out_n) continue;
+                    // --- Backpropagate layer by layer (output → first hidden) ---
+                    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
+                        uint32_t cur_offset = layer_offsets[layer];
+                        uint32_t cur_size = layer_sizes[layer];
+                        uint32_t prev_size = layer_sizes[layer - 1];
 
-                        // Update incoming synapses of output neuron
-                        for (uint32_t k = 0; k < NEURON_IN_COUNT(out_n); k++) {
-                            synapse_handle_t* in_syn = NEURON_IN_HANDLE(out_n, k);
-                            if (!in_syn) continue;
-                            neuron_t* src = neural_network_get_neuron(
-                                network->base_network, in_syn->target_neuron_id);
-                            if (!src) continue;
+                        // Scale learning rate by 1/sqrt(fan_in) to prevent saturation
+                        // with high-dimensional spike-encoded inputs
+                        float fan_in = (float)prev_size;
+                        float layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
 
-                            float delta = output_lr * error_j * src->state * sig_deriv;
-                            in_syn->weight += delta;
+                        // Zero prev-layer deltas (will accumulate from backprop)
+                        memset(delta_prev, 0, prev_size * sizeof(float));
 
-                            // Also update the corresponding outgoing synapse copy
-                            for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
-                                synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
-                                if (out_syn && out_syn->target_neuron_id == output_offset + j) {
-                                    out_syn->weight += delta;
-                                    break;
+                        // Update weights and propagate deltas
+                        for (uint32_t j = 0; j < cur_size; j++) {
+                            if (layer == (int32_t)num_layers - 1 && j >= example->target_size)
+                                break;
+
+                            neuron_t* cur_n = neural_network_get_neuron(
+                                network->base_network, cur_offset + j);
+                            if (!cur_n) continue;
+
+                            // Gradient clipping: prevent exploding gradients
+                            float dj = delta_cur[j];
+                            if (dj > 1.0f) dj = 1.0f;
+                            if (dj < -1.0f) dj = -1.0f;
+
+                            // Update incoming synapses + propagate delta to prev layer
+                            for (uint32_t k = 0; k < NEURON_IN_COUNT(cur_n); k++) {
+                                synapse_handle_t* in_syn = NEURON_IN_HANDLE(cur_n, k);
+                                if (!in_syn) continue;
+
+                                uint32_t src_id = in_syn->target_neuron_id;
+                                neuron_t* src = neural_network_get_neuron(
+                                    network->base_network, src_id);
+                                if (!src) continue;
+
+                                // Weight update: Δw = lr * delta_j * activation_i
+                                float weight_delta = layer_lr * dj * src->state;
+
+                                // Clip weight delta to prevent weight explosion
+                                if (weight_delta > 0.1f) weight_delta = 0.1f;
+                                if (weight_delta < -0.1f) weight_delta = -0.1f;
+
+                                in_syn->weight += weight_delta;
+
+                                // Update outgoing synapse copy
+                                for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
+                                    synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
+                                    if (out_syn && out_syn->target_neuron_id == cur_offset + j) {
+                                        out_syn->weight += weight_delta;
+                                        break;
+                                    }
+                                }
+
+                                // Accumulate delta for prev layer neuron
+                                uint32_t prev_offset = layer_offsets[layer - 1];
+                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
+                                    uint32_t prev_idx = src_id - prev_offset;
+                                    // Backprop: delta_i += weight * delta_j
+                                    delta_prev[prev_idx] += in_syn->weight * dj;
                                 }
                             }
+
+                            // Bias update
+                            cur_n->bias += layer_lr * dj;
                         }
 
-                        // Update bias
-                        out_n->bias += output_lr * error_j * sig_deriv;
+                        // Apply activation derivative to prev-layer deltas
+                        if (layer > 1) {  // Don't backprop into input layer
+                            uint32_t prev_offset = layer_offsets[layer - 1];
+                            for (uint32_t i = 0; i < prev_size; i++) {
+                                neuron_t* prev_n = neural_network_get_neuron(
+                                    network->base_network, prev_offset + i);
+                                if (!prev_n) continue;
+                                float s = prev_n->state;
+                                // Activation derivative must match the neuron's actual function
+                                float act_deriv;
+                                switch (prev_n->activation_type) {
+                                    case ACTIVATION_RELU:
+                                        act_deriv = (s > 0.0f) ? 1.0f : 0.0f;
+                                        break;
+                                    case ACTIVATION_LEAKY_RELU:
+                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
+                                        break;
+                                    case ACTIVATION_TANH:
+                                        act_deriv = 1.0f - s * s;
+                                        break;
+                                    case ACTIVATION_SIGMOID:
+                                        act_deriv = s * (1.0f - s);
+                                        if (act_deriv < 0.01f) act_deriv = 0.01f;
+                                        break;
+                                    default:  // ADAPTIVE and others
+                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
+                                        break;
+                                }
+                                delta_prev[i] *= act_deriv;
+                            }
+
+                            // Swap buffers for next iteration
+                            float* tmp = delta_cur;
+                            delta_cur = delta_prev;
+                            delta_prev = tmp;
+                        }
                     }
+
+                    free_hot_buffer(delta_cur);
+                    free_hot_buffer(delta_prev);
                 }
             }
             break;

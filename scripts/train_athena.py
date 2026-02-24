@@ -132,7 +132,7 @@ ATHENA_CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints" / "athena"
 ATHENA_LOG_DIR = PROJECT_ROOT / "logs"
 
 # Training hyperparameters
-PHASE0_EPOCHS = 5          # Quick warm-up epochs for orientation
+PHASE0_EPOCHS = 2          # Quick warm-up epochs (predict is expensive, keep low)
 PHASE1_EPOCHS = 30         # Epochs per built-in dataset (legacy sequential mode)
 PHASE2_MAX_PER_DATASET = 50_000   # Max examples per streaming dataset
 PHASE2_BATCH_SIZE = 1000          # Streaming batch size
@@ -281,9 +281,9 @@ def health_check(brain, logger: "AthenaLogger", phase_name: str,
     # 1. Basic predict sanity
     try:
         test_in = [0.1] * ATHENA_NUM_INPUTS
-        result = brain.predict(test_in)
+        result = brain.predict_fast(test_in)
         if result is None:
-            metrics["errors"].append("predict returned None")
+            metrics["errors"].append("predict_fast returned None")
             metrics["healthy"] = False
         else:
             metrics["predict_ok"] = True
@@ -312,7 +312,7 @@ def health_check(brain, logger: "AthenaLogger", phase_name: str,
                     feats = feats[:ATHENA_NUM_INPUTS]
                 expected = domain_label(ds_name, ex["label"])
                 try:
-                    pred, conf = brain.predict(feats)
+                    pred, conf = brain.predict_fast(feats)
                     if str(pred) == str(expected):
                         correct += 1
                 except Exception:
@@ -435,23 +435,35 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
 
     total_trained = 0
     for ds_name, examples in all_datasets:
+        t0 = time.time()
+        n_examples = len(examples) * PHASE0_EPOCHS
         logger.log(f"  {ds_name}: {len(examples)} examples × {PHASE0_EPOCHS} epochs")
-        for epoch in range(PHASE0_EPOCHS):
-            batch = [(ex["features"], str(ex["label"])) for ex in examples]
-            result = socratic.train_batch_socratic(batch, ds_name)
-            total_trained += result["batch_size"]
 
-        # Quick accuracy probe after each dataset
-        correct, total_probe = 0, min(20, len(examples))
-        import random as _rnd
+        # Direct learn — skip predict (brain_decide runs 28 cognitive stages per
+        # predict, making it ~100x slower than learn alone). Phase 0 is just warm-up.
+        for epoch in range(PHASE0_EPOCHS):
+            for ex in examples:
+                brain.learn(ex["features"], str(ex["label"]))
+                total_trained += 1
+
+        elapsed = time.time() - t0
+        rate = n_examples / max(elapsed, 0.01)
+        logger.log(f"    → {ds_name} done: {n_examples} steps in {elapsed:.1f}s "
+                   f"({rate:.0f} steps/s)")
+
+    # Quick accuracy probe (predict is expensive, so only test 5 per dataset)
+    logger.log("  Phase 0 accuracy probe...")
+    import random as _rnd
+    for ds_name, examples in all_datasets:
+        correct, total_probe = 0, min(5, len(examples))
         probe_sample = _rnd.sample(examples, total_probe) if len(examples) >= total_probe else examples
         for ex in probe_sample:
-            pred = brain.predict(ex["features"])
+            pred = brain.predict_fast(ex["features"])
             if pred:
                 decision = pred[0] if isinstance(pred, tuple) else pred
                 if str(decision) == str(ex["label"]):
                     correct += 1
-        logger.log(f"    → {ds_name} probe: {correct}/{total_probe} "
+        logger.log(f"    {ds_name}: {correct}/{total_probe} "
                    f"({100*correct/max(1,total_probe):.0f}%)")
 
     # Quick consolidation
@@ -1097,7 +1109,7 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
                 elif len(feats) > ATHENA_NUM_INPUTS:
                     feats = feats[:ATHENA_NUM_INPUTS]
                 expected = domain_label(domain_name, ex["label"])
-                pred, conf = brain.predict(feats)
+                pred, conf = brain.predict_fast(feats)
                 if pred == expected:
                     correct += 1
                 total += 1

@@ -454,7 +454,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_socratic(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Predict-before-learn with adaptive confidence."""
-        pred, conf = self.brain.predict(features)
+        pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
         # Adaptive confidence scaling
@@ -474,7 +474,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_curriculum(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Difficulty-ordered: skip easy examples as difficulty ramps."""
-        pred, conf = self.brain.predict(features)
+        pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
         # Skip if brain already knows AND difficulty is still low
@@ -489,7 +489,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_contrastive(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Learn what things are NOT — teach with negative examples."""
-        pred, conf = self.brain.predict(features)
+        pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
         # Teach the correct label
@@ -507,12 +507,12 @@ class InstructorAgent(threading.Thread):
     def _method_debate(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Two perspectives (original + noisy) argue, brain resolves."""
         # Perspective 1: original features
-        pred1, conf1 = self.brain.predict(features)
+        pred1, conf1 = self.brain.predict_fast(features)
 
         # Perspective 2: perturbed features (different viewpoint)
         noise_level = self.config.debate_noise_level
         noisy = [f + random.gauss(0, noise_level) for f in features]
-        pred2, conf2 = self.brain.predict(noisy)
+        pred2, conf2 = self.brain.predict_fast(noisy)
 
         # Brain resolves: if both agree, lower confidence. If disagree, higher.
         if pred1 == pred2:
@@ -529,7 +529,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_meta(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Meta-learning: adapt method weights based on performance."""
-        pred, conf = self.brain.predict(features)
+        pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
         # Use mastery to set learning rate
@@ -543,7 +543,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_adversarial(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Find weaknesses, store hard examples, re-teach."""
-        pred, conf = self.brain.predict(features)
+        pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
         # Store hard examples
@@ -567,7 +567,7 @@ class InstructorAgent(threading.Thread):
 
     def _method_analogical(self, features, label, domain, conf_mod) -> Tuple[bool, float]:
         """Cross-domain transfer via blending with cross-domain exemplar."""
-        pred, conf = self.brain.predict(features)
+        pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
         self.brain.learn(features, label, 0.7 * conf_mod)

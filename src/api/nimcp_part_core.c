@@ -128,6 +128,70 @@ nimcp_status_t nimcp_brain_predict(
 }
 
 
+nimcp_status_t nimcp_brain_predict_fast(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    char* out_label,
+    float* out_confidence)
+{
+    API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
+    API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
+
+    brain_t ib = brain->internal_brain;
+    if (!ib || !ib->network) {
+        set_error("Brain not initialized");
+        return NIMCP_ERROR;
+    }
+
+    // Allocate output buffer on stack for small outputs, heap for large
+    uint32_t num_outputs = ib->config.num_outputs;
+    float stack_buf[256];
+    float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
+    if (!output) {
+        set_error("Failed to allocate output buffer");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    // Forward pass using the full adaptive network path (spike encoding + thresholding)
+    // to match the learning forward pass exactly.
+    adaptive_network_forward(ib->network, features, num_features,
+                             output, num_outputs, 0);
+
+    // Find argmax and map to label (replicates determine_output_label logic)
+    uint32_t max_idx = 0;
+    float max_val = output[0];
+    for (uint32_t i = 1; i < num_outputs; i++) {
+        if (output[i] > max_val) {
+            max_val = output[i];
+            max_idx = i;
+        }
+    }
+
+    // Map to label: use output_labels if available, else "output_N"
+    if (ib->output_labels && max_idx < ib->config.num_outputs && ib->output_labels[max_idx]) {
+        strncpy(out_label, ib->output_labels[max_idx], NIMCP_MAX_LABEL_SIZE - 1);
+    } else {
+        snprintf(out_label, NIMCP_MAX_LABEL_SIZE, "output_%u", max_idx);
+    }
+    out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
+
+    // Confidence from softmax-like normalization
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < num_outputs; i++) {
+        sum += fabsf(output[i]);
+    }
+    *out_confidence = (sum > 0.0f) ? (max_val / sum) : 0.0f;
+
+    if (output != stack_buf) nimcp_free(output);
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
 nimcp_status_t nimcp_brain_infer(
     nimcp_brain_t brain,
     const float* features,

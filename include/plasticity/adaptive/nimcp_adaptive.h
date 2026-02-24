@@ -160,6 +160,15 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
                                            uint64_t timestamp);
 
 /**
+ * @brief Raw forward pass — spike encoding + forward, NO output thresholding
+ *
+ * Same input processing as adaptive_network_forward() but returns raw network
+ * output without adaptive thresholding. Use for classification argmax.
+ */
+uint32_t adaptive_network_forward_raw(adaptive_network_t network, const float* input,
+                                      uint32_t input_size, float* output, uint32_t output_size);
+
+/**
  * @brief Get network sparsity
  *
  * @param network Adaptive network

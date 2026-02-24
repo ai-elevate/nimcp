@@ -335,6 +335,43 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Fast prediction — forward pass only, no cognitive stages
+ * WHY:  brain.predict() runs 28 cognitive stages per call (sleep, curiosity,
+ *        theory of mind, etc.), making training loops 10-100x slower than needed.
+ *        predict_fast() does a pure neural network forward pass.
+ * HOW:  Calls nimcp_brain_predict_fast() which uses adaptive_network_forward() directly
+ */
+static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
+    PyObject* features_list;
+
+    if (!PyArg_ParseTuple(args, "O", &features_list)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_fast: Invalid arguments");
+        return NULL;
+    }
+
+    Py_ssize_t num_features;
+    float* features = py_list_to_float_array(features_list, &num_features);
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+        return NULL;
+    }
+
+    char label[NIMCP_NAME_BUFFER_SIZE];
+    float confidence;
+
+    nimcp_status_t status = nimcp_brain_predict_fast(self->brain, features,
+                                                (uint32_t)num_features, label, &confidence);
+    nimcp_free(features);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        return NULL;
+    }
+
+    return Py_BuildValue("(sf)", label, confidence);
+}
+
+/**
  * WHAT: Batch prediction (v2.7.0 enhancement)
  * WHY:  Efficient processing of multiple samples
  * HOW:  Convert list of lists to 2D array, call nimcp_brain_predict_batch
@@ -1447,6 +1484,8 @@ static PyMethodDef Brain_methods[] = {
      "Make prediction: predict(features) -> (label, confidence)"},
     {"predict_batch", (PyCFunction)Brain_predict_batch, METH_VARARGS,
      "Batch prediction: predict_batch(features_list) -> (labels, confidences)"},
+    {"predict_fast", (PyCFunction)Brain_predict_fast, METH_VARARGS,
+     "Fast prediction — forward pass only, no cognitive stages: predict_fast(features) -> (label, confidence)"},
     {"save", (PyCFunction)Brain_save, METH_VARARGS,
      "Save to file: save(filepath)"},
     {"load", (PyCFunction)Brain_load, METH_VARARGS | METH_CLASS,

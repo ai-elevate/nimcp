@@ -132,7 +132,7 @@ class SocraticTrainer:
         self.global_step += 1
 
         # Step 1: Attempt — let the brain try first
-        pred_label, pred_conf = self.brain.predict(features)
+        pred_label, pred_conf = self.brain.predict_fast(features)
         correct = (pred_label == label)
 
         # Step 2: Adaptive confidence scaling
@@ -210,7 +210,7 @@ class SocraticTrainer:
         # Update replay items based on review results
         for item in replay_items:
             # Re-check: did the brain get this right now?
-            pred, _ = self.brain.predict(item.features)
+            pred, _ = self.brain.predict_fast(item.features)
             item.times_reviewed += 1
             if pred == item.label:
                 # Correct review → promote to next Leitner box

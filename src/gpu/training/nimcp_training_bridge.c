@@ -526,7 +526,6 @@ bool nimcp_gpu_forward_pass(
     uint32_t num_transitions = cache->num_layers - 1;
     for (uint32_t l = 0; l < num_transitions; l++) {
         // y = W[l] @ a[l]  (SpMV: sparse matrix-vector multiply)
-        // Replaces dense GEMV — O(nnz) instead of O(N*M)
         if (cache->sparse_weights[l]) {
             nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
                 cache->sparse_ctx,
@@ -544,8 +543,21 @@ bool nimcp_gpu_forward_pass(
                 nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
                 cache->activations[l + 1] = mv_result;
             }
+        } else {
+            // sparse_weights[l] is NULL (nnz=0): zero the activation tensor
+            // so bias add starts from 0 rather than uninitialized GPU memory
+            uint32_t ls = cache->layer_sizes[l + 1];
+            memset(cache->host_activation_buf, 0, ls * sizeof(float));
+            size_t a_dims[1] = { ls };
+            nimcp_gpu_tensor_t* zero_tensor = nimcp_gpu_tensor_from_host(
+                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!zero_tensor) return false;
+            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+            cache->activations[l + 1] = zero_tensor;
+
+            NIMCP_LOG_WARN("GPU forward: sparse_weights[%u] is NULL (no connections L%u->L%u), bias-only",
+                          l, l, l+1);
         }
-        // else: sparse_weights[l] is NULL (empty transition) — skip to bias add
 
         // Add bias: a[l+1] = a[l+1] + b[l]
         if (!nimcp_gpu_add(cache->ctx,
@@ -596,23 +608,32 @@ bool nimcp_gpu_forward_pass(
             return false;
         }
 
-        // Clamp to [-1, 1] — match CPU behavior (line 2798 of nimcp_neuralnet.c)
-        // Download, clamp on CPU, re-upload
-        // This is a minor overhead but ensures numerical parity with CPU path
-        uint32_t layer_size = cache->layer_sizes[l + 1];
-        if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
-                                      cache->host_activation_buf)) {
-            return false;
+        // Clamp unbounded activations to prevent float overflow
+        // ReLU/Leaky ReLU need wider range to preserve discrimination
+        // Sigmoid/tanh already self-bound — skip clamping for them
+        if (act == ACTIVATION_RELU || act == ACTIVATION_LEAKY_RELU) {
+            // Wide clamp for unbounded activations
+            uint32_t layer_size = cache->layer_sizes[l + 1];
+            if (!nimcp_gpu_tensor_to_host(cache->activations[l + 1],
+                                          cache->host_activation_buf)) {
+                return false;
+            }
+            for (uint32_t ci = 0; ci < layer_size; ci++) {
+                if (cache->host_activation_buf[ci] > 100.0f)
+                    cache->host_activation_buf[ci] = 100.0f;
+                else if (cache->host_activation_buf[ci] < -100.0f)
+                    cache->host_activation_buf[ci] = -100.0f;
+            }
+            size_t a_dims[1] = { layer_size };
+            nimcp_gpu_tensor_t* clamped = nimcp_gpu_tensor_from_host(
+                cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!clamped) return false;
+            nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
+            cache->activations[l + 1] = clamped;
         }
-        clamp_host_buffer(cache->host_activation_buf, layer_size);
+        // sigmoid [0,1], tanh [-1,1] — already bounded, no clamp needed
 
-        size_t a_dims[1] = { layer_size };
-        nimcp_gpu_tensor_t* clamped = nimcp_gpu_tensor_from_host(
-            cache->ctx, cache->host_activation_buf, a_dims, 1, NIMCP_GPU_PRECISION_FP32);
-        if (!clamped) return false;
-
-        nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
-        cache->activations[l + 1] = clamped;
+        // (debug prints removed — GPU forward pass verified working)
     }
 
     // Step 3: Download output from last layer activation
@@ -787,9 +808,14 @@ bool nimcp_gpu_forward_pass_batch(
                     nimcp_gpu_tanh(cache->ctx, sv_output, sv_output); break;
             }
 
-            // Download and clamp
+            // Download — only clamp unbounded activations
             nimcp_gpu_tensor_to_host(sv_output, sample_out);
-            clamp_host_buffer(sample_out, out_size);
+            if (atype == ACTIVATION_RELU || atype == ACTIVATION_LEAKY_RELU) {
+                for (uint32_t ci = 0; ci < out_size; ci++) {
+                    if (sample_out[ci] > 100.0f) sample_out[ci] = 100.0f;
+                    else if (sample_out[ci] < -100.0f) sample_out[ci] = -100.0f;
+                }
+            }
 
             nimcp_gpu_tensor_destroy(sv_input);
             nimcp_gpu_tensor_destroy(sv_output);

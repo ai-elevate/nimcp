@@ -780,18 +780,32 @@ neural_network_t neural_network_create(const network_config_t* config)
     network->num_neurons = actual_neurons;
 
     // NIMCP 2.11: Create sparse synapse pools
-    // Handle pool: sized for overflow handles (10% of neurons * 64 overflow each)
+    // Pool must hold all dense layer-to-layer connections (2 handles per connection:
+    // one outgoing from source, one incoming to destination)
     {
+        // Calculate actual connections needed for dense layer wiring
+        uint32_t dense_connections = 0;
+        if (config->num_layers > 1 && config->layer_sizes && !config->skip_layer_wiring) {
+            for (uint32_t l = 0; l < config->num_layers - 1; l++) {
+                dense_connections += config->layer_sizes[l] * config->layer_sizes[l + 1];
+            }
+        }
+        // Each connection = 2 handles (outgoing + incoming), add 25% headroom for
+        // runtime plasticity (new connections from learning, sprouting, etc.)
+        uint32_t handles_needed = dense_connections * 2;
+        uint32_t pool_min = (actual_neurons < 100) ? 5000 : actual_neurons * 64;
+        uint32_t pool_size = handles_needed + handles_needed / 4;  // +25% headroom
+        if (pool_size < pool_min) pool_size = pool_min;
+
         sparse_synapse_pool_config_t hpool_cfg = sparse_synapse_pool_default_config();
-        hpool_cfg.pool_size = (actual_neurons < 100) ? 5000 : actual_neurons * 64;
+        hpool_cfg.pool_size = pool_size;
         hpool_cfg.enable_statistics = true;
         hpool_cfg.thread_safe = true;
         network->synapse_handle_pool = sparse_synapse_pool_create(&hpool_cfg);
 
-        // Metadata pool: every synapse gets metadata (STP enabled by default)
-        // Estimate: avg 32 synapses/neuron * 2 directions
+        // Metadata pool: same size as handle pool (1:1 handle-to-metadata)
         synapse_metadata_pool_config_t mpool_cfg = synapse_metadata_pool_default_config();
-        mpool_cfg.pool_size = (actual_neurons < 100) ? 10000 : actual_neurons * 64;
+        mpool_cfg.pool_size = pool_size;
         mpool_cfg.enable_statistics = true;
         mpool_cfg.thread_safe = true;
         network->synapse_metadata_pool = synapse_metadata_pool_create(&mpool_cfg);
@@ -3142,8 +3156,6 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 neuron_t* neuron = &network->neurons[neuron_id];
 
                 // Compute weighted sum from previous layer (using INCOMING synapses)
-                // BUGFIX: Use incoming_synapses and source_neuron_id, not outgoing synapses
-                // The outgoing synapses point TO next layer neurons, not FROM previous layer
                 float activation = neuron->bias;
 
                 for (uint32_t j = 0; j < NEURON_IN_COUNT(neuron); j++) {
@@ -3182,8 +3194,18 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                         neuron->state = tanhf(activation);
                 }
 
-                // Clamp to reasonable range
-                neuron->state = fmaxf(-1.0F, fminf(1.0F, neuron->state));
+                // Clamp unbounded activations to prevent float overflow
+                // Sigmoid/tanh already bounded; ReLU/Leaky ReLU need wider range
+                // to preserve discrimination across hidden neurons
+                switch (neuron->activation_type) {
+                    case ACTIVATION_RELU:
+                    case ACTIVATION_LEAKY_RELU:
+                        neuron->state = fmaxf(-100.0F, fminf(100.0F, neuron->state));
+                        break;
+                    default:
+                        // sigmoid [0,1], tanh [-1,1], adaptive uses tanh — already bounded
+                        break;
+                }
             }
 
             neuron_offset += layer_size;
@@ -3191,6 +3213,7 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
 
         // Extract outputs from output layer
         uint32_t output_layer_start = neuron_offset - output_size;
+
         for (uint32_t i = 0; i < output_size; i++) {
             if (output_layer_start + i < network->num_neurons) {
                 outputs[i] = network->neurons[output_layer_start + i].state;

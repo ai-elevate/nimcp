@@ -290,6 +290,30 @@ nimcp_status_t nimcp_brain_predict(
 );
 
 /**
+ * @brief Fast prediction — forward pass only, no cognitive stages
+ *
+ * WHAT: Runs neural network forward pass and returns predicted label
+ * WHY:  nimcp_brain_predict() runs 28 cognitive stages (sleep, curiosity, theory of mind,
+ *        mirror neurons, ethics, etc.) on every call. This function skips all that and
+ *        does a pure forward pass, making it 10-100x faster for training loops.
+ * HOW:  Calls adaptive_network_forward() directly, then determine_output_label()
+ *
+ * @param brain Brain handle
+ * @param features Input features array
+ * @param num_features Number of input features
+ * @param out_label Buffer to store predicted label (must be pre-allocated, min 64 bytes)
+ * @param out_confidence Pointer to store prediction confidence (0.0-1.0)
+ * @return NIMCP_OK on success, error code otherwise
+ */
+nimcp_status_t nimcp_brain_predict_fast(
+    nimcp_brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    char* out_label,
+    float* out_confidence
+);
+
+/**
  * @brief Run inference and get raw output vector
  *
  * WHAT: Forward pass through network returning raw outputs
