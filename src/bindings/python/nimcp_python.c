@@ -276,9 +276,14 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
 
     /* P1-49: nimcp_brain_learn_example returns nimcp_status_t, NOT float.
      * Error codes are POSITIVE (not negative), so checking < 0.0F was wrong. */
-    nimcp_status_t status = nimcp_brain_learn_example(self->brain, features,
-                                                      (uint32_t)num_features, label, confidence);
+    nimcp_status_t status;
+    nimcp_brain_t brain_ref = self->brain;
+    uint32_t nf = (uint32_t)num_features;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_learn_example(brain_ref, features, nf, label, confidence);
     nimcp_free(features);
+    Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
@@ -319,10 +324,14 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
 
     char label[NIMCP_NAME_BUFFER_SIZE];
     float confidence;
+    nimcp_status_t status;
+    nimcp_brain_t brain_ref = self->brain;
+    uint32_t nf = (uint32_t)num_features;
 
-    nimcp_status_t status = nimcp_brain_predict(self->brain, features,
-                                                (uint32_t)num_features, label, &confidence);
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_predict(brain_ref, features, nf, label, &confidence);
     nimcp_free(features);
+    Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
@@ -358,10 +367,14 @@ static PyObject* Brain_predict_fast(BrainObject* self, PyObject* args) {
 
     char label[NIMCP_NAME_BUFFER_SIZE];
     float confidence;
+    nimcp_status_t status;
+    nimcp_brain_t brain_ref = self->brain;
+    uint32_t nf = (uint32_t)num_features;
 
-    nimcp_status_t status = nimcp_brain_predict_fast(self->brain, features,
-                                                (uint32_t)num_features, label, &confidence);
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_predict_fast(brain_ref, features, nf, label, &confidence);
     nimcp_free(features);
+    Py_END_ALLOW_THREADS
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
@@ -479,11 +492,16 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     // NOTE: nimcp_brain_predict_batch not yet implemented in C library
     // Fallback to individual predictions for now
     nimcp_status_t status = NIMCP_OK;
+    nimcp_brain_t brain_ref = self->brain;
+    uint32_t nf = (uint32_t)num_features;
+
+    Py_BEGIN_ALLOW_THREADS
     for (Py_ssize_t i = 0; i < batch_size; i++) {
-        status = nimcp_brain_predict(self->brain, features_ptrs[i], (uint32_t)num_features,
+        status = nimcp_brain_predict(brain_ref, features_ptrs[i], nf,
                                       labels[i], &confidences[i]);
         if (status != NIMCP_OK) break;
     }
+    Py_END_ALLOW_THREADS
 
     // Build result
     PyObject* labels_list = NULL;
