@@ -12,26 +12,89 @@ import random
 # Text-to-features encoding (same approach as routers/chat.py)
 # ---------------------------------------------------------------------------
 
-def text_to_features(text: str, num_features: int = 128) -> list[float]:
+def text_to_features(text: str, num_features: int = 256) -> list[float]:
     """Encode text into a fixed-size feature vector.
 
-    Uses character frequency + positional word hashing (deterministic).
+    Uses multiple complementary encoding channels:
+      1. Character unigram frequencies (bins 0..63)
+      2. Character bigram frequencies (bins 64..127)
+      3. Word-level hashing with position weighting (bins 128..191)
+      4. Sentence structure / meta features (bins 192..255)
+    Each channel occupies a quarter of the feature space.
     """
     text_lower = text.lower().strip()
     features = [0.0] * num_features
     if not text_lower:
         return features
 
-    for ch in text_lower:
-        idx = ord(ch) % num_features
-        features[idx] += 1.0
+    q = num_features // 4  # quarter size
 
+    # Channel 1: Character unigram frequencies (first quarter)
+    for ch in text_lower:
+        features[ord(ch) % q] += 1.0
+
+    # Channel 2: Character bigram frequencies (second quarter)
+    for i in range(len(text_lower) - 1):
+        bigram = text_lower[i:i + 2]
+        h = int(hashlib.md5(bigram.encode()).hexdigest(), 16)
+        features[q + (h % q)] += 1.0
+
+    # Channel 3: Word-level semantic hashing (third quarter)
     words = text_lower.split()
     for wi, word in enumerate(words):
         h = int(hashlib.md5(word.encode()).hexdigest(), 16)
-        idx = h % num_features
-        features[idx] += (wi + 1) * 0.1
+        # Primary word bin
+        features[2 * q + (h % q)] += 1.0
+        # Position-weighted secondary bin (captures word order)
+        features[2 * q + ((h >> 16) % q)] += (wi + 1) * 0.05
 
+    # Word pair (bigram) hashing for local context
+    for i in range(len(words) - 1):
+        pair = f"{words[i]} {words[i+1]}"
+        h = int(hashlib.md5(pair.encode()).hexdigest(), 16)
+        features[2 * q + (h % q)] += 0.7
+
+    # Channel 4: Sentence structure / meta features (fourth quarter)
+    n_chars = len(text_lower)
+    n_words = len(words)
+    avg_word_len = n_chars / max(n_words, 1)
+    n_sentences = text_lower.count('.') + text_lower.count('?') + text_lower.count('!')
+    n_commas = text_lower.count(',')
+    n_digits = sum(1 for c in text_lower if c.isdigit())
+    n_upper = sum(1 for c in text if c.isupper())
+    # Unique word ratio (vocabulary richness)
+    unique_words = len(set(words))
+    vocab_ratio = unique_words / max(n_words, 1)
+
+    base = 3 * q
+    if base + 10 <= num_features:
+        features[base + 0] = min(n_chars / 500.0, 1.0)
+        features[base + 1] = min(n_words / 100.0, 1.0)
+        features[base + 2] = min(avg_word_len / 12.0, 1.0)
+        features[base + 3] = min(n_sentences / 10.0, 1.0)
+        features[base + 4] = 1.0 if '?' in text else 0.0
+        features[base + 5] = 1.0 if '!' in text else 0.0
+        features[base + 6] = min(n_commas / 10.0, 1.0)
+        features[base + 7] = min(n_digits / 20.0, 1.0)
+        features[base + 8] = min(n_upper / 20.0, 1.0)
+        features[base + 9] = vocab_ratio
+
+    # Content-type indicators
+    if base + 20 <= num_features:
+        features[base + 10] = 1.0 if any(c.isdigit() for c in text_lower) else 0.0
+        features[base + 11] = 1.0 if '(' in text_lower and ')' in text_lower else 0.0
+        features[base + 12] = 1.0 if ':' in text_lower else 0.0
+        features[base + 13] = min(text_lower.count('the') / 5.0, 1.0)
+        features[base + 14] = min(text_lower.count(' is ') / 3.0, 1.0)
+        features[base + 15] = min(text_lower.count(' not ') / 3.0, 1.0)
+
+    # Remaining meta-quarter bins: word-length distribution hashing
+    for word in words:
+        wlen = min(len(word), q - 20)
+        if base + 20 + wlen < num_features:
+            features[base + 20 + wlen] += 0.3
+
+    # Normalize to [0, 1]
     max_val = max(features) if features else 1.0
     if max_val > 0:
         features = [v / max_val for v in features]
@@ -39,9 +102,17 @@ def text_to_features(text: str, num_features: int = 128) -> list[float]:
     return features
 
 
-def encode_qa(question: str, choice: str, num_features: int = 128) -> list[float]:
-    """Encode a question+choice pair into features."""
-    return text_to_features(f"{question} {choice}", num_features)
+def encode_qa(question: str, choice: str, num_features: int = 256) -> list[float]:
+    """Encode a question+choice pair into features.
+
+    Encodes question and answer separately into half-spaces to preserve
+    the distinction (previously they were concatenated and hashed together,
+    losing the question/answer boundary).
+    """
+    half = num_features // 2
+    q_feats = text_to_features(question, half)
+    a_feats = text_to_features(choice, half)
+    return q_feats + a_feats
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +257,9 @@ class FashionMNISTDataset(BenchmarkDataset):
     """Fashion-MNIST — synthetic approximation (784 features, 10 classes).
 
     Generates sparse feature patterns mimicking fashion item silhouettes.
+    Features are spatially pooled from 28x28 to a compact representation
+    that preserves spatial structure (rather than just taking the first N
+    pixels which would discard most of the image).
     """
     name = "fashion_mnist"
     category = "ml"
@@ -194,12 +268,13 @@ class FashionMNISTDataset(BenchmarkDataset):
     num_classes = 10
     _SAMPLES_PER_CLASS = 50
 
-    def get_examples(self) -> list[dict]:
+    def get_examples(self, target_features: int = 0) -> list[dict]:
         rng = random.Random(44)
         examples = []
         for cls in range(self.num_classes):
             for _ in range(self._SAMPLES_PER_CLASS):
-                features = [0.0] * self.num_features
+                # Generate 28x28 image
+                pixels = [0.0] * 784
                 cx = 14 + (cls % 5) * 2 - 4
                 cy = 14 + (cls // 5) * 4 - 2
                 spread = 4 + cls % 3
@@ -209,16 +284,90 @@ class FashionMNISTDataset(BenchmarkDataset):
                     py = int(rng.gauss(cy, spread)) % 28
                     if 0 <= px < 28 and 0 <= py < 28:
                         idx = py * 28 + px
-                        features[idx] = min(1.0, features[idx] + rng.uniform(0.3, 1.0))
+                        pixels[idx] = min(1.0, pixels[idx] + rng.uniform(0.3, 1.0))
+
+                # Spatial average pooling: 28x28 → compact representation
+                # Pool into 14x14=196 spatial bins + 10 global stats = 206 features
+                features = self._pool_features(pixels)
                 examples.append({"features": features, "label": str(cls)})
         return examples
+
+    @staticmethod
+    def _pool_features(pixels: list) -> list:
+        """Pool 28x28 pixels into a compact feature vector.
+
+        - 14x14 = 196 spatial bins (2x2 average pooling)
+        - 7x7 = 49 coarser spatial bins (4x4 average pooling)
+        - 11 global statistics (mean, std, quadrant means, edge ratios, etc.)
+        Total: 256 features that preserve spatial structure.
+        """
+        features = []
+
+        # 2x2 average pooling → 14x14 = 196 features
+        for by in range(14):
+            for bx in range(14):
+                total = 0.0
+                for dy in range(2):
+                    for dx in range(2):
+                        idx = (by * 2 + dy) * 28 + (bx * 2 + dx)
+                        total += pixels[idx]
+                features.append(total / 4.0)
+
+        # 4x4 average pooling → 7x7 = 49 features
+        for by in range(7):
+            for bx in range(7):
+                total = 0.0
+                for dy in range(4):
+                    for dx in range(4):
+                        idx = (by * 4 + dy) * 28 + (bx * 4 + dx)
+                        total += pixels[idx]
+                features.append(total / 16.0)
+
+        # Global statistics (11 features)
+        n = len(pixels)
+        mean = sum(pixels) / n
+        variance = sum((p - mean) ** 2 for p in pixels) / n
+        std = variance ** 0.5
+        active = sum(1 for p in pixels if p > 0.1)
+        active_ratio = active / n
+
+        # Quadrant means (top-left, top-right, bottom-left, bottom-right)
+        quads = [0.0] * 4
+        quad_counts = [0] * 4
+        for y in range(28):
+            for x in range(28):
+                qi = (1 if y >= 14 else 0) * 2 + (1 if x >= 14 else 0)
+                quads[qi] += pixels[y * 28 + x]
+                quad_counts[qi] += 1
+        quad_means = [q / max(c, 1) for q, c in zip(quads, quad_counts)]
+
+        features.extend([mean, std, active_ratio] + quad_means)
+
+        # Center vs edge ratio
+        center = sum(pixels[y * 28 + x] for y in range(8, 20) for x in range(8, 20))
+        edge = sum(pixels) - center
+        center_ratio = center / max(center + edge, 1e-8)
+        features.append(center_ratio)
+
+        # Horizontal and vertical symmetry
+        h_sym = sum(abs(pixels[y * 28 + x] - pixels[y * 28 + (27 - x)])
+                     for y in range(28) for x in range(14))
+        v_sym = sum(abs(pixels[y * 28 + x] - pixels[(27 - y) * 28 + x])
+                    for y in range(14) for x in range(28))
+        features.append(1.0 - min(h_sym / max(sum(pixels), 1e-8), 1.0))
+        features.append(1.0 - min(v_sym / max(sum(pixels), 1e-8), 1.0))
+
+        # Max pixel value
+        features.append(max(pixels))
+
+        return features  # 196 + 49 + 11 = 256 features
 
 
 # ---------------------------------------------------------------------------
 # Generative AI Benchmark Datasets (Adapted Classification)
 # ---------------------------------------------------------------------------
 
-_TEXT_NUM_FEATURES = 128
+_TEXT_NUM_FEATURES = 256
 
 
 class _TextBenchmarkDataset(BenchmarkDataset):
@@ -476,52 +625,59 @@ class ARCDataset(_TextBenchmarkDataset):
 
 
 class HellaSwagDataset(_TextBenchmarkDataset):
-    """HellaSwag — 50 commonsense completion questions."""
+    """HellaSwag — 50 commonsense completion questions.
+
+    Answer positions are uniformly distributed across 0-3 to prevent
+    the brain from learning a position bias (previously 47/50 were at
+    index 1, causing a degenerate 'always predict 1' pattern).
+    """
     name = "hellaswag"
     description = "Commonsense completion (adapted from HellaSwag, 4-choice classification)"
     num_classes = 4
 
     def _get_questions(self) -> list[dict]:
         return [
+            # Answer at position 0 (questions 1-13)
             {"question": "A person is cooking pasta. They boil water, add noodles, and then:",
-             "choices": ["Put the pot in the freezer", "Drain the water and add sauce",
-                         "Throw the pot away", "Add more water and ice"], "answer": 1},
+             "choices": ["Drain the water and add sauce", "Put the pot in the freezer",
+                         "Throw the pot away", "Add more water and ice"], "answer": 0},
             {"question": "Someone is learning to ride a bicycle. They fall off and:",
-             "choices": ["Decide to never walk again", "Get back on and try again",
-                         "Build a rocket instead", "Start swimming"], "answer": 1},
+             "choices": ["Get back on and try again", "Decide to never walk again",
+                         "Build a rocket instead", "Start swimming"], "answer": 0},
             {"question": "It starts raining heavily in a park. Most people:",
-             "choices": ["Take off their clothes", "Seek shelter or use umbrellas",
-                         "Start watering the plants", "Fall asleep on the grass"], "answer": 1},
+             "choices": ["Seek shelter or use umbrellas", "Take off their clothes",
+                         "Start watering the plants", "Fall asleep on the grass"], "answer": 0},
             {"question": "A student finishes an exam early. They:",
-             "choices": ["Tear up the paper", "Review their answers",
-                         "Leave without submitting", "Start a new exam"], "answer": 1},
+             "choices": ["Review their answers", "Tear up the paper",
+                         "Leave without submitting", "Start a new exam"], "answer": 0},
             {"question": "The alarm clock rings in the morning. The person:",
-             "choices": ["Throws it out the window", "Wakes up or hits snooze",
-                         "Starts cooking dinner", "Goes to sleep for the first time"], "answer": 1},
+             "choices": ["Wakes up or hits snooze", "Throws it out the window",
+                         "Starts cooking dinner", "Goes to sleep for the first time"], "answer": 0},
             {"question": "A dog sees its owner come home. The dog:",
-             "choices": ["Runs and hides in fear", "Wags its tail excitedly",
-                         "Starts meowing", "Flies away"], "answer": 1},
+             "choices": ["Wags its tail excitedly", "Runs and hides in fear",
+                         "Starts meowing", "Flies away"], "answer": 0},
             {"question": "Someone is assembling furniture. They open the box and:",
-             "choices": ["Eat the instructions", "Read the instructions and sort parts",
-                         "Put the box on the shelf", "Water the pieces"], "answer": 1},
+             "choices": ["Read the instructions and sort parts", "Eat the instructions",
+                         "Put the box on the shelf", "Water the pieces"], "answer": 0},
             {"question": "The traffic light turns red. The driver:",
-             "choices": ["Speeds up", "Stops the car",
-                         "Turns off the engine", "Gets out and walks"], "answer": 1},
+             "choices": ["Stops the car", "Speeds up",
+                         "Turns off the engine", "Gets out and walks"], "answer": 0},
             {"question": "A phone rings during a movie at a theater. The person:",
-             "choices": ["Answers loudly", "Silences it or ignores it",
-                         "Throws it at the screen", "Orders food from it"], "answer": 1},
+             "choices": ["Silences it or ignores it", "Answers loudly",
+                         "Throws it at the screen", "Orders food from it"], "answer": 0},
             {"question": "Someone is making a sandwich. After adding meat and cheese:",
-             "choices": ["Put it in washing machine", "Add the top slice of bread",
-                         "Mail it to a friend", "Plant it in the garden"], "answer": 1},
+             "choices": ["Add the top slice of bread", "Put it in washing machine",
+                         "Mail it to a friend", "Plant it in the garden"], "answer": 0},
             {"question": "A child asks for ice cream. The parent:",
-             "choices": ["Gives them a rock", "Says yes or suggests after dinner",
-                         "Forgets they have a child", "Starts crying"], "answer": 1},
+             "choices": ["Says yes or suggests after dinner", "Gives them a rock",
+                         "Forgets they have a child", "Starts crying"], "answer": 0},
             {"question": "The waiter brings the check. The diners:",
-             "choices": ["Order 20 more meals", "Review the bill and pay",
-                         "Set the check on fire", "Rearrange the tables"], "answer": 1},
+             "choices": ["Review the bill and pay", "Order 20 more meals",
+                         "Set the check on fire", "Rearrange the tables"], "answer": 0},
             {"question": "It gets dark outside and a person is driving. They:",
-             "choices": ["Close their eyes", "Turn on the headlights",
-                         "Remove the steering wheel", "Drive faster without lights"], "answer": 1},
+             "choices": ["Turn on the headlights", "Close their eyes",
+                         "Remove the steering wheel", "Drive faster without lights"], "answer": 0},
+            # Answer at position 1 (questions 14-25)
             {"question": "Someone receives a wrapped birthday present. They:",
              "choices": ["Wrap it in more paper", "Unwrap it to see what's inside",
                          "Bury it in the backyard", "Return it unopened"], "answer": 1},
@@ -544,8 +700,8 @@ class HellaSwagDataset(_TextBenchmarkDataset):
              "choices": ["Use it to dig a hole", "Start playing or tuning it",
                          "Eat the strings", "Throw it in the river"], "answer": 1},
             {"question": "Someone sneezes in a meeting. Others:",
-             "choices": ["Ignore it or say bless you", "Start sneezing in unison",
-                         "Leave the building", "Call an ambulance"], "answer": 0},
+             "choices": ["Start sneezing in unison", "Ignore it or say bless you",
+                         "Leave the building", "Call an ambulance"], "answer": 1},
             {"question": "A baker puts dough in the oven. After 30 minutes:",
              "choices": ["The dough turns to ice", "The bread is baked and golden",
                          "The oven disappears", "The dough gets smaller"], "answer": 1},
@@ -553,86 +709,88 @@ class HellaSwagDataset(_TextBenchmarkDataset):
              "choices": ["Start flying", "Get up and continue walking",
                          "Melt into the ground", "Turn invisible"], "answer": 1},
             {"question": "Someone opens a book to study. They:",
-             "choices": ["Start reading the pages", "Throw the book at the wall",
-                         "Eat the pages", "Put the book under water"], "answer": 0},
+             "choices": ["Throw the book at the wall", "Start reading the pages",
+                         "Eat the pages", "Put the book under water"], "answer": 1},
             {"question": "The sun sets in the evening. The sky:",
              "choices": ["Turns bright green", "Becomes darker with orange/red colors",
                          "Gets brighter than noon", "Disappears entirely"], "answer": 1},
+            # Answer at position 2 (questions 26-38)
             {"question": "A person puts clothes in a washing machine. After the cycle:",
-             "choices": ["The clothes are now food", "They move clothes to dryer or hang them",
-                         "The clothes disappear", "They put the machine in closet"], "answer": 1},
+             "choices": ["The clothes are now food", "The clothes disappear",
+                         "They move clothes to dryer or hang them", "They put the machine in closet"], "answer": 2},
             {"question": "A gardener plants seeds. Over the next weeks:",
-             "choices": ["The seeds fly away", "Plants begin to sprout",
-                         "The soil turns to water", "Rocks grow instead"], "answer": 1},
+             "choices": ["The seeds fly away", "The soil turns to water",
+                         "Plants begin to sprout", "Rocks grow instead"], "answer": 2},
             {"question": "Someone cuts an onion while cooking. Their eyes:",
-             "choices": ["Turn blue", "Start to water or tear up",
-                         "Fall out", "Glow in the dark"], "answer": 1},
+             "choices": ["Turn blue", "Fall out",
+                         "Start to water or tear up", "Glow in the dark"], "answer": 2},
             {"question": "A jogger reaches the end of a marathon. They:",
-             "choices": ["Start running backward", "Feel tired and celebrate",
-                         "Forget they were running", "Begin swimming"], "answer": 1},
+             "choices": ["Start running backward", "Forget they were running",
+                         "Feel tired and celebrate", "Begin swimming"], "answer": 2},
             {"question": "A person sees a friend across the street. They:",
-             "choices": ["Pretend they don't exist", "Wave or call out to them",
-                         "Start digging a tunnel", "Build a bridge"], "answer": 1},
+             "choices": ["Pretend they don't exist", "Start digging a tunnel",
+                         "Wave or call out to them", "Build a bridge"], "answer": 2},
             {"question": "Snow falls on a city overnight. In the morning:",
-             "choices": ["The ground is covered in white", "It gets warmer than summer",
-                         "The snow turns into flowers", "All buildings are gone"], "answer": 0},
+             "choices": ["It gets warmer than summer", "The snow turns into flowers",
+                         "The ground is covered in white", "All buildings are gone"], "answer": 2},
             {"question": "A teacher asks the class a question. A student who knows:",
-             "choices": ["Runs out of the classroom", "Raises their hand",
-                         "Falls asleep immediately", "Starts singing"], "answer": 1},
+             "choices": ["Runs out of the classroom", "Falls asleep immediately",
+                         "Raises their hand", "Starts singing"], "answer": 2},
             {"question": "Someone drops keys in a puddle. They:",
-             "choices": ["Leave them forever", "Reach in and pick them up",
-                         "Pour concrete over them", "Wait for keys to swim out"], "answer": 1},
+             "choices": ["Leave them forever", "Pour concrete over them",
+                         "Reach in and pick them up", "Wait for keys to swim out"], "answer": 2},
             {"question": "A plane reaches cruising altitude. The pilot:",
-             "choices": ["Turns off all engines", "Engages autopilot or maintains course",
-                         "Opens all the doors", "Lands immediately"], "answer": 1},
+             "choices": ["Turns off all engines", "Opens all the doors",
+                         "Engages autopilot or maintains course", "Lands immediately"], "answer": 2},
             {"question": "A child builds a sandcastle at the beach. A wave comes and:",
-             "choices": ["Makes the castle bigger", "Washes away part of the castle",
-                         "The wave freezes", "The sand turns to gold"], "answer": 1},
+             "choices": ["Makes the castle bigger", "The wave freezes",
+                         "Washes away part of the castle", "The sand turns to gold"], "answer": 2},
             {"question": "Someone puts frozen pizza in the oven. After baking:",
-             "choices": ["It turns into a salad", "The pizza is hot and ready to eat",
-                         "It stays frozen", "It becomes a cake"], "answer": 1},
+             "choices": ["It turns into a salad", "It stays frozen",
+                         "The pizza is hot and ready to eat", "It becomes a cake"], "answer": 2},
             {"question": "A bird builds a nest in a tree. It then:",
-             "choices": ["Burns the nest", "Lays eggs in the nest",
-                         "Moves to a skyscraper", "Swims in the nest"], "answer": 1},
+             "choices": ["Burns the nest", "Moves to a skyscraper",
+                         "Lays eggs in the nest", "Swims in the nest"], "answer": 2},
             {"question": "A meeting is scheduled for 3 PM. At 3 PM, participants:",
-             "choices": ["All go home", "Join the meeting room or call",
-                         "Forget it's Tuesday", "Start a different meeting"], "answer": 1},
+             "choices": ["All go home", "Forget it's Tuesday",
+                         "Join the meeting room or call", "Start a different meeting"], "answer": 2},
+            # Answer at position 3 (questions 39-50)
             {"question": "Someone finishes a good book. They:",
-             "choices": ["Eat the book", "Feel satisfied or recommend it",
-                         "Forget how to read", "Write it again word for word"], "answer": 1},
+             "choices": ["Eat the book", "Forget how to read",
+                         "Write it again word for word", "Feel satisfied or recommend it"], "answer": 3},
             {"question": "A baby drops a toy from a high chair. The baby:",
-             "choices": ["Forgets the toy existed", "Looks down or cries for the toy",
-                         "Starts flying to get it", "Grows wings"], "answer": 1},
+             "choices": ["Forgets the toy existed", "Starts flying to get it",
+                         "Grows wings", "Looks down or cries for the toy"], "answer": 3},
             {"question": "It's very cold outside. A person going out:",
-             "choices": ["Wears a swimsuit", "Puts on a coat and warm clothes",
-                         "Takes a cold shower first", "Removes all clothing"], "answer": 1},
+             "choices": ["Wears a swimsuit", "Takes a cold shower first",
+                         "Removes all clothing", "Puts on a coat and warm clothes"], "answer": 3},
             {"question": "A car runs out of gas on the highway. The driver:",
-             "choices": ["Drives faster", "Pulls over and calls for help",
-                         "Abandons the car", "Fills tank with water"], "answer": 1},
+             "choices": ["Drives faster", "Abandons the car",
+                         "Fills tank with water", "Pulls over and calls for help"], "answer": 3},
             {"question": "A photographer sees a beautiful sunset. They:",
-             "choices": ["Close their eyes", "Take a photo",
-                         "Throw their camera away", "Wait for sunrise"], "answer": 1},
+             "choices": ["Close their eyes", "Throw their camera away",
+                         "Wait for sunrise", "Take a photo"], "answer": 3},
             {"question": "A person swimming gets tired. They:",
-             "choices": ["Swim to the bottom", "Head toward shore or rest",
-                         "Start running underwater", "Drink the pool water"], "answer": 1},
+             "choices": ["Swim to the bottom", "Start running underwater",
+                         "Drink the pool water", "Head toward shore or rest"], "answer": 3},
             {"question": "Elevator doors open at the desired floor. The person:",
-             "choices": ["Rides back down", "Steps out of the elevator",
-                         "Lies down in the elevator", "Presses all buttons"], "answer": 1},
+             "choices": ["Rides back down", "Lies down in the elevator",
+                         "Presses all buttons", "Steps out of the elevator"], "answer": 3},
             {"question": "A toddler stacks blocks. When the tower gets tall:",
-             "choices": ["It floats away", "It eventually falls over",
-                         "It turns into a real building", "Blocks get heavier"], "answer": 1},
+             "choices": ["It floats away", "It turns into a real building",
+                         "Blocks get heavier", "It eventually falls over"], "answer": 3},
             {"question": "Someone receives a call from unknown number. They:",
-             "choices": ["Throw phone in water", "Answer or let it go to voicemail",
-                         "Call 911", "Turn off phone permanently"], "answer": 1},
+             "choices": ["Throw phone in water", "Call 911",
+                         "Turn off phone permanently", "Answer or let it go to voicemail"], "answer": 3},
             {"question": "A ship approaches a harbor. The captain:",
-             "choices": ["Speeds up toward the dock", "Slows down and prepares to dock",
-                         "Turns around and goes back", "Abandons ship"], "answer": 1},
+             "choices": ["Speeds up toward the dock", "Turns around and goes back",
+                         "Abandons ship", "Slows down and prepares to dock"], "answer": 3},
             {"question": "Someone spills coffee on their shirt. They:",
-             "choices": ["Add more coffee", "Try to clean or blot the stain",
-                         "Put another shirt over it", "Pour more coffee"], "answer": 1},
+             "choices": ["Add more coffee", "Put another shirt over it",
+                         "Pour more coffee", "Try to clean or blot the stain"], "answer": 3},
             {"question": "A student graduates from university. Afterward, they:",
-             "choices": ["Forget everything", "Look for a job or continue education",
-                         "Go back to elementary school", "Return the diploma"], "answer": 1},
+             "choices": ["Forget everything", "Go back to elementary school",
+                         "Return the diploma", "Look for a job or continue education"], "answer": 3},
         ]
 
 

@@ -122,8 +122,8 @@ except ImportError:
 # Configuration
 # ---------------------------------------------------------------------------
 ATHENA_NEURONS = 2_000_000
-ATHENA_NUM_INPUTS = 128
-ATHENA_NUM_OUTPUTS = 32
+ATHENA_NUM_INPUTS = 256
+ATHENA_NUM_OUTPUTS = 128
 
 # Output paths
 ATHENA_MODEL_DIR = PROJECT_ROOT / "models" / "pretrained" / "athena" / "v1.0"
@@ -138,6 +138,220 @@ PHASE2_MAX_PER_DATASET = 50_000   # Max examples per streaming dataset
 PHASE2_BATCH_SIZE = 1000          # Streaming batch size
 PHASE2_CHECKPOINT_INTERVAL = 10_000  # Checkpoint every N examples
 INTROSPECTION_INTERVAL = 5000     # Metacognitive check every N examples
+
+# ---------------------------------------------------------------------------
+# Domain-Prefixed Labels — Prevent cross-domain label collision
+# ---------------------------------------------------------------------------
+
+def domain_label(domain: str, label) -> str:
+    """Prefix a label with its domain to prevent cross-domain collision.
+
+    Without this, Wine label "0", MMLU label "0", Fashion-MNIST label "0",
+    and ARC label "0" all map to the same output neuron — catastrophic
+    interference.  With prefixing, they become "wine:0", "mmlu:0", etc.
+    """
+    return f"{domain}:{label}"
+
+
+def adapt_dataset_labels(examples: list, domain: str) -> list:
+    """Add domain prefix to all labels in a dataset's examples."""
+    for ex in examples:
+        ex["label"] = domain_label(domain, ex["label"])
+    return examples
+
+
+# ---------------------------------------------------------------------------
+# Conversation Probe — Talk to Athena between training phases
+# ---------------------------------------------------------------------------
+
+# Test prompts: greetings, identity, domain questions, reasoning, creativity
+PROBE_CONVERSATIONS = [
+    # Greetings & identity
+    ("Hello Athena, how are you?", "greeting"),
+    ("Who are you?", "identity"),
+    ("What have you learned so far?", "introspection"),
+    # Domain-specific questions (aligned with training data)
+    ("What type of wine is this with high alcohol and dark color?", "science"),
+    ("Is this breast tumor malignant or benign?", "medicine"),
+    ("What article of clothing is in this image?", "visual"),
+    ("What is the capital of France?", "general_knowledge"),
+    ("Explain Newton's second law of motion.", "physics"),
+    ("What is photosynthesis?", "biology"),
+    ("Solve: if x + 3 = 7, what is x?", "math"),
+    # Reasoning & creativity
+    ("If all roses are flowers and all flowers need water, do roses need water?", "logic"),
+    ("What would happen if gravity suddenly doubled?", "reasoning"),
+    ("Write a short poem about neural networks.", "creativity"),
+    # Emotional / theory of mind
+    ("I'm feeling sad today.", "empathy"),
+    ("Do you enjoy learning new things?", "self_awareness"),
+]
+
+
+def _probe_encode_text(text: str, num_inputs: int) -> list:
+    """Encode text to feature vector (uses shared text_to_features)."""
+    return text_to_features(text, num_inputs)
+
+
+def conversation_probe(brain, logger: "AthenaLogger", phase_name: str):
+    """Run a conversation probe — inference only, no training."""
+    logger.log(f"\n{'─' * 70}")
+    logger.log(f"CONVERSATION PROBE — after {phase_name}")
+    logger.log(f"{'─' * 70}")
+
+    results = []
+    for prompt, category in PROBE_CONVERSATIONS:
+        features = _probe_encode_text(prompt, ATHENA_NUM_INPUTS)
+
+        # Try decide_full first (rich cognitive output)
+        label = ""
+        confidence = 0.0
+        explanation = ""
+        num_active = 0
+        try:
+            result = brain.decide_full(features)
+            label = result.get("label", "")
+            confidence = float(result.get("confidence", 0.0))
+            explanation = result.get("explanation", "")
+            num_active = int(result.get("num_active_neurons", 0))
+        except Exception:
+            # Fall back to predict
+            try:
+                label, confidence = brain.predict(features)
+                confidence = float(confidence)
+            except Exception as e:
+                logger.log(f"  [{category:18s}] ERROR: {e}")
+                continue
+
+        # Truncate explanation for logging
+        expl_short = explanation[:120].replace('\n', ' ') if explanation else "(none)"
+
+        logger.log(f"  [{category:18s}] Q: {prompt}")
+        logger.log(f"  {'':18s}  A: label={label!r}  conf={confidence:.3f}  "
+                    f"active={num_active}  expl={expl_short}")
+
+        results.append({
+            "prompt": prompt,
+            "category": category,
+            "label": label,
+            "confidence": confidence,
+            "num_active_neurons": num_active,
+            "has_explanation": bool(explanation and explanation.strip()),
+        })
+
+        logger.metric({
+            "probe": True,
+            "phase": phase_name,
+            "category": category,
+            "prompt": prompt[:80],
+            "label": label,
+            "confidence": confidence,
+            "num_active_neurons": num_active,
+            "has_explanation": bool(explanation and explanation.strip()),
+        })
+
+    # Summary statistics
+    avg_conf = sum(r["confidence"] for r in results) / max(len(results), 1)
+    avg_active = sum(r["num_active_neurons"] for r in results) / max(len(results), 1)
+    unique_labels = len(set(r["label"] for r in results))
+    with_expl = sum(1 for r in results if r["has_explanation"])
+
+    logger.log(f"\n  Probe Summary ({phase_name}):")
+    logger.log(f"    Prompts tested:     {len(results)}")
+    logger.log(f"    Avg confidence:     {avg_conf:.3f}")
+    logger.log(f"    Avg active neurons: {avg_active:.0f}")
+    logger.log(f"    Unique labels:      {unique_labels}")
+    logger.log(f"    With explanation:   {with_expl}/{len(results)}")
+    logger.log(f"{'─' * 70}\n")
+
+    return results
+
+
+def health_check(brain, logger: "AthenaLogger", phase_name: str,
+                 min_accuracy: float = 0.0, abort_on_fail: bool = False) -> dict:
+    """
+    Pipeline-wide health check — runs after every phase.
+    Validates brain can still predict, measures accuracy on held-out probes,
+    and optionally aborts if accuracy falls below threshold.
+    Returns dict with metrics for tracking learning progress.
+    """
+    logger.log(f"\n  HEALTH CHECK after {phase_name}:")
+    metrics = {"phase": phase_name, "healthy": True, "errors": []}
+
+    # 1. Basic predict sanity
+    try:
+        test_in = [0.1] * ATHENA_NUM_INPUTS
+        result = brain.predict(test_in)
+        if result is None:
+            metrics["errors"].append("predict returned None")
+            metrics["healthy"] = False
+        else:
+            metrics["predict_ok"] = True
+    except Exception as e:
+        metrics["errors"].append(f"predict crashed: {e}")
+        metrics["healthy"] = False
+
+    # 2. Accuracy on built-in benchmark samples (quick — 10 per dataset)
+    if BENCHMARKS_AVAILABLE:
+        import random as _rnd
+        from benchmark_datasets import WineDataset, BreastCancerDataset
+        check_datasets = [
+            ("wine", WineDataset()),
+            ("breast_cancer", BreastCancerDataset()),
+        ]
+        total_correct, total_tested = 0, 0
+        for ds_name, ds in check_datasets:
+            examples = ds.get_examples()
+            sample = _rnd.sample(examples, min(10, len(examples)))
+            correct = 0
+            for ex in sample:
+                feats = ex["features"]
+                if len(feats) < ATHENA_NUM_INPUTS:
+                    feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+                elif len(feats) > ATHENA_NUM_INPUTS:
+                    feats = feats[:ATHENA_NUM_INPUTS]
+                expected = domain_label(ds_name, ex["label"])
+                try:
+                    pred, conf = brain.predict(feats)
+                    if str(pred) == str(expected):
+                        correct += 1
+                except Exception:
+                    pass
+                total_tested += 1
+            total_correct += correct
+            metrics[f"acc_{ds_name}"] = correct / max(len(sample), 1)
+
+        overall_acc = total_correct / max(total_tested, 1)
+        metrics["overall_accuracy"] = overall_acc
+        logger.log(f"    Accuracy: {overall_acc:.1%} ({total_correct}/{total_tested})")
+
+        if overall_acc < min_accuracy:
+            msg = f"Accuracy {overall_acc:.1%} below threshold {min_accuracy:.1%}"
+            metrics["errors"].append(msg)
+            metrics["healthy"] = False
+            logger.log(f"    WARNING: {msg}")
+
+    # 3. Neuron count sanity (shouldn't change)
+    nc = brain.get_neuron_count()
+    metrics["neuron_count"] = nc
+    logger.log(f"    Neurons: {nc:,}")
+
+    # Log metrics
+    logger.metric({"health_check": True, **metrics})
+
+    if not metrics["healthy"]:
+        logger.log(f"    HEALTH CHECK: ISSUES DETECTED")
+        for err in metrics["errors"]:
+            logger.log(f"      - {err}")
+        if abort_on_fail:
+            logger.log(f"    ABORTING training due to health check failure")
+            brain.save(str(ATHENA_CHECKPOINT_DIR / f"athena_health_fail_{phase_name}.bin"))
+            raise RuntimeError(f"Health check failed after {phase_name}: {metrics['errors']}")
+    else:
+        logger.log(f"    HEALTH CHECK: OK")
+
+    return metrics
+
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -188,20 +402,20 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
     logger.log("=" * 70)
 
     ml_datasets = [
-        ("Wine", WineDataset()),
-        ("Breast Cancer", BreastCancerDataset()),
-        ("Fashion-MNIST", FashionMNISTDataset()),
+        ("wine", WineDataset()),
+        ("breast_cancer", BreastCancerDataset()),
+        ("fashion_mnist", FashionMNISTDataset()),
     ]
 
     qa_datasets = [
-        ("MMLU", MMLUDataset()),
-        ("ARC-Easy", ARCDataset()),
-        ("HellaSwag", HellaSwagDataset()),
-        ("Winogrande", WinograndeDataset()),
+        ("mmlu", MMLUDataset()),
+        ("arc_easy", ARCDataset()),
+        ("hellaswag", HellaSwagDataset()),
+        ("winogrande", WinograndeDataset()),
     ]
 
     all_datasets = []
-    for name, ds in ml_datasets:
+    for domain_name, ds in ml_datasets:
         examples = ds.get_examples()
         adapted = []
         for ex in examples:
@@ -210,19 +424,35 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
                 feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
             elif len(feats) > ATHENA_NUM_INPUTS:
                 feats = feats[:ATHENA_NUM_INPUTS]
-            adapted.append({"features": feats, "label": ex["label"]})
-        all_datasets.append((name, adapted))
+            adapted.append({"features": feats,
+                            "label": domain_label(domain_name, ex["label"])})
+        all_datasets.append((domain_name, adapted))
 
-    for name, ds in qa_datasets:
-        all_datasets.append((name, ds.get_examples()))
+    for domain_name, ds in qa_datasets:
+        examples = ds.get_examples()
+        adapt_dataset_labels(examples, domain_name)
+        all_datasets.append((domain_name, examples))
 
     total_trained = 0
     for ds_name, examples in all_datasets:
         logger.log(f"  {ds_name}: {len(examples)} examples × {PHASE0_EPOCHS} epochs")
         for epoch in range(PHASE0_EPOCHS):
             batch = [(ex["features"], str(ex["label"])) for ex in examples]
-            result = socratic.train_batch_socratic(batch, ds_name.lower())
+            result = socratic.train_batch_socratic(batch, ds_name)
             total_trained += result["batch_size"]
+
+        # Quick accuracy probe after each dataset
+        correct, total_probe = 0, min(20, len(examples))
+        import random as _rnd
+        probe_sample = _rnd.sample(examples, total_probe) if len(examples) >= total_probe else examples
+        for ex in probe_sample:
+            pred = brain.predict(ex["features"])
+            if pred:
+                decision = pred[0] if isinstance(pred, tuple) else pred
+                if str(decision) == str(ex["label"]):
+                    correct += 1
+        logger.log(f"    → {ds_name} probe: {correct}/{total_probe} "
+                   f"({100*correct/max(1,total_probe):.0f}%)")
 
     # Quick consolidation
     cognitive.consolidate()
@@ -306,26 +536,26 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
 
     # Domain mapping for built-in datasets
     domain_map = {
-        "Wine": "science", "Breast Cancer": "medicine",
-        "Fashion-MNIST": "technology", "MMLU": "general",
-        "ARC-Easy": "science", "HellaSwag": "general",
-        "Winogrande": "general", "N-back": "psychology",
-        "Ethics": "philosophy", "Sequences": "math",
+        "wine": "science", "breast_cancer": "medicine",
+        "fashion_mnist": "technology", "mmlu": "general",
+        "arc_easy": "science", "hellaswag": "general",
+        "winogrande": "general", "nback": "psychology",
+        "ethics": "philosophy", "sequences": "math",
     }
 
     # Structured ML datasets
     ml_datasets = [
-        ("Wine", WineDataset()),
-        ("Breast Cancer", BreastCancerDataset()),
-        ("Fashion-MNIST", FashionMNISTDataset()),
+        ("wine", WineDataset()),
+        ("breast_cancer", BreastCancerDataset()),
+        ("fashion_mnist", FashionMNISTDataset()),
     ]
 
     # Text-based QA datasets
     qa_datasets = [
-        ("MMLU", MMLUDataset()),
-        ("ARC-Easy", ARCDataset()),
-        ("HellaSwag", HellaSwagDataset()),
-        ("Winogrande", WinograndeDataset()),
+        ("mmlu", MMLUDataset()),
+        ("arc_easy", ARCDataset()),
+        ("hellaswag", HellaSwagDataset()),
+        ("winogrande", WinograndeDataset()),
     ]
 
     # Cognitive benchmarks
@@ -339,8 +569,8 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
 
     all_datasets = []
 
-    # ML datasets — pad/truncate features to ATHENA_NUM_INPUTS
-    for name, ds in ml_datasets:
+    # ML datasets — pad/truncate features to ATHENA_NUM_INPUTS + domain-prefix labels
+    for domain_name, ds in ml_datasets:
         examples = ds.get_examples()
         adapted = []
         for ex in examples:
@@ -349,24 +579,46 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
                 feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
             elif len(feats) > ATHENA_NUM_INPUTS:
                 feats = feats[:ATHENA_NUM_INPUTS]
-            adapted.append({"features": feats, "label": ex["label"]})
-        all_datasets.append((name, adapted))
+            adapted.append({"features": feats,
+                            "label": domain_label(domain_name, ex["label"])})
+        all_datasets.append((domain_name, adapted))
 
-    # QA datasets — already 128 features
-    for name, ds in qa_datasets:
-        all_datasets.append((name, ds.get_examples()))
+    # QA datasets — re-encode to ATHENA_NUM_INPUTS + domain-prefix labels
+    for domain_name, ds in qa_datasets:
+        examples = ds.get_examples()
+        adapted = []
+        for ex in examples:
+            feats = ex["features"]
+            if len(feats) < ATHENA_NUM_INPUTS:
+                feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+            elif len(feats) > ATHENA_NUM_INPUTS:
+                feats = feats[:ATHENA_NUM_INPUTS]
+            adapted.append({"features": feats,
+                            "label": domain_label(domain_name, ex["label"])})
+        all_datasets.append((domain_name, adapted))
 
-    all_datasets.append(("N-back", nback_examples))
+    nback_adapted = [{"features": ex["features"] + [0.0] * max(0, ATHENA_NUM_INPUTS - len(ex["features"])),
+                      "label": domain_label("nback", ex["label"])}
+                     for ex in nback_examples]
+    all_datasets.append(("nback", nback_adapted))
 
-    ethics_adapted = [{"features": s["features"] + [0.0] * (ATHENA_NUM_INPUTS - len(s["features"])),
-                       "label": s["category"]}
-                      for s in ethics]
-    all_datasets.append(("Ethics", ethics_adapted))
+    ethics_adapted = []
+    for s in ethics:
+        feats = s["features"]
+        if len(feats) < ATHENA_NUM_INPUTS:
+            feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+        ethics_adapted.append({"features": feats,
+                               "label": domain_label("ethics", s["category"])})
+    all_datasets.append(("ethics", ethics_adapted))
 
-    seq_adapted = [{"features": s["features"] + [0.0] * (ATHENA_NUM_INPUTS - len(s["features"])),
-                    "label": str(s["position"] % 4)}
-                   for s in seq_patterns]
-    all_datasets.append(("Sequences", seq_adapted))
+    seq_adapted = []
+    for s in seq_patterns:
+        feats = s["features"]
+        if len(feats) < ATHENA_NUM_INPUTS:
+            feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
+        seq_adapted.append({"features": feats,
+                            "label": domain_label("sequences", str(s["position"] % 4))})
+    all_datasets.append(("sequences", seq_adapted))
 
     # Let executive function order datasets by curiosity priorities
     available_domains = list(set(domain_map.get(name, "general")
@@ -533,7 +785,8 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
                     features, label = result
                     # Socratic: predict-before-learn per example
-                    socratic.train_example(features, str(label), domain)
+                    # Domain-prefix label to prevent cross-domain collision
+                    socratic.train_example(features, domain_label(domain, label), domain)
                     count += 1
                     total_trained += 1
                     examples_since_introspection += 1
@@ -612,7 +865,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
                     features = text_to_features(text, ATHENA_NUM_INPUTS)
                     label_val = example.get("answer", example.get("label", 0))
-                    socratic.train_example(features, str(label_val), domain)
+                    socratic.train_example(features, domain_label(domain, label_val), domain)
                     count += 1
                     total_trained += 1
 
@@ -778,11 +1031,11 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
     if BENCHMARKS_AVAILABLE:
         logger.log("Final consolidation on benchmark datasets...")
         consolidation_sets = [
-            WineDataset(), BreastCancerDataset(),
-            MMLUDataset(), ARCDataset(),
+            ("wine", WineDataset()), ("breast_cancer", BreastCancerDataset()),
+            ("mmlu", MMLUDataset()), ("arc_easy", ARCDataset()),
         ]
         all_examples = []
-        for ds in consolidation_sets:
+        for domain_name, ds in consolidation_sets:
             examples = ds.get_examples()
             for ex in examples:
                 feats = ex["features"]
@@ -790,7 +1043,8 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
                     feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
                 elif len(feats) > ATHENA_NUM_INPUTS:
                     feats = feats[:ATHENA_NUM_INPUTS]
-                all_examples.append({"features": feats, "label": ex["label"]})
+                all_examples.append({"features": feats,
+                                     "label": domain_label(domain_name, ex["label"])})
 
         for epoch in range(2):
             batch = [(ex["features"], str(ex["label"])) for ex in all_examples]
@@ -825,14 +1079,14 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
     if BENCHMARKS_AVAILABLE:
         logger.log("\nFinal evaluation:")
         eval_datasets = [
-            ("Wine", WineDataset()),
-            ("Breast Cancer", BreastCancerDataset()),
-            ("MMLU", MMLUDataset()),
-            ("ARC-Easy", ARCDataset()),
-            ("HellaSwag", HellaSwagDataset()),
-            ("Winogrande", WinograndeDataset()),
+            ("wine", WineDataset()),
+            ("breast_cancer", BreastCancerDataset()),
+            ("mmlu", MMLUDataset()),
+            ("arc_easy", ARCDataset()),
+            ("hellaswag", HellaSwagDataset()),
+            ("winogrande", WinograndeDataset()),
         ]
-        for name, ds in eval_datasets:
+        for domain_name, ds in eval_datasets:
             examples = ds.get_examples()
             correct = 0
             total = 0
@@ -842,14 +1096,15 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
                     feats = feats + [0.0] * (ATHENA_NUM_INPUTS - len(feats))
                 elif len(feats) > ATHENA_NUM_INPUTS:
                     feats = feats[:ATHENA_NUM_INPUTS]
+                expected = domain_label(domain_name, ex["label"])
                 pred, conf = brain.predict(feats)
-                if pred == str(ex["label"]):
+                if pred == expected:
                     correct += 1
                 total += 1
             acc = correct / max(total, 1)
-            logger.log(f"  {name:20s}: {acc:.4f} ({correct}/{total})")
+            logger.log(f"  {domain_name:20s}: {acc:.4f} ({correct}/{total})")
             logger.metric({
-                "phase": 4, "eval_dataset": name,
+                "phase": 4, "eval_dataset": domain_name,
                 "accuracy": acc, "correct": correct, "total": total,
             })
 
@@ -1006,6 +1261,67 @@ def main():
     brain.save(str(initial_ckpt))
     logger.log(f"Initial checkpoint saved: {initial_ckpt}")
 
+    # ===== SMOKE TEST: Catch problems in <60s instead of hours =====
+    logger.log("-" * 70)
+    logger.log("SMOKE TEST: Validating pipeline before long training run...")
+    smoke_ok = True
+    try:
+        # 1. Verify predict works with correct dimensions
+        test_input = [0.1] * ATHENA_NUM_INPUTS
+        result = brain.predict(test_input)
+        if result is None:
+            logger.log("  FAIL: brain.predict() returned None")
+            smoke_ok = False
+        else:
+            decision = result[0] if isinstance(result, tuple) else result
+            logger.log(f"  OK: predict returns result (decision={decision})")
+
+        # 2. Verify learn works
+        brain.learn(test_input, "smoke:test_label")
+        logger.log("  OK: brain.learn() accepted input")
+
+        # 3. Verify encoding pipeline (text, QA, image)
+        if BENCHMARKS_AVAILABLE:
+            from benchmark_datasets import text_to_features, encode_qa, FashionMNISTDataset
+            tf = text_to_features("smoke test sentence", ATHENA_NUM_INPUTS)
+            assert len(tf) == ATHENA_NUM_INPUTS, f"text_to_features: {len(tf)} != {ATHENA_NUM_INPUTS}"
+            qa = encode_qa("What is 2+2?", "Four", ATHENA_NUM_INPUTS)
+            assert len(qa) == ATHENA_NUM_INPUTS, f"encode_qa: {len(qa)} != {ATHENA_NUM_INPUTS}"
+            fds = FashionMNISTDataset()
+            fex = fds.get_examples()
+            if fex:
+                assert len(fex[0]["features"]) == ATHENA_NUM_INPUTS, \
+                    f"Fashion-MNIST: {len(fex[0]['features'])} != {ATHENA_NUM_INPUTS}"
+            logger.log(f"  OK: encoding pipeline (text={len(tf)}, qa={len(qa)}, "
+                       f"fashion={len(fex[0]['features']) if fex else '?'})")
+
+        # 4. Verify domain labels are prefixed
+        test_label = domain_label("wine", 0)
+        assert ":" in test_label, f"domain_label missing prefix: {test_label}"
+        logger.log(f"  OK: domain labels prefixed ({test_label})")
+
+        # 5. Quick learn+predict cycle to verify learning signal
+        for i in range(5):
+            features = [float(i == j) for j in range(ATHENA_NUM_INPUTS)]
+            brain.learn(features, f"smoke:{i}")
+        result2 = brain.predict([1.0] + [0.0] * (ATHENA_NUM_INPUTS - 1))
+        dec2 = result2[0] if isinstance(result2, tuple) else result2
+        logger.log(f"  OK: 5-step train+predict cycle (decision={dec2 if result2 else 'None'})")
+
+    except Exception as e:
+        logger.log(f"  FAIL: {e}")
+        smoke_ok = False
+
+    if not smoke_ok:
+        logger.log("SMOKE TEST FAILED — aborting to avoid wasting hours")
+        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_smoke_fail.bin"))
+        del brain
+        nimcp.shutdown()
+        sys.exit(1)
+
+    logger.log("SMOKE TEST PASSED — proceeding with training")
+    logger.log("-" * 70)
+
     report_card = None
 
     if SCHOOL_AVAILABLE:
@@ -1017,6 +1333,9 @@ def main():
         p0_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase0.bin"
         brain.save(str(p0_ckpt))
         logger.log(f"Phase 0 checkpoint saved: {p0_ckpt}")
+
+        health_check(brain, logger, "Phase 0", abort_on_fail=True)
+        conversation_probe(brain, logger, "Phase 0 (Orientation)")
 
         # Phase 1: Parallel School (23 instructors)
         result = phase1_parallel_school(brain, socratic, cognitive,
@@ -1030,20 +1349,32 @@ def main():
         brain.save(str(p1_ckpt))
         logger.log(f"School checkpoint saved: {p1_ckpt}")
 
+        health_check(brain, logger, "Phase 1 (School)", abort_on_fail=True)
+        conversation_probe(brain, logger, "Phase 1 (Parallel School)")
+
     else:
         # ===== LEGACY PIPELINE: Sequential phases =====
         logger.log("Using legacy sequential pipeline (school module not available)")
 
         total_trained = phase1_worksheets(brain, socratic, cognitive, logger)
         brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase1.bin"))
+        health_check(brain, logger, "Phase 1 (Worksheets)", abort_on_fail=True)
+        conversation_probe(brain, logger, "Phase 1 (Worksheets)")
 
         total_trained = phase2_guided_study(brain, socratic, cognitive,
                                              logger, total_trained)
         brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase2.bin"))
+        health_check(brain, logger, "Phase 2 (Guided Study)", abort_on_fail=True)
+        conversation_probe(brain, logger, "Phase 2 (Guided Study)")
 
         total_trained = phase3_research(brain, active_learner, socratic,
                                          cognitive, logger, total_trained)
         brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase3.bin"))
+        health_check(brain, logger, "Phase 3 (Research)", abort_on_fail=True)
+
+    # Final health check + conversation probe before exam
+    health_check(brain, logger, "Pre-Exam", abort_on_fail=True)
+    conversation_probe(brain, logger, "Pre-Exam (All Training Complete)")
 
     # Phase 2 (Final): Creative Exam + Final Consolidation + Save
     total_trained = phase4_exam_and_save(brain, active_learner, socratic,

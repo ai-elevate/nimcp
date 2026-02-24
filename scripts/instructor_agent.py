@@ -283,6 +283,8 @@ class InstructorAgent(threading.Thread):
                 continue
 
             features, label = result
+            # Domain-prefix label to prevent cross-domain collision
+            label = f"{domain}:{label}"
 
             # Grade data quality
             text = self._extract_text(example)
@@ -349,6 +351,8 @@ class InstructorAgent(threading.Thread):
             features, label = self._extract_multimodal(example, modality, domain)
             if features is None:
                 continue
+            # Domain-prefix label to prevent cross-domain collision
+            label = f"{domain}:{label}"
 
             grade = self._grade_example("", domain, source_name)
             method = self.method_stats.select_method()
@@ -402,7 +406,8 @@ class InstructorAgent(threading.Thread):
                 continue
 
             features = _text_to_features(text, self.num_inputs)
-            label_val = example.get("answer", example.get("label", 0))
+            # Domain-prefix label to prevent cross-domain collision
+            label_val = f"{domain}:{example.get('answer', example.get('label', 0))}"
 
             grade = self._grade_example(text, domain, source_name)
             method = self.method_stats.select_method()
@@ -765,18 +770,32 @@ class InstructorAgent(threading.Thread):
 # ---------------------------------------------------------------------------
 
 def _text_to_features(text: str, num_inputs: int) -> list:
-    """Simple text → feature encoding (matches benchmark_datasets pattern)."""
-    text = text[:2000]
-    encoded = text.encode("utf-8", errors="replace")
+    """Text → feature encoding using shared benchmark_datasets encoder."""
+    try:
+        from benchmark_datasets import text_to_features
+        return text_to_features(text[:2000], num_inputs)
+    except ImportError:
+        pass
+    # Inline fallback
+    import hashlib as _h
+    text_lower = text[:2000].lower().strip()
     features = [0.0] * num_inputs
-    for i, b in enumerate(encoded[:num_inputs]):
-        features[i] = b / 255.0
-    # Add positional hash features
-    words = text.split()
-    for i, w in enumerate(words[:num_inputs // 4]):
-        idx = (hash(w) % (num_inputs // 2)) + (num_inputs // 2)
-        if idx < num_inputs:
-            features[idx] = (features[idx] + 0.5) / 1.5
+    if not text_lower:
+        return features
+    q = num_inputs // 4
+    for ch in text_lower:
+        features[ord(ch) % q] += 1.0
+    for i in range(len(text_lower) - 1):
+        bg = text_lower[i:i + 2]
+        h = int(_h.md5(bg.encode()).hexdigest(), 16)
+        features[q + (h % q)] += 1.0
+    words = text_lower.split()
+    for wi, word in enumerate(words):
+        h = int(_h.md5(word.encode()).hexdigest(), 16)
+        features[2 * q + (h % q)] += 1.0
+    mx = max(features) if features else 1.0
+    if mx > 0:
+        features = [v / mx for v in features]
     return features
 
 

@@ -133,31 +133,37 @@ class StreamingDatasetProcessor:
         return None
 
     def encode_text(self, text: str, num_features: int) -> List[float]:
-        """Encode text into a fixed-size feature vector using character
-        n-grams and word hashing (same approach as CognitiveInterpreter)."""
+        """Encode text into a fixed-size feature vector.
+
+        Uses benchmark_datasets.text_to_features for consistent encoding
+        across the entire training pipeline.
+        """
+        try:
+            from benchmark_datasets import text_to_features
+            return text_to_features(text, num_features)
+        except ImportError:
+            pass
+        # Inline fallback if benchmark_datasets unavailable
         features = [0.0] * num_features
         text_lower = text.lower().strip()
         if not text_lower:
             return features
-
-        # Character unigram frequencies
+        q = num_features // 4
         for ch in text_lower:
-            features[ord(ch) % num_features] += 1.0
-
-        # Character bigram frequencies
+            features[ord(ch) % q] += 1.0
         for i in range(len(text_lower) - 1):
             bigram = text_lower[i:i + 2]
             h = int(hashlib.md5(bigram.encode()).hexdigest(), 16)
-            features[h % num_features] += 0.5
-
-        # Word-level semantic hashing
+            features[q + (h % q)] += 1.0
         words = text_lower.split()
         for wi, word in enumerate(words):
             h = int(hashlib.md5(word.encode()).hexdigest(), 16)
-            for offset in range(3):
-                features[(h + offset * 31) % num_features] += (wi + 1) * 0.1
-
-        # Normalize to [0, 1]
+            features[2 * q + (h % q)] += 1.0
+            features[2 * q + ((h >> 16) % q)] += (wi + 1) * 0.05
+        for i in range(len(words) - 1):
+            pair = f"{words[i]} {words[i+1]}"
+            h = int(hashlib.md5(pair.encode()).hexdigest(), 16)
+            features[2 * q + (h % q)] += 0.7
         mx = max(features) if features else 1.0
         if mx > 0:
             features = [v / mx for v in features]

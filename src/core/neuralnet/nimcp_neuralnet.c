@@ -685,6 +685,7 @@ neural_network_t neural_network_create(const network_config_t* config)
         capacity = actual_neurons * 2;
     }
     if (capacity > MAX_NEURONS) capacity = MAX_NEURONS;
+    if (actual_neurons > capacity) actual_neurons = capacity;
     network->neurons = (neuron_t*) nimcp_calloc(capacity, sizeof(neuron_t));
 
     // Guard clause: Check neurons allocation

@@ -19,6 +19,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuron_bridge)
 
 #include "gpu/neuron/nimcp_neuron_bridge.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -207,11 +208,26 @@ int nimcp_neuron_export_onnx(nimcp_neuron_inference_cache_t* cache,
 
         for (uint32_t j = 0; j < out_dim && (out_start + j) < num_neurons; j++) {
             // Get bias from neuron threshold/bias
-            biases[j] = neural_network_get_neuron_bias(net, out_start + j);
+            // Get bias from neuron threshold (no separate bias API)
+            neuron_t* neuron = neural_network_get_neuron(net, out_start + j);
+            biases[j] = neuron ? neuron->threshold : 0.0f;
 
-            // Get weights from synapses
+            // Get weights from neuron's outgoing synapses (sparse storage)
             for (uint32_t i = 0; i < in_dim; i++) {
-                float w = neural_network_get_synapse_weight(net, base_out + i, out_start + j);
+                neuron_t* src = neural_network_get_neuron(net, base_out + i);
+                float w = 0.0f;
+                if (src) {
+                    uint32_t out_count = NEURON_OUT_COUNT(src);
+                    for (uint32_t s = 0; s < out_count; s++) {
+                        synapse_handle_t* h = NEURON_OUT_HANDLE(src, s);
+                        if (h && h->target_neuron_id == (out_start + j)) {
+                            w = h->use_ternary_weight
+                                ? (float)h->ternary_weight
+                                : h->weight * h->strength;
+                            break;
+                        }
+                    }
+                }
                 weights[j * in_dim + i] = w;
             }
         }
