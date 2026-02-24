@@ -997,6 +997,9 @@ typedef struct {
     uint32_t cow_ref_count;     /**< Reference count for shared data (0 if not COW) */
     size_t cow_shared_bytes;    /**< Bytes shared via COW (0 if not COW) */
     size_t cow_private_bytes;   /**< Bytes private to this brain (always > 0) */
+
+    // GPU status
+    bool gpu_available;         /**< True if GPU acceleration is active */
 } nimcp_brain_probe_t;
 
 /**

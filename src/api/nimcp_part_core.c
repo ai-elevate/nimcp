@@ -439,6 +439,9 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
         probe->cow_private_bytes = internal_stats.memory_bytes;
     }
 
+    // GPU status
+    probe->gpu_available = brain->internal_brain->gpu_enabled;
+
     set_error("No error");
     return NIMCP_OK;
 }

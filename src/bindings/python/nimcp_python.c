@@ -906,6 +906,7 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     SET("cow_ref_count",          PyLong_FromUnsignedLong(probe.cow_ref_count));
     SET("cow_shared_bytes",       PyLong_FromSize_t(probe.cow_shared_bytes));
     SET("cow_private_bytes",      PyLong_FromSize_t(probe.cow_private_bytes));
+    SET("gpu_available",          PyBool_FromLong(probe.gpu_available));
 
 #undef SET
 
