@@ -586,6 +586,34 @@ void adaptive_network_set_gpu_enabled(adaptive_network_t network, bool enabled);
 bool adaptive_network_is_gpu_enabled(adaptive_network_t network);
 
 //=============================================================================
+// Neuron (AWS Inferentia) Inference Accessors
+//=============================================================================
+
+// Forward declaration for Neuron inference cache
+struct nimcp_neuron_inference_cache;
+
+/**
+ * @brief Set Neuron inference cache on adaptive network
+ * @param network Adaptive network
+ * @param cache Neuron inference cache (ownership transferred to network)
+ */
+void adaptive_network_set_neuron_cache(adaptive_network_t network, struct nimcp_neuron_inference_cache* cache);
+
+/**
+ * @brief Set Neuron enabled flag on adaptive network
+ * @param network Adaptive network
+ * @param enabled Whether NeuronCore inference is enabled
+ */
+void adaptive_network_set_neuron_enabled(adaptive_network_t network, bool enabled);
+
+/**
+ * @brief Check if adaptive network has Neuron inference enabled
+ * @param network Adaptive network
+ * @return true if NeuronCore inference is active
+ */
+bool adaptive_network_is_neuron_enabled(adaptive_network_t network);
+
+//=============================================================================
 // Frozen Network Support
 //=============================================================================
 

@@ -60,6 +60,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #include "gpu/execution/nimcp_gpu_detect.h"          // Phase GPU: GPU detection
 #include "gpu/context/nimcp_gpu_context.h"           // Phase GPU: GPU context
 #include "gpu/training/nimcp_training_bridge.h"      // Phase GPU: Weight cache + forward pass
+#include "gpu/neuron/nimcp_neuron_bridge.h"          // Phase Inferentia: NeuronCore inference
 
 //=============================================================================
 // Constants and Configuration
@@ -311,6 +312,11 @@ struct adaptive_network_struct {
     struct nimcp_gpu_context_s* gpu_ctx;
     struct nimcp_gpu_weight_cache_s* gpu_weight_cache;
     bool gpu_enabled;
+
+    // Neuron inference acceleration (Phase Inferentia)
+    // WHY: NeuronCore-accelerated forward pass on AWS Inferentia hardware
+    struct nimcp_neuron_inference_cache* neuron_cache;
+    bool neuron_enabled;
 
     // Frozen network (Phase GPU-INF)
     // WHY: Disable learning and lock weights for inference-only mode
@@ -1197,6 +1203,12 @@ void adaptive_network_destroy(adaptive_network_t network)
     if (!network)
         return;
 
+    // Phase Inferentia: Clean up Neuron inference cache
+    if (network->neuron_cache) {
+        nimcp_neuron_cache_destroy(network->neuron_cache);
+        network->neuron_cache = NULL;
+    }
+
     // Phase GPU: Clean up GPU resources before base network
     if (network->gpu_weight_cache) {
         nimcp_gpu_weight_cache_destroy(network->gpu_weight_cache);
@@ -1476,6 +1488,22 @@ uint32_t adaptive_network_forward(adaptive_network_t network, const float* input
     if (!network || !input || !output)
         return 0;
 
+    // Phase Inferentia: NeuronCore-accelerated forward pass (highest priority for inference)
+    if (network->neuron_enabled && network->neuron_cache &&
+        nimcp_neuron_is_ready(network->neuron_cache)) {
+        int result = nimcp_neuron_forward_pass(network->neuron_cache,
+                                                input, input_size,
+                                                output, output_size);
+        if (result == 0) {
+            // NeuronCore succeeded — adaptive thresholding + sparsity on CPU
+            uint32_t active_count = process_network_outputs(network, output, output_size);
+            update_running_sparsity(network, active_count, output_size);
+            network->total_inferences++;
+            return active_count;
+        }
+        // NeuronCore failed — fall through to GPU or CPU path
+    }
+
     // Phase GPU: GPU-accelerated forward pass
     if (network->gpu_enabled && network->gpu_weight_cache) {
         // Re-upload weights if CPU biological learning modified them
@@ -1551,6 +1579,19 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     // Guard clause: Validate inputs
     if (!network || !input || !output)
         return 0;
+
+    // Phase Inferentia: NeuronCore-accelerated forward pass (read-only — no statistics update)
+    if (network->neuron_enabled && network->neuron_cache &&
+        nimcp_neuron_is_ready(network->neuron_cache)) {
+        int result = nimcp_neuron_forward_pass(network->neuron_cache,
+                                                input, input_size,
+                                                output, output_size);
+        if (result == 0) {
+            uint32_t active_count = process_network_outputs((adaptive_network_t)network, output, output_size);
+            return active_count;
+        }
+        // NeuronCore failed — fall through to GPU or CPU
+    }
 
     // Phase GPU: GPU-accelerated forward pass (read-only — no statistics update)
     if (network->gpu_enabled && network->gpu_weight_cache) {
@@ -2811,6 +2852,32 @@ bool adaptive_network_is_gpu_enabled(adaptive_network_t network)
 {
     if (!network) return false;
     return network->gpu_enabled;
+}
+
+//=============================================================================
+// Neuron (Inferentia) Inference Accessors
+//=============================================================================
+
+void adaptive_network_set_neuron_cache(adaptive_network_t network, struct nimcp_neuron_inference_cache* cache)
+{
+    if (!network) return;
+    // Destroy existing cache if we owned one
+    if (network->neuron_cache && network->neuron_cache != cache) {
+        nimcp_neuron_cache_destroy(network->neuron_cache);
+    }
+    network->neuron_cache = cache;
+}
+
+void adaptive_network_set_neuron_enabled(adaptive_network_t network, bool enabled)
+{
+    if (!network) return;
+    network->neuron_enabled = enabled;
+}
+
+bool adaptive_network_is_neuron_enabled(adaptive_network_t network)
+{
+    if (!network) return false;
+    return network->neuron_enabled;
 }
 
 //=============================================================================

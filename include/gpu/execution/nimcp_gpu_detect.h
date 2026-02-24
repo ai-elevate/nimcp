@@ -67,6 +67,7 @@ typedef enum {
     GPU_BACKEND_ROCM    = (1 << 2),  /**< AMD ROCm/HIP */
     GPU_BACKEND_METAL   = (1 << 3),  /**< Apple Metal (reserved) */
     GPU_BACKEND_VULKAN  = (1 << 4),  /**< Vulkan compute (reserved) */
+    GPU_BACKEND_NEURON  = (1 << 5),  /**< AWS Inferentia NeuronCore */
 } gpu_backend_t;
 
 /**
@@ -79,6 +80,7 @@ typedef enum {
     GPU_VENDOR_INTEL    = 3,
     GPU_VENDOR_APPLE    = 4,
     GPU_VENDOR_OTHER    = 5,
+    GPU_VENDOR_AWS      = 6,
 } gpu_vendor_t;
 
 //=============================================================================
@@ -185,6 +187,11 @@ typedef struct {
 
     // Recommended settings
     gpu_backend_t recommended_backend; /**< Recommended backend to use */
+
+    // AWS Neuron/Inferentia
+    bool neuron_available;           /**< NRT runtime available */
+    uint32_t neuron_device_count;    /**< Number of Neuron devices */
+    uint32_t neuron_cores_per_device; /**< NeuronCores per device */
 } gpu_detect_result_t;
 
 //=============================================================================
@@ -334,6 +341,11 @@ NIMCP_EXPORT bool gpu_refresh_capabilities(void);
  * @brief Check if ROCm is available (common check)
  */
 #define GPU_HAS_ROCM() gpu_backend_is_available(GPU_BACKEND_ROCM)
+
+/**
+ * @brief Check if Neuron (AWS Inferentia) is available (common check)
+ */
+#define GPU_HAS_NEURON() gpu_backend_is_available(GPU_BACKEND_NEURON)
 
 #ifdef __cplusplus
 }

@@ -43,6 +43,7 @@ static nimcp_kernel_backend_t g_cpu_backend;
 static nimcp_kernel_backend_t g_cuda_backend;
 static nimcp_kernel_backend_t g_rocm_backend;
 static nimcp_kernel_backend_t g_opencl_backend;
+static nimcp_kernel_backend_t g_neuron_backend;
 static nimcp_kernel_backend_t* g_active_backend = NULL;
 static bool g_backend_initialized = false;
 
@@ -1280,6 +1281,23 @@ static void init_opencl_backend(void)
 }
 
 //=============================================================================
+// Initialize Neuron Backend (AWS Inferentia)
+//=============================================================================
+
+extern void init_neuron_backend_ops(nimcp_kernel_backend_t* backend);
+
+static void init_neuron_backend(void)
+{
+    init_neuron_backend_ops(&g_neuron_backend);
+
+    if (g_neuron_backend.initialized) {
+        LOG_INFO("Neuron kernel backend initialized");
+    } else {
+        LOG_DEBUG("Neuron backend initialization failed");
+    }
+}
+
+//=============================================================================
 // Helper: Try to initialize a specific GPU backend
 //=============================================================================
 
@@ -1334,6 +1352,16 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
             /* Not an error - GPU not available is normal */
             return false;
 
+        case NIMCP_BACKEND_NEURON:
+            init_neuron_backend();
+            if (g_neuron_backend.initialized) {
+                g_active_backend = &g_neuron_backend;
+                LOG_INFO("Backend selected: Neuron (AWS Inferentia)");
+                return true;
+            }
+            LOG_DEBUG("Neuron backend initialization failed, trying next...");
+            return false;
+
         default:
             LOG_WARN("try_init_gpu_backend: unknown backend type %d", (int)type);
             return false;
@@ -1375,6 +1403,7 @@ bool nimcp_kernel_backend_init(nimcp_backend_type_t preferred)
     init_cuda_backend();
     init_rocm_backend();
     init_opencl_backend();
+    init_neuron_backend();
 
     // Select active backend based on preference
     switch (preferred) {
@@ -1405,14 +1434,25 @@ bool nimcp_kernel_backend_init(nimcp_backend_type_t preferred)
             }
             break;
 
+        case NIMCP_BACKEND_NEURON:
+            if (g_neuron_backend.initialized) {
+                g_active_backend = &g_neuron_backend;
+            } else {
+                LOG_WARN("Neuron backend requested but not available, falling back to CPU");
+                g_active_backend = &g_cpu_backend;
+            }
+            break;
+
         case NIMCP_BACKEND_AUTO:
-            // GPU-first fallback chain: CUDA -> ROCm -> OpenCL -> CPU
+            // GPU-first fallback chain: CUDA -> ROCm -> OpenCL -> Neuron -> CPU
             if (g_cuda_backend.initialized) {
                 g_active_backend = &g_cuda_backend;
             } else if (g_rocm_backend.initialized) {
                 g_active_backend = &g_rocm_backend;
             } else if (g_opencl_backend.initialized) {
                 g_active_backend = &g_opencl_backend;
+            } else if (g_neuron_backend.initialized) {
+                g_active_backend = &g_neuron_backend;
             } else {
                 LOG_WARN("No GPU backend available, using CPU fallback");
                 g_active_backend = &g_cpu_backend;
@@ -1458,7 +1498,7 @@ bool nimcp_kernel_backend_init_default(void)
     // Always initialize CPU backend first (guaranteed fallback)
     init_cpu_backend();
 
-    // Try GPU backends in priority order: CUDA -> ROCm -> OpenCL
+    // Try GPU backends in priority order: CUDA -> ROCm -> OpenCL -> Neuron
     bool gpu_found = false;
 
     // Try CUDA first (most common, best optimized)
@@ -1473,12 +1513,16 @@ bool nimcp_kernel_backend_init_default(void)
     else if (try_init_gpu_backend(NIMCP_BACKEND_OPENCL)) {
         gpu_found = true;
     }
+    // Try Neuron if OpenCL failed
+    else if (try_init_gpu_backend(NIMCP_BACKEND_NEURON)) {
+        gpu_found = true;
+    }
 
     // Fall back to CPU if no GPU available
     if (!gpu_found) {
         g_active_backend = &g_cpu_backend;
         LOG_WARN("No GPU backend available - falling back to CPU execution");
-        LOG_WARN("For optimal performance, install CUDA, ROCm, or OpenCL drivers");
+        LOG_WARN("For optimal performance, install CUDA, ROCm, OpenCL, or Neuron drivers");
     }
 
     g_backend_initialized = true;
@@ -1551,6 +1595,15 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
             g_active_backend = &g_opencl_backend;
             break;
 
+        case NIMCP_BACKEND_NEURON:
+            if (!g_neuron_backend.initialized) {
+                LOG_ERROR("Cannot switch to Neuron backend - not available");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Neuron backend switch failed - not available");
+                return false;
+            }
+            g_active_backend = &g_neuron_backend;
+            break;
+
         case NIMCP_BACKEND_CPU:
             g_active_backend = &g_cpu_backend;
             break;
@@ -1563,6 +1616,8 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
                 g_active_backend = &g_rocm_backend;
             } else if (g_opencl_backend.initialized) {
                 g_active_backend = &g_opencl_backend;
+            } else if (g_neuron_backend.initialized) {
+                g_active_backend = &g_neuron_backend;
             } else {
                 g_active_backend = &g_cpu_backend;
             }
@@ -1585,6 +1640,7 @@ const char* nimcp_backend_type_name(nimcp_backend_type_t type)
         case NIMCP_BACKEND_CUDA: return "CUDA";
         case NIMCP_BACKEND_ROCM: return "ROCm";
         case NIMCP_BACKEND_OPENCL: return "OpenCL";
+        case NIMCP_BACKEND_NEURON: return "Neuron";
         case NIMCP_BACKEND_AUTO: return "AUTO";
         default: return "UNKNOWN";
     }

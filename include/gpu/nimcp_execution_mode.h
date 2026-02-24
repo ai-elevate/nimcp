@@ -68,6 +68,7 @@ typedef enum {
     EXEC_MODE_DISTRIBUTED_CPU,   /**< Distributed across CPU nodes */
     EXEC_MODE_DISTRIBUTED_GPU,   /**< Distributed across GPU nodes */
     EXEC_MODE_HYBRID,            /**< CPU + GPU hybrid */
+    EXEC_MODE_NEURON,            /**< AWS Inferentia NeuronCore */
     EXEC_MODE_AUTO               /**< Auto-detect best mode */
 } execution_mode_t;
 

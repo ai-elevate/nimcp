@@ -26,6 +26,9 @@ add_gpu_test(test_spike_event)
 # Multi-GPU bounds validation tests (P2-13 fix)
 add_gpu_test(test_multigpu_bounds)
 
+# AWS Neuron/Inferentia bridge tests (no CUDA required — stubs on non-Inferentia)
+add_gpu_test(test_neuron_bridge)
+
 # GPU stub false positive throw tests (no CUDA required)
 add_gpu_test(test_gpu_stub_no_false_throws)
 

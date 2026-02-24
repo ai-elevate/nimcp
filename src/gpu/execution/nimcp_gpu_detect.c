@@ -163,6 +163,7 @@ static nimcp_mutex_t s_refresh_mutex = NIMCP_MUTEX_INITIALIZER;
 static lib_handle_t s_cuda_lib = NULL;
 static lib_handle_t s_opencl_lib = NULL;
 static lib_handle_t s_rocm_lib = NULL;
+static lib_handle_t s_neuron_lib = NULL;
 
 // Forward declaration for pthread_once callback
 static void gpu_detect_init_impl(void);
@@ -699,6 +700,106 @@ static void detect_rocm_devices(gpu_detect_result_t* caps)
 }
 
 //=============================================================================
+// AWS Neuron/Inferentia Detection
+//=============================================================================
+
+/**
+ * @brief NRT function pointer types for runtime loading
+ */
+typedef int (*nrt_init_fn)(void);
+typedef void (*nrt_close_fn)(void);
+typedef int (*nrt_get_total_nc_count_fn)(uint32_t*);
+
+/**
+ * @brief Detect AWS Inferentia NeuronCore devices via NRT library
+ *
+ * WHAT: Loads Neuron Runtime library and queries NeuronCore count
+ * WHY:  Runtime detection for Inferentia hardware without compile-time dependency
+ * HOW:  dlopen libnrt.so, call nrt_init, nrt_get_total_nc_count
+ */
+static void detect_neuron_devices(gpu_detect_result_t* caps)
+{
+    // Guard: Already have NRT lib from previous detection
+    if (s_neuron_lib != NULL) {
+        return;
+    }
+
+    LOG_DEBUG("Attempting to detect AWS Neuron/Inferentia devices");
+
+    // NRT is Linux-only (Inferentia runs on Amazon Linux / Ubuntu)
+#ifdef __linux__
+    s_neuron_lib = LIB_OPEN("libnrt.so");
+    if (!s_neuron_lib) {
+        s_neuron_lib = LIB_OPEN("libnrt.so.1");
+    }
+    if (!s_neuron_lib) {
+        s_neuron_lib = LIB_OPEN("/opt/aws/neuron/lib/libnrt.so");
+    }
+    if (!s_neuron_lib) {
+        s_neuron_lib = LIB_OPEN("/opt/aws/neuron/lib/libnrt.so.1");
+    }
+#else
+    LOG_DEBUG("Neuron/Inferentia not supported on this platform");
+    return;
+#endif
+
+    // Guard: Library not found
+    if (!s_neuron_lib) {
+        LOG_DEBUG("Neuron Runtime (NRT) library not found");
+        return;
+    }
+
+    // Load function pointers
+    nrt_init_fn nrt_init = (nrt_init_fn)LIB_SYM(s_neuron_lib, "nrt_init");
+    nrt_close_fn nrt_close = (nrt_close_fn)LIB_SYM(s_neuron_lib, "nrt_close");
+    nrt_get_total_nc_count_fn nrt_get_total_nc_count =
+        (nrt_get_total_nc_count_fn)LIB_SYM(s_neuron_lib, "nrt_get_total_nc_count");
+
+    // Guard: Required functions not found
+    if (!nrt_init || !nrt_get_total_nc_count) {
+        LOG_DEBUG("Required NRT functions not found");
+        LIB_CLOSE(s_neuron_lib);
+        s_neuron_lib = NULL;
+        return;
+    }
+
+    // Initialize NRT
+    int result = nrt_init();
+    if (result != 0) {
+        LOG_DEBUG("nrt_init failed with error %d", result);
+        LIB_CLOSE(s_neuron_lib);
+        s_neuron_lib = NULL;
+        return;
+    }
+
+    // Get NeuronCore count
+    uint32_t nc_count = 0;
+    result = nrt_get_total_nc_count(&nc_count);
+
+    // Clean up NRT (we only needed it for detection)
+    if (nrt_close) {
+        nrt_close();
+    }
+
+    if (result != 0 || nc_count == 0) {
+        LOG_DEBUG("No NeuronCores found");
+        return;
+    }
+
+    caps->neuron_available = true;
+    caps->available_backends |= GPU_BACKEND_NEURON;
+
+    // inf2.xlarge = 2 NeuronCores per device, inf2.8xlarge = 2 devices × 2 NeuronCores
+    // Estimate device count from core count (2 NeuronCores per Inferentia2 device)
+    caps->neuron_cores_per_device = 2;
+    caps->neuron_device_count = (nc_count + 1) / caps->neuron_cores_per_device;
+    if (caps->neuron_device_count == 0) caps->neuron_device_count = 1;
+
+    LOG_INFO("Neuron detected: %u NeuronCores across %u device(s)",
+             nc_count, caps->neuron_device_count);
+}
+
+//=============================================================================
 // Best Device Selection
 //=============================================================================
 
@@ -784,10 +885,11 @@ static void gpu_detect_init_impl(void)
     LOG_INFO("Starting GPU capability detection");
 
     // Detect each backend
-    // Order: CUDA first (most common for ML), then ROCm (AMD), then OpenCL (fallback)
+    // Order: CUDA first (most common for ML), then ROCm (AMD), then OpenCL (fallback), then Neuron
     detect_cuda_devices(&s_cached_caps);
     detect_rocm_devices(&s_cached_caps);
     detect_opencl_devices(&s_cached_caps);
+    detect_neuron_devices(&s_cached_caps);
 
     // Determine best device
     determine_best_device(&s_cached_caps);
@@ -885,6 +987,7 @@ const char* gpu_backend_name(gpu_backend_t backend)
         case GPU_BACKEND_ROCM:    return "ROCm";
         case GPU_BACKEND_METAL:   return "Metal";
         case GPU_BACKEND_VULKAN:  return "Vulkan";
+        case GPU_BACKEND_NEURON:  return "Neuron";
         default:                  return "Unknown";
     }
 }
@@ -897,6 +1000,7 @@ const char* gpu_vendor_name(gpu_vendor_t vendor)
         case GPU_VENDOR_AMD:      return "AMD";
         case GPU_VENDOR_INTEL:    return "Intel";
         case GPU_VENDOR_APPLE:    return "Apple";
+        case GPU_VENDOR_AWS:      return "AWS";
         case GPU_VENDOR_OTHER:    return "Other";
         default:                  return "Unknown";
     }
@@ -939,6 +1043,14 @@ size_t gpu_capabilities_string(char* buffer, size_t size)
         if (written > 0) offset += (size_t)written;
     }
 
+    if (s_cached_caps.neuron_available) {
+        int written = snprintf(buffer + offset, size - offset, "%sNeuron: %u device(s), %u cores/device",
+                               offset > 0 ? ", " : "",
+                               s_cached_caps.neuron_device_count,
+                               s_cached_caps.neuron_cores_per_device);
+        if (written > 0) offset += (size_t)written;
+    }
+
     // Add summary
     int written = snprintf(buffer + offset, size - offset, " | Total: %lu GB, %.1f TFLOPS",
                            (unsigned long)(s_cached_caps.total_gpu_memory_bytes / (1024*1024*1024)),
@@ -965,6 +1077,10 @@ bool gpu_refresh_capabilities(void)
         LIB_CLOSE(s_rocm_lib);
         s_rocm_lib = NULL;
     }
+    if (s_neuron_lib) {
+        LIB_CLOSE(s_neuron_lib);
+        s_neuron_lib = NULL;
+    }
 
     // Re-run detection
     memset(&s_cached_caps, 0, sizeof(gpu_detect_result_t));
@@ -973,6 +1089,7 @@ bool gpu_refresh_capabilities(void)
     detect_cuda_devices(&s_cached_caps);
     detect_rocm_devices(&s_cached_caps);
     detect_opencl_devices(&s_cached_caps);
+    detect_neuron_devices(&s_cached_caps);
     determine_best_device(&s_cached_caps);
 
     nimcp_mutex_unlock(&s_refresh_mutex);

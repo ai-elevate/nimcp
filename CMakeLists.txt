@@ -62,6 +62,23 @@ else()
     message(STATUS "CUDA support disabled by NIMCP_DISABLE_CUDA option")
 endif()
 
+# Find AWS Neuron Runtime for Inferentia acceleration (optional)
+option(NIMCP_DISABLE_NEURON "Disable Neuron/Inferentia support even if NRT is found" OFF)
+if(NOT NIMCP_DISABLE_NEURON)
+    find_library(NRT_LIBRARY NAMES nrt
+        PATHS /opt/aws/neuron/lib
+        NO_DEFAULT_PATH)
+    find_library(NRT_LIBRARY NAMES nrt)
+    if(NRT_LIBRARY)
+        message(STATUS "Neuron Runtime (NRT) found: ${NRT_LIBRARY}")
+        add_compile_definitions(NIMCP_ENABLE_NEURON)
+    else()
+        message(STATUS "Neuron Runtime not found - Inferentia acceleration will use dlopen detection")
+    endif()
+else()
+    message(STATUS "Neuron/Inferentia support disabled by NIMCP_DISABLE_NEURON option")
+endif()
+
 # Enable testing
 enable_testing()
 

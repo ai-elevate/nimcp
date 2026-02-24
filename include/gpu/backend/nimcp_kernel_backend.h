@@ -42,7 +42,8 @@ typedef enum {
     NIMCP_BACKEND_CUDA = 1,      /**< NVIDIA CUDA implementation */
     NIMCP_BACKEND_ROCM = 2,      /**< AMD ROCm implementation */
     NIMCP_BACKEND_OPENCL = 3,    /**< OpenCL implementation (cross-platform) */
-    NIMCP_BACKEND_AUTO = 4       /**< Automatic selection: CUDA -> ROCm -> OpenCL -> CPU */
+    NIMCP_BACKEND_NEURON = 4,    /**< AWS Inferentia NeuronCore implementation */
+    NIMCP_BACKEND_AUTO = 5       /**< Automatic selection: CUDA -> ROCm -> OpenCL -> Neuron -> CPU */
 } nimcp_backend_type_t;
 
 typedef enum {
