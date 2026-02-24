@@ -447,14 +447,10 @@ static bool consolidate_replay(brain_t brain, const consolidation_config_t* conf
     /* Phase 10.3: Get working memory from brain */
     working_memory_t* wm = brain_get_working_memory(brain);
 
-    /* NETWORK INTEGRATION: Get community structure for prioritization */
-    network_analyzer_t* network_analyzer = brain_get_network_analyzer(brain);
-    const community_structure_t* communities = NULL;
-    const hub_detection_t* hubs = NULL;
-    if (network_analyzer) {
-        communities = network_analyzer_get_communities(network_analyzer);
-        hubs = network_analyzer_get_hubs(network_analyzer);
-    }
+    /* NETWORK INTEGRATION: Skip network analyzer — brain_get_network_analyzer()
+     * triggers lazy Louvain community detection O(N log N), which takes hours
+     * on 2M-neuron networks. The communities/hubs results are not actually used
+     * in the replay loop below, so skip entirely. */
 
     uint32_t patterns_replayed = 0;
     uint32_t patterns_strengthened = 0;
