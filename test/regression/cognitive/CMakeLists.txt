@@ -376,3 +376,35 @@ gtest_discover_tests(regression_cognitive_pass3_fixes
         TIMEOUT 120
 )
 endif()
+
+# ============================================================================
+# Community Cache Regression Tests
+# ============================================================================
+add_executable(regression_cognitive_community_cache
+    consolidation/test_community_cache_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_community_cache
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_community_cache
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_cognitive_community_cache PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_community_cache
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;consolidation;community_cache"
+        TIMEOUT 120
+)

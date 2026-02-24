@@ -172,6 +172,7 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
 typedef struct {
     PyObject_HEAD
     nimcp_brain_t brain;
+    consolidation_community_cache_t* community_cache;  /* Cached community topology */
 } BrainObject;
 
 /**
@@ -180,6 +181,10 @@ typedef struct {
  * HOW:  Call nimcp_brain_destroy, free Python object memory
  */
 static void Brain_dealloc(BrainObject* self) {
+    if (self->community_cache) {
+        consolidation_community_cache_destroy(self->community_cache);
+        self->community_cache = NULL;
+    }
     if (self->brain && !g_py_shutdown_called) {
         nimcp_brain_destroy(self->brain);
     }
@@ -195,6 +200,7 @@ static PyObject* Brain_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     BrainObject* self = (BrainObject*)type->tp_alloc(type, 0);
     if (self != NULL) {
         self->brain = NULL;
+        self->community_cache = NULL;
     }
     return (PyObject*)self;
 }
@@ -1266,13 +1272,90 @@ static PyObject* Brain_consolidate(BrainObject* self, PyObject* args, PyObject* 
     bool success;
 
     Py_BEGIN_ALLOW_THREADS
-    success = brain_consolidate_memory(self->brain->internal_brain, &config);
+    if (self->community_cache && self->community_cache->is_valid &&
+        config.use_community_cache) {
+        success = brain_consolidate_memory_community_aware(
+            self->brain->internal_brain, &config, self->community_cache);
+    } else {
+        success = brain_consolidate_memory(self->brain->internal_brain, &config);
+    }
     Py_END_ALLOW_THREADS
 
     if (success) {
         Py_RETURN_TRUE;
     }
     Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Pre-compute and cache community structure for consolidation replay
+ * WHY:  Louvain community detection is O(N log N), takes hours on 2M neurons.
+ *       Caching allows consolidation to use community-aware prioritization
+ *       without re-triggering the expensive algorithm.
+ * HOW:  Runs community_detect() + community_detect_hubs() on the brain's
+ *       neural network and stores results in the BrainObject's cache.
+ *
+ * Python usage:
+ *   brain.cache_communities()  # Pre-compute (blocking)
+ *   brain.consolidate()        # Uses cache automatically
+ */
+static PyObject* Brain_cache_communities(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    /* Create cache if needed */
+    if (!self->community_cache) {
+        self->community_cache = consolidation_community_cache_create();
+        if (!self->community_cache) {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate community cache");
+            return NULL;
+        }
+    }
+
+    bool success;
+    brain_t internal = self->brain->internal_brain;
+    consolidation_community_cache_t* cache = self->community_cache;
+
+    Py_BEGIN_ALLOW_THREADS
+    success = consolidation_cache_communities(cache, internal);
+    Py_END_ALLOW_THREADS
+
+    if (!success) {
+        PyErr_SetString(PyExc_RuntimeError, "Community detection failed");
+        return NULL;
+    }
+
+    /* Return dict with cache info */
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    PyDict_SetItemString(result, "num_communities",
+                         PyLong_FromUnsignedLong(self->community_cache->num_communities));
+    PyDict_SetItemString(result, "num_hubs",
+                         PyLong_FromUnsignedLong(self->community_cache->num_hubs));
+    PyDict_SetItemString(result, "modularity",
+                         PyFloat_FromDouble(self->community_cache->modularity));
+    PyDict_SetItemString(result, "num_neurons",
+                         PyLong_FromUnsignedLong(self->community_cache->num_neurons));
+
+    return result;
+}
+
+/**
+ * WHAT: Invalidate the cached community structure
+ * WHY:  Force re-computation on next cache_communities() call
+ * HOW:  Mark cache as stale without freeing memory
+ *
+ * Python usage:
+ *   brain.invalidate_community_cache()
+ */
+static PyObject* Brain_invalidate_community_cache(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (self->community_cache) {
+        consolidation_community_cache_invalidate(self->community_cache);
+    }
+    Py_RETURN_NONE;
 }
 
 /**
@@ -1743,6 +1826,10 @@ static PyMethodDef Brain_methods[] = {
      "Detect knowledge gaps: curiosity_detect_gaps(topic) -> dict"},
     {"consolidate", (PyCFunction)Brain_consolidate, METH_VARARGS | METH_KEYWORDS,
      "Trigger memory consolidation: consolidate(mode='auto', cycles=0, prune_passes=0) -> bool"},
+    {"cache_communities", (PyCFunction)Brain_cache_communities, METH_NOARGS,
+     "Pre-compute community structure for consolidation: cache_communities() -> dict"},
+    {"invalidate_community_cache", (PyCFunction)Brain_invalidate_community_cache, METH_NOARGS,
+     "Invalidate cached community structure: invalidate_community_cache() -> None"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,

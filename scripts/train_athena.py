@@ -685,6 +685,7 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
 
     # Consolidation: C-level memory consolidation + mixed replay
     logger.log(f"\n--- Phase 1 Consolidation ---")
+    cognitive.cache_communities()  # Pre-compute topology for community-aware replay
     cognitive.consolidate(mode="auto")
 
     all_examples = []
@@ -898,6 +899,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
     # Consolidation between Phase 2 and Phase 3
     logger.log(f"\n--- Phase 2 Consolidation ---")
+    cognitive.cache_communities()  # Refresh community topology before consolidation
     cognitive.consolidate(mode="auto")
 
     logger.log(f"\n{socratic.get_domain_report()}")
@@ -1037,6 +1039,7 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
 
     # Final C-level consolidation — full 10-cycle for best knowledge integration
     logger.log(f"\n--- Final Consolidation ---")
+    cognitive.cache_communities()  # Final topology snapshot for community-aware consolidation
     cognitive.consolidate(mode="full")
 
     # Final consolidation pass on built-in data

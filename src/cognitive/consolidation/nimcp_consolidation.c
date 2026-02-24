@@ -155,6 +155,9 @@ static nimcp_error_t handle_consolidation_trigger(
     nimcp_bio_promise_t response_promise, void* user_data);
 static bool consolidate_replay(brain_t brain, const consolidation_config_t* config,
                                consolidation_stats_t* stats);
+static bool consolidate_replay_with_cache(brain_t brain, const consolidation_config_t* config,
+                                          consolidation_stats_t* stats,
+                                          const consolidation_community_cache_t* cache);
 static bool consolidate_scaling(brain_t brain, const consolidation_config_t* config,
                                 consolidation_stats_t* stats);
 static bool consolidate_pruning(brain_t brain, const consolidation_config_t* config,
@@ -198,6 +201,10 @@ consolidation_config_t consolidation_default_config(void)
 
                                      .max_prune_passes = 1,
                                      .neuron_sample_rate = 1.0F,
+
+                                     .use_community_cache = true,
+                                     .hub_consolidation_boost = 1.5F,
+                                     .cross_community_boost = 1.3F,
 
                                      .on_consolidation_start = NULL,
                                      .on_consolidation_progress = NULL,
@@ -1534,6 +1541,410 @@ uint32_t brain_prune_weak_connections(brain_t brain, float threshold)
         base_network, threshold);
 
     return pruned_count;
+}
+
+/* ========================================================================
+ * COMMUNITY CACHE IMPLEMENTATION
+ * ======================================================================== */
+
+consolidation_community_cache_t* consolidation_community_cache_create(void)
+{
+    consolidation_community_cache_t* cache =
+        (consolidation_community_cache_t*)nimcp_calloc(1, sizeof(consolidation_community_cache_t));
+    if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                              "consolidation_community_cache_create: allocation failed");
+        return NULL;
+    }
+    cache->is_valid = false;
+    return cache;
+}
+
+void consolidation_community_cache_destroy(consolidation_community_cache_t* cache)
+{
+    if (!cache) return;
+
+    nimcp_free(cache->community_ids);
+    nimcp_free(cache->community_sizes);
+    nimcp_free(cache->hub_neuron_ids);
+    nimcp_free(cache->hub_centralities);
+    nimcp_free(cache->hub_community_ids);
+    nimcp_free(cache->hub_is_connector);
+    nimcp_free(cache);
+}
+
+/**
+ * Helper: free only the internal arrays (for repopulating without reallocating struct)
+ */
+static void cache_free_internals(consolidation_community_cache_t* cache)
+{
+    if (!cache) return;
+    nimcp_free(cache->community_ids);    cache->community_ids = NULL;
+    nimcp_free(cache->community_sizes);  cache->community_sizes = NULL;
+    nimcp_free(cache->hub_neuron_ids);   cache->hub_neuron_ids = NULL;
+    nimcp_free(cache->hub_centralities); cache->hub_centralities = NULL;
+    nimcp_free(cache->hub_community_ids); cache->hub_community_ids = NULL;
+    nimcp_free(cache->hub_is_connector); cache->hub_is_connector = NULL;
+    cache->num_neurons = 0;
+    cache->num_communities = 0;
+    cache->num_hubs = 0;
+    cache->is_valid = false;
+}
+
+bool consolidation_cache_communities(consolidation_community_cache_t* cache, brain_t brain)
+{
+    if (!cache || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "consolidation_cache_communities: NULL argument");
+        return false;
+    }
+
+    /* Free previous data if repopulating */
+    cache_free_internals(cache);
+
+    /* Get the underlying neural network for community detection */
+    adaptive_network_t network = brain_get_network(brain);
+    if (!network) {
+        LOG_WARN("consolidation_cache_communities: no adaptive network");
+        return false;
+    }
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+    if (!base_network) {
+        LOG_WARN("consolidation_cache_communities: no base network");
+        return false;
+    }
+
+    uint32_t num_neurons = adaptive_network_get_neuron_count(network);
+    if (num_neurons == 0) {
+        LOG_WARN("consolidation_cache_communities: zero neurons");
+        return false;
+    }
+
+    /* Run Louvain community detection */
+    community_structure_t* communities = community_detect(base_network, NULL);
+    if (!communities) {
+        LOG_WARN("consolidation_cache_communities: community_detect returned NULL");
+        return false;
+    }
+
+    /* Copy community assignments into cache */
+    cache->num_neurons = communities->num_neurons;
+    cache->num_communities = communities->num_communities;
+    cache->modularity = communities->modularity;
+
+    cache->community_ids = (uint32_t*)nimcp_malloc(
+        communities->num_neurons * sizeof(uint32_t));
+    if (!cache->community_ids) {
+        topology_community_structure_free(communities);
+        return false;
+    }
+    memcpy(cache->community_ids, communities->community_ids,
+           communities->num_neurons * sizeof(uint32_t));
+
+    if (communities->community_sizes && communities->num_communities > 0) {
+        cache->community_sizes = (uint32_t*)nimcp_malloc(
+            communities->num_communities * sizeof(uint32_t));
+        if (cache->community_sizes) {
+            memcpy(cache->community_sizes, communities->community_sizes,
+                   communities->num_communities * sizeof(uint32_t));
+        }
+    }
+
+    topology_community_structure_free(communities);
+
+    /* Run hub detection */
+    hub_structure_t* hubs = community_detect_hubs(base_network, 0.8F);
+    if (hubs && hubs->num_hubs > 0) {
+        cache->num_hubs = hubs->num_hubs;
+
+        cache->hub_neuron_ids = (uint32_t*)nimcp_malloc(hubs->num_hubs * sizeof(uint32_t));
+        cache->hub_centralities = (float*)nimcp_malloc(hubs->num_hubs * sizeof(float));
+        cache->hub_community_ids = (uint32_t*)nimcp_malloc(hubs->num_hubs * sizeof(uint32_t));
+        cache->hub_is_connector = (bool*)nimcp_calloc(hubs->num_hubs, sizeof(bool));
+
+        if (cache->hub_neuron_ids && cache->hub_centralities &&
+            cache->hub_community_ids && cache->hub_is_connector) {
+            memcpy(cache->hub_neuron_ids, hubs->hub_indices,
+                   hubs->num_hubs * sizeof(uint32_t));
+            memcpy(cache->hub_centralities, hubs->degree_centrality,
+                   hubs->num_hubs * sizeof(float));
+            if (hubs->hub_communities) {
+                memcpy(cache->hub_community_ids, hubs->hub_communities,
+                       hubs->num_hubs * sizeof(uint32_t));
+            }
+            /* Determine connector hubs: hub neurons whose community differs
+             * from at least one neighbor's community (simplified: check if
+             * hub appears in a different community than its assigned one) */
+            for (uint32_t h = 0; h < hubs->num_hubs; h++) {
+                /* A hub is a connector if it has high betweenness centrality */
+                if (hubs->betweenness_centrality &&
+                    hubs->betweenness_centrality[h] > 0.5F) {
+                    cache->hub_is_connector[h] = true;
+                }
+            }
+        }
+    }
+    if (hubs) {
+        hub_structure_free(hubs);
+    }
+
+    /* Record cache metadata */
+    cache->cache_timestamp_ms = nimcp_time_monotonic_ms();
+    cache->learning_events_at_cache = 0;  /* Caller can set if tracking */
+    cache->is_valid = true;
+
+    LOG_INFO("Community cache built: %u neurons, %u communities (Q=%.3f), %u hubs",
+             cache->num_neurons, cache->num_communities,
+             cache->modularity, cache->num_hubs);
+
+    return true;
+}
+
+bool consolidation_community_cache_is_valid(
+    const consolidation_community_cache_t* cache,
+    brain_t brain,
+    uint64_t max_age_ms)
+{
+    if (!cache || !cache->is_valid) return false;
+    if (cache->num_neurons == 0) return false;
+
+    /* Check age if limit specified */
+    if (max_age_ms > 0) {
+        uint64_t now = nimcp_time_monotonic_ms();
+        if (now - cache->cache_timestamp_ms > max_age_ms) {
+            return false;  /* Cache too old */
+        }
+    }
+
+    return true;
+}
+
+void consolidation_community_cache_invalidate(consolidation_community_cache_t* cache)
+{
+    if (cache) {
+        cache->is_valid = false;
+    }
+}
+
+uint32_t consolidation_cache_get_community(
+    const consolidation_community_cache_t* cache,
+    uint32_t neuron_id)
+{
+    if (!cache || !cache->is_valid || !cache->community_ids) return UINT32_MAX;
+    if (neuron_id >= cache->num_neurons) return UINT32_MAX;
+    return cache->community_ids[neuron_id];
+}
+
+bool consolidation_cache_is_hub(
+    const consolidation_community_cache_t* cache,
+    uint32_t neuron_id,
+    float* out_centrality,
+    bool* out_is_connector)
+{
+    if (!cache || !cache->is_valid || !cache->hub_neuron_ids) return false;
+
+    for (uint32_t h = 0; h < cache->num_hubs; h++) {
+        if (cache->hub_neuron_ids[h] == neuron_id) {
+            if (out_centrality && cache->hub_centralities) {
+                *out_centrality = cache->hub_centralities[h];
+            }
+            if (out_is_connector && cache->hub_is_connector) {
+                *out_is_connector = cache->hub_is_connector[h];
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * WHAT: Community-aware pattern replay with cached topology
+ * WHY: Hub-associated and cross-community patterns get boosted consolidation
+ * HOW: Like consolidate_replay but modulates strength using community cache
+ *
+ * BIOLOGICAL BASIS: During sleep, replay preferentially strengthens hub neurons
+ * (van den Heuvel & Sporns, 2013) and inter-module connections that support
+ * knowledge integration across functional domains.
+ */
+static bool consolidate_replay_with_cache(brain_t brain, const consolidation_config_t* config,
+                                          consolidation_stats_t* stats,
+                                          const consolidation_community_cache_t* cache)
+{
+    working_memory_t* wm = brain_get_working_memory(brain);
+
+    uint32_t patterns_replayed = 0;
+    uint32_t patterns_strengthened = 0;
+    uint32_t connections_strengthened = 0;
+
+    if (wm && working_memory_get_size(wm) > 0) {
+        uint32_t wm_size = working_memory_get_size(wm);
+        uint32_t max_replay = config->replay_count < wm_size ? config->replay_count : wm_size;
+
+        for (uint32_t i = 0; i < max_replay; i++) {
+            if ((i & 0xFF) == 0 && max_replay > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)max_replay);
+            }
+
+            float total_salience = 0.0F;
+            if (!working_memory_get_total_salience(wm, i, &total_salience)) {
+                continue;
+            }
+
+            emotional_tag_t emotion;
+            bool has_emotion = working_memory_get_emotion(wm, i, &emotion);
+
+            /* Base consolidation strength (emotional boost) */
+            float consolidation_strength = config->consolidation_strength;
+            if (has_emotion && emotion.intensity > 0.5F) {
+                consolidation_strength *= (1.0F + emotion.intensity);
+            }
+
+            /* Novelty boost */
+            if (config->prioritize_novel && has_emotion &&
+                (emotion.category == EMOTION_CAT_EXCITEMENT ||
+                 emotion.category == EMOTION_CAT_JOY)) {
+                consolidation_strength *= config->novelty_boost;
+            }
+
+            /* COMMUNITY-AWARE BOOST: Use cached topology to modulate strength */
+            if (cache && cache->is_valid && cache->num_hubs > 0) {
+                /* Use pattern index as a proxy for associated neuron region.
+                 * In a full implementation, working memory items would carry
+                 * neuron activation maps. For now, map WM slot to neuron space
+                 * via modular hashing to distribute across network. */
+                uint32_t representative_neuron = (i * 7919) % cache->num_neurons;
+
+                /* Hub boost: patterns associated with hub neurons get extra strength */
+                float centrality = 0.0F;
+                bool is_connector = false;
+                if (consolidation_cache_is_hub(cache, representative_neuron,
+                                               &centrality, &is_connector)) {
+                    consolidation_strength *= config->hub_consolidation_boost;
+                    patterns_strengthened++;
+
+                    /* Connector hub bonus: cross-community bridges get even more */
+                    if (is_connector) {
+                        consolidation_strength *= config->cross_community_boost;
+                    }
+                }
+
+                /* Cross-community detection: if pattern spans multiple communities,
+                 * boost for knowledge integration */
+                if (cache->num_communities > 1 && i + 1 < max_replay) {
+                    uint32_t neuron_a = representative_neuron;
+                    uint32_t neuron_b = ((i + 1) * 7919) % cache->num_neurons;
+                    uint32_t comm_a = consolidation_cache_get_community(cache, neuron_a);
+                    uint32_t comm_b = consolidation_cache_get_community(cache, neuron_b);
+                    if (comm_a != UINT32_MAX && comm_b != UINT32_MAX && comm_a != comm_b) {
+                        consolidation_strength *= config->cross_community_boost;
+                    }
+                }
+            }
+
+            patterns_replayed++;
+
+            /* Estimate connections strengthened scaled by consolidation strength */
+            float base_connections = has_emotion && emotion.intensity > 0.5F ? 75.0F : 50.0F;
+            connections_strengthened += (uint32_t)(base_connections * consolidation_strength);
+        }
+    } else {
+        /* Fallback: No working memory */
+        patterns_replayed = config->replay_count;
+        if (config->prioritize_novel) {
+            patterns_replayed = (uint32_t)(patterns_replayed * config->novelty_boost);
+        }
+        patterns_strengthened = patterns_replayed;
+        connections_strengthened = patterns_replayed * 50;
+    }
+
+    stats->patterns_replayed += patterns_replayed;
+    stats->connections_strengthened += connections_strengthened;
+    stats->patterns_strengthened += patterns_strengthened;
+
+    return true;
+}
+
+/**
+ * WHAT: Community-aware consolidation entry point
+ * WHY: Uses cached community structure for smarter replay prioritization
+ * HOW: Like brain_consolidate_memory but routes replay through cache-aware path
+ */
+bool brain_consolidate_memory_community_aware(
+    brain_t brain,
+    const consolidation_config_t* config,
+    const consolidation_community_cache_t* cache)
+{
+    if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "brain_consolidate_memory_community_aware: NULL brain");
+        return false;
+    }
+
+    consolidation_config_t default_config = consolidation_default_config();
+    const consolidation_config_t* cfg = config ? config : &default_config;
+
+    if (cfg->on_consolidation_start) {
+        cfg->on_consolidation_start(cfg->callback_context);
+    }
+
+    uint64_t start_time = nimcp_time_monotonic_ms();
+
+    ensure_sync_stats_init();
+    nimcp_mutex_lock(&g_sync_stats_lock);
+
+    /* Track prune passes */
+    uint32_t prune_passes_done = 0;
+    uint32_t max_prune = cfg->max_prune_passes > 0 ? cfg->max_prune_passes : 1;
+    bool success = true;
+
+    for (uint32_t cycle = 0; cycle < cfg->consolidation_cycles && success; cycle++) {
+        /* Replay: use community-aware path if cache is valid */
+        if (cfg->enable_replay && (cfg->strategy == CONSOLIDATION_STRATEGY_REPLAY ||
+                                   cfg->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+            if (cache && cache->is_valid && cfg->use_community_cache) {
+                consolidate_replay_with_cache(brain, cfg, &g_sync_stats, cache);
+            } else {
+                consolidate_replay(brain, cfg, &g_sync_stats);
+            }
+        }
+
+        /* Scaling */
+        if (cfg->enable_scaling && (cfg->strategy == CONSOLIDATION_STRATEGY_SCALING ||
+                                    cfg->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+            consolidate_scaling(brain, cfg, &g_sync_stats);
+        }
+
+        /* Pruning (capped) */
+        if (cfg->enable_pruning && prune_passes_done < max_prune &&
+            (cfg->strategy == CONSOLIDATION_STRATEGY_PRUNING ||
+             cfg->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+            consolidate_pruning(brain, cfg, &g_sync_stats);
+            prune_passes_done++;
+        }
+    }
+
+    if (success) {
+        uint64_t end_time = nimcp_time_monotonic_ms();
+        float duration_ms = (float)(end_time - start_time);
+        if (duration_ms < 0.001F) duration_ms = 0.001F;
+
+        g_sync_stats.total_consolidations++;
+        g_sync_stats.last_consolidation_time_ms = duration_ms;
+
+        float alpha = 0.1F;
+        g_sync_stats.avg_consolidation_time_ms =
+            alpha * duration_ms + (1.0F - alpha) * g_sync_stats.avg_consolidation_time_ms;
+        g_sync_stats.last_consolidation_timestamp = end_time;
+    }
+
+    nimcp_mutex_unlock(&g_sync_stats_lock);
+
+    if (cfg->on_consolidation_complete) {
+        cfg->on_consolidation_complete(cfg->callback_context);
+    }
+
+    return success;
 }
 
 /* ============================================================================

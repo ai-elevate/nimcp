@@ -118,6 +118,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cognitive_integration_e2e.cpp)
 endif()
 
 # ============================================================================
+# Community Cache E2E Tests
+# ============================================================================
+add_executable(e2e_cognitive_community_cache
+    test_community_cache_e2e.cpp
+)
+
+target_link_libraries(e2e_cognitive_community_cache
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(e2e_cognitive_community_cache
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(e2e_cognitive_community_cache PRIVATE cxx_std_17)
+
+gtest_discover_tests(e2e_cognitive_community_cache
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "e2e;cognitive;consolidation;community_cache"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Include subdirectories
 # ============================================================================
 add_subdirectory(attention)

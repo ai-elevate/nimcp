@@ -244,6 +244,34 @@ class CognitiveOrchestrator:
     # Consolidation: Memory integration ("sleep")
     # ------------------------------------------------------------------
 
+    def cache_communities(self):
+        """
+        Pre-compute and cache community structure for consolidation replay.
+
+        Runs Louvain community detection + hub identification on the brain's
+        neural network. Results are cached and used automatically by
+        consolidate() when mode is "auto" or "full".
+
+        Returns:
+            dict with num_communities, num_hubs, modularity, num_neurons
+            or None if unavailable.
+        """
+        try:
+            result = self.brain.cache_communities()
+            logger.info(f"Community cache built: {result}")
+            return result
+        except Exception as e:
+            logger.warning(f"cache_communities error: {e}")
+            return None
+
+    def invalidate_community_cache(self):
+        """Invalidate cached community structure, forcing recomputation."""
+        try:
+            self.brain.invalidate_community_cache()
+            logger.info("Community cache invalidated")
+        except Exception as e:
+            logger.warning(f"invalidate_community_cache error: {e}")
+
     def consolidate(self, mode="auto"):
         """
         Trigger memory consolidation ('sleep' between phases).
@@ -251,6 +279,9 @@ class CognitiveOrchestrator:
         Args:
             mode: "auto" (scale-aware), "light" (replay only, ~ms),
                   "full" (original 10-cycle)
+
+        Uses cached community structure if available for community-aware
+        replay prioritization (hub boost + cross-community boost).
 
         Calls C-level brain_consolidate_memory() with mode-appropriate config.
         """

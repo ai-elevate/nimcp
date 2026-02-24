@@ -128,6 +128,10 @@ typedef struct {
     uint32_t max_prune_passes;  /* Max brain_prune_weak_connections calls (default 1) */
     float neuron_sample_rate;   /* Fraction of neurons for scaling stats (0.0-1.0, default 1.0) */
 
+    bool use_community_cache;       /* Use cached community data for replay prioritization */
+    float hub_consolidation_boost;  /* Extra strength for hub-associated patterns (default 1.5) */
+    float cross_community_boost;    /* Extra strength for cross-community patterns (default 1.3) */
+
     void (*on_consolidation_start)(void* context);                    /* Callback: start */
     void (*on_consolidation_progress)(float progress, void* context); /* Progress */
     void (*on_consolidation_complete)(void* context);                 /* Callback: done */
@@ -596,6 +600,169 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation);
  * THREAD-SAFE: Yes
  */
 uint32_t brain_prune_weak_connections(brain_t brain, float threshold);
+
+/* ========================================================================
+ * COMMUNITY CACHE FOR CONSOLIDATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Cached community detection results for consolidation replay
+ * WHY: Full Louvain community detection is O(N log N) and takes hours on 2M+
+ *      neurons. Pre-computing and caching allows consolidation replay to use
+ *      community-aware prioritization without re-triggering the expensive
+ *      algorithm every cycle.
+ * HOW: Stores community_structure_t and hub_detection_t snapshots with
+ *      staleness tracking based on learning events and timestamps.
+ *
+ * BIOLOGICAL BASIS: Brain regions maintain stable community structure across
+ * sleep cycles. Community boundaries shift gradually during learning but
+ * remain valid for consolidation within a training phase.
+ */
+typedef struct consolidation_community_cache {
+    uint32_t* community_ids;        /* Community assignment per neuron (size: num_neurons) */
+    uint32_t num_neurons;           /* Neuron count when cache was built */
+    uint32_t num_communities;       /* Number of detected communities */
+    uint32_t* community_sizes;      /* Size of each community (size: num_communities) */
+    float modularity;               /* Newman's Q score at cache time */
+
+    uint32_t* hub_neuron_ids;       /* Array of hub neuron IDs */
+    float* hub_centralities;        /* Degree centrality for each hub */
+    uint32_t* hub_community_ids;    /* Community ID for each hub */
+    bool* hub_is_connector;         /* Is this a connector hub (bridges communities)? */
+    uint32_t num_hubs;              /* Number of hub neurons */
+
+    uint64_t cache_timestamp_ms;    /* When cache was built (monotonic ms) */
+    uint64_t learning_events_at_cache; /* Learning event counter at cache time */
+
+    bool is_valid;                  /* Is cache populated and usable? */
+} consolidation_community_cache_t;
+
+/**
+ * WHAT: Create an empty community cache
+ * WHY: Allocate cache structure before populating
+ * HOW: calloc + zero-init
+ *
+ * @return Cache pointer, or NULL on allocation failure
+ *
+ * MEMORY: Caller must call consolidation_community_cache_destroy()
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+consolidation_community_cache_t* consolidation_community_cache_create(void);
+
+/**
+ * WHAT: Destroy community cache and free all internal arrays
+ * WHY: Prevent memory leaks
+ * HOW: Free all arrays, then free struct
+ *
+ * @param cache Cache to destroy (safe to call with NULL)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void consolidation_community_cache_destroy(consolidation_community_cache_t* cache);
+
+/**
+ * WHAT: Populate cache by running community detection on the brain's network
+ * WHY: Pre-compute expensive Louvain algorithm when cost is acceptable
+ *      (e.g., at end of a training epoch, not inside consolidation hot path)
+ * HOW: Calls community_detect() and community_detect_hubs() on the brain's
+ *      underlying neural network, copies results into cache
+ *
+ * @param cache Cache to populate (must not be NULL)
+ * @param brain Brain whose network to analyze
+ * @return true on success, false on error (cache->is_valid set accordingly)
+ *
+ * BLOCKING: Yes — runs Louvain O(N log N)
+ * THREAD-SAFE: No (caller must ensure exclusive access to cache)
+ */
+bool consolidation_cache_communities(consolidation_community_cache_t* cache, brain_t brain);
+
+/**
+ * WHAT: Check whether cached community data is still valid/fresh
+ * WHY: Detect when learning has changed network topology enough to invalidate
+ * HOW: Compare neuron count and check age against threshold
+ *
+ * @param cache Cache to check
+ * @param brain Current brain (for neuron count comparison)
+ * @param max_age_ms Maximum cache age in milliseconds (0 = no age limit)
+ * @return true if cache is valid and usable, false if stale or empty
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+bool consolidation_community_cache_is_valid(
+    const consolidation_community_cache_t* cache,
+    brain_t brain,
+    uint64_t max_age_ms);
+
+/**
+ * WHAT: Invalidate the cache (mark as stale)
+ * WHY: Force re-computation on next cache_communities call
+ * HOW: Set is_valid = false (does NOT free arrays — reuse on next populate)
+ *
+ * @param cache Cache to invalidate
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void consolidation_community_cache_invalidate(consolidation_community_cache_t* cache);
+
+/**
+ * WHAT: Look up which community a neuron belongs to
+ * WHY: Query during community-aware replay
+ * HOW: Array index lookup
+ *
+ * @param cache Populated cache
+ * @param neuron_id Neuron to query
+ * @return Community ID, or UINT32_MAX if invalid
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes (read-only)
+ */
+uint32_t consolidation_cache_get_community(
+    const consolidation_community_cache_t* cache,
+    uint32_t neuron_id);
+
+/**
+ * WHAT: Check if a neuron is a hub in the cached topology
+ * WHY: Hub neurons get boosted consolidation during replay
+ * HOW: Linear scan of hub array (typically small, < 1% of neurons)
+ *
+ * @param cache Populated cache
+ * @param neuron_id Neuron to query
+ * @param out_centrality Output: centrality score (NULL to skip)
+ * @param out_is_connector Output: is connector hub (NULL to skip)
+ * @return true if neuron is a hub, false otherwise
+ *
+ * COMPLEXITY: O(H) where H = number of hubs
+ * THREAD-SAFE: Yes (read-only)
+ */
+bool consolidation_cache_is_hub(
+    const consolidation_community_cache_t* cache,
+    uint32_t neuron_id,
+    float* out_centrality,
+    bool* out_is_connector);
+
+/**
+ * WHAT: Perform community-aware memory consolidation
+ * WHY: Use cached community structure to boost hub-associated and
+ *      cross-community patterns during replay
+ * HOW: Like brain_consolidate_memory but with community cache integration
+ *
+ * @param brain The brain to consolidate
+ * @param config Configuration (NULL for defaults with community awareness)
+ * @param cache Community cache (NULL falls back to standard consolidation)
+ * @return true on success, false on error
+ *
+ * BLOCKING: Yes
+ * COMPLEXITY: O(n*c) where n=network size, c=cycles
+ * THREAD-SAFE: Yes (acquires brain lock)
+ */
+bool brain_consolidate_memory_community_aware(
+    brain_t brain,
+    const consolidation_config_t* config,
+    const consolidation_community_cache_t* cache);
 
 #ifdef __cplusplus
 }
