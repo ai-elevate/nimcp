@@ -196,10 +196,65 @@ consolidation_config_t consolidation_default_config(void)
                                      .prune_weak = true,
                                      .weakness_threshold = 0.1F,
 
+                                     .max_prune_passes = 1,
+                                     .neuron_sample_rate = 1.0F,
+
                                      .on_consolidation_start = NULL,
                                      .on_consolidation_progress = NULL,
                                      .on_consolidation_complete = NULL,
                                      .callback_context = NULL};
+    return config;
+}
+
+/**
+ * WHAT: Lightweight consolidation — replay only, no scaling/pruning
+ * WHY: Fast (~ms) consolidation for warm-up phases
+ * HOW: 2 cycles, replay only, skip expensive weight iteration
+ */
+consolidation_config_t consolidation_light_config(void)
+{
+    consolidation_config_t config = consolidation_default_config();
+    config.strategy = CONSOLIDATION_STRATEGY_REPLAY;
+    config.consolidation_cycles = 2;
+    config.enable_scaling = false;
+    config.enable_pruning = false;
+    config.prune_weak = false;
+    config.max_prune_passes = 0;
+    config.neuron_sample_rate = 0.0F;  /* Not used — scaling disabled */
+    return config;
+}
+
+/**
+ * WHAT: Scale-aware consolidation configuration
+ * WHY: Avoid 30+ minute consolidation on 2M-neuron networks
+ * HOW: Adjust cycles, sample rate, and prune passes by network size
+ */
+consolidation_config_t consolidation_auto_config(uint32_t num_neurons)
+{
+    consolidation_config_t config = consolidation_default_config();
+
+    if (num_neurons > 2000000) {
+        /* > 2M neurons: minimal work */
+        config.consolidation_cycles = 2;
+        config.neuron_sample_rate = 0.05F;
+        config.max_prune_passes = 1;
+    } else if (num_neurons > 500000) {
+        /* 500K-2M neurons */
+        config.consolidation_cycles = 3;
+        config.neuron_sample_rate = 0.10F;
+        config.max_prune_passes = 1;
+    } else if (num_neurons > 10000) {
+        /* 10K-500K neurons */
+        config.consolidation_cycles = 5;
+        config.neuron_sample_rate = 0.50F;
+        config.max_prune_passes = 1;
+    } else {
+        /* < 10K neurons: full config is fine */
+        config.consolidation_cycles = 10;
+        config.neuron_sample_rate = 1.0F;
+        config.max_prune_passes = 1;
+    }
+
     return config;
 }
 
@@ -313,6 +368,11 @@ static bool perform_consolidation(brain_t brain, const consolidation_config_t* c
     }
     (void)circadian_efficiency;  /* Used in future enhanced consolidation */
 
+    /* WHAT: Track prune passes to avoid redundant pruning */
+    /* WHY: After pass 1, subsequent prune passes find almost nothing */
+    uint32_t prune_passes_done = 0;
+    uint32_t max_prune = config->max_prune_passes > 0 ? config->max_prune_passes : 1;
+
     /* WHAT: Execute consolidation cycles */
     for (uint32_t cycle = 0; cycle < config->consolidation_cycles; cycle++) {
         /* Phase 8: Loop progress heartbeat */
@@ -348,11 +408,13 @@ static bool perform_consolidation(brain_t brain, const consolidation_config_t* c
             consolidate_scaling(brain, config, stats);
         }
 
-        /* STRATEGY 3: Connection Pruning */
-        /* WHY: Remove noise, improve efficiency */
-        if (config->enable_pruning && (config->strategy == CONSOLIDATION_STRATEGY_PRUNING ||
-                                       config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
+        /* STRATEGY 3: Connection Pruning — capped by max_prune_passes */
+        /* WHY: After pass 1, subsequent passes find almost nothing to prune */
+        if (config->enable_pruning && prune_passes_done < max_prune &&
+            (config->strategy == CONSOLIDATION_STRATEGY_PRUNING ||
+             config->strategy == CONSOLIDATION_STRATEGY_FULL)) {
             consolidate_pruning(brain, config, stats);
+            prune_passes_done++;
         }
     }
 
@@ -499,17 +561,41 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
         return false;
     }
 
+    /* WHAT: Hoist base_network lookup outside loop (was 2M calls/cycle) */
+    neural_network_t base_network = adaptive_network_get_base_network(network);
+
+    /* WHAT: Sparse storage early-exit — probe first neuron for synapse pointer */
+    /* WHY: With sparse storage, neural_network_get_incoming_synapses() returns
+     *      NULL for the synapse pointer, making all inner synapse loops no-ops */
+    bool has_dense_synapses = false;
+    if (base_network && num_neurons > 0) {
+        const synapse_t* probe_synapses = NULL;
+        neural_network_get_incoming_synapses(base_network, 0, &probe_synapses);
+        has_dense_synapses = (probe_synapses != NULL);
+    }
+
+    /* WHAT: Neuron sampling — step through neurons at configured rate */
+    /* WHY: At 2M neurons, iterating all is O(minutes); 5% sample = O(seconds) */
+    float sample_rate = config->neuron_sample_rate;
+    if (sample_rate <= 0.0F) sample_rate = 1.0F;
+    if (sample_rate > 1.0F) sample_rate = 1.0F;
+    uint32_t step = (uint32_t)(1.0F / sample_rate);
+    if (step < 1) step = 1;
+    uint32_t sampled_neurons = 0;
+
     /* WHAT: Calculate current average weight and activation */
     float total_weight = 0.0F;
     float total_activation = 0.0F;
     uint32_t total_synapses = 0;
     uint32_t active_neurons = 0;
 
-    for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
+    for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id += step) {
+        sampled_neurons++;
+
         /* Phase 8: Loop progress heartbeat */
-        if ((neuron_id & 0xFF) == 0 && num_neurons > 256) {
+        if ((sampled_neurons & 0xFF) == 0 && num_neurons / step > 256) {
             consolidation_heartbeat("consolidatio_loop",
-                             (float)(neuron_id + 1) / (float)num_neurons);
+                             (float)neuron_id / (float)num_neurons);
         }
 
         /* Get neuron activation */
@@ -521,27 +607,26 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
             }
         }
 
-        /* Get incoming synapses */
-        const synapse_t* synapses = NULL;
-        neural_network_t base_network = adaptive_network_get_base_network(network);
-        if (!base_network) {
-            continue;  /* Skip if base network not available */
-        }
-        uint32_t synapse_count = neural_network_get_incoming_synapses(
-            base_network, neuron_id, &synapses);
+        /* Get incoming synapses — only if dense storage detected */
+        if (has_dense_synapses && base_network) {
+            const synapse_t* synapses = NULL;
+            uint32_t synapse_count = neural_network_get_incoming_synapses(
+                base_network, neuron_id, &synapses);
 
-        if (synapses != NULL && synapse_count > 0) {
-            for (uint32_t i = 0; i < synapse_count; i++) {
-                /* Phase 8: Loop progress heartbeat */
-                if ((i & 0xFF) == 0 && synapse_count > 256) {
-                    consolidation_heartbeat("consolidatio_loop",
-                                     (float)(i + 1) / (float)synapse_count);
+            if (synapses != NULL && synapse_count > 0) {
+                for (uint32_t i = 0; i < synapse_count; i++) {
+                    total_weight += fabsf(synapses[i].weight);
+                    total_synapses++;
                 }
-
-                total_weight += fabsf(synapses[i].weight);
-                total_synapses++;
             }
         }
+    }
+
+    /* WHAT: Extrapolate from sample to full population */
+    if (step > 1 && sampled_neurons > 0) {
+        float scale = (float)num_neurons / (float)sampled_neurons;
+        total_synapses = (uint32_t)((float)total_synapses * scale);
+        active_neurons = (uint32_t)((float)active_neurons * scale);
     }
 
     /* WHAT: Compute scaling statistics */
@@ -610,59 +695,15 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
         return false;
     }
 
-    /* WHAT: Count weak connections below pruning threshold */
-    /* WHY: Track how many synapses would be pruned for statistics */
-    uint32_t weak_connections = 0;
-    uint32_t total_connections = 0;
-    float threshold = config->pruning_threshold;
-
-    neural_network_t base_network = adaptive_network_get_base_network(network);
-    if (!base_network) {
-        return false;  /* Cannot analyze without base network */
-    }
-
-    for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((neuron_id & 0xFF) == 0 && num_neurons > 256) {
-            consolidation_heartbeat("consolidatio_loop",
-                             (float)(neuron_id + 1) / (float)num_neurons);
-        }
-
-        /* Get incoming synapses for this neuron */
-        const synapse_t* synapses = NULL;
-        uint32_t synapse_count = neural_network_get_incoming_synapses(
-            base_network, neuron_id, &synapses);
-
-        if (synapses != NULL && synapse_count > 0) {
-            for (uint32_t i = 0; i < synapse_count; i++) {
-                /* Phase 8: Loop progress heartbeat */
-                if ((i & 0xFF) == 0 && synapse_count > 256) {
-                    consolidation_heartbeat("consolidatio_loop",
-                                     (float)(i + 1) / (float)synapse_count);
-                }
-
-                total_connections++;
-
-                /* WHAT: Check if weight is below pruning threshold */
-                /* WHY: Weak connections contribute noise without signal */
-                if (fabsf(synapses[i].weight) < threshold) {
-                    weak_connections++;
-                }
-            }
-        }
-    }
-
     /* WHAT: Perform actual pruning via brain API */
-    /* WHY: Use existing pruning infrastructure */
+    /* WHY: The pre-loop counting weak connections was a no-op with sparse storage
+     *      (neural_network_get_incoming_synapses returns NULL for synapse pointer).
+     *      Skip directly to the real pruning function. */
+    float threshold = config->pruning_threshold;
     uint32_t pruned_count = brain_prune_weak_connections(brain, threshold);
 
     /* WHAT: Update statistics */
     stats->connections_pruned += pruned_count;
-
-    /* WHAT: Update sparsity after pruning */
-    float sparsity_after = 1.0F - ((float)(total_connections - weak_connections) /
-                                   (float)total_connections);
-    stats->network_sparsity_after = sparsity_after;
 
     /* WHAT: If pruning weak patterns enabled, estimate pattern removal */
     /* WHY: Neurons with all weak synapses become isolated */

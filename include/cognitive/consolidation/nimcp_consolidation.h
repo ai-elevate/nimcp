@@ -125,6 +125,9 @@ typedef struct {
     bool prune_weak;          /* Prune weak patterns? */
     float weakness_threshold; /* Pattern strength threshold */
 
+    uint32_t max_prune_passes;  /* Max brain_prune_weak_connections calls (default 1) */
+    float neuron_sample_rate;   /* Fraction of neurons for scaling stats (0.0-1.0, default 1.0) */
+
     void (*on_consolidation_start)(void* context);                    /* Callback: start */
     void (*on_consolidation_progress)(float progress, void* context); /* Progress */
     void (*on_consolidation_complete)(void* context);                 /* Callback: done */
@@ -230,6 +233,37 @@ typedef struct {
  * THREAD-SAFE: Yes
  */
 consolidation_config_t consolidation_default_config(void);
+
+/**
+ * WHAT: Get lightweight consolidation configuration (replay only)
+ * WHY: Fast consolidation for warm-up phases — milliseconds, not minutes
+ * HOW: Replay only, 2 cycles, no scaling or pruning
+ *
+ * @return Light configuration struct
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+consolidation_config_t consolidation_light_config(void);
+
+/**
+ * WHAT: Get scale-aware consolidation configuration
+ * WHY: Automatically adjust cycles, sampling, and pruning for network size
+ * HOW: Fewer cycles and lower sample rates for larger networks
+ *
+ * SCALE TIERS:
+ * - < 10K neurons: 10 cycles, 100% sampling, 1 prune pass
+ * - 10K-500K: 5 cycles, 50% sampling, 1 prune pass
+ * - 500K-2M: 3 cycles, 10% sampling, 1 prune pass
+ * - > 2M: 2 cycles, 5% sampling, 1 prune pass
+ *
+ * @param num_neurons Number of neurons in the network
+ * @return Scale-aware configuration struct
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+consolidation_config_t consolidation_auto_config(uint32_t num_neurons);
 
 /**
  * WHAT: Perform synchronous memory consolidation

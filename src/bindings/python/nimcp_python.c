@@ -1199,17 +1199,52 @@ static PyObject* Brain_curiosity_detect_gaps(BrainObject* self, PyObject* args) 
 }
 
 /**
- * WHAT: Trigger synchronous memory consolidation
+ * WHAT: Trigger synchronous memory consolidation with configurable mode
  * WHY:  "Sleep" between training phases — replay, prune, integrate
- * HOW:  Call brain_consolidate_memory() with default config
+ * HOW:  Select config preset by mode: "auto" (scale-aware), "light" (replay only), "full" (original)
+ *
+ * Python usage:
+ *   brain.consolidate()                    # auto mode (scale-aware)
+ *   brain.consolidate(mode="light")        # replay only (~ms)
+ *   brain.consolidate(mode="full")         # original 10-cycle
+ *   brain.consolidate(mode="auto", cycles=3)  # override cycles
  */
-static PyObject* Brain_consolidate(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+static PyObject* Brain_consolidate(BrainObject* self, PyObject* args, PyObject* kwds) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
         return NULL;
     }
 
-    consolidation_config_t config = consolidation_default_config();
+    const char* mode = "auto";
+    unsigned int cycles = 0;
+    unsigned int prune_passes = 0;
+
+    static char* kwlist[] = {"mode", "cycles", "prune_passes", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sII", kwlist,
+                                     &mode, &cycles, &prune_passes)) {
+        return NULL;
+    }
+
+    /* Select config based on mode */
+    consolidation_config_t config;
+    if (strcmp(mode, "light") == 0) {
+        config = consolidation_light_config();
+    } else if (strcmp(mode, "full") == 0) {
+        config = consolidation_default_config();
+    } else {
+        /* "auto" or unrecognized — scale-aware */
+        uint32_t num_neurons = nimcp_brain_get_neuron_count(self->brain);
+        config = consolidation_auto_config(num_neurons);
+    }
+
+    /* Apply overrides if specified */
+    if (cycles > 0) {
+        config.consolidation_cycles = cycles;
+    }
+    if (prune_passes > 0) {
+        config.max_prune_passes = prune_passes;
+    }
+
     bool success;
 
     Py_BEGIN_ALLOW_THREADS
@@ -1688,8 +1723,8 @@ static PyMethodDef Brain_methods[] = {
     // Socratic active learning: cognitive module bindings
     {"curiosity_detect_gaps", (PyCFunction)Brain_curiosity_detect_gaps, METH_VARARGS,
      "Detect knowledge gaps: curiosity_detect_gaps(topic) -> dict"},
-    {"consolidate", (PyCFunction)Brain_consolidate, METH_NOARGS,
-     "Trigger memory consolidation: consolidate() -> bool"},
+    {"consolidate", (PyCFunction)Brain_consolidate, METH_VARARGS | METH_KEYWORDS,
+     "Trigger memory consolidation: consolidate(mode='auto', cycles=0, prune_passes=0) -> bool"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,

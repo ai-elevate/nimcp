@@ -244,16 +244,20 @@ class CognitiveOrchestrator:
     # Consolidation: Memory integration ("sleep")
     # ------------------------------------------------------------------
 
-    def consolidate(self):
+    def consolidate(self, mode="auto"):
         """
         Trigger memory consolidation ('sleep' between phases).
 
-        Calls C-level brain_consolidate_memory() if available.
+        Args:
+            mode: "auto" (scale-aware), "light" (replay only, ~ms),
+                  "full" (original 10-cycle)
+
+        Calls C-level brain_consolidate_memory() with mode-appropriate config.
         """
         if self._has_consolidation:
             try:
-                result = self.brain.consolidate()
-                logger.info(f"Consolidation complete: {result}")
+                result = self.brain.consolidate(mode=mode)
+                logger.info(f"Consolidation complete (mode={mode}): {result}")
                 return result
             except Exception as e:
                 logger.warning(f"C consolidation error: {e}")

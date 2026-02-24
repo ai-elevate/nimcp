@@ -466,8 +466,8 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
         logger.log(f"    {ds_name}: {correct}/{total_probe} "
                    f"({100*correct/max(1,total_probe):.0f}%)")
 
-    # Quick consolidation
-    cognitive.consolidate()
+    # Quick consolidation — warm-up, replay only
+    cognitive.consolidate(mode="light")
     logger.log(f"Phase 0 complete — {total_trained:,} warm-up steps")
     return total_trained
 
@@ -685,7 +685,7 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
 
     # Consolidation: C-level memory consolidation + mixed replay
     logger.log(f"\n--- Phase 1 Consolidation ---")
-    cognitive.consolidate()
+    cognitive.consolidate(mode="auto")
 
     all_examples = []
     for _, examples in all_datasets:
@@ -898,7 +898,7 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
 
     # Consolidation between Phase 2 and Phase 3
     logger.log(f"\n--- Phase 2 Consolidation ---")
-    cognitive.consolidate()
+    cognitive.consolidate(mode="auto")
 
     logger.log(f"\n{socratic.get_domain_report()}")
     logger.log(f"\nPhase 2 complete — {total_trained:,} total training steps")
@@ -1035,9 +1035,9 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
         logger.log(f"  Hard review: acc={result['batch_accuracy']:.4f}, "
                     f"reviewed={result['batch_size']}")
 
-    # Final C-level consolidation
+    # Final C-level consolidation — full 10-cycle for best knowledge integration
     logger.log(f"\n--- Final Consolidation ---")
-    cognitive.consolidate()
+    cognitive.consolidate(mode="full")
 
     # Final consolidation pass on built-in data
     if BENCHMARKS_AVAILABLE:
