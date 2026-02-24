@@ -445,8 +445,8 @@ sparse_synapse_pool_t sparse_synapse_pool_create(
     // WHAT: BBB validation of pool size
     // WHY: Prevent integer overflow and unreasonable allocations
     // HOW: Check against maximum reasonable pool size
-    if (cfg->pool_size == 0 || cfg->pool_size > 100000000) {
-        LOG_ERROR("Invalid pool size: %zu (must be 1..100000000)", cfg->pool_size);
+    if (cfg->pool_size == 0 || cfg->pool_size > SPARSE_SYNAPSE_MAX_POOL_SIZE) {
+        LOG_ERROR("Invalid pool size: %zu (must be 1..%u)", cfg->pool_size, SPARSE_SYNAPSE_MAX_POOL_SIZE);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_pool_create: cfg->pool_size is zero");
         return NULL;
     }
@@ -1262,7 +1262,7 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
     }
 
     // Validate pool size
-    if (cfg.pool_size == 0 || cfg.pool_size > 100000000) {
+    if (cfg.pool_size == 0 || cfg.pool_size > SPARSE_SYNAPSE_MAX_POOL_SIZE) {
         LOG_ERROR("Invalid metadata pool size: %zu", cfg.pool_size);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synapse_metadata_pool_create: cfg.pool_size is zero");
         return NULL;

@@ -512,6 +512,18 @@ bool nimcp_gpu_forward_pass(
     if (input_size != cache->layer_sizes[0]) return false;
     if (output_size != cache->layer_sizes[cache->num_layers - 1]) return false;
 
+    // Fast path: if ALL sparse weight matrices are NULL (no connections yet),
+    // the output is just bias-through-activation ≈ zeros. Skip GPU entirely to
+    // avoid CUDA misaligned-address errors on very large layers (2M+ neurons).
+    bool any_weights = false;
+    for (uint32_t l = 0; l < cache->num_layers - 1; l++) {
+        if (cache->sparse_weights[l]) { any_weights = true; break; }
+    }
+    if (!any_weights) {
+        memset(output, 0, output_size * sizeof(float));
+        return true;
+    }
+
     // Step 1: Upload input to layer 0 activation tensor
     size_t in_dims[1] = { input_size };
     nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_from_host(

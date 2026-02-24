@@ -139,6 +139,12 @@ extern "C" {
 #define SPARSE_SYNAPSE_DEFAULT_POOL_SIZE 50000
 
 /**
+ * @brief Maximum allowed pool size
+ * WHY:  Prevents multi-GB allocations; pool falls back to malloc beyond this
+ */
+#define SPARSE_SYNAPSE_MAX_POOL_SIZE 100000000
+
+/**
  * @brief Magic number for validation
  */
 #define SPARSE_SYNAPSE_MAGIC 0x53594E50  // 'SYNP'

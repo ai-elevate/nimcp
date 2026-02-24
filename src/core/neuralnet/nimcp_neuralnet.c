@@ -779,23 +779,33 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     network->num_neurons = actual_neurons;
 
+    // Calculate actual connections needed for dense layer wiring
+    // Use uint64_t to avoid overflow with large networks (e.g., 256 * 2M = 512M)
+    uint64_t dense_connections = 0;
+    if (config->num_layers > 1 && config->layer_sizes && !config->skip_layer_wiring) {
+        for (uint32_t l = 0; l < config->num_layers - 1; l++) {
+            dense_connections += (uint64_t)config->layer_sizes[l] * config->layer_sizes[l + 1];
+        }
+    }
+
     // NIMCP 2.11: Create sparse synapse pools
     // Pool must hold all dense layer-to-layer connections (2 handles per connection:
     // one outgoing from source, one incoming to destination)
     {
-        // Calculate actual connections needed for dense layer wiring
-        uint32_t dense_connections = 0;
-        if (config->num_layers > 1 && config->layer_sizes && !config->skip_layer_wiring) {
-            for (uint32_t l = 0; l < config->num_layers - 1; l++) {
-                dense_connections += config->layer_sizes[l] * config->layer_sizes[l + 1];
-            }
-        }
         // Each connection = 2 handles (outgoing + incoming), add 25% headroom for
         // runtime plasticity (new connections from learning, sprouting, etc.)
-        uint32_t handles_needed = dense_connections * 2;
-        uint32_t pool_min = (actual_neurons < 100) ? 5000 : actual_neurons * 64;
-        uint32_t pool_size = handles_needed + handles_needed / 4;  // +25% headroom
-        if (pool_size < pool_min) pool_size = pool_min;
+        uint64_t handles_needed = dense_connections * 2;
+        // For large networks (>500K neurons) dense wiring is skipped, so handles_needed=0.
+        // Start with a modest pool — spiking plasticity creates connections on-demand,
+        // and the pool's slab allocator falls back to malloc when classes exhaust.
+        uint32_t pool_min;
+        if (actual_neurons < 100) pool_min = 5000;
+        else if (actual_neurons > 500000) pool_min = 1000000;  // 1M handles (~24MB)
+        else pool_min = actual_neurons * 64;
+        uint64_t pool_size64 = handles_needed + handles_needed / 4;  // +25% headroom
+        if (pool_size64 < pool_min) pool_size64 = pool_min;
+        if (pool_size64 > SPARSE_SYNAPSE_MAX_POOL_SIZE) pool_size64 = SPARSE_SYNAPSE_MAX_POOL_SIZE;
+        uint32_t pool_size = (uint32_t)pool_size64;
 
         sparse_synapse_pool_config_t hpool_cfg = sparse_synapse_pool_default_config();
         hpool_cfg.pool_size = pool_size;
@@ -813,7 +823,10 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     // For layered networks (NIMCP 2.5), create connections between layers
     // Skip dense wiring when called from resize (skip_layer_wiring=true)
-    if (config->num_layers > 1 && config->layer_sizes && !config->skip_layer_wiring) {
+    // Skip dense wiring for large networks (>10M connections) — spiking plasticity
+    // will form connections organically during learning
+    bool skip_dense = config->skip_layer_wiring || (dense_connections > 10000000);
+    if (config->num_layers > 1 && config->layer_sizes && !skip_dense) {
         uint32_t offset = 0;
         for (uint32_t layer = 0; layer < config->num_layers - 1; layer++) {
             uint32_t curr_layer_size = config->layer_sizes[layer];
