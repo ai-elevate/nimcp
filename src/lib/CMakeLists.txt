@@ -2175,13 +2175,10 @@ set(NIMCP_CORE_SOURCES
     # GPU training bridge (weight cache + forward pass dispatch - always compiled, uses GPU stubs as fallback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/training/nimcp_training_bridge.c
 
-    # AWS Neuron/Inferentia NeuronCore integration
-    # Real implementations use dlopen for runtime NRT detection — always compiled unless explicitly disabled
-    $<$<NOT:$<BOOL:${NIMCP_DISABLE_NEURON}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_neuron_context.c>
-    $<$<NOT:$<BOOL:${NIMCP_DISABLE_NEURON}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_neuron_bridge.c>
-    $<$<NOT:$<BOOL:${NIMCP_DISABLE_NEURON}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_neuron_backend_ops.c>
-    # Neuron stubs (compiled ONLY when Neuron support is explicitly disabled)
-    $<$<BOOL:${NIMCP_DISABLE_NEURON}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs_neuron.c>
+    # AWS Neuron/Inferentia NeuronCore integration (always compiled — uses dlopen for runtime NRT detection)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_neuron_context.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_neuron_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_neuron_backend_ops.c
 
     # Kernel backend CPU implementation (always compiled - provides CPU fallback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend.c
