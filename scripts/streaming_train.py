@@ -116,8 +116,11 @@ class StreamingDatasetProcessor:
         if self.hf_token:
             kwargs['token'] = self.hf_token
 
-        # Try train split first, fall back to test/validation
-        for split in ('train', 'test', 'validation', 'dev'):
+        # Use explicit split if specified (e.g. "en" for language-split datasets)
+        explicit_split = dataset_config.get('hf_split')
+        splits_to_try = [explicit_split] if explicit_split else ['train', 'test', 'validation', 'dev']
+
+        for split in splits_to_try:
             try:
                 if hf_subset:
                     dataset = load_dataset(hf_dataset, hf_subset, split=split, **kwargs)

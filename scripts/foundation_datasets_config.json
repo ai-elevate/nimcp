@@ -311,7 +311,8 @@
       "priority": 1,
       "type": "huggingface",
       "hf_dataset": "manu/project_gutenberg",
-      "description": "Public domain literature from Project Gutenberg (~50K books)"
+      "hf_split": "en",
+      "description": "Public domain literature from Project Gutenberg (~50K books, English split)"
     },
     {
       "name": "tinystories",
