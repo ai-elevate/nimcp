@@ -1220,10 +1220,62 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
 # Main
 # ---------------------------------------------------------------------------
 
+PROGRESS_FILE = ATHENA_CHECKPOINT_DIR / "athena_progress.json"
+
+
+def save_progress(phase: str, checkpoint_path: Path, total_trained: int):
+    """Save training progress so --resume knows where to continue."""
+    ATHENA_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    progress = {
+        "completed_phase": phase,
+        "checkpoint": str(checkpoint_path),
+        "total_trained": total_trained,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    with open(PROGRESS_FILE, "w") as f:
+        json.dump(progress, f, indent=2)
+
+
+def load_progress() -> dict:
+    """Load training progress from previous run."""
+    if PROGRESS_FILE.exists():
+        with open(PROGRESS_FILE) as f:
+            return json.load(f)
+    return None
+
+
+def find_latest_checkpoint() -> Path:
+    """Find the most recent checkpoint file."""
+    # First check progress file for the exact checkpoint
+    progress = load_progress()
+    if progress and Path(progress["checkpoint"]).exists():
+        return Path(progress["checkpoint"])
+    # Fall back to most recent school checkpoint by mtime
+    if not ATHENA_CHECKPOINT_DIR.exists():
+        return None
+    checkpoints = sorted(ATHENA_CHECKPOINT_DIR.glob("athena_school_*.bin"),
+                         key=lambda p: p.stat().st_mtime, reverse=True)
+    return checkpoints[0] if checkpoints else None
+
+
 def main():
+    # Parse --resume flag
+    resume_path = None
+    if "--resume" in sys.argv:
+        idx = sys.argv.index("--resume")
+        if idx + 1 < len(sys.argv) and not sys.argv[idx + 1].startswith("-"):
+            resume_path = Path(sys.argv[idx + 1])
+        else:
+            resume_path = find_latest_checkpoint()
+        if resume_path is None or not resume_path.exists():
+            print(f"ERROR: No checkpoint found to resume from")
+            sys.exit(1)
+
     logger = AthenaLogger(ATHENA_LOG_DIR)
     logger.log("=" * 70)
     logger.log("ATHENA FOUNDATION MODEL TRAINING — PARALLEL SCHOOL")
+    if resume_path:
+        logger.log(f"RESUMING from checkpoint: {resume_path.name}")
     logger.log(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.log(f"Target neurons: {ATHENA_NEURONS:,}")
     logger.log(f"Inputs: {ATHENA_NUM_INPUTS}, Outputs: {ATHENA_NUM_OUTPUTS}")
@@ -1239,17 +1291,23 @@ def main():
     logger.log("Initializing NIMCP...")
     nimcp.init()
 
-    # Create brain directly at target neuron count
-    logger.log(f"Creating Athena brain with {ATHENA_NEURONS:,} neurons...")
-    brain = nimcp.Brain(
-        "Athena",
-        nimcp.BRAIN_LARGE,
-        nimcp.TASK_CLASSIFICATION,
-        ATHENA_NUM_INPUTS,
-        ATHENA_NUM_OUTPUTS,
-        neuron_count=ATHENA_NEURONS,
-    )
-    logger.log(f"Neuron count: {brain.get_neuron_count():,}")
+    if resume_path:
+        # Resume from checkpoint
+        logger.log(f"Loading brain from checkpoint: {resume_path}")
+        brain = nimcp.Brain.load(str(resume_path))
+        logger.log(f"Neuron count: {brain.get_neuron_count():,}")
+    else:
+        # Create brain directly at target neuron count
+        logger.log(f"Creating Athena brain with {ATHENA_NEURONS:,} neurons...")
+        brain = nimcp.Brain(
+            "Athena",
+            nimcp.BRAIN_LARGE,
+            nimcp.TASK_CLASSIFICATION,
+            ATHENA_NUM_INPUTS,
+            ATHENA_NUM_OUTPUTS,
+            neuron_count=ATHENA_NEURONS,
+        )
+        logger.log(f"Neuron count: {brain.get_neuron_count():,}")
 
     # Verify GPU status
     try:
@@ -1339,53 +1397,98 @@ def main():
 
     report_card = None
 
+    # Determine which phase to resume from
+    resume_phase = None
+    resume_trained = 0
+    if resume_path:
+        progress = load_progress()
+        if progress:
+            resume_phase = progress.get("completed_phase")
+            resume_trained = progress.get("total_trained", 0)
+            logger.log(f"Resume: last completed phase = {resume_phase}, "
+                        f"total trained = {resume_trained:,}")
+        else:
+            logger.log("Resume: no progress file — skipping Phase 0 only")
+            resume_phase = "phase0"
+
     if SCHOOL_AVAILABLE:
         # ===== NEW PIPELINE: Parallel School =====
 
         # Phase 0: Orientation (quick warm-up on built-in benchmarks)
-        total_trained = phase0_orientation(brain, socratic, cognitive, logger)
+        if resume_phase and resume_phase >= "phase0":
+            logger.log("\n" + "=" * 70)
+            logger.log(f"SKIPPING Phase 0 (completed in previous run)")
+            logger.log("=" * 70)
+            total_trained = resume_trained
+            health_check(brain, logger, "Resume", abort_on_fail=True)
+            conversation_probe(brain, logger, "Resume (from checkpoint)")
+        else:
+            total_trained = phase0_orientation(brain, socratic, cognitive, logger)
 
-        p0_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase0.bin"
-        brain.save(str(p0_ckpt))
-        logger.log(f"Phase 0 checkpoint saved: {p0_ckpt}")
+            p0_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_phase0.bin"
+            brain.save(str(p0_ckpt))
+            save_progress("phase0", p0_ckpt, total_trained)
+            logger.log(f"Phase 0 checkpoint saved: {p0_ckpt}")
 
-        health_check(brain, logger, "Phase 0", abort_on_fail=True)
-        conversation_probe(brain, logger, "Phase 0 (Orientation)")
+            health_check(brain, logger, "Phase 0", abort_on_fail=True)
+            conversation_probe(brain, logger, "Phase 0 (Orientation)")
 
         # Phase 1: Parallel School (23 instructors)
-        result = phase1_parallel_school(brain, socratic, cognitive,
-                                        logger, total_trained)
-        if isinstance(result, tuple):
-            total_trained, report_card = result
+        if resume_phase and resume_phase >= "phase1":
+            logger.log("\n" + "=" * 70)
+            logger.log(f"SKIPPING Phase 1 (completed in previous run)")
+            logger.log("=" * 70)
         else:
-            total_trained = result
+            result = phase1_parallel_school(brain, socratic, cognitive,
+                                            logger, total_trained)
+            if isinstance(result, tuple):
+                total_trained, report_card = result
+            else:
+                total_trained = result
 
-        p1_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_school.bin"
-        brain.save(str(p1_ckpt))
-        logger.log(f"School checkpoint saved: {p1_ckpt}")
+            p1_ckpt = ATHENA_CHECKPOINT_DIR / "athena_after_school.bin"
+            brain.save(str(p1_ckpt))
+            save_progress("phase1", p1_ckpt, total_trained)
+            logger.log(f"School checkpoint saved: {p1_ckpt}")
 
-        health_check(brain, logger, "Phase 1 (School)", abort_on_fail=True)
-        conversation_probe(brain, logger, "Phase 1 (Parallel School)")
+            health_check(brain, logger, "Phase 1 (School)", abort_on_fail=True)
+            conversation_probe(brain, logger, "Phase 1 (Parallel School)")
 
     else:
         # ===== LEGACY PIPELINE: Sequential phases =====
         logger.log("Using legacy sequential pipeline (school module not available)")
 
-        total_trained = phase1_worksheets(brain, socratic, cognitive, logger)
-        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase1.bin"))
-        health_check(brain, logger, "Phase 1 (Worksheets)", abort_on_fail=True)
-        conversation_probe(brain, logger, "Phase 1 (Worksheets)")
+        if not (resume_phase and resume_phase >= "legacy_phase1"):
+            total_trained = phase1_worksheets(brain, socratic, cognitive, logger)
+            p = ATHENA_CHECKPOINT_DIR / "athena_after_phase1.bin"
+            brain.save(str(p))
+            save_progress("legacy_phase1", p, total_trained)
+            health_check(brain, logger, "Phase 1 (Worksheets)", abort_on_fail=True)
+            conversation_probe(brain, logger, "Phase 1 (Worksheets)")
+        else:
+            total_trained = resume_trained
+            logger.log("SKIPPING Phase 1 (completed in previous run)")
 
-        total_trained = phase2_guided_study(brain, socratic, cognitive,
-                                             logger, total_trained)
-        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase2.bin"))
-        health_check(brain, logger, "Phase 2 (Guided Study)", abort_on_fail=True)
-        conversation_probe(brain, logger, "Phase 2 (Guided Study)")
+        if not (resume_phase and resume_phase >= "legacy_phase2"):
+            total_trained = phase2_guided_study(brain, socratic, cognitive,
+                                                 logger, total_trained)
+            p = ATHENA_CHECKPOINT_DIR / "athena_after_phase2.bin"
+            brain.save(str(p))
+            save_progress("legacy_phase2", p, total_trained)
+            health_check(brain, logger, "Phase 2 (Guided Study)", abort_on_fail=True)
+            conversation_probe(brain, logger, "Phase 2 (Guided Study)")
+        else:
+            logger.log("SKIPPING Phase 2 (completed in previous run)")
 
-        total_trained = phase3_research(brain, active_learner, socratic,
-                                         cognitive, logger, total_trained)
-        brain.save(str(ATHENA_CHECKPOINT_DIR / "athena_after_phase3.bin"))
-        health_check(brain, logger, "Phase 3 (Research)", abort_on_fail=True)
+        if not (resume_phase and resume_phase >= "legacy_phase3"):
+            total_trained = phase3_research(brain, active_learner, socratic,
+                                             cognitive, logger, total_trained)
+            p = ATHENA_CHECKPOINT_DIR / "athena_after_phase3.bin"
+            brain.save(str(p))
+            save_progress("legacy_phase3", p, total_trained)
+            health_check(brain, logger, "Phase 3 (Research)", abort_on_fail=True)
+        else:
+            logger.log("SKIPPING Phase 3 (completed in previous run)")
 
     # Final health check + conversation probe before exam
     health_check(brain, logger, "Pre-Exam", abort_on_fail=True)

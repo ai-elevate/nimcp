@@ -154,6 +154,13 @@ class School:
         self._last_recess = 0.0
         self._last_report = 0.0
         self._last_checkpoint = 0.0
+        self._last_config_check = 0.0
+
+        # Hot-reload tracking
+        self._config_path: Optional[Path] = None
+        self._config_mtime: float = 0.0
+        self._known_dataset_names: set = set()
+        self._config_check_interval_s: float = 30.0
 
         # Logging
         self._school_log_path: Optional[Path] = None
@@ -161,10 +168,16 @@ class School:
 
     def setup(self, config_path: Path):
         """Load dataset config and create instructor agents."""
+        self._config_path = Path(config_path)
+        self._config_mtime = self._config_path.stat().st_mtime
+
         with open(config_path) as f:
             config_data = json.load(f)
 
         datasets = config_data.get("datasets", [])
+
+        # Track known dataset names for hot-reload diffing
+        self._known_dataset_names = {ds.get("name", "") for ds in datasets}
 
         # Group datasets by domain
         domain_datasets: Dict[str, List[dict]] = {}
@@ -266,8 +279,97 @@ class School:
                             f"{len(self._pending_instructors)} pending — starting next batch")
             self._start_next_batch(slots)
 
+    def _check_config_reload(self):
+        """Check if foundation_datasets_config.json has changed on disk.
+        If new datasets were added, create InstructorAgents and queue them."""
+        if not self._config_path or not self._config_path.exists():
+            return
+
+        try:
+            current_mtime = self._config_path.stat().st_mtime
+        except OSError:
+            return
+
+        if current_mtime <= self._config_mtime:
+            return  # No change
+
+        self._config_mtime = current_mtime
+        self.logger.log("[School] Config file changed — checking for new datasets...")
+
+        try:
+            with open(self._config_path) as f:
+                config_data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            self.logger.log(f"[School] Config reload failed: {e}")
+            return
+
+        datasets = config_data.get("datasets", [])
+        new_datasets = [ds for ds in datasets
+                        if ds.get("name", "") not in self._known_dataset_names]
+
+        if not new_datasets:
+            self.logger.log("[School] Config changed but no new datasets found")
+            return
+
+        # Group new datasets by domain
+        multimodal_domains = {"audio", "visual", "speech"}
+        domain_new: Dict[str, List[dict]] = {}
+        for ds in new_datasets:
+            domain = ds.get("domain", "general")
+            domain_new.setdefault(domain, []).append(ds)
+            self._known_dataset_names.add(ds.get("name", ""))
+
+        log_dir = (Path(self.logger.log_file).parent / "instructors"
+                   if hasattr(self.logger, 'log_file') else None)
+
+        added = 0
+        for domain, ds_list in sorted(domain_new.items()):
+            # Check if an existing instructor already covers this domain
+            existing = [a for a in self.instructors
+                        if a.config.domain == domain and not a.is_finished]
+            if existing:
+                # Domain already has an active instructor — skip
+                # (the existing instructor won't see the new dataset since it
+                #  was created with the old list, but it will finish eventually
+                #  and the new datasets will need a fresh instructor)
+                self.logger.log(f"  [Hot-reload] {domain}: active instructor exists, "
+                                f"queuing {len(ds_list)} new dataset(s) as separate instructor")
+
+            modality = domain if domain in multimodal_domains else "text"
+            ic = InstructorConfig(
+                domain=domain,
+                modality=modality,
+                max_examples_per_dataset=self.config.max_examples_per_dataset,
+                startup_delay_s=0.0,
+            )
+            agent = InstructorAgent(
+                brain=self.brain,
+                config=ic,
+                datasets=ds_list,
+                school_queue=self.school_queue,
+                cross_domain_queue=self.cross_domain_queue,
+                stop_event=self.stop_event,
+                recess_event=self.recess_event,
+                num_inputs=self.config.num_inputs,
+                log_dir=log_dir,
+            )
+            self.instructors.append(agent)
+            self._pending_instructors.append(agent)
+            added += 1
+
+            self.logger.log(f"  [Hot-reload] Added instructor: {domain} "
+                            f"[{modality}] — {len(ds_list)} dataset(s)")
+            for ds in ds_list:
+                self.logger.log(f"    + {ds.get('name', '?')}: "
+                                f"{ds.get('description', '')[:80]}")
+
+        self.logger.log(f"[School] Hot-reload complete: {added} new instructor(s), "
+                        f"{len(self._pending_instructors)} pending")
+
     def _coordinator_loop(self):
         """Main coordinator loop — ticks every 1s."""
+        self._last_config_check = time.time()
+
         while not self.stop_event.is_set():
             now = time.time()
             elapsed = now - self._start_time
@@ -277,13 +379,21 @@ class School:
                 self.logger.log("[School] Max training time reached — graduating")
                 break
 
-            # Check if all instructors finished
-            if all(a.is_finished for a in self.instructors):
-                self.logger.log("[School] All instructors finished")
-                break
-
             # Rotate batches — retire finished instructors, start new ones
             self._rotate_batches()
+
+            # Hot-reload config check (before "all finished" so new datasets
+            # get queued before we decide to exit)
+            if now - self._last_config_check >= self._config_check_interval_s:
+                self._check_config_reload()
+                self._last_config_check = now
+
+            # Check if all instructors finished (after hot-reload so new
+            # instructors are counted)
+            if (all(a.is_finished for a in self.instructors)
+                    and not self._pending_instructors):
+                self.logger.log("[School] All instructors finished")
+                break
 
             # Drain instructor reports
             self._drain_reports()
