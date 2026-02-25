@@ -268,10 +268,11 @@ TEST_F(ReasoningChainUnit, ChainStepTypesAreDistinct) {
         REASONING_STEP_RECALL, REASONING_STEP_KNOWLEDGE, REASONING_STEP_INFERENCE,
         REASONING_STEP_VERIFICATION, REASONING_STEP_UNCERTAINTY,
         REASONING_STEP_ANALOGY, REASONING_STEP_DECOMPOSITION,
-        REASONING_STEP_SYNTHESIS
+        REASONING_STEP_SYNTHESIS, REASONING_STEP_WORLD_MODEL,
+        REASONING_STEP_JEPA_PREDICTION, REASONING_STEP_SYMBOLIC_LOGIC
     };
     int count = sizeof(types) / sizeof(types[0]);
-    EXPECT_EQ(count, 8) << "Should have exactly 8 step types";
+    EXPECT_EQ(count, 11) << "Should have exactly 11 step types";
 
     for (int i = 0; i < count; i++) {
         for (int j = i + 1; j < count; j++) {
@@ -378,4 +379,58 @@ TEST_F(ReasoningChainUnit, GetNumStepsMatchesCount) {
         reasoning_chain_add_step(&chain, &step);
         EXPECT_EQ(reasoning_chain_get_num_steps(&chain), i);
     }
+}
+
+// =============================================================================
+// Tests: Concurrent Pipeline Configuration
+// =============================================================================
+
+TEST_F(ReasoningChainUnit, DefaultConfigEnablesConcurrentPipeline) {
+    reasoning_engine_config_t cfg = reasoning_engine_default_config();
+    EXPECT_TRUE(cfg.enable_concurrent_pipeline)
+        << "Concurrent pipeline should be enabled by default";
+    EXPECT_EQ(cfg.concurrent_pool_size, 4u)
+        << "Default pool size should be 4";
+}
+
+TEST_F(ReasoningChainUnit, ConcurrentPipelineCanBeDisabled) {
+    reasoning_engine_config_t cfg = reasoning_engine_default_config();
+    cfg.enable_concurrent_pipeline = false;
+    engine = reasoning_engine_create(&cfg);
+    ASSERT_NE(engine, nullptr);
+
+    // Engine should still be usable in sequential mode
+    reasoning_chain_init(&chain);
+    int rc = reasoning_engine_reason(engine, "test query", &chain);
+    // Should fail because not connected to brain, but not crash
+    EXPECT_NE(rc, 0);
+}
+
+TEST_F(ReasoningChainUnit, ConcurrentEngineCreatesSuccessfully) {
+    reasoning_engine_config_t cfg = reasoning_engine_default_config();
+    cfg.enable_concurrent_pipeline = true;
+    cfg.concurrent_pool_size = 2;
+    engine = reasoning_engine_create(&cfg);
+    ASSERT_NE(engine, nullptr)
+        << "Engine with concurrent pipeline should create successfully";
+}
+
+TEST_F(ReasoningChainUnit, ConcurrentEngineDestroyIsClean) {
+    // Create and immediately destroy — no leaks, no crashes
+    reasoning_engine_config_t cfg = reasoning_engine_default_config();
+    cfg.enable_concurrent_pipeline = true;
+    cfg.concurrent_pool_size = 4;
+    reasoning_engine_t* e = reasoning_engine_create(&cfg);
+    ASSERT_NE(e, nullptr);
+    reasoning_engine_destroy(e);
+    // If we get here without crash/ASAN error, the pool cleanup worked
+}
+
+TEST_F(ReasoningChainUnit, ConcurrentPoolSizeZeroFallsBackToDefault) {
+    reasoning_engine_config_t cfg = reasoning_engine_default_config();
+    cfg.enable_concurrent_pipeline = true;
+    cfg.concurrent_pool_size = 0;
+    engine = reasoning_engine_create(&cfg);
+    // Should still create (uses default pool size 4)
+    ASSERT_NE(engine, nullptr);
 }

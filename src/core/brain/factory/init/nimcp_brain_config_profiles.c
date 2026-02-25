@@ -242,6 +242,10 @@ static void apply_standard_profile(brain_config_t* config)
     config->enable_knowledge = true;
     config->enable_explanations = true;
 
+    // Enable fuzzy logic and internal KG
+    config->enable_fuzzy_logic = true;
+    config->enable_internal_kg = true;
+
     // Enable basic biological features
     config->enable_pink_noise = true;
     config->enable_glial = true;

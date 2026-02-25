@@ -264,6 +264,10 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->enable_executive_control = !minimal;
     config->enable_epistemic_filter = !minimal;
 
+    // Fuzzy logic and Internal KG defaults
+    config->enable_fuzzy_logic = !minimal;
+    config->enable_internal_kg = !minimal;
+
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = !minimal;
     config->enable_oscillations = false;

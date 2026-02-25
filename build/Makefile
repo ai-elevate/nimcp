@@ -8583,6 +8583,19 @@ e2e_test_query_to_answer/fast:
 .PHONY : e2e_test_query_to_answer/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_symbolic_reasoning
+
+# Build rule for target.
+e2e_test_symbolic_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_symbolic_reasoning
+.PHONY : e2e_test_symbolic_reasoning
+
+# fast build rule for target.
+e2e_test_symbolic_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_symbolic_reasoning.dir/build.make test/e2e/CMakeFiles/e2e_test_symbolic_reasoning.dir/build
+.PHONY : e2e_test_symbolic_reasoning/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -14197,6 +14210,19 @@ unit_cognitive_test_reasoning_chain: cmake_check_build_system
 unit_cognitive_test_reasoning_chain/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_chain.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_chain.dir/build
 .PHONY : unit_cognitive_test_reasoning_chain/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_symbolic_logic
+
+# Build rule for target.
+unit_cognitive_test_reasoning_symbolic_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_symbolic_logic
+.PHONY : unit_cognitive_test_reasoning_symbolic_logic
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_symbolic_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_symbolic_logic.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_symbolic_logic.dir/build
+.PHONY : unit_cognitive_test_reasoning_symbolic_logic/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_global_workspace_immune
@@ -27537,6 +27563,19 @@ regression_reasoning_generation_test/fast:
 .PHONY : regression_reasoning_generation_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_symbolic_logic_reasoning_test
+
+# Build rule for target.
+regression_symbolic_logic_reasoning_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_symbolic_logic_reasoning_test
+.PHONY : regression_symbolic_logic_reasoning_test
+
+# fast build rule for target.
+regression_symbolic_logic_reasoning_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/reasoning_generation/CMakeFiles/regression_symbolic_logic_reasoning_test.dir/build.make test/regression/reasoning_generation/CMakeFiles/regression_symbolic_logic_reasoning_test.dir/build
+.PHONY : regression_symbolic_logic_reasoning_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -35792,6 +35831,19 @@ integration_reasoning_test_reasoning_brain/fast:
 .PHONY : integration_reasoning_test_reasoning_brain/fast
 
 #=============================================================================
+# Target rules for targets named integration_reasoning_test_symbolic_logic
+
+# Build rule for target.
+integration_reasoning_test_symbolic_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_symbolic_logic
+.PHONY : integration_reasoning_test_symbolic_logic
+
+# fast build rule for target.
+integration_reasoning_test_symbolic_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_symbolic_logic.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_symbolic_logic.dir/build
+.PHONY : integration_reasoning_test_symbolic_logic/fast
+
+#=============================================================================
 # Target rules for targets named integration_generation_test_pipeline
 
 # Build rule for target.
@@ -40602,6 +40654,7 @@ help:
 	@echo "... e2e_test_swarm_formation"
 	@echo "... e2e_test_swarm_memory_consolidation"
 	@echo "... e2e_test_swarm_threat_response"
+	@echo "... e2e_test_symbolic_reasoning"
 	@echo "... e2e_test_ternary_attention_system"
 	@echo "... e2e_test_ternary_cortical_processing"
 	@echo "... e2e_test_ternary_lnn_simulation"
@@ -41076,6 +41129,7 @@ help:
 	@echo "... integration_quantum_bridges"
 	@echo "... integration_quantum_mcts_fep"
 	@echo "... integration_reasoning_test_reasoning_brain"
+	@echo "... integration_reasoning_test_symbolic_logic"
 	@echo "... integration_rng_module"
 	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
@@ -41656,6 +41710,7 @@ help:
 	@echo "... regression_substrate_immune_bridge"
 	@echo "... regression_subthalamic_test"
 	@echo "... regression_swarm_bridges"
+	@echo "... regression_symbolic_logic_reasoning_test"
 	@echo "... regression_test_brain_state_manager"
 	@echo "... regression_test_kg_module_wiring"
 	@echo "... regression_thalamic_immune_bridge_test"
@@ -42299,6 +42354,7 @@ help:
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
 	@echo "... unit_cognitive_test_reasoning_chain"
+	@echo "... unit_cognitive_test_reasoning_symbolic_logic"
 	@echo "... unit_cognitive_test_remorse_regret"
 	@echo "... unit_cognitive_test_rubric"
 	@echo "... unit_cognitive_test_salience_attention_bridge"

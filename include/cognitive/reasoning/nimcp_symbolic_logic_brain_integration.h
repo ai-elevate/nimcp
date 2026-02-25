@@ -63,6 +63,8 @@
 #include <stddef.h>
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/nimcp_symbolic_logic.h"
+#include "cognitive/reasoning/nimcp_backward_chaining.h"
+#include "cognitive/reasoning/nimcp_forward_chaining.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -339,7 +341,7 @@ void brain_free_query_result(query_result_t* result);
  *
  * @param brain Brain instance (non-NULL)
  * @param max_iterations Maximum inference iterations (0 = unlimited, capped at 1000)
- * @param result Output inference result (caller must free with brain_free_inference_result)
+ * @param result Output forward chain result (caller must free with forward_chain_free_result)
  * @return true on success, false on error
  *
  * ERROR CONDITIONS:
@@ -359,16 +361,16 @@ void brain_free_query_result(query_result_t* result);
  * brain_add_logical_rule(brain, "Bird(x) -> Fly(x)", 0.8);
  *
  * // Infer
- * inference_result_t result;
+ * forward_chain_result_t result;
  * brain_forward_chain(brain, 10, &result);
  * // Result: "Fly(tweety)" derived
- * brain_free_inference_result(&result);
+ * forward_chain_free_result(&result);
  * ```
  */
 bool brain_forward_chain(
     brain_t brain,
     uint32_t max_iterations,
-    inference_result_t* result
+    forward_chain_result_t* result
 );
 
 /**
@@ -413,27 +415,18 @@ bool brain_forward_chain(
  * brain_add_logical_rule(brain, "Man(x) -> Mortal(x)", 0.8);
  *
  * // Prove
- * inference_result_t result;
+ * backward_chain_result_t result;
  * if (brain_backward_chain(brain, "Mortal(socrates)", &result)) {
  *     printf("Proven! Steps: %u\n", result.num_steps);
- *     brain_free_inference_result(&result);
+ *     backward_chain_free_result(&result);
  * }
  * ```
  */
 bool brain_backward_chain(
     brain_t brain,
     const char* goal_str,
-    inference_result_t* result
+    backward_chain_result_t* result
 );
-
-/**
- * @brief Free inference result resources
- *
- * @param result Inference result to free
- *
- * COMPLEXITY: O(S) where S = number of proof steps
- */
-void brain_free_inference_result(inference_result_t* result);
 
 //=============================================================================
 // Brain API - Statistics and Diagnostics

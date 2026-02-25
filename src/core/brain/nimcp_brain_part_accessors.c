@@ -207,6 +207,10 @@ static void init_brain_config(brain_config_t* config, const char* task_name, bra
     config->male_probability = 0.0F;                // 0% male by default
     config->non_binary_probability = 0.0F;          // 0% non-binary by default
 
+    // Fuzzy logic and Internal KG defaults
+    config->enable_fuzzy_logic = true;              // Enable fuzzy logic (graded neural encoding)
+    config->enable_internal_kg = true;              // Enable internal runtime knowledge graph
+
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = true;                    // Enable glial integration by default
     config->enable_oscillations = false;            // Disable oscillations by default (opt-in)

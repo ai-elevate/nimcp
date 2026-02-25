@@ -447,6 +447,7 @@ bool brain_query_knowledge(
     NIMCP_LOGGING_DEBUG("Query executed: %s (matches=%d)", query_str, num_matches);
     return true;
 }
+#endif // Disabled brain_query_knowledge
 
 void brain_free_query_result(query_result_t* result)
 {
@@ -479,7 +480,6 @@ void brain_free_query_result(query_result_t* result)
 
     memset(result, 0, sizeof(query_result_t));
 }
-#endif // Disabled brain_query_knowledge
 
 //=============================================================================
 // Brain API - Inference Operations
@@ -727,6 +727,7 @@ bool brain_backward_chain(
 
     return true;
 }
+#endif // Disabled inference operations (forward_chain, backward_chain)
 
 void brain_free_inference_result(inference_result_t* result)
 {
@@ -748,7 +749,6 @@ void brain_free_inference_result(inference_result_t* result)
 
     memset(result, 0, sizeof(inference_result_t));
 }
-#endif // Disabled inference operations (forward_chain, backward_chain)
 
 //=============================================================================
 // Brain API - Statistics and Diagnostics

@@ -95,7 +95,8 @@ typedef enum {
     REASONING_STEP_DECOMPOSITION,    /**< Break problem into sub-parts */
     REASONING_STEP_SYNTHESIS,        /**< Combine sub-results */
     REASONING_STEP_WORLD_MODEL,      /**< World model causal simulation */
-    REASONING_STEP_JEPA_PREDICTION   /**< JEPA latent-space consistency check */
+    REASONING_STEP_JEPA_PREDICTION,  /**< JEPA latent-space consistency check */
+    REASONING_STEP_SYMBOLIC_LOGIC    /**< Symbolic logic formal inference */
 } reasoning_step_type_t;
 
 /*=============================================================================
@@ -158,8 +159,12 @@ typedef struct {
     bool enable_working_memory;    /**< Use working memory (default true) */
     bool enable_world_model;       /**< Use world model for causal simulation (default true) */
     bool enable_jepa_prediction;   /**< Use JEPA for latent-space verification (default true) */
+    bool enable_symbolic_logic;    /**< Use symbolic logic for formal inference (default true) */
+    bool enable_concurrent_pipeline; /**< Run independent phases in parallel (default true) */
+    uint32_t symbolic_inference_depth; /**< Max backward chain depth (default 10) */
     uint32_t working_memory_slots; /**< WM capacity (default 7) */
     uint32_t world_model_horizon;  /**< World model simulation steps (default 3) */
+    uint32_t concurrent_pool_size; /**< Thread pool size for concurrent pipeline (default 4) */
 } reasoning_engine_config_t;
 
 /**
@@ -181,6 +186,8 @@ typedef struct {
     uint32_t uncertainty_flags;      /**< Times uncertainty was flagged */
     uint32_t world_model_simulations;/**< Times world model was invoked */
     uint32_t jepa_predictions;       /**< Times JEPA predictor was invoked */
+    uint32_t symbolic_queries;       /**< Times symbolic logic KB was queried */
+    uint32_t symbolic_proofs;        /**< Times symbolic backward chain proved goal */
 } reasoning_engine_stats_t;
 
 /**

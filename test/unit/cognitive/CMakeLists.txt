@@ -155,6 +155,36 @@ gtest_discover_tests(unit_cognitive_test_reasoning_chain
         TIMEOUT 120
 )
 
+# Reasoning Chain - Symbolic Logic Unit Tests
+add_executable(unit_cognitive_test_reasoning_symbolic_logic
+    test_reasoning_symbolic_logic.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_symbolic_logic
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_symbolic_logic
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_symbolic_logic PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_symbolic_logic
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning;symbolic-logic"
+        TIMEOUT 60
+)
+
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
 

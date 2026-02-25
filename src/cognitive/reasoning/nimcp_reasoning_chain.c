@@ -35,6 +35,12 @@
 #include "cognitive/jepa/nimcp_jepa_fep_bridge.h"
 #include "cognitive/extrapolation/nimcp_world_model_multimodal.h"
 #include "cognitive/omni/nimcp_omni_world_model.h"
+#include "cognitive/nimcp_symbolic_logic.h"
+#include "cognitive/reasoning/nimcp_symbolic_logic_brain_integration.h"
+#include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
+#include "cognitive/reasoning/nimcp_backward_chaining.h"
+#include "cognitive/reasoning/nimcp_forward_chaining.h"
+#include "utils/thread/nimcp_thread_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
@@ -76,6 +82,12 @@ struct reasoning_engine {
     jepa_predictor_t* jepa_predictor;
     jepa_context_encoder_t* jepa_context;
     jepa_fep_bridge_t* jepa_fep_bridge;
+
+    /* Symbolic logic engine (may be NULL) */
+    symbolic_logic_t* symbolic_logic;
+
+    /* Thread pool for concurrent pipeline (created lazily or at init) */
+    nimcp_thread_pool_t* thread_pool;
 
     /* Aggregate statistics */
     reasoning_engine_stats_t stats;
@@ -124,6 +136,15 @@ struct reasoning_engine {
 /** JEPA cosine similarity threshold for consistency */
 #define JEPA_CONSISTENCY_THRESHOLD 0.5f
 
+/** Default symbolic inference depth */
+#define DEFAULT_SYMBOLIC_DEPTH 10
+
+/** Maximum symbolic query results to process */
+#define MAX_SYMBOLIC_RESULTS 5
+
+/** Minimum confidence for symbolic logic evidence */
+#define SYMBOLIC_MIN_CONFIDENCE 0.4f
+
 /*=============================================================================
  * INTERNAL HELPER DECLARATIONS
  *===========================================================================*/
@@ -137,6 +158,11 @@ static void format_conclusion(char* buffer, uint32_t buffer_size,
                               const char* query, const char* query_type,
                               float confidence, uint32_t evidence_count,
                               bool has_recall, bool has_knowledge);
+static float phase_symbolic_query(reasoning_engine_t* engine, const char* query,
+                                   const char* query_type, reasoning_chain_t* chain);
+static float phase_symbolic_inference(reasoning_engine_t* engine, const char* query,
+                                       const char* query_type, float query_confidence,
+                                       reasoning_chain_t* chain);
 
 /*=============================================================================
  * STEP TYPE NAME
@@ -155,6 +181,7 @@ const char* reasoning_step_type_name(reasoning_step_type_t type)
         case REASONING_STEP_SYNTHESIS:       return "SYNTHESIS";
         case REASONING_STEP_WORLD_MODEL:     return "WORLD_MODEL";
         case REASONING_STEP_JEPA_PREDICTION: return "JEPA_PREDICTION";
+        case REASONING_STEP_SYMBOLIC_LOGIC:  return "SYMBOLIC_LOGIC";
         default:                             return "UNKNOWN";
     }
 }
@@ -180,8 +207,12 @@ reasoning_engine_config_t reasoning_engine_default_config(void)
     config.enable_working_memory = true;
     config.enable_world_model = true;
     config.enable_jepa_prediction = true;
+    config.enable_symbolic_logic = true;
+    config.enable_concurrent_pipeline = true;
     config.working_memory_slots = REASONING_CHAIN_DEFAULT_WM_SLOTS;
     config.world_model_horizon = DEFAULT_WM_HORIZON;
+    config.symbolic_inference_depth = DEFAULT_SYMBOLIC_DEPTH;
+    config.concurrent_pool_size = 4;
 
     return config;
 }
@@ -209,10 +240,26 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
     /* All module pointers are already NULL from calloc */
     engine->is_connected = false;
 
+    /* Create thread pool for concurrent pipeline if enabled */
+    if (engine->config.enable_concurrent_pipeline) {
+        uint32_t pool_size = engine->config.concurrent_pool_size;
+        if (pool_size == 0) pool_size = 4;
+        if (pool_size > NIMCP_POOL_MAX_THREADS) pool_size = NIMCP_POOL_MAX_THREADS;
+
+        engine->thread_pool = nimcp_pool_create(pool_size);
+        if (!engine->thread_pool) {
+            NIMCP_LOGGING_WARN("reasoning_chain: failed to create thread pool "
+                               "(size=%u), falling back to sequential",
+                               pool_size);
+            engine->config.enable_concurrent_pipeline = false;
+        }
+    }
+
     NIMCP_LOGGING_INFO("reasoning_chain: engine created (max_steps=%u, "
-                       "confidence_threshold=%.2f)",
+                       "confidence_threshold=%.2f, concurrent=%s)",
                        engine->config.max_steps,
-                       engine->config.confidence_threshold);
+                       engine->config.confidence_threshold,
+                       engine->config.enable_concurrent_pipeline ? "yes" : "no");
 
     return engine;
 }
@@ -220,6 +267,12 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
 void reasoning_engine_destroy(reasoning_engine_t* engine)
 {
     if (!engine) return;
+
+    /* Destroy thread pool if created */
+    if (engine->thread_pool) {
+        nimcp_pool_destroy(engine->thread_pool);
+        engine->thread_pool = NULL;
+    }
 
     NIMCP_LOGGING_INFO("reasoning_chain: engine destroyed (queries=%u, "
                        "avg_confidence=%.3f)",
@@ -253,6 +306,7 @@ int reasoning_engine_connect_brain(reasoning_engine_t* engine, brain_t brain)
         engine->jepa_predictor = NULL;
         engine->jepa_context = NULL;
         engine->jepa_fep_bridge = NULL;
+        engine->symbolic_logic = NULL;
         engine->is_connected = false;
         NIMCP_LOGGING_WARN("reasoning_chain: disconnected from brain");
         return 0;
@@ -286,12 +340,15 @@ int reasoning_engine_connect_brain(reasoning_engine_t* engine, brain_t brain)
      * systems. Leave as NULL unless explicitly set by the caller.
      */
 
+    /* Symbolic logic engine */
+    engine->symbolic_logic = brain_get_symbolic_logic(brain);
+
     engine->is_connected = true;
 
     NIMCP_LOGGING_INFO("reasoning_chain: connected to brain "
                        "(engram=%s, knowledge=%s, wm=%s, predictive=%s, "
                        "epistemic=%s, self_model=%s, world_model=%s, "
-                       "jepa=%s)",
+                       "jepa=%s, symbolic=%s)",
                        engine->engram_system ? "yes" : "no",
                        engine->knowledge_system ? "yes" : "no",
                        engine->working_memory ? "yes" : "no",
@@ -300,7 +357,8 @@ int reasoning_engine_connect_brain(reasoning_engine_t* engine, brain_t brain)
                        engine->self_model ? "yes" : "no",
                        (engine->omni_world_model ||
                         engine->multimodal_world_model) ? "yes" : "no",
-                       engine->jepa_predictor ? "yes" : "no");
+                       engine->jepa_predictor ? "yes" : "no",
+                       engine->symbolic_logic ? "yes" : "no");
 
     return 0;
 }
@@ -1056,6 +1114,256 @@ static float phase_world_model(reasoning_engine_t* engine, const char* query,
 }
 
 /*=============================================================================
+ * PHASE 3.9: SYMBOLIC LOGIC QUERY
+ *===========================================================================*/
+
+/**
+ * @brief Execute the symbolic logic query phase
+ *
+ * WHAT: Query the brain's formal knowledge base for facts matching the query
+ * WHY:  Symbolic knowledge provides deductive certainty (proof-based evidence)
+ *       unlike the probabilistic evidence from neural recall/knowledge retrieval
+ * HOW:  Extract predicate-like patterns from the query, call brain_query_knowledge(),
+ *       process matched facts and variable bindings
+ *
+ * BIOLOGICAL BASIS:
+ * Models the prefrontal cortex's capacity for rule-based, deliberative reasoning.
+ * While neural knowledge (Phase 2) is fast and associative (System 1),
+ * symbolic query is slow and deliberate (System 2).
+ *
+ * @return Query confidence [0-1], or 0.0 if no symbolic logic available
+ */
+static float phase_symbolic_query(reasoning_engine_t* engine, const char* query,
+                                   const char* query_type, reasoning_chain_t* chain)
+{
+    if (!engine->config.enable_symbolic_logic || !engine->symbolic_logic) {
+        return 0.0f;
+    }
+
+    engine->stats.symbolic_queries++;
+
+    /*
+     * Attempt to query the symbolic KB with the raw query string.
+     * The brain_query_knowledge() function parses predicate syntax internally.
+     * For natural language queries, this will typically fail to parse,
+     * but that's handled gracefully (returns false, no matches).
+     */
+    query_result_t result;
+    memset(&result, 0, sizeof(result));
+
+    bool queried = brain_query_knowledge(engine->brain, query, &result);
+
+    float query_confidence = 0.0f;
+
+    if (queried && result.success && result.num_matches > 0) {
+        /*
+         * Direct KB hit: the query matched formal knowledge.
+         * This is strong evidence — formal facts have high confidence.
+         */
+        uint32_t matches_to_process = (uint32_t)result.num_matches;
+        if (matches_to_process > MAX_SYMBOLIC_RESULTS) {
+            matches_to_process = MAX_SYMBOLIC_RESULTS;
+        }
+
+        float total_salience = 0.0f;
+        for (uint32_t i = 0; i < matches_to_process; i++) {
+            if (result.matches && result.matches[i]) {
+                total_salience += result.matches[i]->salience;
+            }
+        }
+
+        query_confidence = (matches_to_process > 0)
+            ? total_salience / (float)matches_to_process
+            : 0.0f;
+
+        /* Formal knowledge gets a confidence floor — proofs are reliable */
+        if (query_confidence < SYMBOLIC_MIN_CONFIDENCE && matches_to_process > 0) {
+            query_confidence = SYMBOLIC_MIN_CONFIDENCE;
+        }
+
+        /* Clamp */
+        if (query_confidence > 1.0f) query_confidence = 1.0f;
+
+        reasoning_step_t step;
+        memset(&step, 0, sizeof(step));
+        step.step_id = chain->num_steps;
+        step.type = REASONING_STEP_SYMBOLIC_LOGIC;
+        step.confidence = query_confidence;
+        step.relevance = 0.95f;  /* Formal KB hits are highly relevant */
+        step.timestamp_us = nimcp_time_get_us();
+
+        snprintf(step.description, sizeof(step.description),
+                 "Symbolic KB query: %d match(es) found. "
+                 "Avg salience: %.3f. %s "
+                 "Formal knowledge provides deductive evidence.",
+                 result.num_matches,
+                 query_confidence,
+                 result.num_bindings > 0 ? "Variable bindings available." : "");
+
+        reasoning_chain_add_step(chain, &step);
+
+        NIMCP_LOGGING_DEBUG("reasoning_chain: symbolic query - %d matches, "
+                            "confidence=%.3f",
+                            result.num_matches, query_confidence);
+    } else {
+        NIMCP_LOGGING_DEBUG("reasoning_chain: symbolic query - no matches "
+                            "(parse failed or KB empty)");
+    }
+
+    if (queried) {
+        brain_free_query_result(&result);
+    }
+
+    return query_confidence;
+}
+
+/*=============================================================================
+ * PHASE 3.95: SYMBOLIC LOGIC INFERENCE
+ *===========================================================================*/
+
+/**
+ * @brief Execute the symbolic logic inference phase
+ *
+ * WHAT: Attempt to prove a goal derived from the query using backward chaining
+ * WHY:  Backward chaining provides formal proof traces — if the goal is provable,
+ *       the confidence is near-certain (within the axiom set)
+ * HOW:  Derive a goal predicate from the query, call brain_backward_chain(),
+ *       if proof found add high-confidence evidence to the chain
+ *
+ * BIOLOGICAL BASIS:
+ * Models the deliberative, goal-directed reasoning in dorsolateral prefrontal cortex.
+ * The brain works backward from a desired conclusion to check if premises hold —
+ * analogous to "Can I prove this is true?"
+ *
+ * @return Proof confidence [0-1], or 0.0 if no proof found / no symbolic logic
+ */
+static float phase_symbolic_inference(reasoning_engine_t* engine, const char* query,
+                                       const char* query_type, float query_confidence,
+                                       reasoning_chain_t* chain)
+{
+    if (!engine->config.enable_symbolic_logic || !engine->symbolic_logic) {
+        return 0.0f;
+    }
+
+    /*
+     * Only attempt backward chaining if:
+     * 1. The symbolic query phase found some relevant facts (confidence > 0), OR
+     * 2. The query type is causal/factual (more likely to benefit from proofs)
+     */
+    bool should_attempt = (query_confidence > 0.0f) ||
+                           (strcmp(query_type, "causal") == 0) ||
+                           (strcmp(query_type, "factual") == 0);
+
+    if (!should_attempt) {
+        NIMCP_LOGGING_DEBUG("reasoning_chain: symbolic inference skipped "
+                            "(no relevant context)");
+        return 0.0f;
+    }
+
+    /*
+     * Attempt backward chaining with the raw query as goal.
+     * brain_backward_chain() will try to parse the query as a logical goal.
+     * For natural language, this will typically fail gracefully.
+     *
+     * NOTE: brain_backward_chain expects backward_chain_result_t*, NOT
+     * inference_result_t*. Using the wrong type causes stack corruption
+     * because backward_chain_result_t is larger.
+     */
+    backward_chain_result_t bc_result;
+    memset(&bc_result, 0, sizeof(bc_result));
+
+    bool proved = brain_backward_chain(engine->brain, query, &bc_result);
+
+    float proof_confidence = 0.0f;
+
+    if (proved && bc_result.confidence > 0.0f) {
+        engine->stats.symbolic_proofs++;
+
+        proof_confidence = bc_result.confidence;
+
+        /* Proofs are high-confidence evidence — floor at 0.8 */
+        if (proof_confidence < 0.8f && bc_result.num_steps > 0) {
+            proof_confidence = 0.8f;
+        }
+        if (proof_confidence > 1.0f) proof_confidence = 1.0f;
+
+        reasoning_step_t step;
+        memset(&step, 0, sizeof(step));
+        step.step_id = chain->num_steps;
+        step.type = REASONING_STEP_SYMBOLIC_LOGIC;
+        step.confidence = proof_confidence;
+        step.relevance = 1.0f;  /* A formal proof is maximally relevant */
+        step.timestamp_us = nimcp_time_get_us();
+
+        snprintf(step.description, sizeof(step.description),
+                 "Symbolic inference: backward chain proof in %u steps. "
+                 "Confidence: %.3f. Goal %s via formal deduction. "
+                 "Proof provides deductive guarantee within axiom set.",
+                 bc_result.num_steps,
+                 proof_confidence,
+                 proved ? "PROVEN" : "unresolved");
+
+        reasoning_chain_add_step(chain, &step);
+
+        NIMCP_LOGGING_DEBUG("reasoning_chain: symbolic inference - proved in %u steps, "
+                            "confidence=%.3f",
+                            bc_result.num_steps, proof_confidence);
+
+        backward_chain_free_result(&bc_result);
+    } else {
+        /*
+         * Proof failed. Try forward chaining to discover new implied facts.
+         * This is less targeted but may reveal relevant derived knowledge.
+         *
+         * NOTE: brain_forward_chain expects forward_chain_result_t*, NOT
+         * inference_result_t*. Using the correct type prevents stack corruption.
+         */
+        forward_chain_result_t fc_result;
+        memset(&fc_result, 0, sizeof(fc_result));
+
+        bool derived = brain_forward_chain(engine->brain,
+                                            engine->config.symbolic_inference_depth,
+                                            &fc_result);
+
+        if (derived && fc_result.num_new_facts > 0 && fc_result.confidence > 0.0f) {
+            proof_confidence = fc_result.confidence * 0.7f;  /* Forward chain is weaker */
+            if (proof_confidence > 1.0f) proof_confidence = 1.0f;
+
+            reasoning_step_t step;
+            memset(&step, 0, sizeof(step));
+            step.step_id = chain->num_steps;
+            step.type = REASONING_STEP_SYMBOLIC_LOGIC;
+            step.confidence = proof_confidence;
+            step.relevance = 0.7f;  /* Forward chain is less targeted */
+            step.timestamp_us = nimcp_time_get_us();
+
+            snprintf(step.description, sizeof(step.description),
+                     "Symbolic inference: forward chain derived %u new fact(s). "
+                     "Confidence: %.3f. Data-driven derivation "
+                     "(less targeted than backward chain).",
+                     fc_result.num_new_facts,
+                     proof_confidence);
+
+            reasoning_chain_add_step(chain, &step);
+
+            NIMCP_LOGGING_DEBUG("reasoning_chain: forward chain - %u new facts, "
+                                "confidence=%.3f",
+                                fc_result.num_new_facts, proof_confidence);
+        }
+
+        if (derived) {
+            forward_chain_free_result(&fc_result);
+        }
+
+        if (!proved) {
+            backward_chain_free_result(&bc_result);
+        }
+    }
+
+    return proof_confidence;
+}
+
+/*=============================================================================
  * PHASE 4.5: JEPA PREDICTION (Latent-Space Consistency)
  *===========================================================================*/
 
@@ -1292,7 +1600,8 @@ static float phase_inference(reasoning_engine_t* engine, reasoning_chain_t* chai
         const reasoning_step_t* s = &chain->steps[i];
         if (s->type == REASONING_STEP_RECALL ||
             s->type == REASONING_STEP_KNOWLEDGE ||
-            s->type == REASONING_STEP_WORLD_MODEL) {
+            s->type == REASONING_STEP_WORLD_MODEL ||
+            s->type == REASONING_STEP_SYMBOLIC_LOGIC) {
             evidence[evidence_count++] = s->confidence;
         }
     }
@@ -1666,15 +1975,17 @@ static float phase_synthesis(reasoning_engine_t* engine, const char* query,
     /* Clamp */
     if (overall_confidence > 1.0f) overall_confidence = 1.0f;
 
-    /* Count evidence sources (including world model and JEPA) */
+    /* Count evidence sources (including world model, JEPA, and symbolic) */
     uint32_t evidence_count = 0;
     bool has_wm_evidence = false;
     bool has_jepa_evidence = false;
+    bool has_symbolic_evidence = false;
     for (uint32_t i = 0; i < chain->num_steps; i++) {
         if (chain->steps[i].type == REASONING_STEP_RECALL ||
             chain->steps[i].type == REASONING_STEP_KNOWLEDGE ||
             chain->steps[i].type == REASONING_STEP_WORLD_MODEL ||
-            chain->steps[i].type == REASONING_STEP_JEPA_PREDICTION) {
+            chain->steps[i].type == REASONING_STEP_JEPA_PREDICTION ||
+            chain->steps[i].type == REASONING_STEP_SYMBOLIC_LOGIC) {
             evidence_count++;
         }
         if (chain->steps[i].type == REASONING_STEP_WORLD_MODEL) {
@@ -1683,9 +1994,13 @@ static float phase_synthesis(reasoning_engine_t* engine, const char* query,
         if (chain->steps[i].type == REASONING_STEP_JEPA_PREDICTION) {
             has_jepa_evidence = true;
         }
+        if (chain->steps[i].type == REASONING_STEP_SYMBOLIC_LOGIC) {
+            has_symbolic_evidence = true;
+        }
     }
     (void)has_wm_evidence;
     (void)has_jepa_evidence;
+    (void)has_symbolic_evidence;
 
     /* Format conclusion */
     format_conclusion(chain->conclusion, sizeof(chain->conclusion),
@@ -1769,6 +2084,256 @@ static void store_query_in_wm(reasoning_engine_t* engine, const char* query)
 }
 
 /*=============================================================================
+ * CONCURRENT PIPELINE INFRASTRUCTURE
+ *===========================================================================*/
+
+/**
+ * @brief Context for a single concurrent phase task
+ *
+ * WHAT: Thread-local working data for one parallel reasoning phase
+ * WHY:  Each task writes to its own context — no contention with other tasks
+ * HOW:  Task wrapper reads engine/query, writes to local_chain + result_confidence
+ *
+ * BIOLOGICAL BASIS:
+ * Models the brain's parallel evidence gathering — multiple cortical regions
+ * simultaneously process different aspects of a stimulus before integration
+ * in the prefrontal cortex.
+ */
+typedef struct {
+    reasoning_engine_t* engine;     /**< Shared engine (read-only during tasks) */
+    const char* query;              /**< Query string (shared, read-only) */
+    const char* query_type;         /**< Classified query type (shared, read-only) */
+    uint32_t domain;                /**< Knowledge domain restriction */
+    reasoning_chain_t local_chain;  /**< Thread-local chain (task writes here) */
+    float result_confidence;        /**< Output confidence from this phase */
+} concurrent_phase_ctx_t;
+
+/**
+ * @brief Task wrapper: Recall phase (engram memory)
+ * Runs in thread pool — writes only to its own context
+ */
+static void task_recall(void* arg)
+{
+    concurrent_phase_ctx_t* ctx = (concurrent_phase_ctx_t*)arg;
+    reasoning_chain_init(&ctx->local_chain);
+    ctx->result_confidence = phase_recall(ctx->engine, ctx->query,
+                                          &ctx->local_chain);
+}
+
+/**
+ * @brief Task wrapper: Knowledge retrieval phase
+ * Runs in thread pool — writes only to its own context
+ */
+static void task_knowledge(void* arg)
+{
+    concurrent_phase_ctx_t* ctx = (concurrent_phase_ctx_t*)arg;
+    reasoning_chain_init(&ctx->local_chain);
+    ctx->result_confidence = phase_knowledge(ctx->engine, ctx->query,
+                                             ctx->domain, &ctx->local_chain);
+}
+
+/**
+ * @brief Task wrapper: World model simulation phase
+ * Runs in thread pool — writes only to its own context
+ */
+static void task_world_model(void* arg)
+{
+    concurrent_phase_ctx_t* ctx = (concurrent_phase_ctx_t*)arg;
+    reasoning_chain_init(&ctx->local_chain);
+    ctx->result_confidence = phase_world_model(ctx->engine, ctx->query,
+                                               ctx->query_type, &ctx->local_chain);
+}
+
+/**
+ * @brief Task wrapper: Symbolic logic query phase
+ * Runs in thread pool — writes only to its own context
+ */
+static void task_symbolic_query(void* arg)
+{
+    concurrent_phase_ctx_t* ctx = (concurrent_phase_ctx_t*)arg;
+    reasoning_chain_init(&ctx->local_chain);
+    ctx->result_confidence = phase_symbolic_query(ctx->engine, ctx->query,
+                                                   ctx->query_type,
+                                                   &ctx->local_chain);
+}
+
+/**
+ * @brief Merge steps from a local chain into the main chain
+ *
+ * WHAT: Copy all steps from a thread-local chain into the main chain
+ * WHY:  After parallel tasks complete, consolidate results into one trace
+ * HOW:  Iterate local steps, reassign step_ids, add to main chain
+ *
+ * @param main_chain  Destination chain (caller holds exclusive access)
+ * @param local_chain Source chain from parallel task (consumed, then cleaned up)
+ */
+static void merge_chains(reasoning_chain_t* main_chain,
+                         reasoning_chain_t* local_chain)
+{
+    if (!main_chain || !local_chain) return;
+
+    for (uint32_t i = 0; i < local_chain->num_steps; i++) {
+        reasoning_step_t step = local_chain->steps[i];
+        step.step_id = main_chain->num_steps;  /* Reassign sequential ID */
+        reasoning_chain_add_step(main_chain, &step);
+    }
+
+    reasoning_chain_cleanup(local_chain);
+}
+
+/**
+ * @brief Execute reasoning pipeline with concurrent evidence gathering
+ *
+ * WHAT: Run independent evidence-gathering phases in parallel, then
+ *       run dependent phases sequentially
+ * WHY:  Brain gathers evidence from multiple sources simultaneously;
+ *       only integration/synthesis must be serial
+ * HOW:  Dependency DAG:
+ *        Wave 0 (instant): decomposition (classify query type)
+ *        Wave 1 (parallel): recall, knowledge, world_model, symbolic_query
+ *        Sequential tail:   symbolic_inference → inference → JEPA →
+ *                           verify → epistemic → synthesis
+ *
+ * BIOLOGICAL BASIS:
+ * This mirrors the brain's parallel processing architecture:
+ * - Sensory cortices process modalities simultaneously (Wave 1)
+ * - Prefrontal cortex integrates and sequences (sequential tail)
+ * - Working memory maintains intermediate results (chain struct)
+ *
+ * @return 0 on success, -1 on error
+ */
+static int reasoning_engine_reason_concurrent(reasoning_engine_t* engine,
+                                               const char* query,
+                                               uint32_t domain,
+                                               reasoning_chain_t* chain)
+{
+    NIMCP_LOGGING_INFO("reasoning_chain: concurrent pipeline active "
+                       "(pool_size=%u)", engine->config.concurrent_pool_size);
+
+    /* ── Wave 0: Decomposition (instant, needed by later phases) ── */
+    const char* query_type = phase_decomposition(engine, query, chain);
+
+    /* Check step limit */
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto concurrent_finalize;
+    }
+
+    /* ── Wave 1: Parallel evidence gathering ── */
+    concurrent_phase_ctx_t ctx_recall    = { .engine = engine, .query = query,
+                                              .query_type = query_type, .domain = domain,
+                                              .result_confidence = 0.0f };
+    concurrent_phase_ctx_t ctx_knowledge = { .engine = engine, .query = query,
+                                              .query_type = query_type, .domain = domain,
+                                              .result_confidence = 0.0f };
+    concurrent_phase_ctx_t ctx_world     = { .engine = engine, .query = query,
+                                              .query_type = query_type, .domain = domain,
+                                              .result_confidence = 0.0f };
+    concurrent_phase_ctx_t ctx_symbolic  = { .engine = engine, .query = query,
+                                              .query_type = query_type, .domain = domain,
+                                              .result_confidence = 0.0f };
+
+    /* Submit all 4 evidence-gathering phases to the thread pool */
+    nimcp_pool_submit(engine->thread_pool, task_recall, &ctx_recall);
+    nimcp_pool_submit(engine->thread_pool, task_knowledge, &ctx_knowledge);
+    nimcp_pool_submit(engine->thread_pool, task_world_model, &ctx_world);
+    nimcp_pool_submit(engine->thread_pool, task_symbolic_query, &ctx_symbolic);
+
+    /* Wait for all Wave 1 tasks to complete */
+    nimcp_pool_wait(engine->thread_pool);
+
+    NIMCP_LOGGING_DEBUG("reasoning_chain: Wave 1 complete — recall=%.3f, "
+                        "knowledge=%.3f, world=%.3f, symbolic=%.3f",
+                        ctx_recall.result_confidence,
+                        ctx_knowledge.result_confidence,
+                        ctx_world.result_confidence,
+                        ctx_symbolic.result_confidence);
+
+    /* Merge thread-local chains into main chain (single-threaded, no contention) */
+    float recall_confidence = ctx_recall.result_confidence;
+    float knowledge_confidence = ctx_knowledge.result_confidence;
+    float symbolic_query_confidence = ctx_symbolic.result_confidence;
+
+    merge_chains(chain, &ctx_recall.local_chain);
+    merge_chains(chain, &ctx_knowledge.local_chain);
+    merge_chains(chain, &ctx_world.local_chain);
+    merge_chains(chain, &ctx_symbolic.local_chain);
+
+    /*
+     * Early termination: if recall alone gives very high confidence
+     * and the config threshold is met, short-circuit to synthesis.
+     */
+    if (recall_confidence >= engine->config.confidence_threshold) {
+        NIMCP_LOGGING_DEBUG("reasoning_chain: early termination from recall "
+                            "(confidence=%.3f >= threshold=%.3f)",
+                            recall_confidence,
+                            engine->config.confidence_threshold);
+        goto concurrent_finalize;
+    }
+
+    /* Check step limit after Wave 1 */
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto concurrent_finalize;
+    }
+
+    /* ── Sequential tail: phases with data dependencies ── */
+
+    /* Symbolic inference depends on symbolic_query_confidence */
+    float symbolic_proof_confidence = phase_symbolic_inference(
+        engine, query, query_type, symbolic_query_confidence, chain);
+    (void)symbolic_proof_confidence;
+
+    if (chain->num_steps >= engine->config.max_steps) goto concurrent_finalize;
+
+    /* Inference depends on recall + knowledge results */
+    float inference_confidence = phase_inference(engine, chain,
+                                                  recall_confidence,
+                                                  knowledge_confidence,
+                                                  query_type);
+
+    if (chain->num_steps >= engine->config.max_steps) goto concurrent_finalize;
+
+    /* JEPA depends on inference confidence */
+    float jepa_confidence = phase_jepa_prediction(engine, chain,
+                                                    inference_confidence,
+                                                    query);
+
+    if (chain->num_steps >= engine->config.max_steps) goto concurrent_finalize;
+
+    /* Verification depends on JEPA/inference confidence */
+    float verified_confidence = phase_verification(engine, chain,
+                                                    jepa_confidence);
+
+    if (chain->num_steps >= engine->config.max_steps) goto concurrent_finalize;
+
+    /* Epistemic assessment depends on verified confidence */
+    phase_epistemic(engine, query, chain, verified_confidence);
+
+    if (chain->num_steps >= engine->config.max_steps) goto concurrent_finalize;
+
+concurrent_finalize:
+    ; /* Empty statement after label (C90 compliance) */
+
+    /* Retrieve latest confidence values for synthesis */
+    float final_recall = recall_confidence;
+    float final_knowledge = knowledge_confidence;
+    float final_uncertainty = 0.0f;
+
+    for (uint32_t i = 0; i < chain->num_steps; i++) {
+        if (chain->steps[i].type == REASONING_STEP_UNCERTAINTY) {
+            final_uncertainty = 1.0f - chain->steps[i].confidence;
+        }
+    }
+
+    /* Synthesis (always runs) */
+    float overall = phase_synthesis(engine, query, query_type, chain,
+                                    final_recall, final_knowledge,
+                                    final_uncertainty);
+
+    (void)overall;  /* Used by phase_synthesis for side effects on chain */
+    return 0;
+}
+
+/*=============================================================================
  * CORE REASONING PIPELINE
  *===========================================================================*/
 
@@ -1805,6 +2370,37 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
 
     /* Store query in working memory as active reasoning target */
     store_query_in_wm(engine, query);
+
+    /*
+     * ── Concurrent vs Sequential dispatch ──
+     *
+     * If the concurrent pipeline is enabled and the thread pool is available,
+     * use the parallel evidence-gathering path. Otherwise fall through to the
+     * original sequential pipeline.
+     */
+    if (engine->config.enable_concurrent_pipeline && engine->thread_pool) {
+        int result = reasoning_engine_reason_concurrent(engine, query,
+                                                         KNOWLEDGE_DOMAIN_GENERAL,
+                                                         chain);
+
+        /* Update statistics (same as sequential path) */
+        chain->end_time_us = nimcp_time_get_us();
+        engine->stats.total_queries++;
+        engine->stats.successful_queries++;
+        engine->stats.total_steps += chain->num_steps;
+
+        float n = (float)engine->stats.total_queries;
+        engine->stats.avg_confidence =
+            engine->stats.avg_confidence * ((n - 1.0f) / n) +
+            chain->overall_confidence / n;
+        engine->stats.avg_steps_per_query =
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
+            (float)chain->num_steps / n;
+
+        return result;
+    }
+
+    /* ── Sequential pipeline (fallback) ── */
 
     /* ── Phase 1: Recall (engram memory) ── */
     float recall_confidence = phase_recall(engine, query, chain);
@@ -1851,6 +2447,27 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
 
     /* ── Phase 3.5: World Model Simulation ── */
     float wm_confidence = phase_world_model(engine, query, query_type, chain);
+
+    /* Check step limit */
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto finalize;
+    }
+
+    /* ── Phase 3.9: Symbolic Logic Query ── */
+    float symbolic_query_confidence = phase_symbolic_query(engine, query,
+                                                            query_type, chain);
+
+    /* Check step limit */
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto finalize;
+    }
+
+    /* ── Phase 3.95: Symbolic Logic Inference ── */
+    float symbolic_proof_confidence = phase_symbolic_inference(engine, query,
+                                                                query_type,
+                                                                symbolic_query_confidence,
+                                                                chain);
+    (void)symbolic_proof_confidence;  /* Used as evidence in inference phase */
 
     /* Check step limit */
     if (chain->num_steps >= engine->config.max_steps) {
@@ -1974,6 +2591,28 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
 
     /* Store query in working memory */
     store_query_in_wm(engine, query);
+
+    /* Concurrent dispatch for domain-restricted reasoning */
+    if (engine->config.enable_concurrent_pipeline && engine->thread_pool) {
+        int result = reasoning_engine_reason_concurrent(engine, query, domain,
+                                                         chain);
+        chain->end_time_us = nimcp_time_get_us();
+        engine->stats.total_queries++;
+        engine->stats.successful_queries++;
+        engine->stats.total_steps += chain->num_steps;
+
+        float n = (float)engine->stats.total_queries;
+        engine->stats.avg_confidence =
+            engine->stats.avg_confidence * ((n - 1.0f) / n) +
+            chain->overall_confidence / n;
+        engine->stats.avg_steps_per_query =
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
+            (float)chain->num_steps / n;
+
+        return result;
+    }
+
+    /* ── Sequential fallback ── */
 
     /* ── Phase 1: Recall ── */
     float recall_confidence = phase_recall(engine, query, chain);
