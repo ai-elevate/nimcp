@@ -70,8 +70,7 @@ static bool contains_substring_ci(const char* text, const char* substring) {
     size_t sub_len = strlen(substring);
 
     if (sub_len > text_len) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_substring_ci: validation failed");
-        return false;
+        return false;  /* Substring longer than text — no match possible */
     }
 
     for (size_t i = 0; i <= text_len - sub_len; i++) {

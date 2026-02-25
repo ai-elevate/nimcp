@@ -33,6 +33,32 @@ from instructor_agent import InstructorAgent, InstructorConfig
 
 
 # ---------------------------------------------------------------------------
+# Thread-Safe Brain Wrapper
+# ---------------------------------------------------------------------------
+
+class ThreadSafeBrain:
+    """Wraps a nimcp Brain with a reentrant lock so concurrent instructor
+    threads serialize their brain.learn() / brain.decide() calls.
+    The underlying C library is NOT thread-safe for concurrent mutations."""
+
+    def __init__(self, brain):
+        self._brain = brain
+        self._lock = threading.RLock()
+
+    def learn(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.learn(*args, **kwargs)
+
+    def decide(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.decide(*args, **kwargs)
+
+    def __getattr__(self, name):
+        """Proxy all other attributes to the underlying brain."""
+        return getattr(self._brain, name)
+
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
@@ -48,6 +74,7 @@ class SchoolConfig:
     startup_stagger_s: float = 2.0         # Delay between instructor starts
     num_inputs: int = 128
     num_outputs: int = 32
+    max_concurrent_instructors: int = 4    # Max instructor threads running at once
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +139,7 @@ class School:
     """
 
     def __init__(self, brain, config: SchoolConfig, logger):
-        self.brain = brain
+        self.brain = ThreadSafeBrain(brain)
         self.config = config
         self.logger = logger
 
@@ -148,8 +175,7 @@ class School:
         # Determine modality per domain
         multimodal_domains = {"audio", "visual", "speech"}
 
-        # Create instructor agents
-        stagger = 0.0
+        # Create instructor agents (no per-agent stagger — batching controls concurrency)
         log_dir = Path(self.logger.log_file).parent / "instructors" if hasattr(self.logger, 'log_file') else None
 
         for domain, ds_list in sorted(domain_datasets.items()):
@@ -158,7 +184,7 @@ class School:
                 domain=domain,
                 modality=modality,
                 max_examples_per_dataset=self.config.max_examples_per_dataset,
-                startup_delay_s=stagger,
+                startup_delay_s=0.0,
             )
             agent = InstructorAgent(
                 brain=self.brain,
@@ -172,7 +198,6 @@ class School:
                 log_dir=log_dir,
             )
             self.instructors.append(agent)
-            stagger += self.config.startup_stagger_s
 
         self.logger.log(f"[School] Created {len(self.instructors)} instructors "
                         f"across {len(domain_datasets)} domains")
@@ -191,11 +216,15 @@ class School:
         # Open school-level log
         self._open_school_log()
 
-        self.logger.log(f"\n[School] Starting {len(self.instructors)} instructor threads...")
+        max_conc = self.config.max_concurrent_instructors
+        self.logger.log(f"\n[School] Starting {len(self.instructors)} instructor threads "
+                        f"(max {max_conc} concurrent)...")
 
-        # Start all instructor threads
-        for agent in self.instructors:
-            agent.start()
+        # Start instructors in batches to avoid heap corruption from too many
+        # concurrent threads hitting the brain simultaneously
+        self._pending_instructors = list(self.instructors)
+        self._active_instructors = []
+        self._start_next_batch(max_conc)
 
         # Run coordinator loop
         try:
@@ -204,6 +233,38 @@ class School:
             self.logger.log("[School] Interrupted — shutting down...")
         finally:
             self._shutdown()
+
+    def _start_next_batch(self, count: int):
+        """Start up to `count` instructors from the pending list."""
+        started = 0
+        while self._pending_instructors and started < count:
+            agent = self._pending_instructors.pop(0)
+            agent.start()
+            self._active_instructors.append(agent)
+            self.logger.log(f"  [School] Started instructor: {agent.config.domain}")
+            started += 1
+            # Brief stagger between starts within a batch to reduce contention
+            if started < count and self._pending_instructors:
+                time.sleep(self.config.startup_stagger_s)
+
+    def _rotate_batches(self):
+        """Retire finished instructors and start replacements."""
+        max_conc = self.config.max_concurrent_instructors
+        # Remove finished threads from active list
+        still_active = []
+        for agent in self._active_instructors:
+            if agent.is_finished or not agent.is_alive():
+                self.logger.log(f"  [School] Instructor finished: {agent.config.domain}")
+            else:
+                still_active.append(agent)
+        self._active_instructors = still_active
+
+        # Start new instructors to fill vacant slots
+        slots = max_conc - len(self._active_instructors)
+        if slots > 0 and self._pending_instructors:
+            self.logger.log(f"  [School] {slots} slot(s) free, "
+                            f"{len(self._pending_instructors)} pending — starting next batch")
+            self._start_next_batch(slots)
 
     def _coordinator_loop(self):
         """Main coordinator loop — ticks every 1s."""
@@ -220,6 +281,9 @@ class School:
             if all(a.is_finished for a in self.instructors):
                 self.logger.log("[School] All instructors finished")
                 break
+
+            # Rotate batches — retire finished instructors, start new ones
+            self._rotate_batches()
 
             # Drain instructor reports
             self._drain_reports()

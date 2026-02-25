@@ -1211,8 +1211,7 @@ bool axon_network_add(axon_network_t* network, axon_t* axon)
 
     if (network->count >= network->capacity) {
         nimcp_mutex_unlock(&network->lock);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "axon_network_add: capacity exceeded");
-        return false;
+        return false;  /* Capacity full — caller should handle gracefully */
     }
 
     network->axons[network->count] = axon;

@@ -1112,8 +1112,7 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
     // Only intervene if above threshold
     if (max_intensity < 0.5F) {
         system->in_self_correction = false;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
-        return false;
+        return false;  /* Below threshold — no intervention needed */
     }
 
     // Select best strategy for this emotion

@@ -188,8 +188,7 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
             return &text[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "case_insensitive_strstr: validation failed");
-    return NULL;
+    return NULL;  /* Pattern not found — normal case */
 }
 
 /**
@@ -283,8 +282,7 @@ static bool contains_null_byte(const char* path, size_t max_len)
     if (strstr(path, "%00") != NULL) return true;
     if (strstr(path, "%0") != NULL) return true;
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_null_byte: validation failed");
-    return false;
+    return false;  /* No null byte found — path is safe */
 }
 
 /**

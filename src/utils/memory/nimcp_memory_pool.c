@@ -391,8 +391,7 @@ NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
             p->failed_allocations++;
         }
         nimcp_platform_mutex_unlock(&p->mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_acquire: validation failed");
-        return NULL;
+        return NULL;  /* Pool exhausted — caller should handle */
     }
 
     // Pop block from free-list (O(1))
