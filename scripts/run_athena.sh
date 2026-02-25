@@ -16,8 +16,9 @@ echo "Athena training started at $(date)" | tee "$LOGFILE"
 echo "Log: $LOGFILE" | tee -a "$LOGFILE"
 echo "PID: $$" | tee -a "$LOGFILE"
 
-# stderr -> /dev/null (drops all C-level noise)
+# stderr -> separate file (captures Python tracebacks + C-level noise)
 # stdout -> tee to log file
-python3 -u scripts/train_athena.py "$@" 2>/dev/null | stdbuf -oL tee -a "$LOGFILE"
+ERRFILE="${LOGFILE%.log}.stderr"
+python3 -u scripts/train_athena.py "$@" 2>"$ERRFILE" | stdbuf -oL tee -a "$LOGFILE"
 
 echo "Athena training finished at $(date)" | tee -a "$LOGFILE"

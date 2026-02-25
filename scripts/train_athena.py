@@ -504,7 +504,7 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
         max_training_time_s=82800.0,  # 23h (leave 1h for final exam)
         graduation_mastery=0.85,
         max_examples_per_dataset=PHASE2_MAX_PER_DATASET,
-        startup_stagger_s=2.0,
+        startup_stagger_s=3.0,
         num_inputs=ATHENA_NUM_INPUTS,
         num_outputs=ATHENA_NUM_OUTPUTS,
     )

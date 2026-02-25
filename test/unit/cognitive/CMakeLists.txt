@@ -225,6 +225,38 @@ gtest_discover_tests(unit_cognitive_test_curiosity_fep_bridge
 )
 
 # ============================================================================
+# Information Forager Unit Tests
+# ============================================================================
+add_executable(unit_cognitive_test_information_forager
+    curiosity/test_information_forager.cpp
+)
+
+target_link_libraries(unit_cognitive_test_information_forager
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_information_forager
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_information_forager PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_information_forager
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;curiosity;forager"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Enhanced Curiosity Tests (10 Enhancements)
 # ============================================================================
 # WHAT: Unit tests for Enhanced Curiosity System

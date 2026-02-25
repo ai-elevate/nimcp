@@ -552,6 +552,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_fractal.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_hyperbolic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_information_forager.c  # Autonomous curiosity-driven learning loop
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_ensemble_uncertainty.c  # Real Ensemble Uncertainty Quantification
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_connectivity_health.c  # Phase 1.5.4: Connectivity Health Assessment

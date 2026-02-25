@@ -74,7 +74,7 @@ class SchoolConfig:
     startup_stagger_s: float = 2.0         # Delay between instructor starts
     num_inputs: int = 128
     num_outputs: int = 32
-    max_concurrent_instructors: int = 4    # Max instructor threads running at once
+    max_concurrent_instructors: int = 6    # Max instructor threads starting per batch
 
 
 # ---------------------------------------------------------------------------

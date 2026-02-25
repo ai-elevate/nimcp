@@ -899,6 +899,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_curiosity_enhanced_pipeline.cpp)
 endif()
 
 # ============================================================================
+# Information Forager E2E Pipeline Test
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/e2e_test_information_forager_pipeline.cpp)
+    add_executable(e2e_test_information_forager_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/e2e_test_information_forager_pipeline.cpp
+    )
+    target_include_directories(e2e_test_information_forager_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/curiosity
+    )
+    target_link_libraries(e2e_test_information_forager_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_information_forager_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_information_forager_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;cognitive;curiosity;forager"
+            TIMEOUT 300
+    )
+    message(STATUS "  Added Information Forager E2E test: e2e_test_information_forager_pipeline")
+endif()
+
+# ============================================================================
 # Phase 1 Bridges Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for Phase 1 bridges (dendrite, synapse, axon, glial-immune)
