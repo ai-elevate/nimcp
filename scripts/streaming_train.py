@@ -23,6 +23,9 @@ import sys
 import time
 import gc
 import shutil
+import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Iterator
 from dataclasses import dataclass
@@ -153,6 +156,441 @@ class StreamingDatasetProcessor:
         except Exception as e:
             print(f"  ✗ Failed to load local dataset: {e}")
             return None
+
+    def load_api_stream(self, dataset_config: Dict):
+        """Load a streaming dataset from a REST API source.
+
+        Dispatches to source-specific generators based on dataset_config['type'].
+        Each generator yields dicts with at least 'text' and 'label' keys,
+        compatible with extract_features_and_label().
+        All data is streamed over HTTP — nothing saved to disk.
+        """
+        source_type = dataset_config.get("type", "")
+        loader = {
+            "wikipedia": self._stream_wikipedia,
+            "arxiv": self._stream_arxiv,
+            "stackexchange": self._stream_stackexchange,
+            "pubmed": self._stream_pubmed,
+            "gutenberg": self._stream_gutenberg,
+            "conceptnet": self._stream_conceptnet,
+        }.get(source_type)
+
+        if loader is None:
+            print(f"  ✗ Unknown API source type: {source_type}")
+            return None
+
+        print(f"  🌐 Streaming from API: {source_type} "
+              f"({dataset_config.get('name', '?')})")
+        return loader(dataset_config)
+
+    def _api_get_json(self, url: str, timeout: int = 30) -> Optional[dict]:
+        """Fetch JSON from a URL. Returns None on failure."""
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "NIMCP-Athena/1.0 (training pipeline)"
+            })
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            print(f"    [API error: {e}]", end="", flush=True)
+            return None
+
+    def _api_get_text(self, url: str, timeout: int = 30) -> Optional[str]:
+        """Fetch raw text from a URL. Returns None on failure."""
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "NIMCP-Athena/1.0 (training pipeline)"
+            })
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except Exception:
+            return None
+
+    # --- Wikipedia API (random articles, endless stream) ---
+
+    def _stream_wikipedia(self, config: Dict):
+        """Stream random Wikipedia articles via the MediaWiki API.
+
+        Config options:
+          language: wiki language code (default "en")
+          max_examples: stop after N articles (default 50000)
+        """
+        lang = config.get("language", "en")
+        max_ex = config.get("max_examples", 50_000)
+        base = f"https://{lang}.wikipedia.org/w/api.php"
+        yielded = 0
+
+        while yielded < max_ex:
+            # Fetch 20 random articles per request
+            params = urllib.parse.urlencode({
+                "action": "query",
+                "format": "json",
+                "generator": "random",
+                "grnnamespace": "0",
+                "grnlimit": "20",
+                "prop": "extracts",
+                "explaintext": "true",
+                "exlimit": "20",
+            })
+            data = self._api_get_json(f"{base}?{params}")
+            if not data:
+                time.sleep(2)
+                continue
+
+            pages = data.get("query", {}).get("pages", {})
+            for page in pages.values():
+                text = page.get("extract", "")
+                title = page.get("title", "")
+                if not text or len(text) < 100:
+                    continue
+                yield {
+                    "text": f"{title}\n\n{text[:3000]}",
+                    "label": hash(title) % 100,
+                }
+                yielded += 1
+                if yielded >= max_ex:
+                    return
+
+            # Respect rate limits
+            time.sleep(0.5)
+
+    # --- arXiv API (stream papers by category) ---
+
+    def _stream_arxiv(self, config: Dict):
+        """Stream arXiv paper abstracts via the arXiv API.
+
+        Config options:
+          category: arXiv category (default "cs.AI")
+          max_examples: stop after N papers (default 50000)
+        """
+        category = config.get("category", "cs.AI")
+        max_ex = config.get("max_examples", 50_000)
+        base = "http://export.arxiv.org/api/query"
+        batch_size = 100
+        start = 0
+        yielded = 0
+        ns = {"atom": "http://www.w3.org/2005/Atom"}
+
+        while yielded < max_ex:
+            params = urllib.parse.urlencode({
+                "search_query": f"cat:{category}",
+                "start": start,
+                "max_results": batch_size,
+                "sortBy": "lastUpdatedDate",
+                "sortOrder": "descending",
+            })
+            xml_text = self._api_get_text(f"{base}?{params}")
+            if not xml_text:
+                time.sleep(5)
+                start += batch_size
+                continue
+
+            try:
+                root = ET.fromstring(xml_text)
+            except ET.ParseError:
+                time.sleep(5)
+                start += batch_size
+                continue
+
+            entries = root.findall("atom:entry", ns)
+            if not entries:
+                break  # No more results
+
+            for entry in entries:
+                title_el = entry.find("atom:title", ns)
+                summary_el = entry.find("atom:summary", ns)
+                title = title_el.text.strip() if title_el is not None and title_el.text else ""
+                abstract = summary_el.text.strip() if summary_el is not None and summary_el.text else ""
+                if not abstract or len(abstract) < 50:
+                    continue
+
+                # Extract primary category
+                prim_cat = entry.find("arxiv:primary_category",
+                                     {"arxiv": "http://arxiv.org/schemas/atom"})
+                cat_label = prim_cat.get("term", category) if prim_cat is not None else category
+
+                yield {
+                    "text": f"{title}\n\n{abstract}",
+                    "label": hash(cat_label) % 100,
+                }
+                yielded += 1
+                if yielded >= max_ex:
+                    return
+
+            start += batch_size
+            # arXiv rate limit: 1 request per 3 seconds
+            time.sleep(3)
+
+    # --- StackExchange API (stream Q&A pairs) ---
+
+    def _stream_stackexchange(self, config: Dict):
+        """Stream StackExchange questions+answers via the API.
+
+        Config options:
+          site: SE site name (default "stackoverflow")
+          tagged: comma-separated tags to filter (optional)
+          max_examples: stop after N Q&A pairs (default 50000)
+        """
+        site = config.get("site", "stackoverflow")
+        tagged = config.get("tagged", "")
+        max_ex = config.get("max_examples", 50_000)
+        base = "https://api.stackexchange.com/2.3"
+        page = 1
+        yielded = 0
+
+        while yielded < max_ex:
+            params = {
+                "order": "desc",
+                "sort": "votes",
+                "site": site,
+                "filter": "withbody",
+                "pagesize": "100",
+                "page": str(page),
+            }
+            if tagged:
+                params["tagged"] = tagged
+            url = f"{base}/questions?{urllib.parse.urlencode(params)}"
+            data = self._api_get_json(url)
+            if not data:
+                time.sleep(5)
+                page += 1
+                continue
+
+            items = data.get("items", [])
+            if not items:
+                break
+
+            for item in items:
+                title = item.get("title", "")
+                body = item.get("body", "")
+                # Strip HTML tags (basic)
+                import re
+                body_text = re.sub(r"<[^>]+>", " ", body).strip()
+                tags = item.get("tags", [])
+                score = item.get("score", 0)
+
+                if not body_text or len(body_text) < 50:
+                    continue
+
+                tag_str = ", ".join(tags[:5]) if tags else ""
+                text = f"[{tag_str}] {title}\n\n{body_text[:2000]}"
+                yield {
+                    "text": text,
+                    "label": min(score, 99),
+                }
+                yielded += 1
+                if yielded >= max_ex:
+                    return
+
+            if not data.get("has_more", False):
+                break
+
+            page += 1
+            # SE API: max 30 requests/sec without key, be conservative
+            time.sleep(2)
+
+    # --- PubMed API (stream biomedical abstracts) ---
+
+    def _stream_pubmed(self, config: Dict):
+        """Stream PubMed abstracts via NCBI E-utilities.
+
+        Config options:
+          query: PubMed search query (default "machine learning")
+          max_examples: stop after N abstracts (default 50000)
+        """
+        query = config.get("query", "machine learning")
+        max_ex = config.get("max_examples", 50_000)
+        base_search = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+        base_fetch = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+        batch_size = 200
+        retstart = 0
+        yielded = 0
+
+        while yielded < max_ex:
+            # Step 1: Search for PMIDs
+            search_params = urllib.parse.urlencode({
+                "db": "pubmed",
+                "term": query,
+                "retmax": batch_size,
+                "retstart": retstart,
+                "retmode": "json",
+                "sort": "relevance",
+            })
+            search_data = self._api_get_json(f"{base_search}?{search_params}")
+            if not search_data:
+                time.sleep(3)
+                retstart += batch_size
+                continue
+
+            id_list = search_data.get("esearchresult", {}).get("idlist", [])
+            if not id_list:
+                break
+
+            # Step 2: Fetch abstracts for these PMIDs
+            fetch_params = urllib.parse.urlencode({
+                "db": "pubmed",
+                "id": ",".join(id_list),
+                "retmode": "xml",
+                "rettype": "abstract",
+            })
+            xml_text = self._api_get_text(f"{base_fetch}?{fetch_params}")
+            if not xml_text:
+                time.sleep(3)
+                retstart += batch_size
+                continue
+
+            try:
+                root = ET.fromstring(xml_text)
+            except ET.ParseError:
+                retstart += batch_size
+                continue
+
+            for article in root.findall(".//PubmedArticle"):
+                title_el = article.find(".//ArticleTitle")
+                abstract_el = article.find(".//AbstractText")
+                title = title_el.text if title_el is not None and title_el.text else ""
+                abstract = abstract_el.text if abstract_el is not None and abstract_el.text else ""
+
+                if not abstract or len(abstract) < 50:
+                    continue
+
+                # Extract MeSH terms for label
+                mesh_terms = [m.text for m in article.findall(".//MeshHeading/DescriptorName")
+                              if m.text]
+                label = hash(mesh_terms[0]) % 100 if mesh_terms else 0
+
+                yield {
+                    "text": f"{title}\n\n{abstract}",
+                    "label": label,
+                }
+                yielded += 1
+                if yielded >= max_ex:
+                    return
+
+            retstart += batch_size
+            # NCBI: max 3 requests/sec without API key
+            time.sleep(1)
+
+    # --- Project Gutenberg (stream full books by ID range) ---
+
+    def _stream_gutenberg(self, config: Dict):
+        """Stream books from Project Gutenberg via direct text URLs.
+
+        Config options:
+          start_id: first book ID to try (default 1)
+          end_id: last book ID to try (default 70000)
+          max_examples: max chunks to yield (default 50000)
+          chunk_size: characters per chunk (default 2000)
+        """
+        start_id = config.get("start_id", 1)
+        end_id = config.get("end_id", 70000)
+        max_ex = config.get("max_examples", 50_000)
+        chunk_size = config.get("chunk_size", 2000)
+        yielded = 0
+
+        import random
+        # Randomize order to get variety
+        ids = list(range(start_id, end_id + 1))
+        random.shuffle(ids)
+
+        for book_id in ids:
+            if yielded >= max_ex:
+                return
+
+            # Gutenberg plain text URL pattern
+            url = f"https://www.gutenberg.org/cache/epub/{book_id}/pg{book_id}.txt"
+            text = self._api_get_text(url)
+            if not text or len(text) < 500:
+                continue
+
+            # Strip Gutenberg header/footer
+            start_marker = "*** START OF"
+            end_marker = "*** END OF"
+            start_idx = text.find(start_marker)
+            end_idx = text.find(end_marker)
+            if start_idx >= 0:
+                text = text[text.index("\n", start_idx) + 1:]
+            if end_idx >= 0:
+                text = text[:end_idx]
+
+            # Chunk into training examples
+            for i in range(0, len(text), chunk_size):
+                chunk = text[i:i + chunk_size].strip()
+                if len(chunk) < 100:
+                    continue
+                yield {
+                    "text": chunk,
+                    "label": book_id % 100,
+                }
+                yielded += 1
+                if yielded >= max_ex:
+                    return
+
+            # Be polite to Gutenberg servers
+            time.sleep(1)
+
+    # --- ConceptNet API (stream semantic relationships) ---
+
+    def _stream_conceptnet(self, config: Dict):
+        """Stream semantic relationships from ConceptNet API.
+
+        Config options:
+          language: language code (default "en")
+          max_examples: stop after N relations (default 50000)
+        """
+        lang = config.get("language", "en")
+        max_ex = config.get("max_examples", 50_000)
+        base = "https://api.conceptnet.io"
+        yielded = 0
+
+        # Seed concepts to start crawling from
+        seeds = [
+            "learning", "knowledge", "science", "nature", "computer",
+            "brain", "language", "math", "history", "art", "music",
+            "food", "animal", "water", "energy", "time", "space",
+            "emotion", "health", "society", "technology", "earth",
+        ]
+        visited = set()
+        to_visit = list(seeds)
+
+        while to_visit and yielded < max_ex:
+            concept = to_visit.pop(0)
+            if concept in visited:
+                continue
+            visited.add(concept)
+
+            url = f"{base}/c/{lang}/{concept}?limit=100"
+            data = self._api_get_json(url)
+            if not data:
+                time.sleep(1)
+                continue
+
+            edges = data.get("edges", [])
+            for edge in edges:
+                rel = edge.get("rel", {}).get("label", "")
+                start_label = edge.get("start", {}).get("label", "")
+                end_label = edge.get("end", {}).get("label", "")
+                weight = edge.get("weight", 1.0)
+
+                if not rel or not start_label or not end_label:
+                    continue
+
+                text = f"{start_label} {rel} {end_label}"
+                yield {
+                    "text": text,
+                    "label": hash(rel) % 100,
+                }
+                yielded += 1
+                if yielded >= max_ex:
+                    return
+
+                # Add discovered concepts to crawl queue
+                for lbl in (start_label, end_label):
+                    clean = lbl.lower().replace(" ", "_")
+                    if clean not in visited and len(to_visit) < 10000:
+                        to_visit.append(clean)
+
+            time.sleep(0.5)
 
     def encode_text(self, text: str, num_features: int) -> List[float]:
         """Encode text into a fixed-size feature vector.

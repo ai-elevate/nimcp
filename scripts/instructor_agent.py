@@ -265,9 +265,14 @@ class InstructorAgent(threading.Thread):
     def _teach_text_dataset(self, ds_config: dict, name: str, domain: str,
                             source_name: str):
         """Teach a text dataset using StreamingDatasetProcessor."""
+        API_TYPES = {"wikipedia", "arxiv", "stackexchange", "pubmed",
+                     "gutenberg", "conceptnet"}
         try:
-            if ds_config.get("type") == "local":
+            ds_type = ds_config.get("type", "")
+            if ds_type == "local":
                 dataset = self.processor.load_local_dataset(ds_config)
+            elif ds_type in API_TYPES:
+                dataset = self.processor.load_api_stream(ds_config)
             else:
                 dataset = self.processor.load_streaming_dataset(ds_config)
             if dataset is None:

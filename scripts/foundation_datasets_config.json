@@ -651,6 +651,90 @@
       "type": "local",
       "local_path": "datasets/nimcp_local/nimcp_scripts",
       "description": "NIMCP Python training/tooling scripts — 937 function-level chunks (self-knowledge)"
+    },
+
+    {
+      "name": "wikipedia_general",
+      "domain": "language",
+      "priority": 2,
+      "type": "wikipedia",
+      "language": "en",
+      "max_examples": 50000,
+      "description": "Random English Wikipedia articles — streamed via MediaWiki API (no disk)"
+    },
+    {
+      "name": "arxiv_cs_ai",
+      "domain": "programming",
+      "priority": 2,
+      "type": "arxiv",
+      "category": "cs.AI",
+      "max_examples": 50000,
+      "description": "arXiv CS.AI paper abstracts — streamed via arXiv API (no disk)"
+    },
+    {
+      "name": "arxiv_physics",
+      "domain": "physics",
+      "priority": 2,
+      "type": "arxiv",
+      "category": "physics",
+      "max_examples": 50000,
+      "description": "arXiv physics paper abstracts — streamed via arXiv API (no disk)"
+    },
+    {
+      "name": "arxiv_math",
+      "domain": "language",
+      "priority": 2,
+      "type": "arxiv",
+      "category": "math",
+      "max_examples": 50000,
+      "description": "arXiv math paper abstracts — streamed via arXiv API (no disk)"
+    },
+    {
+      "name": "stackoverflow_top",
+      "domain": "programming",
+      "priority": 2,
+      "type": "stackexchange",
+      "site": "stackoverflow",
+      "max_examples": 50000,
+      "description": "Top-voted StackOverflow Q&A — streamed via SE API (no disk)"
+    },
+    {
+      "name": "pubmed_neuroscience",
+      "domain": "medicine",
+      "priority": 2,
+      "type": "pubmed",
+      "query": "neuroscience neural networks brain",
+      "max_examples": 50000,
+      "description": "PubMed neuroscience abstracts — streamed via NCBI E-utilities (no disk)"
+    },
+    {
+      "name": "pubmed_medicine",
+      "domain": "medicine",
+      "priority": 2,
+      "type": "pubmed",
+      "query": "clinical medicine diagnosis treatment",
+      "max_examples": 50000,
+      "description": "PubMed clinical medicine abstracts — streamed via NCBI E-utilities (no disk)"
+    },
+    {
+      "name": "gutenberg_literature",
+      "domain": "literature",
+      "priority": 2,
+      "type": "gutenberg",
+      "start_id": 1,
+      "end_id": 70000,
+      "max_examples": 50000,
+      "chunk_size": 2000,
+      "description": "Project Gutenberg books — streamed via HTTP, chunked (no disk)"
+    },
+    {
+      "name": "conceptnet_knowledge",
+      "domain": "language",
+      "priority": 2,
+      "type": "conceptnet",
+      "language": "en",
+      "max_examples": 50000,
+      "description": "ConceptNet semantic relationships — streamed via REST API (no disk)"
     }
   ],
   "training_order": [
@@ -684,8 +768,9 @@
     "coverage": "23 domains: 20 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech)",
     "new_in_v5": "Added 10 domains: humanities (3 datasets), finance (3), cryptocurrency (2), sociology (3), paleontology (2), economics (2), earth_sciences (2), audio (3), visual (3), speech (3)",
     "multimodal_note": "Audio/visual/speech datasets require sensory cortex Python bindings (audio_cortex_process, visual_cortex_process, speech_cortex_process). Fallback feature extraction used if bindings unavailable.",
-    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB)",
-    "total_datasets": 71,
-    "version": "v5.1 — 23 domains, parallel school training, multimodal + self-knowledge"
+    "api_sources": "6 streaming API sources: wikipedia (MediaWiki API), arxiv (arXiv API), stackexchange (SE API), pubmed (NCBI E-utilities), gutenberg (HTTP), conceptnet (REST API). All stream over HTTP — zero disk footprint.",
+    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB + API streams ~0 disk)",
+    "total_datasets": 80,
+    "version": "v5.2 — 23 domains, parallel school training, multimodal + self-knowledge + streaming APIs"
   }
 }
