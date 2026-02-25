@@ -2303,3 +2303,39 @@ gtest_discover_tests(unit_cognitive_test_rubric
         LABELS "unit;cognitive;rubric"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Cognitive Training Integration Tests
+# ============================================================================
+# WHAT: Unit tests for the brain_ti_* training integration facade
+# WHY:  Verify NULL-safety, default returns, and input validation for every
+#       brain_ti_* entry point — no brain instantiation required
+# HOW:  GTest fixture passing NULL brain pointers, asserting safe fallbacks
+# ============================================================================
+
+add_executable(unit_cognitive_test_training_integration
+    test_training_integration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_training_integration PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+
+target_include_directories(unit_cognitive_test_training_integration PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_training_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_training_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;training-integration"
+        TIMEOUT 90
+)

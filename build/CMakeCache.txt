@@ -1175,7 +1175,7 @@ _Python3_Interpreter_REASON_FAILURE:INTERNAL=
 _Python3_LIBRARY_RELEASE:INTERNAL=/usr/lib/x86_64-linux-gnu/libpython3.12.so
 //NumPy reason failure
 _Python3_NumPy_REASON_FAILURE:INTERNAL=
-__pkg_config_arguments_CHECK:INTERNAL=check
+__pkg_config_arguments_CHECK:INTERNAL=REQUIRED;check
 __pkg_config_arguments_SODIUM:INTERNAL=libsodium
 __pkg_config_arguments__OPENSSL:INTERNAL=QUIET;openssl
 __pkg_config_checked_CHECK:INTERNAL=1

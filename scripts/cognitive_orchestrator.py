@@ -91,6 +91,10 @@ class CognitiveOrchestrator:
         self._has_consolidation = hasattr(brain, 'consolidate')
         self._has_uncertainty = hasattr(brain, 'get_uncertainty')
         self._has_self_assess = hasattr(brain, 'self_assess')
+        self._has_bg = hasattr(brain, 'bg_update_reward')
+        self._has_medulla = hasattr(brain, 'medulla_get_arousal')
+        self._has_logic = hasattr(brain, 'ti_add_fact')
+        self._has_reasoning = hasattr(brain, 'ti_init_reasoning')
         self._learning_history: List[dict] = []
 
     # ------------------------------------------------------------------
@@ -296,6 +300,266 @@ class CognitiveOrchestrator:
         # No fallback — consolidation is a C-level operation
         logger.info("Consolidation skipped (binding not available)")
         return None
+
+    # ------------------------------------------------------------------
+    # Basal Ganglia: Reward processing and habit formation
+    # ------------------------------------------------------------------
+
+    def update_reward(self, accuracy: float, expected_accuracy: float):
+        """
+        Update basal ganglia reward signal based on prediction accuracy.
+
+        Computes reward prediction error (RPE) from actual vs expected accuracy.
+        Drives dopamine modulation of learning rate and action selection.
+        """
+        if not self._has_bg:
+            return
+        try:
+            self.brain.bg_update_reward(accuracy, expected_accuracy)
+        except Exception as e:
+            logger.warning(f"bg_update_reward error: {e}")
+
+    def get_conflict(self) -> float:
+        """
+        Get basal ganglia conflict signal (0.0 = no conflict, 1.0 = high).
+
+        High conflict indicates competing action representations — may
+        benefit from slower, more deliberate processing.
+        """
+        if not self._has_bg:
+            return 0.0
+        try:
+            return float(self.brain.bg_get_conflict())
+        except Exception as e:
+            logger.warning(f"bg_get_conflict error: {e}")
+            return 0.0
+
+    def get_operating_mode(self) -> str:
+        """
+        Get basal ganglia operating mode.
+
+        Returns one of: "goal_directed", "habitual", "exploratory", "suppressed".
+        """
+        if not self._has_bg:
+            return "goal_directed"
+        try:
+            mode_id = int(self.brain.bg_get_mode())
+            modes = {0: "goal_directed", 1: "habitual",
+                     2: "exploratory", 3: "suppressed"}
+            return modes.get(mode_id, "goal_directed")
+        except Exception as e:
+            logger.warning(f"bg_get_mode error: {e}")
+            return "goal_directed"
+
+    def check_habit(self, domain: str) -> Optional[int]:
+        """
+        Check if a domain has formed a habitual action mapping.
+
+        Returns the action_id if the domain is habitual, or None if
+        the domain is still in goal-directed mode.
+        """
+        if not self._has_bg:
+            return None
+        try:
+            action_id = int(self.brain.bg_check_habit(domain))
+            return action_id if action_id >= 0 else None
+        except Exception as e:
+            logger.warning(f"bg_check_habit error: {e}")
+            return None
+
+    def register_habit(self, domain: str, action_id: int = 0):
+        """Register a domain-action pair as a candidate habit."""
+        if not self._has_bg:
+            return
+        try:
+            self.brain.bg_register_habit(domain, action_id)
+        except Exception as e:
+            logger.warning(f"bg_register_habit error: {e}")
+
+    def strengthen_habit(self, habit_id: int, success: bool = True):
+        """Strengthen or weaken a habit based on outcome."""
+        if not self._has_bg:
+            return
+        try:
+            self.brain.bg_strengthen_habit(habit_id, success)
+        except Exception as e:
+            logger.warning(f"bg_strengthen_habit error: {e}")
+
+    # ------------------------------------------------------------------
+    # Medulla: Arousal and circadian modulation
+    # ------------------------------------------------------------------
+
+    def get_arousal(self) -> float:
+        """
+        Get current arousal level from medulla (0.0 = drowsy, 1.0 = alert).
+
+        Arousal modulates learning rate and attention — low arousal suggests
+        a consolidation break ("recess"), high arousal supports intensive learning.
+        """
+        if not self._has_medulla:
+            return 0.5
+        try:
+            return float(self.brain.medulla_get_arousal())
+        except Exception as e:
+            logger.warning(f"medulla_get_arousal error: {e}")
+            return 0.5
+
+    def boost_arousal(self, delta: float = 0.1):
+        """
+        Boost arousal level (e.g. after recess or when switching domains).
+
+        Simulates the alerting effect of novelty or rest.
+        """
+        if not self._has_medulla:
+            return
+        try:
+            self.brain.medulla_boost_arousal(delta)
+        except Exception as e:
+            logger.warning(f"medulla_boost_arousal error: {e}")
+
+    def get_circadian_efficiency(self) -> float:
+        """
+        Get circadian-modulated learning efficiency (0.0-1.0).
+
+        Maps the brain's internal circadian phase to an efficiency multiplier.
+        Training during low-efficiency periods benefits from reduced LR or
+        consolidation breaks.
+        """
+        if not self._has_medulla:
+            return 1.0
+        try:
+            return float(self.brain.medulla_get_circadian_efficiency())
+        except Exception as e:
+            logger.warning(f"medulla_get_circadian_efficiency error: {e}")
+            return 1.0
+
+    # ------------------------------------------------------------------
+    # Symbolic Logic: Knowledge base and reasoning
+    # ------------------------------------------------------------------
+
+    def add_logical_fact(self, fact: str, salience: float = 0.8):
+        """
+        Add a symbolic fact to the brain's knowledge base.
+
+        Facts are first-order logic predicates (e.g. "Observable(x) & Repeatable(x)").
+        Salience controls how strongly the fact influences reasoning chains.
+        """
+        if not self._has_logic:
+            return
+        try:
+            self.brain.ti_add_fact(fact, salience)
+        except Exception as e:
+            logger.warning(f"ti_add_fact error: {e}")
+
+    def add_logical_rule(self, rule: str, priority: float = 0.5):
+        """
+        Add an inference rule to the knowledge base.
+
+        Rules define entailment relationships for forward/backward chaining.
+        """
+        if not self._has_logic:
+            return
+        try:
+            self.brain.ti_add_rule(rule, priority)
+        except Exception as e:
+            logger.warning(f"ti_add_rule error: {e}")
+
+    def forward_chain(self, max_iterations: int = 100) -> int:
+        """
+        Run forward chaining on the knowledge base.
+
+        Derives new facts from existing facts + rules until no new facts
+        are produced or max_iterations is reached.
+
+        Returns:
+            Number of new facts derived, or -1 on error.
+        """
+        if not self._has_logic:
+            return 0
+        try:
+            return int(self.brain.ti_forward_chain(max_iterations))
+        except Exception as e:
+            logger.warning(f"ti_forward_chain error: {e}")
+            return -1
+
+    def backward_chain(self, goal: str) -> float:
+        """
+        Run backward chaining to verify a goal.
+
+        Attempts to prove the goal from existing facts and rules.
+
+        Returns:
+            Confidence score (0.0-1.0) that the goal is supported,
+            or -1.0 on error.
+        """
+        if not self._has_logic:
+            return -1.0
+        try:
+            return float(self.brain.ti_backward_chain(goal))
+        except Exception as e:
+            logger.warning(f"ti_backward_chain error: {e}")
+            return -1.0
+
+    # ------------------------------------------------------------------
+    # Training Integration: Adaptive LR and reasoning-augmented learning
+    # ------------------------------------------------------------------
+
+    def init_reasoning(self):
+        """
+        Initialize the reasoning engine.
+
+        Must be called before reason_about() or compute_adaptive_lr().
+        Safe to call multiple times (idempotent).
+        """
+        if not self._has_reasoning:
+            return
+        try:
+            self.brain.ti_init_reasoning()
+        except Exception as e:
+            logger.warning(f"ti_init_reasoning error: {e}")
+
+    def reason_about(self, query: str) -> float:
+        """
+        Run a reasoning chain on a query string.
+
+        Returns:
+            Confidence score (0.0-1.0), or -1.0 on error.
+        """
+        if not self._has_reasoning:
+            return -1.0
+        try:
+            return float(self.brain.ti_reason(query))
+        except Exception as e:
+            logger.warning(f"ti_reason error: {e}")
+            return -1.0
+
+    def compute_adaptive_lr(self, base_lr: float) -> float:
+        """
+        Compute BG + medulla adaptive learning rate.
+
+        Modulates base_lr based on dopamine level, arousal, circadian phase,
+        and reward prediction error. Returns adjusted LR.
+        """
+        if not self._has_reasoning:
+            return base_lr
+        try:
+            return float(self.brain.ti_compute_adaptive_lr(base_lr))
+        except Exception as e:
+            logger.warning(f"ti_compute_adaptive_lr error: {e}")
+            return base_lr
+
+    def post_batch_update(self, accuracy: float, expected: float,
+                          domain: str):
+        """
+        Post-batch integration: update BG reward, medulla arousal, and
+        training integration state after a training batch.
+        """
+        if not self._has_reasoning:
+            return
+        try:
+            self.brain.ti_post_batch_update(accuracy, expected, domain)
+        except Exception as e:
+            logger.warning(f"ti_post_batch_update error: {e}")
 
     # ------------------------------------------------------------------
     # Executive: Task planning and scheduling

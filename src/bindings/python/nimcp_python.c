@@ -77,6 +77,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
+#include "cognitive/training/nimcp_training_integration.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -1289,6 +1290,366 @@ static PyObject* Brain_consolidate(BrainObject* self, PyObject* args, PyObject* 
     Py_RETURN_FALSE;
 }
 
+//=============================================================================
+// Training Integration API (basal ganglia, medulla, reasoning, adaptive LR)
+//=============================================================================
+
+/**
+ * WHAT: Update basal ganglia reward signal
+ * WHY:  Reinforcement learning needs reward/expected pairs for RPE computation
+ * HOW:  Calls brain_ti_update_reward with (reward, expected) floats
+ */
+static PyObject* Brain_bg_update_reward(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float reward, expected;
+    if (!PyArg_ParseTuple(args, "ff", &reward, &expected)) return NULL;
+
+    int result = brain_ti_update_reward(self->brain->internal_brain, reward, expected);
+    return PyLong_FromLong(result);
+}
+
+/**
+ * WHAT: Get basal ganglia conflict level
+ * WHY:  Conflict detection indicates competing action selections
+ * HOW:  Calls brain_ti_get_conflict, returns float
+ */
+static PyObject* Brain_bg_get_conflict(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float conflict = brain_ti_get_conflict(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)conflict);
+}
+
+/**
+ * WHAT: Get basal ganglia operating mode
+ * WHY:  Distinguish between exploration, exploitation, habit modes
+ * HOW:  Calls brain_ti_get_mode, returns int enum value
+ */
+static PyObject* Brain_bg_get_mode(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int mode = brain_ti_get_mode(self->brain->internal_brain);
+    return PyLong_FromLong(mode);
+}
+
+/**
+ * WHAT: Get basal ganglia dopamine level
+ * WHY:  Dopamine modulates learning rate and motivation
+ * HOW:  Calls brain_ti_get_dopamine, returns float
+ */
+static PyObject* Brain_bg_get_dopamine(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float dopamine = brain_ti_get_dopamine(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)dopamine);
+}
+
+/**
+ * WHAT: Get reward prediction error from basal ganglia
+ * WHY:  RPE drives learning — positive RPE strengthens, negative weakens
+ * HOW:  Calls brain_ti_get_rpe, returns float
+ */
+static PyObject* Brain_bg_get_rpe(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float rpe = brain_ti_get_rpe(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)rpe);
+}
+
+/**
+ * WHAT: Register a new habit in the basal ganglia
+ * WHY:  Habit formation automates frequently-used action sequences
+ * HOW:  Calls brain_ti_register_habit with domain string and action ID
+ */
+static PyObject* Brain_bg_register_habit(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* domain;
+    int action_id;
+    if (!PyArg_ParseTuple(args, "si", &domain, &action_id)) return NULL;
+
+    int result = brain_ti_register_habit(self->brain->internal_brain, domain, action_id);
+    return PyLong_FromLong(result);
+}
+
+/**
+ * WHAT: Check if a habit exists for the given domain
+ * WHY:  Allows training loop to skip exploration when habits are formed
+ * HOW:  Calls brain_ti_check_habit with domain string, returns habit ID or -1
+ */
+static PyObject* Brain_bg_check_habit(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* domain;
+    if (!PyArg_ParseTuple(args, "s", &domain)) return NULL;
+
+    int result = brain_ti_check_habit(self->brain->internal_brain, domain);
+    return PyLong_FromLong(result);
+}
+
+/**
+ * WHAT: Strengthen an existing habit after successful use
+ * WHY:  Repeated success solidifies habits, reducing cognitive load
+ * HOW:  Calls brain_ti_strengthen_habit with habit ID and success flag
+ */
+static PyObject* Brain_bg_strengthen_habit(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int habit_id;
+    int success;
+    if (!PyArg_ParseTuple(args, "ip", &habit_id, &success)) return NULL;
+
+    int result = brain_ti_strengthen_habit(self->brain->internal_brain, habit_id, success);
+    return PyLong_FromLong(result);
+}
+
+/**
+ * WHAT: Get medulla arousal level
+ * WHY:  Arousal modulates attention and processing intensity
+ * HOW:  Calls brain_ti_get_arousal, returns float [0.0, 1.0]
+ */
+static PyObject* Brain_medulla_get_arousal(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float arousal = brain_ti_get_arousal(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)arousal);
+}
+
+/**
+ * WHAT: Get medulla circadian phase
+ * WHY:  Circadian phase affects consolidation timing and learning efficiency
+ * HOW:  Calls brain_ti_get_circadian_phase, returns int phase enum
+ */
+static PyObject* Brain_medulla_get_circadian_phase(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int phase = brain_ti_get_circadian_phase(self->brain->internal_brain);
+    return PyLong_FromLong(phase);
+}
+
+/**
+ * WHAT: Boost medulla arousal by a delta
+ * WHY:  Training may need to artificially increase arousal for difficult examples
+ * HOW:  Calls brain_ti_boost_arousal with delta float
+ */
+static PyObject* Brain_medulla_boost_arousal(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float delta;
+    if (!PyArg_ParseTuple(args, "f", &delta)) return NULL;
+
+    brain_ti_boost_arousal(self->brain->internal_brain, delta);
+    Py_RETURN_NONE;
+}
+
+/**
+ * WHAT: Get circadian efficiency factor from medulla
+ * WHY:  Allows training to scale learning rate by time-of-day efficiency
+ * HOW:  Calls brain_ti_get_circadian_efficiency, returns float [0.0, 1.0]
+ */
+static PyObject* Brain_medulla_get_circadian_efficiency(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float efficiency = brain_ti_get_circadian_efficiency(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)efficiency);
+}
+
+/**
+ * WHAT: Add a fact to the reasoning knowledge base
+ * WHY:  Training integration can inject domain knowledge as facts
+ * HOW:  Calls brain_ti_add_fact with fact string and salience float
+ */
+static PyObject* Brain_ti_add_fact(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* fact;
+    float salience;
+    if (!PyArg_ParseTuple(args, "sf", &fact, &salience)) return NULL;
+
+    int result = brain_ti_add_fact(self->brain->internal_brain, fact, salience);
+    if (result == 0) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Add a rule to the reasoning engine
+ * WHY:  Rules enable forward/backward chaining over accumulated facts
+ * HOW:  Calls brain_ti_add_rule with rule string and priority float
+ */
+static PyObject* Brain_ti_add_rule(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* rule;
+    float priority;
+    if (!PyArg_ParseTuple(args, "sf", &rule, &priority)) return NULL;
+
+    int result = brain_ti_add_rule(self->brain->internal_brain, rule, priority);
+    if (result == 0) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Run forward chaining on the reasoning knowledge base
+ * WHY:  Derives new facts from existing facts + rules, bounded by max_iterations
+ * HOW:  Calls brain_ti_forward_chain, returns number of new facts derived
+ */
+static PyObject* Brain_ti_forward_chain(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int max_iterations;
+    if (!PyArg_ParseTuple(args, "i", &max_iterations)) return NULL;
+
+    int derived = brain_ti_forward_chain(self->brain->internal_brain, max_iterations);
+    return PyLong_FromLong(derived);
+}
+
+/**
+ * WHAT: Run backward chaining to prove a goal
+ * WHY:  Goal-directed reasoning checks if a conclusion can be derived
+ * HOW:  Calls brain_ti_backward_chain with goal string, returns confidence float
+ */
+static PyObject* Brain_ti_backward_chain(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* goal;
+    if (!PyArg_ParseTuple(args, "s", &goal)) return NULL;
+
+    float confidence = brain_ti_backward_chain(self->brain->internal_brain, goal);
+    return PyFloat_FromDouble((double)confidence);
+}
+
+/**
+ * WHAT: Query knowledge base for matching facts
+ * WHY:  Allows training to check what the brain already knows
+ * HOW:  Calls brain_ti_query_knowledge with query string, returns match count
+ */
+static PyObject* Brain_ti_query_knowledge(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* query;
+    if (!PyArg_ParseTuple(args, "s", &query)) return NULL;
+
+    int count = brain_ti_query_knowledge(self->brain->internal_brain, query);
+    return PyLong_FromLong(count);
+}
+
+/**
+ * WHAT: Initialize the reasoning subsystem
+ * WHY:  Must be called before add_fact/add_rule/forward_chain/backward_chain
+ * HOW:  Calls brain_ti_init_reasoning, returns True on success
+ */
+static PyObject* Brain_ti_init_reasoning(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int result = brain_ti_init_reasoning(self->brain->internal_brain);
+    if (result == 0) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+/**
+ * WHAT: Run a reasoning query and get confidence
+ * WHY:  High-level reasoning interface for training feedback loops
+ * HOW:  Calls brain_ti_reason with query string, returns confidence float
+ */
+static PyObject* Brain_ti_reason(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* query;
+    if (!PyArg_ParseTuple(args, "s", &query)) return NULL;
+
+    float confidence = brain_ti_reason(self->brain->internal_brain, query);
+    return PyFloat_FromDouble((double)confidence);
+}
+
+/**
+ * WHAT: Compute adaptive learning rate based on brain state
+ * WHY:  Basal ganglia dopamine + medulla arousal modulate optimal LR
+ * HOW:  Calls brain_ti_compute_adaptive_lr with base_lr, returns adjusted float
+ */
+static PyObject* Brain_ti_compute_adaptive_lr(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float base_lr;
+    if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
+
+    float adaptive_lr = brain_ti_compute_adaptive_lr(self->brain->internal_brain, base_lr);
+    return PyFloat_FromDouble((double)adaptive_lr);
+}
+
+/**
+ * WHAT: Post-batch update — feed accuracy/domain back to training integration
+ * WHY:  Closes the loop: training results inform basal ganglia, medulla, reasoning
+ * HOW:  Calls brain_ti_post_batch_update with accuracy, expected, domain
+ */
+static PyObject* Brain_ti_post_batch_update(BrainObject* self, PyObject* args, PyObject* kwds) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float accuracy, expected;
+    const char* domain;
+
+    static char* kwlist[] = {"accuracy", "expected", "domain", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ffs", kwlist,
+                                     &accuracy, &expected, &domain)) {
+        return NULL;
+    }
+
+    int result = brain_ti_post_batch_update(self->brain->internal_brain,
+                                            accuracy, expected, domain);
+    if (result == 0) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
 /**
  * WHAT: Pre-compute and cache community structure for consolidation replay
  * WHY:  Louvain community detection is O(N log N), takes hours on 2M neurons.
@@ -1873,6 +2234,56 @@ static PyMethodDef Brain_methods[] = {
      "Process image through visual cortex: visual_cortex_process(pixels, width, height, channels) -> list of features"},
     {"speech_cortex_process", (PyCFunction)Brain_speech_cortex_process, METH_VARARGS,
      "Process audio through speech cortex: speech_cortex_process(samples) -> list of features"},
+
+    // Training Integration API: basal ganglia
+    {"bg_update_reward", (PyCFunction)Brain_bg_update_reward, METH_VARARGS,
+     "Update basal ganglia reward: bg_update_reward(reward, expected) -> int"},
+    {"bg_get_conflict", (PyCFunction)Brain_bg_get_conflict, METH_NOARGS,
+     "Get basal ganglia conflict level: bg_get_conflict() -> float"},
+    {"bg_get_mode", (PyCFunction)Brain_bg_get_mode, METH_NOARGS,
+     "Get basal ganglia operating mode: bg_get_mode() -> int"},
+    {"bg_get_dopamine", (PyCFunction)Brain_bg_get_dopamine, METH_NOARGS,
+     "Get basal ganglia dopamine level: bg_get_dopamine() -> float"},
+    {"bg_get_rpe", (PyCFunction)Brain_bg_get_rpe, METH_NOARGS,
+     "Get reward prediction error: bg_get_rpe() -> float"},
+    {"bg_register_habit", (PyCFunction)Brain_bg_register_habit, METH_VARARGS,
+     "Register a habit: bg_register_habit(domain, action_id) -> int"},
+    {"bg_check_habit", (PyCFunction)Brain_bg_check_habit, METH_VARARGS,
+     "Check if habit exists: bg_check_habit(domain) -> int"},
+    {"bg_strengthen_habit", (PyCFunction)Brain_bg_strengthen_habit, METH_VARARGS,
+     "Strengthen a habit: bg_strengthen_habit(habit_id, success) -> int"},
+
+    // Training Integration API: medulla
+    {"medulla_get_arousal", (PyCFunction)Brain_medulla_get_arousal, METH_NOARGS,
+     "Get medulla arousal level: medulla_get_arousal() -> float"},
+    {"medulla_get_circadian_phase", (PyCFunction)Brain_medulla_get_circadian_phase, METH_NOARGS,
+     "Get circadian phase: medulla_get_circadian_phase() -> int"},
+    {"medulla_boost_arousal", (PyCFunction)Brain_medulla_boost_arousal, METH_VARARGS,
+     "Boost arousal: medulla_boost_arousal(delta) -> None"},
+    {"medulla_get_circadian_efficiency", (PyCFunction)Brain_medulla_get_circadian_efficiency, METH_NOARGS,
+     "Get circadian efficiency: medulla_get_circadian_efficiency() -> float"},
+
+    // Training Integration API: reasoning
+    {"ti_add_fact", (PyCFunction)Brain_ti_add_fact, METH_VARARGS,
+     "Add fact to knowledge base: ti_add_fact(fact, salience) -> bool"},
+    {"ti_add_rule", (PyCFunction)Brain_ti_add_rule, METH_VARARGS,
+     "Add rule to reasoning engine: ti_add_rule(rule, priority) -> bool"},
+    {"ti_forward_chain", (PyCFunction)Brain_ti_forward_chain, METH_VARARGS,
+     "Run forward chaining: ti_forward_chain(max_iterations) -> int"},
+    {"ti_backward_chain", (PyCFunction)Brain_ti_backward_chain, METH_VARARGS,
+     "Run backward chaining: ti_backward_chain(goal) -> float"},
+    {"ti_query_knowledge", (PyCFunction)Brain_ti_query_knowledge, METH_VARARGS,
+     "Query knowledge base: ti_query_knowledge(query) -> int"},
+    {"ti_init_reasoning", (PyCFunction)Brain_ti_init_reasoning, METH_NOARGS,
+     "Initialize reasoning subsystem: ti_init_reasoning() -> bool"},
+    {"ti_reason", (PyCFunction)Brain_ti_reason, METH_VARARGS,
+     "Run reasoning query: ti_reason(query) -> float"},
+
+    // Training Integration API: adaptive learning rate + post-batch
+    {"ti_compute_adaptive_lr", (PyCFunction)Brain_ti_compute_adaptive_lr, METH_VARARGS,
+     "Compute adaptive learning rate: ti_compute_adaptive_lr(base_lr) -> float"},
+    {"ti_post_batch_update", (PyCFunction)Brain_ti_post_batch_update, METH_VARARGS | METH_KEYWORDS,
+     "Post-batch update: ti_post_batch_update(accuracy, expected, domain) -> bool"},
 
     {NULL}
 };

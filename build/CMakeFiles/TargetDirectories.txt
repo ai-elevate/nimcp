@@ -758,6 +758,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_srp_split.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_query_to_answer.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_symbolic_reasoning.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_training_integration.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1831,6 +1832,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_shadow_emotions.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_remorse_regret.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_integration.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
@@ -6499,10 +6501,7 @@
 /home/bbrelin/nimcp/build/test/regression/quantum/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/regression/quantum/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/quantum/CMakeFiles/install/strip.dir
-/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_test_cnn_backprop_regression.dir
-/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_test_cnn_cortex_bridge_regression.dir
-/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub.dir
-/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_dispatch.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_integration_test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/rebuild_cache.dir
@@ -6550,6 +6549,7 @@
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_multi_network.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_vae.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_attention.dir
+/home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_test_training_integration.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/rebuild_cache.dir

@@ -16793,6 +16793,30 @@ __/cognitive/tom/nimcp_tom_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/tom/nimcp_tom_thalamic_bridge.c.s
 .PHONY : __/cognitive/tom/nimcp_tom_thalamic_bridge.c.s
 
+__/cognitive/training/nimcp_training_integration.o: __/cognitive/training/nimcp_training_integration.c.o
+.PHONY : __/cognitive/training/nimcp_training_integration.o
+
+# target to build an object file
+__/cognitive/training/nimcp_training_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/training/nimcp_training_integration.c.o
+.PHONY : __/cognitive/training/nimcp_training_integration.c.o
+
+__/cognitive/training/nimcp_training_integration.i: __/cognitive/training/nimcp_training_integration.c.i
+.PHONY : __/cognitive/training/nimcp_training_integration.i
+
+# target to preprocess a source file
+__/cognitive/training/nimcp_training_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/training/nimcp_training_integration.c.i
+.PHONY : __/cognitive/training/nimcp_training_integration.c.i
+
+__/cognitive/training/nimcp_training_integration.s: __/cognitive/training/nimcp_training_integration.c.s
+.PHONY : __/cognitive/training/nimcp_training_integration.s
+
+# target to generate assembly for a file
+__/cognitive/training/nimcp_training_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/training/nimcp_training_integration.c.s
+.PHONY : __/cognitive/training/nimcp_training_integration.c.s
+
 __/cognitive/vae/bridges/nimcp_vae_auditory_bridge.o: __/cognitive/vae/bridges/nimcp_vae_auditory_bridge.c.o
 .PHONY : __/cognitive/vae/bridges/nimcp_vae_auditory_bridge.o
 
@@ -52795,6 +52819,9 @@ help:
 	@echo "... __/cognitive/tom/nimcp_tom_thalamic_bridge.o"
 	@echo "... __/cognitive/tom/nimcp_tom_thalamic_bridge.i"
 	@echo "... __/cognitive/tom/nimcp_tom_thalamic_bridge.s"
+	@echo "... __/cognitive/training/nimcp_training_integration.o"
+	@echo "... __/cognitive/training/nimcp_training_integration.i"
+	@echo "... __/cognitive/training/nimcp_training_integration.s"
 	@echo "... __/cognitive/vae/bridges/nimcp_vae_auditory_bridge.o"
 	@echo "... __/cognitive/vae/bridges/nimcp_vae_auditory_bridge.i"
 	@echo "... __/cognitive/vae/bridges/nimcp_vae_auditory_bridge.s"

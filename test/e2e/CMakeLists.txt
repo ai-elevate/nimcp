@@ -3079,6 +3079,20 @@ add_e2e_test(e2e_test_symbolic_reasoning
     ${CMAKE_CURRENT_SOURCE_DIR}/test_symbolic_reasoning_e2e.cpp
 )
 
+# =============================================================================
+# Training Integration E2E Test (Hub + Brain Training Pipeline)
+# =============================================================================
+# WHAT: E2E tests for training integration hub and brain training context
+# WHY:  Verify complete training pipelines: event routing, loss/optimizer
+#       lifecycle, gradient management, LR scheduling, early stopping
+# HOW:  Test simulated training loops, multi-module event delivery,
+#       gradient accumulation, dropout behavior, full cleanup
+# =============================================================================
+add_e2e_test(e2e_test_training_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_training_integration_e2e.cpp
+)
+
 # Include Utils E2E test subdirectory (Memory + Health Agent)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     message(STATUS "Adding Utils E2E tests...")

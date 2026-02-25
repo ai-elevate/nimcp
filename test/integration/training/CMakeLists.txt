@@ -237,5 +237,41 @@ set_tests_properties(integration_training_attention
         LABELS "integration;training;attention;plasticity;multihead"
         TIMEOUT 300)
 
+# =============================================================================
+# Cognitive Training Integration Tests (brain_ti_* facade)
+# =============================================================================
+# WHAT: Integration tests for the unified training-integration facade
+# WHY:  Verify reward/RPE, habit, arousal/circadian, symbolic-logic, and
+#       reasoning subsystems are correctly wired to a real brain instance
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(integration_training_test_training_integration
+    test_training_integration.cpp
+)
+
+target_link_libraries(integration_training_test_training_integration PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+
+target_include_directories(integration_training_test_training_integration PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_training_test_training_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_training_test_training_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;training;brain"
+        TIMEOUT 300
+)
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)

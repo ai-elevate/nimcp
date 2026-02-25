@@ -95,3 +95,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/generation/CMakeLists.txt)
     add_subdirectory(generation)
 endif()
 
+# =============================================================================
+# Training Integration Tests
+# =============================================================================
+# Note: training subdirectory is added by test/CMakeLists.txt
+

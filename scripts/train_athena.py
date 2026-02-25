@@ -639,6 +639,36 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
             brain.learn(feats, label, lr)
             total_trained += 1
 
+    # --- Symbolic Knowledge Base Seeding ---
+    logger.log("[Phase 0] Seeding symbolic knowledge base...")
+    domain_facts = {
+        "science": ["Observable(x) & Repeatable(x)", "Hypothesis(x) & Tested(x)"],
+        "math": ["Number(x) & Operation(y)", "Equation(x) & Balanced(x)"],
+        "ethics": ["Action(x) & Harmful(x)", "Consent(x) & Informed(x)"],
+        "language": ["Sentence(x) & Grammatical(x)", "Word(x) & Meaningful(x)"],
+    }
+    for domain, facts in domain_facts.items():
+        for fact in facts:
+            try:
+                cognitive.add_logical_fact(f"{domain}_{fact}", salience=0.7)
+            except Exception as e:
+                logger.log(f"    KB seed error ({domain}): {e}")
+                break
+
+    # Initialize reasoning engine
+    try:
+        cognitive.init_reasoning()
+        logger.log("[Phase 0] Reasoning engine initialized")
+    except Exception as e:
+        logger.log(f"[Phase 0] Reasoning engine init skipped: {e}")
+
+    # Establish basal ganglia reward baseline
+    try:
+        cognitive.update_reward(accuracy=0.0, expected_accuracy=0.0)
+        logger.log("[Phase 0] Basal ganglia reward baseline initialized")
+    except Exception as e:
+        logger.log(f"[Phase 0] BG reward baseline skipped: {e}")
+
     # Quick accuracy probe (predict is expensive, so only test 5 per dataset)
     logger.log("  Phase 0 accuracy probe...")
     import random as _rnd
@@ -845,6 +875,44 @@ def phase1_worksheets(brain, socratic: SocraticTrainer,
             total_trained += result["batch_size"]
             best_acc = max(best_acc, result["batch_accuracy"])
 
+            # Post-batch BG + medulla integration
+            try:
+                batch_accuracy = result["batch_accuracy"]
+                domain_expected = result.get("domain_mastery", 0.5)
+                domain_name_for_bg = domain
+                cognitive.post_batch_update(
+                    accuracy=batch_accuracy,
+                    expected=domain_expected,
+                    domain=domain_name_for_bg)
+            except Exception:
+                pass
+
+            # Forward chain to derive new facts (every 10k steps)
+            if total_trained % 10000 < result["batch_size"]:
+                try:
+                    new_facts = cognitive.forward_chain(max_iterations=100)
+                    if new_facts > 0:
+                        logger.log(f"  Forward chaining derived {new_facts} new facts")
+                except Exception:
+                    pass
+
+            # Check if domain is habitual (mastery > 0.7)
+            try:
+                habit_action = cognitive.check_habit(domain)
+                if habit_action is not None:
+                    # Skip Socratic predict, use direct learn (2-3x faster)
+                    use_socratic = False
+            except Exception:
+                pass
+
+            # Refresh community cache every 10k steps
+            if total_trained % 10000 < result["batch_size"]:
+                try:
+                    cognitive.invalidate_community_cache()
+                    cognitive.cache_communities()
+                except Exception:
+                    pass
+
             if (epoch + 1) % 5 == 0 or epoch == 0:
                 logger.log(f"  Epoch {epoch+1:2d}/{PHASE1_EPOCHS}: "
                             f"acc={result['batch_accuracy']:.4f} "
@@ -1019,6 +1087,24 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         est_loss = 0.5
                     phase2_miner.record(features, prefixed_label, est_loss)
 
+                    # Run reasoning chain on hard examples (loss > 0.3)
+                    if est_loss > 0.3 and hasattr(cognitive, 'reason_about'):
+                        try:
+                            # Use first 512 chars of text representation
+                            example_text = str(label)[:512]
+                            confidence = cognitive.reason_about(example_text)
+                            if confidence >= 0:
+                                logger.log(f"    Reasoning confidence: {confidence:.3f}")
+                        except Exception:
+                            pass
+
+                    # Consolidate every 10k steps (not just end of phase)
+                    if total_trained % 10000 < 1:
+                        try:
+                            cognitive.consolidate(mode="auto")
+                        except Exception:
+                            pass
+
                     if count >= PHASE2_MAX_PER_DATASET:
                         break
 
@@ -1034,13 +1120,29 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                             0.0, INTROSPECTION_INTERVAL)
                         examples_since_introspection = 0
 
+                        # Compute BG + medulla adaptive learning rate
+                        try:
+                            current_lr = phase2_scheduler.get_lr()
+                            phase2_scheduler.step_count -= 1  # Undo extra step
+                            adaptive_lr = cognitive.compute_adaptive_lr(base_lr=current_lr)
+                        except Exception:
+                            adaptive_lr = None
+
                         # Replay hard examples during introspection pauses
                         replay_batch = phase2_miner.get_replay_batch(batch_size=20)
                         for r_feats, r_label, _r_loss in replay_batch:
                             r_lr = phase2_scheduler.get_lr()
+                            if adaptive_lr is not None:
+                                r_lr = adaptive_lr
                             brain.learn(r_feats, r_label, r_lr)
                             total_trained += 1
                         phase2_miner.decay(factor=0.95)
+
+                        # Boost arousal during recess (simulates coffee break)
+                        try:
+                            cognitive.boost_arousal(delta=0.15)
+                        except Exception:
+                            pass
 
                     if count % 10000 == 0:
                         logger.log(f"  {name}: {count:,} examples, "
@@ -1288,6 +1390,20 @@ def phase4_exam_and_save(brain, active_learner: ActiveLearner,
     logger.log(f"  Surprise:     {creativity_result['surprise']:.3f}")
     logger.log(f"  Cross-domain: {creativity_result['cross_domain']:.3f}")
     for trial in creativity_result.get("trials", []):
+        novelty_score = trial.get('novelty', 0.0)
+
+        # Verify creative output consistency via backward chaining
+        if hasattr(cognitive, 'backward_chain'):
+            try:
+                creative_output = str(trial.get('predicted_label', ''))[:256]
+                consistency = cognitive.backward_chain(creative_output)
+                if consistency >= 0:
+                    adjusted_score = novelty_score * (0.5 + 0.5 * consistency)
+                    trial['novelty_adjusted'] = adjusted_score
+                    trial['consistency'] = consistency
+            except Exception:
+                pass
+
         logger.log(f"    [{trial['domain_a']}+{trial['domain_b']}] "
                     f"N={trial['novelty']:.2f} C={trial['coherence']:.2f} "
                     f"S={trial['surprise']:.2f} X={trial['cross_domain']:.2f} "

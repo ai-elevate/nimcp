@@ -8596,6 +8596,19 @@ e2e_test_symbolic_reasoning/fast:
 .PHONY : e2e_test_symbolic_reasoning/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_training_integration
+
+# Build rule for target.
+e2e_test_training_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_training_integration
+.PHONY : e2e_test_training_integration
+
+# fast build rule for target.
+e2e_test_training_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_training_integration.dir/build.make test/e2e/CMakeFiles/e2e_test_training_integration.dir/build
+.PHONY : e2e_test_training_integration/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -14990,6 +15003,19 @@ unit_cognitive_test_rubric: cmake_check_build_system
 unit_cognitive_test_rubric/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir/build
 .PHONY : unit_cognitive_test_rubric/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_training_integration
+
+# Build rule for target.
+unit_cognitive_test_training_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_training_integration
+.PHONY : unit_cognitive_test_training_integration
+
+# fast build rule for target.
+unit_cognitive_test_training_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_integration.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_integration.dir/build
+.PHONY : unit_cognitive_test_training_integration/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -37547,56 +37573,17 @@ regression_quantum_rng/fast:
 .PHONY : regression_quantum_rng/fast
 
 #=============================================================================
-# Target rules for targets named regression_training_test_cnn_backprop_regression
+# Target rules for targets named regression_training_integration_test
 
 # Build rule for target.
-regression_training_test_cnn_backprop_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_test_cnn_backprop_regression
-.PHONY : regression_training_test_cnn_backprop_regression
+regression_training_integration_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_integration_test
+.PHONY : regression_training_integration_test
 
 # fast build rule for target.
-regression_training_test_cnn_backprop_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_test_cnn_backprop_regression.dir/build.make test/regression/training/CMakeFiles/regression_training_test_cnn_backprop_regression.dir/build
-.PHONY : regression_training_test_cnn_backprop_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_training_test_cnn_cortex_bridge_regression
-
-# Build rule for target.
-regression_training_test_cnn_cortex_bridge_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_test_cnn_cortex_bridge_regression
-.PHONY : regression_training_test_cnn_cortex_bridge_regression
-
-# fast build rule for target.
-regression_training_test_cnn_cortex_bridge_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_test_cnn_cortex_bridge_regression.dir/build.make test/regression/training/CMakeFiles/regression_training_test_cnn_cortex_bridge_regression.dir/build
-.PHONY : regression_training_test_cnn_cortex_bridge_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_training_symbolic_logic_hub
-
-# Build rule for target.
-regression_training_symbolic_logic_hub: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_symbolic_logic_hub
-.PHONY : regression_training_symbolic_logic_hub
-
-# fast build rule for target.
-regression_training_symbolic_logic_hub/fast:
-	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub.dir/build.make test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub.dir/build
-.PHONY : regression_training_symbolic_logic_hub/fast
-
-#=============================================================================
-# Target rules for targets named regression_training_dispatch
-
-# Build rule for target.
-regression_training_dispatch: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_dispatch
-.PHONY : regression_training_dispatch
-
-# fast build rule for target.
-regression_training_dispatch/fast:
-	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_dispatch.dir/build.make test/regression/training/CMakeFiles/regression_training_dispatch.dir/build
-.PHONY : regression_training_dispatch/fast
+regression_training_integration_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_integration_test.dir/build.make test/regression/training/CMakeFiles/regression_training_integration_test.dir/build
+.PHONY : regression_training_integration_test/fast
 
 #=============================================================================
 # Target rules for targets named unit_training_test_cnn_backprop
@@ -37844,6 +37831,19 @@ integration_training_attention: cmake_check_build_system
 integration_training_attention/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_attention.dir/build.make test/integration/training/CMakeFiles/integration_training_attention.dir/build
 .PHONY : integration_training_attention/fast
+
+#=============================================================================
+# Target rules for targets named integration_training_test_training_integration
+
+# Build rule for target.
+integration_training_test_training_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_training_test_training_integration
+.PHONY : integration_training_test_training_integration
+
+# fast build rule for target.
+integration_training_test_training_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_test_training_integration.dir/build.make test/integration/training/CMakeFiles/integration_training_test_training_integration.dir/build
+.PHONY : integration_training_test_training_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_training_exception
@@ -40668,6 +40668,7 @@ help:
 	@echo "... e2e_test_tier3_fep_bridges"
 	@echo "... e2e_test_tom_snn_plasticity_pipeline"
 	@echo "... e2e_test_training_dispatch"
+	@echo "... e2e_test_training_integration"
 	@echo "... e2e_test_training_logic_pipeline"
 	@echo "... e2e_test_training_symbolic_logic_pipeline"
 	@echo "... e2e_test_training_validation"
@@ -41196,6 +41197,7 @@ help:
 	@echo "... integration_training_symbolic_logic_hub"
 	@echo "... integration_training_test_cnn_backprop_integration"
 	@echo "... integration_training_test_cnn_cortex_integration"
+	@echo "... integration_training_test_training_integration"
 	@echo "... integration_training_vae"
 	@echo "... integration_utils_containers_test_queue_integration"
 	@echo "... integration_utils_encoding_test_pe_attention_integration"
@@ -41718,10 +41720,7 @@ help:
 	@echo "... regression_thalamus_test"
 	@echo "... regression_thread_safety_test_callback_wrapper_mutex"
 	@echo "... regression_thread_safety_test_thread_local_error_buffer"
-	@echo "... regression_training_dispatch"
-	@echo "... regression_training_symbolic_logic_hub"
-	@echo "... regression_training_test_cnn_backprop_regression"
-	@echo "... regression_training_test_cnn_cortex_bridge_regression"
+	@echo "... regression_training_integration_test"
 	@echo "... regression_utils_containers_test_queue_regression"
 	@echo "... regression_utils_encoding_pe_stability"
 	@echo "... regression_utils_exception_test_exception_regression"
@@ -42369,6 +42368,7 @@ help:
 	@echo "... unit_cognitive_test_symbolic_logic_integration"
 	@echo "... unit_cognitive_test_temporal_replay"
 	@echo "... unit_cognitive_test_tom_social_bridge"
+	@echo "... unit_cognitive_test_training_integration"
 	@echo "... unit_cognitive_test_working_memory_immune"
 	@echo "... unit_cognitive_tom_exception_handling"
 	@echo "... unit_cognitive_tom_plasticity_bridge"

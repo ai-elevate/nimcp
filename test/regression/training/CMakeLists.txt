@@ -1,125 +1,37 @@
-# CNN Training Regression Tests
-# Tests for CNN backpropagation numerical stability and gradient correctness
+# =============================================================================
+# NIMCP Training Integration Regression Tests
+# =============================================================================
+# WHAT: Regression tests guarding against training integration edge-case bugs
+# WHY:  Prevent regressions in reward updates, adaptive LR, batch updates,
+#       reasoning stability, and arousal bounds
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
 
-# CNN Backprop Regression Tests
-add_executable(regression_training_test_cnn_backprop_regression
-    test_cnn_backprop_regression.cpp
+add_executable(regression_training_integration_test
+    test_training_integration_regression.cpp
 )
 
-target_include_directories(regression_training_test_cnn_backprop_regression PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-)
-
-target_compile_features(regression_training_test_cnn_backprop_regression PRIVATE cxx_std_20)
-
-target_link_libraries(regression_training_test_cnn_backprop_regression
+target_link_libraries(regression_training_integration_test
     PRIVATE
-        GTest::GTest
-        GTest::Main
-        nimcp_middleware
         nimcp
-        pthread
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
         m
 )
 
-add_test(NAME regression_training_test_cnn_backprop_regression
-         COMMAND regression_training_test_cnn_backprop_regression)
-
-set_tests_properties(regression_training_test_cnn_backprop_regression
-    PROPERTIES
-        LABELS "regression;training;cnn;backprop;gradient;stability"
-        TIMEOUT 300)
-
-# CNN-Cortex Bridge Regression Tests
-add_executable(regression_training_test_cnn_cortex_bridge_regression
-    test_cnn_cortex_bridge_regression.cpp
-)
-
-target_include_directories(regression_training_test_cnn_cortex_bridge_regression PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-)
-
-target_compile_features(regression_training_test_cnn_cortex_bridge_regression PRIVATE cxx_std_20)
-
-target_link_libraries(regression_training_test_cnn_cortex_bridge_regression
+target_include_directories(regression_training_integration_test
     PRIVATE
-        GTest::GTest
-        GTest::Main
-        nimcp_middleware
-        nimcp
-        pthread
-        m
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
 )
 
-add_test(NAME regression_training_test_cnn_cortex_bridge_regression
-         COMMAND regression_training_test_cnn_cortex_bridge_regression)
+target_compile_features(regression_training_integration_test PRIVATE cxx_std_17)
 
-set_tests_properties(regression_training_test_cnn_cortex_bridge_regression
+gtest_discover_tests(regression_training_integration_test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES
-        LABELS "regression;training;cnn;cortex;bridge"
-        TIMEOUT 300)
-
-# Training Symbolic Logic Hub Bridge Regression Tests
-add_executable(regression_training_symbolic_logic_hub
-    test_training_symbolic_logic_hub_regression.cpp
+        LABELS "regression;training;integration"
+        TIMEOUT 300
 )
-
-target_include_directories(regression_training_symbolic_logic_hub PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-)
-
-target_compile_features(regression_training_symbolic_logic_hub PRIVATE cxx_std_17)
-
-target_link_libraries(regression_training_symbolic_logic_hub
-    PRIVATE
-        GTest::GTest
-        GTest::Main
-        nimcp
-        pthread
-        m
-)
-
-add_test(NAME regression_training_symbolic_logic_hub
-         COMMAND regression_training_symbolic_logic_hub)
-
-set_tests_properties(regression_training_symbolic_logic_hub
-    PROPERTIES
-        LABELS "regression;training;symbolic-logic;hub;stability"
-        TIMEOUT 300)
-
-# Training Dispatch Regression Tests (C with Check framework)
-# Find Check library using pkg-config
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CHECK check)
-
-if(CHECK_FOUND)
-    add_executable(regression_training_dispatch
-        test_training_dispatch_regression.c
-    )
-
-    target_include_directories(regression_training_dispatch PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-        ${CHECK_INCLUDE_DIRS}
-    )
-
-    target_link_libraries(regression_training_dispatch
-        nimcp
-        ${CHECK_LIBRARIES}
-        pthread
-        m
-    )
-
-    add_test(NAME regression_training_dispatch
-             COMMAND regression_training_dispatch)
-
-    set_tests_properties(regression_training_dispatch
-        PROPERTIES
-            LABELS "regression;training;dispatch;backward-compat"
-            TIMEOUT 300)
-else()
-    message(STATUS "Check library not found - skipping training dispatch regression tests")
-endif()

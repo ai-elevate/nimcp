@@ -669,6 +669,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c  # Reasoning-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_chain.c  # Multi-step reasoning chain engine
 
+    # Cognitive Training Integration Layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/training/nimcp_training_integration.c  # Unified training pipeline API
+
     # Brain Immune System (Coordination Layer for FT/Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_tick.c  # Brain immune tick processing

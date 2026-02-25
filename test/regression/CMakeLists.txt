@@ -78,3 +78,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/reasoning_generation/CMakeLists.txt)
     message(STATUS "Adding Reasoning-Generation Regression tests...")
     add_subdirectory(reasoning_generation)
 endif()
+
+# =============================================================================
+# Training Integration Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/training/CMakeLists.txt)
+    message(STATUS "Adding Training Integration Regression tests...")
+    add_subdirectory(training)
+endif()
