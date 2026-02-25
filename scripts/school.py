@@ -80,8 +80,8 @@ class SchoolConfig:
     cross_domain_interval: int = 10_000    # Cross-domain exemplar exchange interval
     max_examples_per_dataset: int = 50_000
     startup_stagger_s: float = 2.0         # Delay between instructor starts
-    num_inputs: int = 128
-    num_outputs: int = 32
+    num_inputs: int = 1024   # Match ATHENA_NUM_INPUTS (was 128)
+    num_outputs: int = 256   # Match ATHENA_NUM_OUTPUTS (was 32)
     max_concurrent_instructors: int = 6    # Max instructor threads starting per batch
 
 

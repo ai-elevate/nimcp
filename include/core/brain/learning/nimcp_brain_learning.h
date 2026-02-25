@@ -159,6 +159,29 @@ float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t
 uint32_t brain_apply_reward_learning(brain_t brain, float reward);
 
 /**
+ * @brief Enable multi-network training (LNN + CNN alongside adaptive)
+ *
+ * WHAT: Creates auxiliary LNN and CNN networks matched to the brain's dimensions,
+ *       enabling ensemble training through the dispatch system.
+ * WHY:  Ensemble learning: different architectures capture different patterns.
+ *       LNN captures temporal dynamics, CNN captures spatial features,
+ *       Adaptive SNN captures spike-timing correlations.
+ * HOW:  Creates LNN network (NCP architecture), CNN trainer (dense layers),
+ *       initializes training contexts, sets active_network_type to HYBRID.
+ *
+ * BIOLOGICAL BASIS:
+ * - Multiple cortical pathways process same input through different architectures
+ * - Ensemble coding: population-level diversity improves robustness
+ * - Complementary learning systems (McClelland et al. 1995)
+ *
+ * COMPLEXITY: O(1) - Network creation is allocation-dominated
+ *
+ * @param brain Brain to augment
+ * @return 0 on success, -1 on error
+ */
+int brain_enable_multi_network_training(brain_t brain);
+
+/**
  * @brief Learn by querying an LLM teacher
  *
  * WHAT: Knowledge distillation from large language model to brain network

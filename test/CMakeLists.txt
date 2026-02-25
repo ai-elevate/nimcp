@@ -1489,6 +1489,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/CMakeLists.txt")
 endif()
 
 # ============================================================================
+# Reasoning-Generation Regression Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/reasoning_generation/CMakeLists.txt")
+    message(STATUS "Adding reasoning-generation regression tests...")
+    add_subdirectory(regression/reasoning_generation)
+endif()
+
+# ============================================================================
 # Brain Regions Integration Tests
 # ============================================================================
 
@@ -1698,6 +1707,18 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/wernicke")
     message(STATUS "Adding Wernicke integration tests...")
     add_subdirectory(integration/wernicke)
+endif()
+
+# ============================================================================
+# Generation Tests (Tokenizer, Embedding, Language Generator)
+# ============================================================================
+# WHAT: Tests for the text generation pipeline
+# WHY:  Verify tokenizer, embedding layer, and language generator correctness
+# HOW:  Unit tests for each component, integration tests for the full pipeline
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/generation")
+    message(STATUS "Adding generation unit tests...")
+    add_subdirectory(unit/generation)
 endif()
 
 # ============================================================================

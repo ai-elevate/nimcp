@@ -84,6 +84,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"   // Full neuromodulator system
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"  // Phase C2.1: Spatial neuromodulator diffusion
 #include "plasticity/attention/nimcp_attention.h"               // Multihead attention mechanism
+#include "cognitive/attention/nimcp_attention_plasticity_bridge.h" // Attention-plasticity bridge for training
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "cognitive/nimcp_fractal_cognitive.h"                  // NIMCP 2.7 Phase 8.5: Fractal topology cognitive integration
 // Forward declarations for rubric evaluator (avoids including rubric.h which

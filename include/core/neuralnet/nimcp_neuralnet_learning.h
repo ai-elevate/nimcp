@@ -122,6 +122,31 @@ NIMCP_EXPORT uint32_t neural_network_apply_reward_learning(neural_network_t netw
                                                            float learning_rate, uint64_t current_time);
 
 /**
+ * @brief Apply lateral inhibition (winner-take-all) to output layer
+ *
+ * WHAT: Suppress non-winning output neurons to sharpen classification
+ * WHY:  Lateral inhibition creates competition between output neurons,
+ *        producing sharper class boundaries and faster convergence
+ * HOW:  Find maximum output, suppress others by inhibition_strength
+ *
+ * BIOLOGICAL BASIS:
+ * - Cortical lateral inhibition via GABAergic interneurons
+ * - Competitive learning in self-organizing maps
+ * - Winner-take-all circuits in basal ganglia
+ *
+ * @param network Neural network
+ * @param output_start First output neuron index
+ * @param output_count Number of output neurons
+ * @param inhibition_strength How much to suppress losers (0.0-1.0)
+ * @return Number of neurons modified
+ */
+NIMCP_EXPORT uint32_t neural_network_apply_lateral_inhibition(
+    neural_network_t network,
+    uint32_t output_start,
+    uint32_t output_count,
+    float inhibition_strength);
+
+/**
  * @brief Apply generalized Oja's rule
  *
  * @param network Neural network

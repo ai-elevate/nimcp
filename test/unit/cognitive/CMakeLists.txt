@@ -122,6 +122,39 @@ gtest_discover_tests(unit_cognitive_test_working_memory_immune
         TIMEOUT 120
 )
 
+# =============================================================================
+# Reasoning Chain Unit Tests
+# =============================================================================
+
+add_executable(unit_cognitive_test_reasoning_chain
+    test_reasoning_chain.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_chain
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_chain
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_chain PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_chain
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning"
+        TIMEOUT 120
+)
+
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
 

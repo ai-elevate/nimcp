@@ -697,3 +697,28 @@ gtest_discover_tests(unit_plasticity_denormal_threshold
 # ============================================================================
 
 add_subdirectory(exception)
+
+# ============================================================================
+# Hybrid Learning Tests
+# ============================================================================
+# WHAT: Unit tests for LEARN_MODE_HYBRID and lateral inhibition
+# WHY:  Verify supervised+biological plasticity integration and WTA competition
+# HOW:  Test loss convergence, bio-plasticity activation, lateral inhibition
+# ============================================================================
+
+add_executable(unit_plasticity_hybrid_learning
+    adaptive/test_hybrid_learning.cpp
+)
+target_link_libraries(unit_plasticity_hybrid_learning
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_hybrid_learning PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_hybrid_learning
+    PROPERTIES LABELS "unit;plasticity;adaptive;hybrid"
+    TIMEOUT 60
+)

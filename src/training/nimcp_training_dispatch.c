@@ -549,29 +549,30 @@ int training_dispatch_step(
         case NIMCP_NETWORK_HYBRID:
             // Train all available networks
             // Use whichever has lowest loss for final result
+            // Non-fatal: if any network fails, skip it and continue
             {
                 training_dispatch_result_t snn_res = {0}, lnn_res = {0}, cnn_res = {0};
                 float min_loss = INFINITY;
 
                 if (brain->snn_network && brain->snn_training_ctx) {
-                    snn_train_step(brain, inputs, num_inputs, targets, num_targets, &snn_res);
-                    if (snn_res.loss < min_loss) {
+                    int rc = snn_train_step(brain, inputs, num_inputs, targets, num_targets, &snn_res);
+                    if (rc == 0 && snn_res.loss < min_loss) {
                         min_loss = snn_res.loss;
                         if (result) *result = snn_res;
                     }
                 }
 
                 if (brain->lnn_network && brain->lnn_training_ctx) {
-                    lnn_train_step(brain, inputs, num_inputs, targets, num_targets, &lnn_res);
-                    if (lnn_res.loss < min_loss) {
+                    int rc = lnn_train_step(brain, inputs, num_inputs, targets, num_targets, &lnn_res);
+                    if (rc == 0 && lnn_res.loss < min_loss) {
                         min_loss = lnn_res.loss;
                         if (result) *result = lnn_res;
                     }
                 }
 
                 if (brain->cnn_trainer) {
-                    cnn_train_step(brain, inputs, num_inputs, targets, num_targets, &cnn_res);
-                    if (cnn_res.loss < min_loss) {
+                    int rc = cnn_train_step(brain, inputs, num_inputs, targets, num_targets, &cnn_res);
+                    if (rc == 0 && cnn_res.loss < min_loss) {
                         if (result) *result = cnn_res;
                     }
                 }

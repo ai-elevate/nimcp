@@ -76,6 +76,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "core/brain/learning/nimcp_brain_learning.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -1750,6 +1751,29 @@ static PyObject* Brain_lgss_check_content(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * @brief Enable multi-network ensemble training (LNN + CNN + Adaptive)
+ *
+ * WHAT: Python binding for brain_enable_multi_network_training()
+ * WHY:  Allow Python scripts to enable ensemble training from all architectures
+ * HOW:  Calls C API, raises RuntimeError on failure
+ */
+static PyObject* Brain_enable_multi_network(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    // self->brain is nimcp_brain_t (handle wrapper)
+    // brain_enable_multi_network_training expects brain_t (internal)
+    int rc = brain_enable_multi_network_training(self->brain->internal_brain);
+    if (rc < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to enable multi-network training");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/**
  * @brief Check if brain is frozen
  */
 static PyObject* Brain_get_is_frozen(BrainObject* self, void* closure) {
@@ -1795,6 +1819,10 @@ static PyMethodDef Brain_methods[] = {
      "Restore from COW snapshot: restore_cow(snapshot) -> bool"},
     {"destroy_cow_snapshot", (PyCFunction)Brain_destroy_cow_snapshot, METH_VARARGS,
      "Destroy COW snapshot: destroy_cow_snapshot(snapshot)"},
+
+    // Multi-network ensemble training
+    {"enable_multi_network", (PyCFunction)Brain_enable_multi_network, METH_NOARGS,
+     "Enable LNN + CNN ensemble training alongside adaptive SNN"},
 
     // Training metrics
     {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,

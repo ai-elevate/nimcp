@@ -13,12 +13,13 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+/* NOTE: Do NOT wrap these in extern "C" — they transitively include CUDA
+ * headers (cuda_runtime.h, cublas_v2.h) which contain C++ templates. The
+ * C headers themselves already have extern "C" guards internally. */
 #include "gpu/neuron/nimcp_neuron_context.h"
 #include "gpu/neuron/nimcp_neuron_bridge.h"
 #include "gpu/execution/nimcp_gpu_detect.h"
 #include "gpu/backend/nimcp_kernel_backend.h"
-}
 
 //=============================================================================
 // Neuron Context Tests (work on all systems via stubs)

@@ -37,10 +37,11 @@ extern "C" {
  * @brief Spike encoding schemes
  */
 typedef enum {
-    SPIKE_ENCODING_INTEGER, /**< Direct integer counts (fastest) */
-    SPIKE_ENCODING_BINARY,  /**< Binary {0,1} expansion */
-    SPIKE_ENCODING_TERNARY, /**< Ternary {-1,0,1} with E/I */
-    SPIKE_ENCODING_BITWISE  /**< Bitwise binary encoding (most sparse) */
+    SPIKE_ENCODING_INTEGER,    /**< Direct integer counts (fastest) */
+    SPIKE_ENCODING_BINARY,     /**< Binary {0,1} expansion */
+    SPIKE_ENCODING_TERNARY,    /**< Ternary {-1,0,1} with E/I */
+    SPIKE_ENCODING_BITWISE,    /**< Bitwise binary encoding (most sparse) */
+    SPIKE_ENCODING_PASSTHROUGH /**< No encoding — raw float values (best for gradient training) */
 } spike_encoding_t;
 
 /**
@@ -294,7 +295,8 @@ typedef enum {
     LEARN_MODE_SUPERVISED,   /**< Supervised learning with labels */
     LEARN_MODE_UNSUPERVISED, /**< Unsupervised pattern extraction */
     LEARN_MODE_DISTILLATION, /**< Distill from teacher model/LLM */
-    LEARN_MODE_REINFORCEMENT /**< Reinforcement from rewards */
+    LEARN_MODE_REINFORCEMENT, /**< Reinforcement from rewards */
+    LEARN_MODE_HYBRID         /**< Supervised backprop + biological plasticity (STDP/BCM/eligibility) */
 } learning_mode_t;
 
 /**

@@ -1917,7 +1917,8 @@ nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t*
 
     /* Matrix must be 2D, vector must be 1D */
     if (mat->shape.rank != 2 || vec->shape.rank != 1) {
-        LOG_ERROR(LOG_MODULE, "mv: matrix must be 2D, vector must be 1D");
+        LOG_ERROR(LOG_MODULE, "mv: matrix must be 2D (rank=%u), vector must be 1D (rank=%u)",
+                  mat->shape.rank, vec->shape.rank);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_mv: rank mismatch");
         return NULL;
     }

@@ -153,6 +153,8 @@ struct recovery_executive_internal;
 #include "core/brain/subcortical/nimcp_basal_ganglia_enhanced.h"
 #include "core/brain/internal/nimcp_brain_internal_cerebellum.h"
 #include "core/brain/internal/nimcp_brain_internal_hippocampus.h"
+/* Mammillary type: use void* in brain_struct to avoid header conflicts
+   (mammillary.h defines cerebellum_adapter_t differently from genius_profiles.h) */
 
 #ifdef __cplusplus
 extern "C" {
@@ -358,6 +360,9 @@ struct brain_struct {
     neuromod_pink_noise_t* pink_noise;           // Pink noise neuromodulation (struct type, needs *)
     neuromodulator_system_t neuromodulator_system; // Full neuromodulator system (DA, 5-HT, ACh, NE, GABA, GLU)
     multihead_attention_t multihead_attention;   // Attention mechanism for selective feature processing (typedef already includes *)
+    void* attention_plasticity;                  // attention_plasticity_bridge_t* (attention-plasticity STDP bridge)
+    bool attention_training_enabled;             // Whether attention modulates learning
+    float last_attention_strength;               // Running attention strength from last forward pass [0-1]
 
     // Phase T1: Biological Framework Enhancements (Training Pipeline)
     homeostatic_controller_t homeostatic;        // Synaptic scaling + intrinsic plasticity (maintains activity levels)
@@ -1695,6 +1700,44 @@ struct brain_struct {
     //
     struct rubric_evaluator* rubric_evaluator;   // Lazy-init rubric evaluator (NULL until first use)
     brain_decision_t* last_decision;             // Cached pointer to most recent decision
+
+    // =========================================================================
+    // MAMMILLARY BODIES INTEGRATION (Papez Circuit Memory Relay)
+    // =========================================================================
+    // The Mammillary Bodies are critical relay stations in the Papez circuit:
+    // - Receive hippocampal input via fornix
+    // - Relay to anterior thalamus via mammillothalamic tract
+    // - Process head direction signals
+    // - Support episodic memory consolidation
+    //
+    // Damage causes anterograde amnesia (Korsakoff syndrome).
+    //
+    // Integrates with:
+    // - Hippocampus: Primary input via fornix
+    // - Thalamus: Primary output via mammillothalamic tract
+    // - Cingulate: Feedback for Papez circuit completion
+    // - Training: Memory relay during learning
+    //
+    void* mammillary;                                // Mammillary bodies (nimcp_mammillary_t*, cast in brain_learning.c)
+    bool mammillary_enabled;                         // Mammillary bodies enabled for this brain
+    uint64_t last_mammillary_update_us;              // Last mammillary update timestamp
+
+    // =========================================================================
+    // VAE INTEGRATION (Variational Autoencoder)
+    // =========================================================================
+    // Learns compressed latent representations of input features.
+    // Provides: anomaly detection, generative replay, FEP free energy.
+    //
+    // Integration points:
+    // - Before learning: encode input → anomaly score (flag hard examples)
+    // - During learning: train VAE (reconstruction + KL loss)
+    // - After learning: latent representation for engram encoding
+    //
+    void* vae_system;                                // vae_system_t* (avoid header conflict)
+    void* vae_training_bridge;                       // vae_training_bridge_t* (joint VAE+SNN training)
+    bool vae_enabled;                                // VAE enabled for this brain
+    float last_vae_anomaly_score;                    // Most recent anomaly score from VAE
+    float last_vae_free_energy;                      // Most recent free energy (negative ELBO)
 };
 
 //=============================================================================

@@ -2513,6 +2513,30 @@ __/cognitive/curiosity/nimcp_curiosity_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_curiosity_thalamic_bridge.c.s
 .PHONY : __/cognitive/curiosity/nimcp_curiosity_thalamic_bridge.c.s
 
+__/cognitive/curiosity/nimcp_information_forager.o: __/cognitive/curiosity/nimcp_information_forager.c.o
+.PHONY : __/cognitive/curiosity/nimcp_information_forager.o
+
+# target to build an object file
+__/cognitive/curiosity/nimcp_information_forager.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_information_forager.c.o
+.PHONY : __/cognitive/curiosity/nimcp_information_forager.c.o
+
+__/cognitive/curiosity/nimcp_information_forager.i: __/cognitive/curiosity/nimcp_information_forager.c.i
+.PHONY : __/cognitive/curiosity/nimcp_information_forager.i
+
+# target to preprocess a source file
+__/cognitive/curiosity/nimcp_information_forager.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_information_forager.c.i
+.PHONY : __/cognitive/curiosity/nimcp_information_forager.c.i
+
+__/cognitive/curiosity/nimcp_information_forager.s: __/cognitive/curiosity/nimcp_information_forager.c.s
+.PHONY : __/cognitive/curiosity/nimcp_information_forager.s
+
+# target to generate assembly for a file
+__/cognitive/curiosity/nimcp_information_forager.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/curiosity/nimcp_information_forager.c.s
+.PHONY : __/cognitive/curiosity/nimcp_information_forager.c.s
+
 __/cognitive/emotion/nimcp_emotion_fep_bridge.o: __/cognitive/emotion/nimcp_emotion_fep_bridge.c.o
 .PHONY : __/cognitive/emotion/nimcp_emotion_fep_bridge.o
 
@@ -14368,6 +14392,30 @@ __/cognitive/reasoning/nimcp_knowledge_base_interface.s: __/cognitive/reasoning/
 __/cognitive/reasoning/nimcp_knowledge_base_interface.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_knowledge_base_interface.c.s
 .PHONY : __/cognitive/reasoning/nimcp_knowledge_base_interface.c.s
+
+__/cognitive/reasoning/nimcp_reasoning_chain.o: __/cognitive/reasoning/nimcp_reasoning_chain.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_chain.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_chain.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_chain.i: __/cognitive/reasoning/nimcp_reasoning_chain.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_chain.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_chain.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_chain.s: __/cognitive/reasoning/nimcp_reasoning_chain.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_chain.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_chain.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.c.s
 
 __/cognitive/reasoning/nimcp_reasoning_factory.o: __/cognitive/reasoning/nimcp_reasoning_factory.c.o
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_factory.o
@@ -29848,6 +29896,78 @@ __/embodiment/nimcp_interoceptive_prediction.s: __/embodiment/nimcp_interoceptiv
 __/embodiment/nimcp_interoceptive_prediction.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/embodiment/nimcp_interoceptive_prediction.c.s
 .PHONY : __/embodiment/nimcp_interoceptive_prediction.c.s
+
+__/generation/nimcp_embedding.o: __/generation/nimcp_embedding.c.o
+.PHONY : __/generation/nimcp_embedding.o
+
+# target to build an object file
+__/generation/nimcp_embedding.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_embedding.c.o
+.PHONY : __/generation/nimcp_embedding.c.o
+
+__/generation/nimcp_embedding.i: __/generation/nimcp_embedding.c.i
+.PHONY : __/generation/nimcp_embedding.i
+
+# target to preprocess a source file
+__/generation/nimcp_embedding.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_embedding.c.i
+.PHONY : __/generation/nimcp_embedding.c.i
+
+__/generation/nimcp_embedding.s: __/generation/nimcp_embedding.c.s
+.PHONY : __/generation/nimcp_embedding.s
+
+# target to generate assembly for a file
+__/generation/nimcp_embedding.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_embedding.c.s
+.PHONY : __/generation/nimcp_embedding.c.s
+
+__/generation/nimcp_language_generator.o: __/generation/nimcp_language_generator.c.o
+.PHONY : __/generation/nimcp_language_generator.o
+
+# target to build an object file
+__/generation/nimcp_language_generator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_language_generator.c.o
+.PHONY : __/generation/nimcp_language_generator.c.o
+
+__/generation/nimcp_language_generator.i: __/generation/nimcp_language_generator.c.i
+.PHONY : __/generation/nimcp_language_generator.i
+
+# target to preprocess a source file
+__/generation/nimcp_language_generator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_language_generator.c.i
+.PHONY : __/generation/nimcp_language_generator.c.i
+
+__/generation/nimcp_language_generator.s: __/generation/nimcp_language_generator.c.s
+.PHONY : __/generation/nimcp_language_generator.s
+
+# target to generate assembly for a file
+__/generation/nimcp_language_generator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_language_generator.c.s
+.PHONY : __/generation/nimcp_language_generator.c.s
+
+__/generation/nimcp_tokenizer.o: __/generation/nimcp_tokenizer.c.o
+.PHONY : __/generation/nimcp_tokenizer.o
+
+# target to build an object file
+__/generation/nimcp_tokenizer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_tokenizer.c.o
+.PHONY : __/generation/nimcp_tokenizer.c.o
+
+__/generation/nimcp_tokenizer.i: __/generation/nimcp_tokenizer.c.i
+.PHONY : __/generation/nimcp_tokenizer.i
+
+# target to preprocess a source file
+__/generation/nimcp_tokenizer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_tokenizer.c.i
+.PHONY : __/generation/nimcp_tokenizer.c.i
+
+__/generation/nimcp_tokenizer.s: __/generation/nimcp_tokenizer.c.s
+.PHONY : __/generation/nimcp_tokenizer.s
+
+# target to generate assembly for a file
+__/generation/nimcp_tokenizer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/generation/nimcp_tokenizer.c.s
+.PHONY : __/generation/nimcp_tokenizer.c.s
 
 __/glial/astrocyte_types/nimcp_astrocyte_types.o: __/glial/astrocyte_types/nimcp_astrocyte_types.c.o
 .PHONY : __/glial/astrocyte_types/nimcp_astrocyte_types.o
@@ -50890,6 +51010,9 @@ help:
 	@echo "... __/cognitive/curiosity/nimcp_curiosity_thalamic_bridge.o"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity_thalamic_bridge.i"
 	@echo "... __/cognitive/curiosity/nimcp_curiosity_thalamic_bridge.s"
+	@echo "... __/cognitive/curiosity/nimcp_information_forager.o"
+	@echo "... __/cognitive/curiosity/nimcp_information_forager.i"
+	@echo "... __/cognitive/curiosity/nimcp_information_forager.s"
 	@echo "... __/cognitive/emotion/nimcp_emotion_fep_bridge.o"
 	@echo "... __/cognitive/emotion/nimcp_emotion_fep_bridge.i"
 	@echo "... __/cognitive/emotion/nimcp_emotion_fep_bridge.s"
@@ -52372,6 +52495,9 @@ help:
 	@echo "... __/cognitive/reasoning/nimcp_knowledge_base_interface.o"
 	@echo "... __/cognitive/reasoning/nimcp_knowledge_base_interface.i"
 	@echo "... __/cognitive/reasoning/nimcp_knowledge_base_interface.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_chain.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_chain.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_chain.s"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_factory.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_factory.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_factory.s"
@@ -54307,6 +54433,15 @@ help:
 	@echo "... __/embodiment/nimcp_interoceptive_prediction.o"
 	@echo "... __/embodiment/nimcp_interoceptive_prediction.i"
 	@echo "... __/embodiment/nimcp_interoceptive_prediction.s"
+	@echo "... __/generation/nimcp_embedding.o"
+	@echo "... __/generation/nimcp_embedding.i"
+	@echo "... __/generation/nimcp_embedding.s"
+	@echo "... __/generation/nimcp_language_generator.o"
+	@echo "... __/generation/nimcp_language_generator.i"
+	@echo "... __/generation/nimcp_language_generator.s"
+	@echo "... __/generation/nimcp_tokenizer.o"
+	@echo "... __/generation/nimcp_tokenizer.i"
+	@echo "... __/generation/nimcp_tokenizer.s"
 	@echo "... __/glial/astrocyte_types/nimcp_astrocyte_types.o"
 	@echo "... __/glial/astrocyte_types/nimcp_astrocyte_types.i"
 	@echo "... __/glial/astrocyte_types/nimcp_astrocyte_types.s"

@@ -501,6 +501,21 @@ void neural_network_update_traces(neural_network_t network, uint32_t neuron_id, 
 uint32_t neural_network_apply_reward_learning(neural_network_t network, float reward,
                                               float learning_rate, uint64_t current_time);
 
+/**
+ * @brief Apply lateral inhibition (winner-take-all) to output layer
+ *
+ * @param network Neural network
+ * @param output_start First output neuron index
+ * @param output_count Number of output neurons
+ * @param inhibition_strength How much to suppress losers (0.0-1.0)
+ * @return Number of neurons modified
+ */
+uint32_t neural_network_apply_lateral_inhibition(
+    neural_network_t network,
+    uint32_t output_start,
+    uint32_t output_count,
+    float inhibition_strength);
+
 // Analysis and monitoring functions
 float neural_network_get_average_activity(neural_network_t network, uint32_t neuron_id);
 float neural_network_get_weight_norm(neural_network_t network, uint32_t neuron_id);

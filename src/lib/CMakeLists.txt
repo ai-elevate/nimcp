@@ -667,6 +667,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_curiosity.c  # Curiosity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_snn_bridge.c  # Reasoning-SNN integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c  # Reasoning-Plasticity integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_chain.c  # Multi-step reasoning chain engine
 
     # Brain Immune System (Coordination Layer for FT/Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
@@ -2888,6 +2889,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_basal_ganglia_integration.c                  # Basal ganglia mesh integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_thalamus_integration.c                       # Thalamus mesh integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../mesh/nimcp_mesh_global_workspace_integration.c               # Global workspace mesh integration
+
+    # Language Generation Pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/../generation/nimcp_tokenizer.c                                 # Word-level tokenizer with BPE subword fallback
+    ${CMAKE_CURRENT_SOURCE_DIR}/../generation/nimcp_embedding.c                                 # Learned embedding layer (Xavier init, gradient updates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../generation/nimcp_language_generator.c                        # LNN-based autoregressive language generator
 )
 
 # Core library

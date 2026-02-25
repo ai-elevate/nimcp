@@ -4,115 +4,272 @@ Provides standard ML datasets (Wine, Breast Cancer, Fashion-MNIST), adapted
 generative AI benchmarks (MMLU, ARC, HellaSwag, Winogrande), and cognitive
 benchmark generators (N-back, Ethics, Sequence Patterns).
 """
-import hashlib
+import math
 import random
+import re
 
 
 # ---------------------------------------------------------------------------
-# Text-to-features encoding (same approach as routers/chat.py)
+# Text-to-features encoding — collision-free character n-gram pipeline
 # ---------------------------------------------------------------------------
 
-def text_to_features(text: str, num_features: int = 256) -> list[float]:
-    """Encode text into a fixed-size feature vector.
+def text_to_features(text: str, num_inputs: int = 256) -> list[float]:
+    """Convert text to a collision-free feature vector.
 
-    Uses multiple complementary encoding channels:
-      1. Character unigram frequencies (bins 0..63)
-      2. Character bigram frequencies (bins 64..127)
-      3. Word-level hashing with position weighting (bins 128..191)
-      4. Sentence structure / meta features (bins 192..255)
-    Each channel occupies a quarter of the feature space.
+    Uses explicit character n-gram bins (no hashing) for maximum information
+    preservation.  Works with any num_inputs but optimized for 1024.
+
+    Channel layout (adaptive to num_inputs):
+      Channel 1 (30%): Character unigram frequencies — explicit bins, no hashing
+      Channel 2 (30%): Character bigram frequencies — (a-z)x(a-z) direct mapping
+      Channel 3 (25%): Character trigram profiles + word structure features
+      Channel 4 (15%): Structural / meta features
     """
-    text_lower = text.lower().strip()
-    features = [0.0] * num_features
+    features = [0.0] * num_inputs
+    if not text:
+        return features
+
+    text_lower = text[:4000].lower().strip()
     if not text_lower:
         return features
 
-    q = num_features // 4  # quarter size
+    # Adaptive channel sizing
+    ch1_size = int(num_inputs * 0.30)   # Character unigrams
+    ch2_size = int(num_inputs * 0.30)   # Character bigrams
+    ch3_size = int(num_inputs * 0.25)   # Character trigrams + word structure
+    ch4_size = num_inputs - ch1_size - ch2_size - ch3_size  # Meta features
 
-    # Channel 1: Character unigram frequencies (first quarter)
-    for ch in text_lower:
-        features[ord(ch) % q] += 1.0
+    ch1_start = 0
+    ch2_start = ch1_size
+    ch3_start = ch2_start + ch2_size
+    ch4_start = ch3_start + ch3_size
 
-    # Channel 2: Character bigram frequencies (second quarter)
-    for i in range(len(text_lower) - 1):
-        bigram = text_lower[i:i + 2]
-        h = int(hashlib.md5(bigram.encode()).hexdigest(), 16)
-        features[q + (h % q)] += 1.0
-
-    # Channel 3: Word-level semantic hashing (third quarter)
-    words = text_lower.split()
-    for wi, word in enumerate(words):
-        h = int(hashlib.md5(word.encode()).hexdigest(), 16)
-        # Primary word bin
-        features[2 * q + (h % q)] += 1.0
-        # Position-weighted secondary bin (captures word order)
-        features[2 * q + ((h >> 16) % q)] += (wi + 1) * 0.05
-
-    # Word pair (bigram) hashing for local context
-    for i in range(len(words) - 1):
-        pair = f"{words[i]} {words[i+1]}"
-        h = int(hashlib.md5(pair.encode()).hexdigest(), 16)
-        features[2 * q + (h % q)] += 0.7
-
-    # Channel 4: Sentence structure / meta features (fourth quarter)
+    # ===== CHANNEL 1: Character unigram frequencies (explicit bins) =====
     n_chars = len(text_lower)
+    for ch in text_lower:
+        code = ord(ch)
+        if 97 <= code <= 122:       # a-z
+            idx = code - 97          # bins 0-25
+        elif 48 <= code <= 57:       # 0-9
+            idx = 26 + (code - 48)   # bins 26-35
+        elif ch in ' \t\n':
+            idx = 36                 # whitespace
+        elif ch in '.,;:!?':
+            idx = 37 + min(ord(ch) % 6, 5)  # punctuation bins 37-42
+        elif ch in '"\'`()[]{}':
+            idx = 43                 # quotes/brackets
+        elif ch in '-_/\\|':
+            idx = 44                 # separators
+        elif ch in '@#$%^&*~':
+            idx = 45                 # special
+        elif ch in '+=<>':
+            idx = 46                 # math
+        elif 192 <= code <= 687:     # Latin extended
+            idx = 47 + ((code - 192) % min(max(ch1_size - 48, 1), 16))
+        else:
+            idx = min(ch1_size - 1, 47)  # overflow bin
+
+        if idx < ch1_size:
+            features[ch1_start + idx] += 1.0
+
+    # Normalize channel 1 by text length (TF-like)
+    if n_chars > 0:
+        for i in range(ch1_start, ch1_start + ch1_size):
+            features[i] /= n_chars
+
+    # ===== CHANNEL 2: Character bigram frequencies (explicit bins) =====
+    for i in range(len(text_lower) - 1):
+        c1 = ord(text_lower[i]) - 97
+        c2 = ord(text_lower[i + 1]) - 97
+        if 0 <= c1 < 26 and 0 <= c2 < 26:
+            bigram_idx = (c1 * 26 + c2) % ch2_size
+            features[ch2_start + bigram_idx] += 1.0
+
+    # Normalize channel 2
+    bigram_total = max(sum(features[ch2_start:ch2_start + ch2_size]), 1.0)
+    for i in range(ch2_start, ch2_start + ch2_size):
+        features[i] /= bigram_total
+
+    # ===== CHANNEL 3: Character trigram profiles + word structure =====
+    trigram_bins = ch3_size // 2
+    word_bins = ch3_size - trigram_bins
+
+    for i in range(len(text_lower) - 2):
+        c1 = ord(text_lower[i]) - 97
+        c2 = ord(text_lower[i + 1]) - 97
+        c3 = ord(text_lower[i + 2]) - 97
+        if 0 <= c1 < 26 and 0 <= c2 < 26 and 0 <= c3 < 26:
+            trigram_idx = (c1 * 676 + c2 * 26 + c3) % max(trigram_bins, 1)
+            features[ch3_start + trigram_idx] += 1.0
+
+    # Normalize trigrams
+    tri_total = max(sum(features[ch3_start:ch3_start + trigram_bins]), 1.0)
+    for i in range(ch3_start, ch3_start + trigram_bins):
+        features[i] /= tri_total
+
+    # Word-level structure features (no hashing of actual words)
+    words = text_lower.split()
     n_words = len(words)
-    avg_word_len = n_chars / max(n_words, 1)
-    n_sentences = text_lower.count('.') + text_lower.count('?') + text_lower.count('!')
-    n_commas = text_lower.count(',')
-    n_digits = sum(1 for c in text_lower if c.isdigit())
-    n_upper = sum(1 for c in text if c.isupper())
-    # Unique word ratio (vocabulary richness)
-    unique_words = len(set(words))
-    vocab_ratio = unique_words / max(n_words, 1)
+    word_base = ch3_start + trigram_bins
 
-    base = 3 * q
-    if base + 10 <= num_features:
-        features[base + 0] = min(n_chars / 500.0, 1.0)
-        features[base + 1] = min(n_words / 100.0, 1.0)
-        features[base + 2] = min(avg_word_len / 12.0, 1.0)
-        features[base + 3] = min(n_sentences / 10.0, 1.0)
-        features[base + 4] = 1.0 if '?' in text else 0.0
-        features[base + 5] = 1.0 if '!' in text else 0.0
-        features[base + 6] = min(n_commas / 10.0, 1.0)
-        features[base + 7] = min(n_digits / 20.0, 1.0)
-        features[base + 8] = min(n_upper / 20.0, 1.0)
-        features[base + 9] = vocab_ratio
+    if n_words > 0 and word_bins > 0:
+        # Word length distribution (bins for lengths 1-15+)
+        wl_bins = min(16, word_bins // 4)
+        for w in words:
+            wl = min(len(w), wl_bins) - 1
+            if 0 <= wl < wl_bins:
+                features[word_base + wl] += 1.0
+        for i in range(wl_bins):
+            features[word_base + i] /= n_words
 
-    # Content-type indicators
-    if base + 20 <= num_features:
-        features[base + 10] = 1.0 if any(c.isdigit() for c in text_lower) else 0.0
-        features[base + 11] = 1.0 if '(' in text_lower and ')' in text_lower else 0.0
-        features[base + 12] = 1.0 if ':' in text_lower else 0.0
-        features[base + 13] = min(text_lower.count('the') / 5.0, 1.0)
-        features[base + 14] = min(text_lower.count(' is ') / 3.0, 1.0)
-        features[base + 15] = min(text_lower.count(' not ') / 3.0, 1.0)
+        # Word initial letter distribution (a-z)
+        init_base = word_base + wl_bins
+        init_bins = min(26, max(word_bins - wl_bins, 0))
+        if init_bins > 0:
+            for w in words:
+                if w and 97 <= ord(w[0]) <= 122:
+                    li = ord(w[0]) - 97
+                    if li < init_bins:
+                        features[init_base + li] += 1.0
+            for i in range(init_bins):
+                features[init_base + i] /= max(n_words, 1)
 
-    # Remaining meta-quarter bins: word-length distribution hashing
-    for word in words:
-        wlen = min(len(word), q - 20)
-        if base + 20 + wlen < num_features:
-            features[base + 20 + wlen] += 0.3
+        # Word ending letter distribution
+        end_base = init_base + max(init_bins, 0)
+        end_bins = min(26, max(word_bins - wl_bins - max(init_bins, 0), 0))
+        if end_bins > 0:
+            for w in words:
+                if w and 97 <= ord(w[-1]) <= 122:
+                    li = ord(w[-1]) - 97
+                    if li < end_bins:
+                        features[end_base + li] += 1.0
+            for i in range(end_bins):
+                features[end_base + i] /= max(n_words, 1)
 
-    # Normalize to [0, 1]
-    max_val = max(features) if features else 1.0
-    if max_val > 0:
-        features = [v / max_val for v in features]
+        # Remaining word structure bins: vowel/consonant patterns
+        vc_base = end_base + max(end_bins, 0)
+        remaining = word_bins - wl_bins - max(init_bins, 0) - max(end_bins, 0)
+        if remaining > 0:
+            vowels = set('aeiou')
+            for pos in range(min(5, remaining)):
+                vowel_count = sum(1 for w in words if len(w) > pos and w[pos] in vowels)
+                features[vc_base + pos] = vowel_count / max(n_words, 1)
+
+    # ===== CHANNEL 4: Structural / meta features =====
+    meta_base = ch4_start
+    if not words:
+        words = []
+    if n_chars == 0:
+        n_chars = len(text_lower)
+    n_words = len(words)
+
+    # Text length features
+    if meta_base + 0 < num_inputs:
+        features[meta_base + 0] = min(n_chars / 1000.0, 1.0)
+    if meta_base + 1 < num_inputs:
+        features[meta_base + 1] = min(n_words / 200.0, 1.0) if n_words else 0.0
+    if meta_base + 2 < num_inputs:
+        features[meta_base + 2] = min(sum(len(w) for w in words) / max(n_words, 1) / 15.0, 1.0) if words else 0.0
+
+    # Sentence structure
+    sentences = max(text_lower.count('.') + text_lower.count('!') + text_lower.count('?'), 1)
+    if meta_base + 3 < num_inputs:
+        features[meta_base + 3] = min(sentences / 20.0, 1.0)
+    if meta_base + 4 < num_inputs:
+        features[meta_base + 4] = min(n_words / max(sentences, 1) / 30.0, 1.0)
+
+    # Vocabulary richness
+    unique_words = len(set(words)) if words else 0
+    if meta_base + 5 < num_inputs:
+        features[meta_base + 5] = unique_words / max(n_words, 1)
+    if meta_base + 6 < num_inputs:
+        features[meta_base + 6] = min(unique_words / 500.0, 1.0)
+
+    # Character class ratios
+    if meta_base + 7 < num_inputs:
+        features[meta_base + 7] = sum(1 for c in text_lower if c.isalpha()) / max(n_chars, 1)
+    if meta_base + 8 < num_inputs:
+        features[meta_base + 8] = sum(1 for c in text_lower if c.isdigit()) / max(n_chars, 1)
+    if meta_base + 9 < num_inputs:
+        features[meta_base + 9] = sum(1 for c in text_lower if c in '.,;:!?') / max(n_chars, 1)
+    if meta_base + 10 < num_inputs:
+        features[meta_base + 10] = sum(1 for c in text_lower if c == ' ') / max(n_chars, 1)
+
+    # Question/exclamation indicators
+    if meta_base + 11 < num_inputs:
+        features[meta_base + 11] = 1.0 if '?' in text_lower else 0.0
+    if meta_base + 12 < num_inputs:
+        features[meta_base + 12] = 1.0 if '!' in text_lower else 0.0
+    if meta_base + 13 < num_inputs:
+        features[meta_base + 13] = min(text_lower.count('"') / 10.0, 1.0)
+
+    # Uppercase ratio (from original text, before lowering)
+    original = text[:4000]
+    if meta_base + 14 < num_inputs:
+        features[meta_base + 14] = sum(1 for c in original if c.isupper()) / max(len(original), 1)
+
+    # Number presence
+    numbers = re.findall(r'\d+', text_lower)
+    if meta_base + 15 < num_inputs:
+        features[meta_base + 15] = min(len(numbers) / 10.0, 1.0)
+
+    # Domain indicator term sets (explicit feature detection, no hashing)
+    math_terms = {'equation', 'theorem', 'proof', 'integral', 'derivative',
+                  'algebra', 'calculus', 'matrix', 'vector', 'polynomial'}
+    science_terms = {'experiment', 'hypothesis', 'molecule', 'electron', 'quantum',
+                     'cell', 'dna', 'protein', 'energy', 'gravity'}
+    medical_terms = {'patient', 'diagnosis', 'treatment', 'symptom', 'disease',
+                     'clinical', 'surgery', 'therapy', 'medication', 'dose'}
+    legal_terms = {'court', 'plaintiff', 'defendant', 'statute', 'jurisdiction',
+                   'verdict', 'testimony', 'lawyer', 'judge', 'appeal'}
+    tech_terms = {'algorithm', 'database', 'function', 'variable', 'compiler',
+                  'server', 'api', 'protocol', 'encryption', 'software'}
+    finance_terms = {'market', 'stock', 'investment', 'portfolio', 'dividend',
+                     'revenue', 'profit', 'inflation', 'interest', 'bond'}
+    philosophy_terms = {'ethics', 'moral', 'metaphysics', 'epistemology', 'ontology',
+                        'consciousness', 'existence', 'virtue', 'logic', 'reasoning'}
+    literature_terms = {'novel', 'poem', 'author', 'narrative', 'character',
+                        'plot', 'metaphor', 'fiction', 'genre', 'literary'}
+
+    word_set = set(words)
+    domain_lists = [math_terms, science_terms, medical_terms, legal_terms,
+                    tech_terms, finance_terms, philosophy_terms, literature_terms]
+
+    for d_idx, terms in enumerate(domain_lists):
+        if meta_base + 16 + d_idx < num_inputs:
+            overlap = len(word_set & terms)
+            features[meta_base + 16 + d_idx] = min(overlap / 5.0, 1.0)
+
+    # Additional structural features in remaining meta bins
+    remaining_start = meta_base + 24
+    vowel_clusters = len(re.findall(r'[aeiou]+', text_lower))
+    if remaining_start < num_inputs:
+        features[remaining_start] = min(vowel_clusters / max(n_words, 1) / 3.0, 1.0)
+    if remaining_start + 1 < num_inputs:
+        features[remaining_start + 1] = min(vowel_clusters / max(n_words, 1) / 5.0, 1.0)
+    if remaining_start + 2 < num_inputs:
+        features[remaining_start + 2] = (
+            1.0 - min(sum(len(w) for w in words) / max(n_words, 1) / 10.0, 1.0)
+            if words else 0.5
+        )
+
+    # L2 normalize the entire vector (unit norm)
+    norm = math.sqrt(sum(v * v for v in features))
+    if norm > 0:
+        features = [v / norm for v in features]
 
     return features
 
 
-def encode_qa(question: str, choice: str, num_features: int = 256) -> list[float]:
-    """Encode a question+choice pair into features.
+def encode_qa(question: str, answer: str, num_features: int = 256) -> list[float]:
+    """Encode a question-answer pair into features.
 
-    Encodes question and answer separately into half-spaces to preserve
-    the distinction (previously they were concatenated and hashed together,
-    losing the question/answer boundary).
+    Concatenates question and answer with a separator token, then encodes
+    the combined text.  This preserves the boundary information via the
+    [SEP] marker while using the full feature space.
     """
-    half = num_features // 2
-    q_feats = text_to_features(question, half)
-    a_feats = text_to_features(choice, half)
-    return q_feats + a_feats
+    combined = f"{question} [SEP] {answer}"
+    return text_to_features(combined, num_features)
 
 
 # ---------------------------------------------------------------------------

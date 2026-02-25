@@ -569,7 +569,7 @@ typedef struct {
 /**
  * @brief Main mammillary bodies structure
  */
-typedef struct {
+typedef struct nimcp_mammillary {
     /* Configuration */
     mammillary_config_t config;
 

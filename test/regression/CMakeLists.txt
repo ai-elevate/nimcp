@@ -70,3 +70,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/neuralnet/CMakeLists.txt)
     message(STATUS "Adding Neuralnet Regression tests...")
     add_subdirectory(core/neuralnet)
 endif()
+
+# =============================================================================
+# Reasoning-Generation Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/reasoning_generation/CMakeLists.txt)
+    message(STATUS "Adding Reasoning-Generation Regression tests...")
+    add_subdirectory(reasoning_generation)
+endif()

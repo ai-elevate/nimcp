@@ -79,3 +79,19 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
     add_subdirectory(statistics)
 endif()
 
+# =============================================================================
+# Reasoning-Brain Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/reasoning/CMakeLists.txt)
+    message(STATUS "Adding Reasoning-Brain Integration tests...")
+    add_subdirectory(reasoning)
+endif()
+
+# =============================================================================
+# Generation Pipeline Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/generation/CMakeLists.txt)
+    message(STATUS "Adding Generation Pipeline Integration tests...")
+    add_subdirectory(generation)
+endif()
+

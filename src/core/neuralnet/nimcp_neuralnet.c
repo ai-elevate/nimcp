@@ -798,8 +798,9 @@ neural_network_t neural_network_create(const network_config_t* config)
         for (uint32_t l = 1; l < config->num_layers - 1; l++) {
             total_hidden += config->layer_sizes[l];
         }
-        uint32_t backbone_target = input_size * 4;
+        uint32_t backbone_target = output_size * 32;
         if (backbone_target < 1024) backbone_target = 1024;
+        if (backbone_target > 16384) backbone_target = 16384;
         uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
         backbone_connections = (uint64_t)backbone * (input_size + output_size);
     }
@@ -880,10 +881,13 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
 
         if (total_hidden > 0) {
-            // Backbone size: enough for diverse outputs, small enough for fast init.
-            // max(1024, input_size * 4) gives good coverage; cap at total_hidden.
-            uint32_t backbone_target = input_size * 4;
+            // Backbone size: scale with output dimension for good per-class coverage.
+            // Each output class gets backbone/output_size dedicated neurons for
+            // specialization. 32 backbone neurons per class is the sweet spot:
+            // enough for complex decision boundaries, small enough for fast init.
+            uint32_t backbone_target = output_size * 32;
             if (backbone_target < 1024) backbone_target = 1024;
+            if (backbone_target > 16384) backbone_target = 16384;
             uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
 
             // Evenly space backbone neurons across the hidden layer
@@ -2020,6 +2024,89 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
     }
 
     return total_modified;
+}
+
+/**
+ * @brief Apply lateral inhibition (winner-take-all) to output layer
+ *
+ * WHAT: Suppress non-winning output neurons to sharpen classification
+ * WHY:  Lateral inhibition creates competition between output neurons,
+ *        producing sharper class boundaries and faster convergence
+ * HOW:  Find maximum output, suppress others by inhibition_strength
+ *
+ * BIOLOGICAL BASIS:
+ * - Cortical lateral inhibition via GABAergic interneurons
+ * - Competitive learning in self-organizing maps
+ * - Winner-take-all circuits in basal ganglia
+ */
+uint32_t neural_network_apply_lateral_inhibition(
+    neural_network_t network,
+    uint32_t output_start,
+    uint32_t output_count,
+    float inhibition_strength)
+{
+    // Guard clauses
+    if (!network || output_count == 0) return 0;
+    if (inhibition_strength <= 0.0f) return 0;
+    if (inhibition_strength > 1.0f) inhibition_strength = 1.0f;
+
+    // Find the winner (max activation neuron)
+    float max_activation = -1e30f;
+    uint32_t winner_idx = 0;
+
+    for (uint32_t i = 0; i < output_count; i++) {
+        uint32_t nid = output_start + i;
+        if (nid >= network->num_neurons) break;
+        float act = network->neurons[nid].state;
+        if (act > max_activation) {
+            max_activation = act;
+            winner_idx = i;
+        }
+    }
+
+    // Compute mean activation for reference
+    float mean_activation = 0.0f;
+    uint32_t valid_count = 0;
+    for (uint32_t i = 0; i < output_count; i++) {
+        uint32_t nid = output_start + i;
+        if (nid >= network->num_neurons) break;
+        mean_activation += network->neurons[nid].state;
+        valid_count++;
+    }
+    if (valid_count == 0) return 0;
+    mean_activation /= (float)valid_count;
+
+    // Apply inhibition: suppress neurons below winner
+    // Use soft WTA: scale non-winners toward mean, don't zero them out
+    uint32_t modified = 0;
+    for (uint32_t i = 0; i < output_count; i++) {
+        if (i == winner_idx) continue;
+        uint32_t nid = output_start + i;
+        if (nid >= network->num_neurons) break;
+
+        float old_state = network->neurons[nid].state;
+        // Move non-winners toward mean by inhibition_strength fraction
+        float new_state = old_state + inhibition_strength * (mean_activation - old_state);
+        // Also reduce bias slightly to make inhibition persistent
+        network->neurons[nid].bias -= inhibition_strength * 0.001f *
+                                       fmaxf(0.0f, old_state - mean_activation);
+        network->neurons[nid].state = new_state;
+
+        if (fabsf(new_state - old_state) > 1e-6f) {
+            modified++;
+        }
+    }
+
+    // Boost winner slightly
+    uint32_t winner_nid = output_start + winner_idx;
+    if (winner_nid < network->num_neurons) {
+        network->neurons[winner_nid].state *= (1.0f + inhibition_strength * 0.1f);
+        // Clamp
+        if (network->neurons[winner_nid].state > 1.0f)
+            network->neurons[winner_nid].state = 1.0f;
+    }
+
+    return modified;
 }
 
 /**

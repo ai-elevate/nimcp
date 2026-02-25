@@ -1724,7 +1724,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
     // Phase GPU: GPU-accelerated learning path
     if (network->gpu_enabled && network->gpu_weight_cache &&
-        (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION)) {
+        (mode == LEARN_MODE_SUPERVISED || mode == LEARN_MODE_DISTILLATION || mode == LEARN_MODE_HYBRID)) {
         // 1. Sync weights to GPU if CPU biological learning modified them
         if (network->gpu_weight_cache->weights_dirty_on_cpu) {
             nimcp_gpu_weight_cache_upload(network->gpu_weight_cache,
@@ -1812,6 +1812,14 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
+
+        // 7. For HYBRID mode: apply biological plasticity after GPU backprop
+        if (mode == LEARN_MODE_HYBRID && network->base_network) {
+            float reward = fmaxf(0.0f, 1.0f - loss);
+            neural_network_apply_reward_learning(
+                network->base_network, reward, learning_rate * 0.1f,
+                network->total_learning_steps);
+        }
 
         free_hot_buffer(output);
         network->total_learning_steps++;
@@ -2028,6 +2036,182 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             float rl_reward = example->confidence;  // Direct reward signal
 
             neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
+            }
+            break;
+
+        case LEARN_MODE_HYBRID:
+            // =================================================================
+            // HYBRID LEARNING: Backpropagation + Biological Plasticity
+            // =================================================================
+            // WHAT: Supervised backprop followed by biological learning rules
+            // WHY:  Backprop provides fast gradient-based learning, while
+            //       biological plasticity (STDP/BCM/eligibility) adds
+            //       homeostatic regulation and temporal credit assignment
+            // HOW:  Phase 1 = MSE loss + full backprop (same as supervised)
+            //       Phase 2 = reward-modulated biological learning (STDP/BCM)
+            //
+            // BIOLOGICAL BASIS:
+            // - Cortical circuits use both error-driven and Hebbian learning
+            // - Dopamine-modulated STDP bridges reward with spike timing
+            // - BCM prevents weight saturation via sliding threshold
+            // =================================================================
+
+            // Phase 1: MSE loss computation (same as supervised)
+            for (uint32_t i = 0; i < example->target_size; i++) {
+                float error = output[i] - example->target[i];
+                loss += error * error;
+            }
+            loss /= example->target_size;
+
+            // Phase 2: Full backpropagation through all layers (same as supervised)
+            {
+                uint32_t num_layers = network->config.base_config.num_layers;
+                uint32_t* layer_sizes = network->config.base_config.layer_sizes;
+                if (num_layers >= 2 && layer_sizes) {
+                    // Compute layer offsets
+                    uint32_t layer_offsets[num_layers];
+                    layer_offsets[0] = 0;
+                    for (uint32_t l = 1; l < num_layers; l++)
+                        layer_offsets[l] = layer_offsets[l-1] + layer_sizes[l-1];
+
+                    uint32_t output_size = layer_sizes[num_layers - 1];
+                    uint32_t output_offset = layer_offsets[num_layers - 1];
+
+                    // Allocate delta buffers
+                    uint32_t max_layer = 0;
+                    for (uint32_t l = 0; l < num_layers; l++)
+                        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
+
+                    float* delta_cur = (float*)alloc_hot_buffer(max_layer * sizeof(float));
+                    float* delta_prev = (float*)alloc_hot_buffer(max_layer * sizeof(float));
+                    if (!delta_cur || !delta_prev) {
+                        if (delta_cur) free_hot_buffer(delta_cur);
+                        if (delta_prev) free_hot_buffer(delta_prev);
+                        break;
+                    }
+
+                    // --- Output layer deltas ---
+                    for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
+                        float error_j = example->target[j] - output[j];
+                        float sig_deriv = output[j] * (1.0f - output[j]);
+                        if (sig_deriv < 0.01f) sig_deriv = 0.01f;
+                        delta_cur[j] = error_j * sig_deriv;
+                    }
+
+                    // --- Backpropagate layer by layer (output -> first hidden) ---
+                    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
+                        uint32_t cur_offset = layer_offsets[layer];
+                        uint32_t cur_size = layer_sizes[layer];
+                        uint32_t prev_size = layer_sizes[layer - 1];
+
+                        float fan_in = (float)prev_size;
+                        float layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
+
+                        memset(delta_prev, 0, prev_size * sizeof(float));
+
+                        for (uint32_t j = 0; j < cur_size; j++) {
+                            if (layer == (int32_t)num_layers - 1 && j >= example->target_size)
+                                break;
+
+                            neuron_t* cur_n = neural_network_get_neuron(
+                                network->base_network, cur_offset + j);
+                            if (!cur_n) continue;
+
+                            float dj = delta_cur[j];
+                            if (dj > 1.0f) dj = 1.0f;
+                            if (dj < -1.0f) dj = -1.0f;
+
+                            for (uint32_t k = 0; k < NEURON_IN_COUNT(cur_n); k++) {
+                                synapse_handle_t* in_syn = NEURON_IN_HANDLE(cur_n, k);
+                                if (!in_syn) continue;
+
+                                uint32_t src_id = in_syn->target_neuron_id;
+                                neuron_t* src = neural_network_get_neuron(
+                                    network->base_network, src_id);
+                                if (!src) continue;
+
+                                float weight_delta = layer_lr * dj * src->state;
+                                if (weight_delta > 0.1f) weight_delta = 0.1f;
+                                if (weight_delta < -0.1f) weight_delta = -0.1f;
+
+                                in_syn->weight += weight_delta;
+
+                                for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
+                                    synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
+                                    if (out_syn && out_syn->target_neuron_id == cur_offset + j) {
+                                        out_syn->weight += weight_delta;
+                                        break;
+                                    }
+                                }
+
+                                uint32_t prev_offset = layer_offsets[layer - 1];
+                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
+                                    uint32_t prev_idx = src_id - prev_offset;
+                                    delta_prev[prev_idx] += in_syn->weight * dj;
+                                }
+                            }
+
+                            cur_n->bias += layer_lr * dj;
+                        }
+
+                        if (layer > 1) {
+                            uint32_t prev_offset = layer_offsets[layer - 1];
+                            for (uint32_t i = 0; i < prev_size; i++) {
+                                neuron_t* prev_n = neural_network_get_neuron(
+                                    network->base_network, prev_offset + i);
+                                if (!prev_n) continue;
+                                float s = prev_n->state;
+                                float act_deriv;
+                                switch (prev_n->activation_type) {
+                                    case ACTIVATION_RELU:
+                                        act_deriv = (s > 0.0f) ? 1.0f : 0.0f;
+                                        break;
+                                    case ACTIVATION_LEAKY_RELU:
+                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
+                                        break;
+                                    case ACTIVATION_TANH:
+                                        act_deriv = 1.0f - s * s;
+                                        break;
+                                    case ACTIVATION_SIGMOID:
+                                        act_deriv = s * (1.0f - s);
+                                        if (act_deriv < 0.01f) act_deriv = 0.01f;
+                                        break;
+                                    default:
+                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
+                                        break;
+                                }
+                                delta_prev[i] *= act_deriv;
+                            }
+
+                            float* tmp = delta_cur;
+                            delta_cur = delta_prev;
+                            delta_prev = tmp;
+                        }
+                    }
+
+                    free_hot_buffer(delta_cur);
+                    free_hot_buffer(delta_prev);
+
+                    // Phase 3: Biological plasticity AFTER backprop
+                    // Convert loss to reward: low loss = high reward = strong LTP
+                    float reward = fmaxf(0.0f, 1.0f - loss);
+                    neural_network_t base_hybrid = network->base_network;
+                    if (base_hybrid) {
+                        // Use 10% of learning rate for biological rules to prevent
+                        // bio-plasticity from overwhelming backprop gradients
+                        neural_network_apply_reward_learning(
+                            base_hybrid, reward, learning_rate * 0.1f,
+                            network->total_learning_steps);
+                    }
+
+                    // Phase 4: Lateral inhibition on output layer for sharper classification
+                    if (network->base_network) {
+                        neural_network_apply_lateral_inhibition(
+                            network->base_network,
+                            output_offset, output_size,
+                            0.3f);  // Moderate inhibition strength
+                    }
+                }
             }
             break;
     }

@@ -3063,6 +3063,14 @@ add_e2e_test(e2e_test_srp_split
     ${CMAKE_CURRENT_SOURCE_DIR}/srp_split/test_srp_split_e2e.cpp
 )
 
+# =============================================================================
+# Query-to-Answer E2E Test (Reasoning + Language Generation Pipeline)
+# =============================================================================
+add_e2e_test(e2e_test_query_to_answer
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_query_to_answer_e2e.cpp
+)
+
 # Include Utils E2E test subdirectory (Memory + Health Agent)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/utils/CMakeLists.txt)
     message(STATUS "Adding Utils E2E tests...")

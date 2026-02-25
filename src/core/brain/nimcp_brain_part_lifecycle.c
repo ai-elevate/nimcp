@@ -345,6 +345,14 @@ void brain_destroy(brain_t brain)
         brain->multihead_attention = NULL;
     }
 
+    // Phase 3.1: Cleanup attention-plasticity bridge
+    if (brain->attention_plasticity) {
+        attention_plasticity_destroy(
+            (attention_plasticity_bridge_t*)brain->attention_plasticity);
+        brain->attention_plasticity = NULL;
+        brain->attention_training_enabled = false;
+    }
+
 
     // Phase 2 Middleware: Cleanup spike analysis and population coding
     if (brain->spike_feature_extractor) {

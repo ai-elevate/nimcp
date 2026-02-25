@@ -32,6 +32,7 @@ All output goes to file, no interactive prompts.
 
 import gc
 import json
+import math
 import os
 import random
 import sys
@@ -122,8 +123,8 @@ except ImportError:
 # Configuration
 # ---------------------------------------------------------------------------
 ATHENA_NEURONS = 1_500_000
-ATHENA_NUM_INPUTS = 256
-ATHENA_NUM_OUTPUTS = 128
+ATHENA_NUM_INPUTS = 1024    # Was 256 — increased for collision-free encoding
+ATHENA_NUM_OUTPUTS = 256    # Was 128 — increased to eliminate label overflow
 
 # Output paths
 ATHENA_MODEL_DIR = PROJECT_ROOT / "models" / "pretrained" / "athena" / "v1.0"
@@ -138,6 +139,121 @@ PHASE2_MAX_PER_DATASET = 50_000   # Max examples per streaming dataset
 PHASE2_BATCH_SIZE = 1000          # Streaming batch size
 PHASE2_CHECKPOINT_INTERVAL = 10_000  # Checkpoint every N examples
 INTROSPECTION_INTERVAL = 5000     # Metacognitive check every N examples
+
+
+# ---------------------------------------------------------------------------
+# Learning Rate Scheduling — Cosine Annealing with Warm Restarts
+# ---------------------------------------------------------------------------
+
+class CosineAnnealingLR:
+    """Cosine annealing learning rate scheduler with warm restarts.
+
+    BIOLOGICAL BASIS: Learning rate should decrease over time (like synaptic
+    scaling), with periodic restarts (like sleep/consolidation cycles).
+    """
+    def __init__(self, base_lr: float = 0.5, min_lr: float = 0.05,
+                 cycle_steps: int = 5000, warmup_steps: int = 500):
+        self.base_lr = base_lr
+        self.min_lr = min_lr
+        self.cycle_steps = cycle_steps
+        self.warmup_steps = warmup_steps
+        self.step_count = 0
+
+    def get_lr(self) -> float:
+        self.step_count += 1
+
+        # Warmup phase: linear ramp from min_lr to base_lr
+        if self.step_count <= self.warmup_steps:
+            return self.min_lr + (self.base_lr - self.min_lr) * (self.step_count / self.warmup_steps)
+
+        # Cosine annealing with warm restarts
+        cycle_pos = (self.step_count - self.warmup_steps) % self.cycle_steps
+        cosine_factor = 0.5 * (1.0 + math.cos(math.pi * cycle_pos / self.cycle_steps))
+        return self.min_lr + (self.base_lr - self.min_lr) * cosine_factor
+
+    def reset(self):
+        self.step_count = 0
+
+
+# ---------------------------------------------------------------------------
+# Curriculum Learning — Developmental Domain Progression
+# ---------------------------------------------------------------------------
+
+class CurriculumManager:
+    """Curriculum learning: start with fewer, easier classes, gradually add more.
+
+    BIOLOGICAL BASIS: Biological learning proceeds from simple to complex
+    (developmental psychology, Zone of Proximal Development).
+
+    Phase 1 (steps 0-2000): 8 domains (core academics)
+    Phase 2 (steps 2000-5000): 16 domains (+ professional)
+    Phase 3 (steps 5000+): All domains
+    """
+    def __init__(self, all_domains: list):
+        self.all_domains = all_domains
+        self.step = 0
+        # Sort domains by estimated difficulty (simpler first)
+        self.easy_domains = ['math', 'science', 'language', 'history',
+                            'geography', 'general', 'reading', 'coding']
+        self.medium_domains = ['medicine', 'law', 'finance', 'philosophy',
+                               'ethics', 'psychology', 'engineering', 'statistics']
+        self.hard_domains = [d for d in all_domains
+                            if d not in self.easy_domains and d not in self.medium_domains]
+
+    def get_active_domains(self) -> list:
+        self.step += 1
+        if self.step <= 2000:
+            return self.easy_domains
+        elif self.step <= 5000:
+            return self.easy_domains + self.medium_domains
+        else:
+            return self.all_domains
+
+    def should_include(self, domain: str) -> bool:
+        active = self.get_active_domains()
+        self.step -= 1  # Don't double-count (get_active_domains incremented)
+        return domain in active or domain.split(':')[0] in active
+
+
+# ---------------------------------------------------------------------------
+# Hard Example Mining — Hippocampal Replay of Difficult Items
+# ---------------------------------------------------------------------------
+
+class HardExampleMiner:
+    """Track and replay high-loss training examples.
+
+    BIOLOGICAL BASIS: Difficult experiences get more hippocampal replay
+    (Olafsdottir et al. 2018). Spaced repetition for hard items.
+    """
+    def __init__(self, capacity: int = 5000, replay_ratio: float = 0.2):
+        self.capacity = capacity
+        self.replay_ratio = replay_ratio  # Fraction of batch from hard examples
+        self.hard_examples = []  # List of (features, label, loss) tuples
+        self.min_loss_threshold = 0.3  # Only store examples with loss > threshold
+
+    def record(self, features: list, label: str, loss: float):
+        """Record a training example and its loss."""
+        if loss > self.min_loss_threshold:
+            self.hard_examples.append((features, label, loss))
+            # Keep only the hardest examples
+            if len(self.hard_examples) > self.capacity:
+                self.hard_examples.sort(key=lambda x: x[2], reverse=True)
+                self.hard_examples = self.hard_examples[:self.capacity]
+
+    def get_replay_batch(self, batch_size: int) -> list:
+        """Get a batch of hard examples for replay."""
+        replay_count = max(1, int(batch_size * self.replay_ratio))
+        if len(self.hard_examples) < replay_count:
+            return list(self.hard_examples)
+        return random.sample(self.hard_examples, replay_count)
+
+    def decay(self, factor: float = 0.95):
+        """Decay stored losses (so old hard examples eventually drop out)."""
+        for i in range(len(self.hard_examples)):
+            f, l, loss = self.hard_examples[i]
+            self.hard_examples[i] = (f, l, loss * factor)
+        self.hard_examples = [x for x in self.hard_examples if x[2] > self.min_loss_threshold * 0.5]
+
 
 # ---------------------------------------------------------------------------
 # Domain-Prefixed Labels — Prevent cross-domain label collision
@@ -433,8 +549,22 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
         adapt_dataset_labels(examples, domain_name)
         all_datasets.append((domain_name, examples))
 
+    # Initialize training strategy components
+    all_domain_names = [name for name, _ in all_datasets]
+    scheduler = CosineAnnealingLR(base_lr=0.5, min_lr=0.05,
+                                  cycle_steps=5000, warmup_steps=500)
+    curriculum = CurriculumManager(all_domain_names)
+    hard_miner = HardExampleMiner(capacity=5000, replay_ratio=0.2)
+
+    logger.log(f"  Training strategy: CosineAnnealingLR + CurriculumManager + HardExampleMiner")
+
     total_trained = 0
     for ds_name, examples in all_datasets:
+        # Curriculum gating: skip datasets not in the current phase
+        if not curriculum.should_include(ds_name):
+            logger.log(f"  {ds_name}: DEFERRED by curriculum (step {curriculum.step})")
+            continue
+
         t0 = time.time()
         n_examples = len(examples) * PHASE0_EPOCHS
         logger.log(f"  {ds_name}: {len(examples)} examples × {PHASE0_EPOCHS} epochs")
@@ -443,13 +573,71 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
         # predict, making it ~100x slower than learn alone). Phase 0 is just warm-up.
         for epoch in range(PHASE0_EPOCHS):
             for ex in examples:
-                brain.learn(ex["features"], str(ex["label"]))
+                lr = scheduler.get_lr()
+                brain.learn(ex["features"], str(ex["label"]), lr)
                 total_trained += 1
+
+                # Record for hard example mining (estimate loss from LR —
+                # higher LR during warmup suggests the brain is more uncertain)
+                estimated_loss = 1.0 - lr  # Rough proxy during warm-up
+                hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
+
+            # Replay hard examples at the end of each epoch
+            replay_batch = hard_miner.get_replay_batch(batch_size=50)
+            for feats, label, _loss in replay_batch:
+                replay_lr = scheduler.get_lr()
+                brain.learn(feats, label, replay_lr * 0.8)  # Slightly lower LR for replay
+                total_trained += 1
+
+        # Decay hard example losses between datasets
+        hard_miner.decay(factor=0.95)
 
         elapsed = time.time() - t0
         rate = n_examples / max(elapsed, 0.01)
-        logger.log(f"    → {ds_name} done: {n_examples} steps in {elapsed:.1f}s "
+        logger.log(f"    -> {ds_name} done: {n_examples} steps in {elapsed:.1f}s "
+                   f"({rate:.0f} steps/s), lr={scheduler.get_lr():.4f}, "
+                   f"hard_bank={len(hard_miner.hard_examples)}")
+        # Undo the extra get_lr() call from the log line
+        scheduler.step_count -= 1
+
+    # Second pass: teach any domains deferred by curriculum
+    curriculum.step = 5001  # Force all domains active for second pass
+    for ds_name, examples in all_datasets:
+        # Only teach domains that were skipped in the first pass
+        if ds_name in all_domain_names[:len(curriculum.easy_domains)]:
+            continue  # Already taught
+
+        t0 = time.time()
+        n_examples = len(examples) * PHASE0_EPOCHS
+        logger.log(f"  {ds_name} (deferred): {len(examples)} examples × {PHASE0_EPOCHS} epochs")
+
+        for epoch in range(PHASE0_EPOCHS):
+            for ex in examples:
+                lr = scheduler.get_lr()
+                brain.learn(ex["features"], str(ex["label"]), lr)
+                total_trained += 1
+                estimated_loss = 1.0 - lr
+                hard_miner.record(ex["features"], str(ex["label"]), estimated_loss)
+
+            replay_batch = hard_miner.get_replay_batch(batch_size=50)
+            for feats, label, _loss in replay_batch:
+                replay_lr = scheduler.get_lr()
+                brain.learn(feats, label, replay_lr * 0.8)
+                total_trained += 1
+
+        hard_miner.decay(factor=0.95)
+        elapsed = time.time() - t0
+        rate = n_examples / max(elapsed, 0.01)
+        logger.log(f"    -> {ds_name} done: {n_examples} steps in {elapsed:.1f}s "
                    f"({rate:.0f} steps/s)")
+
+    # Final hard example replay pass
+    if hard_miner.hard_examples:
+        logger.log(f"  Final hard example replay: {len(hard_miner.hard_examples)} items")
+        for feats, label, _loss in hard_miner.hard_examples[:500]:
+            lr = scheduler.get_lr()
+            brain.learn(feats, label, lr)
+            total_trained += 1
 
     # Quick accuracy probe (predict is expensive, so only test 5 per dataset)
     logger.log("  Phase 0 accuracy probe...")
@@ -468,7 +656,9 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
 
     # Quick consolidation — warm-up, replay only
     cognitive.consolidate(mode="light")
-    logger.log(f"Phase 0 complete — {total_trained:,} warm-up steps")
+    logger.log(f"Phase 0 complete — {total_trained:,} warm-up steps, "
+               f"LR scheduler steps={scheduler.step_count}, "
+               f"hard examples mined={len(hard_miner.hard_examples)}")
     return total_trained
 
 
@@ -755,6 +945,13 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
     domain_order = {d: i for i, d in enumerate(priority)}
     hf_datasets.sort(key=lambda d: domain_order.get(d.get("domain", "general"), 999))
 
+    # Initialize training strategy components for Phase 2
+    phase2_scheduler = CosineAnnealingLR(base_lr=0.5, min_lr=0.05,
+                                         cycle_steps=10000, warmup_steps=1000)
+    phase2_curriculum = CurriculumManager(available_domains)
+    phase2_miner = HardExampleMiner(capacity=5000, replay_ratio=0.2)
+    logger.log(f"  Phase 2 strategy: CosineAnnealingLR + CurriculumManager + HardExampleMiner")
+
     if STREAMING_AVAILABLE:
         stream_config = StreamConfig(
             batch_size=PHASE2_BATCH_SIZE,
@@ -769,10 +966,18 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
         )
 
         examples_since_introspection = 0
+        deferred_datasets = []  # Datasets deferred by curriculum
 
         for ds_config in hf_datasets:
             name = ds_config["name"]
             domain = ds_config.get("domain", "general")
+
+            # Curriculum gating: defer datasets whose domain is not yet active
+            if not phase2_curriculum.should_include(domain):
+                deferred_datasets.append(ds_config)
+                logger.log(f"\n--- Deferred by curriculum: {name} [{domain}] ---")
+                continue
+
             logger.log(f"\n--- Streaming: {name} [{domain}] "
                         f"(mastery={socratic.mastery.mastery(domain):.3f}) ---")
 
@@ -797,12 +1002,22 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                         continue
 
                     features, label = result
+                    prefixed_label = domain_label(domain, label)
+
                     # Socratic: predict-before-learn per example
                     # Domain-prefix label to prevent cross-domain collision
-                    socratic.train_example(features, domain_label(domain, label), domain)
+                    socratic.train_example(features, prefixed_label, domain)
                     count += 1
                     total_trained += 1
                     examples_since_introspection += 1
+
+                    # Record for hard example mining (estimate loss from prediction)
+                    try:
+                        pred, conf = brain.predict_fast(features)
+                        est_loss = 0.0 if str(pred) == str(prefixed_label) else (1.0 - conf)
+                    except Exception:
+                        est_loss = 0.5
+                    phase2_miner.record(features, prefixed_label, est_loss)
 
                     if count >= PHASE2_MAX_PER_DATASET:
                         break
@@ -818,6 +1033,14 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                             domain, socratic.mastery.mastery(domain),
                             0.0, INTROSPECTION_INTERVAL)
                         examples_since_introspection = 0
+
+                        # Replay hard examples during introspection pauses
+                        replay_batch = phase2_miner.get_replay_batch(batch_size=20)
+                        for r_feats, r_label, _r_loss in replay_batch:
+                            r_lr = phase2_scheduler.get_lr()
+                            brain.learn(r_feats, r_label, r_lr)
+                            total_trained += 1
+                        phase2_miner.decay(factor=0.95)
 
                     if count % 10000 == 0:
                         logger.log(f"  {name}: {count:,} examples, "
@@ -845,6 +1068,52 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                 logger.log(f"  Checkpoint save failed: {e}")
 
             gc.collect()
+
+        # Second pass: teach deferred datasets (curriculum now allows all)
+        if deferred_datasets:
+            logger.log(f"\n--- Teaching {len(deferred_datasets)} curriculum-deferred datasets ---")
+            phase2_curriculum.step = 5001  # Force all domains active
+            for ds_config in deferred_datasets:
+                name = ds_config["name"]
+                domain = ds_config.get("domain", "general")
+                logger.log(f"\n--- Deferred: {name} [{domain}] ---")
+                try:
+                    dataset = processor.load_streaming_dataset(ds_config)
+                    if dataset is None:
+                        continue
+                    stream = iter(dataset)
+                    count = 0
+                    for example in stream:
+                        result = processor.extract_features_and_label(example, domain)
+                        if result is None:
+                            continue
+                        features, label = result
+                        prefixed_label = domain_label(domain, label)
+                        socratic.train_example(features, prefixed_label, domain)
+                        count += 1
+                        total_trained += 1
+                        # Hard example mining for deferred datasets too
+                        try:
+                            pred, conf = brain.predict_fast(features)
+                            est_loss = 0.0 if str(pred) == str(prefixed_label) else (1.0 - conf)
+                        except Exception:
+                            est_loss = 0.5
+                        phase2_miner.record(features, prefixed_label, est_loss)
+                        if count >= PHASE2_MAX_PER_DATASET:
+                            break
+                    logger.log(f"  {name}: {count:,} deferred examples")
+                except Exception as e:
+                    logger.log(f"  {name}: ERROR — {e}")
+                gc.collect()
+
+        # Final hard example replay for Phase 2
+        if phase2_miner.hard_examples:
+            replay_count = min(500, len(phase2_miner.hard_examples))
+            logger.log(f"\n  Phase 2 hard example replay: {replay_count} items")
+            for feats, label, _loss in phase2_miner.hard_examples[:replay_count]:
+                lr = phase2_scheduler.get_lr()
+                brain.learn(feats, label, lr)
+                total_trained += 1
     else:
         # Fallback: minimal streaming with Socratic training
         logger.log("Using fallback streaming (Socratic per-example)")
@@ -1308,6 +1577,13 @@ def main():
             neuron_count=ATHENA_NEURONS,
         )
         logger.log(f"Neuron count: {brain.get_neuron_count():,}")
+
+    # Enable multi-network ensemble training (LNN + CNN alongside adaptive SNN)
+    try:
+        brain.enable_multi_network()
+        logger.log("Enabled multi-network ensemble training (Adaptive + LNN + CNN)")
+    except Exception as e:
+        logger.log(f"Multi-network training not available: {e}")
 
     # Verify GPU status
     try:

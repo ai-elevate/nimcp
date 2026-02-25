@@ -16,7 +16,6 @@ Features:
 - Memory-efficient cleanup
 """
 
-import hashlib
 import json
 import os
 import sys
@@ -758,30 +757,196 @@ class StreamingDatasetProcessor:
             return text_to_features(text, num_features)
         except ImportError:
             pass
-        # Inline fallback if benchmark_datasets unavailable
+        # Inline fallback — collision-free character n-gram encoding
+        import math as _math
+        import re as _re
         features = [0.0] * num_features
-        text_lower = text.lower().strip()
+        if not text:
+            return features
+        text_lower = text[:4000].lower().strip()
         if not text_lower:
             return features
-        q = num_features // 4
+
+        ch1_size = int(num_features * 0.30)
+        ch2_size = int(num_features * 0.30)
+        ch3_size = int(num_features * 0.25)
+        ch1_start = 0
+        ch2_start = ch1_size
+        ch3_start = ch2_start + ch2_size
+        ch4_start = ch3_start + ch3_size
+
+        # Channel 1: character unigram frequencies (explicit bins)
+        n_chars = len(text_lower)
         for ch in text_lower:
-            features[ord(ch) % q] += 1.0
+            code = ord(ch)
+            if 97 <= code <= 122:
+                idx = code - 97
+            elif 48 <= code <= 57:
+                idx = 26 + (code - 48)
+            elif ch in ' \t\n':
+                idx = 36
+            elif ch in '.,;:!?':
+                idx = 37 + min(ord(ch) % 6, 5)
+            elif ch in '"\'`()[]{}':
+                idx = 43
+            elif ch in '-_/\\|':
+                idx = 44
+            elif ch in '@#$%^&*~':
+                idx = 45
+            elif ch in '+=<>':
+                idx = 46
+            elif 192 <= code <= 687:
+                idx = 47 + ((code - 192) % min(max(ch1_size - 48, 1), 16))
+            else:
+                idx = min(ch1_size - 1, 47)
+            if idx < ch1_size:
+                features[ch1_start + idx] += 1.0
+        if n_chars > 0:
+            for i in range(ch1_start, ch1_start + ch1_size):
+                features[i] /= n_chars
+
+        # Channel 2: character bigram frequencies (explicit bins)
         for i in range(len(text_lower) - 1):
-            bigram = text_lower[i:i + 2]
-            h = int(hashlib.md5(bigram.encode()).hexdigest(), 16)
-            features[q + (h % q)] += 1.0
+            c1 = ord(text_lower[i]) - 97
+            c2 = ord(text_lower[i + 1]) - 97
+            if 0 <= c1 < 26 and 0 <= c2 < 26:
+                bigram_idx = (c1 * 26 + c2) % ch2_size
+                features[ch2_start + bigram_idx] += 1.0
+        bigram_total = max(sum(features[ch2_start:ch2_start + ch2_size]), 1.0)
+        for i in range(ch2_start, ch2_start + ch2_size):
+            features[i] /= bigram_total
+
+        # Channel 3: character trigrams + word structure
+        trigram_bins = ch3_size // 2
+        word_bins = ch3_size - trigram_bins
+        for i in range(len(text_lower) - 2):
+            c1 = ord(text_lower[i]) - 97
+            c2 = ord(text_lower[i + 1]) - 97
+            c3 = ord(text_lower[i + 2]) - 97
+            if 0 <= c1 < 26 and 0 <= c2 < 26 and 0 <= c3 < 26:
+                trigram_idx = (c1 * 676 + c2 * 26 + c3) % max(trigram_bins, 1)
+                features[ch3_start + trigram_idx] += 1.0
+        tri_total = max(sum(features[ch3_start:ch3_start + trigram_bins]), 1.0)
+        for i in range(ch3_start, ch3_start + trigram_bins):
+            features[i] /= tri_total
+
         words = text_lower.split()
-        for wi, word in enumerate(words):
-            h = int(hashlib.md5(word.encode()).hexdigest(), 16)
-            features[2 * q + (h % q)] += 1.0
-            features[2 * q + ((h >> 16) % q)] += (wi + 1) * 0.05
-        for i in range(len(words) - 1):
-            pair = f"{words[i]} {words[i+1]}"
-            h = int(hashlib.md5(pair.encode()).hexdigest(), 16)
-            features[2 * q + (h % q)] += 0.7
-        mx = max(features) if features else 1.0
-        if mx > 0:
-            features = [v / mx for v in features]
+        n_words = len(words)
+        word_base = ch3_start + trigram_bins
+        if n_words > 0 and word_bins > 0:
+            wl_bins = min(16, word_bins // 4)
+            for w in words:
+                wl = min(len(w), wl_bins) - 1
+                if 0 <= wl < wl_bins:
+                    features[word_base + wl] += 1.0
+            for i in range(wl_bins):
+                features[word_base + i] /= n_words
+            init_base = word_base + wl_bins
+            init_bins = min(26, max(word_bins - wl_bins, 0))
+            if init_bins > 0:
+                for w in words:
+                    if w and 97 <= ord(w[0]) <= 122:
+                        li = ord(w[0]) - 97
+                        if li < init_bins:
+                            features[init_base + li] += 1.0
+                for i in range(init_bins):
+                    features[init_base + i] /= max(n_words, 1)
+            end_base = init_base + max(init_bins, 0)
+            end_bins = min(26, max(word_bins - wl_bins - max(init_bins, 0), 0))
+            if end_bins > 0:
+                for w in words:
+                    if w and 97 <= ord(w[-1]) <= 122:
+                        li = ord(w[-1]) - 97
+                        if li < end_bins:
+                            features[end_base + li] += 1.0
+                for i in range(end_bins):
+                    features[end_base + i] /= max(n_words, 1)
+            vc_base = end_base + max(end_bins, 0)
+            remaining = word_bins - wl_bins - max(init_bins, 0) - max(end_bins, 0)
+            if remaining > 0:
+                vowels = set('aeiou')
+                for pos in range(min(5, remaining)):
+                    vowel_count = sum(1 for w in words if len(w) > pos and w[pos] in vowels)
+                    features[vc_base + pos] = vowel_count / max(n_words, 1)
+
+        # Channel 4: structural / meta features
+        meta_base = ch4_start
+        if meta_base + 0 < num_features:
+            features[meta_base + 0] = min(n_chars / 1000.0, 1.0)
+        if meta_base + 1 < num_features:
+            features[meta_base + 1] = min(n_words / 200.0, 1.0) if n_words else 0.0
+        if meta_base + 2 < num_features:
+            features[meta_base + 2] = min(sum(len(w) for w in words) / max(n_words, 1) / 15.0, 1.0) if words else 0.0
+        sentences = max(text_lower.count('.') + text_lower.count('!') + text_lower.count('?'), 1)
+        if meta_base + 3 < num_features:
+            features[meta_base + 3] = min(sentences / 20.0, 1.0)
+        if meta_base + 4 < num_features:
+            features[meta_base + 4] = min(n_words / max(sentences, 1) / 30.0, 1.0)
+        unique_words = len(set(words)) if words else 0
+        if meta_base + 5 < num_features:
+            features[meta_base + 5] = unique_words / max(n_words, 1)
+        if meta_base + 6 < num_features:
+            features[meta_base + 6] = min(unique_words / 500.0, 1.0)
+        if meta_base + 7 < num_features:
+            features[meta_base + 7] = sum(1 for c in text_lower if c.isalpha()) / max(n_chars, 1)
+        if meta_base + 8 < num_features:
+            features[meta_base + 8] = sum(1 for c in text_lower if c.isdigit()) / max(n_chars, 1)
+        if meta_base + 9 < num_features:
+            features[meta_base + 9] = sum(1 for c in text_lower if c in '.,;:!?') / max(n_chars, 1)
+        if meta_base + 10 < num_features:
+            features[meta_base + 10] = sum(1 for c in text_lower if c == ' ') / max(n_chars, 1)
+        if meta_base + 11 < num_features:
+            features[meta_base + 11] = 1.0 if '?' in text_lower else 0.0
+        if meta_base + 12 < num_features:
+            features[meta_base + 12] = 1.0 if '!' in text_lower else 0.0
+        if meta_base + 13 < num_features:
+            features[meta_base + 13] = min(text_lower.count('"') / 10.0, 1.0)
+        original = text[:4000]
+        if meta_base + 14 < num_features:
+            features[meta_base + 14] = sum(1 for c in original if c.isupper()) / max(len(original), 1)
+        numbers = _re.findall(r'\d+', text_lower)
+        if meta_base + 15 < num_features:
+            features[meta_base + 15] = min(len(numbers) / 10.0, 1.0)
+
+        math_terms = {'equation', 'theorem', 'proof', 'integral', 'derivative',
+                      'algebra', 'calculus', 'matrix', 'vector', 'polynomial'}
+        science_terms = {'experiment', 'hypothesis', 'molecule', 'electron', 'quantum',
+                         'cell', 'dna', 'protein', 'energy', 'gravity'}
+        medical_terms = {'patient', 'diagnosis', 'treatment', 'symptom', 'disease',
+                         'clinical', 'surgery', 'therapy', 'medication', 'dose'}
+        legal_terms = {'court', 'plaintiff', 'defendant', 'statute', 'jurisdiction',
+                       'verdict', 'testimony', 'lawyer', 'judge', 'appeal'}
+        tech_terms = {'algorithm', 'database', 'function', 'variable', 'compiler',
+                      'server', 'api', 'protocol', 'encryption', 'software'}
+        finance_terms = {'market', 'stock', 'investment', 'portfolio', 'dividend',
+                         'revenue', 'profit', 'inflation', 'interest', 'bond'}
+        philosophy_terms = {'ethics', 'moral', 'metaphysics', 'epistemology', 'ontology',
+                            'consciousness', 'existence', 'virtue', 'logic', 'reasoning'}
+        literature_terms = {'novel', 'poem', 'author', 'narrative', 'character',
+                            'plot', 'metaphor', 'fiction', 'genre', 'literary'}
+        word_set = set(words)
+        domain_lists = [math_terms, science_terms, medical_terms, legal_terms,
+                        tech_terms, finance_terms, philosophy_terms, literature_terms]
+        for d_idx, terms in enumerate(domain_lists):
+            if meta_base + 16 + d_idx < num_features:
+                overlap = len(word_set & terms)
+                features[meta_base + 16 + d_idx] = min(overlap / 5.0, 1.0)
+
+        remaining_start = meta_base + 24
+        vowel_clusters = len(_re.findall(r'[aeiou]+', text_lower))
+        if remaining_start < num_features:
+            features[remaining_start] = min(vowel_clusters / max(n_words, 1) / 3.0, 1.0)
+        if remaining_start + 1 < num_features:
+            features[remaining_start + 1] = min(vowel_clusters / max(n_words, 1) / 5.0, 1.0)
+        if remaining_start + 2 < num_features:
+            features[remaining_start + 2] = (
+                1.0 - min(sum(len(w) for w in words) / max(n_words, 1) / 10.0, 1.0)
+                if words else 0.5
+            )
+
+        norm = _math.sqrt(sum(v * v for v in features))
+        if norm > 0:
+            features = [v / norm for v in features]
         return features
 
     def _extract_text_and_label(self, example: Dict, domain: str) -> Optional[tuple]:

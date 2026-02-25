@@ -582,7 +582,7 @@ int lnn_gradient_adjoint_step(
         return LNN_ERROR_NULL_POINTER;
     }
 
-    // Get network and first layer (simplified - assumes single layer)
+    // Get network
     lnn_network_t* network = ctx->network;
     if (!network || !network->layers || network->n_layers == 0) {
         NIMCP_LOGGING_ERROR("Invalid network structure");
@@ -591,25 +591,71 @@ int lnn_gradient_adjoint_step(
         return LNN_ERROR_INVALID_STATE;
     }
 
-    lnn_layer_t* layer = network->layers[0];
+    // For multi-layer networks, use the output layer (last layer) whose
+    // n_neurons matches the adjoint dimension (n_outputs).  The full
+    // state history x is a concatenation of all layers' states; extract
+    // the slice corresponding to the output layer.
+    lnn_layer_t* layer = network->layers[network->n_layers - 1];
+    uint32_t adjoint_dim = nimcp_tensor_numel(adjoint);
 
-    // Compute Jacobian ∂f/∂x at current state
+    // Dimension guard: adjoint must match the chosen layer's neuron count
+    if (adjoint_dim != layer->n_neurons) {
+        NIMCP_LOGGING_WARN("Adjoint dim %u != layer n_neurons %u (multi-layer mismatch)",
+                           adjoint_dim, layer->n_neurons);
+        // Fall back: copy adjoint unchanged (identity step)
+        size_t numel_fb = nimcp_tensor_numel(adjoint);
+        const float* src = (const float*)nimcp_tensor_data_const(adjoint);
+        float* dst = (float*)nimcp_tensor_data(adjoint_next);
+        if (src && dst) {
+            for (size_t i = 0; i < numel_fb; i++) dst[i] = src[i];
+        }
+        return LNN_SUCCESS;
+    }
+
+    // Extract the output layer's state slice from the concatenated state.
+    // State layout: [layer0 | layer1 | ... | layerN-1]
+    uint32_t state_offset = 0;
+    for (uint32_t i = 0; i < network->n_layers - 1; i++) {
+        state_offset += network->layers[i]->n_neurons;
+    }
+    uint32_t state_dim = nimcp_tensor_numel(x);
+    nimcp_tensor_t* x_layer = NULL;
+    if (state_offset + layer->n_neurons <= state_dim) {
+        uint32_t sl_dims[1] = {layer->n_neurons};
+        x_layer = nimcp_tensor_create(sl_dims, 1, NIMCP_DTYPE_F32);
+        if (x_layer) {
+            const float* x_data = (const float*)nimcp_tensor_data_const(x);
+            float* xl_data = (float*)nimcp_tensor_data(x_layer);
+            for (uint32_t i = 0; i < layer->n_neurons; i++) {
+                xl_data[i] = x_data[state_offset + i];
+            }
+        }
+    }
+    if (!x_layer) {
+        // Cannot extract slice — copy adjoint unchanged
+        size_t numel_fb = nimcp_tensor_numel(adjoint);
+        const float* src = (const float*)nimcp_tensor_data_const(adjoint);
+        float* dst = (float*)nimcp_tensor_data(adjoint_next);
+        if (src && dst) {
+            for (size_t i = 0; i < numel_fb; i++) dst[i] = src[i];
+        }
+        return LNN_SUCCESS;
+    }
+
+    // Compute Jacobian ∂f/∂x at output layer state
     nimcp_tensor_t* jacobian = nimcp_tensor_create(
         (uint32_t[]){layer->n_neurons, layer->n_neurons}, 2, NIMCP_DTYPE_F32
     );
     if (!jacobian) {
         NIMCP_LOGGING_ERROR("Failed to allocate Jacobian");
-        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
-                          layer->n_neurons * layer->n_neurons * sizeof(float),
-                          "Failed to allocate Jacobian matrix");
+        nimcp_tensor_destroy(x_layer);
         return LNN_ERROR_OUT_OF_MEMORY;
     }
 
-    int ret = lnn_gradient_compute_jacobian(layer, x, jacobian);
+    int ret = lnn_gradient_compute_jacobian(layer, x_layer, jacobian);
+    nimcp_tensor_destroy(x_layer);
     if (ret != 0) {
         NIMCP_LOGGING_ERROR("Jacobian computation failed");
-        NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
-                         "Jacobian computation failed in adjoint step");
         nimcp_tensor_destroy(jacobian);
         return ret;
     }
@@ -617,25 +663,32 @@ int lnn_gradient_adjoint_step(
     ctx->jacobian_evals++;
 
     // Adjoint dynamics: dλ/dt = -J^T λ
-    // Compute -J^T λ
     nimcp_tensor_t* jacobian_T = nimcp_tensor_transpose(jacobian);
-    nimcp_tensor_t* J_T_lambda = nimcp_tensor_mv(jacobian_T, adjoint);
-    nimcp_tensor_t* d_adjoint_dt = nimcp_tensor_mul_scalar(J_T_lambda, -1.0);
+    nimcp_tensor_t* J_T_lambda = jacobian_T ? nimcp_tensor_mv(jacobian_T, adjoint) : NULL;
+    nimcp_tensor_t* d_adjoint_dt = J_T_lambda ? nimcp_tensor_mul_scalar(J_T_lambda, -1.0f) : NULL;
 
     // Simple Euler step: λ(t+dt) = λ(t) + dt * dλ/dt
-    nimcp_tensor_t* delta = nimcp_tensor_mul_scalar(d_adjoint_dt, dt);
+    nimcp_tensor_t* delta = d_adjoint_dt ? nimcp_tensor_mul_scalar(d_adjoint_dt, dt) : NULL;
 
     // Copy adjoint to adjoint_next and add delta
     size_t numel = nimcp_tensor_numel(adjoint);
-    float* adj_data = (float*)nimcp_tensor_data((nimcp_tensor_t*)adjoint);
-    float* delta_data = (float*)nimcp_tensor_data(delta);
+    const float* adj_data = (const float*)nimcp_tensor_data_const(adjoint);
     float* next_data = (float*)nimcp_tensor_data(adjoint_next);
 
-    for (size_t i = 0; i < numel; i++) {
-        next_data[i] = adj_data[i] + delta_data[i];
+    if (adj_data && next_data && delta) {
+        float* delta_data = (float*)nimcp_tensor_data(delta);
+        if (delta_data) {
+            for (size_t i = 0; i < numel; i++) {
+                next_data[i] = adj_data[i] + delta_data[i];
+            }
+        } else {
+            for (size_t i = 0; i < numel; i++) next_data[i] = adj_data[i];
+        }
+    } else if (adj_data && next_data) {
+        for (size_t i = 0; i < numel; i++) next_data[i] = adj_data[i];
     }
 
-    // Cleanup
+    // Cleanup (NULL-safe)
     nimcp_tensor_destroy(jacobian);
     nimcp_tensor_destroy(jacobian_T);
     nimcp_tensor_destroy(J_T_lambda);

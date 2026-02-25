@@ -354,6 +354,78 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
     return modified;
 }
 
+uint32_t neural_network_apply_lateral_inhibition(
+    neural_network_t network,
+    uint32_t output_start,
+    uint32_t output_count,
+    float inhibition_strength)
+{
+    // Guard clauses
+    if (!network || output_count == 0) return 0;
+    if (inhibition_strength <= 0.0f) return 0;
+    if (inhibition_strength > 1.0f) inhibition_strength = 1.0f;
+
+    // Find the winner (max activation neuron)
+    float max_activation = -1e30f;
+    uint32_t winner_idx = 0;
+
+    for (uint32_t i = 0; i < output_count; i++) {
+        uint32_t nid = output_start + i;
+        if (nid >= network->num_neurons) break;
+        float act = network->neurons[nid].state;
+        if (act > max_activation) {
+            max_activation = act;
+            winner_idx = i;
+        }
+    }
+
+    // Compute mean activation for reference
+    float mean_activation = 0.0f;
+    uint32_t valid_count = 0;
+    for (uint32_t i = 0; i < output_count; i++) {
+        uint32_t nid = output_start + i;
+        if (nid >= network->num_neurons) break;
+        mean_activation += network->neurons[nid].state;
+        valid_count++;
+    }
+    if (valid_count == 0) return 0;
+    mean_activation /= (float)valid_count;
+
+    // Apply inhibition: suppress neurons below winner
+    // Use soft WTA: scale non-winners toward mean, don't zero them out
+    uint32_t modified = 0;
+    for (uint32_t i = 0; i < output_count; i++) {
+        if (i == winner_idx) continue;
+        uint32_t nid = output_start + i;
+        if (nid >= network->num_neurons) break;
+
+        float old_state = network->neurons[nid].state;
+        // Move non-winners toward mean by inhibition_strength fraction
+        float new_state = old_state + inhibition_strength * (mean_activation - old_state);
+        // Also reduce bias slightly to make inhibition persistent
+        network->neurons[nid].bias -= inhibition_strength * 0.001f *
+                                       fmaxf(0.0f, old_state - mean_activation);
+        network->neurons[nid].state = new_state;
+
+        if (fabsf(new_state - old_state) > 1e-6f) {
+            modified++;
+        }
+    }
+
+    // Boost winner slightly
+    uint32_t winner_nid = output_start + winner_idx;
+    if (winner_nid < network->num_neurons) {
+        network->neurons[winner_nid].state *= (1.0f + inhibition_strength * 0.1f);
+        // Clamp
+        if (network->neurons[winner_nid].state > 1.0f)
+            network->neurons[winner_nid].state = 1.0f;
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Lateral inhibition: modified %u neurons, winner=%u, strength=%.3f",
+              modified, winner_idx, inhibition_strength);
+    return modified;
+}
+
 uint32_t neural_network_apply_reward_learning(neural_network_t network, float reward,
                                               float learning_rate, uint64_t current_time)
 {
