@@ -779,25 +779,41 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     network->num_neurons = actual_neurons;
 
-    // Calculate actual connections needed for dense layer wiring
+    // Calculate actual connections needed for layer wiring
     // Use uint64_t to avoid overflow with large networks (e.g., 256 * 2M = 512M)
     uint64_t dense_connections = 0;
-    if (config->num_layers > 1 && config->layer_sizes && !config->skip_layer_wiring) {
+    if (config->num_layers > 1 && config->layer_sizes) {
         for (uint32_t l = 0; l < config->num_layers - 1; l++) {
             dense_connections += (uint64_t)config->layer_sizes[l] * config->layer_sizes[l + 1];
         }
     }
 
+    // For large networks, compute sparse backbone connection count for pool sizing
+    bool will_skip_dense = config->skip_layer_wiring || (dense_connections > 10000000);
+    uint64_t backbone_connections = 0;
+    if (will_skip_dense && config->num_layers > 1 && config->layer_sizes) {
+        uint32_t input_size = config->layer_sizes[0];
+        uint32_t output_size = config->layer_sizes[config->num_layers - 1];
+        uint32_t total_hidden = 0;
+        for (uint32_t l = 1; l < config->num_layers - 1; l++) {
+            total_hidden += config->layer_sizes[l];
+        }
+        uint32_t backbone_target = input_size * 4;
+        if (backbone_target < 1024) backbone_target = 1024;
+        uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
+        backbone_connections = (uint64_t)backbone * (input_size + output_size);
+    }
+
     // NIMCP 2.11: Create sparse synapse pools
-    // Pool must hold all dense layer-to-layer connections (2 handles per connection:
+    // Pool must hold all layer-to-layer connections (2 handles per connection:
     // one outgoing from source, one incoming to destination)
     {
         // Each connection = 2 handles (outgoing + incoming), add 25% headroom for
         // runtime plasticity (new connections from learning, sprouting, etc.)
-        uint64_t handles_needed = dense_connections * 2;
-        // For large networks (>500K neurons) dense wiring is skipped, so handles_needed=0.
-        // Start with a modest pool — spiking plasticity creates connections on-demand,
-        // and the pool's slab allocator falls back to malloc when classes exhaust.
+        uint64_t effective_connections = will_skip_dense ? backbone_connections : dense_connections;
+        uint64_t handles_needed = effective_connections * 2;
+        // For large networks (>500K neurons) dense wiring is skipped, so backbone
+        // wiring provides initial connectivity. Pool must fit backbone handles.
         uint32_t pool_min;
         if (actual_neurons < 100) pool_min = 5000;
         else if (actual_neurons > 500000) pool_min = 1000000;  // 1M handles (~24MB)
@@ -845,6 +861,82 @@ neural_network_t neural_network_create(const network_config_t* config)
             }
 
             offset = next_layer_offset;
+        }
+    } else if (config->num_layers > 1 && config->layer_sizes && skip_dense) {
+        // SPARSE BACKBONE WIRING for large networks
+        // Dense wiring is O(N*M) which is infeasible (e.g. 256 * 1.5M = 384M connections).
+        // Instead, select a small "backbone" of hidden neurons and wire them to
+        // input/output layers. This creates a viable forward-pass path for
+        // predict_fast (gradient-based learning) while keeping memory manageable.
+        // Remaining neurons participate via spiking dynamics in brain_decide().
+
+        uint32_t input_size = config->layer_sizes[0];
+        uint32_t output_size = config->layer_sizes[config->num_layers - 1];
+
+        // Calculate total hidden neurons (all layers between input and output)
+        uint32_t total_hidden = 0;
+        for (uint32_t l = 1; l < config->num_layers - 1; l++) {
+            total_hidden += config->layer_sizes[l];
+        }
+
+        if (total_hidden > 0) {
+            // Backbone size: enough for diverse outputs, small enough for fast init.
+            // max(1024, input_size * 4) gives good coverage; cap at total_hidden.
+            uint32_t backbone_target = input_size * 4;
+            if (backbone_target < 1024) backbone_target = 1024;
+            uint32_t backbone = (total_hidden < backbone_target) ? total_hidden : backbone_target;
+
+            // Evenly space backbone neurons across the hidden layer
+            uint32_t step = total_hidden / backbone;
+            if (step == 0) step = 1;
+
+            uint32_t hidden_start = input_size;  // First hidden neuron index
+
+            // Output layer start index
+            uint32_t output_start = 0;
+            for (uint32_t l = 0; l < config->num_layers - 1; l++) {
+                output_start += config->layer_sizes[l];
+            }
+
+            // Xavier-scale initialization to prevent activation explosion/vanishing.
+            // Dense wiring uses uniform [-0.5, 0.5] which works for small fan-in but
+            // causes sigmoid saturation with fan_in=256+ (sum variance = N * 1/12).
+            float input_scale = 1.0F / sqrtf((float)input_size);
+            float backbone_scale = 1.0F / sqrtf((float)backbone);
+
+            uint32_t total_conns = 0;
+
+            // Wire: all inputs → each backbone hidden neuron
+            for (uint32_t b = 0; b < backbone; b++) {
+                uint32_t hidden_id = hidden_start + b * step;
+                if (hidden_id >= hidden_start + total_hidden) break;
+
+                for (uint32_t i = 0; i < input_size && i < network->num_neurons; i++) {
+                    float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * input_scale;
+                    neural_network_add_connection(network, i, hidden_id, weight);
+                    total_conns++;
+                }
+            }
+
+            // Wire: each backbone hidden neuron → all outputs
+            for (uint32_t b = 0; b < backbone; b++) {
+                uint32_t hidden_id = hidden_start + b * step;
+                if (hidden_id >= hidden_start + total_hidden) break;
+
+                for (uint32_t o = 0; o < output_size; o++) {
+                    uint32_t output_id = output_start + o;
+                    if (output_id >= network->num_neurons) break;
+                    float weight = (((float)nimcp_tl_rand() / RAND_MAX) * 2.0F - 1.0F) * backbone_scale;
+                    neural_network_add_connection(network, hidden_id, output_id, weight);
+                    total_conns++;
+                }
+            }
+
+            LOG_INFO(LOG_MODULE, "Sparse backbone: %u/%u hidden neurons wired, %u connections "
+                     "(%.1f%% of dense %llu)",
+                     backbone, total_hidden, total_conns,
+                     (double)total_conns / (double)(dense_connections > 0 ? dense_connections : 1) * 100.0,
+                     (unsigned long long)dense_connections);
         }
     }
 

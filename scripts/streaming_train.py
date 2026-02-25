@@ -249,7 +249,7 @@ class StreamingDatasetProcessor:
                     continue
                 yield {
                     "text": f"{title}\n\n{text[:3000]}",
-                    "label": hash(title) % 100,
+                    "label": hash(title) % 8,
                 }
                 yielded += 1
                 if yielded >= max_ex:
@@ -315,7 +315,7 @@ class StreamingDatasetProcessor:
 
                 yield {
                     "text": f"{title}\n\n{abstract}",
-                    "label": hash(cat_label) % 100,
+                    "label": hash(cat_label) % 8,
                 }
                 yielded += 1
                 if yielded >= max_ex:
@@ -461,7 +461,7 @@ class StreamingDatasetProcessor:
                 # Extract MeSH terms for label
                 mesh_terms = [m.text for m in article.findall(".//MeshHeading/DescriptorName")
                               if m.text]
-                label = hash(mesh_terms[0]) % 100 if mesh_terms else 0
+                label = hash(mesh_terms[0]) % 8 if mesh_terms else 0
 
                 yield {
                     "text": f"{title}\n\n{abstract}",
@@ -524,7 +524,7 @@ class StreamingDatasetProcessor:
                     continue
                 yield {
                     "text": chunk,
-                    "label": book_id % 100,
+                    "label": book_id % 8,
                 }
                 yielded += 1
                 if yielded >= max_ex:
@@ -582,7 +582,7 @@ class StreamingDatasetProcessor:
                 text = f"{start_label} {rel} {end_label}"
                 yield {
                     "text": text,
-                    "label": hash(rel) % 100,
+                    "label": hash(rel) % 8,
                 }
                 yielded += 1
                 if yielded >= max_ex:
@@ -724,7 +724,7 @@ class StreamingDatasetProcessor:
 
                     yield {
                         "text": text,
-                        "label": hash(category) % 100,
+                        "label": hash(category) % 8,
                     }
                     yielded += 1
                     cycle_count += 1
@@ -811,7 +811,7 @@ class StreamingDatasetProcessor:
             else:
                 ans_text = str(answers)
             text = f"{text} {ans_text}"
-            label = hash(ans_text) % 100 if ans_text.strip() else 0
+            label = hash(ans_text) % 8 if ans_text.strip() else 0
             return (text, label)
 
         # --- CommonsenseQA: question + choices ---
@@ -865,13 +865,13 @@ class StreamingDatasetProcessor:
             lang = example.get('language', '')
             if lang:
                 text = f"{lang}: {text}"
-            label = hash(lang) % 100 if lang else 0
+            label = hash(lang) % 8 if lang else 0
             return (text, label)
 
         # --- LiveCodeBench: question_content ---
         if 'question_content' in example:
             text = str(example['question_content'])
-            label = hash(example.get('question_id', '')) % 100
+            label = hash(example.get('question_id', '')) % 8
             return (text, label)
 
         # --- Plain text (wikitext, etc.) ---
@@ -904,7 +904,7 @@ class StreamingDatasetProcessor:
         # --- OpenOrca format: system_prompt + question + response ---
         if 'system_prompt' in example and 'question' in example and 'response' in example:
             text = f"{example['system_prompt']} {example['question']} {example['response']}"
-            label = hash(example.get('id', '')) % 100
+            label = hash(example.get('id', '')) % 8
             return (text, label)
 
         # --- Prosocial dialog (allenai/prosocial-dialog) ---
@@ -933,7 +933,7 @@ class StreamingDatasetProcessor:
                     parts.append(str(val))
             text = ' '.join(parts)
             agreement = example.get('agreement', '')
-            label = hash(str(agreement)) % 100 if agreement else 0
+            label = hash(str(agreement)) % 8 if agreement else 0
             return (text, label)
 
         # --- Code contests (deepmind/code_contests) ---

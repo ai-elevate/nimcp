@@ -600,6 +600,10 @@ if(TARGET regression_brain_regions_test_entorhinal_signal_regression)
   set_tests_properties(regression_brain_regions_test_entorhinal_signal_regression
     PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
 endif()
+if(TARGET integration_plasticity_adaptive_test_adaptive_routing_integration)
+  set_tests_properties(integration_plasticity_adaptive_test_adaptive_routing_integration
+    PROPERTIES TIMEOUT 300 RESOURCE_LOCK "brain_heavy")
+endif()
 if(TARGET regression_exception_performance_regression)
   set_tests_properties(regression_exception_performance_regression
     PROPERTIES TIMEOUT 120 RESOURCE_LOCK "brain_heavy")

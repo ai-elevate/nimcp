@@ -49,6 +49,14 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.learn(*args, **kwargs)
 
+    def predict_fast(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.predict_fast(*args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.predict(*args, **kwargs)
+
     def decide(self, *args, **kwargs):
         with self._lock:
             return self._brain.decide(*args, **kwargs)

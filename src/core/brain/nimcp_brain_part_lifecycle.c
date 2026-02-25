@@ -857,9 +857,14 @@ static uint32_t get_or_create_label_index(brain_t brain, const char* label)
         }
     }
 
-    // Guard: Check capacity
+    // Guard: Check capacity — labels exceed output neurons
     if (brain->num_output_labels >= brain->config.num_outputs) {
-        result = 0;
+        // Hash overflow labels across existing outputs instead of always index 0
+        uint32_t h = 5381;
+        for (const char* p = label; *p; p++) {
+            h = ((h << 5) + h) + (unsigned char)*p;
+        }
+        result = h % brain->config.num_outputs;
         goto done;
     }
 
