@@ -3080,6 +3080,14 @@ add_e2e_test(e2e_test_symbolic_reasoning
 )
 
 # =============================================================================
+# Portia-Reasoning Bridge E2E Test (Budget Pipeline)
+# =============================================================================
+add_e2e_test(e2e_test_portia_reasoning_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_portia_bridge_e2e.cpp
+)
+
+# =============================================================================
 # Training Integration E2E Test (Hub + Brain Training Pipeline)
 # =============================================================================
 # WHAT: E2E tests for training integration hub and brain training context

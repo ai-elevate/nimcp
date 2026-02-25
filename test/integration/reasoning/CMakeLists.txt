@@ -73,3 +73,41 @@ gtest_discover_tests(integration_reasoning_test_symbolic_logic
         LABELS "integration;reasoning;symbolic-logic"
         TIMEOUT 300
 )
+
+# =============================================================================
+# NIMCP Reasoning Chain - Portia Bridge Integration Tests
+# =============================================================================
+# WHAT: Integration tests for the Portia-Reasoning bridge with a live brain
+# WHY:  Verify that budget computation/application correctly adapts the
+#       reasoning engine configuration when connected to a real brain
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(integration_reasoning_test_portia_bridge
+    test_reasoning_portia_bridge_integration.cpp
+)
+
+target_link_libraries(integration_reasoning_test_portia_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_reasoning_test_portia_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_reasoning_test_portia_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_reasoning_test_portia_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;reasoning;portia-bridge"
+        TIMEOUT 180
+)

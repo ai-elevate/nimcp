@@ -73,3 +73,41 @@ gtest_discover_tests(regression_symbolic_logic_reasoning_test
         LABELS "regression;reasoning;symbolic-logic"
         TIMEOUT 300
 )
+
+# =============================================================================
+# Portia-Reasoning Bridge Regression Tests
+# =============================================================================
+# WHAT: Regression tests for the Portia-Reasoning bridge
+# WHY:  Guard against NULL dereference, buffer overflow in summary, symbolic
+#       logic dual-flag subtlety, steps override edge cases, and TI consistency
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(regression_portia_reasoning_bridge_test
+    test_reasoning_portia_bridge_regression.cpp
+)
+
+target_link_libraries(regression_portia_reasoning_bridge_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_portia_reasoning_bridge_test
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_portia_reasoning_bridge_test PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_portia_reasoning_bridge_test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;reasoning;portia-bridge"
+        TIMEOUT 300
+)

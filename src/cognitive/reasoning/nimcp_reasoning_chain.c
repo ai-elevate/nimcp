@@ -40,6 +40,7 @@
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "cognitive/reasoning/nimcp_backward_chaining.h"
 #include "cognitive/reasoning/nimcp_forward_chaining.h"
+#include "cognitive/reasoning/nimcp_reasoning_portia_bridge.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -2358,6 +2359,48 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         return -1;
     }
 
+    /*
+     * ── Portia resource-aware budget ──
+     *
+     * Query Portia for current system resource state and compute a reasoning
+     * budget. Under degradation, thermal throttling, or battery pressure,
+     * the budget disables expensive phases to keep the system responsive.
+     *
+     * If Portia says skip entirely (EMERGENCY + CRITICAL thermal), bail out
+     * with a minimal chain indicating resource exhaustion.
+     */
+    if (reasoning_portia_should_skip()) {
+        NIMCP_LOGGING_WARN("reasoning_chain: Portia says skip reasoning "
+                           "(EMERGENCY + CRITICAL thermal)");
+        reasoning_chain_init(chain);
+        chain->start_time_us = nimcp_time_get_us();
+        chain->end_time_us = chain->start_time_us;
+        chain->overall_confidence = 0.0f;
+        chain->is_complete = true;
+        snprintf(chain->conclusion, REASONING_CHAIN_CONCLUSION_LEN,
+                 "Reasoning skipped: system resources critically exhausted");
+        engine->stats.total_queries++;
+        return 0;
+    }
+
+    reasoning_budget_t portia_budget = reasoning_portia_compute_budget();
+
+    /* Make a mutable copy of the engine config and apply the budget */
+    reasoning_engine_config_t effective_config = engine->config;
+    int phases_shed = reasoning_portia_apply_budget(&effective_config, &portia_budget);
+
+    if (phases_shed > 0) {
+        char budget_summary[256];
+        reasoning_portia_budget_summary(&portia_budget, budget_summary,
+                                         sizeof(budget_summary));
+        NIMCP_LOGGING_INFO("reasoning_chain: %s (shed %d phases)",
+                           budget_summary, phases_shed);
+    }
+
+    /* Temporarily swap in the effective config for this query */
+    reasoning_engine_config_t saved_config = engine->config;
+    engine->config = effective_config;
+
     /* ── Step 0: Initialize chain ── */
     reasoning_chain_init(chain);
     chain->start_time_us = nimcp_time_get_us();
@@ -2389,6 +2432,13 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         engine->stats.successful_queries++;
         engine->stats.total_steps += chain->num_steps;
 
+        /* Apply Portia confidence boost to compensate for shed phases */
+        if (portia_budget.confidence_boost > 0.0f) {
+            chain->overall_confidence += portia_budget.confidence_boost;
+            if (chain->overall_confidence > 1.0f)
+                chain->overall_confidence = 1.0f;
+        }
+
         float n = (float)engine->stats.total_queries;
         engine->stats.avg_confidence =
             engine->stats.avg_confidence * ((n - 1.0f) / n) +
@@ -2397,6 +2447,8 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
 
+        /* Restore original engine config */
+        engine->config = saved_config;
         return result;
     }
 
@@ -2427,6 +2479,7 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         engine->stats.avg_steps_per_query =
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
+        engine->config = saved_config;
         return 0;
     }
 
@@ -2537,6 +2590,13 @@ finalize:
                                     final_recall, final_knowledge,
                                     final_uncertainty);
 
+    /* Apply Portia confidence boost to compensate for shed phases */
+    if (portia_budget.confidence_boost > 0.0f) {
+        chain->overall_confidence += portia_budget.confidence_boost;
+        if (chain->overall_confidence > 1.0f)
+            chain->overall_confidence = 1.0f;
+    }
+
     /* ── Update statistics ── */
     engine->stats.total_queries++;
     engine->stats.successful_queries++;
@@ -2550,6 +2610,8 @@ finalize:
         engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
         (float)chain->num_steps / n;
 
+    /* Restore original engine config */
+    engine->config = saved_config;
     return 0;
 }
 

@@ -26,6 +26,7 @@
 #include "cognitive/reasoning/nimcp_backward_chaining.h"
 #include "cognitive/reasoning/nimcp_knowledge_base_interface.h"
 #include "cognitive/nimcp_symbolic_logic.h"
+#include "cognitive/reasoning/nimcp_reasoning_portia_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -563,4 +564,23 @@ int brain_ti_post_batch_update(brain_t brain, float accuracy,
     }
 
     return 0;
+}
+
+/*=============================================================================
+ * PORTIA-REASONING RESOURCE ADAPTATION
+ *===========================================================================*/
+
+bool brain_ti_should_skip_reasoning(void) {
+    return reasoning_portia_should_skip();
+}
+
+int brain_ti_get_reasoning_degradation(void) {
+    reasoning_budget_t budget = reasoning_portia_compute_budget();
+    return (int)budget.source_degradation;
+}
+
+int brain_ti_get_reasoning_phases_disabled(void) {
+    reasoning_budget_t budget = reasoning_portia_compute_budget();
+    reasoning_engine_config_t config = reasoning_engine_default_config();
+    return reasoning_portia_apply_budget(&config, &budget);
 }

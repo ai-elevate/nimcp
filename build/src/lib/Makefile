@@ -14513,6 +14513,30 @@ __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c.s
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c.s
 
+__/cognitive/reasoning/nimcp_reasoning_portia_bridge.o: __/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_portia_bridge.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_portia_bridge.i: __/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_portia_bridge.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_portia_bridge.s: __/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_portia_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_portia_bridge.c.s
+
 __/cognitive/reasoning/nimcp_reasoning_sleep_bridge.o: __/cognitive/reasoning/nimcp_reasoning_sleep_bridge.c.o
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_sleep_bridge.o
 
@@ -52534,6 +52558,9 @@ help:
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_portia_bridge.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_portia_bridge.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_portia_bridge.s"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_sleep_bridge.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_sleep_bridge.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_sleep_bridge.s"

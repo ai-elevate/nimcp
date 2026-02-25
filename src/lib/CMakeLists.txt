@@ -668,6 +668,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_snn_bridge.c  # Reasoning-SNN integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c  # Reasoning-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_chain.c  # Multi-step reasoning chain engine
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_portia_bridge.c  # Portia resource-aware reasoning budget
 
     # Cognitive Training Integration Layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/training/nimcp_training_integration.c  # Unified training pipeline API

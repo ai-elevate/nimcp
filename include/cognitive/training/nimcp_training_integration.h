@@ -428,6 +428,46 @@ float brain_ti_compute_adaptive_lr(brain_t brain, float base_lr);
 int brain_ti_post_batch_update(brain_t brain, float accuracy, float expected_accuracy,
                                const char* domain);
 
+/*=============================================================================
+ * PORTIA-REASONING RESOURCE ADAPTATION
+ *
+ * Wraps the Portia-reasoning bridge for the training pipeline.
+ * Allows training to query resource budget before running reasoning.
+ *===========================================================================*/
+
+/**
+ * @brief Check if Portia recommends skipping reasoning
+ *
+ * WHAT: Query whether system resources are too exhausted for reasoning
+ * WHY:  Training pipeline should skip brain_ti_reason() when resources are critical
+ * HOW:  Delegates to reasoning_portia_should_skip()
+ *
+ * @return true if reasoning should be skipped (EMERGENCY + CRITICAL thermal)
+ */
+bool brain_ti_should_skip_reasoning(void);
+
+/**
+ * @brief Get current Portia degradation level affecting reasoning
+ *
+ * WHAT: Query the degradation level that shapes the reasoning budget
+ * WHY:  Training pipeline can log/adapt based on resource pressure
+ * HOW:  Computes Portia budget and returns the source degradation level
+ *
+ * @return Degradation level 0-4 (NONE to EMERGENCY), or 0 if Portia unavailable
+ */
+int brain_ti_get_reasoning_degradation(void);
+
+/**
+ * @brief Get number of reasoning phases currently disabled by Portia
+ *
+ * WHAT: Count how many phases would be shed under current resource pressure
+ * WHY:  Training can decide to skip reasoning if too many phases are disabled
+ * HOW:  Computes budget, applies to default config, counts disabled phases
+ *
+ * @return Number of phases disabled (0 = full pipeline), or -1 on error
+ */
+int brain_ti_get_reasoning_phases_disabled(void);
+
 #ifdef __cplusplus
 }
 #endif

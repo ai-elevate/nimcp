@@ -8596,6 +8596,19 @@ e2e_test_symbolic_reasoning/fast:
 .PHONY : e2e_test_symbolic_reasoning/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_portia_reasoning_bridge
+
+# Build rule for target.
+e2e_test_portia_reasoning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_portia_reasoning_bridge
+.PHONY : e2e_test_portia_reasoning_bridge
+
+# fast build rule for target.
+e2e_test_portia_reasoning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_portia_reasoning_bridge.dir/build.make test/e2e/CMakeFiles/e2e_test_portia_reasoning_bridge.dir/build
+.PHONY : e2e_test_portia_reasoning_bridge/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_training_integration
 
 # Build rule for target.
@@ -14236,6 +14249,19 @@ unit_cognitive_test_reasoning_symbolic_logic: cmake_check_build_system
 unit_cognitive_test_reasoning_symbolic_logic/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_symbolic_logic.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_symbolic_logic.dir/build
 .PHONY : unit_cognitive_test_reasoning_symbolic_logic/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_portia_bridge
+
+# Build rule for target.
+unit_cognitive_test_reasoning_portia_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_portia_bridge
+.PHONY : unit_cognitive_test_reasoning_portia_bridge
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_portia_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_portia_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_portia_bridge.dir/build
+.PHONY : unit_cognitive_test_reasoning_portia_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_global_workspace_immune
@@ -27602,6 +27628,19 @@ regression_symbolic_logic_reasoning_test/fast:
 .PHONY : regression_symbolic_logic_reasoning_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_portia_reasoning_bridge_test
+
+# Build rule for target.
+regression_portia_reasoning_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_portia_reasoning_bridge_test
+.PHONY : regression_portia_reasoning_bridge_test
+
+# fast build rule for target.
+regression_portia_reasoning_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/reasoning_generation/CMakeFiles/regression_portia_reasoning_bridge_test.dir/build.make test/regression/reasoning_generation/CMakeFiles/regression_portia_reasoning_bridge_test.dir/build
+.PHONY : regression_portia_reasoning_bridge_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -35870,6 +35909,19 @@ integration_reasoning_test_symbolic_logic/fast:
 .PHONY : integration_reasoning_test_symbolic_logic/fast
 
 #=============================================================================
+# Target rules for targets named integration_reasoning_test_portia_bridge
+
+# Build rule for target.
+integration_reasoning_test_portia_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_portia_bridge
+.PHONY : integration_reasoning_test_portia_bridge
+
+# fast build rule for target.
+integration_reasoning_test_portia_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_portia_bridge.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_portia_bridge.dir/build
+.PHONY : integration_reasoning_test_portia_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_generation_test_pipeline
 
 # Build rule for target.
@@ -40615,6 +40667,7 @@ help:
 	@echo "... e2e_test_portia_learning_adaptation"
 	@echo "... e2e_test_portia_planning_mission"
 	@echo "... e2e_test_portia_power_lifecycle"
+	@echo "... e2e_test_portia_reasoning_bridge"
 	@echo "... e2e_test_portia_security_integration"
 	@echo "... e2e_test_portia_sensor_fusion_pipeline"
 	@echo "... e2e_test_portia_swarm_logic_pipeline"
@@ -41129,6 +41182,7 @@ help:
 	@echo "... integration_python_c"
 	@echo "... integration_quantum_bridges"
 	@echo "... integration_quantum_mcts_fep"
+	@echo "... integration_reasoning_test_portia_bridge"
 	@echo "... integration_reasoning_test_reasoning_brain"
 	@echo "... integration_reasoning_test_symbolic_logic"
 	@echo "... integration_rng_module"
@@ -41641,6 +41695,7 @@ help:
 	@echo "... regression_plasticity_structural_test_structural_regression"
 	@echo "... regression_plasticity_triplet_stdp"
 	@echo "... regression_portia_logic_bridge"
+	@echo "... regression_portia_reasoning_bridge_test"
 	@echo "... regression_portia_swarm_bridge"
 	@echo "... regression_portia_swarm_logic_bridge"
 	@echo "... regression_portia_test_accelerator_robustness"
@@ -42353,6 +42408,7 @@ help:
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
 	@echo "... unit_cognitive_test_reasoning_chain"
+	@echo "... unit_cognitive_test_reasoning_portia_bridge"
 	@echo "... unit_cognitive_test_reasoning_symbolic_logic"
 	@echo "... unit_cognitive_test_remorse_regret"
 	@echo "... unit_cognitive_test_rubric"

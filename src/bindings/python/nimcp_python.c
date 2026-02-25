@@ -1651,6 +1651,42 @@ static PyObject* Brain_ti_post_batch_update(BrainObject* self, PyObject* args, P
 }
 
 /**
+ * WHAT: Check if Portia recommends skipping reasoning
+ */
+static PyObject* Brain_ti_should_skip_reasoning(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    bool skip = brain_ti_should_skip_reasoning();
+    return PyBool_FromLong(skip);
+}
+
+/**
+ * WHAT: Get Portia degradation level affecting reasoning
+ */
+static PyObject* Brain_ti_get_reasoning_degradation(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int level = brain_ti_get_reasoning_degradation();
+    return PyLong_FromLong(level);
+}
+
+/**
+ * WHAT: Get number of reasoning phases disabled by Portia
+ */
+static PyObject* Brain_ti_get_reasoning_phases_disabled(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int disabled = brain_ti_get_reasoning_phases_disabled();
+    return PyLong_FromLong(disabled);
+}
+
+/**
  * WHAT: Pre-compute and cache community structure for consolidation replay
  * WHY:  Louvain community detection is O(N log N), takes hours on 2M neurons.
  *       Caching allows consolidation to use community-aware prioritization
@@ -2284,6 +2320,12 @@ static PyMethodDef Brain_methods[] = {
      "Compute adaptive learning rate: ti_compute_adaptive_lr(base_lr) -> float"},
     {"ti_post_batch_update", (PyCFunction)Brain_ti_post_batch_update, METH_VARARGS | METH_KEYWORDS,
      "Post-batch update: ti_post_batch_update(accuracy, expected, domain) -> bool"},
+    {"ti_should_skip_reasoning", (PyCFunction)Brain_ti_should_skip_reasoning, METH_NOARGS,
+     "Check if Portia recommends skipping reasoning due to resource pressure"},
+    {"ti_get_reasoning_degradation", (PyCFunction)Brain_ti_get_reasoning_degradation, METH_NOARGS,
+     "Get Portia degradation level affecting reasoning (0-4)"},
+    {"ti_get_reasoning_phases_disabled", (PyCFunction)Brain_ti_get_reasoning_phases_disabled, METH_NOARGS,
+     "Get number of reasoning phases currently disabled by Portia"},
 
     {NULL}
 };
