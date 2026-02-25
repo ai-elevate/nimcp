@@ -626,6 +626,31 @@
       "hf_subset": "en",
       "description": "Spoken Wikipedia — speech+text pairs from Wikipedia articles",
       "modality": "speech"
+    },
+
+    {
+      "name": "nimcp_source_code",
+      "domain": "programming",
+      "priority": 1,
+      "type": "local",
+      "local_path": "datasets/nimcp_local/nimcp_source",
+      "description": "NIMCP C/H source code — 118K function-level chunks from 4,840 files (self-knowledge)"
+    },
+    {
+      "name": "nimcp_documentation",
+      "domain": "language",
+      "priority": 1,
+      "type": "local",
+      "local_path": "datasets/nimcp_local/nimcp_docs",
+      "description": "NIMCP documentation — 26K section-level chunks from 800+ markdown files (self-knowledge)"
+    },
+    {
+      "name": "nimcp_python_scripts",
+      "domain": "programming",
+      "priority": 1,
+      "type": "local",
+      "local_path": "datasets/nimcp_local/nimcp_scripts",
+      "description": "NIMCP Python training/tooling scripts — 937 function-level chunks (self-knowledge)"
     }
   ],
   "training_order": [
@@ -659,8 +684,8 @@
     "coverage": "23 domains: 20 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech)",
     "new_in_v5": "Added 10 domains: humanities (3 datasets), finance (3), cryptocurrency (2), sociology (3), paleontology (2), economics (2), earth_sciences (2), audio (3), visual (3), speech (3)",
     "multimodal_note": "Audio/visual/speech datasets require sensory cortex Python bindings (audio_cortex_process, visual_cortex_process, speech_cortex_process). Fallback feature extraction used if bindings unavailable.",
-    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB)",
-    "total_datasets": 68,
-    "version": "v5.0 — 23 domains, parallel school training, multimodal support"
+    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB)",
+    "total_datasets": 71,
+    "version": "v5.1 — 23 domains, parallel school training, multimodal + self-knowledge"
   }
 }

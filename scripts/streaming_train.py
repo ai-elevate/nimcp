@@ -132,6 +132,28 @@ class StreamingDatasetProcessor:
         print(f"  ✗ No usable split found")
         return None
 
+    def load_local_dataset(self, dataset_config: Dict):
+        """Load a local JSONL dataset as a streaming iterator.
+
+        Expects dataset_config to have 'local_path' pointing to a directory
+        containing train.jsonl (each line: {"text": "...", "label": "..."}).
+        """
+        local_path = dataset_config.get("local_path", "")
+        jsonl_file = Path(local_path) / "train.jsonl"
+
+        if not jsonl_file.exists():
+            print(f"  ✗ Local dataset not found: {jsonl_file}")
+            return None
+
+        print(f"  📁 Loading local dataset: {jsonl_file}")
+        try:
+            dataset = load_dataset("json", data_files=str(jsonl_file),
+                                   split="train", streaming=True)
+            return dataset
+        except Exception as e:
+            print(f"  ✗ Failed to load local dataset: {e}")
+            return None
+
     def encode_text(self, text: str, num_features: int) -> List[float]:
         """Encode text into a fixed-size feature vector.
 

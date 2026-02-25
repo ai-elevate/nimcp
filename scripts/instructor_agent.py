@@ -266,7 +266,10 @@ class InstructorAgent(threading.Thread):
                             source_name: str):
         """Teach a text dataset using StreamingDatasetProcessor."""
         try:
-            dataset = self.processor.load_streaming_dataset(ds_config)
+            if ds_config.get("type") == "local":
+                dataset = self.processor.load_local_dataset(ds_config)
+            else:
+                dataset = self.processor.load_streaming_dataset(ds_config)
             if dataset is None:
                 return
         except Exception:
