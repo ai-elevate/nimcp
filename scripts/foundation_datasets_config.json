@@ -736,6 +736,16 @@
       "language": "en",
       "max_examples": 50000,
       "description": "ConceptNet semantic relationships — streamed via REST API (no disk)"
+    },
+
+    {
+      "name": "live_news_global",
+      "domain": "news",
+      "priority": 1,
+      "type": "news_rss",
+      "poll_interval_s": 300,
+      "max_examples": 0,
+      "description": "Live news from 22 RSS feeds (Reuters, BBC, NYT, NPR, Al Jazeera, etc.) — continuous, never finishes"
     }
   ],
   "training_order": [
@@ -759,6 +769,7 @@
     "paleontology",
     "economics",
     "earth_sciences",
+    "news",
     "audio",
     "visual",
     "speech"
@@ -769,9 +780,10 @@
     "coverage": "23 domains: 20 text (language, literature, programming, ethics, philosophy, history, psychology, anthropology, social_sciences, medicine, biology, chemistry, physics, humanities, finance, cryptocurrency, sociology, paleontology, economics, earth_sciences) + 3 multimodal (audio, visual, speech)",
     "new_in_v5": "Added 10 domains: humanities (3 datasets), finance (3), cryptocurrency (2), sociology (3), paleontology (2), economics (2), earth_sciences (2), audio (3), visual (3), speech (3)",
     "multimodal_note": "Audio/visual/speech datasets require sensory cortex Python bindings (audio_cortex_process, visual_cortex_process, speech_cortex_process). Fallback feature extraction used if bindings unavailable.",
-    "api_sources": "6 streaming API sources: wikipedia (MediaWiki API), arxiv (arXiv API), stackexchange (SE API), pubmed (NCBI E-utilities), gutenberg (HTTP), conceptnet (REST API). All stream over HTTP — zero disk footprint.",
-    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB + API streams ~0 disk)",
-    "total_datasets": 80,
-    "version": "v5.2 — 23 domains, parallel school training, multimodal + self-knowledge + streaming APIs"
+    "api_sources": "7 streaming API sources: wikipedia (MediaWiki API), arxiv (arXiv API), stackexchange (SE API), pubmed (NCBI E-utilities), gutenberg (HTTP), conceptnet (REST API), news_rss (22 RSS feeds). All stream over HTTP — zero disk footprint.",
+    "live_news": "news_rss streams continuously from 22 RSS feeds (Reuters, BBC, NYT, NPR, Al Jazeera, Nature, Ars Technica, HN, Guardian). Polls every 5min, deduplicates by URL, never finishes. Keeps Athena current with world events.",
+    "estimated_total_size": "~60GB+ (text ~50GB + audio/visual/speech ~10GB + local ~200MB + API/news streams ~0 disk)",
+    "total_datasets": 81,
+    "version": "v5.3 — 24 domains, parallel school training, multimodal + self-knowledge + streaming APIs + live news"
   }
 }

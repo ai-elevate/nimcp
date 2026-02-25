@@ -266,7 +266,7 @@ class InstructorAgent(threading.Thread):
                             source_name: str):
         """Teach a text dataset using StreamingDatasetProcessor."""
         API_TYPES = {"wikipedia", "arxiv", "stackexchange", "pubmed",
-                     "gutenberg", "conceptnet"}
+                     "gutenberg", "conceptnet", "news_rss"}
         try:
             ds_type = ds_config.get("type", "")
             if ds_type == "local":

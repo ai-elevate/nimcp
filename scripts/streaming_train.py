@@ -176,6 +176,7 @@ class StreamingDatasetProcessor:
             "pubmed": self._stream_pubmed,
             "gutenberg": self._stream_gutenberg,
             "conceptnet": self._stream_conceptnet,
+            "news_rss": self._stream_news_rss,
         }.get(source_type)
 
         if loader is None:
@@ -594,6 +595,157 @@ class StreamingDatasetProcessor:
                         to_visit.append(clean)
 
             time.sleep(0.5)
+
+    # --- News RSS (continuous live news stream) ---
+
+    # Default feeds — broad coverage, no API keys needed
+    _DEFAULT_NEWS_FEEDS = [
+        # General / World
+        ("https://feeds.reuters.com/reuters/topNews", "world"),
+        ("https://feeds.reuters.com/reuters/worldNews", "world"),
+        ("https://feeds.bbci.co.uk/news/rss.xml", "world"),
+        ("https://feeds.bbci.co.uk/news/world/rss.xml", "world"),
+        ("https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "world"),
+        ("https://www.aljazeera.com/xml/rss/all.xml", "world"),
+        ("https://feeds.npr.org/1001/rss.xml", "world"),
+        ("https://www.theguardian.com/world/rss", "world"),
+        # Science
+        ("https://feeds.bbci.co.uk/news/science_and_environment/rss.xml", "science"),
+        ("https://rss.nytimes.com/services/xml/rss/nyt/Science.xml", "science"),
+        ("https://www.nature.com/nature.rss", "science"),
+        ("https://feeds.arstechnica.com/arstechnica/science", "science"),
+        # Technology
+        ("https://feeds.bbci.co.uk/news/technology/rss.xml", "technology"),
+        ("https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", "technology"),
+        ("https://feeds.arstechnica.com/arstechnica/index", "technology"),
+        ("https://hnrss.org/frontpage", "technology"),
+        # Business / Finance
+        ("https://feeds.reuters.com/reuters/businessNews", "finance"),
+        ("https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "finance"),
+        ("https://feeds.bbci.co.uk/news/business/rss.xml", "finance"),
+        # Health / Medicine
+        ("https://feeds.bbci.co.uk/news/health/rss.xml", "medicine"),
+        ("https://rss.nytimes.com/services/xml/rss/nyt/Health.xml", "medicine"),
+    ]
+
+    def _stream_news_rss(self, config: Dict):
+        """Stream live news articles from RSS feeds — continuous, never finishes.
+
+        Polls a rotating set of RSS feeds, deduplicates by URL, and yields
+        new articles as training examples. Designed to run indefinitely so
+        the instructor thread stays alive and keeps learning current events.
+
+        Config options:
+          feeds: list of {"url": "...", "category": "..."} (optional, uses defaults)
+          poll_interval_s: seconds between full poll cycles (default 300 = 5 min)
+          max_examples: stop after N articles (default 0 = unlimited/continuous)
+        """
+        import re as _re
+
+        custom_feeds = config.get("feeds")
+        if custom_feeds:
+            feeds = [(f["url"], f.get("category", "news")) for f in custom_feeds]
+        else:
+            feeds = list(self._DEFAULT_NEWS_FEEDS)
+
+        poll_interval = config.get("poll_interval_s", 300)
+        max_ex = config.get("max_examples", 0)  # 0 = unlimited
+        seen_urls = set()
+        yielded = 0
+
+        while True:
+            cycle_count = 0
+
+            for feed_url, category in feeds:
+                xml_text = self._api_get_text(feed_url, timeout=15)
+                if not xml_text:
+                    continue
+
+                try:
+                    root = ET.fromstring(xml_text)
+                except ET.ParseError:
+                    continue
+
+                # RSS 2.0: channel/item
+                items = root.findall(".//item")
+                # Atom: entry
+                if not items:
+                    ns = {"atom": "http://www.w3.org/2005/Atom"}
+                    items = root.findall("atom:entry", ns)
+
+                for item in items:
+                    # Extract link for dedup
+                    link_el = item.find("link")
+                    if link_el is not None:
+                        link = link_el.text or link_el.get("href", "")
+                    else:
+                        link = ""
+
+                    if link in seen_urls:
+                        continue
+                    if link:
+                        seen_urls.add(link)
+
+                    # Extract title
+                    title_el = item.find("title")
+                    title = title_el.text.strip() if title_el is not None and title_el.text else ""
+
+                    # Extract description/summary
+                    desc = ""
+                    for tag in ("description", "summary", "content"):
+                        el = item.find(tag)
+                        if el is not None and el.text:
+                            desc = el.text.strip()
+                            break
+                    # Atom content:encoded
+                    if not desc:
+                        ce = item.find("{http://purl.org/rss/1.0/modules/content/}encoded")
+                        if ce is not None and ce.text:
+                            desc = ce.text.strip()
+
+                    if not title and not desc:
+                        continue
+
+                    # Strip HTML tags
+                    desc_clean = _re.sub(r"<[^>]+>", " ", desc).strip()
+
+                    # Extract publication date if available
+                    pub_date = ""
+                    for tag in ("pubDate", "published", "updated"):
+                        pd_el = item.find(tag)
+                        if pd_el is not None and pd_el.text:
+                            pub_date = pd_el.text.strip()
+                            break
+
+                    text = f"[{category}] {title}"
+                    if pub_date:
+                        text += f" ({pub_date})"
+                    text += f"\n\n{desc_clean[:2000]}"
+
+                    yield {
+                        "text": text,
+                        "label": hash(category) % 100,
+                    }
+                    yielded += 1
+                    cycle_count += 1
+
+                    if max_ex > 0 and yielded >= max_ex:
+                        return
+
+                # Brief pause between feeds to avoid hammering
+                time.sleep(1)
+
+            # Cap seen_urls to prevent unbounded memory growth
+            if len(seen_urls) > 100_000:
+                # Keep most recent half
+                seen_urls = set(list(seen_urls)[-50_000:])
+
+            if cycle_count > 0:
+                print(f"    [News] Cycle complete: {cycle_count} new articles, "
+                      f"{yielded} total", flush=True)
+
+            # Wait before next poll cycle
+            time.sleep(poll_interval)
 
     def encode_text(self, text: str, num_features: int) -> List[float]:
         """Encode text into a fixed-size feature vector.
