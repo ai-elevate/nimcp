@@ -173,13 +173,11 @@ void stp_update(stp_state_t* state, uint64_t timestamp) {
         return;
     }
 
-    // Calculate elapsed time
-    const float dt = (float)(timestamp - state->last_update);
-
-    // Guard: Skip if no time has passed
-    if (dt <= 0.0F) {
+    // Calculate elapsed time (guard against backward timestamps)
+    if (timestamp <= state->last_update) {
         return;
     }
+    const float dt = (float)(timestamp - state->last_update);
 
     // Exact exponential decay integration
     // x(t+dt) = 1 - (1-x(t))exp(-dt/τ_D)

@@ -1773,8 +1773,9 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
             // Get BCM parameters (cortical preset for neural networks)
             bcm_params_t bcm_params = bcm_params_cortical();
 
-            // Compute time delta in seconds
-            float dt = (float)(timestamp - syn->last_active) / 1000.0F;  // ms (timesteps) to seconds
+            // Compute time delta in seconds (guard against backward timestamps)
+            float dt = (timestamp > syn->last_active) ?
+                (float)(timestamp - syn->last_active) / 1000.0F : 0.001F;
 
             // Use synaptic trace as pre-synaptic activity measure
             float pre_activity = syn->trace;

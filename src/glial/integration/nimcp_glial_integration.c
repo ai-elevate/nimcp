@@ -749,13 +749,15 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
 
     // Compute timestep in milliseconds (convert from microseconds)
     float dt_ms;
-    if (gi->last_update_timestamp_us == 0) {
-        dt_ms = 1.0F;  // Assume 1ms for first call
+    if (gi->last_update_timestamp_us == 0 || timestamp <= gi->last_update_timestamp_us) {
+        dt_ms = 1.0F;  // Assume 1ms for first call or backward timestamp
     } else {
         uint64_t dt_us = timestamp - gi->last_update_timestamp_us;
         dt_ms = (float)dt_us / 1000.0F;  // Convert µs to ms
     }
-    gi->last_update_timestamp_us = timestamp;
+    if (timestamp > gi->last_update_timestamp_us) {
+        gi->last_update_timestamp_us = timestamp;
+    }
 
     // Synchronize network time with glial time (for STP and other timing-dependent features)
     if (gi->network) {

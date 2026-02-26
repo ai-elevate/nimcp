@@ -1295,8 +1295,8 @@ void oligodendrocyte_track_activity(oligodendrocyte_t* oligo,
         float filter_alpha = 0.1F;
         axon->filtered_activity = filter_alpha * activity + (1.0F - filter_alpha) * axon->filtered_activity;
 
-        // Update activity integral
-        if (axon->last_activity_time > 0) {
+        // Update activity integral (guard against backward timestamps)
+        if (axon->last_activity_time > 0 && timestamp > axon->last_activity_time) {
             float dt = (float)(timestamp - axon->last_activity_time) / 1e6F; // seconds
             axon->activity_integral += activity * dt;
         }

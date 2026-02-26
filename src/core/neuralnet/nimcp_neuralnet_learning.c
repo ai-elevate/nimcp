@@ -410,7 +410,8 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // Apply BCM homeostatic plasticity after STDP (if enabled)
         if (meta && meta->enable_bcm && meta->bcm) {
             bcm_params_t bcm_params = bcm_params_cortical();
-            float dt_sec = (float)(timestamp - meta->last_active) / 1000.0f;  // ms (timesteps) to seconds
+            float dt_sec = (timestamp > meta->last_active) ?
+                (float)(timestamp - meta->last_active) / 1000.0f : 0.001f;
             float pre_activity = trace_val;
             float post_activity = post_neuron->state;
 
