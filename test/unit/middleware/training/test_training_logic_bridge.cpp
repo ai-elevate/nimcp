@@ -923,6 +923,140 @@ TEST_F(TrainingLogicBridgeTest, GracefulDegradation) {
 }
 
 /*=============================================================================
+ * CONTINUOUS INSTABILITY TESTS
+ *============================================================================*/
+
+TEST_F(TrainingLogicBridgeTest, SignalInstabilityAccumulatesContinuousMetrics) {
+    /* Signal grad explosion with severity 8 (normalized to 0.8) */
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 8);
+
+    training_instability_metrics_t metrics;
+    int rc = training_logic_get_instability_metrics(bridge, &metrics);
+    EXPECT_EQ(rc, 0);
+    EXPECT_FLOAT_EQ(metrics.gradient_explosion, 0.8f);
+    EXPECT_GE(metrics.instability_score, 0.8f);
+}
+
+TEST_F(TrainingLogicBridgeTest, InstabilityScoreIsMaxAcrossChannels) {
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 5);
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_LOSS_PLATEAU, 8);
+
+    training_instability_metrics_t metrics;
+    training_logic_get_instability_metrics(bridge, &metrics);
+
+    EXPECT_FLOAT_EQ(metrics.gradient_explosion, 0.5f);
+    EXPECT_FLOAT_EQ(metrics.loss_plateau, 0.8f);
+    EXPECT_FLOAT_EQ(metrics.instability_score, 0.8f);  /* max(0.5, 0.8) */
+}
+
+TEST_F(TrainingLogicBridgeTest, InstabilityAccumulatesViaMax) {
+    /* Signal same channel twice — max wins */
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 3);
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 7);
+
+    training_instability_metrics_t metrics;
+    training_logic_get_instability_metrics(bridge, &metrics);
+    EXPECT_FLOAT_EQ(metrics.gradient_explosion, 0.7f);  /* max(0.3, 0.7) */
+}
+
+TEST_F(TrainingLogicBridgeTest, ComputeInstabilityResponseNullSafety) {
+    EXPECT_NE(training_logic_compute_instability_response(nullptr, nullptr), 0);
+
+    training_instability_response_t response;
+    EXPECT_NE(training_logic_compute_instability_response(nullptr, &response), 0);
+    EXPECT_NE(training_logic_compute_instability_response(bridge, nullptr), 0);
+}
+
+TEST_F(TrainingLogicBridgeTest, ComputeInstabilityResponseZeroScore) {
+    /* No instability signaled — response should be neutral */
+    training_instability_response_t response;
+    int rc = training_logic_compute_instability_response(bridge, &response);
+    EXPECT_EQ(rc, 0);
+    EXPECT_NEAR(response.lr_scale, 1.0f, 0.01f);         /* exp(0) = 1 */
+    EXPECT_NEAR(response.batch_scale, 1.0f, 0.01f);       /* 1 - 0 = 1 */
+    EXPECT_NEAR(response.pause_urgency, 0.0f, 0.01f);     /* 0^2 = 0 */
+    EXPECT_NEAR(response.rollback_urgency, 0.0f, 0.01f);  /* score < 0.5 */
+}
+
+TEST_F(TrainingLogicBridgeTest, ComputeInstabilityResponseHighScore) {
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_LOSS_NAN, 10);
+
+    training_instability_response_t response;
+    int rc = training_logic_compute_instability_response(bridge, &response);
+    EXPECT_EQ(rc, 0);
+    EXPECT_LT(response.lr_scale, 0.1f);           /* exp(-3) ~ 0.05 */
+    EXPECT_GT(response.pause_urgency, 0.9f);       /* 1^2 = 1 */
+    EXPECT_GT(response.rollback_urgency, 0.9f);    /* 2*1-1 = 1 */
+    /* clip_threshold = DEFAULT_GRAD_NORM_MAX / (1+5*score) = 10/(1+5) ~ 1.67 */
+    EXPECT_LT(response.clip_threshold, 2.0f);      /* Reduced from base 10.0 */
+}
+
+TEST_F(TrainingLogicBridgeTest, LrScaleDecreasesMonotonically) {
+    float prev_lr_scale = 2.0f;
+    for (int sev = 0; sev <= 10; sev++) {
+        /* Reset bridge for each test */
+        training_logic_bridge_t* b = training_logic_create(nullptr);
+        ASSERT_NE(b, nullptr);
+        if (sev > 0) {
+            training_logic_signal_instability(b, LOGIC_INSTABILITY_GRAD_EXPLOSION, sev);
+        }
+        training_instability_response_t response;
+        training_logic_compute_instability_response(b, &response);
+        EXPECT_LE(response.lr_scale, prev_lr_scale)
+            << "lr_scale should decrease monotonically at severity " << sev;
+        prev_lr_scale = response.lr_scale;
+        training_logic_destroy(b);
+    }
+}
+
+TEST_F(TrainingLogicBridgeTest, ClassifyInstabilityNone) {
+    training_instability_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    EXPECT_EQ(training_logic_classify_instability(&metrics), LOGIC_INSTABILITY_NONE);
+}
+
+TEST_F(TrainingLogicBridgeTest, ClassifyInstabilityNaNPriority) {
+    training_instability_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.nan_inf_severity = 0.9f;
+    metrics.gradient_explosion = 0.8f;
+    metrics.instability_score = 0.9f;
+    EXPECT_EQ(training_logic_classify_instability(&metrics), LOGIC_INSTABILITY_LOSS_NAN);
+}
+
+TEST_F(TrainingLogicBridgeTest, ClassifyInstabilityOscillation) {
+    training_instability_metrics_t metrics;
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.loss_volatility = 0.6f;
+    metrics.gradient_variance = 0.4f;
+    metrics.instability_score = 0.6f;
+    EXPECT_EQ(training_logic_classify_instability(&metrics), LOGIC_INSTABILITY_OSCILLATION);
+}
+
+TEST_F(TrainingLogicBridgeTest, InstabilityToString) {
+    EXPECT_STREQ(training_logic_instability_to_string(LOGIC_INSTABILITY_NONE), "none");
+    EXPECT_STREQ(training_logic_instability_to_string(LOGIC_INSTABILITY_LOSS_NAN), "loss_nan");
+    EXPECT_STREQ(training_logic_instability_to_string(LOGIC_INSTABILITY_GRAD_EXPLOSION), "grad_explosion");
+    EXPECT_STREQ(training_logic_instability_to_string(LOGIC_INSTABILITY_OSCILLATION), "oscillation");
+}
+
+TEST_F(TrainingLogicBridgeTest, LrModulationUsesContinuousInstability) {
+    /* With high instability, LR should be reduced even without discrete decision */
+    training_logic_signal_instability(bridge, LOGIC_INSTABILITY_GRAD_EXPLOSION, 10);
+
+    float base_lr = 0.01f;
+    float modulated = training_logic_get_lr_modulation(bridge, base_lr);
+    /* exp(-3*1.0) ≈ 0.05, so modulated ≈ 0.01 * 0.05 = 0.0005 */
+    EXPECT_LT(modulated, base_lr * 0.1f);
+}
+
+TEST_F(TrainingLogicBridgeTest, GetInstabilityMetricsNullSafety) {
+    EXPECT_NE(training_logic_get_instability_metrics(nullptr, nullptr), 0);
+    training_instability_metrics_t metrics;
+    EXPECT_NE(training_logic_get_instability_metrics(nullptr, &metrics), 0);
+}
+
+/*=============================================================================
  * MAIN
  *============================================================================*/
 
