@@ -88,6 +88,9 @@ add_library(nimcp_middleware STATIC
 
     # Cortical-Training Bridge (Phase CRTB-1)
     training/nimcp_cortical_training_bridge.c
+
+    # Convergent Training Decision (Layer 1: multi-module evidence accumulation)
+    training/nimcp_training_convergent_decision.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC

@@ -31,6 +31,10 @@
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "core/medulla/nimcp_arousal_state.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
+#include "middleware/training/nimcp_training_logic_bridge.h"
+#include "portia/nimcp_portia_tier_switch.h"
 
 #include <string.h>
 #include <math.h>
@@ -645,4 +649,181 @@ float brain_ti_mesh_get_coherence(void) {
     float coherence = 0.0f;
     reasoning_mesh_get_channel_stats(NULL, &coherence);
     return coherence;
+}
+
+/*=============================================================================
+ * UNIFIED CONTINUOUS MODULATION PIPELINE
+ *
+ * Composes arousal (inverted-U cognitive gain), inflammation effects,
+ * training instability response, Portia resource allocation, and
+ * stress/cognitive capacity into a single modulation state.
+ *===========================================================================*/
+
+int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t* state) {
+    if (!state) { return -1; }
+    memset(state, 0, sizeof(*state));
+
+    /*
+     * NULL brain: return sensible identity defaults so that
+     * base_lr * final_lr_factor == base_lr, etc.
+     */
+    if (!brain) {
+        state->arousal_level                = 0.5f;
+        state->arousal_cognitive_gain       = 1.0f;
+        state->arousal_memory_consolidation = 1.0f;
+        state->circadian_efficiency         = 1.0f;
+        state->rpe_bonus                    = 0.0f;
+        state->inflammation_learning_factor = 1.0f;
+        state->inflammation_precision       = 1.0f;
+        state->instability_lr_scale         = 1.0f;
+        state->instability_batch_scale      = 1.0f;
+        state->instability_clip_factor      = 1.0f;
+        state->portia_learning_gate         = 1.0f;
+        state->portia_compute_budget        = 1.0f;
+        state->stress_level                 = 0.0f;
+        state->cognitive_capacity           = 1.0f;
+        state->conflict_level               = 0.0f;
+        state->final_lr_factor              = 1.0f;
+        state->final_batch_factor           = 1.0f;
+        state->final_clip_factor            = 1.0f;
+        state->should_pause                 = false;
+        return 0;
+    }
+
+    /* --- Arousal module (inverted-U cognitive gain) --- */
+    state->arousal_level = brain_ti_get_arousal(brain);
+    {
+        arousal_params_t ap;
+        memset(&ap, 0, sizeof(ap));
+        if (arousal_compute_parameters(state->arousal_level, &ap) == 0) {
+            state->arousal_cognitive_gain       = ap.cognitive_gain;
+            state->arousal_memory_consolidation = ap.memory_consolidation;
+        } else {
+            /* Fallback: linear ramp (old behavior) */
+            state->arousal_cognitive_gain       = 0.5f + 0.5f * state->arousal_level;
+            state->arousal_memory_consolidation = 1.0f;
+        }
+    }
+
+    /* --- Circadian efficiency --- */
+    state->circadian_efficiency = brain_ti_get_circadian_efficiency(brain);
+
+    /* --- Reward prediction error bonus --- */
+    {
+        float rpe = brain_ti_get_rpe(brain);
+        state->rpe_bonus = clampf(rpe * 0.2f, -0.2f, 0.3f);
+    }
+
+    /* --- Inflammation effects --- */
+    if (brain->immune_enabled && brain->immune_system) {
+        inflammation_effects_t effects;
+        memset(&effects, 0, sizeof(effects));
+        if (brain_immune_get_inflammation_effects(brain->immune_system,
+                                                   &effects) == 0) {
+            /* capacity_factor is 1.0 at health, reduced at high inflammation */
+            state->inflammation_learning_factor = effects.capacity_factor;
+            /* channel_factor serves as precision modulation */
+            state->inflammation_precision       = effects.channel_factor;
+        } else {
+            state->inflammation_learning_factor = 1.0f;
+            state->inflammation_precision       = 1.0f;
+        }
+    } else {
+        state->inflammation_learning_factor = 1.0f;
+        state->inflammation_precision       = 1.0f;
+    }
+
+    /* --- Training instability response --- */
+    /* The training logic bridge is not directly accessible from brain_t.
+     * Use defaults; the caller can override via Layer 1 convergent decisions. */
+    state->instability_lr_scale    = 1.0f;
+    state->instability_batch_scale = 1.0f;
+    state->instability_clip_factor = 1.0f;
+
+    /* --- Portia resource allocation --- */
+    {
+        portia_allocation_t alloc;
+        memset(&alloc, 0, sizeof(alloc));
+        if (portia_compute_allocation(0.0f, &alloc) == 0) {
+            state->portia_learning_gate = alloc.feature_gate_learning;
+            state->portia_compute_budget = alloc.compute_budget_scale;
+        } else {
+            state->portia_learning_gate  = 1.0f;
+            state->portia_compute_budget = 1.0f;
+        }
+    }
+
+    /* --- Stress level (HPA axis cortisol) --- */
+    state->stress_level = brain_ti_get_stress_level(brain);
+
+    /* --- Cognitive capacity --- */
+    state->cognitive_capacity = brain_ti_get_cognitive_capacity(brain);
+
+    /* --- BG conflict --- */
+    state->conflict_level = brain_ti_get_conflict(brain);
+
+    /* =================================================================
+     * COMPOSE FINAL MODULATION FACTORS
+     * ================================================================= */
+
+    state->final_lr_factor =
+        state->arousal_cognitive_gain *
+        state->circadian_efficiency *
+        (1.0f + state->rpe_bonus) *
+        state->instability_lr_scale *
+        state->inflammation_learning_factor *
+        state->portia_learning_gate *
+        (1.0f - 0.3f * state->stress_level) *
+        (0.7f + 0.3f * state->cognitive_capacity);
+
+    state->final_batch_factor =
+        state->instability_batch_scale *
+        state->portia_compute_budget;
+
+    state->final_clip_factor = state->instability_clip_factor;
+
+    state->should_pause =
+        (state->instability_lr_scale < 0.01f) ||
+        (state->inflammation_learning_factor < 0.1f) ||
+        (state->portia_learning_gate < 0.05f);
+
+    NIMCP_LOGGING_DEBUG("training_integration: unified modulation "
+                        "lr_factor=%.4f batch_factor=%.4f clip_factor=%.4f "
+                        "pause=%s (arousal_cg=%.3f circ=%.3f rpe_b=%.3f "
+                        "infl=%.3f inst=%.3f portia=%.3f stress=%.3f "
+                        "cogcap=%.3f)",
+                        state->final_lr_factor, state->final_batch_factor,
+                        state->final_clip_factor,
+                        state->should_pause ? "YES" : "NO",
+                        state->arousal_cognitive_gain,
+                        state->circadian_efficiency,
+                        state->rpe_bonus,
+                        state->inflammation_learning_factor,
+                        state->instability_lr_scale,
+                        state->portia_learning_gate,
+                        state->stress_level,
+                        state->cognitive_capacity);
+
+    return 0;
+}
+
+float brain_ti_compute_unified_lr(brain_t brain, float base_lr,
+                                   brain_ti_modulation_state_t* state) {
+    brain_ti_modulation_state_t local;
+    brain_ti_modulation_state_t* s = state ? state : &local;
+
+    brain_ti_compute_modulation_state(brain, s);
+    return base_lr * s->final_lr_factor;
+}
+
+float brain_ti_compute_unified_batch(brain_t brain, float base_batch) {
+    brain_ti_modulation_state_t s;
+    brain_ti_compute_modulation_state(brain, &s);
+    return base_batch * s.final_batch_factor;
+}
+
+float brain_ti_compute_unified_clip(brain_t brain, float base_clip) {
+    brain_ti_modulation_state_t s;
+    brain_ti_compute_modulation_state(brain, &s);
+    return base_clip * s.final_clip_factor;
 }

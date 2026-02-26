@@ -559,6 +559,93 @@ uint32_t brain_ti_mesh_get_participant_count(void);
  */
 float brain_ti_mesh_get_coherence(void);
 
+/*=============================================================================
+ * UNIFIED CONTINUOUS MODULATION
+ *
+ * Replaces brain_ti_compute_adaptive_lr with biologically-accurate
+ * continuous modulation from all brain subsystems.
+ *===========================================================================*/
+
+/**
+ * @brief Complete training modulation state from all brain subsystems
+ */
+typedef struct {
+    /* Individual module outputs */
+    float arousal_level;                /**< Raw arousal [0,1] */
+    float arousal_cognitive_gain;       /**< Inverted-U cognitive gain [0,1] */
+    float arousal_memory_consolidation; /**< Memory consolidation factor [0,1] */
+    float circadian_efficiency;         /**< Phase-based efficiency [0.8-1.5] */
+    float rpe_bonus;                    /**< Reward prediction error bonus [-0.2,0.3] */
+    float inflammation_learning_factor; /**< Inflammation LR modulation [0,1] */
+    float inflammation_precision;       /**< Precision modulation [0,1] */
+    float instability_lr_scale;         /**< exp(-3*score) from instability [0,1] */
+    float instability_batch_scale;      /**< Batch modulation from instability [0,1] */
+    float instability_clip_factor;      /**< Gradient clip from instability */
+    float portia_learning_gate;         /**< Portia feature gate for learning [0,1] */
+    float portia_compute_budget;        /**< Compute budget scale [0,1] */
+    float stress_level;                 /**< HPA axis cortisol [0,1] */
+    float cognitive_capacity;           /**< Overall cognitive capacity [0,1] */
+    float conflict_level;               /**< BG conflict [0,1] */
+
+    /* Composed final modulation factors */
+    float final_lr_factor;              /**< Composed LR multiplier */
+    float final_batch_factor;           /**< Composed batch multiplier */
+    float final_clip_factor;            /**< Composed gradient clip multiplier */
+    bool should_pause;                  /**< Any module signals pause */
+} brain_ti_modulation_state_t;
+
+/**
+ * @brief Compute unified continuous modulation from all brain subsystems
+ *
+ * FORMULA (biologically accurate):
+ *   lr = base_lr
+ *     x arousal_cognitive_gain          (inverted-U Yerkes-Dodson, not linear)
+ *     x circadian_efficiency            (phase-based)
+ *     x (1 + clamp(rpe * 0.2, -0.2, 0.3))
+ *     x instability_lr_scale            (exp(-3*instability_score))
+ *     x inflammation_learning_factor    (cubic/quadratic blend)
+ *     x portia_learning_gate            (sigmoid resource gate)
+ *     x (1 - 0.3*stress_level)          (stress penalty)
+ *     x (0.7 + 0.3*cognitive_capacity)  (cognitive capacity floor)
+ *
+ * @param brain Brain instance (NULL safe — returns all 1.0 factors)
+ * @param state Output modulation state (full breakdown)
+ * @return 0 on success, -1 on error
+ */
+int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t* state);
+
+/**
+ * @brief Compute unified adaptive learning rate using all continuous modules
+ *
+ * This replaces the old brain_ti_compute_adaptive_lr with the full
+ * continuous modulation pipeline.
+ *
+ * @param brain Brain instance (NULL safe)
+ * @param base_lr Base learning rate
+ * @param state Optional: if non-NULL, filled with full modulation breakdown
+ * @return Modulated learning rate
+ */
+float brain_ti_compute_unified_lr(brain_t brain, float base_lr,
+                                   brain_ti_modulation_state_t* state);
+
+/**
+ * @brief Compute unified batch size modulation
+ *
+ * @param brain Brain instance (NULL safe)
+ * @param base_batch Base batch size
+ * @return Modulated batch size (float, caller casts to int)
+ */
+float brain_ti_compute_unified_batch(brain_t brain, float base_batch);
+
+/**
+ * @brief Compute unified gradient clip threshold
+ *
+ * @param brain Brain instance (NULL safe)
+ * @param base_clip Base gradient clip threshold
+ * @return Modulated clip threshold
+ */
+float brain_ti_compute_unified_clip(brain_t brain, float base_clip);
+
 #ifdef __cplusplus
 }
 #endif

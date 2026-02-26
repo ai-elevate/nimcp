@@ -2606,3 +2606,31 @@ gtest_discover_tests(unit_cognitive_test_reasoning_visuospatial
         LABELS "unit;cognitive;reasoning-visuospatial"
         TIMEOUT 90
 )
+
+# Training Integration - Unified Continuous Modulation Pipeline Tests
+add_executable(unit_cognitive_test_training_integration_unified
+    test_training_integration_unified.cpp
+)
+
+target_link_libraries(unit_cognitive_test_training_integration_unified PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+
+target_include_directories(unit_cognitive_test_training_integration_unified PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_training_integration_unified PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_training_integration_unified
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;training-integration-unified"
+        TIMEOUT 90
+)

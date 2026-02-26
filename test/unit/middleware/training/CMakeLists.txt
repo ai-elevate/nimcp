@@ -515,3 +515,63 @@ set_tests_properties(unit_middleware_training_test_occipital_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;occipital_training"
         TIMEOUT 120)
+
+# Convergent Training Decision Unit Tests (Layer 1)
+add_executable(unit_middleware_training_test_training_convergent_decision
+    test_training_convergent_decision.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_convergent_decision PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_convergent_decision PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_convergent_decision
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_training_convergent_decision
+         COMMAND unit_middleware_training_test_training_convergent_decision)
+
+set_tests_properties(unit_middleware_training_test_training_convergent_decision
+    PROPERTIES
+        LABELS "unit;middleware;training;convergent_decision"
+        TIMEOUT 120)
+
+# Training Causal Model Unit Tests (Layer 2: Causal DAG of training dynamics)
+add_executable(unit_middleware_training_test_training_causal_model
+    test_training_causal_model.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_causal_model PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_causal_model PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_causal_model
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_training_causal_model
+         COMMAND unit_middleware_training_test_training_causal_model)
+
+set_tests_properties(unit_middleware_training_test_training_causal_model
+    PROPERTIES
+        LABELS "unit;middleware;training;causal_model"
+        TIMEOUT 120)
