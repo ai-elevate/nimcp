@@ -216,15 +216,158 @@ typedef enum {
 } brain_antigen_source_t;
 
 /**
- * @brief Inflammation severity levels
+ * @brief Inflammation severity levels (discrete labels for logging/display)
+ *
+ * NOTE: These discrete levels are retained for backward compatibility in
+ * logging, serialization, and display. Internal dispatch and behavior
+ * should use the continuous inflammation_level float [0.0-1.0] instead.
+ * Use inflammation_level_from_continuous() to derive labels from floats.
  */
 typedef enum {
-    INFLAMMATION_NONE = 0,     /**< No inflammation */
-    INFLAMMATION_LOCAL,        /**< Node-level (localized) */
-    INFLAMMATION_REGIONAL,     /**< Pod/region-level */
-    INFLAMMATION_SYSTEMIC,     /**< System-wide */
-    INFLAMMATION_STORM         /**< Cytokine storm (dangerous) */
+    INFLAMMATION_NONE = 0,     /**< No inflammation (continuous: 0.0-0.05) */
+    INFLAMMATION_LOCAL,        /**< Node-level (continuous: 0.05-0.30) */
+    INFLAMMATION_REGIONAL,     /**< Pod/region-level (continuous: 0.30-0.60) */
+    INFLAMMATION_SYSTEMIC,     /**< System-wide (continuous: 0.60-0.85) */
+    INFLAMMATION_STORM         /**< Cytokine storm (continuous: 0.85-1.0) */
 } brain_inflammation_level_t;
+
+/* ============================================================================
+ * Continuous Inflammation Model
+ *
+ * Instead of switching on discrete enum values, inflammation effects are
+ * computed from a continuous float in [0.0, 1.0]:
+ *   0.0 = perfectly healthy (NONE)
+ *   1.0 = cytokine storm (STORM)
+ *
+ * Smooth mathematical functions replace discrete switch statements:
+ *   - Linear interpolation for simple scaling
+ *   - Sigmoid curves for threshold-like transitions
+ *   - Power curves for superlinear damage accumulation
+ * ============================================================================ */
+
+/**
+ * @brief Inflammation effects computed from continuous level
+ *
+ * Centralized output structure for all inflammation-modulated quantities.
+ * Bridges read the fields they need rather than computing their own switch.
+ */
+typedef struct {
+    float level;                           /**< Input continuous level [0.0-1.0] */
+    brain_inflammation_level_t label;      /**< Derived discrete label */
+
+    /* Capacity/performance scaling (1.0 = unimpaired, 0.0 = fully impaired) */
+    float capacity_factor;                 /**< General cognitive capacity */
+    float transfer_factor;                 /**< Cross-modal transfer efficiency */
+    float channel_factor;                  /**< Information channel capacity */
+
+    /* Immune response parameters */
+    float response_strength;               /**< Immune response intensity [0.0-1.0] */
+    float recovery_rate;                   /**< Healing speed (1.0 = normal) */
+    float damage_accumulation;             /**< Tissue damage rate [0.0-1.0] */
+    float resource_demand;                 /**< Resource allocation needed [0.0-1.0] */
+
+    /* Cytokine model */
+    float pro_inflammatory_drive;          /**< Pro-inflammatory cytokine push [0.0-1.0] */
+    float anti_inflammatory_drive;         /**< Anti-inflammatory suppression [0.0-1.0] */
+} inflammation_effects_t;
+
+/**
+ * @brief Derive discrete label from continuous inflammation level
+ *
+ * @param level Continuous inflammation [0.0-1.0]
+ * @return Corresponding discrete label for logging/display
+ */
+static inline brain_inflammation_level_t inflammation_level_from_continuous(float level) {
+    if (level < 0.05f) return INFLAMMATION_NONE;
+    if (level < 0.30f) return INFLAMMATION_LOCAL;
+    if (level < 0.60f) return INFLAMMATION_REGIONAL;
+    if (level < 0.85f) return INFLAMMATION_SYSTEMIC;
+    return INFLAMMATION_STORM;
+}
+
+/**
+ * @brief Convert discrete inflammation label to continuous midpoint
+ *
+ * @param label Discrete inflammation level
+ * @return Representative continuous value in [0.0-1.0]
+ */
+static inline float inflammation_level_to_continuous(brain_inflammation_level_t label) {
+    switch (label) {
+        case INFLAMMATION_NONE:     return 0.0f;
+        case INFLAMMATION_LOCAL:    return 0.175f;
+        case INFLAMMATION_REGIONAL: return 0.45f;
+        case INFLAMMATION_SYSTEMIC: return 0.725f;
+        case INFLAMMATION_STORM:    return 0.925f;
+        default:                    return 0.0f;
+    }
+}
+
+/**
+ * @brief Compute a capacity factor from continuous inflammation level
+ *
+ * Maps inflammation [0.0-1.0] to a capacity factor using smooth interpolation.
+ * At level=0.0 returns value_at_none; at level=1.0 returns value_at_storm.
+ * Uses a power curve (exponent 1.5) for biologically plausible superlinear drop.
+ *
+ * @param level       Continuous inflammation [0.0-1.0]
+ * @param at_none     Factor value when level=0.0 (typically 1.0)
+ * @param at_storm    Factor value when level=1.0 (e.g. 0.2 for 80% impairment)
+ * @return Smoothly interpolated factor
+ */
+static inline float inflammation_compute_factor(float level, float at_none, float at_storm) {
+    if (level <= 0.0f) return at_none;
+    if (level >= 1.0f) return at_storm;
+    /* Superlinear power curve: mild inflammation has less impact than severe */
+    float t = level * level * level;  /* cubic for sharper onset at high levels */
+    t = t * 0.7f + level * level * 0.3f;  /* blend cubic + quadratic */
+    return at_none + (at_storm - at_none) * t;
+}
+
+/**
+ * @brief Compute full inflammation effects from continuous level
+ *
+ * @param level  Continuous inflammation [0.0-1.0]
+ * @param out    Output effects structure (must not be NULL)
+ * @return 0 on success, -1 on error
+ */
+static inline int inflammation_compute_effects(float level, inflammation_effects_t* out) {
+    if (!out) return -1;
+
+    /* Clamp to valid range */
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+
+    out->level = level;
+    out->label = inflammation_level_from_continuous(level);
+
+    /* Capacity factors: 1.0 at health, reduced at high inflammation */
+    out->capacity_factor  = inflammation_compute_factor(level, 1.0f, 0.2f);
+    out->transfer_factor  = inflammation_compute_factor(level, 1.0f, 0.05f);
+    out->channel_factor   = inflammation_compute_factor(level, 1.0f, 0.1f);
+
+    /* Immune response: sigmoid activation centered at 0.3 */
+    float sigmoid_arg = 10.0f * (level - 0.3f);
+    /* Approximate sigmoid to avoid expf dependency in inline */
+    float abs_arg = sigmoid_arg < 0 ? -sigmoid_arg : sigmoid_arg;
+    float approx_sigmoid = 0.5f + 0.5f * sigmoid_arg / (1.0f + abs_arg);
+    out->response_strength = approx_sigmoid;
+
+    /* Recovery rate: slows as inflammation increases */
+    out->recovery_rate = inflammation_compute_factor(level, 1.0f, 0.15f);
+
+    /* Damage: superlinear accumulation */
+    out->damage_accumulation = level * level;  /* quadratic */
+
+    /* Resource demand: linear ramp */
+    out->resource_demand = level;
+
+    /* Cytokine drives */
+    out->pro_inflammatory_drive = level;
+    /* Anti-inflammatory peaks at moderate levels (bell curve) */
+    out->anti_inflammatory_drive = 4.0f * level * (1.0f - level);  /* parabola max at 0.5 */
+
+    return 0;
+}
 
 /**
  * @brief Immune system phase
@@ -364,7 +507,8 @@ typedef struct {
 typedef struct {
     uint32_t id;                           /**< Site ID */
     uint32_t region_id;                    /**< Affected region/node */
-    brain_inflammation_level_t level;      /**< Current severity */
+    brain_inflammation_level_t level;      /**< Discrete label (derived from continuous) */
+    float inflammation_level;              /**< Continuous severity [0.0-1.0] */
 
     uint32_t triggering_antigen_id;        /**< Antigen that triggered */
     uint64_t start_time;                   /**< When started */
@@ -449,7 +593,8 @@ typedef struct {
     float cytokine_ifn_gamma;              /**< IFN-γ antiviral level */
 
     /* Inflammation state */
-    brain_inflammation_level_t inflammation_level; /**< Current inflammation level */
+    brain_inflammation_level_t inflammation_level; /**< Current discrete label (backward compat) */
+    float inflammation_level_continuous;   /**< Current continuous level [0.0-1.0] */
 } brain_immune_stats_t;
 
 /* ============================================================================
@@ -1479,6 +1624,36 @@ float brain_immune_get_cytokine_level(
  */
 brain_inflammation_level_t brain_immune_get_inflammation_level(
     brain_immune_system_t* system
+);
+
+/**
+ * @brief Get current continuous inflammation level
+ *
+ * WHAT: Query current system-wide inflammation as continuous float
+ * WHY:  Enables smooth, proportional modulation instead of discrete steps
+ * HOW:  Return max continuous inflammation across all active sites
+ *
+ * @param system Immune system
+ * @return Continuous inflammation level [0.0-1.0], 0.0 on error
+ */
+float brain_immune_get_inflammation_level_continuous(
+    brain_immune_system_t* system
+);
+
+/**
+ * @brief Get full inflammation effects for current system state
+ *
+ * WHAT: Compute all inflammation-modulated quantities for current state
+ * WHY:  Single call gives bridges everything they need for continuous modulation
+ * HOW:  Query max inflammation, compute effects via smooth curves
+ *
+ * @param system Immune system
+ * @param effects Output effects structure
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_get_inflammation_effects(
+    brain_immune_system_t* system,
+    inflammation_effects_t* effects
 );
 
 /* ============================================================================

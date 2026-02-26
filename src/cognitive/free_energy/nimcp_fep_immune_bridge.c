@@ -45,28 +45,20 @@ static uint64_t get_time_ms(void) {
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
-/* Get precision factor based on inflammation level */
+/* Get precision factor based on inflammation level (continuous) */
 static float get_inflammation_precision_factor(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_PRECISION_FACTOR;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_PRECISION_FACTOR;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_PRECISION_FACTOR;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_PRECISION_FACTOR;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_PRECISION_FACTOR;
-        default:                    return 1.0f;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_PRECISION_FACTOR,
+        INFLAMMATION_STORM_PRECISION_FACTOR);
 }
 
-/* Get learning rate factor based on inflammation level */
+/* Get learning rate factor based on inflammation level (continuous) */
 static float get_inflammation_lr_factor(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_LR_FACTOR;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_LR_FACTOR;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_LR_FACTOR;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_LR_FACTOR;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_LR_FACTOR;
-        default:                    return 1.0f;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_LR_FACTOR,
+        INFLAMMATION_STORM_LR_FACTOR);
 }
 
 /* ============================================================================

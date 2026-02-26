@@ -43,14 +43,10 @@ struct swarm_consciousness_immune_bridge_struct {
 
 static float get_phi_factor_for_level(brain_inflammation_level_t level)
 {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_PHI_FACTOR;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_PHI_FACTOR;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_PHI_FACTOR;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_PHI_FACTOR;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_PHI_FACTOR;
-        default:                          return INFLAMMATION_NONE_PHI_FACTOR;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_PHI_FACTOR,
+        INFLAMMATION_STORM_PHI_FACTOR);
 }
 
 int swarm_consciousness_immune_default_config(swarm_consciousness_immune_config_t* config)

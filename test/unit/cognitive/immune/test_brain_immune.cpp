@@ -746,3 +746,257 @@ TEST_F(BrainImmuneTest, EpitopeTruncation) {
     ASSERT_NE(ag, nullptr);
     EXPECT_EQ(ag->epitope_len, BRAIN_IMMUNE_EPITOPE_SIZE);
 }
+
+/* ============================================================================
+ * Continuous Inflammation Model Tests
+ * ============================================================================ */
+
+TEST_F(BrainImmuneTest, ContinuousLevelFromLabel) {
+    /* Verify label-to-continuous mapping produces expected midpoints */
+    EXPECT_FLOAT_EQ(inflammation_level_to_continuous(INFLAMMATION_NONE), 0.0f);
+    EXPECT_FLOAT_EQ(inflammation_level_to_continuous(INFLAMMATION_LOCAL), 0.175f);
+    EXPECT_FLOAT_EQ(inflammation_level_to_continuous(INFLAMMATION_REGIONAL), 0.45f);
+    EXPECT_FLOAT_EQ(inflammation_level_to_continuous(INFLAMMATION_SYSTEMIC), 0.725f);
+    EXPECT_FLOAT_EQ(inflammation_level_to_continuous(INFLAMMATION_STORM), 0.925f);
+}
+
+TEST_F(BrainImmuneTest, LabelFromContinuousRoundtrips) {
+    /* Label derived from midpoint should return the same label */
+    EXPECT_EQ(inflammation_level_from_continuous(0.0f), INFLAMMATION_NONE);
+    EXPECT_EQ(inflammation_level_from_continuous(0.175f), INFLAMMATION_LOCAL);
+    EXPECT_EQ(inflammation_level_from_continuous(0.45f), INFLAMMATION_REGIONAL);
+    EXPECT_EQ(inflammation_level_from_continuous(0.725f), INFLAMMATION_SYSTEMIC);
+    EXPECT_EQ(inflammation_level_from_continuous(0.925f), INFLAMMATION_STORM);
+}
+
+TEST_F(BrainImmuneTest, LabelFromContinuousBoundaries) {
+    /* Test boundary values */
+    EXPECT_EQ(inflammation_level_from_continuous(0.04f), INFLAMMATION_NONE);
+    EXPECT_EQ(inflammation_level_from_continuous(0.05f), INFLAMMATION_LOCAL);
+    EXPECT_EQ(inflammation_level_from_continuous(0.29f), INFLAMMATION_LOCAL);
+    EXPECT_EQ(inflammation_level_from_continuous(0.30f), INFLAMMATION_REGIONAL);
+    EXPECT_EQ(inflammation_level_from_continuous(0.59f), INFLAMMATION_REGIONAL);
+    EXPECT_EQ(inflammation_level_from_continuous(0.60f), INFLAMMATION_SYSTEMIC);
+    EXPECT_EQ(inflammation_level_from_continuous(0.84f), INFLAMMATION_SYSTEMIC);
+    EXPECT_EQ(inflammation_level_from_continuous(0.85f), INFLAMMATION_STORM);
+    EXPECT_EQ(inflammation_level_from_continuous(1.0f), INFLAMMATION_STORM);
+}
+
+TEST_F(BrainImmuneTest, ComputeFactorEndpoints) {
+    /* At level=0.0, should return the 'at_none' value exactly */
+    EXPECT_FLOAT_EQ(inflammation_compute_factor(0.0f, 1.0f, 0.2f), 1.0f);
+    /* At level=1.0, should return the 'at_storm' value exactly */
+    EXPECT_FLOAT_EQ(inflammation_compute_factor(1.0f, 1.0f, 0.2f), 0.2f);
+}
+
+TEST_F(BrainImmuneTest, ComputeFactorMonotonicity) {
+    /* Factor should decrease monotonically as level increases (when at_storm < at_none) */
+    float prev = inflammation_compute_factor(0.0f, 1.0f, 0.1f);
+    for (float level = 0.1f; level <= 1.01f; level += 0.1f) {
+        float current = inflammation_compute_factor(level, 1.0f, 0.1f);
+        EXPECT_LE(current, prev) << "Non-monotonic at level=" << level;
+        prev = current;
+    }
+}
+
+TEST_F(BrainImmuneTest, ComputeFactorIncreasingValues) {
+    /* When at_storm > at_none, factor should increase (e.g. quorum factor) */
+    float prev = inflammation_compute_factor(0.0f, 1.0f, 1.6f);
+    for (float level = 0.1f; level <= 1.01f; level += 0.1f) {
+        float current = inflammation_compute_factor(level, 1.0f, 1.6f);
+        EXPECT_GE(current, prev) << "Non-increasing at level=" << level;
+        prev = current;
+    }
+}
+
+TEST_F(BrainImmuneTest, ComputeEffectsNone) {
+    inflammation_effects_t effects;
+    int result = inflammation_compute_effects(0.0f, &effects);
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(effects.label, INFLAMMATION_NONE);
+    EXPECT_FLOAT_EQ(effects.level, 0.0f);
+    EXPECT_FLOAT_EQ(effects.capacity_factor, 1.0f);
+    EXPECT_FLOAT_EQ(effects.damage_accumulation, 0.0f);
+    EXPECT_FLOAT_EQ(effects.resource_demand, 0.0f);
+}
+
+TEST_F(BrainImmuneTest, ComputeEffectsStorm) {
+    inflammation_effects_t effects;
+    int result = inflammation_compute_effects(1.0f, &effects);
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(effects.label, INFLAMMATION_STORM);
+    EXPECT_FLOAT_EQ(effects.level, 1.0f);
+    EXPECT_NEAR(effects.capacity_factor, 0.2f, 0.01f);
+    EXPECT_FLOAT_EQ(effects.damage_accumulation, 1.0f);
+    EXPECT_FLOAT_EQ(effects.resource_demand, 1.0f);
+}
+
+TEST_F(BrainImmuneTest, ComputeEffectsNull) {
+    int result = inflammation_compute_effects(0.5f, nullptr);
+    EXPECT_EQ(result, -1);
+}
+
+TEST_F(BrainImmuneTest, ComputeEffectsClamps) {
+    /* Negative level should be clamped to 0.0 */
+    inflammation_effects_t effects;
+    inflammation_compute_effects(-0.5f, &effects);
+    EXPECT_FLOAT_EQ(effects.level, 0.0f);
+    EXPECT_EQ(effects.label, INFLAMMATION_NONE);
+
+    /* Over 1.0 should be clamped to 1.0 */
+    inflammation_compute_effects(2.0f, &effects);
+    EXPECT_FLOAT_EQ(effects.level, 1.0f);
+    EXPECT_EQ(effects.label, INFLAMMATION_STORM);
+}
+
+TEST_F(BrainImmuneTest, ComputeEffectsAntiInflammatoryPeaks) {
+    /* Anti-inflammatory drive should peak at 0.5 (bell curve) */
+    inflammation_effects_t effects_low, effects_mid, effects_high;
+    inflammation_compute_effects(0.2f, &effects_low);
+    inflammation_compute_effects(0.5f, &effects_mid);
+    inflammation_compute_effects(0.8f, &effects_high);
+
+    EXPECT_GT(effects_mid.anti_inflammatory_drive, effects_low.anti_inflammatory_drive);
+    EXPECT_GT(effects_mid.anti_inflammatory_drive, effects_high.anti_inflammatory_drive);
+    EXPECT_FLOAT_EQ(effects_mid.anti_inflammatory_drive, 1.0f);  /* 4 * 0.5 * 0.5 = 1.0 */
+}
+
+TEST_F(BrainImmuneTest, ContinuousInflammationSiteInit) {
+    /* Inflammation site should have continuous level set on initiation */
+    brain_immune_start(system);
+
+    uint8_t epitope[] = {0xDD};
+    uint32_t antigen_id, site_id;
+    brain_immune_present_antigen(system, ANTIGEN_SOURCE_MANUAL,
+                                  epitope, sizeof(epitope), 5, 0, &antigen_id);
+    brain_immune_initiate_inflammation(system, 1, antigen_id, &site_id);
+
+    brain_inflammation_site_t* site = nullptr;
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        if (system->inflammation_sites[i].id == site_id) {
+            site = &system->inflammation_sites[i];
+            break;
+        }
+    }
+    ASSERT_NE(site, nullptr);
+    EXPECT_FLOAT_EQ(site->inflammation_level, 0.175f);  /* LOCAL midpoint */
+    EXPECT_EQ(site->level, INFLAMMATION_LOCAL);
+}
+
+TEST_F(BrainImmuneTest, ContinuousEscalationIncreasesContinuousLevel) {
+    brain_immune_start(system);
+
+    uint8_t epitope[] = {0xEE};
+    uint32_t antigen_id, site_id;
+    brain_immune_present_antigen(system, ANTIGEN_SOURCE_MANUAL,
+                                  epitope, sizeof(epitope), 5, 0, &antigen_id);
+    brain_immune_initiate_inflammation(system, 1, antigen_id, &site_id);
+
+    /* Get initial level */
+    brain_inflammation_site_t* site = nullptr;
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        if (system->inflammation_sites[i].id == site_id) {
+            site = &system->inflammation_sites[i];
+            break;
+        }
+    }
+    ASSERT_NE(site, nullptr);
+    float initial_level = site->inflammation_level;
+
+    /* Escalate */
+    brain_immune_escalate_inflammation(system, site_id);
+    EXPECT_GT(site->inflammation_level, initial_level);
+    EXPECT_NEAR(site->inflammation_level, initial_level + 0.25f, 0.001f);
+
+    /* Escalate again */
+    float mid_level = site->inflammation_level;
+    brain_immune_escalate_inflammation(system, site_id);
+    EXPECT_GT(site->inflammation_level, mid_level);
+}
+
+TEST_F(BrainImmuneTest, ContinuousEscalationCapsAtOne) {
+    brain_immune_start(system);
+
+    uint8_t epitope[] = {0xFF};
+    uint32_t antigen_id, site_id;
+    brain_immune_present_antigen(system, ANTIGEN_SOURCE_MANUAL,
+                                  epitope, sizeof(epitope), 5, 0, &antigen_id);
+    brain_immune_initiate_inflammation(system, 1, antigen_id, &site_id);
+
+    /* Escalate many times */
+    for (int i = 0; i < 10; i++) {
+        brain_immune_escalate_inflammation(system, site_id);
+    }
+
+    brain_inflammation_site_t* site = nullptr;
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        if (system->inflammation_sites[i].id == site_id) {
+            site = &system->inflammation_sites[i];
+            break;
+        }
+    }
+    ASSERT_NE(site, nullptr);
+    EXPECT_LE(site->inflammation_level, 1.0f);
+    EXPECT_EQ(site->level, INFLAMMATION_STORM);
+}
+
+TEST_F(BrainImmuneTest, GetInflammationLevelContinuousAPI) {
+    brain_immune_start(system);
+
+    /* No inflammation -> 0.0 */
+    float level = brain_immune_get_inflammation_level_continuous(system);
+    EXPECT_FLOAT_EQ(level, 0.0f);
+
+    /* After initiating inflammation -> positive */
+    uint8_t epitope[] = {0xAB};
+    uint32_t antigen_id, site_id;
+    brain_immune_present_antigen(system, ANTIGEN_SOURCE_MANUAL,
+                                  epitope, sizeof(epitope), 5, 0, &antigen_id);
+    brain_immune_initiate_inflammation(system, 1, antigen_id, &site_id);
+
+    level = brain_immune_get_inflammation_level_continuous(system);
+    EXPECT_GT(level, 0.0f);
+    EXPECT_LE(level, 1.0f);
+}
+
+TEST_F(BrainImmuneTest, GetInflammationEffectsAPI) {
+    brain_immune_start(system);
+
+    /* No inflammation */
+    inflammation_effects_t effects;
+    int result = brain_immune_get_inflammation_effects(system, &effects);
+    EXPECT_EQ(result, 0);
+    EXPECT_FLOAT_EQ(effects.level, 0.0f);
+    EXPECT_FLOAT_EQ(effects.capacity_factor, 1.0f);
+
+    /* After inflammation */
+    uint8_t epitope[] = {0xAC};
+    uint32_t antigen_id, site_id;
+    brain_immune_present_antigen(system, ANTIGEN_SOURCE_MANUAL,
+                                  epitope, sizeof(epitope), 5, 0, &antigen_id);
+    brain_immune_initiate_inflammation(system, 1, antigen_id, &site_id);
+
+    result = brain_immune_get_inflammation_effects(system, &effects);
+    EXPECT_EQ(result, 0);
+    EXPECT_GT(effects.level, 0.0f);
+    EXPECT_LT(effects.capacity_factor, 1.0f);
+}
+
+TEST_F(BrainImmuneTest, StatsIncludeContinuousLevel) {
+    brain_immune_start(system);
+
+    /* After initiating inflammation, stats should reflect continuous level */
+    uint8_t epitope[] = {0xAD};
+    uint32_t antigen_id, site_id;
+    brain_immune_present_antigen(system, ANTIGEN_SOURCE_MANUAL,
+                                  epitope, sizeof(epitope), 5, 0, &antigen_id);
+    brain_immune_initiate_inflammation(system, 1, antigen_id, &site_id);
+
+    brain_immune_stats_t stats;
+    brain_immune_get_stats(system, &stats);
+
+    EXPECT_GT(stats.inflammation_level_continuous, 0.0f);
+    EXPECT_LE(stats.inflammation_level_continuous, 1.0f);
+    EXPECT_EQ(stats.inflammation_level,
+              inflammation_level_from_continuous(stats.inflammation_level_continuous));
+}

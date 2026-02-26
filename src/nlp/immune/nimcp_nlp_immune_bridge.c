@@ -57,14 +57,10 @@ static inline float clamp_0_1(float value) {
  * HOW:  Return predefined factor based on level
  */
 static float get_inflammation_language_capacity(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_LANG_CAPACITY;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_LANG_CAPACITY;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_LANG_CAPACITY;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_LANG_CAPACITY;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_LANG_CAPACITY;
-        default:                    return 1.0f;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_LANG_CAPACITY,
+        INFLAMMATION_STORM_LANG_CAPACITY);
 }
 
 /* ============================================================================

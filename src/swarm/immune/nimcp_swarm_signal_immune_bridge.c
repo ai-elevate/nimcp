@@ -42,14 +42,10 @@ struct swarm_signal_immune_bridge_struct {
 
 static float get_signal_factor_for_level(brain_inflammation_level_t level)
 {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_SIGNAL_FACTOR;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_SIGNAL_FACTOR;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_SIGNAL_FACTOR;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_SIGNAL_FACTOR;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_SIGNAL_FACTOR;
-        default:                          return INFLAMMATION_NONE_SIGNAL_FACTOR;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_SIGNAL_FACTOR,
+        INFLAMMATION_STORM_SIGNAL_FACTOR);
 }
 
 int swarm_signal_immune_default_config(swarm_signal_immune_config_t* config)

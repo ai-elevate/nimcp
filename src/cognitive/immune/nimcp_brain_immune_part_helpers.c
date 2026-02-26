@@ -305,15 +305,22 @@ static void update_inflammation_sites(brain_immune_system_t* system, uint64_t de
 
         brain_inflammation_site_t* site = &system->inflammation_sites[i];
 
-        /* Progress resolution if active */
+        /* Progress resolution if active — continuous decay */
         if (site->resolution_progress > 0 && site->resolution_progress < 1.0f) {
-            brain_inflammation_level_t old_level = site->level;
+            brain_inflammation_level_t old_label = site->level;
             site->resolution_progress += 0.001f * delta_ms;
             if (site->resolution_progress >= 1.0f) {
                 site->resolution_progress = 1.0f;
-                site->level = INFLAMMATION_NONE;
+                site->inflammation_level = 0.0f;
+            } else {
+                /* Smoothly decay continuous level toward 0 during resolution */
+                float decay = site->resolution_progress;
+                site->inflammation_level *= (1.0f - decay * 0.01f);
+                if (site->inflammation_level < 0.0f) site->inflammation_level = 0.0f;
             }
-            if (site->level != old_level) {
+            /* Keep discrete label in sync */
+            site->level = inflammation_level_from_continuous(site->inflammation_level);
+            if (site->level != old_label) {
                 level_changed = true;
             }
         }
@@ -436,7 +443,7 @@ static void hr_completion_cb(
  * NOTE: Called while mutex is held - assumes system is valid
  */
 static float compute_inflammation_float_unlocked(brain_immune_system_t* system) {
-    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+    float max_level = 0.0f;
 
     for (size_t i = 0; i < system->inflammation_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -448,20 +455,12 @@ static float compute_inflammation_float_unlocked(brain_immune_system_t* system) 
         if (system->inflammation_sites[i].resolution_progress > 0.0f) {
             continue;  /* Skip resolving sites */
         }
-        if (system->inflammation_sites[i].level > max_level) {
-            max_level = system->inflammation_sites[i].level;
+        if (system->inflammation_sites[i].inflammation_level > max_level) {
+            max_level = system->inflammation_sites[i].inflammation_level;
         }
     }
 
-    /* Map enum to [0.0, 1.0] */
-    switch (max_level) {
-        case INFLAMMATION_NONE:     return 0.0f;
-        case INFLAMMATION_LOCAL:    return 0.25f;
-        case INFLAMMATION_REGIONAL: return 0.5f;
-        case INFLAMMATION_SYSTEMIC: return 0.75f;
-        case INFLAMMATION_STORM:    return 1.0f;
-        default:                    return 0.0f;
-    }
+    return max_level;  /* Already in [0.0, 1.0] continuous range */
 }
 
 

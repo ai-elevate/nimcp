@@ -503,24 +503,21 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
      * WHY:  High inflammation is itself a physiological stressor that
      *        should be reflected in distress assessment even when
      *        introspection context reports low distress.
-     * HOW:  Map inflammation level to distress score and take the max. */
+     * HOW:  Use continuous inflammation level for proportional distress. */
+    float cont_inflammation =
+        brain_immune_get_inflammation_level_continuous(bridge->immune_system);
     brain_inflammation_level_t inflammation =
-        brain_immune_get_inflammation_level(bridge->immune_system);
-    if (inflammation >= INFLAMMATION_REGIONAL) {
-        float immune_distress = 0.0f;
-        switch (inflammation) {
-            case INFLAMMATION_REGIONAL:  immune_distress = 0.6f; break;
-            case INFLAMMATION_SYSTEMIC:  immune_distress = 0.8f; break;
-            case INFLAMMATION_STORM:     immune_distress = 1.0f; break;
-            default:                     immune_distress = 0.0f; break;
-        }
+        inflammation_level_from_continuous(cont_inflammation);
+    if (cont_inflammation >= 0.30f) {  /* REGIONAL threshold */
+        /* Smooth distress: maps [0.3, 1.0] -> [0.5, 1.0] */
+        float immune_distress = 0.5f + 0.5f * ((cont_inflammation - 0.3f) / 0.7f);
         if (immune_distress > assessment.distress_score) {
             assessment.distress_score = immune_distress;
         }
-        if (inflammation >= INFLAMMATION_SYSTEMIC &&
+        if (cont_inflammation >= 0.60f &&
             assessment.severity < DISTRESS_SEVERITY_SEVERE) {
             assessment.severity = DISTRESS_SEVERITY_SEVERE;
-        } else if (inflammation >= INFLAMMATION_REGIONAL &&
+        } else if (cont_inflammation >= 0.30f &&
                    assessment.severity < DISTRESS_SEVERITY_MODERATE) {
             assessment.severity = DISTRESS_SEVERITY_MODERATE;
         }

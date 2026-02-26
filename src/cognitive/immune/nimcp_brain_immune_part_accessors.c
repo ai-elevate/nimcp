@@ -239,18 +239,29 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
     if (stats->cytokine_tnf > 1.0f) stats->cytokine_tnf = 1.0f;
     if (stats->cytokine_ifn_gamma > 1.0f) stats->cytokine_ifn_gamma = 1.0f;
 
-    /* Compute inflammation level from inflammation sites */
-    if (system->inflammation_count == 0) {
-        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_NONE;
-    } else if (system->inflammation_count == 1) {
-        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_LOCAL;
-    } else if (system->inflammation_count <= 3) {
-        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_REGIONAL;
-    } else if (system->inflammation_count <= 6) {
-        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_SYSTEMIC;
-    } else {
-        stats->inflammation_level = (brain_inflammation_level_t)INFLAMMATION_STORM;
+    /* Compute inflammation level from continuous site levels */
+    float max_cont = 0.0f;
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        if (system->inflammation_sites[i].resolution_progress > 0.0f) continue;
+        if (system->inflammation_sites[i].inflammation_level > max_cont) {
+            max_cont = system->inflammation_sites[i].inflammation_level;
+        }
     }
+    /* Also factor in site count: multiple active sites increase overall level */
+    size_t active_sites = 0;
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        if (system->inflammation_sites[i].resolution_progress <= 0.0f &&
+            system->inflammation_sites[i].inflammation_level > 0.0f) {
+            active_sites++;
+        }
+    }
+    /* Boost: each additional active site adds 0.05 (capped at 1.0) */
+    float site_boost = (active_sites > 1) ? (active_sites - 1) * 0.05f : 0.0f;
+    float total_cont = max_cont + site_boost;
+    if (total_cont > 1.0f) total_cont = 1.0f;
+
+    stats->inflammation_level_continuous = total_cont;
+    stats->inflammation_level = inflammation_level_from_continuous(total_cont);
 
     nimcp_mutex_unlock(system->mutex);
 
@@ -430,15 +441,31 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
     if (!system) return INFLAMMATION_NONE;
     if (!system->mutex) return INFLAMMATION_NONE;
 
-    /* Lock for thread safety */
-    /* Phase 8: Heartbeat at operation start */
-    brain_immune_heartbeat("brain_immune_get_inflammation_lev", 0.0f);
+    /* Derive discrete label from continuous level */
+    float cont = brain_immune_get_inflammation_level_continuous(system);
+    return inflammation_level_from_continuous(cont);
+}
 
+
+/**
+ * @brief Get continuous inflammation level
+ *
+ * WHAT: Return max continuous inflammation across all active sites
+ * WHY:  Smooth modulation for all bridge consumers
+ * HOW:  Scan all non-resolving sites, return maximum
+ */
+float brain_immune_get_inflammation_level_continuous(
+    brain_immune_system_t* system
+) {
+    if (!system) return 0.0f;
+    if (!system->mutex) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_inflammation_con", 0.0f);
 
     nimcp_platform_mutex_lock(system->mutex);
 
-    /* Find max inflammation level across all active sites */
-    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+    float max_level = 0.0f;
     for (size_t i = 0; i < system->inflammation_count; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && system->inflammation_count > 256) {
@@ -450,14 +477,28 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
         if (system->inflammation_sites[i].resolution_progress > 0.0f) {
             continue;
         }
-        if (system->inflammation_sites[i].level > max_level) {
-            max_level = system->inflammation_sites[i].level;
+        if (system->inflammation_sites[i].inflammation_level > max_level) {
+            max_level = system->inflammation_sites[i].inflammation_level;
         }
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
 
     return max_level;
+}
+
+
+/**
+ * @brief Get full inflammation effects for current system state
+ */
+int brain_immune_get_inflammation_effects(
+    brain_immune_system_t* system,
+    inflammation_effects_t* effects
+) {
+    if (!system || !effects) return -1;
+
+    float level = brain_immune_get_inflammation_level_continuous(system);
+    return inflammation_compute_effects(level, effects);
 }
 
 
