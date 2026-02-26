@@ -2387,6 +2387,9 @@ set(NIMCP_CORE_SOURCES
     # Middleware - Brain Training Integration (Phase TM-3: Brain-Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_brain_training_integration.c
 
+    # Middleware - Training Causal Model (Layer 2: Causal DAG of training dynamics)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_causal_model.c
+
     # Training - CNN-Cortex Bridge (Phase CNN-CORTEX: Integration with visual/audio cortex)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_cortex_bridge.c
 
