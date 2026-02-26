@@ -2681,6 +2681,30 @@ __/cognitive/emotion/nimcp_health_emotion_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion/nimcp_health_emotion_bridge.c.s
 .PHONY : __/cognitive/emotion/nimcp_health_emotion_bridge.c.s
 
+__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.o: __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.o
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.o
+
+# target to build an object file
+__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.o
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.o
+
+__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.i: __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.i
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.i
+
+# target to preprocess a source file
+__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.i
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.i
+
+__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.s: __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.s
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.s
+
+# target to generate assembly for a file
+__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.s
+.PHONY : __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.c.s
+
 __/cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.o: __/cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.c.o
 .PHONY : __/cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.o
 
@@ -37097,6 +37121,54 @@ __/middleware/training/nimcp_training_adapters.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_adapters.c.s
 .PHONY : __/middleware/training/nimcp_training_adapters.c.s
 
+__/middleware/training/nimcp_training_causal_model.o: __/middleware/training/nimcp_training_causal_model.c.o
+.PHONY : __/middleware/training/nimcp_training_causal_model.o
+
+# target to build an object file
+__/middleware/training/nimcp_training_causal_model.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_causal_model.c.o
+.PHONY : __/middleware/training/nimcp_training_causal_model.c.o
+
+__/middleware/training/nimcp_training_causal_model.i: __/middleware/training/nimcp_training_causal_model.c.i
+.PHONY : __/middleware/training/nimcp_training_causal_model.i
+
+# target to preprocess a source file
+__/middleware/training/nimcp_training_causal_model.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_causal_model.c.i
+.PHONY : __/middleware/training/nimcp_training_causal_model.c.i
+
+__/middleware/training/nimcp_training_causal_model.s: __/middleware/training/nimcp_training_causal_model.c.s
+.PHONY : __/middleware/training/nimcp_training_causal_model.s
+
+# target to generate assembly for a file
+__/middleware/training/nimcp_training_causal_model.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_causal_model.c.s
+.PHONY : __/middleware/training/nimcp_training_causal_model.c.s
+
+__/middleware/training/nimcp_training_diagnosis.o: __/middleware/training/nimcp_training_diagnosis.c.o
+.PHONY : __/middleware/training/nimcp_training_diagnosis.o
+
+# target to build an object file
+__/middleware/training/nimcp_training_diagnosis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_diagnosis.c.o
+.PHONY : __/middleware/training/nimcp_training_diagnosis.c.o
+
+__/middleware/training/nimcp_training_diagnosis.i: __/middleware/training/nimcp_training_diagnosis.c.i
+.PHONY : __/middleware/training/nimcp_training_diagnosis.i
+
+# target to preprocess a source file
+__/middleware/training/nimcp_training_diagnosis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_diagnosis.c.i
+.PHONY : __/middleware/training/nimcp_training_diagnosis.c.i
+
+__/middleware/training/nimcp_training_diagnosis.s: __/middleware/training/nimcp_training_diagnosis.c.s
+.PHONY : __/middleware/training/nimcp_training_diagnosis.s
+
+# target to generate assembly for a file
+__/middleware/training/nimcp_training_diagnosis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/middleware/training/nimcp_training_diagnosis.c.s
+.PHONY : __/middleware/training/nimcp_training_diagnosis.c.s
+
 __/middleware/training/nimcp_training_module.o: __/middleware/training/nimcp_training_module.c.o
 .PHONY : __/middleware/training/nimcp_training_module.o
 
@@ -51319,6 +51391,9 @@ help:
 	@echo "... __/cognitive/emotion/nimcp_health_emotion_bridge.o"
 	@echo "... __/cognitive/emotion/nimcp_health_emotion_bridge.i"
 	@echo "... __/cognitive/emotion/nimcp_health_emotion_bridge.s"
+	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.o"
+	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.i"
+	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_intensity_continuous.s"
 	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.o"
 	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.i"
 	@echo "... __/cognitive/emotion_recognition/nimcp_emotion_recognition_fep_bridge.s"
@@ -55621,6 +55696,12 @@ help:
 	@echo "... __/middleware/training/nimcp_training_adapters.o"
 	@echo "... __/middleware/training/nimcp_training_adapters.i"
 	@echo "... __/middleware/training/nimcp_training_adapters.s"
+	@echo "... __/middleware/training/nimcp_training_causal_model.o"
+	@echo "... __/middleware/training/nimcp_training_causal_model.i"
+	@echo "... __/middleware/training/nimcp_training_causal_model.s"
+	@echo "... __/middleware/training/nimcp_training_diagnosis.o"
+	@echo "... __/middleware/training/nimcp_training_diagnosis.i"
+	@echo "... __/middleware/training/nimcp_training_diagnosis.s"
 	@echo "... __/middleware/training/nimcp_training_module.o"
 	@echo "... __/middleware/training/nimcp_training_module.i"
 	@echo "... __/middleware/training/nimcp_training_module.s"

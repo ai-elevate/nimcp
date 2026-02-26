@@ -88,12 +88,12 @@ typedef struct {
 //=============================================================================
 
 /** Last error message (thread-local for thread safety) */
-static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /** PE histories for variance calculation (thread-local for thread safety) */
-static __thread pe_history_t s_visual_pe_history = {0};
-static __thread pe_history_t s_audio_pe_history = {0};
-static __thread pe_history_t s_speech_pe_history = {0};
+static _Thread_local pe_history_t s_visual_pe_history = {0};
+static _Thread_local pe_history_t s_audio_pe_history = {0};
+static _Thread_local pe_history_t s_speech_pe_history = {0};
 
 //=============================================================================
 // Forward Declarations - Internal Functions

@@ -615,7 +615,7 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
     NIMCP_CHECK_THROW(sample, NIMCP_ERROR_INVALID_PARAM, "sample buffer is NULL");
 
     /* Select component based on weights - use thread-local seed */
-    static __thread unsigned int tl_mdn_seed = 0;
+    static _Thread_local unsigned int tl_mdn_seed = 0;
     if (tl_mdn_seed == 0) {
         tl_mdn_seed = (unsigned int)time(NULL) ^ (unsigned int)(uintptr_t)&tl_mdn_seed;
     }

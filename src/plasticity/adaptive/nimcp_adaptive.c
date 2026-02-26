@@ -1963,6 +1963,15 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 // Accumulate squared gradient for L2 norm
                                 grad_norm_sq += weight_delta * weight_delta;
 
+                                // Accumulate delta for prev layer BEFORE updating weight
+                                // (backprop needs the old weight to propagate error correctly)
+                                uint32_t prev_offset = layer_offsets[layer - 1];
+                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
+                                    uint32_t prev_idx = src_id - prev_offset;
+                                    // Backprop: delta_i += weight * delta_j
+                                    delta_prev[prev_idx] += in_syn->weight * dj;
+                                }
+
                                 in_syn->weight += weight_delta;
 
                                 // Update outgoing synapse copy
@@ -1972,14 +1981,6 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                         out_syn->weight += weight_delta;
                                         break;
                                     }
-                                }
-
-                                // Accumulate delta for prev layer neuron
-                                uint32_t prev_offset = layer_offsets[layer - 1];
-                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
-                                    uint32_t prev_idx = src_id - prev_offset;
-                                    // Backprop: delta_i += weight * delta_j
-                                    delta_prev[prev_idx] += in_syn->weight * dj;
                                 }
                             }
 
@@ -2155,6 +2156,14 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 // Accumulate squared gradient for L2 norm
                                 grad_norm_sq += weight_delta * weight_delta;
 
+                                // Accumulate delta for prev layer BEFORE updating weight
+                                // (backprop needs the old weight to propagate error correctly)
+                                uint32_t prev_offset = layer_offsets[layer - 1];
+                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
+                                    uint32_t prev_idx = src_id - prev_offset;
+                                    delta_prev[prev_idx] += in_syn->weight * dj;
+                                }
+
                                 in_syn->weight += weight_delta;
 
                                 for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
@@ -2163,12 +2172,6 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                         out_syn->weight += weight_delta;
                                         break;
                                     }
-                                }
-
-                                uint32_t prev_offset = layer_offsets[layer - 1];
-                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
-                                    uint32_t prev_idx = src_id - prev_offset;
-                                    delta_prev[prev_idx] += in_syn->weight * dj;
                                 }
                             }
 

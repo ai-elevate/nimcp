@@ -760,8 +760,8 @@ bool eligibility_is_significant(
             return false;
     }
 
-    // WHAT: Compare trace to threshold
-    // WHY: Determine if trace is worth processing
-    // HOW: Simple comparison
-    return trace->trace >= config->trace_threshold;
+    // WHAT: Compare absolute trace value to threshold
+    // WHY: Determine if trace is worth processing (traces can be negative for LTD)
+    // HOW: Use fabsf to catch significant negative traces too
+    return fabsf(trace->trace) > config->trace_threshold;
 }

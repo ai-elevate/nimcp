@@ -586,8 +586,8 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain) {
         return false;
     }
 
-    /* Store bridge in brain (if field exists) */
-    /* brain->occipital_training_bridge = training_bridge; */
+    /* No storage field exists in brain for this bridge — destroy to prevent leak */
+    occipital_training_bridge_destroy(training_bridge);
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to training system");
     return true;
@@ -664,8 +664,8 @@ bool nimcp_brain_factory_connect_occipital_to_logic(brain_t brain) {
         return false;
     }
 
-    /* Store bridge reference if field exists in brain structure */
-    /* brain->visual_logic_bridge = bridge; */
+    /* No storage field exists in brain for this bridge — destroy to prevent leak */
+    visual_logic_bridge_destroy(bridge);
 
     /*
      * Also create occipital-specific logic bridge for visual predicate grounding.
@@ -686,6 +686,8 @@ bool nimcp_brain_factory_connect_occipital_to_logic(brain_t brain) {
             occipital_logic_connect_brain(occ_logic_bridge, brain);
         }
         LOG_DEBUG(LOG_MODULE, "Created occipital logic bridge");
+        /* No storage field exists in brain for this bridge — destroy to prevent leak */
+        occipital_logic_bridge_destroy(occ_logic_bridge);
     }
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to logic module");
@@ -926,8 +928,8 @@ bool nimcp_brain_factory_connect_occipital_to_broca(brain_t brain) {
         }
     }
 
-    /* Store bridge reference */
-    /* brain->occipital_audiovisual_bridge = av_bridge; */
+    /* No storage field exists in brain for this bridge — destroy to prevent leak */
+    occipital_av_bridge_destroy(av_bridge);
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to Broca (audiovisual bridge)");
     return true;

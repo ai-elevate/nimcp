@@ -52,8 +52,8 @@ BRIDGE_BOILERPLATE(collective_memory, MESH_ADAPTER_CATEGORY_MEMORY)
 #define ARRAY_GROWTH_FACTOR         2
 
 /** Random seed for mutation operations (thread-local for thread safety) */
-static __thread uint32_t g_random_seed = 0;
-static __thread bool g_random_seed_initialized = false;
+static _Thread_local uint32_t g_random_seed = 0;
+static _Thread_local bool g_random_seed_initialized = false;
 
 //=============================================================================
 // Internal Helper Functions

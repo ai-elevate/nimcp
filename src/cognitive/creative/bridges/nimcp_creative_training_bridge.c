@@ -37,7 +37,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(creative_training_bridge, MESH_ADAPTER_CATEGORY_COG
 // Thread-local error handling
 //=============================================================================
 
-static __thread char g_training_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
+static _Thread_local char g_training_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_training_error(const char* fmt, ...) {
     va_list args;

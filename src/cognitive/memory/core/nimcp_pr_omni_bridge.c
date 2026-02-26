@@ -51,7 +51,7 @@ static inline void pr_omni_bridge_heartbeat_instance(
 // Thread-Local Error State
 //=============================================================================
 
-static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     if (msg) {

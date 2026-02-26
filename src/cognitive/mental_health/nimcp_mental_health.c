@@ -48,7 +48,7 @@ BRIDGE_BOILERPLATE(mental_health, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #define DEFAULT_HISTORY_WINDOW 1000
 
 /* Thread-local error */
-static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* msg) {
     if (msg) {

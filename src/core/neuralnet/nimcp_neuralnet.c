@@ -665,8 +665,11 @@ neural_network_t neural_network_create(const network_config_t* config)
             (size_t)actual_neurons * activity_cap, sizeof(float));
         if (!network->spike_history_bulk || !network->activity_history_bulk) {
             LOG_WARN("Bulk allocation failed for %u neurons, falling back to per-neuron", actual_neurons);
-            if (network->spike_history_bulk) { nimcp_free(network->spike_history_bulk); network->spike_history_bulk = NULL; }
-            if (network->activity_history_bulk) { nimcp_free(network->activity_history_bulk); network->activity_history_bulk = NULL; }
+            /* Safe: network is not yet shared (still in neural_network_create) */
+            nimcp_free(network->spike_history_bulk);
+            network->spike_history_bulk = NULL;
+            nimcp_free(network->activity_history_bulk);
+            network->activity_history_bulk = NULL;
             use_bulk = false;
         } else {
             network->bulk_neuron_count = actual_neurons;
@@ -983,16 +986,26 @@ void neural_network_destroy(neural_network_t network)
     }
 
     // Free spike/activity history: bulk arrays first, then individual stragglers
-    if (network->spike_history_bulk) {
-        nimcp_free(network->spike_history_bulk);
-        network->spike_history_bulk = NULL;
-    }
-    if (network->activity_history_bulk) {
-        nimcp_free(network->activity_history_bulk);
-        network->activity_history_bulk = NULL;
-    }
     if (network->neurons) {
         uint32_t bulk_count = network->bulk_neuron_count;
+
+        // NULL out pointers for bulk-allocated neurons BEFORE freeing bulk arrays.
+        // This prevents any accidental double-free if something later iterates all neurons.
+        for (uint32_t i = 0; i < bulk_count && i < network->num_neurons; i++) {
+            network->neurons[i].spike_history = NULL;
+            network->neurons[i].activity_history = NULL;
+        }
+
+        if (network->spike_history_bulk) {
+            nimcp_free(network->spike_history_bulk);
+            network->spike_history_bulk = NULL;
+        }
+        if (network->activity_history_bulk) {
+            nimcp_free(network->activity_history_bulk);
+            network->activity_history_bulk = NULL;
+        }
+
+        // Free individually-allocated history buffers (neurons beyond bulk_count)
         for (uint32_t i = bulk_count; i < network->num_neurons; i++) {
             if (network->neurons[i].spike_history) {
                 nimcp_free(network->neurons[i].spike_history);
@@ -1049,10 +1062,11 @@ void neural_network_destroy(neural_network_t network)
  */
 static float fast_tanh(float x)
 {
+    if (fabsf(x) > 4.0f) return tanhf(x);
     float x2 = x * x;
     float a = x * (135135.0F + x2 * (17325.0F + x2 * (378.0F + x2)));
     float b = 135135.0F + x2 * (62370.0F + x2 * (3150.0F + x2 * 28.0F));
-    return a / b;
+    return a / (b + 1e-10f);
 }
 
 /**
@@ -2077,8 +2091,8 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
     neuron->threshold += threshold_adjustment;
 
     // Constrain threshold to reasonable range
-    float min_threshold = neuron->rest_potential + 5.0F;
-    float max_threshold = neuron->rest_potential + 30.0F;
+    float min_threshold = neuron->rest_potential + 0.1F;
+    float max_threshold = neuron->rest_potential + 2.0F;
     neuron->threshold = fmaxf(min_threshold, fminf(max_threshold, neuron->threshold));
 
     // Update homeostatic factor
@@ -2171,6 +2185,8 @@ static void update_meta_plasticity(neural_network_t network, neuron_t* neuron, u
  */
 void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp)
 {
+    if (!network) return;
+
     // Skip if too soon since last maintenance
     if (timestamp - network->last_maintenance < network->config.update_interval) {
         return;
@@ -2395,13 +2411,12 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
         float potential = compute_membrane_potential(neuron, network);
 
         // Update neuron state
-        if (neural_network_update_neuron(network, i, potential, timestamp)) {
+        if (neural_network_update_neuron(network, i, 0.0f, timestamp)) {
             active_neurons++;
         }
 
-        // Update traces and dynamics
-        update_synaptic_traces(network, neuron, timestamp);
-        update_calcium_dynamics(neuron, timestamp);
+        // Traces and calcium dynamics are updated by learning functions;
+        // do not double-decay here
 
         // WHAT: Reset external current after processing
         // WHY: External current is per-timestep stimulation, not persistent state
@@ -2868,15 +2883,20 @@ bool neural_network_rebuild_incoming(neural_network_t network)
                         if (in_meta->enable_stp) {
                             stp_reset(&in_meta->stp, 0);
                         }
+                        // Prevent shared pointer double-free with outgoing metadata
+                        in_meta->bcm = NULL;
+                        in_meta->eligibility = NULL;
                     }
                 }
             }
 
-            uint32_t in_idx = sparse_synapse_add(
+            int rc = sparse_synapse_add(
                 network->synapse_handle_pool, &tgt->incoming,
                 i,  // source neuron id stored in target_neuron_id field
                 out_h->weight);
-            if (in_idx != UINT32_MAX) {
+            if (rc != 0) continue;
+            {
+                uint32_t in_idx = NEURON_IN_COUNT(tgt) - 1;
                 synapse_handle_t* in_h = NEURON_IN_HANDLE(tgt, in_idx);
                 if (in_h) {
                     in_h->strength = out_h->strength;

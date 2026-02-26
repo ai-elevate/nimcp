@@ -26,26 +26,21 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
              * Previously this was done after unlocking, allowing concurrent access
              * to see a partially-updated entry. */
             existing->user_data = info->user_data;
-            nimcp_platform_mutex_unlock(&g_router->modules_mutex);
-            /* P1 fix: Warn about potential memory leak on re-registration.
-             * Each call allocates a new context. Callers MUST free the
-             * previously returned context via bio_router_unregister_module()
-             * before re-registering, or they will leak the old context. */
+            /* Allocate context INSIDE lock to prevent TOCTOU race where
+             * existing entry could be unregistered between unlock and use. */
             LOG_WARN("Module ID %u (%s) already registered - caller must free "
                      "previous context to avoid memory leak",
                      info->module_id, existing->module_name);
-            // CRITICAL FIX: Must allocate a proper context struct, NOT cast entry!
-            // The old code returned (bio_module_context_t)existing which was wrong because
-            // bio_module_entry_t and bio_module_context_struct are different structs.
             bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
             if (!ctx) {
+                nimcp_platform_mutex_unlock(&g_router->modules_mutex);
                 LOG_ERROR("Failed to allocate context for existing module");
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ctx is NULL");
-
                 return NULL;
             }
             ctx->magic = BIO_MODULE_MAGIC;
             ctx->entry = existing;
+            nimcp_platform_mutex_unlock(&g_router->modules_mutex);
             return ctx;
         }
     }
@@ -526,17 +521,17 @@ nimcp_error_t bio_router_broadcast(bio_module_context_t ctx,
     NIMCP_CHECK_THROW(ctx && msg && msg_size > 0, NIMCP_ERROR_INVALID_PARAM,
                       "bio_router_broadcast: invalid context or message");
 
-    // Create a copy with target set to 0 (broadcast)
-    bio_message_header_t* header = (bio_message_header_t*)msg;
-    uint32_t original_target = header->target_module;
+    // Create a mutable copy to set broadcast flags (msg is const)
+    void* msg_copy = nimcp_malloc(msg_size);
+    if (!msg_copy) return NIMCP_ERROR_NO_MEMORY;
+    memcpy(msg_copy, msg, msg_size);
+
+    bio_message_header_t* header = (bio_message_header_t*)msg_copy;
     header->target_module = 0;
     header->flags |= BIO_MSG_FLAG_BROADCAST;
 
-    nimcp_error_t result = bio_router_send(ctx, msg, msg_size, 0);
-
-    // Restore original target
-    header->target_module = original_target;
-    header->flags &= ~BIO_MSG_FLAG_BROADCAST;
+    nimcp_error_t result = bio_router_send(ctx, msg_copy, msg_size, 0);
+    nimcp_free(msg_copy);
 
     return result;
 }

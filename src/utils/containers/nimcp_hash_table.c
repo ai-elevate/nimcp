@@ -132,10 +132,10 @@ static uint32_t hash_murmur3(const void* key, size_t key_size)
     const uint32_t c1 = 0xcc9e2d51;
     const uint32_t c2 = 0x1b873593;
 
-    // Body - process 4-byte blocks
-    const uint32_t* blocks = (const uint32_t*) (data);
+    // Body - process 4-byte blocks (use memcpy to avoid unaligned access UB)
     for (int i = 0; i < nblocks; i++) {
-        uint32_t k = blocks[i];
+        uint32_t k;
+        memcpy(&k, data + i * 4, sizeof(uint32_t));
 
         k *= c1;
         k = (k << 15) | (k >> 17);  // rotl32(k, 15)

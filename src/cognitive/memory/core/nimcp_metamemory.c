@@ -37,7 +37,7 @@ BRIDGE_BOILERPLATE(metamemory, MESH_ADAPTER_CATEGORY_MEMORY)
 #ifdef _WIN32
     #define THREAD_LOCAL __declspec(thread)
 #else
-    #define THREAD_LOCAL __thread
+    #define THREAD_LOCAL _Thread_local
 #endif
 
 static THREAD_LOCAL char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};

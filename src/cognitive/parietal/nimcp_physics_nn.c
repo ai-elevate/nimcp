@@ -46,7 +46,7 @@ BRIDGE_BOILERPLATE(physics_nn, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #define MAX_GRADIENT_HISTORY 1024
 
 /* Thread-local error message */
-static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * INTERNAL STRUCTURES

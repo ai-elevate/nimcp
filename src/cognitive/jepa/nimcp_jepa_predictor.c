@@ -24,7 +24,7 @@
  * Monte Carlo Integration - GPU acceleration with CPU fallback
  * ============================================================================ */
 
-static __thread uint32_t g_jepa_pred_mc_seed = 0;
+static _Thread_local uint32_t g_jepa_pred_mc_seed = 0;
 
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/quantum/nimcp_qmc_gpu.h"

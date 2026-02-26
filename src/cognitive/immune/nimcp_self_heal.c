@@ -566,7 +566,7 @@ static int generate_pattern_fix(
 
         case FIX_PATTERN_STACK_OVERFLOW:
             snprintf(fix_prefix, sizeof(fix_prefix),
-                "static __thread int _recursion_depth = 0;\n"
+                "static _Thread_local int _recursion_depth = 0;\n"
                 "if (++_recursion_depth > 1000) {\n"
                 "    _recursion_depth--;\n"
                 "    return -1;\n"

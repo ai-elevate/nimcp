@@ -23,7 +23,7 @@
 #define LING_SNN_MAGIC 0x4C534E4E  /* "LSNN" */
 
 /* Thread-local error message */
-static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* Phoneme names (IPA) */
 static const char* PHONEME_NAMES[LING_PHONEME_COUNT] = {

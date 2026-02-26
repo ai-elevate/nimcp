@@ -254,8 +254,11 @@ bool backprop_forward(backprop_ctx_t* ctx,
 
     neural_network_t network = ctx->network;
 
-    /* Store input activations (layer 0) */
+    /* Store input activations (layer 0).
+     * Zero-fill first so any positions beyond input_size are deterministic. */
     uint32_t in_size = ctx->activations[0].size;
+    memset(ctx->activations[0].pre_activation, 0, in_size * sizeof(float));
+    memset(ctx->activations[0].post_activation, 0, in_size * sizeof(float));
     for (uint32_t i = 0; i < in_size && i < input_size; i++) {
         ctx->activations[0].pre_activation[i] = inputs[i];
         ctx->activations[0].post_activation[i] = inputs[i];  /* No activation on input */
@@ -280,10 +283,13 @@ bool backprop_forward(backprop_ctx_t* ctx,
             /* Compute weighted sum: z = sum(w * a_prev) + bias */
             float z = neuron->bias;
 
-            /* Sum inputs from incoming synapses */
+            /* Sum inputs from incoming synapses.
+             * NOTE: For incoming synapses, target_neuron_id stores the SOURCE
+             * neuron ID (set in rebuild_incoming). This is an artifact of the
+             * sparse synapse API reusing the same handle struct for both directions. */
             for (uint32_t s = 0; s < NEURON_IN_COUNT(neuron); s++) {
                 synapse_handle_t* syn = NEURON_IN_HANDLE(neuron, s);
-                uint32_t src_id = syn->target_neuron_id;
+                uint32_t src_id = syn->target_neuron_id;  /* source ID for incoming */
 
                 /* Find which layer and index the source is in */
                 float src_activation = 0.0f;
@@ -309,6 +315,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
                     neuron_t* prev_neuron = &network->neurons[prev_neuron_id];
                     for (uint32_t s = 0; s < NEURON_OUT_COUNT(prev_neuron); s++) {
                         synapse_handle_t* sh = NEURON_OUT_HANDLE(prev_neuron, s);
+                        if (!sh) continue;
                         if (sh->target_neuron_id == neuron_id) {
                             z += sh->weight *
                                  ctx->activations[l - 1].post_activation[j];
@@ -358,6 +365,10 @@ bool backprop_backward(backprop_ctx_t* ctx,
     uint32_t num_layers = ctx->num_layers;
 
     /* Allocate per-layer delta buffers */
+    if (num_layers > SIZE_MAX / sizeof(float*)) {
+        LOG_ERROR("Layer count overflow: %u layers", num_layers);
+        return false;
+    }
     float** layer_deltas = nimcp_malloc(num_layers * sizeof(float*));
     if (!layer_deltas) {
         LOG_ERROR("Failed to allocate layer delta array");
@@ -435,6 +446,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
                 /* Check outgoing synapses from current neuron */
                 for (uint32_t s = 0; s < NEURON_OUT_COUNT(curr_neuron); s++) {
                     synapse_handle_t* sh = NEURON_OUT_HANDLE(curr_neuron, s);
+                    if (!sh) continue;
                     uint32_t target_id = sh->target_neuron_id;
 
                     /* If target is in next layer */
@@ -479,6 +491,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
             /* For each outgoing synapse */
             for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
                 synapse_handle_t* sh = NEURON_OUT_HANDLE(neuron, s);
+                if (!sh) continue;
                 uint32_t target_id = sh->target_neuron_id;
 
                 /* Find which layer the target is in */
@@ -503,7 +516,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
 
                 /* Weight gradient: dL/dW = a_source * delta_target */
                 if (weight_idx < ctx->total_weights) {
-                    ctx->weight_gradients[weight_idx] = a_source * delta_target;
+                    ctx->weight_gradients[weight_idx] = a_source * delta_target * sh->strength;
                 }
                 weight_idx++;
             }

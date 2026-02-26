@@ -796,9 +796,13 @@ class InstructorAgent(threading.Thread):
         for features, label in self.adversarial_bank[:200]:
             if self.stop_event.is_set():
                 break
+            pred, conf = self.brain.predict(features)
+            correct = (pred == label)
             self.brain.learn(features, label, self._modulate_lr(0.8))
             self.total_examples += 1
-            self.socratic.mastery.record(domain, True)
+            if correct:
+                self.total_correct += 1
+            self.socratic.mastery.record(domain, correct)
 
     def _publish_exemplar(self, domain: str):
         """Publish a representative exemplar for cross-domain teaching."""

@@ -66,7 +66,7 @@ void creative_ethics_bridge_mesh_unregister(void) {
 // Thread-local error handling
 //=============================================================================
 
-static __thread char g_ethics_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
+static _Thread_local char g_ethics_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_ethics_error(const char* fmt, ...) {
     va_list args;

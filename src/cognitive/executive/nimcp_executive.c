@@ -44,7 +44,7 @@
 // Monte Carlo Integration - GPU acceleration with CPU fallback
 //=============================================================================
 
-static __thread uint32_t g_exec_mc_seed = 0;
+static _Thread_local uint32_t g_exec_mc_seed = 0;
 
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/quantum/nimcp_qmc_gpu.h"
@@ -519,7 +519,7 @@ static nimcp_error_t handle_portia_degradation_event(
 // Error Handling
 //=============================================================================
 
-static __thread char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...)
 {

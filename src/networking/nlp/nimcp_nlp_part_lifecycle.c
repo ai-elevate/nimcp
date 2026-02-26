@@ -152,6 +152,7 @@ void nlp_node_destroy(nlp_node_t node) {
     }
 
     // Destroy mutexes
+    nimcp_mutex_destroy(&node->state_mutex);
     nimcp_mutex_destroy(&node->peer_mutex);
     nimcp_mutex_destroy(&node->key_mutex);
     nimcp_mutex_destroy(&node->env_mutex);

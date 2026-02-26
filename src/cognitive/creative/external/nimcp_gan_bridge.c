@@ -62,7 +62,7 @@ void gan_bridge_mesh_unregister(void) {
 // Thread-local error message
 //=============================================================================
 
-static __thread char g_gan_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
+static _Thread_local char g_gan_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_gan_error(const char* msg)
 {

@@ -645,7 +645,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
     features->spectral_spread = features->spectral_centroid * 0.4f;
 
     /* Spectral flux from energy change */
-    static __thread float last_energy = 0.0f;
+    static _Thread_local float last_energy = 0.0f;
     features->spectral_flux = fabsf(features->rms_energy - last_energy);
     last_energy = features->rms_energy;
 

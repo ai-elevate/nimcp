@@ -42,7 +42,7 @@ BRIDGE_BOILERPLATE(spaced_repetition, MESH_ADAPTER_CATEGORY_MEMORY)
 #ifdef _WIN32
     #define THREAD_LOCAL __declspec(thread)
 #else
-    #define THREAD_LOCAL __thread
+    #define THREAD_LOCAL _Thread_local
 #endif
 
 static THREAD_LOCAL char sr_error_buffer[NIMCP_ERROR_BUFFER_SIZE] = {0};

@@ -62,8 +62,8 @@ BRIDGE_BOILERPLATE(wellbeing_resources, MESH_ADAPTER_CATEGORY_COGNITIVE)
  * WHY: Compute rates (CPU usage, I/O rates) between samples
  * HOW: Thread-local storage maintains per-thread history
  */
-static __thread enhanced_resource_metrics_t prev_metrics = {0};
-static __thread bool has_previous_sample = false;
+static _Thread_local enhanced_resource_metrics_t prev_metrics = {0};
+static _Thread_local bool has_previous_sample = false;
 
 //=============================================================================
 // PLATFORM-SPECIFIC COLLECTION HELPERS

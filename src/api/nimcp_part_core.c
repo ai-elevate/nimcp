@@ -203,7 +203,10 @@ nimcp_status_t nimcp_brain_predict_fast(
     for (uint32_t i = 0; i < num_outputs; i++) {
         sum += fabsf(output[i]);
     }
-    *out_confidence = (sum > 0.0f) ? (max_val / sum) : 0.0f;
+    float raw_conf = (sum > 0.0f) ? (max_val / sum) : 0.0f;
+    if (raw_conf < 0.0f) raw_conf = 0.0f;
+    if (raw_conf > 1.0f) raw_conf = 1.0f;
+    *out_confidence = raw_conf;
 
     if (output != stack_buf) nimcp_free(output);
 
@@ -1260,6 +1263,7 @@ nimcp_status_t nimcp_brain_train_batch(
 
     // Train on each example and average results
     float total_loss = 0.0F;
+    uint32_t completed = 0;
     nimcp_training_result_t step_result = {0};
 
     for (uint32_t i = 0; i < batch_size; i++) {
@@ -1275,6 +1279,7 @@ nimcp_status_t nimcp_brain_train_batch(
         }
 
         total_loss += step_result.loss;
+        completed++;
 
         if (step_result.early_stopped) {
             break;
@@ -1282,7 +1287,7 @@ nimcp_status_t nimcp_brain_train_batch(
     }
 
     if (result) {
-        result->loss = total_loss / batch_size;
+        result->loss = (completed > 0) ? (total_loss / completed) : 0.0F;
         result->learning_rate = step_result.learning_rate;
         result->step = step_result.step;
         result->early_stopped = step_result.early_stopped;

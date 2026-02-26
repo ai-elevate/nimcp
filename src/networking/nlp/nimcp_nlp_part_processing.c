@@ -31,7 +31,7 @@ static nimcp_error_t nlp_bio_handler(const void* msg, size_t msg_size,
                 resp.healthy = node->running;
                 resp.active_threads = 3;  // recv, heartbeat, stealth
                 resp.pending_messages = 0;  // Pending messages tracked separately
-                // Complete promise with response
+                nimcp_bio_promise_complete(response_promise, &resp);
             }
             break;
         }

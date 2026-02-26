@@ -649,19 +649,27 @@ int nlp_broadcast(nlp_node_t node, nlp_msg_type_t msg_type,
 
     int sent = 0;
 
+    // Collect peer IDs under lock, then send without lock to avoid
+    // unlock-iterate-relock race where peers array can change
     nimcp_mutex_lock(&node->peer_mutex);
-    for (uint32_t i = 0; i < node->peer_count; i++) {
-        if (node->peers[i].session_state == NLP_SESSION_ESTABLISHED) {
-            nimcp_mutex_unlock(&node->peer_mutex);
-
-            int rc = nlp_send(node, node->peers[i].peer_id, msg_type,
-                             payload, payload_len, priority);
-            if (rc >= 0) sent++;
-
-            nimcp_mutex_lock(&node->peer_mutex);
+    uint32_t peer_count = node->peer_count;
+    uint32_t* peer_ids = nimcp_malloc(peer_count * sizeof(uint32_t));
+    uint32_t active = 0;
+    if (peer_ids) {
+        for (uint32_t i = 0; i < peer_count; i++) {
+            if (node->peers[i].session_state == NLP_SESSION_ESTABLISHED) {
+                peer_ids[active++] = node->peers[i].peer_id;
+            }
         }
     }
     nimcp_mutex_unlock(&node->peer_mutex);
+
+    for (uint32_t i = 0; i < active; i++) {
+        int rc = nlp_send(node, peer_ids[i], msg_type,
+                         payload, payload_len, priority);
+        if (rc >= 0) sent++;
+    }
+    nimcp_free(peer_ids);
 
     return sent;
 }
@@ -842,9 +850,9 @@ int nlp_rotate_session_key(nlp_node_t node, uint32_t peer_id) {
 
     // Generate new session key (using nonce generator as source of randomness)
     uint8_t new_key[NLP_KEY_SIZE];
+    memset(new_key, 0, NLP_KEY_SIZE);  // Zero-init all bytes before partial fill
     nlp_crypto_generate_nonce(node, new_key);       // First 12 bytes
     nlp_crypto_generate_nonce(node, new_key + 12);  // Next 12 bytes
-    // Last 8 bytes are initialized to zero (calloc-style init from stack)
 
     // Find peer and update key
     nimcp_mutex_lock(&node->peer_mutex);

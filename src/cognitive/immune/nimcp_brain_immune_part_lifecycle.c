@@ -127,16 +127,17 @@ int brain_immune_initiate_inflammation(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_initiate_inflammation: system is NULL");
         return -1;
     }
-    if (system->inflammation_count >= system->inflammation_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_initiate_inflammation: capacity exceeded");
-        return -1;
-    }
-
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_initiate_inflammatio", 0.0f);
 
-
     nimcp_mutex_lock(system->mutex);
+
+    /* Capacity check inside mutex to prevent TOCTOU race */
+    if (system->inflammation_count >= system->inflammation_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_immune_initiate_inflammation: capacity exceeded");
+        return -1;
+    }
 
     brain_inflammation_site_t* site = &system->inflammation_sites[system->inflammation_count];
     memset(site, 0, sizeof(*site));

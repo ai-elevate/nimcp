@@ -210,7 +210,7 @@ typedef struct {
     uint64_t max_eval_time_us;
 } safety_internal_stats_t;
 
-static __thread safety_internal_stats_t g_stats = {0};
+static _Thread_local safety_internal_stats_t g_stats = {0};
 
 //=============================================================================
 // Knowledge Base Lifecycle

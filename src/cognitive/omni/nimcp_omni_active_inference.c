@@ -80,7 +80,7 @@ int omni_active_inference_training_end(void* ctx) {
  * Thread-Safe PRNG (xorshift64)
  * ============================================================================ */
 
-static __thread uint64_t ai_prng_state = 0;
+static _Thread_local uint64_t ai_prng_state = 0;
 
 static void ai_prng_seed(void) {
     /* Seed with address XOR'd with a constant for uniqueness per thread */

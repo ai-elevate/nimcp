@@ -93,7 +93,11 @@ nimcp_status_t nimcp_init(void) {
 void nimcp_shutdown(void) {
     LOG_INFO("Shutting down NIMCP library");
 
-    if (!nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+    // Atomically set g_initialized to false at the START of shutdown.
+    // This prevents other threads from entering API functions during cleanup.
+    bool expected = true;
+    if (!nimcp_atomic_compare_exchange_bool(&g_initialized, &expected, false,
+                                             NIMCP_MEMORY_ORDER_ACQ_REL)) {
         LOG_DEBUG("NIMCP not initialized, nothing to shutdown");
         return;
     }
@@ -132,7 +136,7 @@ void nimcp_shutdown(void) {
 
     // Reset init state to allow re-initialization
     g_init_result = NIMCP_OK;  // Reset to default for next init
-    nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
+    // g_initialized already set to false via CAS at top of shutdown
     LOG_INFO("NIMCP library shutdown complete");
 }
 

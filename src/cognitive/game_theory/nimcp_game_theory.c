@@ -27,7 +27,7 @@ BRIDGE_BOILERPLATE(game_theory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 // Monte Carlo Integration - Thread-local seed
 //=============================================================================
 
-static __thread uint32_t g_gt_mc_seed = 0;
+static _Thread_local uint32_t g_gt_mc_seed = 0;
 
 //=============================================================================
 // Internal Structure

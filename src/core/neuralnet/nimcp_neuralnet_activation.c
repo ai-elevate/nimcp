@@ -50,10 +50,11 @@ static float sigmoid(float x)
 
 static float fast_tanh(float x)
 {
+    if (fabsf(x) > 4.0f) return tanhf(x);
     float x2 = x * x;
     float a = x * (135135.0f + x2 * (17325.0f + x2 * (378.0f + x2)));
     float b = 135135.0f + x2 * (62370.0f + x2 * (3150.0f + x2 * 28.0f));
-    return a / b;
+    return a / (b + 1e-10f);
 }
 
 static float clamp_activation(float value)

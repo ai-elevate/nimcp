@@ -6,6 +6,7 @@
 nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
     API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
     API_CHECK_THROW(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // Call internal brain API
     bool success = brain_save(brain->internal_brain, filepath);
@@ -61,6 +62,7 @@ nimcp_status_t nimcp_brain_snapshot_save(
 {
     API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
     API_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // Call internal brain snapshot API
     bool success = brain_save_snapshot(

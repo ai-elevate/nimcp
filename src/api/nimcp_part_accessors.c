@@ -84,25 +84,14 @@ nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
         return result;
     }
 
-    // Access complex oscillation state from analyzer
-    // Note: This assumes brain_oscillation_analyzer_t has a complex_state field
-    // The actual implementation would need to extract this from the analyzer structure
-    // For now, we'll use a hypothetical accessor function
-    brain_complex_oscillation_state_t* complex_state =
-        (brain_complex_oscillation_state_t*)analyzer;  // Placeholder cast
-
-    // Get neuron phasor
-    neural_phasor_t phasor;
-    if (!brain_complex_oscillation_get_phasor(complex_state, neuron_id, &phasor)) {
-        set_error("Invalid neuron ID or failed to get phasor");
-        return result;
-    }
-
-    // Convert neural_phasor_t to nimcp_oscillation_phasor_t
-    result.amplitude = phasor_amplitude(phasor);
-    result.phase = phasor_phase(phasor);
-
-    set_error("No error");
+    // BUG FIX: Previous code cast brain_oscillation_analyzer_t* to
+    // brain_complex_oscillation_state_t* — these are unrelated structs.
+    // This violated strict aliasing and caused undefined behavior.
+    // Return safe defaults until a proper accessor is added to the internal API.
+    (void)analyzer;
+    set_error("Complex oscillation phasor extraction not yet wired to analyzer");
+    result.amplitude = 0.0F;
+    result.phase = 0.0F;
     return result;
 }
 
@@ -149,20 +138,14 @@ float nimcp_get_phase_coherence(
         return 0.0F;
     }
 
-    // Access complex oscillation state
-    brain_complex_oscillation_state_t* complex_state =
-        (brain_complex_oscillation_state_t*)analyzer;
-
-    // Compute phase coherence for neuron subset
-    phase_coherence_result_t result;
-    if (!brain_complex_oscillation_compute_coherence_subset(
-            complex_state, neuron_ids, count, &result)) {
-        set_error("Failed to compute phase coherence");
-        return 0.0F;
-    }
-
-    set_error("No error");
-    return result.coherence;
+    // BUG FIX: Removed strict-aliasing-violating cast from unrelated
+    // brain_oscillation_analyzer_t* to brain_complex_oscillation_state_t*.
+    // Return safe default until a proper accessor is available.
+    (void)analyzer;
+    (void)neuron_ids;
+    (void)count;
+    set_error("Complex oscillation coherence not yet wired to analyzer");
+    return 0.0F;
 }
 
 
@@ -209,69 +192,14 @@ float nimcp_get_pac_modulation(
         return 0.0F;
     }
 
-    // Access complex oscillation state
-    brain_complex_oscillation_state_t* complex_state =
-        (brain_complex_oscillation_state_t*)analyzer;
-
-    // For PAC computation, we need to:
-    // 1. Extract theta-band phase neurons
-    // 2. Extract gamma-band amplitude values
-    // 3. Compute PAC modulation index
-
-    // This requires access to brain's neural network to filter by frequency bands
-    // For now, we'll provide a simplified implementation that uses all neurons
-    uint32_t num_neurons = brain_complex_oscillation_get_num_neurons(complex_state);
-
-    if (num_neurons == 0) {
-        set_error("No neurons in complex oscillation state");
-        return 0.0F;
-    }
-
-    // Allocate arrays for phase and amplitude
-    uint32_t* phase_indices = (uint32_t*)nimcp_malloc(num_neurons * sizeof(uint32_t));
-    float* amplitude_values = (float*)nimcp_malloc(num_neurons * sizeof(float));
-
-    if (!phase_indices || !amplitude_values) {
-        set_error("Failed to allocate memory for PAC computation");
-        if (phase_indices) nimcp_free(phase_indices);
-        if (amplitude_values) nimcp_free(amplitude_values);
-        return 0.0F;
-    }
-
-    // Populate indices and extract amplitude values
-    for (uint32_t i = 0; i < num_neurons; i++) {
-        phase_indices[i] = i;
-
-        neural_phasor_t phasor;
-        if (brain_complex_oscillation_get_phasor(complex_state, i, &phasor)) {
-            amplitude_values[i] = phasor_amplitude(phasor);
-        } else {
-            amplitude_values[i] = 0.0F;
-        }
-    }
-
-    // Compute PAC
-    pac_result_t pac_result;
-    bool success = brain_complex_oscillation_compute_pac(
-        complex_state,
-        phase_indices,
-        num_neurons,
-        amplitude_values,
-        num_neurons,
-        &pac_result
-    );
-
-    // Cleanup
-    nimcp_free(phase_indices);
-    nimcp_free(amplitude_values);
-
-    if (!success) {
-        set_error("Failed to compute PAC modulation index");
-        return 0.0F;
-    }
-
-    set_error("No error");
-    return pac_result.modulation_index;
+    // BUG FIX: Removed strict-aliasing-violating cast from unrelated
+    // brain_oscillation_analyzer_t* to brain_complex_oscillation_state_t*.
+    // Return safe default until a proper accessor is available.
+    (void)analyzer;
+    (void)theta_freq;
+    (void)gamma_freq;
+    set_error("PAC modulation not yet wired to analyzer");
+    return 0.0F;
 }
 
 
@@ -281,6 +209,10 @@ uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
         return 0;
     }
     
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        return 0;
+    }
     return brain_get_neuron_count(brain->internal_brain);
 }
 
@@ -289,6 +221,12 @@ bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization
     if (!brain) {
         set_error("Brain handle is NULL");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_get_utilization_metrics: brain is NULL");
+        return false;
+    }
+
+    if (!brain->internal_brain) {
+        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_get_utilization_metrics: internal_brain is NULL");
         return false;
     }
 

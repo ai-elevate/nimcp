@@ -34,7 +34,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(creative_neural_bridge, MESH_ADAPTER_CATEGORY_COGNI
 // Thread-local error handling
 //=============================================================================
 
-static __thread char g_neural_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
+static _Thread_local char g_neural_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 static void set_neural_error(const char* fmt, ...) {
     va_list args;

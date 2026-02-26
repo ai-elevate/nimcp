@@ -504,9 +504,10 @@ static int bio_router_kg_dispatch_internal(
     }
 
     nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+    uint32_t handler_count = handlers->count;
     brain_kg_handler_list_destroy(handlers);
 
-    LOG_DEBUG("KG dispatch: delivered to %d/%u handlers", dispatched, handlers->count);
+    LOG_DEBUG("KG dispatch: delivered to %d/%u handlers", dispatched, handler_count);
 
     /* Update stats */
     if (dispatched > 0) {

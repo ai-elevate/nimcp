@@ -84,7 +84,7 @@ struct counterfactual_system_struct {
 //=============================================================================
 
 /** Thread-local error message buffer */
-static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /** Learning rate for causal matrix updates */
 static const float CAUSAL_LEARNING_RATE = NIMCP_LEARNING_RATE_COARSE;

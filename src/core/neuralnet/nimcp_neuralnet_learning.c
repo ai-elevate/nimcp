@@ -1,4 +1,5 @@
 #include <stddef.h>  /* for NULL */
+#include <float.h>   /* for FLT_MAX */
 //=============================================================================
 // nimcp_neuralnet_learning.c - Learning Rules and Synaptic Plasticity
 //=============================================================================
@@ -30,7 +31,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet_learning)
 #define EPSILON 1e-10f
 #define MAX_SYNAPTIC_STRENGTH 10.0f
 #define NORMALIZATION_INTERVAL 1000
-#define ACTIVITY_THRESHOLD 0.01f
+#define ACTIVITY_THRESHOLD 1e-5f
 
 /* Single authoritative definition of neural_network_struct */
 #include "core/neuralnet/nimcp_neuralnet_internal.h"
@@ -50,10 +51,10 @@ static float compute_stdp_update(float dt, const stdp_params_t* params)
 
     if (dt > 0.0f) {
         // Pre before post - potentiation
-        return params->learning_rate * params->positive_factor * expf(-dt / time_window);
+        return params->positive_factor * expf(-dt / time_window);
     } else {
         // Post before pre - depression
-        return -params->learning_rate * params->negative_factor * expf(dt / time_window);
+        return -params->negative_factor * expf(dt / time_window);
     }
 }
 
@@ -103,8 +104,9 @@ static void update_synaptic_traces_sparse(neuron_t* neuron,
 
 static void normalize_synaptic_weights_sparse(neuron_t* neuron)
 {
+    if (!neuron) return;
     uint32_t syn_count = NEURON_OUT_COUNT(neuron);
-    if (!neuron || syn_count == 0)
+    if (syn_count == 0)
         return;
 
     float sum_sq = 0.0f;
@@ -198,10 +200,9 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
         return;
     }
 
-    synapse_handle_t* first = NEURON_OUT_HANDLE(neuron, 0);
     float sum = 0.0f;
-    float min_w = first ? first->weight : 0.0f;
-    float max_w = min_w;
+    float min_w = FLT_MAX;
+    float max_w = -FLT_MAX;
 
     for (uint32_t i = 0; i < syn_count; i++) {
         synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);

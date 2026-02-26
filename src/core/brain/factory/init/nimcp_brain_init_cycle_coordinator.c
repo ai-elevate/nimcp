@@ -177,7 +177,7 @@ bool nimcp_brain_factory_init_cycle_coordinator_subsystem(brain_t brain) {
     /* Register sleep-wake cycle (struct, take address) */
     {
         int rc = brain_cycle_coordinator_register(coord,
-            BRAIN_CYCLE_SLEEP_WAKE, &brain->sleep_system, NULL);
+            BRAIN_CYCLE_SLEEP_WAKE, brain->sleep_system, NULL);
         if (rc == 0) {
             NIMCP_LOGGING_INFO("Registered cycle: Sleep-Wake (state machine)");
         } else {

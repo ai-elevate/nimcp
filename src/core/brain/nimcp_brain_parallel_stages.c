@@ -227,13 +227,8 @@ bool brain_decide_submit_post_forward(
     nimcp_pool_submit(pool, stage_shannon_task,           &args[6]);
     nimcp_pool_submit(pool, stage_quantum_shannon_task,   &args[7]);
 
-    // Non-blocking — caller runs sequential stages on main thread, then calls pool_wait
-    // But we need args to survive... store pointer in ctx for cleanup
-    // Actually, pool_wait is called by the caller, so args must live until then.
-    // We leak args here — caller must free after pool_wait.
-    // Better: use a single allocation that ctx points to.
-    // For now, since pool_wait blocks in caller scope, heap args survive.
-    // The caller is responsible for calling nimcp_free on the returned pointer.
-    // TODO: cleaner lifetime management if needed
+    // Non-blocking — caller runs sequential stages on main thread, then calls pool_wait.
+    // Store args pointer in ctx so caller can free after pool_wait completes.
+    ctx->_internal_args = args;
     return true;
 }

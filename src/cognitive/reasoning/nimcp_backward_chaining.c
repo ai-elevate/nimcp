@@ -63,7 +63,7 @@ BRIDGE_BOILERPLATE(backward_chaining, MESH_ADAPTER_CATEGORY_COGNITIVE)
 // Error Handling
 //=============================================================================
 
-static __thread char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...)
 {

@@ -72,8 +72,7 @@ static synapse_entry_t* find_synapse(plasticity_orchestrator_t* orch, uint32_t i
             return &orch->synapses[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition (e.g., sparse iteration) */
 }
 
 
@@ -88,8 +87,7 @@ static neuron_entry_t* find_neuron(plasticity_orchestrator_t* orch, uint32_t id)
             return &orch->neurons[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron: validation failed");
-    return NULL;
+    return NULL;  /* Not found is a normal condition (e.g., sparse iteration) */
 }
 
 
@@ -143,20 +141,32 @@ static void update_weight_statistics(plasticity_orchestrator_t* orch) {
     float sum_sq = 0.0f;
     float min_w = 1.0f;
     float max_w = 0.0f;
+    size_t active_count = 0;
 
     for (size_t i = 0; i < orch->num_synapses; i++) {
         if (!orch->synapses[i].active) continue;
         float w = orch->synapses[i].weight;
+        if (w == 0.0f) continue;  /* Skip pruned (zero-weight) synapses */
         sum += w;
         sum_sq += w * w;
         if (w < min_w) min_w = w;
         if (w > max_w) max_w = w;
+        active_count++;
     }
 
-    size_t n = orch->num_synapses;
-    orch->stats.mean_weight = sum / (float)n;
-    orch->stats.std_weight = sqrtf((sum_sq / (float)n) -
-                                    (orch->stats.mean_weight * orch->stats.mean_weight));
+    if (active_count == 0) {
+        orch->stats.mean_weight = 0.0f;
+        orch->stats.std_weight = 0.0f;
+        orch->stats.min_weight = 0.0f;
+        orch->stats.max_weight = 0.0f;
+        return;
+    }
+
+    float n = (float)active_count;
+    orch->stats.mean_weight = sum / n;
+    float variance = (sum_sq / n) - (orch->stats.mean_weight * orch->stats.mean_weight);
+    if (variance < 0.0f) variance = 0.0f;  /* Clamp to prevent negative from FP error */
+    orch->stats.std_weight = sqrtf(variance);
     orch->stats.min_weight = min_w;
     orch->stats.max_weight = max_w;
 }

@@ -78,7 +78,7 @@ BRIDGE_BOILERPLATE(salience, MESH_ADAPTER_CATEGORY_COGNITIVE)
 // Thread-Local Error Handling
 //=============================================================================
 
-static __thread char g_salience_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
+static _Thread_local char g_salience_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 //=============================================================================
 // History Buffer for Novelty Detection (Memento Pattern) - Using nimcp_queue

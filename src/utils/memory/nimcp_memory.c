@@ -1612,7 +1612,9 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     }
 
     // Special case: realloc(ptr, 0) - should free (implementation-defined in C11)
+    // Route through tracked free path to update allocation tracking
     if (new_size == 0) {
+        untrack_allocation(ptr);
         free(ptr);
         return NULL;
     }

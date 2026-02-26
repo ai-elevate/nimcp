@@ -301,7 +301,14 @@ router_immune_bridge_t* router_immune_bridge_create(
     }
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "bio_router_immune") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "bio_router_immune") != 0) {
+        nimcp_free(bridge->recent_anomalies);
+        nimcp_free(bridge->quarantined_nodes);
+        nimcp_free(bridge->inflammation_impacts);
+        nimcp_free(bridge->cytokine_states);
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge->recent_anomalies);
         nimcp_free(bridge->quarantined_nodes);
@@ -617,10 +624,10 @@ int router_immune_detect_anomalies(
     }
     if (!bridge->enable_anomaly_immune_trigger) return 0;
 
-    /* Update statistics first */
-    router_immune_update_stats(bridge);
-
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+
+    /* Update statistics under lock to prevent TOCTOU race */
+    router_immune_update_stats(bridge);
 
     /* Check for anomalies */
     bool anomaly_detected = false;

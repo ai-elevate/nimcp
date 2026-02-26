@@ -149,15 +149,23 @@ class ThreadSafeBrain:
             return self._brain.curiosity_detect_gaps(*args, **kwargs)
 
     def __getattr__(self, name):
-        """Proxy all other attributes to the underlying brain.
+        """Proxy all other attributes to the underlying brain with lock.
 
         NOTE: Only attributes not explicitly wrapped above go through this
-        fallback.  Explicitly wrapped methods acquire the RLock to prevent
+        fallback.  All proxied access acquires the RLock to prevent
         concurrent C-level mutations.  If you add a new brain method that
         mutates state, add an explicit wrapper above rather than relying on
         this passthrough.
         """
-        return getattr(self._brain, name)
+        attr = getattr(self._brain, name)
+        if callable(attr):
+            def _locked_method(*args, **kwargs):
+                with self._lock:
+                    return attr(*args, **kwargs)
+            return _locked_method
+        else:
+            with self._lock:
+                return attr
 
 
 # ---------------------------------------------------------------------------

@@ -31,11 +31,17 @@ void clear_cache(brain_t brain)
         return;
     }
 
-    // Lock cache mutex with timeout protection to prevent deadlock
-    if (mutex_lock_with_timeout(&brain->cache_mutex, MUTEX_TIMEOUT_US) != 0) {
-        set_error("Timeout waiting for cache mutex in clear_cache - cache not cleared");
-        // Note: We return here rather than proceeding without lock.
-        // Stale cache is safe (just slower), corrupted cache is not.
+    // Lock cache mutex with retry + backoff to prevent deadlock.
+    // Stale cache is safe (just slower), corrupted cache is not,
+    // so we never proceed without the lock.
+    int lock_acquired = -1;
+    for (int attempt = 0; attempt < 3; attempt++) {
+        uint64_t timeout = MUTEX_TIMEOUT_US << attempt;  // exponential backoff
+        lock_acquired = mutex_lock_with_timeout(&brain->cache_mutex, timeout);
+        if (lock_acquired == 0) break;
+    }
+    if (lock_acquired != 0) {
+        set_error("Timeout waiting for cache mutex in clear_cache after 3 retries - cache not cleared");
         return;
     }
 
@@ -1238,6 +1244,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
 
         nimcp_free(prediction);
+        prediction = NULL;
     }
 
     // Apply task-specific output transformation
@@ -1285,58 +1292,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // - Replay and synaptic strengthening occur during sleep
     //
     // COMPLEXITY: O(N) where N = working memory size
-    if (trigger_consolidation && brain->working_memory && brain->longterm_memory) {
-        // Get working memory stats
-        working_memory_stats_t wm_stats;
-        working_memory_get_stats(brain->working_memory, &wm_stats);
-
-        if (wm_stats.current_size > 0 && brain->longterm_count < brain->longterm_capacity) {
-            // Consolidation threshold: only consolidate high-salience items (>0.7)
-            const float CONSOLIDATION_THRESHOLD = 0.7F;
-
-            // Retrieve all working memory items
-            for (uint32_t i = 0; i < wm_stats.current_size; i++) {
-                // Get item from working memory
-                const float* wm_features = NULL;
-                uint32_t wm_num_features = 0;
-                float wm_salience = 0.0F;
-
-                // Try to retrieve features (simplified - assumes API exists)
-                // In reality, would call: working_memory_get_item(brain->working_memory, i, ...)
-
-                // Check if salience meets threshold
-                if (wm_salience >= CONSOLIDATION_THRESHOLD) {
-                    // Guard: Check if longterm buffer has space
-                    if (brain->longterm_count >= brain->longterm_capacity) {
-                        break;  // Buffer full
-                    }
-
-                    // Allocate and copy features to longterm memory
-                    float* lt_features = nimcp_malloc(num_features * sizeof(float));
-                    if (lt_features) {
-                        memcpy(lt_features, features, num_features * sizeof(float));
-
-                        // Store in longterm buffer
-                        brain->longterm_memory[brain->longterm_count].features = lt_features;
-                        brain->longterm_memory[brain->longterm_count].num_features = num_features;
-                        brain->longterm_memory[brain->longterm_count].salience = wm_salience;
-                        brain->longterm_memory[brain->longterm_count].timestamp_ms = nimcp_time_get_ms();
-
-                        brain->longterm_count++;
-
-                        // In full implementation, would clear from working memory here
-                        // working_memory_remove(brain->working_memory, i);
-                    }
-                }
-            }
-
-            // Note: Simplified implementation
-            // Full version would:
-            // 1. Have working_memory_get_item() API
-            // 2. Have working_memory_remove() API
-            // 3. Store consolidated memories back into network weights (Hebbian consolidation)
-        }
-    }
+    // NOTE: Dead consolidation code removed — wm_salience was always 0.0 (never populated),
+    // so the threshold check (>= 0.7) was unreachable. Real consolidation happens via
+    // the engram system (Stage 3.8) and systems consolidation (Phase M2) below.
+    (void)trigger_consolidation;
 
     // ========================================================================
     // STAGE 3.8: MEMORY ENGRAM CONSOLIDATION (Phase M1: Sleep-Dependent)

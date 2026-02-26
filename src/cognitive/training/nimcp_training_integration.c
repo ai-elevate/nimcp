@@ -16,6 +16,7 @@
 
 #include "cognitive/training/nimcp_training_integration.h"
 
+#include "utils/math/nimcp_math_helpers.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
@@ -65,14 +66,7 @@ static uint32_t hash_domain(const char* domain) {
     return hash;
 }
 
-/**
- * @brief Clamp a float to [min, max]
- */
-static inline float clampf(float val, float lo, float hi) {
-    if (val < lo) { return lo; }
-    if (val > hi) { return hi; }
-    return val;
-}
+/* Use centralized nimcp_clampf from nimcp_math_helpers.h */
 
 /**
  * @brief Get the core basal ganglia from brain, or NULL if unavailable
@@ -517,7 +511,7 @@ float brain_ti_compute_adaptive_lr(brain_t brain, float base_lr) {
 
     /* RPE bonus: clamp(rpe * 0.2, -0.2, 0.3) */
     float rpe = brain_ti_get_rpe(brain);
-    float rpe_bonus = clampf(rpe * 0.2f, -0.2f, 0.3f);
+    float rpe_bonus = nimcp_clampf(rpe * 0.2f, -0.2f, 0.3f);
 
     float adaptive_lr = base_lr * arousal_factor * circadian_factor *
                         (1.0f + rpe_bonus);
@@ -758,7 +752,7 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
     /* --- Reward prediction error bonus --- */
     {
         float rpe = brain_ti_get_rpe(brain);
-        state->rpe_bonus = clampf(rpe * 0.2f, -0.2f, 0.3f);
+        state->rpe_bonus = nimcp_clampf(rpe * 0.2f, -0.2f, 0.3f);
     }
 
     /* --- Inflammation effects --- */
@@ -813,11 +807,9 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
         /* Also factor in conflict level from BG — high conflict indicates
          * the model is uncertain between competing strategies */
         float bg_conflict = brain_ti_get_conflict(brain);
-        if (bg_conflict > instability_score) {
-            instability_score = 0.5f * instability_score + 0.5f * bg_conflict;
-        }
+        instability_score = fmaxf(instability_score, bg_conflict);
 
-        instability_score = clampf(instability_score, 0.0f, 1.0f);
+        instability_score = nimcp_clampf(instability_score, 0.0f, 1.0f);
 
         state->instability_lr_scale    = expf(-3.0f * instability_score);
         state->instability_batch_scale = 1.0f + instability_score;  /* increase batch size under instability */
@@ -854,7 +846,7 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
             resource_pressure = 0.6f * cog_demand + 0.4f * resource_pressure;
         }
 
-        resource_pressure = clampf(resource_pressure, 0.0f, 1.0f);
+        resource_pressure = nimcp_clampf(resource_pressure, 0.0f, 1.0f);
 
         if (portia_compute_allocation(resource_pressure, &alloc) == 0) {
             state->portia_learning_gate = alloc.feature_gate_learning;
@@ -910,7 +902,7 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
 
     /* Clamp final LR factor to a safe range to prevent runaway scaling
      * even under extreme combinations of modulation inputs */
-    state->final_lr_factor = clampf(state->final_lr_factor, 0.01f, 10.0f);
+    state->final_lr_factor = nimcp_clampf(state->final_lr_factor, 0.01f, 10.0f);
 
     state->final_batch_factor =
         state->instability_batch_scale *

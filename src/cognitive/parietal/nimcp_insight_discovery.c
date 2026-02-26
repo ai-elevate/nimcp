@@ -50,7 +50,7 @@ struct insight_engine {
     float fatigue;
 };
 
-static __thread char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char g_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * INTERNAL HELPERS

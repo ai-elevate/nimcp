@@ -147,7 +147,7 @@ struct entangle_graph_struct {
 //=============================================================================
 
 /** Thread-local error message buffer */
-static __thread char s_last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
+static _Thread_local char s_last_error[NIMCP_ERROR_BUFFER_LARGE] = {0};
 
 //=============================================================================
 // Internal Helper Functions

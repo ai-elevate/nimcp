@@ -73,7 +73,7 @@ struct ling_fuzzy_bridge {
  * THREAD-LOCAL ERROR
  * ============================================================================ */
 
-static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 static void set_error(const char* fmt, ...) {
     va_list args;

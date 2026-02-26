@@ -41,7 +41,7 @@ BRIDGE_BOILERPLATE(imagination_engine, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 /* Thread-local RNG seed for imagination engine - used by mc_random_uniform */
-static __thread uint32_t g_imagination_rand_seed = 0;
+static _Thread_local uint32_t g_imagination_rand_seed = 0;
 
 /*============================================================================
  * Constants

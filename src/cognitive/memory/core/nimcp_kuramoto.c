@@ -51,7 +51,7 @@ BRIDGE_BOILERPLATE(kuramoto, MESH_ADAPTER_CATEGORY_MEMORY)
 // Thread-Local Error State
 //=============================================================================
 
-static __thread char g_kuramoto_error[ERROR_MSG_SIZE] = {0};
+static _Thread_local char g_kuramoto_error[ERROR_MSG_SIZE] = {0};
 
 /**
  * @brief Set error message
@@ -77,7 +77,7 @@ static void clear_error(void) {
 /**
  * @brief Simple random number generator (XorShift32)
  */
-static __thread uint32_t g_kuramoto_rng_state = 0;
+static _Thread_local uint32_t g_kuramoto_rng_state = 0;
 
 static uint32_t xorshift32(void) {
     uint32_t x = g_kuramoto_rng_state;

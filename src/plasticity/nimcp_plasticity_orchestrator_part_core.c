@@ -162,11 +162,13 @@ int plasticity_orchestrator_pre_spike(
         return -1;
     }
 
+    /* Save old spike time before overwriting for ISI computation */
+    uint64_t prev_spike_time = syn->last_pre_spike_time;
     syn->last_pre_spike_time = timestamp_ms;
     syn->total_pre_spikes++;
 
     /* Update activity estimate */
-    float time_since_last = (float)(timestamp_ms - syn->last_pre_spike_time);
+    float time_since_last = (float)(timestamp_ms - prev_spike_time);
     if (time_since_last > 0) {
         syn->recent_activity_hz = 1000.0f / time_since_last;  /* Convert to Hz */
     }

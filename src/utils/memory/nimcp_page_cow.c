@@ -346,13 +346,12 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     // Decrement shared page refcount
     atomic_fetch_sub(&region->pages[vpage->source_page_idx].refcount, 1);
 
-    // Update statistics
+    // Update statistics using atomics to avoid nested spinlock deadlock
+    // (view->spinlock is already held; acquiring region->spinlock risks deadlock)
     if (region->enable_tracking) {
-        spinlock_acquire(&region->spinlock);
-        region->stats.cow_faults++;
-        region->stats.private_pages++;
-        region->stats.total_bytes_copied += PAGE_COW_PAGE_SIZE;
-        spinlock_release(&region->spinlock);
+        __atomic_add_fetch(&region->stats.cow_faults, 1, __ATOMIC_RELAXED);
+        __atomic_add_fetch(&region->stats.private_pages, 1, __ATOMIC_RELAXED);
+        __atomic_add_fetch(&region->stats.total_bytes_copied, PAGE_COW_PAGE_SIZE, __ATOMIC_RELAXED);
     }
 
     spinlock_release(&view->spinlock);

@@ -98,7 +98,7 @@ static const char* ERROR_STRINGS[] = {
 };
 
 /* Thread-local error storage */
-static __thread pr_visual_bridge_error_t g_last_error = PR_VISUAL_OK;
+static _Thread_local pr_visual_bridge_error_t g_last_error = PR_VISUAL_OK;
 
 /* ============================================================================
  * Internal Helper Functions

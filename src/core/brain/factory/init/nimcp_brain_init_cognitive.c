@@ -388,7 +388,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     systems_consolidation_set_engram_system(brain->systems_consolidation, brain->engram_system);
 
     // Link to sleep-wake cycle system (controls consolidation rate and replay)
-    systems_consolidation_set_sleep_system(brain->systems_consolidation, &brain->sleep_system);
+    systems_consolidation_set_sleep_system(brain->systems_consolidation, brain->sleep_system);
 
     /**
      * PHASE M3: WORKING MEMORY TRANSFER INITIALIZATION

@@ -306,6 +306,11 @@ nimcp_exception_t* nimcp_exception_create(
         } else {
             tl_exception_count_in_window++;
             if (tl_exception_count_in_window > EXCEPTION_RATE_LIMIT_MAX) {
+                if (tl_exception_count_in_window == EXCEPTION_RATE_LIMIT_MAX + 1) {
+                    /* Log once per window so callers know exceptions are being dropped */
+                    LOG_WARN("Exception rate limit reached (%u/s) — suppressing non-severe exceptions",
+                             EXCEPTION_RATE_LIMIT_MAX);
+                }
                 return NULL;  /* Rate limited - NIMCP_THROW_TO_IMMUNE checks for NULL */
             }
         }
@@ -825,6 +830,17 @@ void nimcp_exception_unref(nimcp_exception_t* ex) {
         if (ex->cause) {
             nimcp_exception_unref(ex->cause);
             ex->cause = NULL;
+        }
+        /* Unref aggregate exception children */
+        if (ex->type == EXCEPTION_TYPE_AGGREGATE) {
+            nimcp_aggregate_exception_t* agg = (nimcp_aggregate_exception_t*)ex;
+            for (size_t i = 0; i < agg->child_count; i++) {
+                if (agg->children[i]) {
+                    nimcp_exception_unref(agg->children[i]);
+                    agg->children[i] = NULL;
+                }
+            }
+            agg->child_count = 0;
         }
         nimcp_free(ex);
     }

@@ -474,8 +474,23 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
         PyObject* example = PyList_GetItem(features_batch, i);
         Py_ssize_t size;
         float* features = py_list_to_float_array(example, &size);
-        if (!features || size != num_features) {
-            // Clean up
+        if (!features) {
+            // Clean up previously allocated feature arrays
+            for (Py_ssize_t j = 0; j < i; j++) {
+                nimcp_free(feature_arrays[j]);
+            }
+            nimcp_free(features_ptrs);
+            nimcp_free(feature_arrays);
+            nimcp_free(labels);
+            nimcp_free(confidences);
+            PyErr_SetString(PyExc_ValueError, "Failed to convert feature list");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: operation failed");
+            return NULL;
+        }
+        if (size != num_features) {
+            // Free the just-allocated features array that doesn't match
+            nimcp_free(features);
+            // Clean up previously allocated feature arrays
             for (Py_ssize_t j = 0; j < i; j++) {
                 nimcp_free(feature_arrays[j]);
             }
@@ -484,7 +499,7 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
             nimcp_free(labels);
             nimcp_free(confidences);
             PyErr_SetString(PyExc_ValueError, "All feature lists must have same length");
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: operation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: size mismatch");
             return NULL;
         }
         feature_arrays[i] = features;
@@ -533,11 +548,21 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
 
     if (status == NIMCP_OK) {
         labels_list = PyList_New(batch_size);
-        confidences_list = PyList_New(batch_size);
-
-        for (Py_ssize_t i = 0; i < batch_size; i++) {
-            PyList_SetItem(labels_list, i, PyUnicode_FromString(labels[i]));
-            PyList_SetItem(confidences_list, i, PyFloat_FromDouble(confidences[i]));
+        if (!labels_list) {
+            /* Clean up already done below — just let status path handle it */
+            status = NIMCP_ERROR_NO_MEMORY;
+        } else {
+            confidences_list = PyList_New(batch_size);
+            if (!confidences_list) {
+                Py_DECREF(labels_list);
+                labels_list = NULL;
+                status = NIMCP_ERROR_NO_MEMORY;
+            } else {
+                for (Py_ssize_t i = 0; i < batch_size; i++) {
+                    PyList_SetItem(labels_list, i, PyUnicode_FromString(labels[i]));
+                    PyList_SetItem(confidences_list, i, PyFloat_FromDouble(confidences[i]));
+                }
+            }
         }
     }
 
@@ -628,6 +653,7 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
         return NULL;
     }
     self->brain = brain;
+    self->community_cache = NULL;
 
     return (PyObject*)self;
 }
@@ -1023,7 +1049,7 @@ static PyObject* Brain_set_rubric_validation(BrainObject* self, PyObject* args) 
     status = nimcp_brain_set_rubric_validation(self->brain, features, (uint32_t)num_features);
     Py_END_ALLOW_THREADS
 
-    free(features);
+    nimcp_free(features);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to set rubric validation features");
@@ -1126,23 +1152,31 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
 
     uint32_t vec_len = (output_size < 1024) ? output_size : 1024;
     PyObject* vec_list = PyList_New(vec_len);
+    if (!vec_list) return NULL;
     for (uint32_t i = 0; i < vec_len; i++)
         PyList_SetItem(vec_list, i, PyFloat_FromDouble(output_vector[i]));
 
     PyObject* result = PyDict_New();
+    if (!result) { Py_DECREF(vec_list); return NULL; }
     PyObject* tmp;
     tmp = PyUnicode_FromString(label);
+    if (!tmp) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
     PyDict_SetItemString(result, "label", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(confidence);
+    if (!tmp) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
     PyDict_SetItemString(result, "confidence", tmp); Py_DECREF(tmp);
     tmp = PyUnicode_FromString(explanation);
+    if (!tmp) { Py_DECREF(vec_list); Py_DECREF(result); return NULL; }
     PyDict_SetItemString(result, "explanation", tmp); Py_DECREF(tmp);
     PyDict_SetItemString(result, "output_vector", vec_list); Py_DECREF(vec_list);
     tmp = PyLong_FromUnsignedLong(num_active_neurons);
+    if (!tmp) { Py_DECREF(result); return NULL; }
     PyDict_SetItemString(result, "num_active_neurons", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(sparsity);
+    if (!tmp) { Py_DECREF(result); return NULL; }
     PyDict_SetItemString(result, "sparsity", tmp); Py_DECREF(tmp);
     tmp = PyLong_FromUnsignedLongLong(inference_time_us);
+    if (!tmp) { Py_DECREF(result); return NULL; }
     PyDict_SetItemString(result, "inference_time_us", tmp); Py_DECREF(tmp);
 
     return result;
@@ -1677,15 +1711,18 @@ static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* 
     int rc = brain_ti_compute_modulation_state(self->brain->internal_brain, &state);
 
     /* Helper macros — PyDict_SetItemString does NOT steal the reference,
-       so we must Py_DECREF the temporary after insertion. */
+       so we must Py_DECREF the temporary after insertion.
+       On OOM (NULL from PyFloat_FromDouble), propagate the error. */
 #define SET_FLOAT(d, key, val) do { \
     PyObject* _tmp = PyFloat_FromDouble(val); \
-    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+    if (!_tmp) { Py_DECREF(d); return NULL; } \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
+    Py_DECREF(_tmp); \
 } while(0)
 #define SET_BOOL(d, key, val) do { \
     PyObject* _tmp = (val) ? Py_True : Py_False; \
     Py_INCREF(_tmp); \
-    PyDict_SetItemString(d, key, _tmp); \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
     Py_DECREF(_tmp); \
 } while(0)
 
@@ -2388,28 +2425,37 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
                                               &metrics, &result);
 
     /* Helper macros — PyDict_SetItemString does NOT steal the reference,
-       so we must Py_DECREF the temporary after insertion. */
+       so we must Py_DECREF the temporary after insertion.
+       On OOM (NULL from Py*_From*()), propagate the error. */
 #define SET_FLOAT(d, key, val) do { \
     PyObject* _tmp = PyFloat_FromDouble(val); \
-    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+    if (!_tmp) { Py_DECREF(d); return NULL; } \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
+    Py_DECREF(_tmp); \
 } while(0)
 #define SET_LONG(d, key, val) do { \
     PyObject* _tmp = PyLong_FromLong(val); \
-    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+    if (!_tmp) { Py_DECREF(d); return NULL; } \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
+    Py_DECREF(_tmp); \
 } while(0)
 #define SET_ULONG(d, key, val) do { \
     PyObject* _tmp = PyLong_FromUnsignedLong(val); \
-    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+    if (!_tmp) { Py_DECREF(d); return NULL; } \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
+    Py_DECREF(_tmp); \
 } while(0)
 #define SET_BOOL(d, key, val) do { \
     PyObject* _tmp = (val) ? Py_True : Py_False; \
     Py_INCREF(_tmp); \
-    PyDict_SetItemString(d, key, _tmp); \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
     Py_DECREF(_tmp); \
 } while(0)
 #define SET_STR(d, key, val) do { \
     PyObject* _tmp = PyUnicode_FromString(val); \
-    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+    if (!_tmp) { Py_DECREF(d); return NULL; } \
+    if (PyDict_SetItemString(d, key, _tmp) < 0) { Py_DECREF(_tmp); Py_DECREF(d); return NULL; } \
+    Py_DECREF(_tmp); \
 } while(0)
 
     if (rc != 0) {
@@ -2760,6 +2806,10 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
     }
 
     PyObject* result = PyList_New(num_outputs);
+    if (!result) {
+        nimcp_free(outputs);
+        return NULL;
+    }
     for (unsigned int i = 0; i < num_outputs; i++) {
         PyList_SET_ITEM(result, i, PyFloat_FromDouble((double)outputs[i]));
     }

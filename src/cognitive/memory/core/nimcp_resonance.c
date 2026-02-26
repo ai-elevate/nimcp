@@ -40,7 +40,7 @@ BRIDGE_BOILERPLATE(resonance, MESH_ADAPTER_CATEGORY_MEMORY)
 //=============================================================================
 
 /** Thread-local error message buffer */
-static __thread char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char s_last_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /** Global statistics (consider making thread-local or atomic for production) */
 static resonance_stats_t s_stats = {0};

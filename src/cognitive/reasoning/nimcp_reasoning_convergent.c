@@ -95,6 +95,7 @@ struct reasoning_engine_compat {
     void* thread_pool;
     void* calibration;     /* reasoning_calibration_t* */
     void* metacognition;   /* reasoning_metacognition_t* */
+    void* abduction;       /* reasoning_abduction_t* */
     reasoning_engine_stats_t stats;
     bool is_connected;
 };
@@ -297,7 +298,11 @@ float reasoning_accumulator_apply_modulation(evidence_accumulator_t* acc)
 bool reasoning_accumulator_is_converged(const evidence_accumulator_t* acc)
 {
     if (!acc) return false;
-    return acc->converged;
+    // Lock mutex to avoid data race with concurrent writers
+    nimcp_mutex_lock(((evidence_accumulator_t*)acc)->mutex);
+    bool result = acc->converged;
+    nimcp_mutex_unlock(((evidence_accumulator_t*)acc)->mutex);
+    return result;
 }
 
 /*=============================================================================
@@ -480,14 +485,14 @@ static void contrib_hippocampus(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
     brain_t brain = engine_get_brain(ctx->engine);
     if (!brain || !brain->hippocampus) {
         ctx->skipped = true;
         ctx->completed = true;
         return;
     }
+
+    reasoning_chain_init(&ctx->local_chain);
 
     /* Create a reasoning step for hippocampal pattern completion */
     reasoning_step_t step;
@@ -510,14 +515,14 @@ static void contrib_semantic_memory(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
     brain_t brain = engine_get_brain(ctx->engine);
     if (!brain || !brain->semantic_memory) {
         ctx->skipped = true;
         ctx->completed = true;
         return;
     }
+
+    reasoning_chain_init(&ctx->local_chain);
 
     reasoning_step_t step;
     memset(&step, 0, sizeof(step));
@@ -539,14 +544,14 @@ static void contrib_parietal(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
     brain_t brain = engine_get_brain(ctx->engine);
     if (!brain || !brain->parietal) {
         ctx->skipped = true;
         ctx->completed = true;
         return;
     }
+
+    reasoning_chain_init(&ctx->local_chain);
 
     reasoning_step_t step;
     memset(&step, 0, sizeof(step));
@@ -568,14 +573,14 @@ static void contrib_intuition(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
     brain_t brain = engine_get_brain(ctx->engine);
     if (!brain || !brain->intuition_system) {
         ctx->skipped = true;
         ctx->completed = true;
         return;
     }
+
+    reasoning_chain_init(&ctx->local_chain);
 
     reasoning_step_t step;
     memset(&step, 0, sizeof(step));
@@ -597,14 +602,14 @@ static void contrib_creative(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
     brain_t brain = engine_get_brain(ctx->engine);
     if (!brain || !brain->creative_orchestrator) {
         ctx->skipped = true;
         ctx->completed = true;
         return;
     }
+
+    reasoning_chain_init(&ctx->local_chain);
 
     reasoning_step_t step;
     memset(&step, 0, sizeof(step));
@@ -626,14 +631,14 @@ static void contrib_kg_reader(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
     brain_t brain = engine_get_brain(ctx->engine);
     if (!brain || !brain->kg_reader) {
         ctx->skipped = true;
         ctx->completed = true;
         return;
     }
+
+    reasoning_chain_init(&ctx->local_chain);
 
     reasoning_step_t step;
     memset(&step, 0, sizeof(step));

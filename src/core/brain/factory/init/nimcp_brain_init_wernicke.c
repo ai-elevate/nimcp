@@ -696,6 +696,30 @@ void nimcp_brain_factory_destroy_wernicke_subsystem(brain_t brain) {
         brain->wernicke_nlp_bridge = NULL;
     }
 
+    /* Destroy immune bridge */
+    if (brain->wernicke_immune_bridge) {
+        wernicke_immune_bridge_destroy(brain->wernicke_immune_bridge);
+        brain->wernicke_immune_bridge = NULL;
+    }
+
+    /* Destroy GPU bio bridge */
+    if (brain->wernicke_gpu_bridge) {
+        wernicke_gpu_bio_destroy(brain->wernicke_gpu_bridge);
+        brain->wernicke_gpu_bridge = NULL;
+    }
+
+    /* Destroy omni-Wernicke bridge */
+    if (brain->omni_wernicke_bridge) {
+        omni_wernicke_bridge_destroy(brain->omni_wernicke_bridge);
+        brain->omni_wernicke_bridge = NULL;
+    }
+
+    /* Destroy Wernicke-Broca bridge */
+    if (brain->wernicke_broca_bridge) {
+        wbb_destroy(brain->wernicke_broca_bridge);
+        brain->wernicke_broca_bridge = NULL;
+    }
+
     /* Destroy quantum bridge (depends on wernicke) */
     if (brain->wernicke_quantum_bridge) {
         wernicke_quantum_bridge_destroy(brain->wernicke_quantum_bridge);

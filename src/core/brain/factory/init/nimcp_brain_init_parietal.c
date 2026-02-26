@@ -161,7 +161,7 @@ static void connect_parietal_to_sleep(parietal_lobe_t* parietal, brain_t brain) 
 
     /* Medulla provides sleep_system interface via its sleep subsystem */
     /* For now, we use the brain's sleep_system directly */
-    sleep_system_t* sleep = &brain->sleep_system;
+    sleep_system_t sleep = brain->sleep_system;
     if (sleep) {
         int result = parietal_attach_sleep(parietal, sleep);
         if (result == 0) {

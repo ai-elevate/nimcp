@@ -56,7 +56,7 @@ struct kg_reader {
 };
 
 /* Thread-local error message */
-static __thread char kg_error_msg[NIMCP_ERROR_BUFFER_SIZE] = {0};
+static _Thread_local char kg_error_msg[NIMCP_ERROR_BUFFER_SIZE] = {0};
 
 /* ============================================================================
  * HELPER FUNCTIONS
