@@ -151,8 +151,10 @@ TEST_F(TrainingConvergentDecisionTest, SubmitMultipleEvidence) {
  *============================================================================*/
 
 TEST_F(TrainingConvergentDecisionTest, ConvergenceDetection) {
-    /* Submit many similar evidence items to drive EMA delta toward zero */
-    for (int i = 0; i < 10; i++) {
+    /* Submit many similar evidence items to drive EMA delta toward zero.
+     * EMA starts at 1.0 to prevent premature convergence, so need ~15+
+     * identical submissions for it to decay below threshold 0.01. */
+    for (int i = 0; i < 20; i++) {
         training_evidence_t e = make_evidence("module",
             TRAINING_EVIDENCE_CONTINUE, 1.0f, 1.0f, 1.0f, 0.1f, 0.8f);
         EXPECT_EQ(training_convergent_submit_evidence(session, &e), 0);

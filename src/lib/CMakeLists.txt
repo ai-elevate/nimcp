@@ -2390,6 +2390,9 @@ set(NIMCP_CORE_SOURCES
     # Middleware - Training Causal Model (Layer 2: Causal DAG of training dynamics)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_causal_model.c
 
+    # Middleware - Abductive Training Diagnosis (Layer 3: Root Cause Analysis)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_diagnosis.c
+
     # Training - CNN-Cortex Bridge (Phase CNN-CORTEX: Integration with visual/audio cortex)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_cortex_bridge.c
 

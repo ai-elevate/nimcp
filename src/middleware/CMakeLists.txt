@@ -91,6 +91,9 @@ add_library(nimcp_middleware STATIC
 
     # Convergent Training Decision (Layer 1: multi-module evidence accumulation)
     training/nimcp_training_convergent_decision.c
+
+    # Abductive Training Diagnosis (Layer 3: Root Cause Analysis)
+    training/nimcp_training_diagnosis.c
 )
 
 target_include_directories(nimcp_middleware PUBLIC
