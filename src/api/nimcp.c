@@ -25,6 +25,7 @@ static void api_set_error(const char* fmt, ...);
 #include "utils/exception/nimcp_exception.h"  /* For exception system shutdown */
 
 #include "nimcp.h"
+#include "api/nimcp_api_internal.h"  /* Canonical handle struct definitions */
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/strategy/nimcp_brain_strategy.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
@@ -73,42 +74,7 @@ static void api_set_error(const char* fmt, ...);
         } \
     } while (0)
 
-//=============================================================================
-// Internal Handle Structures
-//=============================================================================
-
-struct nimcp_brain_handle {
-    brain_t internal_brain;      // Wraps internal brain_t
-    float last_loss;             // Loss from most recent learn_example call
-    float last_gradient_norm;    // Gradient L2 norm from most recent learn_example call
-};
-
-struct nimcp_network_handle {
-    neural_network_t internal_network;  // Wraps internal neural_network_t
-};
-
-struct nimcp_ethics_handle {
-    ethics_engine_t internal_ethics;  // Wraps internal ethics_engine_t
-};
-
-struct nimcp_knowledge_handle {
-    knowledge_system_t internal_knowledge;  // Wraps internal knowledge_system_t
-};
-
-/**
- * @brief Brain snapshot handle for COW save/restore
- *
- * WHAT: Stores brain state snapshot with COW references and tracking
- * WHY:  Enables instant rollback with minimal memory overhead
- * HOW:  Holds cached references to brain data structures with refcount tracking
- */
-struct nimcp_brain_snapshot_handle {
-    brain_t internal_brain_snapshot;  // Snapshot of brain state
-    uint64_t timestamp_us;            // Snapshot creation time
-    size_t shared_memory_size;        // Size of shared memory (for tracking)
-    uint32_t snapshot_refcount;       // Reference count for this snapshot
-    bool is_isolated;                 // Isolation flag (true if snapshot is independent)
-};
+/* Handle structures are defined in api/nimcp_api_internal.h (canonical source) */
 
 //=============================================================================
 // Global State

@@ -37,6 +37,7 @@
 
 #define LOG_MODULE "plasticity_predictive_coding"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_coding)
 
@@ -77,14 +78,6 @@ struct pc_hierarchy_struct {
     uint32_t max_layer_size;
 };
 
-//=============================================================================
-// Inline Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float value, float min_val, float max_val) {
-    return fminf(fmaxf(value, min_val), max_val);
-}
-
 static inline float safe_divide(float numerator, float denominator) {
     return numerator / (denominator + EPSILON);
 }
@@ -104,7 +97,7 @@ static inline float relu(float x) {
  * @brief Sigmoid activation
  */
 static inline float sigmoid(float x) {
-    return 1.0F / (1.0F + expf(-clamp_f(x, -20.0F, 20.0F)));
+    return 1.0F / (1.0F + expf(-nimcp_clampf(x, -20.0F, 20.0F)));
 }
 
 //=============================================================================
@@ -343,7 +336,7 @@ void pc_layer_update_precisions(pc_layer_state_t* state,
         state->precision[i] = expf(state->precision_log[i]);
 
         /* Clamp to valid range */
-        state->precision[i] = clamp_f(state->precision[i],
+        state->precision[i] = nimcp_clampf(state->precision[i],
                                       params->min_precision,
                                       params->max_precision);
         state->precision_log[i] = logf(state->precision[i]);

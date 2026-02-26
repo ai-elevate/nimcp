@@ -45,6 +45,21 @@ static cognitive_module_t convert_module_enum(nimcp_cognitive_module_t public_mo
     return (cognitive_module_t)public_module;
 }
 
+/**
+ * @brief Get or create training state for a brain handle.
+ *
+ * SAFETY: Returns a pointer into the static g_training_states[] array after
+ * releasing the mutex. This is safe under the following invariants:
+ *   1. Each brain handle has at most ONE training state entry.
+ *   2. Entries are only cleared by clear_training_state(), which is called
+ *      exclusively from nimcp_brain_destroy() — after which no further
+ *      access to that brain's training state occurs.
+ *   3. The g_training_states[] array is statically allocated and never
+ *      reallocated or moved.
+ *
+ * The mutex protects lookup/creation atomicity, not the returned pointer's
+ * lifetime. Callers must not hold the returned pointer across brain destruction.
+ */
 static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
     nimcp_mutex_lock(&g_training_states_mutex);
     // Find existing state

@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(consolidation_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -73,16 +74,6 @@ struct consolidation_snn_bridge {
     /* Statistics */
     consolidation_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -373,7 +364,7 @@ int consolidation_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -443,8 +434,8 @@ int consolidation_snn_encode_replay(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CONSOLIDATION_DIM_COUNT] = {0};
-    dims[CONSOLIDATION_DIM_REPLAY_STRENGTH] = clamp_f(replay_strength, 0.0f, 1.0f);
-    dims[CONSOLIDATION_DIM_RIPPLE_ACTIVITY] = clamp_f(replay_strength * 0.8f, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_REPLAY_STRENGTH] = nimcp_clampf(replay_strength, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_RIPPLE_ACTIVITY] = nimcp_clampf(replay_strength * 0.8f, 0.0f, 1.0f);
     dims[CONSOLIDATION_DIM_STABILIZATION] = (replay_strength + 0.5f) / 2.0f;
 
     bridge->replay_signal = replay_strength;
@@ -471,9 +462,9 @@ int consolidation_snn_encode_ltp(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CONSOLIDATION_DIM_COUNT] = {0};
-    dims[CONSOLIDATION_DIM_LTP_STATE] = clamp_f(ltp_level, 0.0f, 1.0f);
-    dims[CONSOLIDATION_DIM_STABILIZATION] = clamp_f(ltp_level * 0.9f, 0.0f, 1.0f);
-    dims[CONSOLIDATION_DIM_TRANSFER_PROGRESS] = clamp_f((float)synapse_count / 1000.0f, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_LTP_STATE] = nimcp_clampf(ltp_level, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_STABILIZATION] = nimcp_clampf(ltp_level * 0.9f, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_TRANSFER_PROGRESS] = nimcp_clampf((float)synapse_count / 1000.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -497,8 +488,8 @@ int consolidation_snn_encode_schema(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CONSOLIDATION_DIM_COUNT] = {0};
-    dims[CONSOLIDATION_DIM_SCHEMA_INTEGRATION] = clamp_f(integration_level, 0.0f, 1.0f);
-    dims[CONSOLIDATION_DIM_TRANSFER_PROGRESS] = clamp_f(integration_level * 0.8f, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_SCHEMA_INTEGRATION] = nimcp_clampf(integration_level, 0.0f, 1.0f);
+    dims[CONSOLIDATION_DIM_TRANSFER_PROGRESS] = nimcp_clampf(integration_level * 0.8f, 0.0f, 1.0f);
 
     bridge->stabilization_signal = integration_level;
 
@@ -583,12 +574,12 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
     }
 
     /* Decode outputs */
-    bridge->last_state.replay_strength = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_state.stabilization_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_state.ltp_state = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_state.schema_integration = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_state.ripple_activity = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_state.transfer_progress = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_state.replay_strength = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_state.stabilization_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_state.ltp_state = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_state.schema_integration = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_state.ripple_activity = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_state.transfer_progress = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check replay threshold */
     if (bridge->last_state.replay_strength > bridge->config.replay_threshold) {

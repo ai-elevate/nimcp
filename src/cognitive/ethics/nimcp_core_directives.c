@@ -37,6 +37,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(core_directives, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -151,15 +152,6 @@ void core_directives_default_config(core_directives_config_t* config)
 // System Lifecycle
 //=============================================================================
 
-/**
- * @brief Clamp float value to valid range
- */
-static inline float clamp_threshold(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
-
 core_directives_system_t* core_directives_create(const core_directives_config_t* config)
 {
     if (!config) {
@@ -185,13 +177,13 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
     memcpy(&directives->config, config, sizeof(core_directives_config_t));
 
     // Validate and clamp threshold values to [0.0, 1.0] range
-    directives->config.reciprocity_threshold = clamp_threshold(
+    directives->config.reciprocity_threshold = nimcp_clampf(
         directives->config.reciprocity_threshold, 0.0f, 1.0f);
-    directives->config.harm_threshold = clamp_threshold(
+    directives->config.harm_threshold = nimcp_clampf(
         directives->config.harm_threshold, 0.0f, 1.0f);
-    directives->config.severity_threshold = clamp_threshold(
+    directives->config.severity_threshold = nimcp_clampf(
         directives->config.severity_threshold, 0.0f, 1.0f);
-    directives->config.confidence_threshold = clamp_threshold(
+    directives->config.confidence_threshold = nimcp_clampf(
         directives->config.confidence_threshold, 0.0f, 1.0f);
 
     // Allocate action history

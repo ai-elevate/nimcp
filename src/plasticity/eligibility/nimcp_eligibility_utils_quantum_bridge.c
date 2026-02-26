@@ -21,6 +21,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_utils_quantum_bridge)
 
@@ -79,12 +80,6 @@ static uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
-
-static float clampf(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 static float lerpf(float a, float b, float t) {
@@ -645,7 +640,7 @@ int elig_uq_apply_param_feedback(elig_uq_bridge_t bridge,
     /* Lower energy (better optimization) -> tighter tolerance */
     float energy_factor = expf(-optimized->energy / 10.0f);
     effect->recommended_tolerance = 0.001f * (2.0f - energy_factor);
-    effect->recommended_tolerance = clampf(effect->recommended_tolerance, 0.0001f, 0.01f);
+    effect->recommended_tolerance = nimcp_clampf(effect->recommended_tolerance, 0.0001f, 0.01f);
 
     /* Blend into bridge state */
     float rate = bridge->config.param_integration_rate;
@@ -757,9 +752,9 @@ int elig_uq_apply_step_feedback(elig_uq_bridge_t bridge,
     /* Use temperature to guide step size */
     /* High temperature -> larger step (exploration) */
     /* Low temperature -> smaller step (exploitation) */
-    float temp_factor = clampf(anneal_state->temperature / 10.0f, 0.1f, 2.0f);
+    float temp_factor = nimcp_clampf(anneal_state->temperature / 10.0f, 0.1f, 2.0f);
     effect->recommended_dt = ELIG_INTEGRATION_DT * temp_factor;
-    effect->recommended_dt = clampf(effect->recommended_dt,
+    effect->recommended_dt = nimcp_clampf(effect->recommended_dt,
                                     ELIG_INTEGRATION_DT * 0.1f,
                                     ELIG_INTEGRATION_DT * 2.0f);
 
@@ -771,7 +766,7 @@ int elig_uq_apply_step_feedback(elig_uq_bridge_t bridge,
     /* Apply with max adjustment limit */
     float max_adj = bridge->config.step_adjustment_max;
     float dt_change = effect->recommended_dt - bridge->state.current_optimized_dt;
-    dt_change = clampf(dt_change,
+    dt_change = nimcp_clampf(dt_change,
                        -max_adj * bridge->state.current_optimized_dt,
                        max_adj * bridge->state.current_optimized_dt);
 

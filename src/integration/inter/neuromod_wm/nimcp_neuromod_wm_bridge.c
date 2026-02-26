@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_wm_bridge)
 
@@ -37,16 +38,6 @@ struct neuromod_wm_bridge_struct {
     neuromod_wm_stats_t stats;
     bool connected;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
@@ -139,7 +130,7 @@ int neuromod_wm_apply_da_gain(neuromod_wm_bridge_t* bridge,
         return -1;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
 
     /* Compute WM gain based on DA level
@@ -182,13 +173,13 @@ int neuromod_wm_apply_d1_stability(neuromod_wm_bridge_t* bridge,
         return 0;
     }
 
-    d1_activation = clamp(d1_activation, 0.0f, 1.0f);
+    d1_activation = nimcp_clampf(d1_activation, 0.0f, 1.0f);
 
     /* D1 receptor activation enhances WM maintenance (stability) */
     bridge->state.stability_level = d1_activation * bridge->config.d1_stability_weight;
 
     /* Update D1/D2 balance toward D1 */
-    bridge->state.d1_d2_balance = clamp(
+    bridge->state.d1_d2_balance = nimcp_clampf(
         bridge->state.d1_d2_balance + (d1_activation - 0.5f) * 0.1f,
         0.0f, 1.0f
     );
@@ -211,17 +202,17 @@ int neuromod_wm_apply_d2_flexibility(neuromod_wm_bridge_t* bridge,
         return 0;
     }
 
-    d2_activation = clamp(d2_activation, 0.0f, 1.0f);
+    d2_activation = nimcp_clampf(d2_activation, 0.0f, 1.0f);
 
     /* D2 receptor activation enhances WM updating (flexibility) */
     float d2_contribution = d2_activation * bridge->config.d2_flexibility_weight;
-    bridge->state.flexibility_level = clamp(
+    bridge->state.flexibility_level = nimcp_clampf(
         bridge->state.flexibility_level * 0.8f + d2_contribution * 0.2f,
         0.0f, 1.0f
     );
 
     /* Update D1/D2 balance toward D2 */
-    bridge->state.d1_d2_balance = clamp(
+    bridge->state.d1_d2_balance = nimcp_clampf(
         bridge->state.d1_d2_balance - (d2_activation - 0.5f) * 0.1f,
         0.0f, 1.0f
     );
@@ -244,7 +235,7 @@ int neuromod_wm_apply_ne_flexibility(neuromod_wm_bridge_t* bridge,
         return 0;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
 
     /* High tonic NE promotes exploration/flexibility
@@ -252,7 +243,7 @@ int neuromod_wm_apply_ne_flexibility(neuromod_wm_bridge_t* bridge,
     float ne_deviation = ne_level - bridge->config.ne_tonic_baseline;
     float flexibility_change = ne_deviation * bridge->config.ne_flexibility_coupling;
 
-    bridge->state.flexibility_level = clamp(
+    bridge->state.flexibility_level = nimcp_clampf(
         0.5f + flexibility_change,
         0.0f, 1.0f
     );
@@ -271,7 +262,7 @@ int neuromod_wm_apply_ne_reset(neuromod_wm_bridge_t* bridge,
         return -1;
     }
 
-    ne_burst = clamp(ne_burst, 0.0f, 1.0f);
+    ne_burst = nimcp_clampf(ne_burst, 0.0f, 1.0f);
 
     bool triggered = ne_burst >= bridge->config.ne_reset_threshold;
 
@@ -300,7 +291,7 @@ int neuromod_wm_apply_ht_delay(neuromod_wm_bridge_t* bridge,
         return 0;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
     bridge->state.ht_level = ht_level;
 
     /* 5-HT enables patience - maintaining WM during delays */
@@ -324,7 +315,7 @@ int neuromod_wm_report_load(neuromod_wm_bridge_t* bridge,
         return -1;
     }
 
-    wm_load = clamp(wm_load, 0.0f, 1.0f);
+    wm_load = nimcp_clampf(wm_load, 0.0f, 1.0f);
     bridge->state.wm_load = wm_load;
 
     /* Higher WM load signals greater DA demand to VTA */
@@ -348,7 +339,7 @@ int neuromod_wm_report_switch_need(neuromod_wm_bridge_t* bridge,
         return -1;
     }
 
-    switch_urgency = clamp(switch_urgency, 0.0f, 1.0f);
+    switch_urgency = nimcp_clampf(switch_urgency, 0.0f, 1.0f);
     bridge->state.switch_demand = switch_urgency;
 
     /* Task-switch need triggers LC phasic response */
@@ -372,7 +363,7 @@ int neuromod_wm_report_overflow(neuromod_wm_bridge_t* bridge,
         return -1;
     }
 
-    overflow_level = clamp(overflow_level, 0.0f, 1.0f);
+    overflow_level = nimcp_clampf(overflow_level, 0.0f, 1.0f);
     bridge->state.overflow_signal = overflow_level;
 
     /* WM overflow indicates stress, increases NE/cortisol */
@@ -431,7 +422,7 @@ int neuromod_wm_compute_modulation(neuromod_wm_bridge_t* bridge,
     if (bridge->state.overflow_signal > 0.5f && bridge->state.delay_tolerance < 0.4f) {
         coherence -= 0.2f;
     }
-    bridge->state.bridge_coherence = clamp(coherence, 0.0f, 1.0f);
+    bridge->state.bridge_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
 
     bridge->state.last_update_us = get_timestamp_us();
     bridge->stats.bottom_up_messages += 3;
@@ -473,7 +464,7 @@ int neuromod_wm_update(neuromod_wm_bridge_t* bridge, float delta_ms) {
     } else if (bridge->state.flexibility_level < 0.5f) {
         bridge->state.flexibility_level += flexibility_drift;
     }
-    bridge->state.flexibility_level = clamp(bridge->state.flexibility_level, 0.0f, 1.0f);
+    bridge->state.flexibility_level = nimcp_clampf(bridge->state.flexibility_level, 0.0f, 1.0f);
 
     bridge->state.last_update_us = get_timestamp_us();
     return 0;

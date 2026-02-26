@@ -25,6 +25,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_immune_bridge)
 
@@ -39,12 +40,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 //=============================================================================
@@ -241,10 +236,10 @@ static void update_modulation(dragonfly_immune_bridge_t bridge) {
     /* Compute final modifiers */
     float combined = health_factor * fatigue_factor * stress_factor;
 
-    mod->speed_modifier = clamp_f(combined, 0.0f, 1.0f);
-    mod->accuracy_modifier = clamp_f(combined * 1.05f, 0.0f, 1.0f);
-    mod->endurance_modifier = clamp_f(health_factor * (1.0f - stress->fatigue_level * 0.7f), 0.0f, 1.0f);
-    mod->reaction_modifier = clamp_f(combined * stress_factor, 0.0f, 1.0f);
+    mod->speed_modifier = nimcp_clampf(combined, 0.0f, 1.0f);
+    mod->accuracy_modifier = nimcp_clampf(combined * 1.05f, 0.0f, 1.0f);
+    mod->endurance_modifier = nimcp_clampf(health_factor * (1.0f - stress->fatigue_level * 0.7f), 0.0f, 1.0f);
+    mod->reaction_modifier = nimcp_clampf(combined * stress_factor, 0.0f, 1.0f);
 
     /* Behavioral modifiers */
     mod->hunting_recommended = (health >= HEALTH_MODERATE_IMPAIRMENT) &&
@@ -257,7 +252,7 @@ static void update_modulation(dragonfly_immune_bridge_t bridge) {
     /* Recovery */
     mod->recovery_rate = health_factor * bridge->config.energy_recovery_rate;
     mod->rest_urgency = stress->fatigue_level + (1.0f - stress->energy_reserves) * 0.5f;
-    mod->rest_urgency = clamp_f(mod->rest_urgency, 0.0f, 1.0f);
+    mod->rest_urgency = nimcp_clampf(mod->rest_urgency, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -370,15 +365,15 @@ int dragonfly_immune_bridge_update(
 
     /* Natural stress decay */
     stress->frustration_level *= (1.0f - bridge->config.stress_decay_rate * dt_s);
-    stress->frustration_level = clamp_f(stress->frustration_level, 0.0f, 1.0f);
+    stress->frustration_level = nimcp_clampf(stress->frustration_level, 0.0f, 1.0f);
 
     /* Energy recovery when not hunting */
     stress->energy_reserves += bridge->config.energy_recovery_rate * dt_s;
-    stress->energy_reserves = clamp_f(stress->energy_reserves, 0.0f, 1.0f);
+    stress->energy_reserves = nimcp_clampf(stress->energy_reserves, 0.0f, 1.0f);
 
     /* Fatigue recovery */
     stress->fatigue_level *= (1.0f - 0.05f * dt_s);
-    stress->fatigue_level = clamp_f(stress->fatigue_level, 0.0f, 1.0f);
+    stress->fatigue_level = nimcp_clampf(stress->fatigue_level, 0.0f, 1.0f);
 
     /* Injury recovery */
     if (bridge->state.is_injured) {
@@ -444,25 +439,25 @@ int dragonfly_immune_report_hunt(
 
         /* Reduce stress on success */
         stress->frustration_level -= bridge->config.success_stress_decrement;
-        stress->frustration_level = clamp_f(stress->frustration_level, 0.0f, 1.0f);
+        stress->frustration_level = nimcp_clampf(stress->frustration_level, 0.0f, 1.0f);
     } else {
         stress->consecutive_failures++;
 
         /* Increase stress on failure */
         stress->frustration_level += bridge->config.failure_stress_increment;
-        stress->frustration_level = clamp_f(stress->frustration_level, 0.0f, 1.0f);
+        stress->frustration_level = nimcp_clampf(stress->frustration_level, 0.0f, 1.0f);
 
         bridge->stats.stress_events++;
     }
 
     /* Energy expenditure */
     stress->energy_reserves -= energy_used;
-    stress->energy_reserves = clamp_f(stress->energy_reserves, 0.0f, 1.0f);
+    stress->energy_reserves = nimcp_clampf(stress->energy_reserves, 0.0f, 1.0f);
     bridge->stats.total_energy_expended_j += energy_used;
 
     /* Fatigue from pursuit */
     stress->fatigue_level += duration_s * 0.05f;
-    stress->fatigue_level = clamp_f(stress->fatigue_level, 0.0f, 1.0f);
+    stress->fatigue_level = nimcp_clampf(stress->fatigue_level, 0.0f, 1.0f);
 
     /* Check for injury (probability increases with fatigue) */
     float injury_prob = bridge->config.injury_probability_base *
@@ -507,10 +502,10 @@ int dragonfly_immune_report_stress(
     /* Add stress from pursuit */
     float stress_add = pursuit_intensity * duration_s * 0.1f;
     stress->fatigue_level += stress_add;
-    stress->fatigue_level = clamp_f(stress->fatigue_level, 0.0f, 1.0f);
+    stress->fatigue_level = nimcp_clampf(stress->fatigue_level, 0.0f, 1.0f);
 
     /* Adrenaline surge */
-    stress->adrenaline_proxy = clamp_f(stress->adrenaline_proxy + pursuit_intensity * 0.2f, 0.0f, 1.0f);
+    stress->adrenaline_proxy = nimcp_clampf(stress->adrenaline_proxy + pursuit_intensity * 0.2f, 0.0f, 1.0f);
 
     bridge->stats.stress_events++;
 
@@ -536,13 +531,13 @@ int dragonfly_immune_report_rest(
     float recovery = duration_s * bridge->config.energy_recovery_rate;
 
     stress->energy_reserves += recovery;
-    stress->energy_reserves = clamp_f(stress->energy_reserves, 0.0f, 1.0f);
+    stress->energy_reserves = nimcp_clampf(stress->energy_reserves, 0.0f, 1.0f);
 
     stress->fatigue_level *= (1.0f - duration_s * 0.1f);
-    stress->fatigue_level = clamp_f(stress->fatigue_level, 0.0f, 1.0f);
+    stress->fatigue_level = nimcp_clampf(stress->fatigue_level, 0.0f, 1.0f);
 
     stress->frustration_level *= (1.0f - duration_s * 0.05f);
-    stress->frustration_level = clamp_f(stress->frustration_level, 0.0f, 1.0f);
+    stress->frustration_level = nimcp_clampf(stress->frustration_level, 0.0f, 1.0f);
 
     /* Adrenaline decay */
     stress->adrenaline_proxy *= (1.0f - duration_s * 0.2f);

@@ -20,6 +20,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_thalamic_bridge)
 
@@ -77,12 +78,6 @@ static uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static float clamp_f(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
 }
 
 static float apply_attention_and_inhibition(float signal, float attention, float inhibition) {
@@ -558,7 +553,7 @@ int dragonfly_thalamic_set_attention(
         return -1;
     }
 
-    attention = clamp_f(attention, 0.0f, 1.0f);
+    attention = nimcp_clampf(attention, 0.0f, 1.0f);
 
     switch (signal_type) {
         case THAL_SIGNAL_POSITION:
@@ -589,7 +584,7 @@ int dragonfly_thalamic_apply_inhibition(
         return -1;
     }
 
-    inhibition = clamp_f(inhibition, 0.0f, 1.0f);
+    inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
 
     switch (signal_type) {
         case THAL_SIGNAL_POSITION:

@@ -141,14 +141,17 @@ int training_convergent_submit_evidence(
 
     float prev_confidence = session->current_confidence;
     session->submission_count++;
+    float alpha = session->config.ema_alpha;
 
-    /* Running weighted average of confidence */
-    float weight = 1.0f / (float)session->submission_count;
-    session->current_confidence = (1.0f - weight) * prev_confidence + weight * conf;
+    /* True EMA of confidence (not running mean)
+     * WHY: Running mean weight = 1/count converges too slowly for real-time
+     *      convergence detection. EMA with fixed alpha gives recent evidence
+     *      exponentially more influence, matching the "EMA" naming intent.
+     */
+    session->current_confidence = alpha * conf + (1.0f - alpha) * prev_confidence;
 
     /* EMA of deltas */
     float delta = fabsf(session->current_confidence - prev_confidence);
-    float alpha = session->config.ema_alpha;
     session->ema_delta = alpha * delta + (1.0f - alpha) * session->ema_delta;
 
     /* Check convergence */

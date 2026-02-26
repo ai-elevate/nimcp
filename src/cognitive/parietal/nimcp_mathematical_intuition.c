@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mathematical_intuition, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -72,12 +73,6 @@ static _Thread_local char g_math_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_math_error(const char* msg) {
     strncpy(g_math_error, msg, sizeof(g_math_error) - 1);
     g_math_error[sizeof(g_math_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 static float fabsf_safe(float v) {
@@ -813,7 +808,7 @@ geometric_result_t math_analyze_lines(
     /* Otherwise intersecting */
     else {
         result.relation = GEOM_RELATION_INTERSECTING;
-        result.angle = acosf(clamp01(fabsf(dot))) * 180.0f / PI;
+        result.angle = acosf(nimcp_clamp01(fabsf(dot))) * 180.0f / PI;
         result.confidence = 0.9f;
 
         /* Compute intersection point (2D approximation) */
@@ -1371,7 +1366,7 @@ int math_intuition_set_inflammation(math_intuition_t* mi, float level) {
 
 
     nimcp_mutex_lock(mi->lock);
-    mi->inflammation_level = clamp01(level);
+    mi->inflammation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(mi->lock);
 
     return 0;
@@ -1391,7 +1386,7 @@ int math_intuition_set_fatigue(math_intuition_t* mi, float level) {
 
 
     nimcp_mutex_lock(mi->lock);
-    mi->fatigue_level = clamp01(level);
+    mi->fatigue_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(mi->lock);
 
     return 0;

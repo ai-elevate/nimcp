@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_outcome_devaluation, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -52,16 +53,6 @@ struct bg_outcome_deval {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /* ============================================================================
  * LIFECYCLE IMPLEMENTATION
@@ -282,7 +273,7 @@ int bgod_register_association(bg_outcome_deval_t* deval,
     bgod_action_outcome_t* assoc = &deval->associations[deval->num_associations];
     assoc->action_id = action_id;
     assoc->outcome_id = outcome_id;
-    assoc->association_strength = clamp_f(strength, 0.0f, 1.0f);
+    assoc->association_strength = nimcp_clampf(strength, 0.0f, 1.0f);
     assoc->baseline_rate = 1.0f;
     assoc->current_rate = 1.0f;
     assoc->training_trials = 0;
@@ -311,7 +302,7 @@ int bgod_devalue_by_satiety(bg_outcome_deval_t* deval,
 
     /* Increase satiety */
     outcome->satiety_level += consumption_amount * deval->config.satiety_rate;
-    outcome->satiety_level = clamp_f(outcome->satiety_level, 0.0f, 1.0f);
+    outcome->satiety_level = nimcp_clampf(outcome->satiety_level, 0.0f, 1.0f);
 
     /* Reduce current value based on satiety */
     outcome->current_value = outcome->base_value * (1.0f - outcome->satiety_level);
@@ -337,7 +328,7 @@ int bgod_devalue_by_aversion(bg_outcome_deval_t* deval,
     bgod_outcome_t* outcome = &deval->outcomes[outcome_id];
 
     /* Set aversion level */
-    outcome->aversion_level = clamp_f(aversion_strength, 0.0f, BGOD_AVERSION_STRENGTH);
+    outcome->aversion_level = nimcp_clampf(aversion_strength, 0.0f, BGOD_AVERSION_STRENGTH);
 
     /* Reduce current value based on aversion */
     outcome->current_value = outcome->base_value * (1.0f - outcome->aversion_level);
@@ -551,7 +542,7 @@ int bgod_step(bg_outcome_deval_t* deval, float dt_ms) {
 
         /* Update current value */
         float devaluation = outcome->satiety_level + outcome->aversion_level;
-        devaluation = clamp_f(devaluation, 0.0f, 1.0f);
+        devaluation = nimcp_clampf(devaluation, 0.0f, 1.0f);
         outcome->current_value = outcome->base_value * (1.0f - devaluation);
 
         /* Update state */
@@ -602,7 +593,7 @@ int bgod_record_consumption(bg_outcome_deval_t* deval,
     deval->outcomes[outcome_id].satiety_level +=
         amount * deval->config.satiety_rate;
     deval->outcomes[outcome_id].satiety_level =
-        clamp_f(deval->outcomes[outcome_id].satiety_level, 0.0f, 1.0f);
+        nimcp_clampf(deval->outcomes[outcome_id].satiety_level, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(deval->mutex);
     return 0;

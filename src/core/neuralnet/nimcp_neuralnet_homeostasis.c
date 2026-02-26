@@ -90,8 +90,10 @@ static float compute_homeostatic_factor(neuron_t* neuron, float current_activity
 
 static void normalize_synaptic_weights(neuron_t* neuron)
 {
+    if (!neuron)
+        return;
     uint32_t count = NEURON_OUT_COUNT(neuron);
-    if (!neuron || count == 0)
+    if (count == 0)
         return;
 
     float sum_sq = 0.0f;

@@ -29,6 +29,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_tensor_bridge)
 //=============================================================================
@@ -182,15 +183,6 @@ struct emotion_tensor_bridge {
 /*=============================================================================
  * HELPER FUNCTIONS
  *============================================================================*/
-
-/**
- * Clamp value to [0, 1] range
- */
-static inline float clamp_01(float v) {
-    if (v < 0.0F) return 0.0F;
-    if (v > 1.0F) return 1.0F;
-    return v;
-}
 
 /**
  * Check if tensor has changed significantly
@@ -718,7 +710,7 @@ nimcp_result_t emotion_tensor_from_swarm(
         float current = emotion_tensor_get_channel(tensor, mapping->primary);
         float target = intensity * mapping->primary_weight;
         float blended = current * (1.0F - blend_factor) + target * blend_factor;
-        emotion_tensor_set_channel(tensor, mapping->primary, clamp_01(blended), timestamp_ms);
+        emotion_tensor_set_channel(tensor, mapping->primary, nimcp_clamp01(blended), timestamp_ms);
     }
 
     /* Apply secondary channel if present */
@@ -726,7 +718,7 @@ nimcp_result_t emotion_tensor_from_swarm(
         float current = emotion_tensor_get_channel(tensor, mapping->secondary);
         float target = intensity * mapping->secondary_weight;
         float blended = current * (1.0F - blend_factor) + target * blend_factor;
-        emotion_tensor_set_channel(tensor, mapping->secondary, clamp_01(blended), timestamp_ms);
+        emotion_tensor_set_channel(tensor, mapping->secondary, nimcp_clamp01(blended), timestamp_ms);
     }
 
     return NIMCP_SUCCESS;

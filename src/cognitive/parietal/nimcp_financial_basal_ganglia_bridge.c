@@ -36,6 +36,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_bg)
 
@@ -143,16 +144,6 @@ struct financial_bg_bridge {
     float temporal_credits[FIN_BG_ACTION_COUNT];
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float maxf(float a, float b) {
     return a > b ? a : b;
 }
@@ -173,7 +164,7 @@ static void state_to_features(const fin_bg_state_t* state, float* features) {
     features[6] = state->position.position_size;
     features[7] = state->position.unrealized_pnl;
     features[8] = state->position.exposure;
-    features[9] = clampf(state->position.hold_duration_ms / 86400000.0f, 0.0f, 1.0f);
+    features[9] = nimcp_clampf(state->position.hold_duration_ms / 86400000.0f, 0.0f, 1.0f);
 
     /* Bias term */
     features[10] = 1.0f;
@@ -1065,7 +1056,7 @@ int financial_bg_bridge_test_goal_directed(
         out_result->is_habitual = true;
         habit_strength = (float)reps /
             (float)(bridge->config.habit_threshold_reps * 2);
-        habit_strength = clampf(habit_strength, 0.0f, 1.0f);
+        habit_strength = nimcp_clampf(habit_strength, 0.0f, 1.0f);
     } else {
         out_result->is_habitual = false;
         habit_strength = (float)reps /
@@ -1097,7 +1088,7 @@ int financial_bg_bridge_test_goal_directed(
         out_result->goal_directed_score =
             maxf(out_result->goal_directed_score, 0.5f + value_advantage);
         out_result->goal_directed_score =
-            clampf(out_result->goal_directed_score, 0.0f, 1.0f);
+            nimcp_clampf(out_result->goal_directed_score, 0.0f, 1.0f);
     }
 
     if (out_result->is_habitual) {

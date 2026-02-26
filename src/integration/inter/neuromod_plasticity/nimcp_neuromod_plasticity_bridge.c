@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_plasticity_bridge)
 
@@ -38,16 +39,6 @@ struct neuromod_plasticity_bridge_struct {
     neuromod_plasticity_stats_t stats;
     bool connected;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
@@ -161,7 +152,7 @@ int neuromod_plasticity_apply_da_gating(neuromod_plasticity_bridge_t* bridge,
         return 0;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
 
     /* DA opens the LTP gate when above threshold */
@@ -203,12 +194,12 @@ int neuromod_plasticity_apply_reward_pe(neuromod_plasticity_bridge_t* bridge,
         return -1;
     }
 
-    reward = clamp(reward, 0.0f, 1.0f);
-    expected = clamp(expected, 0.0f, 1.0f);
+    reward = nimcp_clampf(reward, 0.0f, 1.0f);
+    expected = nimcp_clampf(expected, 0.0f, 1.0f);
 
     /* Compute reward prediction error (RPE) */
     float rpe = (reward - expected) * bridge->config.da_reward_pe_coupling;
-    bridge->state.reward_prediction_error = clamp(rpe, -1.0f, 1.0f);
+    bridge->state.reward_prediction_error = nimcp_clampf(rpe, -1.0f, 1.0f);
     bridge->state.expected_reward = expected;
 
     /* RPE affects LTP gate */
@@ -242,7 +233,7 @@ int neuromod_plasticity_apply_ne_boost(neuromod_plasticity_bridge_t* bridge,
         return 0;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
 
     /* NE boosts memory strength for emotionally salient events */
@@ -280,7 +271,7 @@ int neuromod_plasticity_apply_ht_consolidation(neuromod_plasticity_bridge_t* bri
         return 0;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
     bridge->state.ht_level = ht_level;
 
     /* 5-HT affects consolidation rate */
@@ -311,7 +302,7 @@ int neuromod_plasticity_apply_hab_avoidance(neuromod_plasticity_bridge_t* bridge
         return 0;
     }
 
-    hab_level = clamp(hab_level, 0.0f, 1.0f);
+    hab_level = nimcp_clampf(hab_level, 0.0f, 1.0f);
     bridge->state.hab_level = hab_level;
 
     /* Habenula activity enables avoidance learning */
@@ -343,7 +334,7 @@ int neuromod_plasticity_set_eligibility(neuromod_plasticity_bridge_t* bridge, fl
     }
     if (!bridge->config.enable_eligibility_traces) return 0;
 
-    bridge->state.eligibility_level = clamp(level, 0.0f, 1.0f);
+    bridge->state.eligibility_level = nimcp_clampf(level, 0.0f, 1.0f);
     if (level > 0.0f) {
         bridge->state.eligibility_start_us = get_timestamp_us();
     }
@@ -358,7 +349,7 @@ int neuromod_plasticity_capture_eligibility(neuromod_plasticity_bridge_t* bridge
     }
     if (!bridge->config.enable_eligibility_traces) return 0;
 
-    da_signal = clamp(da_signal, 0.0f, 1.0f);
+    da_signal = nimcp_clampf(da_signal, 0.0f, 1.0f);
 
     /* Check if within eligibility window */
     uint64_t now = get_timestamp_us();
@@ -419,7 +410,7 @@ int neuromod_plasticity_report_success(neuromod_plasticity_bridge_t* bridge,
         return -1;
     }
 
-    success = clamp(success, 0.0f, 1.0f);
+    success = nimcp_clampf(success, 0.0f, 1.0f);
     bridge->state.learning_success = success;
 
     /* Learning success triggers VTA reward signal */
@@ -443,7 +434,7 @@ int neuromod_plasticity_report_novelty(neuromod_plasticity_bridge_t* bridge,
         return -1;
     }
 
-    novelty = clamp(novelty, 0.0f, 1.0f);
+    novelty = nimcp_clampf(novelty, 0.0f, 1.0f);
     bridge->state.novelty_signal = novelty;
 
     /* Novel patterns trigger LC activation */
@@ -467,7 +458,7 @@ int neuromod_plasticity_report_conflict(neuromod_plasticity_bridge_t* bridge,
         return -1;
     }
 
-    conflict = clamp(conflict, 0.0f, 1.0f);
+    conflict = nimcp_clampf(conflict, 0.0f, 1.0f);
     bridge->state.memory_conflict = conflict;
 
     /* Memory conflict modulates 5-HT demand */
@@ -491,7 +482,7 @@ int neuromod_plasticity_report_prediction_miss(neuromod_plasticity_bridge_t* bri
         return -1;
     }
 
-    miss = clamp(miss, 0.0f, 1.0f);
+    miss = nimcp_clampf(miss, 0.0f, 1.0f);
     bridge->state.prediction_miss = miss;
 
     /* Prediction miss activates habenula */
@@ -534,7 +525,7 @@ int neuromod_plasticity_compute_modulation(neuromod_plasticity_bridge_t* bridge,
         0.2f * (bridge->state.memory_boost - 1.0f) / 0.5f +  /* Normalize boost contribution */
         0.2f * bridge->state.consolidation_rate +
         0.3f * (1.0f - bridge->state.avoidance_signal);
-    bridge->state.learning_efficiency = clamp(bridge->state.learning_efficiency, 0.0f, 1.0f);
+    bridge->state.learning_efficiency = nimcp_clampf(bridge->state.learning_efficiency, 0.0f, 1.0f);
 
     /* Compute bridge coherence */
     float coherence = 1.0f;
@@ -545,7 +536,7 @@ int neuromod_plasticity_compute_modulation(neuromod_plasticity_bridge_t* bridge,
     if (bridge->state.memory_boost > 1.3f && bridge->state.consolidation_rate < 0.3f) {
         coherence -= 0.15f;
     }
-    bridge->state.bridge_coherence = clamp(coherence, 0.0f, 1.0f);
+    bridge->state.bridge_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
 
     bridge->state.last_update_us = get_timestamp_us();
     bridge->stats.bottom_up_messages += 4;

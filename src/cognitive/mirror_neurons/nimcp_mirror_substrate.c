@@ -43,6 +43,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_substrate, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -85,16 +86,6 @@ static const float ASTROCYTE_MOD_RATE = 0.1F;
 //=============================================================================
 
 /**
- * @brief Clamp float value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
  * @brief Find first set bit in 64-bit word
  */
 static inline int find_first_set_bit64(uint64_t word)
@@ -125,7 +116,7 @@ static inline int find_first_set_bit64(uint64_t word)
 static float calculate_myelin_speedup(float myelination_level)
 {
     /* Guard: Clamp to valid range */
-    float level = clamp_f(myelination_level, 0.0F, 1.0F);
+    float level = nimcp_clampf(myelination_level, 0.0F, 1.0F);
 
     /* Linear speedup: 1x at 0, NIMCP_MIRROR_MYELIN_SPEEDUP_MAX at 1.0 */
     return 1.0F + (NIMCP_MIRROR_MYELIN_SPEEDUP_MAX - 1.0F) * level;
@@ -849,7 +840,7 @@ int32_t mirror_substrate_add_spine(
     backing->spines[idx] = spine_ptr;
     backing->spine_ids[idx] = spine ? spine->id : 0;
     backing->spine_states[idx] = MIRROR_SPINE_STATE_THIN;  /* Start as learning spine */
-    backing->spine_weights[idx] = clamp_f(initial_weight, 0.0F, 1.0F);
+    backing->spine_weights[idx] = nimcp_clampf(initial_weight, 0.0F, 1.0F);
 
     backing->num_spines++;
 
@@ -904,7 +895,7 @@ void mirror_substrate_update_spine_plasticity(
         }
 
         /* Update weight */
-        weight = clamp_f(weight + delta, 0.0F, 1.0F);
+        weight = nimcp_clampf(weight + delta, 0.0F, 1.0F);
         backing->spine_weights[i] = weight;
 
         /* Update spine state based on weight */
@@ -1044,7 +1035,7 @@ void mirror_substrate_update_glial(
         /* Smooth transition to target */
         backing->astrocyte_modulation += (target_mod - backing->astrocyte_modulation) *
             ASTROCYTE_MOD_RATE * dt_seconds;
-        backing->astrocyte_modulation = clamp_f(backing->astrocyte_modulation,
+        backing->astrocyte_modulation = nimcp_clampf(backing->astrocyte_modulation,
             NIMCP_MIRROR_ASTROCYTE_MOD_MIN, NIMCP_MIRROR_ASTROCYTE_MOD_MAX);
     }
 
@@ -1056,7 +1047,7 @@ void mirror_substrate_update_glial(
 
         /* Decay over time */
         backing->lactate_received *= powf(0.99F, dt_seconds);
-        backing->lactate_received = clamp_f(backing->lactate_received, 0.0F, 1.0F);
+        backing->lactate_received = nimcp_clampf(backing->lactate_received, 0.0F, 1.0F);
     }
 
     /* Update microglia surveillance */
@@ -1065,7 +1056,7 @@ void mirror_substrate_update_glial(
         backing->surveillance_score = backing->surveillance_score *
             powf(SURVEILLANCE_DECAY_PER_SEC, dt_seconds);
         backing->surveillance_score += activity_level * dt_seconds * 0.1F;
-        backing->surveillance_score = clamp_f(backing->surveillance_score, 0.0F, 1.0F);
+        backing->surveillance_score = nimcp_clampf(backing->surveillance_score, 0.0F, 1.0F);
 
         /* Mark for pruning if surveillance score drops too low */
         backing->marked_for_pruning = (backing->surveillance_score <
@@ -1126,7 +1117,7 @@ void mirror_substrate_step(
 
     /* Update coactivation score */
     if (is_coactivated(backing->last_observation_time, backing->last_execution_time)) {
-        backing->coactivation_score = clamp_f(
+        backing->coactivation_score = nimcp_clampf(
             backing->coactivation_score + 0.1F * dt_seconds, 0.0F, 1.0F);
         backing->last_coactivation_time = current_time;
     } else {
@@ -1149,7 +1140,7 @@ void mirror_substrate_record_observation(
     mirror_substrate_heartbeat("mirror_subst_record_observation", 0.0f);
 
 
-    backing->observation_activity_ema = clamp_f(
+    backing->observation_activity_ema = nimcp_clampf(
         backing->observation_activity_ema + strength, 0.0F, 1.0F);
 
     backing->last_observation_time = timestamp;
@@ -1170,7 +1161,7 @@ void mirror_substrate_record_execution(
     mirror_substrate_heartbeat("mirror_subst_record_execution", 0.0f);
 
 
-    backing->execution_activity_ema = clamp_f(
+    backing->execution_activity_ema = nimcp_clampf(
         backing->execution_activity_ema + strength, 0.0F, 1.0F);
 
     backing->last_execution_time = timestamp;

@@ -16,6 +16,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_beta_oscillations, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -76,16 +77,6 @@ struct bg_beta_system {
     float time_ms;
 };
 
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
-
 static float lerp_f(float a, float b, float t) {
     return a + t * (b - a);
 }
@@ -120,7 +111,7 @@ static float compute_band_power(const float* history, uint32_t size,
     /* Weight by frequency band match */
     float center = (low_hz + high_hz) / 2.0f;
     float freq_match = 1.0f - fabsf(est_freq - center) / center;
-    freq_match = clamp_f(freq_match, 0.0f, 1.0f);
+    freq_match = nimcp_clampf(freq_match, 0.0f, 1.0f);
 
     return rms * freq_match;
 }
@@ -316,7 +307,7 @@ int bg_beta_step(bg_beta_system_t* system, float dt_ms) {
 
     /* Apply dopamine modulation (higher DA = lower beta) */
     float da_mod = 1.0f - (system->dopamine_level - 0.5f) * system->config.dopamine_sensitivity;
-    da_mod = clamp_f(da_mod, 0.5f, 1.5f);
+    da_mod = nimcp_clampf(da_mod, 0.5f, 1.5f);
     target_power *= da_mod;
     system->dopamine_effect = da_mod;
 
@@ -379,7 +370,7 @@ int bg_beta_step(bg_beta_system_t* system, float dt_ms) {
             break;
     }
 
-    target_power = clamp_f(target_power, 0.0f, 1.0f);
+    target_power = nimcp_clampf(target_power, 0.0f, 1.0f);
 
     /* Update global oscillation */
     float freq_rad = system->global_frequency * 2.0f * M_PI;
@@ -454,8 +445,8 @@ float bg_beta_process_stn_gpe_loop(bg_beta_system_t* system,
 
     nimcp_mutex_lock(system->mutex);
 
-    system->stn_activity = clamp_f(stn_activity, 0.0f, 1.0f);
-    system->gpe_activity = clamp_f(gpe_activity, 0.0f, 1.0f);
+    system->stn_activity = nimcp_clampf(stn_activity, 0.0f, 1.0f);
+    system->gpe_activity = nimcp_clampf(gpe_activity, 0.0f, 1.0f);
 
     /* STN-GPe loop generates beta oscillations */
     /* Higher coupling = stronger oscillations */
@@ -475,7 +466,7 @@ float bg_beta_apply_dopamine(bg_beta_system_t* system, float dopamine_level) {
     if (!system) return 0.0f;
 
     nimcp_mutex_lock(system->mutex);
-    system->dopamine_level = clamp_f(dopamine_level, 0.0f, 1.0f);
+    system->dopamine_level = nimcp_clampf(dopamine_level, 0.0f, 1.0f);
     float result = system->global_power;
     nimcp_mutex_unlock(system->mutex);
     return result;
@@ -489,7 +480,7 @@ int bg_beta_signal_movement_intent(bg_beta_system_t* system,
     }
 
     nimcp_mutex_lock(system->mutex);
-    system->movement_intent = clamp_f(intention_strength, 0.0f, 1.0f);
+    system->movement_intent = nimcp_clampf(intention_strength, 0.0f, 1.0f);
     nimcp_mutex_unlock(system->mutex);
     return 0;
 }
@@ -528,7 +519,7 @@ int bg_beta_set_pathology(bg_beta_system_t* system,
 
     nimcp_mutex_lock(system->mutex);
     system->pathology = pathology;
-    system->pathology_severity = clamp_f(severity, 0.0f, 1.0f);
+    system->pathology_severity = nimcp_clampf(severity, 0.0f, 1.0f);
     nimcp_mutex_unlock(system->mutex);
     return 0;
 }
@@ -559,7 +550,7 @@ float bg_beta_apply_dbs(bg_beta_system_t* system,
         freq_effectiveness = 0.5f;  /* Suboptimal frequency */
     }
 
-    system->dbs_effect = clamp_f(dbs_amplitude, 0.0f, 1.0f) * freq_effectiveness;
+    system->dbs_effect = nimcp_clampf(dbs_amplitude, 0.0f, 1.0f) * freq_effectiveness;
 
     /* DBS can break locked state */
     if (system->dbs_effect > 0.5f && system->state == BG_BETA_STATE_LOCKED) {
@@ -576,10 +567,10 @@ float bg_beta_apply_ldopa(bg_beta_system_t* system, float ldopa_level) {
     if (!system) return 0.0f;
 
     nimcp_mutex_lock(system->mutex);
-    system->ldopa_effect = clamp_f(ldopa_level, 0.0f, 1.0f);
+    system->ldopa_effect = nimcp_clampf(ldopa_level, 0.0f, 1.0f);
 
     /* L-DOPA increases effective dopamine */
-    system->dopamine_level = clamp_f(system->dopamine_level + ldopa_level * 0.3f, 0.0f, 1.0f);
+    system->dopamine_level = nimcp_clampf(system->dopamine_level + ldopa_level * 0.3f, 0.0f, 1.0f);
 
     float result = system->ldopa_effect;
     nimcp_mutex_unlock(system->mutex);
@@ -638,7 +629,7 @@ float bg_beta_get_movement_readiness(const bg_beta_system_t* system) {
         readiness = 0.9f + readiness * 0.1f;
     }
 
-    return clamp_f(readiness, 0.0f, 1.0f);
+    return nimcp_clampf(readiness, 0.0f, 1.0f);
 }
 
 int bg_beta_get_output(const bg_beta_system_t* system, float* output) {

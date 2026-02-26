@@ -17,17 +17,12 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(second_messengers_fep_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(sm_fep_bridge)
-
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 int sm_fep_bridge_default_config(sm_fep_config_t* config) {
     if (!config) {

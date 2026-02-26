@@ -18,6 +18,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(red_nucleus, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -35,16 +36,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(red_nucleus, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #define RN_KP 0.5f    /* Proportional gain */
 #define RN_KI 0.1f    /* Integral gain */
 #define RN_KD 0.05f   /* Derivative gain */
-
-/*=============================================================================
- * INTERNAL HELPERS
- *===========================================================================*/
-
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static float vector3_magnitude(const rn_vector3_t* v) {
     return sqrtf(v->x * v->x + v->y * v->y + v->z * v->z);
@@ -80,7 +71,7 @@ static rn_vector3_t vector3_subtract(const rn_vector3_t* a, const rn_vector3_t* 
 static float compute_pid_output(rn_learning_state_t* learn, float error, float dt) {
     /* Update integral with anti-windup */
     learn->error_integral += error * dt;
-    learn->error_integral = clamp_float(learn->error_integral, -10.0f, 10.0f);
+    learn->error_integral = nimcp_clampf(learn->error_integral, -10.0f, 10.0f);
 
     /* Compute derivative */
     float derivative = (fabsf(dt) > 1e-10f) ?
@@ -120,11 +111,11 @@ static void apply_learning_update(rn_learning_state_t* learn, float error,
     } else {
         learn->skill_level -= adaptation_delta * 0.05f;
     }
-    learn->skill_level = clamp_float(learn->skill_level, 0.0f, 1.0f);
+    learn->skill_level = nimcp_clampf(learn->skill_level, 0.0f, 1.0f);
 
     /* Update adaptation gain (inverse of error) */
     learn->adaptation_gain = 1.0f + (1.0f - error_mag) * 0.5f;
-    learn->adaptation_gain = clamp_float(learn->adaptation_gain, 0.5f, 2.0f);
+    learn->adaptation_gain = nimcp_clampf(learn->adaptation_gain, 0.5f, 2.0f);
 
     learn->training_iterations++;
 }
@@ -607,7 +598,7 @@ int rn_process_error(nimcp_red_nucleus_t* rn, const rn_motor_error_t* error) {
             /* Apply to rubrospinal output */
             rn->rubrospinal_output[error->effector] += correction * 0.1f;
             rn->rubrospinal_output[error->effector] =
-                clamp_float(rn->rubrospinal_output[error->effector], -1.0f, 1.0f);
+                nimcp_clampf(rn->rubrospinal_output[error->effector], -1.0f, 1.0f);
 
             rn->stats.errors_corrected++;
         }
@@ -706,7 +697,7 @@ int rn_set_learning_modulation(nimcp_red_nucleus_t* rn, float modulation) {
     }
 
     nimcp_mutex_lock(rn->mutex);
-    rn->global_learning_modulation = clamp_float(modulation, 0.0f, 2.0f);
+    rn->global_learning_modulation = nimcp_clampf(modulation, 0.0f, 2.0f);
     nimcp_mutex_unlock(rn->mutex);
 
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Learning modulation set to %.3f", modulation);
@@ -767,14 +758,14 @@ int rn_process_dentate_input(nimcp_red_nucleus_t* rn,
     for (uint32_t i = 0; i < signal->num_corrections && i < RN_EFFECTOR_COUNT; i++) {
         float correction = signal->motor_correction[i] * dentate_gain;
         rn->rubrospinal_output[i] += correction;
-        rn->rubrospinal_output[i] = clamp_float(rn->rubrospinal_output[i], -1.0f, 1.0f);
+        rn->rubrospinal_output[i] = nimcp_clampf(rn->rubrospinal_output[i], -1.0f, 1.0f);
     }
 
     /* Apply timing adjustment to magnocellular output */
     rn->subdivisions.modulation[RN_SUBDIV_MAGNOCELLULAR] *=
         (1.0f + signal->timing_adjustment * 0.2f);
     rn->subdivisions.modulation[RN_SUBDIV_MAGNOCELLULAR] =
-        clamp_float(rn->subdivisions.modulation[RN_SUBDIV_MAGNOCELLULAR], 0.5f, 2.0f);
+        nimcp_clampf(rn->subdivisions.modulation[RN_SUBDIV_MAGNOCELLULAR], 0.5f, 2.0f);
 
     /* Update thalamic output (dentato-rubro-thalamic pathway) */
     if (signal->activity > rn->config.thalamic_threshold) {
@@ -896,7 +887,7 @@ int rn_set_cortical_input(nimcp_red_nucleus_t* rn,
     }
 
     nimcp_mutex_lock(rn->mutex);
-    rn->cortical_input[cmd_type] = clamp_float(input, 0.0f, 1.0f);
+    rn->cortical_input[cmd_type] = nimcp_clampf(input, 0.0f, 1.0f);
     nimcp_mutex_unlock(rn->mutex);
 
     return 0;
@@ -1319,7 +1310,7 @@ int rn_update(nimcp_red_nucleus_t* rn, float dt) {
         /* Update rubrospinal output */
         rn->rubrospinal_output[eff] += damped * dt * 10.0f;
         rn->rubrospinal_output[eff] =
-            clamp_float(rn->rubrospinal_output[eff], -1.0f, 1.0f);
+            nimcp_clampf(rn->rubrospinal_output[eff], -1.0f, 1.0f);
 
         /* Update duration */
         rn->current_command.duration_ms -= dt * 1000.0f;
@@ -1349,7 +1340,7 @@ int rn_update(nimcp_red_nucleus_t* rn, float dt) {
             float pos_mag = vector3_magnitude(&target->position);
             rn->rubrospinal_output[eff] += pos_mag * 0.1f * dt;
             rn->rubrospinal_output[eff] =
-                clamp_float(rn->rubrospinal_output[eff], -1.0f, 1.0f);
+                nimcp_clampf(rn->rubrospinal_output[eff], -1.0f, 1.0f);
         }
     }
 

@@ -28,6 +28,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(symbolic_logic_plasticity_bridge)
 //=============================================================================
@@ -160,15 +161,6 @@ static uint64_t get_time_us(void) {
 }
 
 /**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-}
-
-/**
  * @brief Add event to history ring buffer
  */
 static void add_to_history(
@@ -239,7 +231,7 @@ static void compute_default_response(
     /* Initialize to zeros */
     safety_neuromod_response_init(response);
 
-    float mag = clamp_f(event->magnitude, 0.0f, 1.0f);
+    float mag = nimcp_clampf(event->magnitude, 0.0f, 1.0f);
 
     switch (event->type) {
         case SAFETY_EVENT_VIOLATION_BLOCKED:
@@ -358,7 +350,7 @@ static void compute_default_response(
     }
 
     /* Apply learning rate bounds */
-    response->learning_rate_modifier = clamp_f(
+    response->learning_rate_modifier = nimcp_clampf(
         response->learning_rate_modifier,
         bridge->config.min_learning_rate_modifier,
         bridge->config.max_learning_rate_modifier);
@@ -801,10 +793,10 @@ int safety_plasticity_apply_response(
         float ach = neuromodulator_get_level(bridge->neuromod, NEUROMOD_ACETYLCHOLINE);
 
         /* Apply deltas with clamping */
-        da = clamp_f(da + response->dopamine_delta, 0.0f, 1.0f);
-        ne = clamp_f(ne + response->norepinephrine_delta, 0.0f, 1.0f);
-        ht = clamp_f(ht + response->serotonin_delta, 0.0f, 1.0f);
-        ach = clamp_f(ach + response->acetylcholine_delta, 0.0f, 1.0f);
+        da = nimcp_clampf(da + response->dopamine_delta, 0.0f, 1.0f);
+        ne = nimcp_clampf(ne + response->norepinephrine_delta, 0.0f, 1.0f);
+        ht = nimcp_clampf(ht + response->serotonin_delta, 0.0f, 1.0f);
+        ach = nimcp_clampf(ach + response->acetylcholine_delta, 0.0f, 1.0f);
 
         neuromodulator_set_level(bridge->neuromod, NEUROMOD_DOPAMINE, da);
         neuromodulator_set_level(bridge->neuromod, NEUROMOD_NOREPINEPHRINE, ne);
@@ -1210,7 +1202,7 @@ safety_event_t safety_event_create(
     memset(&event, 0, sizeof(event));
 
     event.type = type;
-    event.magnitude = clamp_f(magnitude, 0.0f, 1.0f);
+    event.magnitude = nimcp_clampf(magnitude, 0.0f, 1.0f);
     event.timestamp_us = get_time_us();
     event.confidence = 1.0f;
     event.violation_count = 1;

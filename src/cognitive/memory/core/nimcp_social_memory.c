@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Forward declare heartbeat helper (defined at bottom with health agent block) */
 static inline void social_memory_heartbeat(const char* operation, float progress);
@@ -147,32 +148,7 @@ static void free_episode(social_episode_t* episode);
 static person_node_t* create_person_node(const char* name);
 static social_episode_t* create_episode(void);
 static float compute_signature_match(const prime_signature_t* s1, const prime_signature_t* s2);
-static float clamp(float value, float min_val, float max_val);
-
-//=============================================================================
-// Configuration Functions
-//=============================================================================
-
-NIMCP_EXPORT social_memory_config_t social_memory_config_default(void) {
-    social_memory_config_t config = {
-        .max_persons = SOCIAL_MEM_DEFAULT_MAX_PERSONS,
-        .max_episodes = SOCIAL_MEM_DEFAULT_MAX_EPISODES,
-        .max_facts_per_person = SOCIAL_MEM_MAX_FACTS_PER_PERSON,
-        .initial_trust = SOCIAL_MEM_INITIAL_TRUST,
-        .trust_decay_rate = SOCIAL_MEM_TRUST_DECAY_RATE,
-        .trust_learning_rate = SOCIAL_MEM_TRUST_ALPHA,
-        .relationship_decay_rate = SOCIAL_MEM_REL_DECAY_RATE,
-        .familiarity_threshold = SOCIAL_MEM_FAMILIAR_THRESHOLD,
-        .id_threshold = SOCIAL_MEM_ID_THRESHOLD,
-        .face_weight = 0.6f,
-        .voice_weight = 0.4f,
-        .enable_entanglement = true,
-        .enable_episode_linking = true,
-        .resonance_config = resonance_config_default()
-    };
-    return config;
-}
-
+static float nimcp_clampf(float value, float min_val, float max_val);
 NIMCP_EXPORT bool social_memory_config_validate(const social_memory_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_config_validate: config is NULL");
@@ -1163,7 +1139,7 @@ NIMCP_EXPORT float social_memory_update_trust(
         return -1.0f;
     }
 
-    magnitude = clamp(magnitude, 0.0f, 1.0f);
+    magnitude = nimcp_clampf(magnitude, 0.0f, 1.0f);
     float alpha = mem->config.trust_learning_rate;
     float delta = 0.0f;
 
@@ -1188,7 +1164,7 @@ NIMCP_EXPORT float social_memory_update_trust(
             delta = -alpha * magnitude * 3.0f;
             entry->person->negative_interactions++;
             // Increase volatility
-            entry->person->trust_volatility = clamp(entry->person->trust_volatility + 0.1f, 0.0f, 1.0f);
+            entry->person->trust_volatility = nimcp_clampf(entry->person->trust_volatility + 0.1f, 0.0f, 1.0f);
             break;
 
         case TRUST_OUTCOME_EXCEPTIONAL:
@@ -1203,7 +1179,7 @@ NIMCP_EXPORT float social_memory_update_trust(
 
     // Apply update
     float old_trust = entry->person->trust_level;
-    entry->person->trust_level = clamp(old_trust + delta, SOCIAL_MEM_MIN_TRUST, SOCIAL_MEM_MAX_TRUST);
+    entry->person->trust_level = nimcp_clampf(old_trust + delta, SOCIAL_MEM_MIN_TRUST, SOCIAL_MEM_MAX_TRUST);
 
     // Update baseline (slow adaptation)
     entry->person->trust_baseline = entry->person->trust_baseline * 0.95f +
@@ -1236,7 +1212,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_set_trust(
         return SOCIAL_MEM_ERROR_NOT_FOUND;
     }
 
-    entry->person->trust_level = clamp(trust_level, SOCIAL_MEM_MIN_TRUST, SOCIAL_MEM_MAX_TRUST);
+    entry->person->trust_level = nimcp_clampf(trust_level, SOCIAL_MEM_MIN_TRUST, SOCIAL_MEM_MAX_TRUST);
     entry->person->modified_time_ms = social_memory_current_time_ms();
 
     return SOCIAL_MEM_SUCCESS;
@@ -1362,7 +1338,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_update_relationship(
     }
 
     entry->person->relationship = relationship;
-    entry->person->relationship_strength = clamp(strength, 0.0f, 1.0f);
+    entry->person->relationship_strength = nimcp_clampf(strength, 0.0f, 1.0f);
     entry->person->modified_time_ms = social_memory_current_time_ms();
 
     return SOCIAL_MEM_SUCCESS;
@@ -1396,7 +1372,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_set_relationship_between(
         return SOCIAL_MEM_ERROR_NOT_FOUND;
     }
 
-    strength = clamp(strength, 0.0f, 1.0f);
+    strength = nimcp_clampf(strength, 0.0f, 1.0f);
 
     // Set relationship in matrix
     size_t offset = (size_t)idx1 * mem->matrix_capacity + (size_t)idx2;
@@ -1481,7 +1457,7 @@ NIMCP_EXPORT float social_memory_update_familiarity(
         return -1.0f;
     }
 
-    entry->person->familiarity = clamp(entry->person->familiarity + delta, 0.0f, 1.0f);
+    entry->person->familiarity = nimcp_clampf(entry->person->familiarity + delta, 0.0f, 1.0f);
     entry->person->modified_time_ms = social_memory_current_time_ms();
 
     return entry->person->familiarity;
@@ -1506,7 +1482,7 @@ NIMCP_EXPORT float social_memory_update_liking(
         return -2.0f;
     }
 
-    entry->person->liking = clamp(entry->person->liking + delta, -1.0f, 1.0f);
+    entry->person->liking = nimcp_clampf(entry->person->liking + delta, -1.0f, 1.0f);
     entry->person->modified_time_ms = social_memory_current_time_ms();
 
     return entry->person->liking;
@@ -1669,8 +1645,8 @@ NIMCP_EXPORT uint64_t social_memory_record_episode(
 
     episode->episode_id = mem->next_episode_id++;
     episode->episode_time = episode_time;
-    episode->emotional_valence = clamp(emotional_valence, -1.0f, 1.0f);
-    episode->social_importance = clamp(social_importance, 0.0f, 1.0f);
+    episode->emotional_valence = nimcp_clampf(emotional_valence, -1.0f, 1.0f);
+    episode->social_importance = nimcp_clampf(social_importance, 0.0f, 1.0f);
     episode->created_time_ms = social_memory_current_time_ms();
 
     if (context_signature) {
@@ -2227,10 +2203,10 @@ NIMCP_EXPORT social_mem_error_t social_memory_predict_behavior(
     float reciprocity = person->reciprocity;
 
     // Cooperation probability based on trust and reciprocity
-    prediction->cooperation_prob = clamp(0.5f + trust * 0.3f + reciprocity * 0.2f, 0.0f, 1.0f);
+    prediction->cooperation_prob = nimcp_clampf(0.5f + trust * 0.3f + reciprocity * 0.2f, 0.0f, 1.0f);
 
     // Defection probability (inverse relationship with trust)
-    prediction->defection_prob = clamp(0.5f - trust * 0.4f - reciprocity * 0.1f, 0.0f, 1.0f);
+    prediction->defection_prob = nimcp_clampf(0.5f - trust * 0.4f - reciprocity * 0.1f, 0.0f, 1.0f);
 
     // Helpfulness based on liking and relationship type
     float rel_bonus = 0.0f;
@@ -2242,11 +2218,11 @@ NIMCP_EXPORT social_mem_error_t social_memory_predict_behavior(
         case REL_ADVERSARY: rel_bonus = -0.3f; break;
         default: break;
     }
-    prediction->helpfulness_prob = clamp(0.5f + liking * 0.2f + rel_bonus, 0.0f, 1.0f);
+    prediction->helpfulness_prob = nimcp_clampf(0.5f + liking * 0.2f + rel_bonus, 0.0f, 1.0f);
 
     // Confidence based on number of interactions
     float interaction_factor = 1.0f - expf(-(float)person->interaction_count / 10.0f);
-    prediction->confidence = clamp(0.3f + interaction_factor * 0.7f - person->trust_volatility * 0.3f,
+    prediction->confidence = nimcp_clampf(0.3f + interaction_factor * 0.7f - person->trust_volatility * 0.3f,
                                    0.1f, 0.95f);
 
     return SOCIAL_MEM_SUCCESS;
@@ -2621,7 +2597,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_record_interaction(
     entry->person->last_interaction_time = current_time;
 
     // Update familiarity slightly with each interaction
-    entry->person->familiarity = clamp(entry->person->familiarity + 0.01f, 0.0f, 1.0f);
+    entry->person->familiarity = nimcp_clampf(entry->person->familiarity + 0.01f, 0.0f, 1.0f);
 
     entry->person->modified_time_ms = social_memory_current_time_ms();
     mem->total_interactions++;
@@ -3042,12 +3018,6 @@ static float compute_signature_match(const prime_signature_t* s1, const prime_si
     // Use Jaccard similarity
     float jaccard = prime_sig_jaccard(s1, s2);
     return (jaccard >= 0.0f) ? jaccard : 0.0f;
-}
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /* ============================================================================

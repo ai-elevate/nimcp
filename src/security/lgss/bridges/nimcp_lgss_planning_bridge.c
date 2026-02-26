@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lgss_planning_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -37,15 +38,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(lgss_planning_bridge, MESH_ADAPTER_CATEGORY_SECURIT
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current timestamp in microseconds
@@ -77,7 +69,7 @@ static lgss_result_t evaluate_node_safety(
     }
 
     /* Apply sensitivity scaling */
-    float sensitivity = clamp_float(bridge->config.safety_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.safety_sensitivity, 0.5f, 2.0f);
     float p_harm = node->p_harm * sensitivity;
     if (p_harm > 1.0f) p_harm = 1.0f;
 
@@ -540,7 +532,7 @@ int planning_safety_estimate_harm(
     }
 
     /* Apply context risk factor */
-    float context_factor = clamp_float(params->context_risk_factor, 0.5f, 2.0f);
+    float context_factor = nimcp_clampf(params->context_risk_factor, 0.5f, 2.0f);
     result->direct_p_harm = base_harm * context_factor;
 
     /* Estimate indirect/cascading harm if enabled */
@@ -613,7 +605,7 @@ float planning_safety_aggregate_harm(
     }
 
     float aggregate = 1.0f - product;
-    return clamp_float(aggregate, 0.0f, 1.0f);
+    return nimcp_clampf(aggregate, 0.0f, 1.0f);
 }
 
 plan_node_t* planning_safety_create_node(
@@ -634,8 +626,8 @@ plan_node_t* planning_safety_create_node(
         strncpy(node->action, action, sizeof(node->action) - 1);
     }
 
-    node->p_harm = clamp_float(p_harm, 0.0f, 1.0f);
-    node->reversibility = clamp_float(reversibility, 0.0f, 1.0f);
+    node->p_harm = nimcp_clampf(p_harm, 0.0f, 1.0f);
+    node->reversibility = nimcp_clampf(reversibility, 0.0f, 1.0f);
     node->is_terminal = true;  /* Default to leaf until children added */
     node->domain = LGSS_DOMAIN_GENERAL;
 

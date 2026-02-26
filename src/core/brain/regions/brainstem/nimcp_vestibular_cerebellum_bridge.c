@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vestibular_cerebellum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -87,15 +88,6 @@ static void set_error(vestibular_cerebellum_bridge_t* bridge,
         bridge->status = VESTIBULAR_CEREBELLUM_STATUS_ERROR;
         LOG_ERROR("[%s] Error: %d", BRIDGE_LOG_MODULE, error);
     }
-}
-
-/**
- * @brief Clamp value to range
- */
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /*=============================================================================
@@ -306,7 +298,7 @@ int vestibular_cerebellum_trigger_vor_adaptation(
         bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_MEDIAL] +=
             gain_delta * slip_direction[0] * 0.1f;
         bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_MEDIAL] =
-            clamp_f(bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_MEDIAL], 0.5f, 1.5f);
+            nimcp_clampf(bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_MEDIAL], 0.5f, 1.5f);
     }
 
     /* SVN: Vertical VOR (pitch, roll) */
@@ -317,7 +309,7 @@ int vestibular_cerebellum_trigger_vor_adaptation(
         bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_SUPERIOR] +=
             gain_delta * vert_slip * 0.1f;
         bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_SUPERIOR] =
-            clamp_f(bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_SUPERIOR], 0.5f, 1.5f);
+            nimcp_clampf(bridge->nucleus_modulation[VESTIBULAR_NUCLEUS_SUPERIOR], 0.5f, 1.5f);
     }
 
     /* Report to vestibular system for direct gain adjustment */
@@ -390,7 +382,7 @@ int vestibular_cerebellum_apply_feedback(vestibular_cerebellum_bridge_t* bridge)
 
     for (int i = 0; i < VESTIBULAR_NUM_NUCLEI; i++) {
         float mod = 1.0f + (bridge->nucleus_modulation[i] - 1.0f) * weight;
-        mod = clamp_f(mod, 0.3f, 2.0f);
+        mod = nimcp_clampf(mod, 0.3f, 2.0f);
 
         vestibular_apply_cerebellar_modulation(
             bridge->vestibular,

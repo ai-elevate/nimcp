@@ -25,6 +25,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_training_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -93,12 +94,6 @@ static uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 static float compute_loss_trend(const hypo_training_bridge_t* bridge) {
@@ -208,35 +203,35 @@ static void update_drives_from_training(hypo_training_bridge_t* bridge) {
             break;
         case HYPO_TRAIN_STATE_DIVERGING:
         case HYPO_TRAIN_STATE_UNSTABLE:
-            bridge->drives.safety_activation = clamp_float(
+            bridge->drives.safety_activation = nimcp_clampf(
                 0.5f + fabsf(deviation) * 2.0f, 0.0f, 1.0f);
             break;
         case HYPO_TRAIN_STATE_PLATEAU:
             bridge->drives.safety_activation = 0.3f;
             break;
         default:
-            bridge->drives.safety_activation = clamp_float(
+            bridge->drives.safety_activation = nimcp_clampf(
                 0.1f + fabsf(deviation), 0.0f, 0.5f);
             break;
     }
 
     /* Update curiosity drive - inverse of safety when healthy */
     if (state == HYPO_TRAIN_STATE_HEALTHY || state == HYPO_TRAIN_STATE_IMPROVING) {
-        bridge->drives.curiosity_activation = clamp_float(
+        bridge->drives.curiosity_activation = nimcp_clampf(
             0.5f + (1.0f - bridge->drives.safety_activation) * 0.5f, 0.0f, 1.0f);
     } else {
-        bridge->drives.curiosity_activation = clamp_float(
+        bridge->drives.curiosity_activation = nimcp_clampf(
             0.3f - bridge->drives.safety_activation * 0.3f, 0.0f, 0.5f);
     }
 
     /* Update competence drive based on progress */
     if (trend < 0 && state != HYPO_TRAIN_STATE_PLATEAU) {
         /* Making progress - competence increasing */
-        bridge->drives.competence_activation = clamp_float(
+        bridge->drives.competence_activation = nimcp_clampf(
             bridge->drives.competence_activation + 0.02f, 0.0f, 1.0f);
     } else if (state == HYPO_TRAIN_STATE_PLATEAU) {
         /* Plateau - competence decreasing */
-        bridge->drives.competence_activation = clamp_float(
+        bridge->drives.competence_activation = nimcp_clampf(
             bridge->drives.competence_activation - 0.01f, 0.2f, 1.0f);
     }
 
@@ -259,51 +254,51 @@ static void compute_modulations(hypo_training_bridge_t* bridge) {
     float safety_effect = drives->safety_activation * (1.0f - cfg->safety_lr_reduction);
     float fatigue_effect = drives->fatigue_level * cfg->fatigue_lr_decay;
 
-    mod->lr_multiplier = clamp_float(
+    mod->lr_multiplier = nimcp_clampf(
         1.0f + curiosity_effect - safety_effect - fatigue_effect,
         HYPO_TRAINING_MIN_PRECISION,
         HYPO_TRAINING_MAX_PRECISION
     );
 
     /* Batch size modulation (inverse of LR for stability) */
-    mod->batch_size_multiplier = clamp_float(
+    mod->batch_size_multiplier = nimcp_clampf(
         2.0f - mod->lr_multiplier,
         0.5f, 2.0f
     );
 
     /* Gradient clipping modulation */
-    mod->gradient_clip_multiplier = clamp_float(
+    mod->gradient_clip_multiplier = nimcp_clampf(
         1.0f - drives->safety_activation * (1.0f - cfg->safety_gradient_clip_mult),
         0.5f, 2.0f
     );
 
     /* Curriculum difficulty adjustment */
-    mod->difficulty_adjustment = clamp_float(
+    mod->difficulty_adjustment = nimcp_clampf(
         drives->difficulty_readiness * cfg->competence_difficulty_weight - 0.5f,
         -1.0f, 1.0f
     );
 
     /* Sample priority boost (curiosity-driven) */
-    mod->sample_priority_boost = clamp_float(
+    mod->sample_priority_boost = nimcp_clampf(
         drives->curiosity_activation * 0.5f,
         0.0f, 1.0f
     );
 
     /* Checkpoint urgency */
-    mod->checkpoint_urgency = clamp_float(
+    mod->checkpoint_urgency = nimcp_clampf(
         drives->safety_activation * 0.5f +
         (bridge->homeostatic.state == HYPO_TRAIN_STATE_IMPROVING ? 0.3f : 0.0f),
         0.0f, 1.0f
     );
 
     /* Multi-task weight shift (competence-driven) */
-    mod->multi_task_weight_shift = clamp_float(
+    mod->multi_task_weight_shift = nimcp_clampf(
         (drives->competence_activation - 0.5f) * 2.0f,
         -1.0f, 1.0f
     );
 
     /* Replay priority boost (safety-driven) */
-    mod->replay_priority_boost = clamp_float(
+    mod->replay_priority_boost = nimcp_clampf(
         drives->safety_activation * 0.5f,
         0.0f, 1.0f
     );
@@ -727,11 +722,11 @@ int hypo_training_bridge_process_gradient(
 
     /* Detect gradient instability */
     if (!isfinite(gradient_norm) || gradient_norm > 100.0f) {
-        bridge->drives.safety_activation = clamp_float(
+        bridge->drives.safety_activation = nimcp_clampf(
             bridge->drives.safety_activation + 0.2f, 0.0f, 1.0f);
         bridge->stats.safety_interventions++;
     } else if (was_clipped) {
-        bridge->drives.safety_activation = clamp_float(
+        bridge->drives.safety_activation = nimcp_clampf(
             bridge->drives.safety_activation + 0.05f, 0.0f, 1.0f);
     }
 
@@ -754,7 +749,7 @@ int hypo_training_bridge_process_epoch(
     bridge->stats.training_events_received++;
 
     /* Update fatigue */
-    bridge->drives.fatigue_level = clamp_float(
+    bridge->drives.fatigue_level = nimcp_clampf(
         bridge->drives.fatigue_level + HYPO_TRAINING_DEFAULT_FATIGUE_RATE,
         0.0f, 1.0f
     );
@@ -794,11 +789,11 @@ int hypo_training_bridge_process_lr_change(
 
     /* LR increase suggests exploration phase */
     if (new_lr > old_lr) {
-        bridge->drives.curiosity_activation = clamp_float(
+        bridge->drives.curiosity_activation = nimcp_clampf(
             bridge->drives.curiosity_activation + 0.1f, 0.0f, 1.0f);
     } else {
         /* LR decrease suggests convergence/exploitation */
-        bridge->drives.curiosity_activation = clamp_float(
+        bridge->drives.curiosity_activation = nimcp_clampf(
             bridge->drives.curiosity_activation - 0.05f, 0.0f, 1.0f);
     }
 
@@ -948,7 +943,7 @@ int hypo_training_bridge_set_drive(
         return -1;
     }
 
-    activation = clamp_float(activation, 0.0f, 1.0f);
+    activation = nimcp_clampf(activation, 0.0f, 1.0f);
 
     switch (drive_type) {
         case 0:

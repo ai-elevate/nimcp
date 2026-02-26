@@ -12,19 +12,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(dopamine_release, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Internal Helpers
- *===========================================================================*/
-
-static float clampf(float x, float lo, float hi) {
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
 
 static float michaelis_menten(float substrate, float vmax, float km) {
     if (substrate <= 0.0f) return 0.0f;
@@ -228,9 +218,9 @@ int nimcp_da_release_update(
     }
 
     /* Clamp concentrations */
-    system->concentrations.synaptic = clampf(system->concentrations.synaptic, 0.0f, 1000.0f);
-    system->concentrations.extrasynaptic = clampf(system->concentrations.extrasynaptic, 0.0f, 500.0f);
-    system->concentrations.cytosolic = clampf(system->concentrations.cytosolic, 0.0f, 500.0f);
+    system->concentrations.synaptic = nimcp_clampf(system->concentrations.synaptic, 0.0f, 1000.0f);
+    system->concentrations.extrasynaptic = nimcp_clampf(system->concentrations.extrasynaptic, 0.0f, 500.0f);
+    system->concentrations.cytosolic = nimcp_clampf(system->concentrations.cytosolic, 0.0f, 500.0f);
 
     system->spikes_processed += spikes;
     return 0;
@@ -267,7 +257,7 @@ int nimcp_da_release_trigger(
 
     /* Update efficacy based on vesicle availability */
     float pool_ratio = (float)system->vesicles.readily_releasable / (DA_VESICLE_POOL_SIZE / 10);
-    system->release_efficacy = clampf(pool_ratio, 0.1f, 1.0f);
+    system->release_efficacy = nimcp_clampf(pool_ratio, 0.1f, 1.0f);
 
     return 0;
 }
@@ -345,7 +335,7 @@ int nimcp_da_set_concentration(
         return -1;
     }
 
-    concentration = clampf(concentration, 0.0f, 1000.0f);
+    concentration = nimcp_clampf(concentration, 0.0f, 1000.0f);
 
     switch (compartment) {
         case DA_COMPARTMENT_VESICULAR:
@@ -451,7 +441,7 @@ int nimcp_da_apply_drug(
 
     /* Modify activation based on efficacy */
     system->receptors[receptor].activation += efficacy * 0.5f;
-    system->receptors[receptor].activation = clampf(
+    system->receptors[receptor].activation = nimcp_clampf(
         system->receptors[receptor].activation, 0.0f, 1.0f
     );
 
@@ -471,7 +461,7 @@ int nimcp_da_set_dat_inhibition(
         return -1;
     }
 
-    system->transporter.inhibition = clampf(inhibition, 0.0f, 1.0f);
+    system->transporter.inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
     return 0;
 }
 

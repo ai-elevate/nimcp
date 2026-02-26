@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(self_model_snn_bridge)
 //=============================================================================
@@ -120,16 +121,6 @@ struct self_model_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(self_model_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -421,7 +412,7 @@ int self_model_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -516,8 +507,8 @@ int self_model_snn_encode_agency(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
-    dims[SELF_DIM_AGENCY] = clamp_f(agency_strength, 0.0f, 1.0f);
-    dims[SELF_DIM_CAPABILITY] = clamp_f(efference_match, 0.0f, 1.0f);
+    dims[SELF_DIM_AGENCY] = nimcp_clampf(agency_strength, 0.0f, 1.0f);
+    dims[SELF_DIM_CAPABILITY] = nimcp_clampf(efference_match, 0.0f, 1.0f);
 
     bridge->agency_signal = agency_strength;
 
@@ -555,7 +546,7 @@ int self_model_snn_encode_boundary(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
-    dims[SELF_DIM_BOUNDARY] = clamp_f(boundary_strength, 0.0f, 1.0f);
+    dims[SELF_DIM_BOUNDARY] = nimcp_clampf(boundary_strength, 0.0f, 1.0f);
 
     bridge->boundary_signal = boundary_strength;
 

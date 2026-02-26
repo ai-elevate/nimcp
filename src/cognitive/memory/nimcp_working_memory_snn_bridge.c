@@ -34,6 +34,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(working_memory_snn_bridge, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -81,14 +82,6 @@ struct wm_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(wm_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float v, float lo, float hi) {
-    return (v < lo) ? lo : ((v > hi) ? hi : v);
-}
 
 //=============================================================================
 // Default Configuration
@@ -424,7 +417,7 @@ int wm_snn_encode_item(
         }
 
         /* Apply encoding gain and salience */
-        rate = clamp_f(rate * bridge->config.encoding_gain * salience, 0.0f, 1.0f);
+        rate = nimcp_clampf(rate * bridge->config.encoding_gain * salience, 0.0f, 1.0f);
         bridge->slot_buffer[offset + n] = rate;
 
         /* Count spikes (probabilistic based on rate) */

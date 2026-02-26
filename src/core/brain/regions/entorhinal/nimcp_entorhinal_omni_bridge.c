@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_omni_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -47,16 +48,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_omni_bridge, MESH_ADAPTER_CATEGORY_COGNI
 #define DEFAULT_ATTENTION_DECAY_RATE    0.1f
 #define DEFAULT_NOVELTY_BOOST           0.3f
 #define DEFAULT_THREAT_ATTENTION_BOOST  0.5f
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 static float normalize_angle(float angle) {
     while (angle < 0.0f) angle += 2.0f * M_PI;

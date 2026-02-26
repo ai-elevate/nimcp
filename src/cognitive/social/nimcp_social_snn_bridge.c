@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(social_snn_bridge)
 //=============================================================================
@@ -122,16 +123,6 @@ struct social_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(social_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -373,7 +364,7 @@ int social_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -427,8 +418,8 @@ int social_snn_encode_trust(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SOCIAL_DIM_COUNT] = {0};
-    dims[SOCIAL_DIM_TRUST] = clamp_f(trust, 0.0f, 1.0f);
-    dims[SOCIAL_DIM_RECIPROCITY] = clamp_f(reliability, 0.0f, 1.0f);
+    dims[SOCIAL_DIM_TRUST] = nimcp_clampf(trust, 0.0f, 1.0f);
+    dims[SOCIAL_DIM_RECIPROCITY] = nimcp_clampf(reliability, 0.0f, 1.0f);
     dims[SOCIAL_DIM_BONDING] = (trust + reliability) / 2.0f;
 
     bridge->trust_signal = trust;
@@ -451,8 +442,8 @@ int social_snn_encode_closeness(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SOCIAL_DIM_COUNT] = {0};
-    dims[SOCIAL_DIM_CLOSENESS] = clamp_f(closeness, 0.0f, 1.0f);
-    dims[SOCIAL_DIM_AFFECTION] = clamp_f(affection, 0.0f, 1.0f);
+    dims[SOCIAL_DIM_CLOSENESS] = nimcp_clampf(closeness, 0.0f, 1.0f);
+    dims[SOCIAL_DIM_AFFECTION] = nimcp_clampf(affection, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -472,8 +463,8 @@ int social_snn_encode_hierarchy(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SOCIAL_DIM_COUNT] = {0};
-    dims[SOCIAL_DIM_HIERARCHY] = clamp_f(hierarchy_position, 0.0f, 1.0f);
-    dims[SOCIAL_DIM_COOPERATION] = clamp_f((float)hierarchy_count / 10.0f, 0.0f, 1.0f);
+    dims[SOCIAL_DIM_HIERARCHY] = nimcp_clampf(hierarchy_position, 0.0f, 1.0f);
+    dims[SOCIAL_DIM_COOPERATION] = nimcp_clampf((float)hierarchy_count / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -529,12 +520,12 @@ int social_snn_simulate(social_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_relationship.trust_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_relationship.closeness_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_relationship.affection_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_relationship.bonding_strength = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_relationship.cooperation_level = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_relationship.competition_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_relationship.trust_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_relationship.closeness_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_relationship.affection_level = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_relationship.bonding_strength = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_relationship.cooperation_level = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_relationship.competition_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check trust threshold */
     if (bridge->last_relationship.trust_level > bridge->config.trust_threshold) {

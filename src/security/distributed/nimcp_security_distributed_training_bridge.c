@@ -22,6 +22,7 @@
 
 #define LOG_MODULE "security_distributed_training_bridge"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_distributed_training_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -146,12 +147,6 @@ static float compute_gradient_norm(const float* gradients, uint32_t num_params) 
         sum_sq += (double)gradients[i] * (double)gradients[i];
     }
     return (float)sqrt(sum_sq);
-}
-
-static inline float clampf(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 static float compute_trust_weight(security_worker_trust_t trust) {
@@ -549,7 +544,7 @@ int security_distributed_training_score_worker(
     }
 
     float final_score = base_score * contribution_factor * violation_factor;
-    final_score = clampf(final_score, 0.0f, 1.0f);
+    final_score = nimcp_clampf(final_score, 0.0f, 1.0f);
 
     worker->trust_score = final_score;
     *score = final_score;
@@ -727,7 +722,7 @@ int security_distributed_training_detect_byzantine(
 
     result->byzantine_detected = (byzantine_count > 0);
     result->type = detected_type;
-    result->confidence = clampf(max_anomaly_score, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(max_anomaly_score, 0.0f, 1.0f);
     result->num_byzantine = byzantine_count;
     result->detection_time_us = nimcp_time_monotonic_us() - start_time;
 
@@ -780,7 +775,7 @@ int security_distributed_training_report_worker_anomaly(
     }
 
     worker->trust_score -= bridge->config.trust_violation_penalty * anomaly_score;
-    worker->trust_score = clampf(worker->trust_score, 0.0f, 1.0f);
+    worker->trust_score = nimcp_clampf(worker->trust_score, 0.0f, 1.0f);
 
     if (bridge->config.auto_quarantine_byzantine &&
         worker->byzantine_detections >= 3 &&
@@ -891,7 +886,7 @@ int security_distributed_training_validate_gradients(
     result->anomaly_score = 0.0f;
     if (result->norm_exceeded) result->anomaly_score += 0.3f;
     if (result->outlier_detected) result->anomaly_score += 0.3f;
-    result->anomaly_score = clampf(result->anomaly_score, 0.0f, 1.0f);
+    result->anomaly_score = nimcp_clampf(result->anomaly_score, 0.0f, 1.0f);
 
     result->is_valid = !result->norm_exceeded || result->anomaly_score < 0.5f;
 
@@ -951,7 +946,7 @@ bool security_distributed_training_validate_aggregated(
 
     float threshold = bridge->config.gradient_norm_threshold * 2.0f;
     float score = norm / threshold;
-    score = clampf(score, 0.0f, 1.0f);
+    score = nimcp_clampf(score, 0.0f, 1.0f);
 
     if (anomaly_score) *anomaly_score = score;
 
@@ -1146,14 +1141,14 @@ int security_distributed_training_update_security_effects(
         threat_level += 0.1f;
     }
 
-    threat_level = clampf(threat_level, 0.0f, 1.0f);
+    threat_level = nimcp_clampf(threat_level, 0.0f, 1.0f);
 
     bridge->security_effects.threat_level = threat_level;
     bridge->security_effects.under_attack = (threat_level > 0.7f);
 
     if (threat_level > 0.5f) {
         float reduction = 1.0f - (threat_level - 0.5f);
-        bridge->security_effects.gradient_scale_factor = clampf(reduction, 0.5f, 1.0f);
+        bridge->security_effects.gradient_scale_factor = nimcp_clampf(reduction, 0.5f, 1.0f);
     } else {
         bridge->security_effects.gradient_scale_factor = 1.0f;
     }

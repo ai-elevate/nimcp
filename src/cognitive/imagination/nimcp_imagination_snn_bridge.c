@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(imagination_snn_bridge)
 //=============================================================================
@@ -119,16 +120,6 @@ struct imagination_snn_bridge {
     /* Statistics */
     imagination_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -419,7 +410,7 @@ int imagination_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -489,8 +480,8 @@ int imagination_snn_encode_vividness(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
-    dims[IMAGINATION_DIM_VIVIDNESS] = clamp_f(vividness, 0.0f, 1.0f);
-    dims[IMAGINATION_DIM_DETAIL] = clamp_f(detail, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_VIVIDNESS] = nimcp_clampf(vividness, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_DETAIL] = nimcp_clampf(detail, 0.0f, 1.0f);
     dims[IMAGINATION_DIM_COHERENCE] = (vividness + detail) / 2.0f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -515,8 +506,8 @@ int imagination_snn_encode_scenario(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
-    dims[IMAGINATION_DIM_COHERENCE] = clamp_f(coherence, 0.0f, 1.0f);
-    dims[IMAGINATION_DIM_SCENARIO_COMPLEXITY] = clamp_f(complexity, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_COHERENCE] = nimcp_clampf(coherence, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_SCENARIO_COMPLEXITY] = nimcp_clampf(complexity, 0.0f, 1.0f);
 
     bridge->coherence_signal = coherence;
 
@@ -542,8 +533,8 @@ int imagination_snn_encode_creativity(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
-    dims[IMAGINATION_DIM_CREATIVITY] = clamp_f(creativity, 0.0f, 1.0f);
-    dims[IMAGINATION_DIM_NOVELTY] = clamp_f(novelty, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_CREATIVITY] = nimcp_clampf(creativity, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_NOVELTY] = nimcp_clampf(novelty, 0.0f, 1.0f);
 
     bridge->creativity_signal = creativity;
 
@@ -580,8 +571,8 @@ int imagination_snn_encode_counterfactual(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
-    dims[IMAGINATION_DIM_COUNTERFACTUAL] = clamp_f(divergence, 0.0f, 1.0f);
-    dims[IMAGINATION_DIM_PROSPECTIVE] = clamp_f((float)steps_ahead / 100.0f, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_COUNTERFACTUAL] = nimcp_clampf(divergence, 0.0f, 1.0f);
+    dims[IMAGINATION_DIM_PROSPECTIVE] = nimcp_clampf((float)steps_ahead / 100.0f, 0.0f, 1.0f);
     dims[IMAGINATION_DIM_REALITY_DISTANCE] = divergence * 0.8f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -654,12 +645,12 @@ int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms
     }
 
     /* Decode outputs */
-    bridge->last_imagery.vividness_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_imagery.detail_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_imagery.coherence_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_imagery.creativity_level = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_imagery.controllability_level = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_imagery.scenario_complexity = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_imagery.vividness_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_imagery.detail_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_imagery.coherence_level = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_imagery.creativity_level = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_imagery.controllability_level = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_imagery.scenario_complexity = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check vividness threshold */
     if (bridge->last_imagery.vividness_level > bridge->config.vividness_threshold) {

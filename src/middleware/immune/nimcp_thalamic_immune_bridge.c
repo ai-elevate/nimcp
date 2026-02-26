@@ -21,25 +21,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thalamic_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation intensity as normalized float
@@ -270,11 +258,11 @@ int thalamic_immune_apply_cytokine_effects(thalamic_immune_bridge_t* bridge) {
     float proinflam_total = il6_level + il1_level + tnf_level;
     effects->gating_threshold_modifier = -proinflam_total * INFLAMMATION_GATING_REDUCTION;
     effects->gating_threshold_modifier += effects->il10_gating_restoration;
-    effects->gating_threshold_modifier = clamp_f(effects->gating_threshold_modifier, -0.5f, 0.3f);
+    effects->gating_threshold_modifier = nimcp_clampf(effects->gating_threshold_modifier, -0.5f, 0.3f);
 
     /* Threat focus and social suppression */
-    effects->threat_focus_level = clamp_f(proinflam_total * 0.8f, 0.0f, 1.0f);
-    effects->social_suppression_level = clamp_f(proinflam_total * 0.6f, 0.0f, 1.0f);
+    effects->threat_focus_level = nimcp_clampf(proinflam_total * 0.8f, 0.0f, 1.0f);
+    effects->social_suppression_level = nimcp_clampf(proinflam_total * 0.6f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
@@ -305,7 +293,7 @@ int thalamic_immune_apply_inflammation_effects(thalamic_immune_bridge_t* bridge)
     state->inflammation_intensity = get_inflammation_intensity(state->current_level);
 
     /* Hypervigilance increases with inflammation */
-    state->hypervigilance_level = clamp_f(state->inflammation_intensity * 1.2f, 0.0f, 1.0f);
+    state->hypervigilance_level = nimcp_clampf(state->inflammation_intensity * 1.2f, 0.0f, 1.0f);
 
     /* Gating reduction (more signals pass through) */
     state->gating_reduction = state->inflammation_intensity * INFLAMMATION_GATING_REDUCTION;
@@ -320,7 +308,7 @@ int thalamic_immune_apply_inflammation_effects(thalamic_immune_bridge_t* bridge)
     state->sickness_behavior_active = (state->current_level >= INFLAMMATION_REGIONAL);
 
     /* Attention bias toward threats */
-    state->attention_bias = clamp_f(state->inflammation_intensity * 0.9f, 0.0f, 1.0f);
+    state->attention_bias = nimcp_clampf(state->inflammation_intensity * 0.9f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
@@ -365,7 +353,7 @@ int thalamic_immune_escalate_priority(
         }
     }
 
-    escalated_attention = clamp_f(escalated_attention, 0.1f, 1.0f);
+    escalated_attention = nimcp_clampf(escalated_attention, 0.1f, 1.0f);
 
     /* Apply to router */
     thalamic_router_set_attention(bridge->thalamic_router, source_id, dest_id, escalated_attention);
@@ -471,7 +459,7 @@ int thalamic_immune_detect_anomalies(thalamic_immune_bridge_t* bridge) {
     if (state->excessive_drops) state->threat_severity += 0.3f;
     if (state->high_latency) state->threat_severity += 0.2f;
     if (state->priority_violations) state->threat_severity += 0.4f;
-    state->threat_severity = clamp_f(state->threat_severity, 0.0f, 1.0f);
+    state->threat_severity = nimcp_clampf(state->threat_severity, 0.0f, 1.0f);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
@@ -561,7 +549,7 @@ int thalamic_immune_boost_from_health(thalamic_immune_bridge_t* bridge) {
     routing_anomaly_state_t* anomaly = &bridge->anomaly_state;
 
     /* Compute health metrics */
-    feedback->routing_efficiency = clamp_f(anomaly->throughput_hz / 1000.0f, 0.0f, 1.0f);
+    feedback->routing_efficiency = nimcp_clampf(anomaly->throughput_hz / 1000.0f, 0.0f, 1.0f);
     feedback->queue_headroom = 1.0f - anomaly->queue_utilization;
     feedback->success_rate = 1.0f - anomaly->drop_rate;
 
@@ -697,7 +685,7 @@ float thalamic_immune_get_gating_threshold(const thalamic_immune_bridge_t* bridg
     float base_threshold = 0.5f;
     float threshold = base_threshold + bridge->cytokine_effects.gating_threshold_modifier;
     threshold -= bridge->inflammation_state.gating_reduction;
-    threshold = clamp_f(threshold, 0.1f, 0.9f);
+    threshold = nimcp_clampf(threshold, 0.1f, 0.9f);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return threshold;
@@ -710,7 +698,7 @@ float thalamic_immune_get_threat_priority_multiplier(
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     float multiplier = bridge->inflammation_state.threat_priority_boost;
-    multiplier = clamp_f(multiplier, 1.0f, 2.0f);
+    multiplier = nimcp_clampf(multiplier, 1.0f, 2.0f);
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return multiplier;

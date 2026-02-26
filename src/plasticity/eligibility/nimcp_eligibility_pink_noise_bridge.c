@@ -12,14 +12,12 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_pink_noise_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(elig_pink_noise_bridge)
-
-
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 elig_pink_noise_bridge_t* elig_pink_noise_create(const elig_pink_noise_config_t* config) {
     elig_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(elig_pink_noise_bridge_t));
@@ -94,17 +92,17 @@ int elig_pink_noise_update(elig_pink_noise_bridge_t* bridge) {
     if (bridge->config.noise_targets & ELIG_NOISE_TARGET_DECAY) {
         bridge->decay_noise = pink_noise_sample(bridge->noise_gen) * bridge->config.decay_noise_scale;
         bridge->noisy_decay_rate = 0.1f * (1.0f + amp * bridge->decay_noise);
-        bridge->noisy_decay_rate = clamp(bridge->noisy_decay_rate, bridge->config.decay_min, bridge->config.decay_max);
+        bridge->noisy_decay_rate = nimcp_clampf(bridge->noisy_decay_rate, bridge->config.decay_min, bridge->config.decay_max);
     }
     if (bridge->config.noise_targets & ELIG_NOISE_TARGET_THRESHOLD) {
         bridge->threshold_noise = pink_noise_sample(bridge->noise_gen) * bridge->config.threshold_noise_scale;
         bridge->noisy_threshold = 0.5f * (1.0f + amp * bridge->threshold_noise);
-        bridge->noisy_threshold = clamp(bridge->noisy_threshold, 0.1f, 1.0f);
+        bridge->noisy_threshold = nimcp_clampf(bridge->noisy_threshold, 0.1f, 1.0f);
     }
     if (bridge->config.noise_targets & ELIG_NOISE_TARGET_BOOST) {
         bridge->boost_noise = pink_noise_sample(bridge->noise_gen) * bridge->config.boost_noise_scale;
         bridge->noisy_boost = 1.0f * (1.0f + amp * bridge->boost_noise);
-        bridge->noisy_boost = clamp(bridge->noisy_boost, 0.5f, 2.0f);
+        bridge->noisy_boost = nimcp_clampf(bridge->noisy_boost, 0.5f, 2.0f);
     }
 
     bridge->samples_generated++;

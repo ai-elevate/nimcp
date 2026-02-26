@@ -25,6 +25,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_thalamic_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -81,7 +82,7 @@ static float compute_attention_modulation(
     } else {
         /* Outside spotlight - attenuate based on distance */
         float falloff = (dist - bridge->state.attention_radius) * 2.0f;
-        float attenuation = nimcp_clamp_f(1.0f - falloff, 0.5f, 1.0f);
+        float attenuation = nimcp_clampf(1.0f - falloff, 0.5f, 1.0f);
         return attenuation;
     }
 }
@@ -588,7 +589,7 @@ int occipital_thalamic_set_attention(
     }
 
     /* Clamp attention to valid range */
-    bridge->state.pulvinar_attention = nimcp_clamp_f(attention, 0.0f, 1.0f);
+    bridge->state.pulvinar_attention = nimcp_clampf(attention, 0.0f, 1.0f);
     bridge->stats.attention_requests++;
 
     return 0;
@@ -606,9 +607,9 @@ int occipital_thalamic_set_spatial_attention(
         return -1;
     }
 
-    bridge->state.attention_x = nimcp_clamp_f(x, 0.0f, 1.0f);
-    bridge->state.attention_y = nimcp_clamp_f(y, 0.0f, 1.0f);
-    bridge->state.attention_radius = nimcp_clamp_f(radius, 0.0f, 1.0f);
+    bridge->state.attention_x = nimcp_clampf(x, 0.0f, 1.0f);
+    bridge->state.attention_y = nimcp_clampf(y, 0.0f, 1.0f);
+    bridge->state.attention_radius = nimcp_clampf(radius, 0.0f, 1.0f);
     bridge->stats.attention_requests++;
 
     return 0;
@@ -638,20 +639,20 @@ int occipital_thalamic_set_nucleus_gain(
         return -1;
     }
 
-    gain = nimcp_clamp_f(gain, 0.0f, 2.0f);
+    gain = nimcp_clampf(gain, 0.0f, 2.0f);
 
     switch (nucleus) {
         case OCCIPITAL_THALAMIC_LGN:
             bridge->state.lgn_gain = gain;
             break;
         case OCCIPITAL_THALAMIC_PULVINAR:
-            bridge->state.pulvinar_attention = nimcp_clamp_f(gain, 0.0f, 1.0f);
+            bridge->state.pulvinar_attention = nimcp_clampf(gain, 0.0f, 1.0f);
             break;
         case OCCIPITAL_THALAMIC_SC:
-            bridge->state.sc_saccade_readiness = nimcp_clamp_f(gain, 0.0f, 1.0f);
+            bridge->state.sc_saccade_readiness = nimcp_clampf(gain, 0.0f, 1.0f);
             break;
         case OCCIPITAL_THALAMIC_TRN:
-            bridge->state.trn_gate = nimcp_clamp_f(gain, 0.0f, 1.0f);
+            bridge->state.trn_gate = nimcp_clampf(gain, 0.0f, 1.0f);
             break;
         default:
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_set_nucleus_gain: operation failed");
@@ -702,7 +703,7 @@ int occipital_thalamic_apply_feedback(
     }
     float avg_feedback = sum / (float)signal_dim;
 
-    bridge->state.cortical_feedback = nimcp_clamp_f(avg_feedback, -1.0f, 1.0f);
+    bridge->state.cortical_feedback = nimcp_clampf(avg_feedback, -1.0f, 1.0f);
     bridge->state.feedback_active = true;
 
     /* Store feedback buffer if needed for detailed processing */

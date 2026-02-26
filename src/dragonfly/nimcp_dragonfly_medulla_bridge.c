@@ -32,6 +32,7 @@
 #include <math.h>
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_medulla_bridge)
 
@@ -165,12 +166,6 @@ static const protection_effect_t PROTECTION_EFFECTS[] = {
 
 static uint64_t get_time_us(void) {
     return nimcp_time_get_us();
-}
-
-static float clampf(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 //=============================================================================
@@ -368,7 +363,7 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
     circadian_phase_t circadian = medulla_get_circadian_phase(bridge->medulla);
 
     /* Clamp arousal to valid range and convert to level */
-    arousal = clampf(arousal, 0.0f, 1.0f);
+    arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
 
     /* Map continuous arousal [0-1] to discrete level [0-6] */
     int arousal_level = (int)(arousal * 6.0f + 0.5f);

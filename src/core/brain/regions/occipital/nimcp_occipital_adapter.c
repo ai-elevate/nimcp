@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -210,13 +211,6 @@ struct occipital_adapter {
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 /**
  * @brief Emit event to callback
@@ -428,7 +422,7 @@ static bool v1_process(v1_processor_t* v1, const float* input,
                 edge->y = (float)y / (float)height;
                 edge->scale = 1.0f;
                 edge->orientation = (float)max_ori * NIMCP_PI_F / (float)v1->num_orientations;
-                edge->strength = clamp_f(max_response * att_gain, 0.0f, 1.0f);
+                edge->strength = nimcp_clampf(max_response * att_gain, 0.0f, 1.0f);
                 edge->descriptor = NULL;
                 edge->descriptor_size = 0;
                 v1->edge_count++;
@@ -503,7 +497,7 @@ static bool v2_process(v2_processor_t* v2, const v1_processor_t* v1,
             contour->y = edge->y;
             contour->scale = edge->scale;
             contour->orientation = edge->orientation;
-            contour->strength = clamp_f(edge->strength * 1.2f * att_gain, 0.0f, 1.0f);
+            contour->strength = nimcp_clampf(edge->strength * 1.2f * att_gain, 0.0f, 1.0f);
             contour->descriptor = NULL;
             contour->descriptor_size = 0;
             v2->contour_count++;
@@ -616,7 +610,7 @@ static bool v4_process(v4_processor_t* v4, const float* input,
 
                 color_percept_t* percept = &v4->color_percepts[v4->color_count];
                 percept->hue = h;
-                percept->saturation = clamp_f(s * att_gain, 0.0f, 1.0f);
+                percept->saturation = nimcp_clampf(s * att_gain, 0.0f, 1.0f);
                 percept->brightness = v_val;
                 percept->x = (float)x / (float)width;
                 percept->y = (float)y / (float)height;
@@ -778,7 +772,7 @@ static bool v5_process(v5_mt_processor_t* v5, const float* input,
                     mv->y = (float)y / (float)height;
                     mv->dx = best_dx * att_gain;
                     mv->dy = best_dy * att_gain;
-                    mv->confidence = clamp_f(1.0f - best_match / 25.0f, 0.0f, 1.0f);
+                    mv->confidence = nimcp_clampf(1.0f - best_match / 25.0f, 0.0f, 1.0f);
                     v5->motion_count++;
 
                     v5->global_dx += best_dx;
@@ -1520,9 +1514,9 @@ bool occipital_apply_spatial_attention(occipital_adapter_t* adapter,
         return false;
     }
 
-    adapter->attention_x = clamp_f(x, 0.0f, 1.0f);
-    adapter->attention_y = clamp_f(y, 0.0f, 1.0f);
-    adapter->attention_radius = clamp_f(radius, 0.0f, 1.0f);
+    adapter->attention_x = nimcp_clampf(x, 0.0f, 1.0f);
+    adapter->attention_y = nimcp_clampf(y, 0.0f, 1.0f);
+    adapter->attention_radius = nimcp_clampf(radius, 0.0f, 1.0f);
     adapter->attention_gain = gain;
     adapter->spatial_attention_active = true;
 

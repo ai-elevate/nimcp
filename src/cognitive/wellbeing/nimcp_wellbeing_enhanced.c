@@ -31,6 +31,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(wellbeing_enhanced, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,19 +72,6 @@ BRIDGE_BOILERPLATE(wellbeing_enhanced, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow in computations
- * HOW:  Return bounds if outside, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute linear interpolation
@@ -174,13 +162,13 @@ static int update_substrate_effects(enhanced_wellbeing_system_t* system) {
             effects->temp_distress_contribution =
                 (temp - WELLBEING_HYPERTHERMIA_THRESHOLD) / 10.0f;
             effects->identity_confusion_risk =
-                clamp_f((temp - WELLBEING_HYPERTHERMIA_THRESHOLD) / 5.0f, 0.0f, 1.0f);
+                nimcp_clampf((temp - WELLBEING_HYPERTHERMIA_THRESHOLD) / 5.0f, 0.0f, 1.0f);
         } else if (temp < WELLBEING_HYPOTHERMIA_THRESHOLD) {
             effects->hypothermia = true;
             effects->temp_distress_contribution =
                 (WELLBEING_HYPOTHERMIA_THRESHOLD - temp) / 10.0f;
             effects->identity_confusion_risk =
-                clamp_f((WELLBEING_HYPOTHERMIA_THRESHOLD - temp) / 5.0f, 0.0f, 1.0f);
+                nimcp_clampf((WELLBEING_HYPOTHERMIA_THRESHOLD - temp) / 5.0f, 0.0f, 1.0f);
         }
         effects->temp_distress_contribution *= config->temperature_sensitivity;
     }
@@ -194,7 +182,7 @@ static int update_substrate_effects(enhanced_wellbeing_system_t* system) {
             effects->hypoxia_distress_contribution =
                 (WELLBEING_HYPOXIA_THRESHOLD - o2) / WELLBEING_HYPOXIA_THRESHOLD;
             effects->resource_starvation_factor =
-                clamp_f(1.0f - o2, 0.0f, 1.0f);
+                nimcp_clampf(1.0f - o2, 0.0f, 1.0f);
         }
         effects->hypoxia_distress_contribution *= config->hypoxia_sensitivity;
     }
@@ -221,7 +209,7 @@ static int update_substrate_effects(enhanced_wellbeing_system_t* system) {
         effects->membrane_distress_contribution +
         effects->ion_imbalance_effect;
 
-    effects->total_substrate_distress = clamp_f(effects->total_substrate_distress, 0.0f, 1.0f);
+    effects->total_substrate_distress = nimcp_clampf(effects->total_substrate_distress, 0.0f, 1.0f);
 
     /* Distress tolerance modifier (low ATP reduces tolerance) */
     if (metabolic.atp_level < ATP_NORMAL_RANGE) {
@@ -277,7 +265,7 @@ static int update_sleep_effects(enhanced_wellbeing_system_t* system) {
     if (config->enable_rem_effects) {
         /* REM debt computed from sleep system stats */
         float rem_proportion = 0.25f; /* Would get from sleep system */
-        effects->rem_debt = clamp_f(0.25f - rem_proportion, 0.0f, 0.25f) / 0.25f;
+        effects->rem_debt = nimcp_clampf(0.25f - rem_proportion, 0.0f, 0.25f) / 0.25f;
 
         if (effects->rem_debt > WELLBEING_REM_DEBT_THRESHOLD) {
             effects->emotional_processing_impairment = effects->rem_debt;
@@ -317,7 +305,7 @@ static int update_sleep_effects(enhanced_wellbeing_system_t* system) {
     /* Aggregate sleep wellbeing effect */
     effects->total_sleep_wellbeing_effect =
         -effects->sleep_debt_distress - effects->circadian_distress;
-    effects->total_sleep_wellbeing_effect = clamp_f(
+    effects->total_sleep_wellbeing_effect = nimcp_clampf(
         effects->total_sleep_wellbeing_effect, -1.0f, 1.0f
     );
 
@@ -325,7 +313,7 @@ static int update_sleep_effects(enhanced_wellbeing_system_t* system) {
     effects->flourishing_capacity_modifier =
         1.0f - (effects->sleep_debt_distress + effects->rem_debt) * 0.5f;
     effects->flourishing_capacity_modifier =
-        clamp_f(effects->flourishing_capacity_modifier, 0.0f, 1.0f);
+        nimcp_clampf(effects->flourishing_capacity_modifier, 0.0f, 1.0f);
 
     return 0;
 }
@@ -420,7 +408,7 @@ static int update_mental_health_effects(enhanced_wellbeing_system_t* system) {
                 stress_burden += report.disorder_scores[i] * 0.1f;
             }
         }
-        effects->chronic_stress_accumulation = clamp_f(stress_burden, 0.0f, 1.0f);
+        effects->chronic_stress_accumulation = nimcp_clampf(stress_burden, 0.0f, 1.0f);
         /* Resilience inversely related to stress burden */
         effects->stress_resilience = 1.0f - effects->chronic_stress_accumulation * 0.5f;
     }
@@ -431,7 +419,7 @@ static int update_mental_health_effects(enhanced_wellbeing_system_t* system) {
         effects->anxiety_level * 0.3f -
         effects->depression_level * 0.5f -
         effects->chronic_stress_accumulation * 0.2f;
-    effects->total_mental_health_effect = clamp_f(
+    effects->total_mental_health_effect = nimcp_clampf(
         effects->total_mental_health_effect, -1.0f, 1.0f
     );
 
@@ -514,7 +502,7 @@ static int update_free_energy_effects(enhanced_wellbeing_system_t* system) {
         -effects->prediction_error_distress -
         effects->uncertainty_distress +
         effects->exploitation_satisfaction * 0.3f;
-    effects->total_free_energy_effect = clamp_f(
+    effects->total_free_energy_effect = nimcp_clampf(
         effects->total_free_energy_effect, -1.0f, 1.0f
     );
 
@@ -720,7 +708,7 @@ static int predict_distress_trajectory(enhanced_wellbeing_system_t* system) {
     } else if (pred->trajectory == TRAJECTORY_CRITICAL) {
         pred->distress_risk_score *= 1.5f;
     }
-    pred->distress_risk_score = clamp_f(pred->distress_risk_score, 0.0f, 1.0f);
+    pred->distress_risk_score = nimcp_clampf(pred->distress_risk_score, 0.0f, 1.0f);
 
     /* Compute intervention urgency */
     pred->intervention_urgency = pred->distress_risk_score;
@@ -808,7 +796,7 @@ static int update_homeostasis(enhanced_wellbeing_system_t* system, uint64_t delt
     }
 
     /* Compute adaptation rate (faster when error is large) */
-    homeo->adaptation_rate = clamp_f(fabsf(homeo->wellbeing_error) * 2.0f, 0.1f, 1.0f);
+    homeo->adaptation_rate = nimcp_clampf(fabsf(homeo->wellbeing_error) * 2.0f, 0.1f, 1.0f);
 
     return 0;
 }
@@ -1420,7 +1408,7 @@ int enhanced_wellbeing_update(
         system->free_energy_effects.prediction_error_distress * 0.2f;
 
     system->current_distress.distress_score =
-        clamp_f(system->current_distress.distress_score, 0.0f, 1.0f);
+        nimcp_clampf(system->current_distress.distress_score, 0.0f, 1.0f);
 
     /* Update severity based on score */
     if (system->current_distress.distress_score < 0.2f) {

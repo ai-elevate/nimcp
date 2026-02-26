@@ -19,6 +19,7 @@
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_wing_motor)
 
@@ -37,12 +38,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 static inline float wrap_phase(float phase) {
@@ -525,11 +520,11 @@ int dragonfly_wing_motor_pursuit_pattern(
     /* Maximum frequency scaled by speed demand */
     float target_freq = motor->config.base_frequency_hz +
                         motor->config.frequency_range_hz * speed_demand;
-    target_freq = clamp_f(target_freq, WING_MIN_FREQUENCY_HZ,
+    target_freq = nimcp_clampf(target_freq, WING_MIN_FREQUENCY_HZ,
                           motor->config.max_frequency_hz);
 
     /* Apply heading correction via asymmetric frequency */
-    float heading_mod = clamp_f(heading_error * 0.5f,
+    float heading_mod = nimcp_clampf(heading_error * 0.5f,
                                 -motor->config.max_asymmetry,
                                 motor->config.max_asymmetry);
 
@@ -567,11 +562,11 @@ int dragonfly_wing_motor_hover_pattern(
     float base_freq = motor->config.base_frequency_hz;
 
     /* Altitude correction via overall frequency */
-    float freq_mod = clamp_f(altitude_error * 0.1f, -0.3f, 0.3f);
+    float freq_mod = nimcp_clampf(altitude_error * 0.1f, -0.3f, 0.3f);
     float target_freq = base_freq * (1.0f + freq_mod);
 
     /* Roll correction via left/right asymmetry */
-    float roll_mod = clamp_f(roll_error * 0.3f,
+    float roll_mod = nimcp_clampf(roll_error * 0.3f,
                              -motor->config.max_asymmetry,
                              motor->config.max_asymmetry);
 
@@ -581,7 +576,7 @@ int dragonfly_wing_motor_hover_pattern(
     motor->frequency[WING_RIGHT_HIND] = target_freq * (1.0f + roll_mod);
 
     /* Pitch correction via fore/hind asymmetry */
-    float pitch_mod = clamp_f(pitch_error * 0.3f,
+    float pitch_mod = nimcp_clampf(pitch_error * 0.3f,
                               -motor->config.max_asymmetry,
                               motor->config.max_asymmetry);
 

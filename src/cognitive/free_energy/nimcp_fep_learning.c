@@ -20,22 +20,12 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_learning_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference fep_learning_set_health_agent (without _instance suffix) */
 void fep_learning_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float compute_loss(const float* target, const float* prediction, size_t dim) {
     if (!target || !prediction || dim == 0) return 0.0f;

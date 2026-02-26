@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_gametheory_bridge)
 
@@ -37,16 +38,6 @@ struct neuromod_gametheory_bridge_struct {
     neuromod_gametheory_stats_t stats;
     bool connected;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
@@ -156,7 +147,7 @@ int neuromod_gametheory_apply_ht_cooperation(neuromod_gametheory_bridge_t* bridg
         return 0;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
     bridge->state.ht_level = ht_level;
 
     /* High 5-HT promotes cooperation */
@@ -189,7 +180,7 @@ int neuromod_gametheory_apply_da_competition(neuromod_gametheory_bridge_t* bridg
         return 0;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
 
     /* High DA promotes competition and dominance */
@@ -211,7 +202,7 @@ int neuromod_gametheory_apply_da_risk(neuromod_gametheory_bridge_t* bridge,
         return -1;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
 
     /* High DA increases risk tolerance */
     float base_risk = 0.3f;
@@ -234,7 +225,7 @@ int neuromod_gametheory_apply_ne_urgency(neuromod_gametheory_bridge_t* bridge,
         return 0;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
 
     /* High NE increases decision urgency */
@@ -260,7 +251,7 @@ int neuromod_gametheory_apply_hab_loss_aversion(neuromod_gametheory_bridge_t* br
         return 0;
     }
 
-    hab_level = clamp(hab_level, 0.0f, 1.0f);
+    hab_level = nimcp_clampf(hab_level, 0.0f, 1.0f);
     bridge->state.hab_level = hab_level;
 
     /* Habenula activity increases loss aversion */
@@ -288,7 +279,7 @@ int neuromod_gametheory_report_fair_treatment(neuromod_gametheory_bridge_t* brid
         return -1;
     }
 
-    fairness = clamp(fairness, 0.0f, 1.0f);
+    fairness = nimcp_clampf(fairness, 0.0f, 1.0f);
     bridge->state.fair_treatment_signal = fairness;
 
     /* Fair treatment triggers 5-HT satisfaction */
@@ -314,7 +305,7 @@ int neuromod_gametheory_report_game_won(neuromod_gametheory_bridge_t* bridge,
         return -1;
     }
 
-    win_magnitude = clamp(win_magnitude, 0.0f, 1.0f);
+    win_magnitude = nimcp_clampf(win_magnitude, 0.0f, 1.0f);
     bridge->state.winning_signal = win_magnitude;
 
     /* Winning triggers VTA reward */
@@ -338,7 +329,7 @@ int neuromod_gametheory_report_game_lost(neuromod_gametheory_bridge_t* bridge,
         return -1;
     }
 
-    loss_magnitude = clamp(loss_magnitude, 0.0f, 1.0f);
+    loss_magnitude = nimcp_clampf(loss_magnitude, 0.0f, 1.0f);
     bridge->state.losing_signal = loss_magnitude;
 
     /* Losing triggers habenula */
@@ -362,12 +353,12 @@ int neuromod_gametheory_report_betrayal(neuromod_gametheory_bridge_t* bridge,
         return -1;
     }
 
-    severity = clamp(severity, 0.0f, 1.0f);
+    severity = nimcp_clampf(severity, 0.0f, 1.0f);
     bridge->state.betrayal_signal = severity;
 
     /* Betrayal strongly activates habenula and reduces trust */
     float hab_trigger = severity * bridge->config.losing_hab_trigger_gain * 1.5f;
-    hab_trigger = clamp(hab_trigger, 0.0f, 1.0f);
+    hab_trigger = nimcp_clampf(hab_trigger, 0.0f, 1.0f);
 
     /* Reduce trust */
     bridge->state.trust_level *= (1.0f - severity * 0.3f);
@@ -390,7 +381,7 @@ int neuromod_gametheory_report_time_pressure(neuromod_gametheory_bridge_t* bridg
         return -1;
     }
 
-    pressure = clamp(pressure, 0.0f, 1.0f);
+    pressure = nimcp_clampf(pressure, 0.0f, 1.0f);
 
     /* Time pressure triggers LC */
     float lc_trigger = pressure * bridge->config.pressure_lc_trigger_gain;
@@ -408,7 +399,7 @@ int neuromod_gametheory_report_time_pressure(neuromod_gametheory_bridge_t* bridg
 float neuromod_gametheory_evaluate_offer(neuromod_gametheory_bridge_t* bridge, float offer_value) {
     if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return 0.5f;
 
-    offer_value = clamp(offer_value, 0.0f, 1.0f);
+    offer_value = nimcp_clampf(offer_value, 0.0f, 1.0f);
 
     /* Evaluate offer based on fairness threshold and loss aversion */
     float threshold = bridge->state.fairness_threshold;
@@ -429,7 +420,7 @@ bool neuromod_gametheory_should_cooperate(neuromod_gametheory_bridge_t* bridge,
                                            float opponent_history) {
     if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return true;
 
-    opponent_history = clamp(opponent_history, 0.0f, 1.0f);  /* 1.0 = always cooperated */
+    opponent_history = nimcp_clampf(opponent_history, 0.0f, 1.0f);  /* 1.0 = always cooperated */
 
     /* Decision based on:
      * - Own cooperation tendency
@@ -459,8 +450,8 @@ bool neuromod_gametheory_should_take_risk(neuromod_gametheory_bridge_t* bridge,
         return false;
     }
 
-    expected_value = clamp(expected_value, -1.0f, 1.0f);
-    variance = clamp(variance, 0.0f, 1.0f);
+    expected_value = nimcp_clampf(expected_value, -1.0f, 1.0f);
+    variance = nimcp_clampf(variance, 0.0f, 1.0f);
 
     /* Risk-adjusted value based on risk tolerance and loss aversion */
     float risk_premium = variance * (1.0f - bridge->state.risk_tolerance);
@@ -566,7 +557,7 @@ int neuromod_gametheory_compute_modulation(neuromod_gametheory_bridge_t* bridge,
     float risk_aversion_conflict = fabsf(bridge->state.risk_tolerance -
                                          (1.0f - bridge->state.loss_aversion));
     bridge->state.strategic_coherence = 1.0f - 0.5f * (coop_comp_conflict + risk_aversion_conflict);
-    bridge->state.strategic_coherence = clamp(bridge->state.strategic_coherence, 0.0f, 1.0f);
+    bridge->state.strategic_coherence = nimcp_clampf(bridge->state.strategic_coherence, 0.0f, 1.0f);
 
     /* Compute bridge coherence */
     bridge->state.bridge_coherence = bridge->state.strategic_coherence;

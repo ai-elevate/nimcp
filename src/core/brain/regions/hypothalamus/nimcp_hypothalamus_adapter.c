@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -81,15 +82,6 @@ struct hypothalamus_adapter {
  *===========================================================================*/
 
 /**
- * @brief Clamp value to [0, 1] range
- */
-static float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
  * @brief Simple exponential decay
  */
 static float exponential_decay(float current, float target, float rate, float dt) {
@@ -129,7 +121,7 @@ static float calculate_melatonin(float phase) {
     /* Sharpen the transition with power function */
     melatonin = powf(melatonin, 1.5f);
 
-    return clamp01(melatonin);
+    return nimcp_clamp01(melatonin);
 }
 
 /**
@@ -147,7 +139,7 @@ static float calculate_circadian_cortisol(float phase) {
         cortisol = 0.5f + 0.5f * powf(2.0f * (cortisol - 0.5f), 0.8f);
     }
 
-    return clamp01(cortisol);
+    return nimcp_clamp01(cortisol);
 }
 
 /**
@@ -161,7 +153,7 @@ static float calculate_alertness(float circadian_cortisol, float melatonin,
                       melatonin * 0.3f -
                       sleep_pressure * 0.4f + 0.4f;
 
-    return clamp01(alertness);
+    return nimcp_clamp01(alertness);
 }
 
 /**
@@ -181,7 +173,7 @@ static void update_homeostatic_param(homeostatic_parameter_t* param,
 
     /* Calculate correction signal */
     param->correction_signal = kp * param->error + ki * param->integral_error;
-    param->correction_signal = clamp01(fabsf(param->correction_signal)) *
+    param->correction_signal = nimcp_clamp01(fabsf(param->correction_signal)) *
                                (param->correction_signal > 0 ? 1.0f : -1.0f);
 }
 
@@ -643,7 +635,7 @@ float hypothalamus_apply_light(hypothalamus_adapter_t* adapter,
     /* Light causes phase-dependent shifts in the circadian rhythm */
     /* Light in early night delays phase, light in late night advances phase */
 
-    intensity = clamp01(intensity);
+    intensity = nimcp_clamp01(intensity);
     float duration_hours = duration_ms / 3600000.0f;
 
     /* Calculate phase response curve (PRC) */
@@ -687,7 +679,7 @@ float hypothalamus_apply_light(hypothalamus_adapter_t* adapter,
     /* Also suppress melatonin with bright light */
     if (intensity > 0.5f) {
         adapter->state.circadian.melatonin_level *= (1.0f - intensity * 0.5f);
-        adapter->state.circadian.melatonin_level = clamp01(
+        adapter->state.circadian.melatonin_level = nimcp_clamp01(
             adapter->state.circadian.melatonin_level);
     }
 
@@ -727,8 +719,8 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
         thermo->vasoconstriction = true;
         thermo->vasodilation = false;
         thermo->sweating_active = false;
-        thermo->heat_production = clamp01(0.5f + temp_error * 0.3f);
-        thermo->heat_loss = clamp01(0.3f);
+        thermo->heat_production = nimcp_clamp01(0.5f + temp_error * 0.3f);
+        thermo->heat_loss = nimcp_clamp01(0.3f);
 
         if (temp_error > 2.0f) {
             adapter->state.status = HYPOTHALAMUS_STATUS_THERMAL_ALERT;
@@ -740,8 +732,8 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
         thermo->vasodilation = true;
         thermo->vasoconstriction = false;
         thermo->shivering_active = false;
-        thermo->heat_production = clamp01(0.3f);
-        thermo->heat_loss = clamp01(0.5f - temp_error * 0.3f);
+        thermo->heat_production = nimcp_clamp01(0.3f);
+        thermo->heat_loss = nimcp_clamp01(0.5f - temp_error * 0.3f);
 
         if (temp_error < -2.0f) {
             adapter->state.status = HYPOTHALAMUS_STATUS_THERMAL_ALERT;
@@ -773,7 +765,7 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
             /* Low glucose - increase ghrelin (hunger) */
             appetite->ghrelin_level = exponential_decay(
                 appetite->ghrelin_level,
-                clamp01(0.5f + glucose_error * 0.02f),
+                nimcp_clamp01(0.5f + glucose_error * 0.02f),
                 3.0f, dt);
             appetite->leptin_level = exponential_decay(
                 appetite->leptin_level, 0.3f, 3.0f, dt);
@@ -783,7 +775,7 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
                 appetite->ghrelin_level, 0.2f, 3.0f, dt);
             appetite->leptin_level = exponential_decay(
                 appetite->leptin_level,
-                clamp01(0.5f - glucose_error * 0.01f),
+                nimcp_clamp01(0.5f - glucose_error * 0.01f),
                 3.0f, dt);
         }
 
@@ -793,8 +785,8 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
         appetite->pomc_level = appetite->leptin_level *
                                adapter->config.leptin_sensitivity;
 
-        appetite->hunger_drive = clamp01(appetite->npy_level - appetite->pomc_level);
-        appetite->satiety_signal = clamp01(appetite->pomc_level - appetite->npy_level);
+        appetite->hunger_drive = nimcp_clamp01(appetite->npy_level - appetite->pomc_level);
+        appetite->satiety_signal = nimcp_clamp01(appetite->pomc_level - appetite->npy_level);
 
         appetite->feeding_motivated = appetite->hunger_drive >
                                        adapter->config.hunger_threshold;
@@ -820,7 +812,7 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
         /* High osmolality (current > setpoint) - increase vasopressin */
         hydration->vasopressin_level = exponential_decay(
             hydration->vasopressin_level,
-            clamp01(0.5f - osmo_error * 0.01f),
+            nimcp_clamp01(0.5f - osmo_error * 0.01f),
             3.0f, dt);
     } else {
         /* Low osmolality - decrease vasopressin */
@@ -830,7 +822,7 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
 
     /* Calculate thirst drive */
     /* Negative osmo_error means high osmolality, so negate to get positive drive */
-    hydration->thirst_drive = clamp01(-osmo_error * 0.01f +
+    hydration->thirst_drive = nimcp_clamp01(-osmo_error * 0.01f +
                                        (1.0f - hydration->blood_volume.current_value));
 
     hydration->drinking_motivated = hydration->thirst_drive >
@@ -924,7 +916,7 @@ bool hypothalamus_update_hpa_axis(hypothalamus_adapter_t* adapter,
                              adapter->config.cortisol_feedback_gain;
 
     /* Calculate effective stress input (stress minus feedback) */
-    float effective_stress = clamp01(hpa->stress_input - hpa->negative_feedback);
+    float effective_stress = nimcp_clamp01(hpa->stress_input - hpa->negative_feedback);
 
     /* Update CRH from PVN */
     float crh_target = effective_stress * adapter->config.crh_sensitivity *
@@ -939,7 +931,7 @@ bool hypothalamus_update_hpa_axis(hypothalamus_adapter_t* adapter,
     float cortisol_target = hpa->acth_level * 0.7f + adapter->config.cortisol_baseline;
     float cortisol_baseline_component = calculate_circadian_cortisol(
         adapter->state.circadian.phase) * adapter->config.cortisol_baseline;
-    cortisol_target = clamp01(cortisol_target + cortisol_baseline_component);
+    cortisol_target = nimcp_clamp01(cortisol_target + cortisol_baseline_component);
 
     hpa->cortisol_level = exponential_decay(hpa->cortisol_level, cortisol_target,
                                              20.0f, dt);
@@ -982,11 +974,11 @@ float hypothalamus_apply_stress(hypothalamus_adapter_t* adapter,
                                  float stress_level) {
     if (!adapter || !adapter->config.enable_hpa_axis) return 0.0f;
 
-    stress_level = clamp01(stress_level);
+    stress_level = nimcp_clamp01(stress_level);
     hpa_axis_state_t* hpa = &adapter->state.hpa_axis;
 
     /* Add stress to cumulative input */
-    hpa->stress_input = clamp01(hpa->stress_input + stress_level);
+    hpa->stress_input = nimcp_clamp01(hpa->stress_input + stress_level);
 
     hpa->last_activation_us = adapter->state.current_time_us;
     adapter->stats.stress_activations++;
@@ -1037,14 +1029,14 @@ bool hypothalamus_update_autonomic(hypothalamus_adapter_t* adapter,
     float thermal_input = fabsf(adapter->state.thermoregulation.core_temp.error) / 2.0f;
 
     /* Calculate sympathetic drive */
-    float sympathetic_target = clamp01(
+    float sympathetic_target = nimcp_clamp01(
         stress_input * 0.8f +
         circadian_input * 0.1f +
         thermal_input * 0.05f +
         adapter->config.sympathetic_bias * 0.05f);
 
     /* Calculate parasympathetic drive (generally reciprocal to stress) */
-    float parasympathetic_target = clamp01(
+    float parasympathetic_target = nimcp_clamp01(
         (1.0f - stress_input) * 0.8f +
         (1.0f - circadian_input) * 0.1f +
         0.1f);
@@ -1068,10 +1060,10 @@ bool hypothalamus_update_autonomic(hypothalamus_adapter_t* adapter,
     ans->respiratory_rate_mod = 1.0f + ans->sympathetic_tone * 0.2f;
 
     /* Pupil: sympathetic dilates */
-    ans->pupil_dilation = clamp01(0.3f + ans->sympathetic_tone * 0.5f);
+    ans->pupil_dilation = nimcp_clamp01(0.3f + ans->sympathetic_tone * 0.5f);
 
     /* Digestion: parasympathetic increases */
-    ans->digestive_activity = clamp01(ans->parasympathetic_tone * 0.8f);
+    ans->digestive_activity = nimcp_clamp01(ans->parasympathetic_tone * 0.8f);
 
     /* Detect discrete states */
     bool was_fight_or_flight = ans->fight_or_flight;

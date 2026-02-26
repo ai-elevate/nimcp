@@ -48,30 +48,6 @@ extern "C" {
 //=============================================================================
 
 /**
- * @brief Get full synapse_t metadata for an outgoing synapse
- *
- * @param net neural_network_t (has synapse_metadata_pool)
- * @param n neuron_t* pointer
- * @param i synapse index
- * @return synapse_t* or NULL if no metadata
- */
-static inline synapse_t* neuron_out_meta(
-    void* net_ptr,  // neural_network_t (opaque, cast internally)
-    neuron_t* n,
-    uint32_t i
-) {
-    // Forward declaration avoids circular include — cast in impl
-    // The neural_network_struct has synapse_metadata_pool at a known offset
-    // We use the accessor defined in nimcp_neuralnet.c
-    synapse_handle_t* h = sparse_synapse_get(&n->outgoing, i);
-    if (!h || h->metadata_index == SPARSE_SYNAPSE_NO_METADATA) return NULL;
-    // Caller must pass synapse_metadata_pool directly
-    // This is resolved by the NEURON_OUT_META macro below
-    (void)net_ptr;
-    return NULL;  // Placeholder — use NEURON_OUT_META macro instead
-}
-
-/**
  * Macro for full metadata access — requires network->synapse_metadata_pool
  * Usage: synapse_t* syn = NEURON_OUT_META(network, neuron, i);
  */

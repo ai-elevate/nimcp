@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(intuition_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -189,16 +190,16 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
         if (atp >= INTUITION_ATP_OPTIMAL_THRESHOLD) {
             bridge->effects.insight_depth = 1.0f;
         } else if (atp >= INTUITION_ATP_REDUCED_THRESHOLD) {
-            bridge->effects.insight_depth = nimcp_clamp_f(0.6f + (atp - 0.5f) * 2.0f, min_cap, 1.0f);
+            bridge->effects.insight_depth = nimcp_clampf(0.6f + (atp - 0.5f) * 2.0f, min_cap, 1.0f);
         } else {
-            bridge->effects.insight_depth = nimcp_clamp_f(atp_factor, min_cap, 0.6f);
+            bridge->effects.insight_depth = nimcp_clampf(atp_factor, min_cap, 0.6f);
         }
 
-        bridge->effects.intuition_accuracy = nimcp_clamp_f(atp_factor * 1.05f, min_cap, 1.0f);
-        bridge->effects.abstraction_capacity = nimcp_clamp_f(atp_factor * 1.1f, min_cap, 1.0f);
-        bridge->effects.creative_leap_potential = nimcp_clamp_f(atp_factor * 0.95f, min_cap, 1.0f);
-        bridge->effects.counterfactual_capacity = nimcp_clamp_f(atp_factor, min_cap, 1.0f);
-        bridge->effects.meta_reasoning_depth = nimcp_clamp_f(atp_factor * 1.05f, min_cap, 1.0f);
+        bridge->effects.intuition_accuracy = nimcp_clampf(atp_factor * 1.05f, min_cap, 1.0f);
+        bridge->effects.abstraction_capacity = nimcp_clampf(atp_factor * 1.1f, min_cap, 1.0f);
+        bridge->effects.creative_leap_potential = nimcp_clampf(atp_factor * 0.95f, min_cap, 1.0f);
+        bridge->effects.counterfactual_capacity = nimcp_clampf(atp_factor, min_cap, 1.0f);
+        bridge->effects.meta_reasoning_depth = nimcp_clampf(atp_factor * 1.05f, min_cap, 1.0f);
     }
 
     /* Fatigue modulation - primarily affects processing speed */
@@ -210,11 +211,11 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
         if (fatigue < INTUITION_FATIGUE_MILD_THRESHOLD) {
             bridge->effects.processing_speed = 1.0f;
         } else if (fatigue < INTUITION_FATIGUE_MODERATE_THRESHOLD) {
-            bridge->effects.processing_speed = nimcp_clamp_f(0.8f - (fatigue - 0.4f) * 0.5f, min_cap, 1.0f);
+            bridge->effects.processing_speed = nimcp_clampf(0.8f - (fatigue - 0.4f) * 0.5f, min_cap, 1.0f);
         } else if (fatigue < INTUITION_FATIGUE_SEVERE_THRESHOLD) {
-            bridge->effects.processing_speed = nimcp_clamp_f(0.6f - (fatigue - 0.6f) * 0.5f, min_cap, 0.8f);
+            bridge->effects.processing_speed = nimcp_clampf(0.6f - (fatigue - 0.6f) * 0.5f, min_cap, 0.8f);
         } else {
-            bridge->effects.processing_speed = nimcp_clamp_f(fatigue_factor * 0.5f, min_cap, 0.5f);
+            bridge->effects.processing_speed = nimcp_clampf(fatigue_factor * 0.5f, min_cap, 0.5f);
         }
     }
 

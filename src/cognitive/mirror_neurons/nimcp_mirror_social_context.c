@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_social_context, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -69,15 +70,6 @@ void social_context_unregister_bio_async(social_context_t ctx);
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Simple hash function for agent ID to slot index
@@ -205,7 +197,7 @@ static float compute_gain_internal(const social_modulation_t* mod,
     }
 
     /* Clamp to configured range */
-    return clamp_f(gain, cfg->min_gain, cfg->max_gain);
+    return nimcp_clampf(gain, cfg->min_gain, cfg->max_gain);
 }
 
 /**
@@ -362,8 +354,8 @@ bool social_context_set_affinity(social_context_t ctx,
         return false;
     }
 
-    ctx->agents[slot].modulation.in_group_affinity = clamp_f(affinity, 0.0f, 1.0f);
-    ctx->agents[slot].modulation.affinity_confidence = clamp_f(confidence, 0.0f, 1.0f);
+    ctx->agents[slot].modulation.in_group_affinity = nimcp_clampf(affinity, 0.0f, 1.0f);
+    ctx->agents[slot].modulation.affinity_confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
     ctx->agents[slot].modulation.group_type = affinity_to_group(affinity);
     ctx->agents[slot].modulation.gain_valid = false;
 
@@ -389,8 +381,8 @@ bool social_context_set_hierarchy(social_context_t ctx,
         return false;
     }
 
-    ctx->agents[slot].modulation.social_hierarchy = clamp_f(hierarchy, -1.0f, 1.0f);
-    ctx->agents[slot].modulation.hierarchy_confidence = clamp_f(confidence, 0.0f, 1.0f);
+    ctx->agents[slot].modulation.social_hierarchy = nimcp_clampf(hierarchy, -1.0f, 1.0f);
+    ctx->agents[slot].modulation.hierarchy_confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
     ctx->agents[slot].modulation.rank_type = hierarchy_to_rank(hierarchy);
     ctx->agents[slot].modulation.gain_valid = false;
 
@@ -416,8 +408,8 @@ bool social_context_set_cultural(social_context_t ctx,
         return false;
     }
 
-    ctx->agents[slot].modulation.cultural_familiarity = clamp_f(familiarity, 0.0f, 1.0f);
-    ctx->agents[slot].modulation.cultural_confidence = clamp_f(confidence, 0.0f, 1.0f);
+    ctx->agents[slot].modulation.cultural_familiarity = nimcp_clampf(familiarity, 0.0f, 1.0f);
+    ctx->agents[slot].modulation.cultural_confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
     ctx->agents[slot].modulation.cultural_type = cultural_to_context(familiarity);
     ctx->agents[slot].modulation.gain_valid = false;
 
@@ -443,8 +435,8 @@ bool social_context_set_emotional(social_context_t ctx,
         return false;
     }
 
-    ctx->agents[slot].modulation.emotional_valence = clamp_f(valence, -1.0f, 1.0f);
-    ctx->agents[slot].modulation.emotional_confidence = clamp_f(confidence, 0.0f, 1.0f);
+    ctx->agents[slot].modulation.emotional_valence = nimcp_clampf(valence, -1.0f, 1.0f);
+    ctx->agents[slot].modulation.emotional_confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
     ctx->agents[slot].modulation.emotional_type = emotional_to_context(valence);
     ctx->agents[slot].modulation.gain_valid = false;
 
@@ -543,7 +535,7 @@ float social_context_apply_modulation(social_context_t ctx,
 
 
     float gain = social_context_compute_gain(ctx, agent_id);
-    return clamp_f(activation * gain, 0.0f, 1.0f);
+    return nimcp_clampf(activation * gain, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -575,17 +567,17 @@ bool social_context_learn_interaction(social_context_t ctx,
     agent_social_context_t* agent = &ctx->agents[slot];
 
     /* Positive outcomes increase trust and affinity */
-    float delta = clamp_f(outcome, -1.0f, 1.0f);
-    agent->trust_level = clamp_f(
+    float delta = nimcp_clampf(outcome, -1.0f, 1.0f);
+    agent->trust_level = nimcp_clampf(
         agent->trust_level + TRUST_UPDATE_RATE * delta, 0.0f, 1.0f);
 
     /* Update affinity based on outcome */
-    agent->modulation.in_group_affinity = clamp_f(
+    agent->modulation.in_group_affinity = nimcp_clampf(
         agent->modulation.in_group_affinity + lr * delta * 0.5f, 0.0f, 1.0f);
     agent->modulation.group_type = affinity_to_group(agent->modulation.in_group_affinity);
 
     /* Increase confidence with interaction */
-    agent->modulation.affinity_confidence = clamp_f(
+    agent->modulation.affinity_confidence = nimcp_clampf(
         agent->modulation.affinity_confidence + 0.1f, 0.0f, 1.0f);
 
     /* Invalidate cached gain */
@@ -614,7 +606,7 @@ bool social_context_update_competence(social_context_t ctx,
     }
 
     agent_social_context_t* agent = &ctx->agents[slot];
-    float skill = clamp_f(demonstrated_skill, 0.0f, 1.0f);
+    float skill = nimcp_clampf(demonstrated_skill, 0.0f, 1.0f);
 
     /* Exponential moving average of competence */
     agent->competence_estimate = agent->competence_estimate * (1.0f - COMPETENCE_UPDATE_RATE) +
@@ -622,10 +614,10 @@ bool social_context_update_competence(social_context_t ctx,
 
     /* High competence increases perceived hierarchy */
     if (skill > 0.7f) {
-        agent->modulation.social_hierarchy = clamp_f(
+        agent->modulation.social_hierarchy = nimcp_clampf(
             agent->modulation.social_hierarchy + 0.05f, -1.0f, 1.0f);
         agent->modulation.rank_type = hierarchy_to_rank(agent->modulation.social_hierarchy);
-        agent->modulation.hierarchy_confidence = clamp_f(
+        agent->modulation.hierarchy_confidence = nimcp_clampf(
             agent->modulation.hierarchy_confidence + 0.1f, 0.0f, 1.0f);
         agent->modulation.gain_valid = false;
     }

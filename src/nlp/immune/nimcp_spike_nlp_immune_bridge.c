@@ -20,6 +20,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spike_nlp_immune_bridge)
 
@@ -31,12 +32,6 @@ static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -167,7 +162,7 @@ int spike_nlp_immune_apply_cytokine_effects(spike_nlp_immune_bridge_t* bridge) {
     }
 
     float inflammation_factor = (float)stats.inflammation_sites / 10.0f;
-    inflammation_factor = clamp_0_1(inflammation_factor);
+    inflammation_factor = nimcp_clamp01(inflammation_factor);
 
     bridge->cytokine_effects.il1_rate_factor =
         1.0f + (CYTOKINE_IL1_SPIKE_RATE_FACTOR - 1.0f) * inflammation_factor;

@@ -24,23 +24,13 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(love_loyalty_friendship, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 
 #define BIO_MODULE_COGNITIVE_SOCIAL 0x034F
-
-
-//=============================================================================
-// HELPER FUNCTIONS
-//=============================================================================
-
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float exponential_decay(float current, float target, float decay_rate, float dt) {
     float decay_factor = expf(-decay_rate * dt);
@@ -295,8 +285,8 @@ void social_process_interaction(social_bond_system_t* system,
     if (!system) return;
 
     // Clamp inputs
-    emotional_intensity = clamp(emotional_intensity, 0.0F, 1.0F);
-    valence = clamp(valence, -1.0F, 1.0F);
+    emotional_intensity = nimcp_clampf(emotional_intensity, 0.0F, 1.0F);
+    valence = nimcp_clampf(valence, -1.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -394,10 +384,10 @@ void social_process_interaction(social_bond_system_t* system,
     rel->affection += affection_change;
 
     // Clamp values
-    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
-    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
-    rel->reciprocity = clamp(rel->reciprocity, 0.0F, 1.0F);
+    rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+    rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
+    rel->affection = nimcp_clampf(rel->affection, 0.0F, 1.0F);
+    rel->reciprocity = nimcp_clampf(rel->reciprocity, 0.0F, 1.0F);
 
     // Update relationship stage based on closeness
     if (rel->closeness >= CLOSE_FRIEND_THRESHOLD && rel->stage < RELATIONSHIP_CLOSE_FRIEND) {
@@ -412,10 +402,10 @@ void social_process_interaction(social_bond_system_t* system,
     // Oxytocin boost from positive interactions
     if (valence > 0.0F && emotional_intensity > 0.4F) {
         rel->oxytocin_bond_strength += emotional_intensity * 0.1F;
-        rel->oxytocin_bond_strength = clamp(rel->oxytocin_bond_strength, 0.0F, 1.0F);
+        rel->oxytocin_bond_strength = nimcp_clampf(rel->oxytocin_bond_strength, 0.0F, 1.0F);
 
         system->emotion.oxytocin_level += emotional_intensity * 0.15F;
-        system->emotion.oxytocin_level = clamp(system->emotion.oxytocin_level, 0.0F, 1.0F);
+        system->emotion.oxytocin_level = nimcp_clampf(system->emotion.oxytocin_level, 0.0F, 1.0F);
         system->emotion.last_oxytocin_boost = current_time_us;
     }
 }
@@ -430,7 +420,7 @@ void social_express_vulnerability(social_bond_system_t* system,
 
     if (!system) return;
 
-    vulnerability_level = clamp(vulnerability_level, 0.0F, 1.0F);
+    vulnerability_level = nimcp_clampf(vulnerability_level, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -444,7 +434,7 @@ void social_express_vulnerability(social_bond_system_t* system,
 
     // Track vulnerability shared
     rel->vulnerability_shared += vulnerability_level * 0.1F;
-    rel->vulnerability_shared = clamp(rel->vulnerability_shared, 0.0F, 1.0F);
+    rel->vulnerability_shared = nimcp_clampf(rel->vulnerability_shared, 0.0F, 1.0F);
 
     if (received_well) {
         // Vulnerability accepted → deepens bond
@@ -454,15 +444,15 @@ void social_express_vulnerability(social_bond_system_t* system,
         rel->trust += vulnerability_level * 0.1F;
 
         // Major intimacy boost
-        rel->love.intimacy = clamp(rel->love.intimacy, 0.0F, 1.0F);
-        rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-        rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+        rel->love.intimacy = nimcp_clampf(rel->love.intimacy, 0.0F, 1.0F);
+        rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+        rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
     } else {
         // Vulnerability rejected → damages bond
         rel->closeness -= vulnerability_level * 0.2F;
         rel->trust -= vulnerability_level * 0.15F;
-        rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-        rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+        rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+        rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
     }
 }
 
@@ -475,7 +465,7 @@ void social_provide_support(social_bond_system_t* system,
 
     if (!system) return;
 
-    support_quality = clamp(support_quality, 0.0F, 1.0F);
+    support_quality = nimcp_clampf(support_quality, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -493,10 +483,10 @@ void social_provide_support(social_bond_system_t* system,
     rel->trust += support_quality * 0.05F;
 
     // Clamp
-    rel->support_given = clamp(rel->support_given, 0.0F, 2.0F);  // Can accumulate
-    rel->reciprocity = clamp(rel->reciprocity, 0.0F, 1.0F);
-    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+    rel->support_given = nimcp_clampf(rel->support_given, 0.0F, 2.0F);  // Can accumulate
+    rel->reciprocity = nimcp_clampf(rel->reciprocity, 0.0F, 1.0F);
+    rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+    rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
 }
 
 void social_receive_support(social_bond_system_t* system,
@@ -508,7 +498,7 @@ void social_receive_support(social_bond_system_t* system,
 
     if (!system) return;
 
-    support_quality = clamp(support_quality, 0.0F, 1.0F);
+    support_quality = nimcp_clampf(support_quality, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -527,11 +517,11 @@ void social_receive_support(social_bond_system_t* system,
     rel->affection += support_quality * 0.06F;
 
     // Clamp
-    rel->support_received = clamp(rel->support_received, 0.0F, 2.0F);
-    rel->reciprocity = clamp(rel->reciprocity, 0.0F, 1.0F);
-    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
-    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
+    rel->support_received = nimcp_clampf(rel->support_received, 0.0F, 2.0F);
+    rel->reciprocity = nimcp_clampf(rel->reciprocity, 0.0F, 1.0F);
+    rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+    rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
+    rel->affection = nimcp_clampf(rel->affection, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -548,7 +538,7 @@ void social_commit_loyalty(social_bond_system_t* system,
 
     if (!system) return;
 
-    strength = clamp(strength, 0.0F, 1.0F);
+    strength = nimcp_clampf(strength, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -564,7 +554,7 @@ void social_commit_loyalty(social_bond_system_t* system,
     rel->loyalty_type = loyalty_type;
     rel->loyalty_strength = strength;
     rel->love.commitment += strength * 0.3F;
-    rel->love.commitment = clamp(rel->love.commitment, 0.0F, 1.0F);
+    rel->love.commitment = nimcp_clampf(rel->love.commitment, 0.0F, 1.0F);
 
     system->total_loyalty_commitments++;
     system->emotion.actively_loyal = true;
@@ -580,7 +570,7 @@ void social_test_loyalty(social_bond_system_t* system,
 
     if (!system) return;
 
-    test_difficulty = clamp(test_difficulty, 0.0F, 1.0F);
+    test_difficulty = nimcp_clampf(test_difficulty, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -596,9 +586,9 @@ void social_test_loyalty(social_bond_system_t* system,
         // Passed test → strengthens loyalty
         rel->loyalty_tests_passed++;
         rel->loyalty_strength += test_difficulty * 0.1F;
-        rel->loyalty_strength = clamp(rel->loyalty_strength, 0.0F, 1.0F);
+        rel->loyalty_strength = nimcp_clampf(rel->loyalty_strength, 0.0F, 1.0F);
         rel->love.commitment += test_difficulty * 0.08F;
-        rel->love.commitment = clamp(rel->love.commitment, 0.0F, 1.0F);
+        rel->love.commitment = nimcp_clampf(rel->love.commitment, 0.0F, 1.0F);
     } else {
         // Failed test → damages loyalty
         rel->loyalty_tests_failed++;
@@ -607,11 +597,11 @@ void social_test_loyalty(social_bond_system_t* system,
             rel->is_loyal_to = false;
         }
         rel->trust -= test_difficulty * 0.2F;
-        rel->trust = clamp(rel->trust, 0.0F, 1.0F);
+        rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
 
         // Broken loyalty also damages relationship closeness
         rel->closeness -= test_difficulty * 0.15F;
-        rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+        rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
     }
 }
 
@@ -629,7 +619,7 @@ void social_experience_love(social_bond_system_t* system,
 
     if (!system) return;
 
-    intensity = clamp(intensity, 0.0F, 1.0F);
+    intensity = nimcp_clampf(intensity, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -679,15 +669,15 @@ void social_experience_love(social_bond_system_t* system,
     }
 
     // Clamp love components
-    rel->love.intimacy = clamp(rel->love.intimacy, 0.0F, 1.0F);
-    rel->love.passion = clamp(rel->love.passion, 0.0F, 1.0F);
-    rel->love.commitment = clamp(rel->love.commitment, 0.0F, 1.0F);
+    rel->love.intimacy = nimcp_clampf(rel->love.intimacy, 0.0F, 1.0F);
+    rel->love.passion = nimcp_clampf(rel->love.passion, 0.0F, 1.0F);
+    rel->love.commitment = nimcp_clampf(rel->love.commitment, 0.0F, 1.0F);
 
     // Update affection and closeness
     rel->affection += intensity * 0.1F;
     rel->closeness += intensity * 0.08F;
-    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
-    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
+    rel->affection = nimcp_clampf(rel->affection, 0.0F, 1.0F);
+    rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
 
     // Update system-level love state
     system->emotion.experiencing_love = true;
@@ -697,7 +687,7 @@ void social_experience_love(social_bond_system_t* system,
 
     // Oxytocin boost
     system->emotion.oxytocin_level += intensity * 0.2F;
-    system->emotion.oxytocin_level = clamp(system->emotion.oxytocin_level, 0.0F, 1.0F);
+    system->emotion.oxytocin_level = nimcp_clampf(system->emotion.oxytocin_level, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -713,7 +703,7 @@ void social_experience_betrayal(social_bond_system_t* system,
 
     if (!system) return;
 
-    severity = clamp(severity, 0.0F, 1.0F);
+    severity = nimcp_clampf(severity, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -741,10 +731,10 @@ void social_experience_betrayal(social_bond_system_t* system,
     }
 
     // Clamp
-    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
-    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
-    rel->love.intimacy = clamp(rel->love.intimacy, 0.0F, 1.0F);
+    rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
+    rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+    rel->affection = nimcp_clampf(rel->affection, 0.0F, 1.0F);
+    rel->love.intimacy = nimcp_clampf(rel->love.intimacy, 0.0F, 1.0F);
 
     // Downgrade relationship stage if severe
     if (severity > 0.5F) {
@@ -766,8 +756,8 @@ void social_attempt_repair(social_bond_system_t* system,
 
     if (!system) return;
 
-    repair_effort = clamp(repair_effort, 0.0F, 1.0F);
-    apology_quality = clamp(apology_quality, 0.0F, 1.0F);
+    repair_effort = nimcp_clampf(repair_effort, 0.0F, 1.0F);
+    apology_quality = nimcp_clampf(apology_quality, 0.0F, 1.0F);
 
     // Find relationship
     relationship_t* rel = NULL;
@@ -782,7 +772,7 @@ void social_attempt_repair(social_bond_system_t* system,
     // Update repair progress
     float repair_effectiveness = (repair_effort + apology_quality) / 2.0F;
     rel->trust_repair_progress += repair_effectiveness * 0.1F;
-    rel->trust_repair_progress = clamp(rel->trust_repair_progress, 0.0F, 1.0F);
+    rel->trust_repair_progress = nimcp_clampf(rel->trust_repair_progress, 0.0F, 1.0F);
 
     // Gradual trust restoration
     rel->trust += repair_effectiveness * 0.08F;
@@ -790,9 +780,9 @@ void social_attempt_repair(social_bond_system_t* system,
     rel->affection += repair_effectiveness * 0.04F;
 
     // Clamp
-    rel->trust = clamp(rel->trust, 0.0F, 1.0F);
-    rel->closeness = clamp(rel->closeness, 0.0F, 1.0F);
-    rel->affection = clamp(rel->affection, 0.0F, 1.0F);
+    rel->trust = nimcp_clampf(rel->trust, 0.0F, 1.0F);
+    rel->closeness = nimcp_clampf(rel->closeness, 0.0F, 1.0F);
+    rel->affection = nimcp_clampf(rel->affection, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -891,7 +881,7 @@ void social_update(social_bond_system_t* system, float dt, uint64_t current_time
         system->emotion.loneliness -= close_friend_count * 0.02F * dt / 86400.0F;
     }
 
-    system->emotion.loneliness = clamp(system->emotion.loneliness, 0.0F, 1.0F);
+    system->emotion.loneliness = nimcp_clampf(system->emotion.loneliness, 0.0F, 1.0F);
     system->emotion.last_social_interaction = most_recent_interaction;
 
     //=========================================================================
@@ -1038,8 +1028,8 @@ void social_get_neuromodulator_effects(const social_bond_system_t* system,
     }
 
     // Clamp
-    *dopamine_factor = clamp(*dopamine_factor, 0.3F, 2.0F);
-    *oxytocin_factor = clamp(*oxytocin_factor, 0.5F, 2.0F);
+    *dopamine_factor = nimcp_clampf(*dopamine_factor, 0.3F, 2.0F);
+    *oxytocin_factor = nimcp_clampf(*oxytocin_factor, 0.5F, 2.0F);
 }
 
 //=============================================================================

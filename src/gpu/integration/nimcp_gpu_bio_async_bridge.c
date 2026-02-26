@@ -17,6 +17,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_bio_async_bridge)
 
@@ -56,15 +57,6 @@ static void init_message_header(
     header->channel = channel;
     header->payload_size = payload_size;
     header->flags = 0;
-}
-
-/**
- * @brief Clamp float to range [0, 1]
- */
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /* ============================================================================
@@ -464,7 +456,7 @@ uint64_t gpu_bio_bridge_send_compute_request(
     msg.operation_id = operation_id;
     msg.data_size = data_size;
     msg.data_ptr = (void*)data;  /* Note: pointer, not copied */
-    msg.priority = clamp_0_1(priority);
+    msg.priority = nimcp_clamp01(priority);
     msg.timeout_ms = bridge->config.sync_timeout_ms;
 
     /* Send message */

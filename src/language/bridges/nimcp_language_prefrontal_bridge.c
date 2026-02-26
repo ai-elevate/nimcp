@@ -20,6 +20,7 @@
 
 #define LOG_MODULE "LANG_PREFRONTAL"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_prefrontal_bridge)
 
@@ -88,16 +89,6 @@ struct language_prefrontal_bridge {
     /* Statistics */
     language_prefrontal_stats_t stats;
 };
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static inline float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
-}
 
 static goal_entry_t* find_goal(language_prefrontal_bridge_t* bridge, uint32_t goal_id) {
     goal_entry_t* entry = bridge->goals;

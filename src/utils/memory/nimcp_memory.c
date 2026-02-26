@@ -527,9 +527,9 @@ static uint64_t timespec_diff_ms(const timespec_internal_t* end, const timespec_
  * - Flag last (signals completion)
  *
  * COMPLEXITY: O(1)
- * THREAD SAFETY: NOT thread-safe (caller must ensure)
- * - Typically called once at startup
- * - Or called with lock held
+ * THREAD SAFETY: Thread-safe via atomic CAS on init gate
+ * - First thread to CAS g_init_started wins and performs init
+ * - Other threads spin-wait on g_memory_state_initialized
  */
 static void init_if_needed(void)
 {
@@ -542,16 +542,40 @@ static void init_if_needed(void)
      */
     static _Thread_local _Atomic bool g_umm_initializing = false;
 
-    if (!g_memory_state.initialized) {
-        nimcp_mutex_init(&g_memory_state.lock, NULL);
-        memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
-        g_memory_state.initialized = true;
-        g_memory_state.tracking_enabled = true;  // Enable by default for guard_size tracking
-        g_memory_state.block_buckets = (memory_block_t**)calloc(
-            MEMORY_TRACKING_BUCKETS, sizeof(memory_block_t*));
-        g_memory_state.bucket_count = MEMORY_TRACKING_BUCKETS;
-        g_memory_state.block_count = 0;
-        g_memory_state.patterns = NULL;
+    /* Thread-safe initialization gate:
+     * WHY: Two threads calling nimcp_malloc before initialization could both
+     *      enter the init path concurrently, racing on mutex init and state setup.
+     * HOW: Use atomic CAS so exactly one thread performs init; others spin-wait.
+     * WHY NOT pthread_once: We need the recursion guard (g_umm_initializing) to
+     *      interact correctly with the init flow, and pthread_once doesn't allow
+     *      the partial-init pattern we need for UMM bootstrapping.
+     */
+    static _Atomic bool g_init_started = false;
+    static _Atomic bool g_memory_state_initialized = false;
+
+    if (!atomic_load_explicit(&g_memory_state_initialized, memory_order_acquire)) {
+        bool expected = false;
+        if (atomic_compare_exchange_strong_explicit(&g_init_started, &expected, true,
+                                                     memory_order_acq_rel,
+                                                     memory_order_acquire)) {
+            /* This thread won the race — perform initialization */
+            nimcp_mutex_init(&g_memory_state.lock, NULL);
+            memset(&g_memory_state.stats, 0, sizeof(nimcp_memory_stats_t));
+            g_memory_state.tracking_enabled = true;  // Enable by default for guard_size tracking
+            g_memory_state.block_buckets = (memory_block_t**)calloc(
+                MEMORY_TRACKING_BUCKETS, sizeof(memory_block_t*));
+            g_memory_state.bucket_count = MEMORY_TRACKING_BUCKETS;
+            g_memory_state.block_count = 0;
+            g_memory_state.patterns = NULL;
+            g_memory_state.initialized = true;
+            /* Release fence: all writes above are visible before the flag is set */
+            atomic_store_explicit(&g_memory_state_initialized, true, memory_order_release);
+        } else {
+            /* Another thread is initializing — spin-wait until complete */
+            while (!atomic_load_explicit(&g_memory_state_initialized, memory_order_acquire)) {
+                /* spin */
+            }
+        }
     }
 
     /* Initialize unified memory manager if not already done

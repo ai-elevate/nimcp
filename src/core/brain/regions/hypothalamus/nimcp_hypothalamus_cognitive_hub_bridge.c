@@ -37,6 +37,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_cognitive_hub_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -114,15 +115,6 @@ static uint64_t get_timestamp_ms(void) {
 }
 
 /**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * @brief Convert hypo urgency to cognitive priority
  */
 static cognitive_event_priority_t urgency_to_priority(hypo_urgency_t urgency) {
@@ -175,8 +167,8 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
             /* Update cognitive state */
             if (event->payload && event->payload_size >= sizeof(float) * 2) {
                 const float* emotion_data = (const float*)event->payload;
-                float valence = clamp_float(emotion_data[0], -1.0f, 1.0f);
-                float arousal = clamp_float(emotion_data[1], 0.0f, 1.0f);
+                float valence = nimcp_clampf(emotion_data[0], -1.0f, 1.0f);
+                float arousal = nimcp_clampf(emotion_data[1], 0.0f, 1.0f);
 
                 bridge->cognitive_state.emotional_arousal = arousal;
                 bridge->cognitive_state.last_update_timestamp = get_timestamp_ms();
@@ -205,7 +197,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
             nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update cognitive state */
-            float attention_level = clamp_float(
+            float attention_level = nimcp_clampf(
                 (float)event->priority / (float)COG_PRIORITY_CRITICAL, 0.0f, 1.0f);
             bridge->cognitive_state.attention_demand = attention_level;
             bridge->cognitive_state.last_update_timestamp = get_timestamp_ms();
@@ -1069,7 +1061,7 @@ int hypo_cognitive_hub_receive_cognitive_state(hypo_cognitive_hub_bridge_t* brid
     load += bridge->cognitive_state.learning_activity * 0.2f;
     load += bridge->cognitive_state.memory_consolidation * 0.2f;
 
-    bridge->cognitive_state.cognitive_load = clamp_float(load, 0.0f, 1.0f);
+    bridge->cognitive_state.cognitive_load = nimcp_clampf(load, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1106,7 +1098,7 @@ int hypo_cognitive_hub_modulate_curiosity(
     nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Report drive satisfaction to orchestrator */
-    float satisfaction = clamp_float(info_gain * weight, 0.0f, 1.0f);
+    float satisfaction = nimcp_clampf(info_gain * weight, 0.0f, 1.0f);
 
     return hypo_orch_report_drive(
         orch,
@@ -1144,7 +1136,7 @@ int hypo_cognitive_hub_modulate_social(
     nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Report drive satisfaction to orchestrator */
-    float satisfaction = clamp_float(social_reward * weight, 0.0f, 1.0f);
+    float satisfaction = nimcp_clampf(social_reward * weight, 0.0f, 1.0f);
 
     return hypo_orch_report_drive(
         orch,
@@ -1182,7 +1174,7 @@ int hypo_cognitive_hub_modulate_competence(
     nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Report drive satisfaction to orchestrator */
-    float satisfaction = clamp_float(skill_acquisition * weight, 0.0f, 1.0f);
+    float satisfaction = nimcp_clampf(skill_acquisition * weight, 0.0f, 1.0f);
 
     return hypo_orch_report_drive(
         orch,
@@ -1234,7 +1226,7 @@ int hypo_cognitive_hub_propagate_stress(
     hypo_stress_propagation_payload_t payload;
     memset(&payload, 0, sizeof(payload));
 
-    stress_level = clamp_float(stress_level, 0.0f, 1.0f);
+    stress_level = nimcp_clampf(stress_level, 0.0f, 1.0f);
 
     payload.stress_level = stress_level;
     payload.cortisol_level = stress_level * 0.8f;  /* Simplified cortisol model */
@@ -1309,7 +1301,7 @@ int hypo_cognitive_hub_propagate_fatigue(
     hypo_fatigue_modulation_payload_t payload;
     memset(&payload, 0, sizeof(payload));
 
-    fatigue_level = clamp_float(fatigue_level, 0.0f, 1.0f);
+    fatigue_level = nimcp_clampf(fatigue_level, 0.0f, 1.0f);
 
     payload.fatigue_level = fatigue_level;
     payload.alertness = 1.0f - fatigue_level;

@@ -31,6 +31,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_immune_integration, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -53,15 +54,6 @@ static uint64_t get_current_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /* ============================================================================
@@ -272,7 +264,7 @@ int mirror_immune_apply_immune_modulation(mirror_immune_integration_t* integrati
         /* Estimate cytokine levels from inflammation sites and activity
          * In real implementation, would query actual cytokine concentrations */
         float inflammation_level = (float)immune_stats.inflammation_sites / 10.0f;
-        integration->state.current_inflammation = clamp_f(inflammation_level, 0.0f, 1.0f);
+        integration->state.current_inflammation = nimcp_clampf(inflammation_level, 0.0f, 1.0f);
 
         /* Estimate individual cytokine levels (simplified model) */
         integration->state.il1_level = integration->state.current_inflammation * 0.6f;
@@ -334,7 +326,7 @@ float mirror_immune_compute_resonance_suppression(
 
     float net_suppression = (pro_inflammatory - anti_inflammatory) * cfg->cytokine_sensitivity;
 
-    return clamp_f(net_suppression, 0.0f, cfg->max_resonance_suppression);
+    return nimcp_clampf(net_suppression, 0.0f, cfg->max_resonance_suppression);
 }
 
 float mirror_immune_compute_empathy_threshold(
@@ -374,7 +366,7 @@ int mirror_immune_apply_sickness_behavior(
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_apply_", 0.0f);
 
 
-    severity = clamp_f(severity, 0.0f, 1.0f);
+    severity = nimcp_clampf(severity, 0.0f, 1.0f);
 
     /* Get resonance system if available */
     motor_resonance_t resonance = mirror_neurons_get_resonance(integration->mirror_system);
@@ -408,7 +400,7 @@ int mirror_immune_restore_social_function(
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_restor", 0.0f);
 
 
-    il10_level = clamp_f(il10_level, 0.0f, 1.0f);
+    il10_level = nimcp_clampf(il10_level, 0.0f, 1.0f);
 
     /* Get resonance system */
     motor_resonance_t resonance = mirror_neurons_get_resonance(integration->mirror_system);

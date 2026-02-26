@@ -20,18 +20,9 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_regions_fep_bridge)
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float safe_divide(float num, float denom, float default_val) {
     return (fabsf(denom) > 1e-10f) ? (num / denom) : default_val;
@@ -425,7 +416,7 @@ int predictive_regions_fep_adapt_precision(
 
             /* Running average precision adaptation */
             float target_precision = safe_divide(1.0f, error_sq + 1e-6f, 1.0f);
-            target_precision = clamp_f(target_precision,
+            target_precision = nimcp_clampf(target_precision,
                                       PREDICTIVE_FEP_MIN_PRECISION,
                                       PREDICTIVE_FEP_MAX_PRECISION);
 

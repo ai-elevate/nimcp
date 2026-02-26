@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mental_health_snn_bridge)
 //=============================================================================
@@ -119,16 +120,6 @@ struct mental_health_snn_bridge {
     /* Statistics */
     mental_health_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -419,7 +410,7 @@ int mental_health_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -490,9 +481,9 @@ int mental_health_snn_encode_mood(
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
     /* Convert mood from [-1,1] to [0,1] for encoding */
-    dims[MENTAL_HEALTH_DIM_MOOD_STATE] = clamp_f((mood + 1.0f) / 2.0f, 0.0f, 1.0f);
-    dims[MENTAL_HEALTH_DIM_EMOTIONAL_REGULATION] = clamp_f(stability, 0.0f, 1.0f);
-    dims[MENTAL_HEALTH_DIM_RESILIENCE] = clamp_f(stability * 0.8f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_MOOD_STATE] = nimcp_clampf((mood + 1.0f) / 2.0f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_EMOTIONAL_REGULATION] = nimcp_clampf(stability, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_RESILIENCE] = nimcp_clampf(stability * 0.8f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -516,10 +507,10 @@ int mental_health_snn_encode_anxiety(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
-    dims[MENTAL_HEALTH_DIM_ANXIETY_LEVEL] = clamp_f(anxiety, 0.0f, 1.0f);
-    dims[MENTAL_HEALTH_DIM_STRESS_RESPONSE] = clamp_f(anxiety * 0.9f + (float)threat_count * 0.05f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_ANXIETY_LEVEL] = nimcp_clampf(anxiety, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_STRESS_RESPONSE] = nimcp_clampf(anxiety * 0.9f + (float)threat_count * 0.05f, 0.0f, 1.0f);
     /* High anxiety reduces cognitive clarity */
-    dims[MENTAL_HEALTH_DIM_COGNITIVE_CLARITY] = clamp_f(1.0f - anxiety * 0.5f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_COGNITIVE_CLARITY] = nimcp_clampf(1.0f - anxiety * 0.5f, 0.0f, 1.0f);
 
     bridge->anxiety_signal = anxiety;
 
@@ -545,13 +536,13 @@ int mental_health_snn_encode_depression(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
-    dims[MENTAL_HEALTH_DIM_DEPRESSION_LEVEL] = clamp_f(depression, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_DEPRESSION_LEVEL] = nimcp_clampf(depression, 0.0f, 1.0f);
     /* Depression affects engagement negatively */
-    dims[MENTAL_HEALTH_DIM_ENGAGEMENT] = clamp_f(1.0f - anhedonia, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_ENGAGEMENT] = nimcp_clampf(1.0f - anhedonia, 0.0f, 1.0f);
     /* Depression reduces mood */
-    dims[MENTAL_HEALTH_DIM_MOOD_STATE] = clamp_f(0.5f - depression * 0.4f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_MOOD_STATE] = nimcp_clampf(0.5f - depression * 0.4f, 0.0f, 1.0f);
     /* Depression affects social functioning */
-    dims[MENTAL_HEALTH_DIM_SOCIAL_FUNCTION] = clamp_f(1.0f - depression * 0.3f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_SOCIAL_FUNCTION] = nimcp_clampf(1.0f - depression * 0.3f, 0.0f, 1.0f);
 
     bridge->depression_signal = depression;
 
@@ -587,17 +578,17 @@ int mental_health_snn_encode_stress(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
-    dims[MENTAL_HEALTH_DIM_STRESS_RESPONSE] = clamp_f(stress, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_STRESS_RESPONSE] = nimcp_clampf(stress, 0.0f, 1.0f);
 
     /* Chronic stress (type 1) has more pervasive effects */
     float chronic_factor = (stressor_type == 1) ? 1.2f : 1.0f;
 
     /* Stress affects anxiety */
-    dims[MENTAL_HEALTH_DIM_ANXIETY_LEVEL] = clamp_f(stress * 0.6f * chronic_factor, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_ANXIETY_LEVEL] = nimcp_clampf(stress * 0.6f * chronic_factor, 0.0f, 1.0f);
     /* Chronic stress erodes resilience */
-    dims[MENTAL_HEALTH_DIM_RESILIENCE] = clamp_f(1.0f - stress * 0.3f * chronic_factor, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_RESILIENCE] = nimcp_clampf(1.0f - stress * 0.3f * chronic_factor, 0.0f, 1.0f);
     /* Sleep quality affected by stress */
-    dims[MENTAL_HEALTH_DIM_SLEEP_QUALITY] = clamp_f(1.0f - stress * 0.4f, 0.0f, 1.0f);
+    dims[MENTAL_HEALTH_DIM_SLEEP_QUALITY] = nimcp_clampf(1.0f - stress * 0.4f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -670,12 +661,12 @@ int mental_health_snn_simulate(mental_health_snn_bridge_t* bridge, float duratio
 
     /* Decode outputs to emotional state */
     /* Convert mood from [0,1] back to [-1,1] */
-    bridge->last_emotional_state.mood_level = clamp_f(bridge->output_buffer[0] * 2.0f - 1.0f, -1.0f, 1.0f);
-    bridge->last_emotional_state.anxiety_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_emotional_state.depression_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_emotional_state.stress_level = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_emotional_state.regulation_capacity = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_emotional_state.resilience_factor = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_emotional_state.mood_level = nimcp_clampf(bridge->output_buffer[0] * 2.0f - 1.0f, -1.0f, 1.0f);
+    bridge->last_emotional_state.anxiety_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_emotional_state.depression_level = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_emotional_state.stress_level = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_emotional_state.regulation_capacity = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_emotional_state.resilience_factor = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check anxiety threshold */
     if (bridge->last_emotional_state.anxiety_level > bridge->config.anxiety_threshold) {

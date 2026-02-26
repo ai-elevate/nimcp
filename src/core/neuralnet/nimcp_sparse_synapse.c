@@ -940,8 +940,7 @@ synapse_handle_t* sparse_synapse_iterator_next(sparse_synapse_iterator_t* it) {
         return &storage->overflow[it->index++];
     }
 
-    // End of iteration
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_iterator_next: validation failed");
+    // End of iteration — normal control flow, not an error
     return NULL;
 }
 

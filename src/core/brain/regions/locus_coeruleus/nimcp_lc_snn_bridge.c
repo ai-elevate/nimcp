@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lc_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -70,12 +71,6 @@ static uint64_t get_timestamp_us(void) {
     return ++counter;
 }
 
-static float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
 static void compute_modulation(nimcp_lc_snn_bridge_t* bridge) {
     if (!bridge) return;
 
@@ -85,14 +80,14 @@ static void compute_modulation(nimcp_lc_snn_bridge_t* bridge) {
     /* Compute gain based on NE level */
     float gain_range = bridge->config.max_gain - bridge->config.min_gain;
     bridge->current_modulation.gain = bridge->config.min_gain +
-        (gain_range * clamp(ne_level / 100.0f, 0.0f, 1.0f));
+        (gain_range * nimcp_clampf(ne_level / 100.0f, 0.0f, 1.0f));
 
     /* Attention boost from arousal */
     bridge->current_modulation.attention_boost = arousal;
 
     /* Noise suppression from NE */
     bridge->current_modulation.noise_suppression =
-        clamp(ne_level / 80.0f, 0.0f, 1.0f);
+        nimcp_clampf(ne_level / 80.0f, 0.0f, 1.0f);
 
     /* Exploration drive (high tonic = explore, phasic = exploit) */
     if (bridge->state.ne.mode == LC_SNN_MODE_TONIC ||
@@ -361,8 +356,8 @@ int nimcp_lc_snn_encode_arousal(
         return -1;
     }
 
-    bridge->state.ne.arousal = clamp(arousal, 0.0f, 1.0f);
-    bridge->state.ne.vigilance = clamp(vigilance, 0.0f, 1.0f);
+    bridge->state.ne.arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
+    bridge->state.ne.vigilance = nimcp_clampf(vigilance, 0.0f, 1.0f);
 
     /* Update gain modulation */
     compute_modulation(bridge);
@@ -549,7 +544,7 @@ int nimcp_lc_snn_apply_external_gain(
         return -1;
     }
 
-    bridge->state.current_gain = clamp(external_gain,
+    bridge->state.current_gain = nimcp_clampf(external_gain,
         bridge->config.min_gain, bridge->config.max_gain);
     bridge->current_modulation.gain = bridge->state.current_gain;
 

@@ -25,6 +25,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -48,16 +49,6 @@ static uint64_t get_timestamp_us(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -552,7 +543,7 @@ int vae_fep_sync_latent_to_belief(vae_fep_bridge_t* bridge)
             for (uint32_t i = 0; i < copy_dim; i++) {
                 float var = expf(vae_latent.log_var[i]);
                 float prec = 1.0f / fmaxf(var, 1e-6f);
-                prec = clampf(prec * bridge->config.precision_scale,
+                prec = nimcp_clampf(prec * bridge->config.precision_scale,
                              bridge->config.min_precision,
                              bridge->config.max_precision);
                 fep_level->beliefs.precision[i] = prec;
@@ -904,7 +895,7 @@ int vae_fep_sync_precision(vae_fep_bridge_t* bridge)
 
             for (uint32_t i = 0; i < copy_dim; i++) {
                 float p = precision[i] * bridge->config.precision_scale;
-                p = clampf(p, bridge->config.min_precision, bridge->config.max_precision);
+                p = nimcp_clampf(p, bridge->config.min_precision, bridge->config.max_precision);
                 if (level->beliefs.precision) {
                     level->beliefs.precision[i] = p;
                 }

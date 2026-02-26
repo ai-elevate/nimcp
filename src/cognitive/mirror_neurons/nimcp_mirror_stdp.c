@@ -38,6 +38,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_stdp, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -88,15 +89,6 @@ struct mirror_stdp_system {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /**
  * @brief Simple hash function for action mapping
@@ -255,7 +247,7 @@ static nimcp_error_t handle_stdp_event(
     );
 
     // Apply weight change
-    syn->weight = clamp_f(syn->weight + delta_w, stdp->config.w_min, stdp->config.w_max);
+    syn->weight = nimcp_clampf(syn->weight + delta_w, stdp->config.w_min, stdp->config.w_max);
 
     LOG_DEBUG("handle_stdp_event: synapse %u weight %.4f -> %.4f (delta=%.4f)",
               synapse_id, syn->weight - delta_w, syn->weight, delta_w);
@@ -574,7 +566,7 @@ uint32_t mirror_stdp_create_synapse(mirror_stdp_t stdp, uint32_t action_id, floa
     // Initialize synapse
     syn->synapse_id = synapse_id;
     syn->action_id = action_id;
-    syn->weight = clamp_f(initial_weight, stdp->config.w_min, stdp->config.w_max);
+    syn->weight = nimcp_clampf(initial_weight, stdp->config.w_min, stdp->config.w_max);
     syn->initial_weight = syn->weight;
 
     // Initialize traces
@@ -687,7 +679,7 @@ float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float cu
         // Dopamine gating (reward enhances LTP)
         if (cfg->enable_dopamine_gating) {
             float da_factor = 1.0F + (dopamine_level - 0.5F) * cfg->dopamine_ltp_boost;
-            delta_w *= clamp_f(da_factor, 0.1F, 3.0F);
+            delta_w *= nimcp_clampf(da_factor, 0.1F, 3.0F);
         }
     } else if (delta_t_ms < 0.0F && -delta_t_ms <= cfg->ltd_window_ms) {
         // LTD: Execution preceded observation (temporal confusion)
@@ -699,7 +691,7 @@ float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float cu
     // ACh gating (attention enhances all plasticity)
     if (cfg->enable_ach_gating) {
         float ach_factor = 1.0F + (ach_level - 0.5F) * cfg->ach_attention_boost;
-        delta_w *= clamp_f(ach_factor, 0.1F, 2.0F);
+        delta_w *= nimcp_clampf(ach_factor, 0.1F, 2.0F);
     }
 
     return delta_w;
@@ -764,11 +756,11 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
         // Apply metaplasticity
         if (cfg->enable_metaplasticity) {
             float meta_mod = 1.0F - syn->meta_state * cfg->meta_threshold;
-            delta_w *= clamp_f(meta_mod, 0.1F, 2.0F);
+            delta_w *= nimcp_clampf(meta_mod, 0.1F, 2.0F);
         }
 
         // Apply weight change
-        syn->weight = clamp_f(syn->weight + delta_w, cfg->w_min, cfg->w_max);
+        syn->weight = nimcp_clampf(syn->weight + delta_w, cfg->w_min, cfg->w_max);
         total_delta_w += delta_w;
 
         // Update statistics
@@ -849,11 +841,11 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
         // Apply metaplasticity
         if (cfg->enable_metaplasticity) {
             float meta_mod = 1.0F + syn->meta_state * cfg->meta_threshold;
-            delta_w *= clamp_f(meta_mod, 0.5F, 1.5F);
+            delta_w *= nimcp_clampf(meta_mod, 0.5F, 1.5F);
         }
 
         // Apply weight change
-        syn->weight = clamp_f(syn->weight + delta_w, cfg->w_min, cfg->w_max);
+        syn->weight = nimcp_clampf(syn->weight + delta_w, cfg->w_min, cfg->w_max);
         total_delta_w += delta_w;
 
         // Update statistics
@@ -981,7 +973,7 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
     float adapt_rate = dt_ms / cfg->tau_homeostasis;
     float scale_change = rate_error * adapt_rate * 0.01F;
 
-    stdp->global_scale_factor = clamp_f(stdp->global_scale_factor + scale_change, 0.5F, 2.0F);
+    stdp->global_scale_factor = nimcp_clampf(stdp->global_scale_factor + scale_change, 0.5F, 2.0F);
 
     // Apply scaling to all synapses
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
@@ -997,7 +989,7 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
         float new_weight = syn->weight * stdp->global_scale_factor;
 
         if (fabsf(new_weight - syn->weight) > 1e-6F) {
-            syn->weight = clamp_f(new_weight, cfg->w_min, cfg->w_max);
+            syn->weight = nimcp_clampf(new_weight, cfg->w_min, cfg->w_max);
             stdp->homeostatic_adjustments++;
         }
     }
@@ -1032,7 +1024,7 @@ void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
 
         // Update metaplastic state
         syn->meta_state = syn->meta_state * decay + activity_error * (1.0F - decay);
-        syn->meta_state = clamp_f(syn->meta_state, -1.0F, 1.0F);
+        syn->meta_state = nimcp_clampf(syn->meta_state, -1.0F, 1.0F);
     }
 }
 
@@ -1049,7 +1041,7 @@ void mirror_stdp_set_dopamine(mirror_stdp_t stdp, float level) {
     mirror_stdp_heartbeat("mirror_stdp_set_dopamine", 0.0f);
 
 
-    stdp->dopamine_level = clamp_f(level, 0.0F, 1.0F);
+    stdp->dopamine_level = nimcp_clampf(level, 0.0F, 1.0F);
 }
 
 void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
@@ -1061,7 +1053,7 @@ void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
     mirror_stdp_heartbeat("mirror_stdp_set_acetylcholine", 0.0f);
 
 
-    stdp->ach_level = clamp_f(level, 0.0F, 1.0F);
+    stdp->ach_level = nimcp_clampf(level, 0.0F, 1.0F);
 }
 
 //=============================================================================

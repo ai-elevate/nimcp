@@ -49,6 +49,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wm_security_immune_bridge)
 //=============================================================================
@@ -197,47 +198,7 @@ static nimcp_error_t decay_cytokines(
     omni_wm_security_immune_bridge_t* bridge, float dt);
 
 static uint64_t get_current_time_us(void);
-static float clamp_float(float value, float min_val, float max_val);
-
-/* Bio-async handlers */
-static nimcp_error_t handle_anomaly_detected(
-    const void* msg, size_t msg_size,
-    nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_security_event(
-    const void* msg, size_t msg_size,
-    nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_bbb_state(
-    const void* msg, size_t msg_size,
-    nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_cytokine_update(
-    const void* msg, size_t msg_size,
-    nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_inflammation_state(
-    const void* msg, size_t msg_size,
-    nimcp_bio_promise_t promise, void* user_data);
-
-/* ============================================================================
- * Internal Helper Functions
- * ============================================================================ */
-
-/**
- * @brief Get current time in microseconds
- */
-static uint64_t get_current_time_us(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
+static float nimcp_clampf(float value, float min_val, float max_val);
 /**
  * @brief Allocate prediction buffer
  */
@@ -488,13 +449,13 @@ static nimcp_error_t update_cytokine_effects(
         mod->ifn_gamma_effect.vigilance_boost;
 
     /* Clamp combined values to safe ranges */
-    mod->combined_confidence_mod = clamp_float(
+    mod->combined_confidence_mod = nimcp_clampf(
         mod->combined_confidence_mod, MIN_COMBINED_CONFIDENCE, MAX_COMBINED_CONFIDENCE);
-    mod->combined_horizon_mod = clamp_float(
+    mod->combined_horizon_mod = nimcp_clampf(
         mod->combined_horizon_mod, MIN_HORIZON_MULTIPLIER, 1.0f);
-    mod->combined_learning_mod = clamp_float(
+    mod->combined_learning_mod = nimcp_clampf(
         mod->combined_learning_mod, 0.5f, MAX_LEARNING_MULTIPLIER);
-    mod->combined_vigilance = clamp_float(
+    mod->combined_vigilance = nimcp_clampf(
         mod->combined_vigilance, 0.0f, 1.0f);
 
     /* Check for cytokine storm (dangerous condition) */
@@ -554,7 +515,7 @@ static nimcp_error_t update_wm_to_security_effects(
                              (1.0f + bridge->current_modulation.combined_vigilance);
 
         effects->should_trigger_immune = (effects->combined_pe > pe_threshold);
-        effects->immune_trigger_strength = clamp_float(
+        effects->immune_trigger_strength = nimcp_clampf(
             (effects->combined_pe - pe_threshold) * bridge->config.pe_immune_scale,
             0.0f, 1.0f);
     }
@@ -1285,7 +1246,7 @@ nimcp_error_t omni_wm_security_immune_bridge_predict_anomaly(
         base_score += 0.3f;
     }
 
-    *anomaly_score_out = clamp_float(base_score, 0.0f, 1.0f);
+    *anomaly_score_out = nimcp_clampf(base_score, 0.0f, 1.0f);
     *confidence_out = bridge->current_modulation.combined_confidence_mod * 0.8f;
 
     /* Update effects */
@@ -1565,11 +1526,11 @@ nimcp_error_t omni_wm_security_immune_bridge_update_cytokines(
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update cytokine levels (clamped to [0, 1]) */
-    bridge->current_modulation.il1_effect.level = clamp_float(il1_level, 0.0f, 1.0f);
-    bridge->current_modulation.il6_effect.level = clamp_float(il6_level, 0.0f, 1.0f);
-    bridge->current_modulation.tnf_alpha_effect.level = clamp_float(tnf_alpha_level, 0.0f, 1.0f);
-    bridge->current_modulation.il10_effect.level = clamp_float(il10_level, 0.0f, 1.0f);
-    bridge->current_modulation.ifn_gamma_effect.level = clamp_float(ifn_gamma_level, 0.0f, 1.0f);
+    bridge->current_modulation.il1_effect.level = nimcp_clampf(il1_level, 0.0f, 1.0f);
+    bridge->current_modulation.il6_effect.level = nimcp_clampf(il6_level, 0.0f, 1.0f);
+    bridge->current_modulation.tnf_alpha_effect.level = nimcp_clampf(tnf_alpha_level, 0.0f, 1.0f);
+    bridge->current_modulation.il10_effect.level = nimcp_clampf(il10_level, 0.0f, 1.0f);
+    bridge->current_modulation.ifn_gamma_effect.level = nimcp_clampf(ifn_gamma_level, 0.0f, 1.0f);
 
     bridge->stats.modulation_updates++;
 
@@ -1667,7 +1628,7 @@ nimcp_error_t omni_wm_security_immune_bridge_check_pe_trigger(
         (1.0f + bridge->current_modulation.combined_vigilance);
 
     *should_trigger_out = (prediction_error > adjusted_threshold);
-    *trigger_strength_out = clamp_float(
+    *trigger_strength_out = nimcp_clampf(
         (prediction_error - adjusted_threshold) * bridge->config.pe_immune_scale,
         0.0f, 1.0f);
 

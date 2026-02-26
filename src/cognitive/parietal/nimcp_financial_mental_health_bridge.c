@@ -46,6 +46,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_mental_health_bridge_health_agent = NULL;
@@ -187,16 +188,6 @@ static const char* state_names[] = {
     "error"
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float maxf(float a, float b) {
     return (a > b) ? a : b;
 }
@@ -250,7 +241,7 @@ static float calculate_impairment(
         impairment /= total_weight;
     }
 
-    return clampf(impairment, 0.0f, 1.0f);
+    return nimcp_clampf(impairment, 0.0f, 1.0f);
 }
 
 /**
@@ -310,7 +301,7 @@ static void update_state_from_factors(
     if (factors->session_duration_mins > config->max_session_duration_mins / 2) {
         duration_stress = (float)(factors->session_duration_mins - config->max_session_duration_mins / 2) /
                           (float)(config->max_session_duration_mins / 2);
-        duration_stress = clampf(duration_stress, 0.0f, 1.0f);
+        duration_stress = nimcp_clampf(duration_stress, 0.0f, 1.0f);
     }
 
     /* Time since break stress */
@@ -318,14 +309,14 @@ static void update_state_from_factors(
     if (factors->time_since_break_mins > config->max_time_without_break / 2) {
         break_stress = (float)(factors->time_since_break_mins - config->max_time_without_break / 2) /
                        (float)(config->max_time_without_break / 2);
-        break_stress = clampf(break_stress, 0.0f, 1.0f);
+        break_stress = nimcp_clampf(break_stress, 0.0f, 1.0f);
     }
 
     /* External stress contribution */
     float external_stress = factors->external_stress;
 
     /* Combine stress factors */
-    state->stress_level = clampf(
+    state->stress_level = nimcp_clampf(
         state->stress_level * 0.7f +  /* Decay existing */
         (loss_stress + duration_stress + break_stress + external_stress) / 4.0f * 0.3f,
         0.0f, 1.0f
@@ -334,9 +325,9 @@ static void update_state_from_factors(
     /* Anxiety increases with P&L volatility and losses */
     float pnl_anxiety = 0.0f;
     if (factors->pnl_today < 0) {
-        pnl_anxiety = clampf(-factors->pnl_today, 0.0f, 1.0f);
+        pnl_anxiety = nimcp_clampf(-factors->pnl_today, 0.0f, 1.0f);
     }
-    state->anxiety_level = clampf(
+    state->anxiety_level = nimcp_clampf(
         state->anxiety_level * 0.8f + pnl_anxiety * 0.2f,
         0.0f, 1.0f
     );
@@ -346,9 +337,9 @@ static void update_state_from_factors(
     if (factors->decisions_today > config->max_decisions_per_session / 2) {
         decision_load = (float)(factors->decisions_today - config->max_decisions_per_session / 2) /
                         (float)(config->max_decisions_per_session / 2);
-        decision_load = clampf(decision_load, 0.0f, 1.0f);
+        decision_load = nimcp_clampf(decision_load, 0.0f, 1.0f);
     }
-    state->cognitive_load = clampf(
+    state->cognitive_load = nimcp_clampf(
         state->cognitive_load * 0.6f + decision_load * 0.4f,
         0.0f, 1.0f
     );
@@ -358,9 +349,9 @@ static void update_state_from_factors(
     if (factors->trades_today > config->max_trades_per_session / 2) {
         trade_fatigue = (float)(factors->trades_today - config->max_trades_per_session / 2) /
                         (float)(config->max_trades_per_session / 2);
-        trade_fatigue = clampf(trade_fatigue, 0.0f, 1.0f);
+        trade_fatigue = nimcp_clampf(trade_fatigue, 0.0f, 1.0f);
     }
-    state->decision_fatigue = clampf(
+    state->decision_fatigue = nimcp_clampf(
         state->decision_fatigue * 0.5f + trade_fatigue * 0.3f + duration_stress * 0.2f,
         0.0f, 1.0f
     );
@@ -368,7 +359,7 @@ static void update_state_from_factors(
     /* Depression risk from sustained losses and poor sleep */
     float sleep_factor = 1.0f - factors->sleep_quality;
     float wellness_factor = 1.0f - factors->physical_wellness;
-    state->depression_risk = clampf(
+    state->depression_risk = nimcp_clampf(
         state->depression_risk * 0.9f +
         (loss_stress * 0.3f + sleep_factor * 0.4f + wellness_factor * 0.3f) * 0.1f,
         0.0f, 1.0f
@@ -378,13 +369,13 @@ static void update_state_from_factors(
     if (factors->biometrics_available && config->enable_biometric_integration) {
         /* Low HRV indicates stress */
         float hrv_stress = 1.0f - factors->heart_rate_variability;
-        state->stress_level = clampf(
+        state->stress_level = nimcp_clampf(
             state->stress_level * 0.7f + hrv_stress * 0.3f,
             0.0f, 1.0f
         );
 
         /* Cortisol estimate */
-        state->stress_level = clampf(
+        state->stress_level = nimcp_clampf(
             state->stress_level * 0.8f + factors->cortisol_estimate * 0.2f,
             0.0f, 1.0f
         );
@@ -1119,11 +1110,11 @@ int financial_mental_health_bridge_record_break(
     float recovery_amount = bridge->config.recovery_rate * (float)duration_minutes;
 
     fin_mental_health_state_t* s = &bridge->current_state;
-    s->stress_level = clampf(s->stress_level - recovery_amount, 0.0f, 1.0f);
-    s->anxiety_level = clampf(s->anxiety_level - recovery_amount * 0.8f, 0.0f, 1.0f);
-    s->cognitive_load = clampf(s->cognitive_load - recovery_amount * 1.2f, 0.0f, 1.0f);
-    s->decision_fatigue = clampf(s->decision_fatigue - recovery_amount * 1.5f, 0.0f, 1.0f);
-    s->depression_risk = clampf(s->depression_risk - recovery_amount * 0.5f, 0.0f, 1.0f);
+    s->stress_level = nimcp_clampf(s->stress_level - recovery_amount, 0.0f, 1.0f);
+    s->anxiety_level = nimcp_clampf(s->anxiety_level - recovery_amount * 0.8f, 0.0f, 1.0f);
+    s->cognitive_load = nimcp_clampf(s->cognitive_load - recovery_amount * 1.2f, 0.0f, 1.0f);
+    s->decision_fatigue = nimcp_clampf(s->decision_fatigue - recovery_amount * 1.5f, 0.0f, 1.0f);
+    s->depression_risk = nimcp_clampf(s->depression_risk - recovery_amount * 0.5f, 0.0f, 1.0f);
 
     /* Reset consecutive losses counter after break */
     bridge->consecutive_losses = 0;
@@ -1168,16 +1159,16 @@ int financial_mental_health_bridge_apply_recovery(
 
     /* Only apply recovery if not actively stressed */
     if (s->stress_level > 0.0f) {
-        s->stress_level = clampf(s->stress_level - natural_recovery * 0.5f, 0.0f, 1.0f);
+        s->stress_level = nimcp_clampf(s->stress_level - natural_recovery * 0.5f, 0.0f, 1.0f);
     }
     if (s->anxiety_level > 0.0f) {
-        s->anxiety_level = clampf(s->anxiety_level - natural_recovery * 0.3f, 0.0f, 1.0f);
+        s->anxiety_level = nimcp_clampf(s->anxiety_level - natural_recovery * 0.3f, 0.0f, 1.0f);
     }
     if (s->cognitive_load > 0.0f) {
-        s->cognitive_load = clampf(s->cognitive_load - natural_recovery * 0.4f, 0.0f, 1.0f);
+        s->cognitive_load = nimcp_clampf(s->cognitive_load - natural_recovery * 0.4f, 0.0f, 1.0f);
     }
     if (s->decision_fatigue > 0.0f) {
-        s->decision_fatigue = clampf(s->decision_fatigue - natural_recovery * 0.3f, 0.0f, 1.0f);
+        s->decision_fatigue = nimcp_clampf(s->decision_fatigue - natural_recovery * 0.3f, 0.0f, 1.0f);
     }
 
     /* Update time tracking */

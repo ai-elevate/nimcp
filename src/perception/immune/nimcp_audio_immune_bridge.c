@@ -19,25 +19,13 @@
 #include <math.h>
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(audio_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation duration
@@ -118,13 +106,13 @@ static void estimate_cytokine_levels(
     float inflammation_factor = (float)stats.inflammation_sites / 10.0f;
     float activity_factor = (float)stats.active_t_cells / 100.0f;
 
-    *il1 = clamp_f(inflammation_factor * 0.5f, 0.0f, 1.0f);
-    *il6 = clamp_f(inflammation_factor * 0.6f, 0.0f, 1.0f);
-    *tnf = clamp_f(inflammation_factor * 0.4f, 0.0f, 1.0f);
-    *ifn_gamma = clamp_f(activity_factor * 0.3f, 0.0f, 1.0f);
+    *il1 = nimcp_clampf(inflammation_factor * 0.5f, 0.0f, 1.0f);
+    *il6 = nimcp_clampf(inflammation_factor * 0.6f, 0.0f, 1.0f);
+    *tnf = nimcp_clampf(inflammation_factor * 0.4f, 0.0f, 1.0f);
+    *ifn_gamma = nimcp_clampf(activity_factor * 0.3f, 0.0f, 1.0f);
 
     /* Anti-inflammatory: inversely related to inflammation */
-    *il10 = clamp_f(1.0f - inflammation_factor * 0.5f, 0.0f, 1.0f);
+    *il10 = nimcp_clampf(1.0f - inflammation_factor * 0.5f, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -258,15 +246,15 @@ int audio_immune_apply_cytokine_effects(audio_immune_bridge_t* bridge) {
 
     /* Noise sensitivity increases with pro-inflammatory cytokines */
     bridge->cytokine_effects.noise_sensitivity_increase =
-        clamp_f((il1 + il6 + tnf) / 3.0f, 0.0f, 1.0f);
+        nimcp_clampf((il1 + il6 + tnf) / 3.0f, 0.0f, 1.0f);
 
     /* Auditory attention impairment (sickness behavior) */
     bridge->cytokine_effects.attention_impairment =
-        clamp_f((il1 * 0.4f + il6 * 0.3f + tnf * 0.3f), 0.0f, 1.0f);
+        nimcp_clampf((il1 * 0.4f + il6 * 0.3f + tnf * 0.3f), 0.0f, 1.0f);
 
     /* Auditory fatigue from cytokines */
     bridge->cytokine_effects.fatigue_level =
-        clamp_f((il1 + il6 + tnf) / 3.0f * 0.8f, 0.0f, 1.0f);
+        nimcp_clampf((il1 + il6 + tnf) / 3.0f * 0.8f, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -305,7 +293,7 @@ int audio_immune_apply_inflammation_effects(audio_immune_bridge_t* bridge) {
     /* Chronic inflammation has worse effects */
     if (is_chronic) {
         severity_factor *= 1.3f;
-        severity_factor = clamp_f(severity_factor, 0.0f, 1.0f);
+        severity_factor = nimcp_clampf(severity_factor, 0.0f, 1.0f);
     }
 
     /* Processing accuracy degrades with inflammation */
@@ -327,7 +315,7 @@ int audio_immune_apply_inflammation_effects(audio_immune_bridge_t* bridge) {
     /* Tinnitus severity increases with chronic inflammation */
     if (is_chronic && severity_factor > 0.5f) {
         bridge->inflammation_state.tinnitus_severity =
-            clamp_f((severity_factor - 0.5f) * 2.0f, 0.0f, 1.0f);
+            nimcp_clampf((severity_factor - 0.5f) * 2.0f, 0.0f, 1.0f);
         bridge->tinnitus_episodes++;
     } else {
         bridge->inflammation_state.tinnitus_severity = 0.0f;
@@ -363,7 +351,7 @@ float audio_immune_compute_bandwidth_reduction(const audio_immune_bridge_t* brid
         case INFLAMMATION_STORM:    reduction = MAX_BANDWIDTH_REDUCTION; break;
     }
 
-    return clamp_f(reduction, 0.0f, MAX_BANDWIDTH_REDUCTION);
+    return nimcp_clampf(reduction, 0.0f, MAX_BANDWIDTH_REDUCTION);
 }
 
 float audio_immune_compute_noise_sensitivity(const audio_immune_bridge_t* bridge) {
@@ -406,9 +394,9 @@ int audio_immune_trigger_from_threat(
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update trigger state */
-    bridge->audio_trigger.loudness_level = clamp_f(loudness, 0.0f, 1.0f);
-    bridge->audio_trigger.novelty_score = clamp_f(novelty, 0.0f, 1.0f);
-    bridge->audio_trigger.anomaly_score = clamp_f(anomaly_score, 0.0f, 1.0f);
+    bridge->audio_trigger.loudness_level = nimcp_clampf(loudness, 0.0f, 1.0f);
+    bridge->audio_trigger.novelty_score = nimcp_clampf(novelty, 0.0f, 1.0f);
+    bridge->audio_trigger.anomaly_score = nimcp_clampf(anomaly_score, 0.0f, 1.0f);
 
     /* Check if threat level warrants immune response */
     bool should_trigger =
@@ -469,7 +457,7 @@ int audio_immune_trigger_from_processing_failure(
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update failure tracking */
-    bridge->audio_trigger.processing_failure_rate = clamp_f(failure_rate, 0.0f, 1.0f);
+    bridge->audio_trigger.processing_failure_rate = nimcp_clampf(failure_rate, 0.0f, 1.0f);
     bridge->processing_failures++;
 
     /* High failure rate triggers immune response */
@@ -514,7 +502,7 @@ int audio_immune_amplify_tinnitus_inflammation(
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update tinnitus state */
-    bridge->inflammation_state.tinnitus_severity = clamp_f(tinnitus_severity, 0.0f, 1.0f);
+    bridge->inflammation_state.tinnitus_severity = nimcp_clampf(tinnitus_severity, 0.0f, 1.0f);
 
     /* Tinnitus above threshold triggers inflammation */
     if (tinnitus_severity >= 0.5f) {
@@ -559,9 +547,9 @@ int audio_immune_boost_from_calm_environment(
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update boost state */
-    bridge->audio_boost.quietness_level = clamp_f(quietness, 0.0f, 1.0f);
-    bridge->audio_boost.music_presence = clamp_f(music_presence, 0.0f, 1.0f);
-    bridge->audio_boost.predictability = clamp_f(predictability, 0.0f, 1.0f);
+    bridge->audio_boost.quietness_level = nimcp_clampf(quietness, 0.0f, 1.0f);
+    bridge->audio_boost.music_presence = nimcp_clampf(music_presence, 0.0f, 1.0f);
+    bridge->audio_boost.predictability = nimcp_clampf(predictability, 0.0f, 1.0f);
 
     /* Calm environment boosts immunity */
     float calm_score = (quietness + music_presence + predictability) / 3.0f;

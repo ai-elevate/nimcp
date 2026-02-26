@@ -13,19 +13,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(mood_regulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float lerp(float a, float b, float t) {
     return a + t * (b - a);
@@ -161,7 +151,7 @@ int nimcp_mood_update(nimcp_mood_system_t* system, float ht_level, float dt) {
     system->target_valence += system->social_input * 0.3f;
 
     /* Clamp target */
-    system->target_valence = clamp_f(system->target_valence, -1.0f, 1.0f);
+    system->target_valence = nimcp_clampf(system->target_valence, -1.0f, 1.0f);
 
     /* 4. Update valence with time constant (slow mood changes) */
     float alpha = 1.0f - expf(-dt / system->config.time_constant);
@@ -172,28 +162,28 @@ int nimcp_mood_update(nimcp_mood_system_t* system, float ht_level, float dt) {
     /* 5. Update stability based on 5-HT */
     /* Higher 5-HT -> more stable mood */
     float stability_target = system->config.stability_baseline + (ht_ratio - 1.0f) * 0.3f;
-    stability_target = clamp_f(stability_target, 0.2f, 0.95f);
+    stability_target = nimcp_clampf(stability_target, 0.2f, 0.95f);
     system->stability = lerp(system->stability, stability_target, alpha * 0.5f);
 
     /* 6. Update anxiety */
     /* Low 5-HT -> higher anxiety */
     float anxiety_target = system->config.anxiety_baseline - (ht_ratio - 1.0f) * 0.4f;
     anxiety_target += system->stress_input * 0.5f;  /* Stress increases anxiety */
-    anxiety_target = clamp_f(anxiety_target, 0.0f, 1.0f);
+    anxiety_target = nimcp_clampf(anxiety_target, 0.0f, 1.0f);
     system->anxiety = lerp(system->anxiety, anxiety_target, alpha);
 
     /* 7. Update irritability */
     /* Low 5-HT -> higher irritability */
     float irritability_target = 0.3f - (ht_ratio - 1.0f) * 0.3f;
     irritability_target += system->stress_input * 0.4f;
-    irritability_target = clamp_f(irritability_target, 0.0f, 1.0f);
+    irritability_target = nimcp_clampf(irritability_target, 0.0f, 1.0f);
     system->irritability = lerp(system->irritability, irritability_target, alpha);
 
     /* 8. Update energy */
     /* Mood affects energy, but with some independence */
     float energy_target = 0.5f + system->valence * 0.3f;
     energy_target -= system->anxiety * 0.2f;  /* Anxiety drains energy */
-    energy_target = clamp_f(energy_target, 0.1f, 1.0f);
+    energy_target = nimcp_clampf(energy_target, 0.1f, 1.0f);
     system->energy = lerp(system->energy, energy_target, alpha * 0.8f);
 
     /* 9. Decay inputs */
@@ -247,7 +237,7 @@ int nimcp_mood_apply_stress(nimcp_mood_system_t* system, float stress) {
         return -1;
     }
 
-    system->stress_input = clamp_f(system->stress_input + stress, 0.0f, 1.0f);
+    system->stress_input = nimcp_clampf(system->stress_input + stress, 0.0f, 1.0f);
     return 0;
 }
 
@@ -257,7 +247,7 @@ int nimcp_mood_apply_reward(nimcp_mood_system_t* system, float reward) {
         return -1;
     }
 
-    system->reward_input = clamp_f(system->reward_input + reward, 0.0f, 1.0f);
+    system->reward_input = nimcp_clampf(system->reward_input + reward, 0.0f, 1.0f);
     return 0;
 }
 
@@ -267,7 +257,7 @@ int nimcp_mood_apply_social(nimcp_mood_system_t* system, float social_input) {
         return -1;
     }
 
-    system->social_input = clamp_f(system->social_input + social_input, -1.0f, 1.0f);
+    system->social_input = nimcp_clampf(system->social_input + social_input, -1.0f, 1.0f);
     return 0;
 }
 

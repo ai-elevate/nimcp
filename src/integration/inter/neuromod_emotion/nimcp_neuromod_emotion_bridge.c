@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_emotion_bridge)
 
@@ -37,16 +38,6 @@ struct neuromod_emotion_bridge_struct {
     neuromod_emotion_stats_t stats;
     bool connected;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
@@ -152,7 +143,7 @@ int neuromod_emotion_apply_ne_arousal(neuromod_emotion_bridge_t* bridge,
         return 0;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
 
     /* NE directly drives arousal with some baseline */
@@ -190,7 +181,7 @@ int neuromod_emotion_apply_da_valence(neuromod_emotion_bridge_t* bridge,
         return 0;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
 
     /* DA shifts valence toward positive
@@ -198,7 +189,7 @@ int neuromod_emotion_apply_da_valence(neuromod_emotion_bridge_t* bridge,
      * High DA = positive valence (pleasure/motivation) */
     float neutral_da = 0.4f;  /* DA level for neutral valence */
     bridge->state.valence_level = (da_level - neutral_da) * 2.0f * bridge->config.da_valence_coupling;
-    bridge->state.valence_level = clamp(bridge->state.valence_level, -1.0f, 1.0f);
+    bridge->state.valence_level = nimcp_clampf(bridge->state.valence_level, -1.0f, 1.0f);
 
     /* Update motivation based on DA */
     bridge->state.motivation_level = da_level * bridge->config.da_motivation_coupling;
@@ -226,7 +217,7 @@ int neuromod_emotion_apply_ht_regulation(neuromod_emotion_bridge_t* bridge,
         return 0;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
     bridge->state.ht_level = ht_level;
 
     /* 5-HT enables emotional regulation */
@@ -260,7 +251,7 @@ int neuromod_emotion_apply_hab_aversion(neuromod_emotion_bridge_t* bridge,
         return 0;
     }
 
-    hab_level = clamp(hab_level, 0.0f, 1.0f);
+    hab_level = nimcp_clampf(hab_level, 0.0f, 1.0f);
     bridge->state.hab_level = hab_level;
 
     /* Habenula activity signals aversion/disappointment */
@@ -269,7 +260,7 @@ int neuromod_emotion_apply_hab_aversion(neuromod_emotion_bridge_t* bridge,
     /* High habenula activity shifts valence negative */
     if (hab_level > 0.5f) {
         float valence_shift = -(hab_level - 0.5f) * bridge->config.hab_aversion_coupling;
-        bridge->state.valence_level = clamp(
+        bridge->state.valence_level = nimcp_clampf(
             bridge->state.valence_level + valence_shift,
             -1.0f, 1.0f
         );
@@ -295,7 +286,7 @@ int neuromod_emotion_report_fear(neuromod_emotion_bridge_t* bridge,
         return -1;
     }
 
-    fear_intensity = clamp(fear_intensity, 0.0f, 1.0f);
+    fear_intensity = nimcp_clampf(fear_intensity, 0.0f, 1.0f);
     bridge->state.fear_signal = fear_intensity;
 
     /* Fear triggers LC activation for arousal */
@@ -319,7 +310,7 @@ int neuromod_emotion_report_reward_anticipation(neuromod_emotion_bridge_t* bridg
         return -1;
     }
 
-    anticipation = clamp(anticipation, 0.0f, 1.0f);
+    anticipation = nimcp_clampf(anticipation, 0.0f, 1.0f);
     bridge->state.reward_anticipation = anticipation;
 
     /* Reward anticipation activates VTA */
@@ -343,7 +334,7 @@ int neuromod_emotion_report_conflict(neuromod_emotion_bridge_t* bridge,
         return -1;
     }
 
-    conflict_level = clamp(conflict_level, 0.0f, 1.0f);
+    conflict_level = nimcp_clampf(conflict_level, 0.0f, 1.0f);
     bridge->state.conflict_signal = conflict_level;
 
     /* Emotional conflict increases 5-HT demand for regulation */
@@ -367,7 +358,7 @@ int neuromod_emotion_report_disappointment(neuromod_emotion_bridge_t* bridge,
         return -1;
     }
 
-    disappointment = clamp(disappointment, 0.0f, 1.0f);
+    disappointment = nimcp_clampf(disappointment, 0.0f, 1.0f);
     bridge->state.disappointment_signal = disappointment;
 
     /* Disappointment activates habenula */
@@ -489,7 +480,7 @@ int neuromod_emotion_compute_modulation(neuromod_emotion_bridge_t* bridge,
     if (bridge->state.valence_level > 0.3f && bridge->state.aversion_level > 0.5f) {
         coherence -= 0.2f;
     }
-    bridge->state.bridge_coherence = clamp(coherence, 0.0f, 1.0f);
+    bridge->state.bridge_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
 
     bridge->state.last_update_us = get_timestamp_us();
     bridge->stats.bottom_up_messages += 4;

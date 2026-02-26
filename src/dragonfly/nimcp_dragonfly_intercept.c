@@ -19,6 +19,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_intercept)
 
@@ -35,10 +36,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
 }
 
 static inline float vec3_dot(const float a[3], const float b[3]) {
@@ -282,7 +279,7 @@ static void compute_lead_pursuit(
     float to_target[3] = {rel_pos[0]/range, rel_pos[1]/range, rel_pos[2]/range};
     float to_pred[3] = {pred_rel[0]/pred_range, pred_rel[1]/pred_range, pred_rel[2]/pred_range};
     float cos_lead = vec3_dot(to_target, to_pred);
-    solution->lead_angle_rad = acosf(clampf(cos_lead, -1.0f, 1.0f));
+    solution->lead_angle_rad = acosf(nimcp_clampf(cos_lead, -1.0f, 1.0f));
 
     /* Heading */
     solution->heading_rad = atan2f(pred_rel[1], pred_rel[0]);
@@ -450,7 +447,7 @@ int dragonfly_intercept_compute(
         float t_cpa = 0.0f;
         if (rel_vel_sq > 1e-6f) {
             t_cpa = -vec3_dot(rel_pos, rel_vel) / rel_vel_sq;
-            t_cpa = clampf(t_cpa, 0.0f, solution->intercept_time_s * 2.0f);
+            t_cpa = nimcp_clampf(t_cpa, 0.0f, solution->intercept_time_s * 2.0f);
         }
 
         /* Position at CPA (without maneuvering) */
@@ -477,7 +474,7 @@ int dragonfly_intercept_compute(
 
     /* Confidence based on target confidence and closing speed */
     solution->confidence = target->confidence *
-        clampf(solution->closing_speed / 10.0f, 0.1f, 1.0f);
+        nimcp_clampf(solution->closing_speed / 10.0f, 0.1f, 1.0f);
 
     solution->timestamp_us = start;
 
@@ -748,7 +745,7 @@ float dragonfly_intercept_lead_angle(
 
     /* Lead angle from law of sines */
     float sin_lead = target_speed * sinf(M_PI / 4.0f) / self_speed;
-    sin_lead = clampf(sin_lead, -1.0f, 1.0f);
+    sin_lead = nimcp_clampf(sin_lead, -1.0f, 1.0f);
 
     return asinf(sin_lead);
 }

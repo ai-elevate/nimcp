@@ -80,7 +80,7 @@ nimcp_status_t nimcp_brain_train_step(
     // Get base neural network
     neural_network_t base_net = adaptive_network_get_base_network(network);
     if (!base_net) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Failed to get base network");
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "Failed to get base network");
     }
 
     // === STEP 1: Create or get backprop context ===

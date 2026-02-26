@@ -1765,6 +1765,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
         // 4.5 Delta rule for output layer + hidden layer backprop
         {
+            float grad_norm_sq = 0.0f;  // Accumulate squared gradients for L2 norm
             uint32_t num_layers = network->config.base_config.num_layers;
             uint32_t* layer_sizes = network->config.base_config.layer_sizes;
             if (num_layers >= 2 && layer_sizes) {
@@ -1796,6 +1797,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         float delta = output_lr * error_j * src->state * sig_deriv;
                         if (delta > 0.1f) delta = 0.1f;
                         if (delta < -0.1f) delta = -0.1f;
+                        grad_norm_sq += delta * delta;
                         in_syn->weight += delta;
 
                         // Update outgoing synapse copy
@@ -1809,8 +1811,12 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     }
 
                     out_n->bias += output_lr * error_j * sig_deriv;
+                    grad_norm_sq += (output_lr * error_j * sig_deriv) *
+                                    (output_lr * error_j * sig_deriv);
                 }
             }
+            // Store gradient L2 norm on the network (mirrors CPU path)
+            network->last_grad_norm = sqrtf(grad_norm_sq);
         }
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)

@@ -41,6 +41,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(introspection_substrate_bridge)
 //=============================================================================
@@ -94,19 +95,6 @@ static inline void introspection_substrate_bridge_heartbeat_instance(
  * ============================================================================ */
 
 /**
- * Clamp value to range [min, max]
- *
- * WHAT: Constrains value to specified bounds
- * WHY: Ensure biological effects stay within valid ranges
- * HOW: Return min if below, max if above, value if within
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * Compute self-awareness depth from substrate state
  *
  * WHAT: Calculate depth of self-reflective processing capacity
@@ -128,7 +116,7 @@ static float compute_self_awareness_depth(
     float depth = base_depth * sensitivity;
 
     /* Clamp to biological range [0.2, 1.0] */
-    return clamp(depth, 0.2f, 1.0f);
+    return nimcp_clampf(depth, 0.2f, 1.0f);
 }
 
 /**
@@ -154,7 +142,7 @@ static float compute_metacognitive_accuracy(
     float accuracy = combined * sensitivity;
 
     /* Clamp to biological range [0.3, 1.0] */
-    return clamp(accuracy, 0.3f, 1.0f);
+    return nimcp_clampf(accuracy, 0.3f, 1.0f);
 }
 
 /**
@@ -176,7 +164,7 @@ static float compute_monitoring_capacity(
     float capacity = metabolic->atp_level * sensitivity;
 
     /* Clamp to biological range [0.3, 1.0] */
-    return clamp(capacity, 0.3f, 1.0f);
+    return nimcp_clampf(capacity, 0.3f, 1.0f);
 }
 
 /**
@@ -198,7 +186,7 @@ static float compute_uncertainty_estimation(
     float estimation = metabolic->metabolic_capacity * 0.9f * sensitivity;
 
     /* Clamp to biological range [0.3, 1.0] */
-    return clamp(estimation, 0.3f, 1.0f);
+    return nimcp_clampf(estimation, 0.3f, 1.0f);
 }
 
 /**

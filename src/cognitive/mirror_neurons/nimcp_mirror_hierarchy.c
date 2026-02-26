@@ -30,6 +30,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_hierarchy, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -75,16 +76,6 @@ struct mirror_hierarchy_system {
     uint32_t bindings_created;
     uint32_t bindings_removed;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 static inline float exp_decay(float dt_ms, float tau_ms) {
     return expf(-dt_ms / tau_ms);
@@ -334,12 +325,12 @@ void mirror_hierarchy_activate_goal(mirror_hierarchy_t hierarchy,
     activation *= hierarchy->config.goal_top_down_gain;
 
     // Set target (will be smoothed in step())
-    goal->target_activation = clamp_f(activation, 0.0F, 1.0F);
+    goal->target_activation = nimcp_clampf(activation, 0.0F, 1.0F);
 
     // Partial immediate update
     float instant_factor = 0.3F;
     goal->activation += (goal->target_activation - goal->activation) * instant_factor;
-    goal->activation = clamp_f(goal->activation, 0.0F, 1.0F);
+    goal->activation = nimcp_clampf(goal->activation, 0.0F, 1.0F);
 
     if (goal->activation > goal->peak_activation) {
         goal->peak_activation = goal->activation;
@@ -465,7 +456,7 @@ void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
 
     motor_representation_t* motor = &hierarchy->motors[motor_id];
 
-    motor->activation = clamp_f(activation, 0.0F, 1.0F);
+    motor->activation = nimcp_clampf(activation, 0.0F, 1.0F);
 
     if (motor->activation > motor->peak_activation) {
         motor->peak_activation = motor->activation;
@@ -495,7 +486,7 @@ void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
                 float boost = motor->activation * binding->binding_strength *
                              hierarchy->config.motor_to_goal_gain;
                 goal->activation += boost;
-                goal->activation = clamp_f(goal->activation, 0.0F, 1.0F);
+                goal->activation = nimcp_clampf(goal->activation, 0.0F, 1.0F);
             }
         }
     }
@@ -544,7 +535,7 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
     goal_motor_binding_t* existing = find_binding(goal, motor_id);
     if (existing) {
         // Update existing binding
-        existing->binding_strength = clamp_f(strength, 0.0F, 1.0F);
+        existing->binding_strength = nimcp_clampf(strength, 0.0F, 1.0F);
         existing->binding_type = type;
         return true;
     }
@@ -557,7 +548,7 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
 
     goal_motor_binding_t* binding = &goal->bindings[goal->num_bindings++];
     binding->motor_id = motor_id;
-    binding->binding_strength = clamp_f(strength, 0.0F, 1.0F);
+    binding->binding_strength = nimcp_clampf(strength, 0.0F, 1.0F);
     binding->binding_type = type;
     binding->usage_count = 0.0F;
     binding->last_used_time = 0.0F;
@@ -586,7 +577,7 @@ void mirror_hierarchy_strengthen_binding(mirror_hierarchy_t hierarchy,
     if (binding) {
         float old_strength = binding->binding_strength;
         binding->binding_strength += delta * hierarchy->config.binding_learning_rate;
-        binding->binding_strength = clamp_f(binding->binding_strength, 0.0F, 1.0F);
+        binding->binding_strength = nimcp_clampf(binding->binding_strength, 0.0F, 1.0F);
         binding->usage_count += 1.0F;
 
         if (binding->binding_strength > old_strength) {
@@ -896,7 +887,7 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
             goal->activation += goal->top_down_bias * (dt_ms / 1000.0F);
         }
 
-        goal->activation = clamp_f(goal->activation, 0.0F, 1.0F);
+        goal->activation = nimcp_clampf(goal->activation, 0.0F, 1.0F);
 
         // Decay top-down bias
         goal->top_down_bias *= 0.99F;
@@ -949,7 +940,7 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 
         // Decay activation
         motor->activation *= motor_decay;
-        motor->activation = clamp_f(motor->activation, 0.0F, 1.0F);
+        motor->activation = nimcp_clampf(motor->activation, 0.0F, 1.0F);
 
         // Decay prediction
         motor->predicted_activation *= motor_decay;

@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_substrate_bridge)
 //=============================================================================
@@ -152,13 +153,13 @@ int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables longer prediction horizons and better model precision */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.prediction_horizon = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.model_precision = nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.prediction_horizon = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.model_precision = nimcp_clampf(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables quality embeddings and update rate */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.embedding_quality = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.update_rate = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.embedding_quality = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.update_rate = nimcp_clampf(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.prediction_horizon + bridge->effects.model_precision +
                                         bridge->effects.embedding_quality + bridge->effects.update_rate) / 4.0f;
@@ -360,15 +361,15 @@ int jepa_substrate_bridge_training_step(jepa_substrate_bridge_t* bridge, uint32_
             /* Modulate training effects based on metabolic state */
             if (bridge->config.enable_atp_modulation) {
                 bridge->effects.prediction_horizon =
-                    nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min, 1.0f);
+                    nimcp_clampf(atp * bridge->config.atp_sensitivity, min, 1.0f);
                 bridge->effects.model_precision =
-                    nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min, 1.0f);
+                    nimcp_clampf(atp * 1.05f * bridge->config.atp_sensitivity, min, 1.0f);
             }
             if (bridge->config.enable_fatigue_modulation) {
                 bridge->effects.embedding_quality =
-                    nimcp_clamp_f(cap * bridge->config.fatigue_sensitivity, min, 1.0f);
+                    nimcp_clampf(cap * bridge->config.fatigue_sensitivity, min, 1.0f);
                 bridge->effects.update_rate =
-                    nimcp_clamp_f(cap * 0.9f * bridge->config.fatigue_sensitivity, min, 1.0f);
+                    nimcp_clampf(cap * 0.9f * bridge->config.fatigue_sensitivity, min, 1.0f);
             }
 
             bridge->effects.overall_capacity =

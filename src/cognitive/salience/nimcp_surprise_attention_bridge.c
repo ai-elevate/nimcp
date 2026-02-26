@@ -37,6 +37,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_att_bridge_health_agent = NULL;
@@ -120,16 +121,6 @@ struct surprise_att_bridge {
 
     bool initialized;
 };
-
-/* ============================================================================
- * Helpers
- * ============================================================================ */
-
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
 
 /* ============================================================================
  * Lifecycle API
@@ -293,14 +284,14 @@ int surprise_att_apply_boost(
         return 0;
     }
 
-    float mag = clamp_f(surprise_magnitude, 0.0f, 1.0f);
-    float boost = clamp_f(attention_boost, 0.0f, 5.0f);
+    float mag = nimcp_clampf(surprise_magnitude, 0.0f, 1.0f);
+    float boost = nimcp_clampf(attention_boost, 0.0f, 5.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
     /* Apply gain */
     float effective_boost = boost * bridge->config.boost_gain;
-    effective_boost = clamp_f(effective_boost, 0.0f, 5.0f);
+    effective_boost = nimcp_clampf(effective_boost, 0.0f, 5.0f);
 
     /* Set current boost (max of existing and new) */
     if (effective_boost > bridge->effects.current_attention_boost) {
@@ -344,7 +335,7 @@ int surprise_att_request_shift(
         return 0;
     }
 
-    float mag = clamp_f(surprise_magnitude, 0.0f, 1.0f);
+    float mag = nimcp_clampf(surprise_magnitude, 0.0f, 1.0f);
 
     /* Only shift on high surprise */
     if (mag < bridge->config.shift_threshold) {
@@ -381,7 +372,7 @@ int surprise_att_set_channel_sensitivity(
                              NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
                              "NULL bridge in set_channel_sensitivity");
 
-    float sens = clamp_f(sensitivity, 0.0f, 1.0f);
+    float sens = nimcp_clampf(sensitivity, 0.0f, 1.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -446,7 +437,7 @@ int surprise_att_bridge_update(surprise_att_bridge_t* bridge, float dt_seconds) 
          * overall baseline sensitivity reduces slightly (resource allocation)
          */
         float sensitivity = 1.0f - 0.3f * surprise_level;
-        sensitivity = clamp_f(sensitivity, bridge->config.sensitivity_floor, 1.0f);
+        sensitivity = nimcp_clampf(sensitivity, bridge->config.sensitivity_floor, 1.0f);
         bridge->effects.current_sensitivity = sensitivity;
         bridge->stats.sensitivity_updates++;
 

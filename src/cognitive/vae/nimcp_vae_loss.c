@@ -19,6 +19,7 @@
 #include <math.h>
 #include <float.h>
 #include <string.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -38,16 +39,6 @@
 static inline float safe_log(float x)
 {
     return logf(fmaxf(x, VAE_LOSS_LOG_EPSILON));
-}
-
-/**
- * @brief Clamp value to range
- */
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -229,8 +220,8 @@ float vae_loss_bce(const nimcp_tensor_t* x,
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < total; i++) {
-        float target = clampf(x_data[i], 0.0f, 1.0f);
-        float pred = clampf(recon_data[i], VAE_LOSS_LOG_EPSILON, 1.0f - VAE_LOSS_LOG_EPSILON);
+        float target = nimcp_clampf(x_data[i], 0.0f, 1.0f);
+        float pred = nimcp_clampf(recon_data[i], VAE_LOSS_LOG_EPSILON, 1.0f - VAE_LOSS_LOG_EPSILON);
 
         sum -= target * safe_log(pred) + (1.0f - target) * safe_log(1.0f - pred);
     }
@@ -267,7 +258,7 @@ float vae_loss_gaussian_nll(const nimcp_tensor_t* x,
         const float* log_var_data = (const float*)recon_log_var->data;
 
         for (uint32_t i = 0; i < total; i++) {
-            float log_var = clampf(log_var_data[i], -10.0f, 10.0f);
+            float log_var = nimcp_clampf(log_var_data[i], -10.0f, 10.0f);
             float var = expf(log_var);
             var = fmaxf(var, VAE_LOSS_MIN_VAR);
 
@@ -391,7 +382,7 @@ float vae_loss_kl_standard_normal(const nimcp_tensor_t* mu,
 
     /* KL[N(mu, sigma^2) || N(0,I)] = -0.5 * sum(1 + log_var - mu^2 - exp(log_var)) */
     for (uint32_t i = 0; i < total; i++) {
-        float lv = clampf(log_var_data[i], -10.0f, 10.0f);
+        float lv = nimcp_clampf(log_var_data[i], -10.0f, 10.0f);
         float kl_i = -0.5f * (1.0f + lv - mu_data[i] * mu_data[i] - expf(lv));
         kl_sum += kl_i;
     }
@@ -441,7 +432,7 @@ float vae_loss_kl_with_free_bits(const nimcp_tensor_t* mu,
         for (uint32_t b = 0; b < batch_size; b++) {
             for (uint32_t d = 0; d < latent_dim; d++) {
                 uint32_t idx = b * latent_dim + d;
-                float lv = clampf(log_var_data[idx], -10.0f, 10.0f);
+                float lv = nimcp_clampf(log_var_data[idx], -10.0f, 10.0f);
                 float kl_i = -0.5f * (1.0f + lv - mu_data[idx] * mu_data[idx] - expf(lv));
                 dim_kl[d] += kl_i;
             }
@@ -464,7 +455,7 @@ float vae_loss_kl_with_free_bits(const nimcp_tensor_t* mu,
     } else {
         /* Fallback: compute directly without per-dim tracking */
         for (uint32_t i = 0; i < total; i++) {
-            float lv = clampf(log_var_data[i], -10.0f, 10.0f);
+            float lv = nimcp_clampf(log_var_data[i], -10.0f, 10.0f);
             float kl_i = -0.5f * (1.0f + lv - mu_data[i] * mu_data[i] - expf(lv));
             kl_sum += fmaxf(free_bits, kl_i);
         }
@@ -498,7 +489,7 @@ int vae_loss_kl_per_dimension(const nimcp_tensor_t* mu,
     for (uint32_t b = 0; b < batch_size; b++) {
         for (uint32_t d = 0; d < latent_dim; d++) {
             uint32_t idx = b * latent_dim + d;
-            float lv = clampf(log_var_data[idx], -10.0f, 10.0f);
+            float lv = nimcp_clampf(log_var_data[idx], -10.0f, 10.0f);
             float kl_i = -0.5f * (1.0f + lv - mu_data[idx] * mu_data[idx] - expf(lv));
             kl_per_dim[d] += kl_i;
         }
@@ -918,8 +909,8 @@ int vae_loss_recon_gradient(const nimcp_tensor_t* x,
         case VAE_RECON_BCE:
             /* d(BCE)/d(recon) = -(x/recon - (1-x)/(1-recon)) / N */
             for (uint32_t i = 0; i < total; i++) {
-                float target = clampf(x_data[i], 0.0f, 1.0f);
-                float pred = clampf(recon_data[i], VAE_LOSS_LOG_EPSILON, 1.0f - VAE_LOSS_LOG_EPSILON);
+                float target = nimcp_clampf(x_data[i], 0.0f, 1.0f);
+                float pred = nimcp_clampf(recon_data[i], VAE_LOSS_LOG_EPSILON, 1.0f - VAE_LOSS_LOG_EPSILON);
                 grad_data[i] = (-(target / pred) + (1.0f - target) / (1.0f - pred)) / (float)total;
             }
             break;
@@ -983,7 +974,7 @@ int vae_loss_kl_gradient(const nimcp_tensor_t* mu,
     if (d_log_var && d_log_var->data) {
         float* d_lv_data = (float*)d_log_var->data;
         for (uint32_t i = 0; i < total; i++) {
-            float lv = clampf(log_var_data[i], -10.0f, 10.0f);
+            float lv = nimcp_clampf(log_var_data[i], -10.0f, 10.0f);
             d_lv_data[i] = 0.5f * scale * (expf(lv) - 1.0f);
         }
     }

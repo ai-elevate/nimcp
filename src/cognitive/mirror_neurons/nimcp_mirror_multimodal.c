@@ -18,6 +18,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_multimodal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -35,15 +36,6 @@ BRIDGE_BOILERPLATE(mirror_multimodal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Compute dot product of two float arrays
@@ -587,10 +579,10 @@ bool multimodal_set_weights(multimodal_action_features_t* features,
     mirror_multimodal_heartbeat("mirror_multi_multimodal_set_weigh", 0.0f);
 
 
-    features->visual_weight = clamp_f(visual_weight, 0.0f, 1.0f);
-    features->motor_weight = clamp_f(motor_weight, 0.0f, 1.0f);
-    features->auditory_weight = clamp_f(auditory_weight, 0.0f, 1.0f);
-    features->semantic_weight = clamp_f(semantic_weight, 0.0f, 1.0f);
+    features->visual_weight = nimcp_clampf(visual_weight, 0.0f, 1.0f);
+    features->motor_weight = nimcp_clampf(motor_weight, 0.0f, 1.0f);
+    features->auditory_weight = nimcp_clampf(auditory_weight, 0.0f, 1.0f);
+    features->semantic_weight = nimcp_clampf(semantic_weight, 0.0f, 1.0f);
 
     if (normalize) {
         normalize_weights(&features->visual_weight, &features->motor_weight,
@@ -620,7 +612,7 @@ float multimodal_compare(const multimodal_action_features_t* features_a,
     if (features_a->fused_valid && features_b->fused_valid) {
         float sim = cosine_similarity(features_a->fused, features_b->fused,
                                       NIMCP_MULTIMODAL_FUSED_DIM);
-        return clamp_f((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
+        return nimcp_clampf((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
     }
 
     /* Otherwise compute weighted modality similarities */
@@ -668,7 +660,7 @@ float multimodal_compare_visual(const multimodal_action_features_t* features_a,
     if (len == 0) return 0.0f;
 
     float sim = cosine_similarity(flat_a, flat_b, len);
-    return clamp_f((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
+    return nimcp_clampf((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
 }
 
 float multimodal_compare_motor(const multimodal_action_features_t* features_a,
@@ -693,7 +685,7 @@ float multimodal_compare_motor(const multimodal_action_features_t* features_a,
     if (len == 0) return 0.0f;
 
     float sim = cosine_similarity(flat_a, flat_b, len);
-    return clamp_f((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
+    return nimcp_clampf((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
 }
 
 float multimodal_compare_auditory(const multimodal_action_features_t* features_a,
@@ -718,7 +710,7 @@ float multimodal_compare_auditory(const multimodal_action_features_t* features_a
     if (len == 0) return 0.0f;
 
     float sim = cosine_similarity(flat_a, flat_b, len);
-    return clamp_f((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
+    return nimcp_clampf((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
 }
 
 float multimodal_compare_semantic(const multimodal_action_features_t* features_a,
@@ -740,7 +732,7 @@ float multimodal_compare_semantic(const multimodal_action_features_t* features_a
     if (len == 0) return 0.0f;
 
     float sim = cosine_similarity(flat_a, flat_b, len);
-    return clamp_f((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
+    return nimcp_clampf((sim + 1.0f) / 2.0f, 0.0f, 1.0f);
 }
 
 bool multimodal_check_coherence(const multimodal_action_features_t* features,
@@ -775,7 +767,7 @@ bool multimodal_check_coherence(const multimodal_action_features_t* features,
 
         /* Both high or both low = coherent */
         float diff = fabsf(motion_mag - effector_act);
-        vm_coherence = 1.0f - clamp_f(diff, 0.0f, 1.0f);
+        vm_coherence = 1.0f - nimcp_clampf(diff, 0.0f, 1.0f);
     }
 
     /* Semantic-Action coherence: semantic features should match action category */

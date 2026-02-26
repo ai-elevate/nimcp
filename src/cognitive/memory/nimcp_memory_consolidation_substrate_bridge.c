@@ -32,6 +32,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory_consolidation_substrate_bridge)
 //=============================================================================
@@ -89,24 +90,11 @@ BRIDGE_DEFINE_SECURITY_SETTERS(consolidation_substrate_bridge)
  * ============================================================================ */
 
 /**
- * Clamp value to range [min, max]
- *
- * WHAT: Constrain value within bounds
- * WHY: Ensure effects stay within valid ranges
- * HOW: Return min if value < min, max if value > max, otherwise value
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * Compute consolidation rate from substrate state
  *
  * WHAT: Calculate overall consolidation speed based on ATP and metabolic capacity
  * WHY: Memory consolidation is ATP-intensive, requiring sustained energy supply
- * HOW: consolidation_rate = clamp(atp_level * metabolic_capacity, 0.1, 1.0)
+ * HOW: consolidation_rate = nimcp_clampf(atp_level * metabolic_capacity, 0.1, 1.0)
  *
  * BIOLOGICAL BASIS: Consolidation requires continuous ATP for protein synthesis,
  * synaptic remodeling, and hippocampal replay. Low ATP severely impairs consolidation.
@@ -123,7 +111,7 @@ static float compute_consolidation_rate(
     float rate = base_rate * atp_sensitivity;
 
     /* Clamp to valid range (min 0.1 to prevent complete halt) */
-    return clamp(rate, 0.1f, 1.0f);
+    return nimcp_clampf(rate, 0.1f, 1.0f);
 }
 
 /**
@@ -131,7 +119,7 @@ static float compute_consolidation_rate(
  *
  * WHAT: Calculate LTP-dependent protein synthesis rate
  * WHY: Late-phase LTP requires protein synthesis, which is very ATP-intensive
- * HOW: protein_synthesis_rate = clamp(atp_level * glucose_level, 0.0, 1.0)
+ * HOW: protein_synthesis_rate = nimcp_clampf(atp_level * glucose_level, 0.0, 1.0)
  *
  * BIOLOGICAL BASIS: Protein synthesis for LTP consolidation requires both ATP
  * and glucose. Below ATP 0.5, protein synthesis is severely impaired.
@@ -153,7 +141,7 @@ static float compute_protein_synthesis_rate(
     }
 
     /* Clamp to valid range */
-    return clamp(rate, 0.0f, 1.0f);
+    return nimcp_clampf(rate, 0.0f, 1.0f);
 }
 
 /**
@@ -161,7 +149,7 @@ static float compute_protein_synthesis_rate(
  *
  * WHAT: Calculate hippocampal replay efficiency
  * WHY: Replay requires metabolic energy and oxygen supply
- * HOW: replay_efficiency = clamp(metabolic_capacity * o2_factor, 0.2, 1.0)
+ * HOW: replay_efficiency = nimcp_clampf(metabolic_capacity * o2_factor, 0.2, 1.0)
  *
  * BIOLOGICAL BASIS: Hippocampal replay during sleep reactivates memory traces.
  * Hypoxia and metabolic stress reduce replay quality and frequency.
@@ -183,7 +171,7 @@ static float compute_replay_efficiency(
     }
 
     /* Clamp to valid range (min 0.2 to maintain some replay) */
-    return clamp(efficiency, 0.2f, 1.0f);
+    return nimcp_clampf(efficiency, 0.2f, 1.0f);
 }
 
 /**
@@ -191,7 +179,7 @@ static float compute_replay_efficiency(
  *
  * WHAT: Calculate systems consolidation transfer rate
  * WHY: Transferring memories from hippocampus to cortex requires sustained ATP
- * HOW: transfer_rate = clamp((atp_level + o2_saturation) / 2.0, 0.2, 1.0)
+ * HOW: transfer_rate = nimcp_clampf((atp_level + o2_saturation) / 2.0, 0.2, 1.0)
  *
  * BIOLOGICAL BASIS: Systems consolidation is a gradual process requiring
  * coordinated activity between hippocampus and cortex, consuming metabolic energy.
@@ -208,7 +196,7 @@ static float compute_transfer_rate(
     float rate = base_rate * (2.0f - stress_sensitivity) / 2.0f;
 
     /* Clamp to valid range (min 0.2 to maintain some transfer) */
-    return clamp(rate, 0.2f, 1.0f);
+    return nimcp_clampf(rate, 0.2f, 1.0f);
 }
 
 /**

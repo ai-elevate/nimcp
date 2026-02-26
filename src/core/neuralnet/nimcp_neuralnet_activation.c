@@ -9,6 +9,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 
 #define LOG_MODULE "neuralnet_activation"
@@ -119,10 +120,10 @@ float neural_network_compute_activation(neuron_t* neuron, float input)
 
     // Initialize strategy table (thread-safe static initialization)
     static activation_strategy_table_t table;
-    static bool initialized = false;
-    if (!initialized) {
+    static _Atomic bool initialized = false;
+    if (!atomic_load(&initialized)) {
         init_activation_strategies(&table);
-        initialized = true;
+        atomic_store(&initialized, true);
     }
 
     // Validate activation type

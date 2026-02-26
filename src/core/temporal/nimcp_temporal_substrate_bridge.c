@@ -10,6 +10,7 @@
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(temporal_substrate_bridge)
 
@@ -136,9 +137,9 @@ int temporal_substrate_bridge_update(temporal_substrate_bridge_t* bridge) {
      * and object recognition quality.
      */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.language_processing = nimcp_clamp_f(
+        bridge->effects.language_processing = nimcp_clampf(
             atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.object_recognition = nimcp_clamp_f(
+        bridge->effects.object_recognition = nimcp_clampf(
             atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
@@ -147,9 +148,9 @@ int temporal_substrate_bridge_update(temporal_substrate_bridge_t* bridge) {
      * and auditory processing (temporal attention).
      */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.semantic_access = nimcp_clamp_f(
+        bridge->effects.semantic_access = nimcp_clampf(
             metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.auditory_processing = nimcp_clamp_f(
+        bridge->effects.auditory_processing = nimcp_clampf(
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 

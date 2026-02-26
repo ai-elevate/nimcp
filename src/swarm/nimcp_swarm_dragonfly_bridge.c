@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_dragonfly_bridge)
 
@@ -57,12 +58,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 static inline float vec3_length(const float v[3]) {
@@ -452,7 +447,7 @@ int swarm_dragonfly_bridge_share_target(
 
         item.item_id = target->target_id;
         item.salience = target->priority + bridge->config.salience_boost;
-        item.salience = clamp_f(item.salience, 0.0f, 1.0f);
+        item.salience = nimcp_clampf(item.salience, 0.0f, 1.0f);
         item.type = (workspace_item_type_t)(WORKSPACE_ITEM_CUSTOM +
                     WORKSPACE_ITEM_TARGET_BASE);
         item.source_drone = bridge->config.local_drone_id;

@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_wm_health_agent = NULL;
@@ -235,15 +236,6 @@ static int32_t find_min_salience_index(financial_wm_bridge_t* bridge) {
     return (int32_t)min_idx;
 }
 
-/**
- * @brief Clamp float value to range
- */
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
-
 //=============================================================================
 // Lifecycle Functions
 //=============================================================================
@@ -444,7 +436,7 @@ int financial_wm_bridge_add(financial_wm_bridge_t* bridge,
     wm_heartbeat_instance(bridge, "wm_add", 0.0f);
 
     /* Validate item salience */
-    float salience = clampf(item->salience, 0.0f, 1.0f);
+    float salience = nimcp_clampf(item->salience, 0.0f, 1.0f);
     if (salience < 0.001f) {
         wm_present_antigen(bridge, "zero_salience_item", 2);
     }
@@ -587,7 +579,7 @@ int financial_wm_bridge_refresh(financial_wm_bridge_t* bridge, uint32_t item_ind
     /* Boost salience back to 1.0 (or close to it) */
     float boost = 1.0f - bridge->items[item_index].salience;
     bridge->items[item_index].salience += boost * 0.8f;  /* 80% recovery */
-    bridge->items[item_index].salience = clampf(bridge->items[item_index].salience, 0.0f, 1.0f);
+    bridge->items[item_index].salience = nimcp_clampf(bridge->items[item_index].salience, 0.0f, 1.0f);
 
     bridge->stats.refreshes++;
 

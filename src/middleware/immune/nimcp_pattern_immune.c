@@ -21,25 +21,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pattern_immune)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get max inflammation level from immune system

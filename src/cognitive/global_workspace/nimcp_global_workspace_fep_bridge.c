@@ -63,6 +63,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(global_workspace_fep_bridge)
 //=============================================================================
@@ -118,17 +119,6 @@ static inline void global_workspace_fep_bridge_heartbeat_instance(
  * ============================================================================ */
 
 /**
- * WHAT: Clamp float to range
- * WHY:  Prevent values from exceeding valid bounds
- * HOW:  Return min/max if outside range, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * WHAT: Compute model evidence from FEP free energy
  * WHY:  Evidence = exp(-F) measures how well model explains data
  * HOW:  Transform free energy to evidence scale
@@ -139,7 +129,7 @@ static inline float clamp_f(float value, float min, float max) {
  */
 static float compute_model_evidence(float free_energy) {
     /* Prevent overflow for very negative free energy */
-    float clamped_fe = clamp_f(free_energy, -50.0f, 50.0f);
+    float clamped_fe = nimcp_clampf(free_energy, -50.0f, 50.0f);
     return expf(-clamped_fe);
 }
 
@@ -158,8 +148,8 @@ static float compute_competition_strength(
     float precision_weight,
     float evidence_weight
 ) {
-    float precision_norm = clamp_f(precision, 0.0f, 1.0f);
-    float evidence_norm = clamp_f(evidence, 0.0f, 1.0f);
+    float precision_norm = nimcp_clampf(precision, 0.0f, 1.0f);
+    float evidence_norm = nimcp_clampf(evidence, 0.0f, 1.0f);
     return precision_weight * precision_norm + evidence_weight * evidence_norm;
 }
 
@@ -597,7 +587,7 @@ int global_workspace_fep_update_priors_from_broadcast(
 
             top_level->beliefs.precision[i] *= precision_boost;
             /* Clamp to prevent runaway precision */
-            top_level->beliefs.precision[i] = clamp_f(
+            top_level->beliefs.precision[i] = nimcp_clampf(
                 top_level->beliefs.precision[i],
                 0.01f,
                 100.0f

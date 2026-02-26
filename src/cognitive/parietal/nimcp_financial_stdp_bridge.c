@@ -35,6 +35,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_stdp)
 
@@ -156,16 +157,6 @@ struct financial_stdp_bridge {
     fin_stdp_signal_callback_t signal_callback;
     void* signal_callback_data;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline float expf_safe(float x) {
     /* Clamp to avoid overflow/underflow */
@@ -873,7 +864,7 @@ int financial_stdp_bridge_learn_correlation(
     float dw = compute_stdp_dw(&bridge->config, dt_ms, signal->strength, outcome->outcome);
 
     /* Apply weight change with bounds */
-    corr->weight = clampf(corr->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+    corr->weight = nimcp_clampf(corr->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
     /* Update correlation statistics */
     corr->update_count++;
@@ -885,10 +876,10 @@ int financial_stdp_bridge_learn_correlation(
 
     /* Update predictive accuracy estimate */
     if (dw > 0.0f) {
-        corr->predictive_accuracy = clampf(
+        corr->predictive_accuracy = nimcp_clampf(
             corr->predictive_accuracy + 0.01f, 0.0f, 1.0f);
     } else if (dw < 0.0f) {
-        corr->predictive_accuracy = clampf(
+        corr->predictive_accuracy = nimcp_clampf(
             corr->predictive_accuracy - 0.01f, 0.0f, 1.0f);
     }
 
@@ -1084,7 +1075,7 @@ int financial_stdp_bridge_apply_homeostasis(financial_stdp_bridge_t* bridge) {
     float target = bridge->config.target_mean_weight;
     float tau = bridge->config.homeostatic_tau_ms;
     float scale = 1.0f + (target - current_mean) / tau;
-    scale = clampf(scale, 0.9f, 1.1f);
+    scale = nimcp_clampf(scale, 0.9f, 1.1f);
 
     /* Apply scaling */
     for (uint32_t i = 0; i < bridge->max_correlations; i++) {
@@ -1096,7 +1087,7 @@ int financial_stdp_bridge_apply_homeostasis(financial_stdp_bridge_t* bridge) {
 
         if (bridge->correlations[i].in_use) {
             fin_stdp_correlation_t* c = &bridge->correlations[i].correlation;
-            c->weight = clampf(c->weight * scale,
+            c->weight = nimcp_clampf(c->weight * scale,
                                bridge->config.weight_min,
                                bridge->config.weight_max);
         }

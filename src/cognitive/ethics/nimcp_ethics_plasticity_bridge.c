@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(ethics_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -61,16 +62,6 @@ struct ethics_plasticity_bridge {
     /* Statistics */
     ethics_plasticity_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static ethics_plasticity_synapse_t* find_synapse(
     ethics_plasticity_bridge_t* bridge,
@@ -301,7 +292,7 @@ int ethics_plasticity_register_synapse(
     ethics_plasticity_synapse_t* synapse = &bridge->synapses[bridge->synapse_count];
     synapse->synapse_id = synapse_id;
     synapse->type = type;
-    synapse->weight = clamp_f(initial_weight,
+    synapse->weight = nimcp_clampf(initial_weight,
                               bridge->config.weight_min,
                               bridge->config.weight_max);
     synapse->initial_weight = synapse->weight;
@@ -421,8 +412,8 @@ int ethics_plasticity_learn(
         timestamp = nimcp_time_get_us();
     }
 
-    context_activation = clamp_f(context_activation, 0.0f, 1.0f);
-    outcome_value = clamp_f(outcome_value, -1.0f, 1.0f);
+    context_activation = nimcp_clampf(context_activation, 0.0f, 1.0f);
+    outcome_value = nimcp_clampf(outcome_value, -1.0f, 1.0f);
 
     /* Compute learning rate with modulation */
     float lr = bridge->config.base_learning_rate *
@@ -492,7 +483,7 @@ int ethics_plasticity_learn(
 
             /* Apply update */
             syn->weight += delta;
-            syn->weight = clamp_f(syn->weight,
+            syn->weight = nimcp_clampf(syn->weight,
                                   bridge->config.weight_min,
                                   bridge->config.weight_max);
 
@@ -585,7 +576,7 @@ float ethics_plasticity_apply_stdp(
 
     float old_weight = syn->weight;
     syn->weight += delta;
-    syn->weight = clamp_f(syn->weight,
+    syn->weight = nimcp_clampf(syn->weight,
                           bridge->config.weight_min,
                           bridge->config.weight_max);
 
@@ -613,7 +604,7 @@ int ethics_plasticity_apply_reward(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
+    reward = nimcp_clampf(reward, -1.0f, 1.0f);
 
     /* Update dopamine level */
     bridge->dopamine_level = 0.8f * bridge->dopamine_level + 0.2f * (reward + 1.0f) / 2.0f;
@@ -633,7 +624,7 @@ int ethics_plasticity_apply_reward(
         if (syn->eligibility_trace > 0.01f && !syn->is_protected) {
             float delta = lr * syn->eligibility_trace * reward;
             syn->weight += delta;
-            syn->weight = clamp_f(syn->weight,
+            syn->weight = nimcp_clampf(syn->weight,
                                   bridge->config.weight_min,
                                   bridge->config.weight_max);
             bridge->stats.weight_updates++;
@@ -705,7 +696,7 @@ int ethics_plasticity_update_bcm(
 
         /* Update BCM threshold towards average activity */
         syn->bcm_threshold += alpha * (syn->avg_activity - syn->bcm_threshold);
-        syn->bcm_threshold = clamp_f(syn->bcm_threshold, 0.1f, 0.9f);
+        syn->bcm_threshold = nimcp_clampf(syn->bcm_threshold, 0.1f, 0.9f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -728,7 +719,7 @@ int ethics_plasticity_homeostatic_update(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    target_activity = clamp_f(target_activity, 0.0f, 1.0f);
+    target_activity = nimcp_clampf(target_activity, 0.0f, 1.0f);
 
     /* Compute current average weight */
     float mean_weight = 0.0f;
@@ -747,7 +738,7 @@ int ethics_plasticity_homeostatic_update(
 
     /* Scale weights to achieve target */
     float scale = bridge->config.target_sensitivity / (mean_weight + 0.001f);
-    scale = clamp_f(scale, 0.9f, 1.1f); /* Limit scaling */
+    scale = nimcp_clampf(scale, 0.9f, 1.1f); /* Limit scaling */
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -758,7 +749,7 @@ int ethics_plasticity_homeostatic_update(
 
         if (!bridge->synapses[i].is_protected) {
             bridge->synapses[i].weight *= scale;
-            bridge->synapses[i].weight = clamp_f(
+            bridge->synapses[i].weight = nimcp_clampf(
                 bridge->synapses[i].weight,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -806,7 +797,7 @@ int ethics_plasticity_consolidate(ethics_plasticity_bridge_t* bridge) {
                 syn->weight -= 0.01f * (syn->weight - bridge->config.weight_min);
             }
 
-            syn->weight = clamp_f(syn->weight,
+            syn->weight = nimcp_clampf(syn->weight,
                                   bridge->config.weight_min,
                                   bridge->config.weight_max);
         }

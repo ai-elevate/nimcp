@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_hypothalamus_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -45,16 +46,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(entorhinal_hypothalamus_bridge, MESH_ADAPTER_CATEGO
 #define DEFAULT_VALUE_MAP_UPDATE_RATE_HZ        5.0f
 #define DEFAULT_HIGH_MOTIVATION_THRESHOLD       0.7f
 #define DEFAULT_STRESS_IMPAIRMENT_THRESHOLD     0.8f
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 static float inverted_u_stress_modulation(float stress_level) {
     /* Yerkes-Dodson law: moderate stress enhances memory, high stress impairs */
@@ -282,7 +273,7 @@ int entorhinal_hypothalamus_bridge_update(
         float arousal_factor = 0.5f + bridge->motivation.arousal_level * 0.5f;
 
         bridge->encoding_modulation = (1.0f + motivation_boost) * arousal_factor;
-        bridge->encoding_modulation = clamp_01(bridge->encoding_modulation * 0.5f + 0.5f);
+        bridge->encoding_modulation = nimcp_clamp01(bridge->encoding_modulation * 0.5f + 0.5f);
     }
 
     /* Compute stress modulation (inverted U) */
@@ -307,7 +298,7 @@ int entorhinal_hypothalamus_bridge_update(
     if (bridge->config.enable_reward_learning) {
         float reward_factor = 1.0f + bridge->motivation.reward_prediction_error *
             bridge->config.reward_plasticity_weight;
-        bridge->plasticity_modulation *= clamp_01(reward_factor);
+        bridge->plasticity_modulation *= nimcp_clamp01(reward_factor);
     }
 
     /* Decay value map */

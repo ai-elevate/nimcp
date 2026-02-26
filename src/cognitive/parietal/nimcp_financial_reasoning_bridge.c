@@ -37,6 +37,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_reasoning)
 
@@ -121,16 +122,6 @@ struct financial_reasoning_bridge {
     fin_reasoning_signal_callback_t signal_callback;
     void* signal_callback_data;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 /* ============================================================================
  * KG Wiring Message Types
@@ -1025,7 +1016,7 @@ int financial_reasoning_bridge_assert_numeric(
     strncpy(fact.name, name, FIN_REASONING_FACT_LEN - 1);
     fact.value = value;
     fact.is_boolean = false;
-    fact.confidence = clampf(confidence, 0.0f, 1.0f);
+    fact.confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     return financial_reasoning_bridge_assert_fact(bridge, &fact);
 }
@@ -1045,7 +1036,7 @@ int financial_reasoning_bridge_assert_bool(
     strncpy(fact.name, name, FIN_REASONING_FACT_LEN - 1);
     fact.is_boolean = true;
     fact.bool_value = value;
-    fact.confidence = clampf(confidence, 0.0f, 1.0f);
+    fact.confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     return financial_reasoning_bridge_assert_fact(bridge, &fact);
 }
@@ -1600,7 +1591,7 @@ int financial_reasoning_bridge_verify_condition(
     /* Compute confidence based on result and rules checked */
     if (result == FIN_VERIFY_TRUE) {
         response->confidence = 0.9f - (0.1f * rules_checked / 10.0f);
-        response->confidence = clampf(response->confidence, 0.5f, 0.95f);
+        response->confidence = nimcp_clampf(response->confidence, 0.5f, 0.95f);
     } else if (result == FIN_VERIFY_PARTIAL) {
         response->confidence = 0.5f;
     } else if (result == FIN_VERIFY_FALSE) {

@@ -23,21 +23,11 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_immune_bridge_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* Alias: tests reference fep_immune_bridge_set_health_agent (without _instance suffix) */
 void fep_immune_bridge_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static uint64_t get_time_ms(void) {
     struct timespec ts;
@@ -349,7 +339,7 @@ int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
                                      (float)(i + 1) / (float)pattern_len);
                 }
 
-                pattern[i] = (uint8_t)(clamp_f(beliefs->mean[i], 0.0f, 1.0f) * 255);
+                pattern[i] = (uint8_t)(nimcp_clampf(beliefs->mean[i], 0.0f, 1.0f) * 255);
             }
 
             /* This would create immune memory, but API may differ */
@@ -491,7 +481,7 @@ int fep_immune_get_precision_modifier(
         bridge->cytokine_effects.ifn_gamma_precision_reduction +
         bridge->cytokine_effects.il10_precision_boost;
 
-    *modifier = clamp_f(base + cytokine_effect, 0.1f, 1.5f);
+    *modifier = nimcp_clampf(base + cytokine_effect, 0.1f, 1.5f);
     return 0;
 }
 
@@ -517,7 +507,7 @@ int fep_immune_get_learning_modifier(
         bridge->cytokine_effects.il1_learning_impairment +
         bridge->cytokine_effects.il10_learning_boost;
 
-    *modifier = clamp_f(base + cytokine_effect, 0.1f, 1.5f);
+    *modifier = nimcp_clampf(base + cytokine_effect, 0.1f, 1.5f);
     return 0;
 }
 
@@ -731,7 +721,7 @@ int fep_immune_bridge_update(
 
     /* 4. Update recovery progress */
     if (bridge->state.inflammation_level == INFLAMMATION_NONE) {
-        bridge->state.recovery_progress = clamp_f(
+        bridge->state.recovery_progress = nimcp_clampf(
             bridge->state.recovery_progress + bridge->config.recovery_rate * (float)delta_ms / 1000.0f,
             0.0f, 1.0f);
     } else {

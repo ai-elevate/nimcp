@@ -31,6 +31,7 @@
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(fin_mkt, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -290,16 +291,6 @@ static int compare_floats_asc(const void* a, const void* b) {
     if (fa < fb) return -1;
     if (fa > fb) return 1;
     return 0;
-}
-
-//=============================================================================
-// Internal Helper: Clamp
-//=============================================================================
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 //=============================================================================
@@ -1018,7 +1009,7 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
         float latest_sma = sma_buf[sma_len - 1];
         if (latest_sma > FIN_MKT_EPSILON) {
             float mom_ratio = prices[len - 1] / latest_sma;
-            momentum_contrib = clampf((mom_ratio - 0.9f) / 0.2f * 100.0f, 0.0f, 100.0f);
+            momentum_contrib = nimcp_clampf((mom_ratio - 0.9f) / 0.2f * 100.0f, 0.0f, 100.0f);
         }
     }
 
@@ -1034,7 +1025,7 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
         older_vol /= 15.0f;
         if (older_vol > FIN_MKT_EPSILON) {
             float vratio = recent_vol / older_vol;
-            volume_contrib = clampf(vratio * 50.0f, 0.0f, 100.0f);
+            volume_contrib = nimcp_clampf(vratio * 50.0f, 0.0f, 100.0f);
         }
     }
 
@@ -1050,7 +1041,7 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
         }
         float realized_vol = sqrtf(sum_r2 / 20.0f) * sqrtf((float)FIN_MKT_TRADING_DAYS);
         /* Higher vol -> lower score (more fear). Typical vol range 0.1 to 0.5 */
-        vol_contrib = clampf((0.5f - realized_vol) / 0.4f * 100.0f, 0.0f, 100.0f);
+        vol_contrib = nimcp_clampf((0.5f - realized_vol) / 0.4f * 100.0f, 0.0f, 100.0f);
         out_sentiment->vix_equivalent = realized_vol * 100.0f;
     }
 
@@ -1060,7 +1051,7 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
 
     /* Apply inflammation: increases fear */
     fear_greed -= mkt->inflammation * mkt->config.inflammation_sensitivity * 10.0f;
-    fear_greed = clampf(fear_greed, 0.0f, 100.0f);
+    fear_greed = nimcp_clampf(fear_greed, 0.0f, 100.0f);
 
     out_sentiment->fear_greed_index = fear_greed;
     out_sentiment->momentum_score = (momentum_contrib - 50.0f) / 50.0f;
@@ -1079,7 +1070,7 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
     float spread = fabsf(rsi_contrib - momentum_contrib)
                    + fabsf(rsi_contrib - vol_contrib)
                    + fabsf(momentum_contrib - vol_contrib);
-    out_sentiment->confidence = clampf(1.0f - spread / 300.0f, 0.2f, 1.0f);
+    out_sentiment->confidence = nimcp_clampf(1.0f - spread / 300.0f, 0.2f, 1.0f);
 
     mkt->stats.sentiment_analyses++;
     fin_mkt_heartbeat("analyze_sentiment_done", 1.0f);
@@ -1279,7 +1270,7 @@ int financial_market_detect_regime_fuzzy(financial_market_eng_t* mkt,
             float l = long_sma_buf[ll - 1];
             if (l > FIN_MKT_EPSILON) {
                 /* ratio of 1.0 = 50, range ~0.9-1.1 mapped to 0-100 */
-                trend_strength = clampf(((s / l) - 0.9f) / 0.2f * 100.0f, 0.0f, 100.0f);
+                trend_strength = nimcp_clampf(((s / l) - 0.9f) / 0.2f * 100.0f, 0.0f, 100.0f);
             }
         }
     }
@@ -1297,13 +1288,13 @@ int financial_market_detect_regime_fuzzy(financial_market_eng_t* mkt,
     float vol = sqrtf(sum_r2 / (float)count) * sqrtf((float)FIN_MKT_TRADING_DAYS);
     vol *= (1.0f + mkt->inflammation * mkt->config.inflammation_sensitivity * 0.15f);
     /* Map vol: 0.1=low(10), 0.3=medium(50), 0.5+=high(100) */
-    float vol_score = clampf((vol - 0.1f) / 0.4f * 100.0f, 0.0f, 100.0f);
+    float vol_score = nimcp_clampf((vol - 0.1f) / 0.4f * 100.0f, 0.0f, 100.0f);
 
     /* Momentum: recent returns */
     float momentum_score = 50.0f;
     if (len >= 10 && prices[len - 10] > FIN_MKT_EPSILON) {
         float mom = (prices[len - 1] - prices[len - 10]) / prices[len - 10];
-        momentum_score = clampf((mom + 0.1f) / 0.2f * 100.0f, 0.0f, 100.0f);
+        momentum_score = nimcp_clampf((mom + 0.1f) / 0.2f * 100.0f, 0.0f, 100.0f);
     }
 
     /* Composite index combining trend, vol, and momentum */
@@ -1670,7 +1661,7 @@ int financial_market_set_inflammation(financial_market_eng_t* mkt, float level) 
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_market_set_inflammation: mkt is NULL");
         return -1;
     }
-    mkt->inflammation = clampf(level, 0.0f, 1.0f);
+    mkt->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return 0;
 }
 
@@ -1680,7 +1671,7 @@ int financial_market_set_fatigue(financial_market_eng_t* mkt, float level) {
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_market_set_fatigue: mkt is NULL");
         return -1;
     }
-    mkt->fatigue = clampf(level, 0.0f, 1.0f);
+    mkt->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return 0;
 }
 

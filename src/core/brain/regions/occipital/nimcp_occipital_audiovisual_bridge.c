@@ -37,6 +37,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_audiovisual_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -353,7 +354,7 @@ static float calculate_temporal_coherence(float visual_time_ms,
     float sigma = 50.0f; /* 50ms tolerance */
     float coherence = expf(-(error * error) / (2.0f * sigma * sigma));
 
-    return nimcp_clamp_f(coherence, 0.0f, 1.0f);
+    return nimcp_clampf(coherence, 0.0f, 1.0f);
 }
 
 /*=============================================================================
@@ -729,7 +730,7 @@ int occipital_av_bridge_update(occipital_audiovisual_bridge_t* bridge) {
     float lip_saliency = bridge->effects.lip_phoneme_confidence;
     float gesture_saliency = bridge->effects.gesture_speech_binding * 0.5f;
     bridge->effects.visual_speech_saliency =
-        nimcp_clamp_f(lip_saliency + gesture_saliency, 0.0f, 1.0f);
+        nimcp_clampf(lip_saliency + gesture_saliency, 0.0f, 1.0f);
 
     /* Multimodal integration quality */
     float lip_audio_sync = bridge->effects.lip_audio_coherence;
@@ -848,7 +849,7 @@ int occipital_av_predict_audio_timing(
     );
 
     /* High velocity = phoneme transition imminent */
-    float urgency = nimcp_clamp_f(velocity_mag * 2.0f, 0.0f, 1.0f);
+    float urgency = nimcp_clampf(velocity_mag * 2.0f, 0.0f, 1.0f);
 
     /* Predicted onset = now + learned offset, adjusted by urgency */
     float base_offset = bridge->learned_offset_ms;
@@ -930,7 +931,7 @@ int occipital_av_report_audio_event(
         /* Update learned offset with small learning rate */
         float offset_error = actual_onset_ms - pred->predicted_onset_ms;
         bridge->learned_offset_ms += 0.1f * offset_error;
-        bridge->learned_offset_ms = nimcp_clamp_f(
+        bridge->learned_offset_ms = nimcp_clampf(
             bridge->learned_offset_ms, 50.0f, 300.0f);
 
         /* Track correct predictions */

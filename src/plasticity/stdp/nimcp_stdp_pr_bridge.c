@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp_pr_bridge)
 
@@ -58,12 +59,6 @@ static uint64_t get_timestamp_ms(void) {
 #else
     return 0;
 #endif
-}
-
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 static float lerp(float a, float b, float t) {
@@ -218,7 +213,7 @@ int stdp_pr_notify_ltp(stdp_pr_bridge_t bridge,
 
     /* Compute entanglement increase */
     float entangle_delta = weight_change * bridge->config.ltp_entangle_gain;
-    entangle_delta = clamp_float(entangle_delta, 0.0f,
+    entangle_delta = nimcp_clampf(entangle_delta, 0.0f,
                                  STDP_PR_ENTANGLE_MAX - STDP_PR_ENTANGLE_MIN);
 
     /* Update state */
@@ -325,7 +320,7 @@ int stdp_pr_notify_burst(stdp_pr_bridge_t bridge,
     float consolidation_boost = 0.0f;
     if (bridge->config.enable_burst_consolidation) {
         consolidation_boost = fabsf(weight_change) * bridge->config.burst_consolidation_gain;
-        consolidation_boost = clamp_float(consolidation_boost, 0.0f, 0.1f);
+        consolidation_boost = nimcp_clampf(consolidation_boost, 0.0f, 0.1f);
     }
 
     /* Update state */
@@ -473,7 +468,7 @@ int stdp_pr_apply_resonance_modulation(stdp_pr_bridge_t bridge,
         return -1;
     }
 
-    resonance = clamp_float(resonance, 0.0f, 1.0f);
+    resonance = nimcp_clampf(resonance, 0.0f, 1.0f);
 
     float factor = lerp(bridge->config.resonance_lr_min,
                         bridge->config.resonance_lr_max,
@@ -503,7 +498,7 @@ int stdp_pr_apply_consolidation_gate(stdp_pr_bridge_t bridge,
         return -1;
     }
 
-    consolidation = clamp_float(consolidation, 0.0f, 1.0f);
+    consolidation = nimcp_clampf(consolidation, 0.0f, 1.0f);
 
     float gate = 1.0f;
     if (bridge->config.enable_consolidation_gate) {
@@ -572,8 +567,8 @@ int stdp_pr_compute_modulation(stdp_pr_bridge_t bridge,
         return -1;
     }
 
-    resonance = clamp_float(resonance, 0.0f, 1.0f);
-    consolidation = clamp_float(consolidation, 0.0f, 1.0f);
+    resonance = nimcp_clampf(resonance, 0.0f, 1.0f);
+    consolidation = nimcp_clampf(consolidation, 0.0f, 1.0f);
     if (tier >= STDP_PR_TIER_COUNT) tier = STDP_PR_TIER_Z0;
 
     effect->resonance_score = resonance;
@@ -693,7 +688,7 @@ int stdp_pr_bridge_update(stdp_pr_bridge_t bridge, float dt_ms) {
     float res_factor = bridge->state.current_resonance;
 
     bridge->state.bridge_coherence = 0.5f * activity_factor + 0.5f * res_factor;
-    bridge->state.bridge_coherence = clamp_float(bridge->state.bridge_coherence, 0.0f, 1.0f);
+    bridge->state.bridge_coherence = nimcp_clampf(bridge->state.bridge_coherence, 0.0f, 1.0f);
 
     nimcp_platform_mutex_unlock(&bridge->base.mutex);
 

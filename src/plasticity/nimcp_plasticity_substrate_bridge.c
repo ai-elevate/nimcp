@@ -19,6 +19,7 @@
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(plasticity_substrate_bridge)
 
@@ -55,20 +56,6 @@ static float compute_q10_factor(float current_temp, float reference_temp, float 
     float temp_diff = current_temp - reference_temp;
     float exponent = temp_diff / 10.0f;
     return powf(q10, exponent);
-}
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent runaway modulation
- * HOW:  Standard clamping
- */
-static float clamp_f(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /* ============================================================================
@@ -333,7 +320,7 @@ int plasticity_substrate_update_stdp(plasticity_substrate_bridge_t* bridge)
         temp_factor = 1.0f + (temp_factor - 1.0f) * bridge->config.temperature_sensitivity;
 
         /* Clamp to valid range */
-        bridge->effects.stdp.temperature_factor = clamp_f(
+        bridge->effects.stdp.temperature_factor = nimcp_clampf(
             temp_factor,
             PLASTICITY_STDP_WINDOW_MIN,
             PLASTICITY_STDP_WINDOW_MAX
@@ -376,7 +363,7 @@ int plasticity_substrate_update_stdp(plasticity_substrate_bridge_t* bridge)
 
     /* Scale by sensitivity */
     atp_factor = 1.0f - (1.0f - atp_factor) * bridge->config.atp_sensitivity;
-    bridge->effects.stdp.atp_gating = clamp_f(atp_factor, 0.0f, 1.0f);
+    bridge->effects.stdp.atp_gating = nimcp_clampf(atp_factor, 0.0f, 1.0f);
 
     /* ========================================================================
      * Combined learning rate modulation
@@ -435,13 +422,13 @@ int plasticity_substrate_update_bcm(plasticity_substrate_bridge_t* bridge)
     }
 
     /* Clamp threshold shift */
-    bridge->effects.bcm.threshold_shift = clamp_f(threshold_shift, 1.0f, 1.5f);
+    bridge->effects.bcm.threshold_shift = nimcp_clampf(threshold_shift, 1.0f, 1.5f);
 
     /* ========================================================================
      * Learning rate modulation (same as STDP for consistency)
      * ======================================================================== */
     float lr_mod = metabolic.atp_level / PLASTICITY_ATP_FULL;
-    bridge->effects.bcm.learning_rate_mod = clamp_f(lr_mod, 0.1f, 1.0f);
+    bridge->effects.bcm.learning_rate_mod = nimcp_clampf(lr_mod, 0.1f, 1.0f);
 
     /* ========================================================================
      * Metabolic bias: negative bias → favor LTD
@@ -576,7 +563,7 @@ int plasticity_substrate_update_eligibility(plasticity_substrate_bridge_t* bridg
 
     /* Combined decay modulation */
     bridge->effects.eligibility.decay_lambda_mod = atp_effect * temp_effect;
-    bridge->effects.eligibility.decay_lambda_mod = clamp_f(
+    bridge->effects.eligibility.decay_lambda_mod = nimcp_clampf(
         bridge->effects.eligibility.decay_lambda_mod,
         0.8f,
         1.2f
@@ -678,7 +665,7 @@ int plasticity_substrate_update_dendritic(plasticity_substrate_bridge_t* bridge)
     bridge->effects.dendritic.calcium_influx_mod =
         bridge->effects.dendritic.membrane_factor *
         (physical.ion_balance / 0.95f);
-    bridge->effects.dendritic.calcium_influx_mod = clamp_f(
+    bridge->effects.dendritic.calcium_influx_mod = nimcp_clampf(
         bridge->effects.dendritic.calcium_influx_mod,
         0.2f,
         1.0f
@@ -742,7 +729,7 @@ int plasticity_substrate_update_all(plasticity_substrate_bridge_t* bridge)
     }
 
     /* Clamp to valid range */
-    bridge->effects.global_learning_rate = clamp_f(
+    bridge->effects.global_learning_rate = nimcp_clampf(
         bridge->effects.global_learning_rate,
         PLASTICITY_LR_MIN_FACTOR,
         PLASTICITY_LR_MAX_FACTOR

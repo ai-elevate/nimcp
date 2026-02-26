@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -68,16 +69,6 @@ struct fep_plasticity_bridge {
     /* Statistics */
     fep_plasticity_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static synapse_entry_t* find_synapse(fep_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -315,7 +306,7 @@ int fep_plasticity_register_synapse(
     slot->in_use = true;
     slot->synapse.synapse_id = synapse_id;
     slot->synapse.type = type;
-    slot->synapse.weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    slot->synapse.weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     slot->synapse.initial_weight = slot->synapse.weight;
     slot->synapse.eligibility_trace = 0.0f;
     slot->synapse.bcm_threshold = bridge->config.bcm_target_rate;
@@ -518,7 +509,7 @@ int fep_plasticity_learn(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_clampf(
         entry->synapse.weight + weight_change,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -543,11 +534,11 @@ int fep_plasticity_learn(
 
     /* Clamp inference state values */
     bridge->inference_state.prediction_accuracy =
-        clamp_f(bridge->inference_state.prediction_accuracy, 0.0f, 1.0f);
+        nimcp_clampf(bridge->inference_state.prediction_accuracy, 0.0f, 1.0f);
     bridge->inference_state.precision_calibration =
-        clamp_f(bridge->inference_state.precision_calibration, 0.0f, 1.0f);
+        nimcp_clampf(bridge->inference_state.precision_calibration, 0.0f, 1.0f);
     bridge->inference_state.model_complexity =
-        clamp_f(bridge->inference_state.model_complexity, 0.0f, 1.0f);
+        nimcp_clampf(bridge->inference_state.model_complexity, 0.0f, 1.0f);
 
     /* Invoke callback */
     if (bridge->learn_callback) {
@@ -598,7 +589,7 @@ float fep_plasticity_apply_stdp(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_clampf(
         entry->synapse.weight + delta_w,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -633,7 +624,7 @@ int fep_plasticity_apply_pred_error(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    pred_error = clamp_f(pred_error, -1.0f, 1.0f);
+    pred_error = nimcp_clampf(pred_error, -1.0f, 1.0f);
     bridge->current_pred_error = pred_error;
 
     /* Apply prediction error modulation to all eligible synapses */
@@ -650,7 +641,7 @@ int fep_plasticity_apply_pred_error(
                 float delta = bridge->config.base_learning_rate *
                              bridge->config.pred_error_learning_boost *
                              pred_error * trace;
-                bridge->synapses[i].synapse.weight = clamp_f(
+                bridge->synapses[i].synapse.weight = nimcp_clampf(
                     bridge->synapses[i].synapse.weight + delta,
                     bridge->config.weight_min,
                     bridge->config.weight_max
@@ -750,7 +741,7 @@ int fep_plasticity_homeostatic_update(
     float scale_factor = 1.0f;
     if (mean_prediction > 0.0f) {
         scale_factor = target / mean_prediction;
-        scale_factor = clamp_f(scale_factor, 0.9f, 1.1f);
+        scale_factor = nimcp_clampf(scale_factor, 0.9f, 1.1f);
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -762,7 +753,7 @@ int fep_plasticity_homeostatic_update(
 
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
-            bridge->synapses[i].synapse.weight = clamp_f(
+            bridge->synapses[i].synapse.weight = nimcp_clampf(
                 scaled,
                 bridge->config.weight_min,
                 bridge->config.weight_max

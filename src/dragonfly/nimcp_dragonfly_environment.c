@@ -18,6 +18,7 @@
 #include <time.h>
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_environment)
 
@@ -29,12 +30,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 static inline float vec3_length(const float v[3]) {
@@ -314,7 +309,7 @@ int dragonfly_environment_set_wind(
     nimcp_mutex_lock(env->mutex);
 
     memcpy(env->state.wind_velocity, wind_velocity, sizeof(env->state.wind_velocity));
-    env->state.wind_variability = clamp_f(variability, 0.0f, 1.0f);
+    env->state.wind_variability = nimcp_clampf(variability, 0.0f, 1.0f);
 
     float speed = vec3_length(wind_velocity);
     env->state.wind_condition = classify_wind(speed, variability);
@@ -340,7 +335,7 @@ int dragonfly_environment_set_light(
 
     nimcp_mutex_lock(env->mutex);
 
-    env->state.light_level = clamp_f(light_level, 0.0f, 1.0f);
+    env->state.light_level = nimcp_clampf(light_level, 0.0f, 1.0f);
     env->state.sun_elevation_rad = sun_elevation_rad;
     env->state.sun_azimuth_rad = sun_azimuth_rad;
     env->state.light_condition = classify_light(light_level, sun_elevation_rad);
@@ -370,7 +365,7 @@ int dragonfly_environment_set_terrain(
     nimcp_mutex_lock(env->mutex);
 
     env->state.terrain = terrain;
-    env->state.terrain_complexity = clamp_f(complexity, 0.0f, 1.0f);
+    env->state.terrain_complexity = nimcp_clampf(complexity, 0.0f, 1.0f);
     env->state.water_surface_level = water_level;
 
     nimcp_mutex_unlock(env->mutex);
@@ -552,7 +547,7 @@ int dragonfly_environment_get_compensation(
         compensation->limiting_factor = "rain";
     }
 
-    compensation->hunting_suitability = clamp_f(suitability, 0.0f, 1.0f);
+    compensation->hunting_suitability = nimcp_clampf(suitability, 0.0f, 1.0f);
     compensation->hunting_recommended = (suitability > 0.3f);
 
     if (suitability > 0.3f && !compensation->limiting_factor) {

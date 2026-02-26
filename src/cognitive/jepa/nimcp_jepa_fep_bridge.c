@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_fep_bridge)
 //=============================================================================
@@ -129,16 +130,6 @@ struct jepa_fep_bridge {
     nimcp_health_agent_t* health_agent;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -162,7 +153,7 @@ static void compute_free_energy(jepa_fep_bridge_t* bridge) {
     const jepa_fep_config_t* cfg = &bridge->config;
 
     /* Normalize embedding prediction error */
-    float normalized_error = clamp_f(
+    float normalized_error = nimcp_clampf(
         bridge->embedding_prediction_error / JEPA_FEP_MAX_PRED_ERROR,
         0.0f, 1.0f
     );
@@ -183,7 +174,7 @@ static void compute_free_energy(jepa_fep_bridge_t* bridge) {
                      (error_contrib + quality_contrib + collapse_contrib) *
                      cfg->free_energy_weight;
 
-    bridge->current_free_energy = clamp_f(total_fe, 0.0f, JEPA_FEP_MAX_FREE_ENERGY);
+    bridge->current_free_energy = nimcp_clampf(total_fe, 0.0f, JEPA_FEP_MAX_FREE_ENERGY);
 
     /* Update cumulative statistics */
     bridge->stats.total_free_energy_contribution += bridge->current_free_energy;
@@ -205,7 +196,7 @@ static void check_collapse(jepa_fep_bridge_t* bridge) {
     if (bridge->representation_quality < bridge->config.collapse_detection_threshold) {
         float threshold = bridge->config.collapse_detection_threshold;
         bridge->collapse_severity = (threshold - bridge->representation_quality) / threshold;
-        bridge->collapse_severity = clamp_f(bridge->collapse_severity, 0.0f, 1.0f);
+        bridge->collapse_severity = nimcp_clampf(bridge->collapse_severity, 0.0f, 1.0f);
 
         bridge->stats.collapse_detections++;
 

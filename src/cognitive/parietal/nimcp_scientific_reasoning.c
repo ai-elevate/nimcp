@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(scientific_reasoning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -77,12 +78,6 @@ static _Thread_local char g_scientific_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_scientific_error(const char* msg) {
     strncpy(g_scientific_error, msg, sizeof(g_scientific_error) - 1);
     g_scientific_error[sizeof(g_scientific_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 static float compute_correlation(const float* x, const float* y, uint32_t n) {
@@ -574,7 +569,7 @@ hypothesis_t scientific_create_hypothesis(
     strncpy(h.description, description, SCIENTIFIC_MAX_DESCRIPTION - 1);
     h.description[SCIENTIFIC_MAX_DESCRIPTION - 1] = '\0';
 
-    h.prior = clamp01(prior);
+    h.prior = nimcp_clamp01(prior);
     h.posterior = h.prior;
     h.likelihood = 1.0f;
     h.evidence_strength = 0.0f;
@@ -690,7 +685,7 @@ float scientific_update_hypothesis(
     hypothesis->posterior = prior * evidence_factor /
                             (prior * evidence_factor + (1.0f - prior) * (1.0f - evidence_factor + 0.1f));
 
-    hypothesis->posterior = clamp01(hypothesis->posterior);
+    hypothesis->posterior = nimcp_clamp01(hypothesis->posterior);
 
     sr->total_posterior += hypothesis->posterior;
 
@@ -1205,7 +1200,7 @@ int scientific_set_inflammation(scientific_reasoning_t* sr, float level) {
 
 
     nimcp_mutex_lock(sr->lock);
-    sr->inflammation_level = clamp01(level);
+    sr->inflammation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(sr->lock);
 
     return 0;
@@ -1225,7 +1220,7 @@ int scientific_set_sleep_deprivation(scientific_reasoning_t* sr, float level) {
 
 
     nimcp_mutex_lock(sr->lock);
-    sr->sleep_deprivation_level = clamp01(level);
+    sr->sleep_deprivation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(sr->lock);
 
     return 0;

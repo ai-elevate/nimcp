@@ -26,6 +26,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_immune_unified_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -36,16 +37,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_immune_unified_bridge, MESH_ADAPTER_CATEGO
 
 static uint64_t get_current_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
-}
-
-/* ============================================================================
- * Internal Helper: Clamp Float
- * ============================================================================ */
-
-static float clamp_float(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /* ============================================================================
@@ -731,7 +722,7 @@ int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridg
     /* Apply to BBB state */
     if (bridge->config.enable_cytokine_bbb_modulation) {
         float factor = 1.0f + bridge->cytokine_effects.total_bbb_modulation;
-        factor = clamp_float(factor, bridge->config.bbb_min_threshold_factor,
+        factor = nimcp_clampf(factor, bridge->config.bbb_min_threshold_factor,
                              bridge->config.bbb_max_threshold_factor);
         bridge->bbb_state.effective_threshold_factor = factor;
         bridge->stats.bbb_modulations++;
@@ -741,7 +732,7 @@ int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridg
     if (bridge->config.enable_cytokine_anomaly_modulation) {
         float threshold = bridge->config.anomaly_base_threshold *
                           (1.0f + bridge->cytokine_effects.total_anomaly_modulation);
-        threshold = clamp_float(threshold, bridge->config.anomaly_min_threshold,
+        threshold = nimcp_clampf(threshold, bridge->config.anomaly_min_threshold,
                                 bridge->config.anomaly_max_threshold);
         bridge->anomaly_state.effective_threshold = threshold;
         bridge->stats.anomaly_modulations++;
@@ -750,7 +741,7 @@ int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridg
     /* Apply to pattern state */
     if (bridge->config.enable_cytokine_pattern_modulation) {
         float factor = 1.0f + bridge->cytokine_effects.total_pattern_modulation;
-        factor = clamp_float(factor, bridge->config.pattern_min_weight_factor,
+        factor = nimcp_clampf(factor, bridge->config.pattern_min_weight_factor,
                              bridge->config.pattern_max_weight_factor);
         bridge->pattern_state.effective_weight_factor = factor;
         bridge->stats.pattern_modulations++;
@@ -759,7 +750,7 @@ int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridg
     /* Apply to rate state */
     if (bridge->config.enable_cytokine_rate_modulation) {
         float factor = 1.0f + bridge->cytokine_effects.total_rate_modulation;
-        factor = clamp_float(factor, bridge->config.rate_min_factor, 1.0f);
+        factor = nimcp_clampf(factor, bridge->config.rate_min_factor, 1.0f);
         bridge->rate_state.effective_rps_factor = factor;
         bridge->rate_state.effective_burst_factor = factor;
         bridge->stats.rate_modulations++;
@@ -768,7 +759,7 @@ int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridg
     /* Apply to policy state */
     if (bridge->config.enable_cytokine_policy_modulation) {
         float factor = 1.0f + bridge->cytokine_effects.total_policy_modulation;
-        factor = clamp_float(factor, bridge->config.policy_min_strictness,
+        factor = nimcp_clampf(factor, bridge->config.policy_min_strictness,
                              bridge->config.policy_max_strictness);
         bridge->policy_state.effective_strictness_factor = factor;
         bridge->stats.policy_modulations++;
@@ -1563,7 +1554,7 @@ int sec_immune_unified_activate_regulatory(
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    suppression_level = clamp_float(suppression_level, 0.0f, 1.0f);
+    suppression_level = nimcp_clampf(suppression_level, 0.0f, 1.0f);
     bridge->tolerance.regulatory_activity = suppression_level;
     bridge->policy_state.regulatory_suppression = suppression_level;
     bridge->stats.regulatory_suppressions++;
@@ -1818,7 +1809,7 @@ float sec_immune_unified_get_threat_level(
         threat += 0.1f;
     }
 
-    return clamp_float(threat, 0.0f, 1.0f);
+    return nimcp_clampf(threat, 0.0f, 1.0f);
 }
 
 /* ============================================================================

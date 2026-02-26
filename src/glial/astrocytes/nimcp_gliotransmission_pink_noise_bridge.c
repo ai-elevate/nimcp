@@ -12,10 +12,9 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gliotransmission_pink_noise_bridge)
-
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 glio_pink_noise_bridge_t* glio_pink_noise_create(const glio_pink_noise_config_t* config) {
     glio_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(glio_pink_noise_bridge_t));
@@ -80,10 +79,10 @@ int glio_pink_noise_update(glio_pink_noise_bridge_t* bridge) {
     bridge->noisy_dserine_release = 0.2f * (1.0f + amp * bridge->dser_noise);
     bridge->noisy_calcium_wave = 1.0f * (1.0f + amp * bridge->ca_noise);
 
-    bridge->noisy_glutamate_release = clamp(bridge->noisy_glutamate_release, 0.0f, 1.0f);
-    bridge->noisy_atp_release = clamp(bridge->noisy_atp_release, 0.0f, 1.0f);
-    bridge->noisy_dserine_release = clamp(bridge->noisy_dserine_release, 0.0f, 1.0f);
-    bridge->noisy_calcium_wave = clamp(bridge->noisy_calcium_wave, 0.1f, 2.0f);
+    bridge->noisy_glutamate_release = nimcp_clampf(bridge->noisy_glutamate_release, 0.0f, 1.0f);
+    bridge->noisy_atp_release = nimcp_clampf(bridge->noisy_atp_release, 0.0f, 1.0f);
+    bridge->noisy_dserine_release = nimcp_clampf(bridge->noisy_dserine_release, 0.0f, 1.0f);
+    bridge->noisy_calcium_wave = nimcp_clampf(bridge->noisy_calcium_wave, 0.1f, 2.0f);
 
     bridge->samples_generated++;
     return 0;

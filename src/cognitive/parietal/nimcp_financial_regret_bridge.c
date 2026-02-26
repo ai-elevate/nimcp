@@ -36,6 +36,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_regret)
 
@@ -115,16 +116,6 @@ struct financial_regret_bridge {
     /* Training state */
     bool training_active;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline float fabsf_safe(float v) {
     return v < 0.0f ? -v : v;
@@ -782,7 +773,7 @@ int financial_regret_bridge_analyze(
         optimal_outcome = trade->outcome * 1.3f;  /* Assume 30% more was possible */
     }
 
-    analysis->regret_magnitude = clampf(
+    analysis->regret_magnitude = nimcp_clampf(
         fabsf_safe(optimal_outcome - trade->outcome) / maxf(fabsf_safe(optimal_outcome), 0.01f),
         0.0f, 1.0f);
 
@@ -856,7 +847,7 @@ int financial_regret_bridge_analyze_full(
         /* Had a winner, let it become a loser - high emotional intensity */
         base_intensity *= 1.5f;
     }
-    assessment->emotional_intensity = clampf(base_intensity, 0.0f, 1.0f);
+    assessment->emotional_intensity = nimcp_clampf(base_intensity, 0.0f, 1.0f);
 
     /* Generate counterfactual scenarios */
     rc = financial_regret_bridge_generate_counterfactuals(
@@ -971,7 +962,7 @@ int financial_regret_bridge_counterfactual(
             break;
     }
 
-    *hypothetical_outcome = clampf(hypo, -2.0f, 2.0f);
+    *hypothetical_outcome = nimcp_clampf(hypo, -2.0f, 2.0f);
 
     /* KG messaging */
     bridge_kg_publish(bridge, KG_MSG_FIN_REGRET_COUNTERFACT,

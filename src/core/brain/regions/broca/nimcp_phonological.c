@@ -31,6 +31,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(phonological, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,15 +72,6 @@ struct phonological_processor {
 //=============================================================================
 // HELPER FUNCTIONS
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Check if phoneme is a vowel
@@ -206,7 +198,7 @@ static void apply_intonation_pattern(prosody_curve_t* prosody,
         }
 
         /* Clamp to valid F0 range */
-        prosody->f0_values[i] = clamp(prosody->f0_values[i],
+        prosody->f0_values[i] = nimcp_clampf(prosody->f0_values[i],
                                       PROSODY_F0_MIN,
                                       PROSODY_F0_MAX);
     }
@@ -420,8 +412,8 @@ bool phonological_add_phoneme_detailed(phonological_processor_t* processor,
     }
 
     /* Validate inputs */
-    duration_ms = clamp(duration_ms, 10.0F, 500.0F);  /* 10-500ms */
-    voicing = clamp(voicing, 0.0F, 1.0F);
+    duration_ms = nimcp_clampf(duration_ms, 10.0F, 500.0F);  /* 10-500ms */
+    voicing = nimcp_clampf(voicing, 0.0F, 1.0F);
 
     /* Add phoneme */
     phoneme_t* p = &processor->phoneme_buffer[processor->phoneme_count];
@@ -626,7 +618,7 @@ bool phonological_apply_stress(phonological_processor_t* processor,
     if (syllable_idx >= processor->syllable_count) return false;
 
     /* Clamp stress level */
-    stress_level = clamp(stress_level, 0.0F, 1.0F);
+    stress_level = nimcp_clampf(stress_level, 0.0F, 1.0F);
 
     syllable_t* syll = &processor->syllable_buffer[syllable_idx];
     syll->stress_level = stress_level;
@@ -709,7 +701,7 @@ bool phonological_set_baseline_f0(phonological_processor_t* processor, float f0_
     }
 
     /* Clamp to valid range */
-    f0_hz = clamp(f0_hz, PROSODY_F0_MIN, PROSODY_F0_MAX);
+    f0_hz = nimcp_clampf(f0_hz, PROSODY_F0_MIN, PROSODY_F0_MAX);
 
     processor->prosody.baseline_f0 = f0_hz;
     return true;

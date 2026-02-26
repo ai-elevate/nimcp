@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(equation_manipulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -74,12 +75,6 @@ static _Thread_local char g_equation_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_equation_error(const char* msg) {
     strncpy(g_equation_error, msg, sizeof(g_equation_error) - 1);
     g_equation_error[sizeof(g_equation_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 static bool is_zero(float v) {
@@ -1428,7 +1423,7 @@ int equation_set_inflammation(equation_engine_t* eq, float level) {
 
 
     nimcp_mutex_lock(eq->lock);
-    eq->inflammation_level = clamp01(level);
+    eq->inflammation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(eq->lock);
 
     return 0;
@@ -1445,7 +1440,7 @@ int equation_set_fatigue(equation_engine_t* eq, float level) {
 
 
     nimcp_mutex_lock(eq->lock);
-    eq->fatigue_level = clamp01(level);
+    eq->fatigue_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(eq->lock);
 
     return 0;

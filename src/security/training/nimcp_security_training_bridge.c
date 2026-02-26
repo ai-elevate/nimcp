@@ -24,6 +24,7 @@
 
 #define LOG_MODULE "security_training_bridge"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_training_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -169,15 +170,6 @@ static float compute_gradient_norm(const float* gradients, uint32_t num_params) 
         sum_sq += (double)gradients[i] * (double)gradients[i];
     }
     return (float)sqrt(sum_sq);
-}
-
-/**
- * @brief Clamp value to range
- */
-static inline float clampf(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /* ============================================================================
@@ -752,7 +744,7 @@ int security_training_detect_poisoning(
         if (collision_count > 5) {
             float collision_score = (float)collision_count / 100.0f;
             if (collision_score > max_anomaly_score) {
-                max_anomaly_score = clampf(collision_score, 0.0f, 1.0f);
+                max_anomaly_score = nimcp_clampf(collision_score, 0.0f, 1.0f);
                 detected_type = SECURITY_POISONING_FEATURE_COLLISION;
             }
         }
@@ -934,7 +926,7 @@ int security_training_sanitize_gradients(
         float max_b = bridge->config.gradient_max_bound;
 
         for (uint32_t i = 0; i < num_params; i++) {
-            gradients[i] = clampf(gradients[i], min_b, max_b);
+            gradients[i] = nimcp_clampf(gradients[i], min_b, max_b);
         }
         stats->gradients_bounded++;
     }
@@ -982,7 +974,7 @@ bool security_training_check_gradient_anomaly(
     /* Check against threshold */
     float threshold = bridge->config.gradient_clip_norm * 10.0f;
     float score = norm / threshold;
-    score = clampf(score, 0.0f, 1.0f);
+    score = nimcp_clampf(score, 0.0f, 1.0f);
 
     if (anomaly_score) *anomaly_score = score;
 
@@ -1255,7 +1247,7 @@ bool security_training_detect_concept_drift(
     }
 
     float score = (float)(total_diff / (double)compare_len);
-    score = clampf(score, 0.0f, 1.0f);
+    score = nimcp_clampf(score, 0.0f, 1.0f);
 
     bridge->drift_score = score;
     bool drift_detected = (score > bridge->config.drift_threshold);
@@ -1384,7 +1376,7 @@ int security_training_update_security_effects(security_training_bridge_t* bridge
         threat_level += 0.3f;
     }
 
-    threat_level = clampf(threat_level, 0.0f, 1.0f);
+    threat_level = nimcp_clampf(threat_level, 0.0f, 1.0f);
 
     /* Update security effects */
     bridge->security_effects.threat_level = threat_level;
@@ -1393,7 +1385,7 @@ int security_training_update_security_effects(security_training_bridge_t* bridge
     /* Adjust gradient bounds based on threat level */
     if (threat_level > 0.5f) {
         float reduction = 1.0f - (threat_level - 0.5f);
-        bridge->security_effects.gradient_scale_factor = clampf(reduction, 0.5f, 1.0f);
+        bridge->security_effects.gradient_scale_factor = nimcp_clampf(reduction, 0.5f, 1.0f);
     } else {
         bridge->security_effects.gradient_scale_factor = 1.0f;
     }
@@ -1448,7 +1440,7 @@ int security_training_update_training_effects(
 
     /* Compute gradient anomaly score */
     bridge->training_effects.gradient_anomaly_score =
-        clampf(gradient_norm / grad_threshold, 0.0f, 1.0f);
+        nimcp_clampf(gradient_norm / grad_threshold, 0.0f, 1.0f);
 
     /* Update timestamp */
     bridge->training_effects.timestamp_ms = nimcp_time_monotonic_ms();

@@ -29,6 +29,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(perspective, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -192,13 +193,6 @@ uint32_t inner_dialogue_perspective_count(
  * Priority Scheduling
  * ============================================================================ */
 
-/**
- * @brief Clamp float to [min, max] (local utility matching nimcp_clamp_f pattern)
- */
-static inline float clamp_f(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
-
 float inner_dialogue_perspective_compute_priority(
     const inner_dialogue_perspective_entry_t* entry,
     const perspective_turn_context_t* context,
@@ -213,11 +207,11 @@ float inner_dialogue_perspective_compute_priority(
     float relevance = 1.0f;
     if (entry->desc.check_relevance) {
         relevance = entry->desc.check_relevance(context);
-        relevance = clamp_f(relevance, 0.0f, 1.0f);
+        relevance = nimcp_clampf(relevance, 0.0f, 1.0f);
     }
 
     /* Urgency boost */
-    float urgency_factor = 1.0f + clamp_f(context->urgency, 0.0f, 1.0f);
+    float urgency_factor = 1.0f + nimcp_clampf(context->urgency, 0.0f, 1.0f);
 
     /* Recency penalty — avoid same perspective speaking consecutive turns
      * Penalty decays linearly over last 4 turns */
@@ -234,7 +228,7 @@ float inner_dialogue_perspective_compute_priority(
             }
         }
     }
-    recency_penalty = clamp_f(recency_penalty, 0.0f, 0.8f);
+    recency_penalty = nimcp_clampf(recency_penalty, 0.0f, 0.8f);
 
     /* Fairness: bonus for underrepresented perspectives */
     float fairness = 1.0f;

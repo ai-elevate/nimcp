@@ -24,6 +24,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -43,13 +44,6 @@ static uint64_t get_timestamp_us(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -72,7 +66,7 @@ static float latent_to_rate(const vae_snn_bridge_t* bridge, float latent_value)
     /* Normalize latent to [0,1] range */
     float normalized = (latent_value - rc->latent_min) /
                        (rc->latent_max - rc->latent_min);
-    normalized = clampf(normalized, 0.0f, 1.0f);
+    normalized = nimcp_clampf(normalized, 0.0f, 1.0f);
 
     /* Apply softplus if enabled */
     if (rc->use_softplus) {
@@ -95,7 +89,7 @@ static float rate_to_latent(const vae_snn_bridge_t* bridge, float rate_hz)
     /* Normalize rate to [0,1] */
     float normalized = (rate_hz - rc->min_rate_hz) /
                        (rc->max_rate_hz - rc->min_rate_hz);
-    normalized = clampf(normalized, 0.0f, 1.0f);
+    normalized = nimcp_clampf(normalized, 0.0f, 1.0f);
 
     /* Map to latent range */
     return rc->latent_min + normalized * (rc->latent_max - rc->latent_min);
@@ -114,7 +108,7 @@ static float latent_to_spike_time(const vae_snn_bridge_t* bridge, float latent_v
     /* Normalize latent */
     float normalized = (latent_value - rc->latent_min) /
                        (rc->latent_max - rc->latent_min);
-    normalized = clampf(normalized, 0.0f, 1.0f);
+    normalized = nimcp_clampf(normalized, 0.0f, 1.0f);
 
     /* Invert if higher value means shorter latency */
     if (tc->inverse_latency) {
@@ -532,7 +526,7 @@ int vae_snn_encode_latent(vae_snn_bridge_t* bridge,
                         if (bridge->config.enable_noise && bridge->timing_jitter) {
                             jitter = bridge->timing_jitter[d % latent_dim] * (randf() - 0.5f);
                         }
-                        train->spike_times_ms[0] = (uint32_t)clampf(spike_time_ms + jitter, 0.0f, window_ms);
+                        train->spike_times_ms[0] = (uint32_t)nimcp_clampf(spike_time_ms + jitter, 0.0f, window_ms);
                         total_spike_count++;
                     }
                     neuron_idx++;
@@ -722,7 +716,7 @@ int vae_snn_decode_spikes(vae_snn_bridge_t* bridge,
                         float normalized = (spike_time - tc->min_latency_ms) /
                                           (tc->max_latency_ms - tc->min_latency_ms);
                         if (tc->inverse_latency) normalized = 1.0f - normalized;
-                        normalized = clampf(normalized, 0.0f, 1.0f);
+                        normalized = nimcp_clampf(normalized, 0.0f, 1.0f);
 
                         const vae_snn_rate_config_t* rc = &bridge->config.rate_config;
                         float latent_val = rc->latent_min +
@@ -753,7 +747,7 @@ int vae_snn_decode_spikes(vae_snn_bridge_t* bridge,
                            spike_trains[0].window_ms / 1000.0f * num_neurons;
     result->decoding_confidence = 1.0f - fabsf(total_spikes - expected_spikes) /
                                          fmaxf(expected_spikes, 1.0f);
-    result->decoding_confidence = clampf(result->decoding_confidence, 0.0f, 1.0f);
+    result->decoding_confidence = nimcp_clampf(result->decoding_confidence, 0.0f, 1.0f);
 
     uint64_t elapsed_us = get_timestamp_us() - start_us;
     result->decoding_time_us = (float)elapsed_us;
@@ -928,7 +922,7 @@ float vae_snn_precision_to_jitter(const vae_snn_bridge_t* bridge,
     float scale = bridge->config.precision_to_jitter_scale;
     float jitter = scale / (precision + 0.1f);
 
-    return clampf(jitter,
+    return nimcp_clampf(jitter,
                   bridge->config.min_timing_jitter_ms,
                   bridge->config.max_timing_jitter_ms);
 }

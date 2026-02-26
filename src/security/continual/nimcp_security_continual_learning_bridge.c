@@ -25,6 +25,7 @@
 
 #define LOG_MODULE "security_cl_bridge"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_continual_learning_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -147,15 +148,6 @@ static int find_replay_buffer(
         }
     }
     return -1;
-}
-
-/**
- * @brief Clamp value to range
- */
-static inline float clampf(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -680,7 +672,7 @@ bool security_cl_validate_drift(
     }
 
     float score = (float)(total_diff / (double)compare_len);
-    score = clampf(score, 0.0f, 1.0f);
+    score = nimcp_clampf(score, 0.0f, 1.0f);
 
     /* Classify drift type */
     security_cl_drift_type_t type = SECURITY_CL_DRIFT_NONE;
@@ -1001,7 +993,7 @@ security_cl_retention_level_t security_cl_monitor_retention(
     float retention_rate = 1.0f;
     if (task->baseline_accuracy > 0.0f) {
         retention_rate = current_accuracy / task->baseline_accuracy;
-        retention_rate = clampf(retention_rate, 0.0f, 1.0f);
+        retention_rate = nimcp_clampf(retention_rate, 0.0f, 1.0f);
     }
     task->retention_rate = retention_rate;
 
@@ -1142,7 +1134,7 @@ float security_cl_get_safe_lr(const security_cl_bridge_t* bridge) {
 
     float lr = bridge->security_effects.lr_max_allowed *
                bridge->security_effects.lr_scale_factor;
-    return clampf(lr, bridge->security_effects.lr_min_allowed,
+    return nimcp_clampf(lr, bridge->security_effects.lr_min_allowed,
                   bridge->security_effects.lr_max_allowed);
 }
 
@@ -1237,7 +1229,7 @@ int security_cl_update_security_effects(security_cl_bridge_t* bridge) {
         threat_level += 0.1f;
     }
 
-    threat_level = clampf(threat_level, 0.0f, 1.0f);
+    threat_level = nimcp_clampf(threat_level, 0.0f, 1.0f);
 
     /* Update security effects */
     bridge->security_effects.threat_level = threat_level;
@@ -1254,7 +1246,7 @@ int security_cl_update_security_effects(security_cl_bridge_t* bridge) {
         bridge->security_effects.lr_scale_factor =
             1.0f - (threat_level - 0.3f) * 0.5f;
         bridge->security_effects.lr_scale_factor =
-            clampf(bridge->security_effects.lr_scale_factor, 0.5f, 1.0f);
+            nimcp_clampf(bridge->security_effects.lr_scale_factor, 0.5f, 1.0f);
     }
 
     /* Block learning if under severe attack */

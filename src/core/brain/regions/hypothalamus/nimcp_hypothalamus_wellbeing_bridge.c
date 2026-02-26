@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_wellbeing_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -53,16 +54,6 @@ struct hypo_wellbeing_bridge {
     bool bio_registered;
     bio_module_context_t bio_ctx;
 };
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
 
 static uint64_t get_current_time_ms(void) {
     /* Placeholder - would use actual time source */
@@ -221,7 +212,7 @@ int hypo_wellbeing_bridge_compute_distress(hypo_wellbeing_bridge_t* bridge) {
         }
     }
     report->conflict_level = (high_urgency_count > 1) ?
-        clamp_01((float)(high_urgency_count - 1) / (HYPO_DRIVE_COUNT - 1)) : 0.0f;
+        nimcp_clamp01((float)(high_urgency_count - 1) / (HYPO_DRIVE_COUNT - 1)) : 0.0f;
 
     /* Add conflict contribution to distress */
     float conflict_contribution = report->conflict_level * cfg->conflict_weight;
@@ -231,13 +222,13 @@ int hypo_wellbeing_bridge_compute_distress(hypo_wellbeing_bridge_t* bridge) {
 
     /* Compute overall distress */
     float avg_distress = total_distress / (float)HYPO_DRIVE_COUNT;
-    report->distress_level = clamp_01(
+    report->distress_level = nimcp_clamp01(
         max_distress * 0.6f + avg_distress * 0.2f + conflict_contribution * 0.2f
     );
 
     /* Update chronic load */
     if (report->distress_level > cfg->distress_threshold) {
-        report->chronic_load = clamp_01(
+        report->chronic_load = nimcp_clamp01(
             report->chronic_load + cfg->chronic_accumulation * report->distress_level
         );
 
@@ -252,7 +243,7 @@ int hypo_wellbeing_bridge_compute_distress(hypo_wellbeing_bridge_t* bridge) {
             max_source = HYPO_DISTRESS_CHRONIC;
         }
     } else {
-        report->chronic_load = clamp_01(
+        report->chronic_load = nimcp_clamp01(
             report->chronic_load - cfg->chronic_decay
         );
         bridge->distress_active = false;

@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(explanations_substrate_bridge)
 //=============================================================================
@@ -155,12 +156,12 @@ int explanations_substrate_bridge_update(explanations_substrate_bridge_t* bridge
     }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.explanation_depth = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.abstraction_level = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.explanation_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.abstraction_level = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.coherence_quality = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.integration_breadth = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.coherence_quality = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.integration_breadth = nimcp_clampf(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.explanation_depth + bridge->effects.coherence_quality +
                                         bridge->effects.abstraction_level + bridge->effects.integration_breadth) / 4.0f;

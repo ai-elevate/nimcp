@@ -24,6 +24,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(systems_consolidation_pink_noise_bridge)
 //=============================================================================
@@ -79,17 +80,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(consolidation_pink_noise_bridge)
 //=============================================================================
 // Internal Helper: Clamp
 //=============================================================================
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Ensure parameters stay within valid bounds
- * HOW:  Standard min/max clamping
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 //=============================================================================
 // Internal Helper: Exponential Smoothing
@@ -301,7 +291,7 @@ int consolidation_pink_noise_update(consolidation_pink_noise_bridge_t* bridge) {
     bridge->effects.noise_alpha = noise_alpha;
 
     // Compute arousal level (inverse of noise amplitude for sleep stages)
-    float arousal = 1.0f - clamp_f(noise_amplitude, 0.0f, 1.0f);
+    float arousal = 1.0f - nimcp_clampf(noise_amplitude, 0.0f, 1.0f);
     bridge->effects.arousal_level = arousal;
 
     // Check for spindle burst (specific to N2 stage)
@@ -316,17 +306,17 @@ int consolidation_pink_noise_update(consolidation_pink_noise_bridge_t* bridge) {
     if (bridge->config.enable_amplitude_modulation) {
         // Higher amplitude in appropriate sleep stages enhances replay
         float amplitude_mod = 1.0f + bridge->config.amplitude_gain * (noise_amplitude - 0.5f);
-        amplitude_mod = clamp_f(amplitude_mod, 0.5f, 1.5f);
+        amplitude_mod = nimcp_clampf(amplitude_mod, 0.5f, 1.5f);
         strength_factor *= amplitude_mod;
     }
-    strength_factor = clamp_f(strength_factor, 0.0f, 1.0f);
+    strength_factor = nimcp_clampf(strength_factor, 0.0f, 1.0f);
 
     // 3. Compute transfer quality from spectral exponent (if enabled)
     float quality_factor = 1.0f;
     if (bridge->config.enable_alpha_modulation) {
         quality_factor = consolidation_pink_noise_alpha_to_quality(noise_alpha);
         quality_factor *= (1.0f + bridge->config.alpha_sensitivity * (noise_alpha - 1.0f) * 0.5f);
-        quality_factor = clamp_f(quality_factor, 0.5f, 1.5f);
+        quality_factor = nimcp_clampf(quality_factor, 0.5f, 1.5f);
     }
 
     // 4. Compute replay frequency from arousal (if enabled)
@@ -649,7 +639,7 @@ float consolidation_pink_noise_arousal_to_frequency(float arousal) {
     systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
 
 
-    arousal = clamp_f(arousal, 0.0f, 1.0f);
+    arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
 
     // Exponential decay from deep sleep to awake
     // freq = FREQ_DEEP * exp(-k * arousal)

@@ -19,6 +19,7 @@
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_neural_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_neuromodulation)
 
@@ -52,17 +53,6 @@ struct cortical_neuromod_system {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * WHAT: Clamp value to range [0.0, 1.0]
- * WHY:  Ensure valid neuromodulator concentrations
- * HOW:  Standard clamping
- */
-static inline float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 /**
  * WHAT: Update running average
@@ -268,7 +258,7 @@ int cortical_neuromod_set_level(
     nimcp_platform_mutex_lock(system->mutex);
 
     /* Clamp level */
-    level = clamp_01(level);
+    level = nimcp_clamp01(level);
 
     /* Update level */
     switch (type) {
@@ -369,7 +359,7 @@ float cortical_neuromod_release(
     }
 
     /* Add release (phasic burst) */
-    *level_ptr = clamp_01(*level_ptr + magnitude);
+    *level_ptr = nimcp_clamp01(*level_ptr + magnitude);
     system->stats.total_releases++;
 
     /* Recompute effects */
@@ -400,7 +390,7 @@ int cortical_neuromod_set_column_da(
     }
 
     nimcp_platform_mutex_lock(system->mutex);
-    system->state.per_column_da[column_index] = clamp_01(level);
+    system->state.per_column_da[column_index] = nimcp_clamp01(level);
     nimcp_platform_mutex_unlock(system->mutex);
     return 0;
 }

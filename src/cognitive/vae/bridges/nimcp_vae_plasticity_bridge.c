@@ -27,6 +27,7 @@
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -47,13 +48,6 @@ static uint64_t get_timestamp_us(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 static inline float randf(void)
@@ -148,7 +142,7 @@ static float apply_mapping(const vae_plasticity_mapping_t* mapping, float signal
             break;
     }
 
-    return clampf(modulated, mapping->min_value, mapping->max_value);
+    return nimcp_clampf(modulated, mapping->min_value, mapping->max_value);
 }
 
 /**
@@ -425,7 +419,7 @@ int vae_plasticity_update_modulation(vae_plasticity_bridge_t* bridge)
     }
 
     /* Apply limits */
-    lr_mod = clampf(lr_mod,
+    lr_mod = nimcp_clampf(lr_mod,
                     bridge->config.min_learning_rate / bridge->config.global_learning_rate,
                     bridge->config.max_learning_rate / bridge->config.global_learning_rate);
 

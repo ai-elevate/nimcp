@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp_omni_bridge)
 
@@ -57,12 +58,6 @@ static uint64_t get_timestamp_ms(void) {
 #else
     return 0;
 #endif
-}
-
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 static float lerp(float a, float b, float t) {
@@ -247,7 +242,7 @@ static float compute_pe_modulation(stdp_omni_bridge_t bridge, float pe) {
 
     float normalized_pe = (abs_pe - bridge->config.pe_min_threshold) /
                           (bridge->config.pe_max_threshold - bridge->config.pe_min_threshold);
-    normalized_pe = clamp_float(normalized_pe, 0.0f, 1.0f);
+    normalized_pe = nimcp_clampf(normalized_pe, 0.0f, 1.0f);
 
     return 1.0f + normalized_pe * bridge->config.pe_lr_scaling;
 }
@@ -366,7 +361,7 @@ int stdp_omni_apply_precision(stdp_omni_bridge_t bridge,
         return 0;
     }
 
-    precision = clamp_float(precision, 0.0f, 1.0f);
+    precision = nimcp_clampf(precision, 0.0f, 1.0f);
     float factor = lerp(bridge->config.precision_min,
                         bridge->config.precision_max,
                         precision);
@@ -412,7 +407,7 @@ int stdp_omni_compute_modulation(stdp_omni_bridge_t bridge,
                       lat_mod * bridge->config.lateral_weight) / total_weight;
 
     /* Apply precision */
-    precision = clamp_float(precision, 0.0f, 1.0f);
+    precision = nimcp_clampf(precision, 0.0f, 1.0f);
     float prec_factor = bridge->config.enable_precision_modulation ?
                         lerp(bridge->config.precision_min, bridge->config.precision_max, precision) : 1.0f;
 

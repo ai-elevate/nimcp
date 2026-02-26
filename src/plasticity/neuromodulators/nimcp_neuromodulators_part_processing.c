@@ -255,22 +255,22 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
         // Update dopamine phasic-tonic dynamics
         phasic_tonic_update(&system->dopamine_phasic_tonic, dt, current_time);
         float da_conc = phasic_tonic_get_concentration(&system->dopamine_phasic_tonic);
-        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_conc * 1000.0F, 0.0F, 1.0F);
+        system->concentrations[NEUROMOD_DOPAMINE] = nimcp_clampf(da_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update serotonin phasic-tonic dynamics
         phasic_tonic_update(&system->serotonin_phasic_tonic, dt, current_time);
         float serotonin_conc = phasic_tonic_get_concentration(&system->serotonin_phasic_tonic);
-        system->concentrations[NEUROMOD_SEROTONIN] = clamp(serotonin_conc * 1000.0F, 0.0F, 1.0F);
+        system->concentrations[NEUROMOD_SEROTONIN] = nimcp_clampf(serotonin_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update norepinephrine phasic-tonic dynamics
         phasic_tonic_update(&system->norepinephrine_phasic_tonic, dt, current_time);
         float ne_conc = phasic_tonic_get_concentration(&system->norepinephrine_phasic_tonic);
-        system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(ne_conc * 1000.0F, 0.0F, 1.0F);
+        system->concentrations[NEUROMOD_NOREPINEPHRINE] = nimcp_clampf(ne_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update acetylcholine phasic-tonic dynamics
         phasic_tonic_update(&system->acetylcholine_phasic_tonic, dt, current_time);
         float ach_conc = phasic_tonic_get_concentration(&system->acetylcholine_phasic_tonic);
-        system->concentrations[NEUROMOD_ACETYLCHOLINE] = clamp(ach_conc * 1000.0F, 0.0F, 1.0F);
+        system->concentrations[NEUROMOD_ACETYLCHOLINE] = nimcp_clampf(ach_conc * 1000.0F, 0.0F, 1.0F);
 
         // Update statistics for all systems
         for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {

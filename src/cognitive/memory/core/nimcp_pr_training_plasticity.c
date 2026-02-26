@@ -25,6 +25,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(pr_training_plasticity, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -91,13 +92,6 @@ struct pr_training_plasticity_struct {
 //=============================================================================
 
 /**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
-
-/**
  * @brief Sign function
  */
 static inline float sign_f(float x) {
@@ -134,7 +128,7 @@ static float gradient_to_timing_linear(
         return 0.0f;  /* Below threshold, no STDP */
     }
 
-    return clamp_f(delta, -max_delta, max_delta);
+    return nimcp_clampf(delta, -max_delta, max_delta);
 }
 
 /**
@@ -887,7 +881,7 @@ float pr_training_apply_stdp_timing(
     }
 
     float old_weight = edge.weight;
-    edge.weight = clamp_f(edge.weight + timing->target_delta_weight, 0.0f, 1.0f);
+    edge.weight = nimcp_clampf(edge.weight + timing->target_delta_weight, 0.0f, 1.0f);
 
     if (fabsf(edge.weight - old_weight) > PR_TRAIN_EPSILON) {
         entangle_update_edge(graph, &edge);
@@ -1633,8 +1627,8 @@ int pr_training_update_loss_weights(
     }
 
     /* Ensure minimum weights */
-    tp->current_supervised_weight = clamp_f(tp->current_supervised_weight, 0.1f, 0.95f);
-    tp->current_unsupervised_weight = clamp_f(tp->current_unsupervised_weight, 0.05f, 0.9f);
+    tp->current_supervised_weight = nimcp_clampf(tp->current_supervised_weight, 0.1f, 0.95f);
+    tp->current_unsupervised_weight = nimcp_clampf(tp->current_unsupervised_weight, 0.05f, 0.9f);
 
     /* Normalize */
     float total = tp->current_supervised_weight + tp->current_unsupervised_weight;

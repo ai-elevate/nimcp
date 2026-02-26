@@ -13,6 +13,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_hierarchical_rl, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -53,16 +54,6 @@ struct bg_hrl_system {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /* ============================================================================
  * LIFECYCLE IMPLEMENTATION
@@ -397,7 +388,7 @@ int bg_hrl_update_goal_progress(bg_hrl_system_t* system,
             dist += diff * diff;
         }
         dist = sqrtf(dist);
-        goal->progress = clamp_f(1.0f - dist, 0.0f, 1.0f);
+        goal->progress = nimcp_clampf(1.0f - dist, 0.0f, 1.0f);
 
         if (goal->progress >= goal->achievement_threshold) {
             goal->state = BG_GOAL_STATE_ACHIEVED;

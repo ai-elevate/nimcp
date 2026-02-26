@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(metamemory, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -97,15 +98,6 @@ static uint64_t get_current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -346,7 +338,7 @@ static float compute_partial_activation(
 
     // Normalize by expected activation
     float normalized = total_activation / (float)num_activated;
-    return clamp_float(normalized, 0.0f, 1.0f);
+    return nimcp_clampf(normalized, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -589,7 +581,7 @@ NIMCP_EXPORT bool metamemory_evaluate_query(
 
     if (query_factors > 0) {
         // Higher factor count suggests more specific/retrievable content
-        familiarity_estimate = clamp_float(query_factors / 32.0f, 0.0f, 1.0f);
+        familiarity_estimate = nimcp_clampf(query_factors / 32.0f, 0.0f, 1.0f);
     }
 
     // Incorporate quaternion accessibility as familiarity boost
@@ -686,7 +678,7 @@ NIMCP_EXPORT bool metamemory_check_familiarity(
 
     // Quick familiarity estimate from signature properties
     uint32_t query_factors = prime_sig_count_factors(query_signature);
-    float familiarity = clamp_float(query_factors / 32.0f, 0.0f, 1.0f);
+    float familiarity = nimcp_clampf(query_factors / 32.0f, 0.0f, 1.0f);
 
     *familiarity_out = familiarity;
 
@@ -922,7 +914,7 @@ NIMCP_EXPORT bool metamemory_judge_learning(
 
     // Apply decay
     float decay_factor = expf(-meta->config.jol_decay_rate * prediction_hours);
-    *jol_out = clamp_float(base_jol * decay_factor, 0.0f, 1.0f);
+    *jol_out = nimcp_clampf(base_jol * decay_factor, 0.0f, 1.0f);
 
     return true;
 }
@@ -980,7 +972,7 @@ NIMCP_EXPORT float metamemory_get_calibrated_confidence(
 ) {
     if (!meta) return raw_confidence;
 
-    raw_confidence = clamp_float(raw_confidence, 0.0f, 1.0f);
+    raw_confidence = nimcp_clampf(raw_confidence, 0.0f, 1.0f);
 
     // Linear interpolation in calibration curve
     float scaled = raw_confidence * (METAMEM_CALIBRATION_BINS - 1);
@@ -995,7 +987,7 @@ NIMCP_EXPORT float metamemory_get_calibrated_confidence(
     float calibrated = meta->calibration_curve[bin_low] * (1.0f - t) +
                        meta->calibration_curve[bin_high] * t;
 
-    return clamp_float(calibrated, 0.0f, 1.0f);
+    return nimcp_clampf(calibrated, 0.0f, 1.0f);
 }
 
 NIMCP_EXPORT float metamemory_update_calibration(
@@ -1005,7 +997,7 @@ NIMCP_EXPORT float metamemory_update_calibration(
 ) {
     if (!meta) return -1.0f;
 
-    confidence = clamp_float(confidence, 0.0f, 1.0f);
+    confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     // Add to circular history buffer
     confidence_record_t record = {

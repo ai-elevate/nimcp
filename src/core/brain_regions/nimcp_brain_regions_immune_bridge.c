@@ -15,25 +15,13 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brain_regions_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get default sensitivity for region type
@@ -143,7 +131,7 @@ static float get_cytokine_concentration(
         }
     }
 
-    return clamp_f(total, 0.0f, 1.0f);
+    return nimcp_clampf(total, 0.0f, 1.0f);
 }
 
 /**
@@ -649,7 +637,7 @@ int brain_regions_immune_apply_to_region(
     state->ifn_impact = ifn * sens.ifn_sensitivity * mult;
 
     /* Composite impact */
-    state->composite_impact = clamp_f(
+    state->composite_impact = nimcp_clampf(
         (state->il1_impact + state->il6_impact + state->tnf_impact + state->ifn_impact) / 4.0f,
         0.0f, 1.0f
     );
@@ -670,8 +658,8 @@ int brain_regions_immune_apply_to_region(
     state->intensity = state->composite_impact;
 
     /* Calculate modulation factors */
-    state->activity_modulation = clamp_f(1.0f - state->composite_impact * 0.5f, 0.3f, 1.0f);
-    state->connectivity_modulation = clamp_f(1.0f - state->composite_impact * 0.4f, 0.4f, 1.0f);
+    state->activity_modulation = nimcp_clampf(1.0f - state->composite_impact * 0.5f, 0.3f, 1.0f);
+    state->connectivity_modulation = nimcp_clampf(1.0f - state->composite_impact * 0.4f, 0.4f, 1.0f);
 
     bridge->stats.inflammations_applied++;
     return 0;
@@ -751,7 +739,7 @@ int brain_regions_immune_propagate_inflammation(brain_regions_immune_bridge_t* b
             }
 
             float propagated = source->intensity * rate;
-            target->intensity = clamp_f(target->intensity + propagated, 0.0f, 1.0f);
+            target->intensity = nimcp_clampf(target->intensity + propagated, 0.0f, 1.0f);
 
             propagations++;
         }
@@ -793,11 +781,11 @@ int brain_regions_immune_restore_region(
 
     /* Apply IL-10 recovery */
     float recovery = il10_concentration * sens.il10_responsiveness;
-    state->intensity = clamp_f(state->intensity * (1.0f - recovery * 0.2f), 0.0f, 1.0f);
+    state->intensity = nimcp_clampf(state->intensity * (1.0f - recovery * 0.2f), 0.0f, 1.0f);
 
     /* Update modulation */
-    state->activity_modulation = clamp_f(1.0f - state->intensity * 0.5f, 0.3f, 1.0f);
-    state->connectivity_modulation = clamp_f(1.0f - state->intensity * 0.4f, 0.4f, 1.0f);
+    state->activity_modulation = nimcp_clampf(1.0f - state->intensity * 0.5f, 0.3f, 1.0f);
+    state->connectivity_modulation = nimcp_clampf(1.0f - state->intensity * 0.4f, 0.4f, 1.0f);
 
     bridge->stats.recoveries++;
     return 0;
@@ -887,7 +875,7 @@ region_abnormality_type_t brain_regions_immune_detect_region_abnormality(
     if (detected != REGION_ABNORMALITY_NONE) {
         state->consecutive_abnormal++;
         state->abnormality_type = detected;
-        state->abnormality_score = clamp_f(
+        state->abnormality_score = nimcp_clampf(
             (float)state->consecutive_abnormal / (float)bridge->config.persistence_threshold,
             0.0f, 1.0f
         );

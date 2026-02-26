@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_distributed_training_fep_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -94,15 +95,6 @@ static float free_energy_to_byzantine_score(float free_energy, float threshold) 
     }
 
     return normalized;
-}
-
-/**
- * @brief Clamp float to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -377,19 +369,19 @@ int security_dist_fep_compute_effects(security_dist_fep_bridge_t* bridge) {
     float threshold_scale = 1.0f;
     if (bridge->config.enable_precision_modulation) {
         threshold_scale = 1.0f / (bridge->state.system_precision + 0.01f);
-        threshold_scale = clamp_float(threshold_scale, 0.5f, 2.0f);
+        threshold_scale = nimcp_clampf(threshold_scale, 0.5f, 2.0f);
     }
     bridge->fep_effects.detection_threshold_scale = threshold_scale;
 
     /* Compute detection sensitivity from precision */
-    bridge->fep_effects.detection_sensitivity = clamp_float(
+    bridge->fep_effects.detection_sensitivity = nimcp_clampf(
         bridge->state.system_precision / SECURITY_DIST_FEP_MAX_PRECISION,
         0.0f, 1.0f
     );
 
     /* Compute quarantine urgency */
     float urgency = current_fe / bridge->config.byzantine_fe_threshold;
-    bridge->fep_effects.quarantine_urgency = clamp_float(urgency, 0.0f, 1.0f);
+    bridge->fep_effects.quarantine_urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
 
     /* Store FEP metrics */
     bridge->fep_effects.current_free_energy = current_fe;
@@ -398,7 +390,7 @@ int security_dist_fep_compute_effects(security_dist_fep_bridge_t* bridge) {
 
     /* Compute detection confidence (inverse of uncertainty) */
     float uncertainty = 1.0f / (bridge->state.system_precision + 0.1f);
-    bridge->fep_effects.detection_confidence = 1.0f - clamp_float(uncertainty, 0.0f, 0.9f);
+    bridge->fep_effects.detection_confidence = 1.0f - nimcp_clampf(uncertainty, 0.0f, 0.9f);
 
     /* Active defense policy evaluation (if enabled) */
     if (bridge->config.enable_active_defense) {
@@ -536,7 +528,7 @@ int security_dist_fep_update_from_detection(
     bridge->security_effects.current_threat_level =
         0.6f * bridge->security_effects.avg_byzantine_score +
         0.4f * (bridge->security_effects.avg_gradient_divergence / 10.0f);
-    bridge->security_effects.current_threat_level = clamp_float(
+    bridge->security_effects.current_threat_level = nimcp_clampf(
         bridge->security_effects.current_threat_level, 0.0f, 1.0f
     );
 
@@ -670,7 +662,7 @@ int security_dist_fep_report_false_positive(
     /* Reduce system precision to prevent future FPs */
     float reduction = 0.95f;
     bridge->state.system_precision *= reduction;
-    bridge->state.system_precision = clamp_float(
+    bridge->state.system_precision = nimcp_clampf(
         bridge->state.system_precision,
         SECURITY_DIST_FEP_MIN_PRECISION,
         SECURITY_DIST_FEP_MAX_PRECISION

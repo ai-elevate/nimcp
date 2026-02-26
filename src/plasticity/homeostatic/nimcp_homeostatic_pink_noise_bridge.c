@@ -13,21 +13,12 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(homeostatic_pink_noise_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(homeo_pink_noise_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp_value(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 //=============================================================================
 // Lifecycle Functions
@@ -177,11 +168,11 @@ int homeo_pink_noise_update(homeo_pink_noise_bridge_t* bridge) {
         (1.0f + amp * bridge->rate_avg_tau_noise);
 
     // Clamp to bounds
-    bridge->noisy_target_rate = clamp_value(bridge->noisy_target_rate,
+    bridge->noisy_target_rate = nimcp_clampf(bridge->noisy_target_rate,
         bridge->config.target_rate_min, bridge->config.target_rate_max);
-    bridge->noisy_scaling_tau = clamp_value(bridge->noisy_scaling_tau,
+    bridge->noisy_scaling_tau = nimcp_clampf(bridge->noisy_scaling_tau,
         bridge->config.scaling_tau_min, bridge->config.scaling_tau_max);
-    bridge->noisy_scaling_exp = clamp_value(bridge->noisy_scaling_exp,
+    bridge->noisy_scaling_exp = nimcp_clampf(bridge->noisy_scaling_exp,
         bridge->config.scaling_exp_min, bridge->config.scaling_exp_max);
 
     // Update statistics

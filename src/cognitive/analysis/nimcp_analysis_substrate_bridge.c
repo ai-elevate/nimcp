@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(analysis_substrate_bridge)
 //=============================================================================
@@ -150,13 +151,13 @@ int analysis_substrate_bridge_update(analysis_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables deep analysis and precision */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.analysis_depth = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.precision_level = nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.analysis_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.precision_level = nimcp_clampf(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables processing speed and decomposition */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.processing_speed = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.decomposition_ability = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.processing_speed = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.decomposition_ability = nimcp_clampf(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.analysis_depth + bridge->effects.precision_level +
                                         bridge->effects.processing_speed + bridge->effects.decomposition_ability) / 4.0f;

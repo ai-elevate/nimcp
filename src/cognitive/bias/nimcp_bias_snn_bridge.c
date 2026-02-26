@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_neural_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bias_snn_bridge)
 //=============================================================================
@@ -138,16 +139,6 @@ struct bias_snn_bridge {
     // Simulation time
     uint64_t sim_time_us;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static void reset_neuron(bias_neuron_t* neuron) {
     neuron->membrane_potential = 0.0f;
@@ -461,7 +452,7 @@ int bias_snn_encode_evidence(
 
 
     bridge->state = BIAS_SNN_STATE_ENCODING;
-    bridge->prior_belief = clamp(prior_belief, 0.0f, 1.0f);
+    bridge->prior_belief = nimcp_clampf(prior_belief, 0.0f, 1.0f);
 
     // Compute evidence statistics for bias detection
     float evidence_mean = 0.0f;
@@ -526,8 +517,8 @@ int bias_snn_encode_decision_context(
 
     bridge->state = BIAS_SNN_STATE_ENCODING;
     bridge->anchor_value = anchor_value;
-    bridge->recent_weight = clamp(recent_evidence_weight, 0.0f, 1.0f);
-    bridge->emotional_valence = clamp(emotional_valence, -1.0f, 1.0f);
+    bridge->recent_weight = nimcp_clampf(recent_evidence_weight, 0.0f, 1.0f);
+    bridge->emotional_valence = nimcp_clampf(emotional_valence, -1.0f, 1.0f);
 
     // Anchoring bias: strong anchor effect
     float anchoring_signal = fabsf(anchor_value) * 2.0f;
@@ -688,7 +679,7 @@ int bias_snn_step(bias_snn_bridge_t* bridge) {
         // Combine spike activity with membrane activity for robust detection
         float spike_rate = type_activity / bridge->config.neurons_per_type;
         membrane_activity /= bridge->config.neurons_per_type;
-        bridge->type_activations[t] = clamp(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
+        bridge->type_activations[t] = nimcp_clampf(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
     }
 
     // Conflict detection - multiple bias types active simultaneously
@@ -845,7 +836,7 @@ int bias_snn_detect_biases(
 
         conflict_activity += bridge->conflict_neurons[n].membrane_potential;
     }
-    output->conflict_level = clamp(conflict_activity / bridge->num_conflict_neurons, 0.0f, 1.0f);
+    output->conflict_level = nimcp_clampf(conflict_activity / bridge->num_conflict_neurons, 0.0f, 1.0f);
 
     // Metacognitive awareness
     if (bridge->config.enable_metacognitive_monitoring) {
@@ -857,7 +848,7 @@ int bias_snn_detect_biases(
 
     // Detection confidence based on activation strength
     output->detection_confidence = max_activation > 0.0f ?
-                                   clamp(max_activation / 1.0f, 0.0f, 1.0f) : 0.0f;
+                                   nimcp_clampf(max_activation / 1.0f, 0.0f, 1.0f) : 0.0f;
 
     bridge->last_output = *output;
 

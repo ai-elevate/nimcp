@@ -19,22 +19,12 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_amygdala_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "HYPOTHALAMUS_AMYGDALA_BRIDGE"
-
-
-/*=============================================================================
- * INTERNAL HELPERS
- *===========================================================================*/
-
-static float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 /*=============================================================================
  * LIFECYCLE FUNCTIONS
@@ -225,7 +215,7 @@ int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
     /* Update chronic stress accumulator */
     if (bridge->current_fear.anxiety_level > bridge->config.anxiety_chronic_threshold) {
         bridge->chronic_stress_accumulator += dt_ms / 1000.0f * 0.1f;
-        bridge->chronic_stress_accumulator = clamp_f(bridge->chronic_stress_accumulator, 0.0f, 1.0f);
+        bridge->chronic_stress_accumulator = nimcp_clampf(bridge->chronic_stress_accumulator, 0.0f, 1.0f);
 
         /* Enter chronic stress if threshold exceeded */
         if (bridge->chronic_stress_accumulator > 0.5f && bridge->chronic_stress_start_us == 0) {
@@ -234,7 +224,7 @@ int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
     } else {
         /* Decay chronic stress */
         bridge->chronic_stress_accumulator -= dt_ms / 1000.0f * 0.02f;
-        bridge->chronic_stress_accumulator = clamp_f(bridge->chronic_stress_accumulator, 0.0f, 1.0f);
+        bridge->chronic_stress_accumulator = nimcp_clampf(bridge->chronic_stress_accumulator, 0.0f, 1.0f);
 
         if (bridge->chronic_stress_accumulator < 0.2f && bridge->chronic_stress_start_us > 0) {
             hypo_amyg_bridge_exit_chronic_stress(bridge);
@@ -250,7 +240,7 @@ int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
     }
 
     /* Update integrated stress level */
-    bridge->integrated_stress_level = clamp_f(
+    bridge->integrated_stress_level = nimcp_clampf(
         0.4f * bridge->current_fear.fear_level +
         0.3f * bridge->current_fear.anxiety_level +
         0.3f * bridge->chronic_stress_accumulator,
@@ -287,22 +277,22 @@ hypo_amyg_stress_modulation_t hypo_amyg_bridge_compute_stress(
     phys_stress += urgencies[HYPO_DRIVE_THIRST] * 0.3f;
     phys_stress += urgencies[HYPO_DRIVE_TEMPERATURE] * 0.2f;
     phys_stress += urgencies[HYPO_DRIVE_FATIGUE] * 0.2f;
-    phys_stress = clamp_f(phys_stress, 0.0f, 1.0f);
+    phys_stress = nimcp_clampf(phys_stress, 0.0f, 1.0f);
 
     /* Compute psychological stress from psychological drives */
     float psych_stress = 0.0f;
     psych_stress += urgencies[HYPO_DRIVE_SAFETY] * 0.4f;
     psych_stress += urgencies[HYPO_DRIVE_SOCIAL] * 0.3f;
     psych_stress += urgencies[HYPO_DRIVE_AUTONOMY] * 0.3f;
-    psych_stress = clamp_f(psych_stress, 0.0f, 1.0f);
+    psych_stress = nimcp_clampf(psych_stress, 0.0f, 1.0f);
 
     /* CRH level from stress */
-    stress.crh_level = clamp_f(
+    stress.crh_level = nimcp_clampf(
         (phys_stress + psych_stress) * 0.5f * bridge->config.stress_scale,
         0.0f, 1.0f);
 
     /* Cortisol follows CRH with some lag (simplified) */
-    stress.cortisol_level = clamp_f(
+    stress.cortisol_level = nimcp_clampf(
         stress.crh_level * 0.8f + bridge->chronic_stress_accumulator * 0.2f,
         0.0f, 1.0f);
 
@@ -311,7 +301,7 @@ hypo_amyg_stress_modulation_t hypo_amyg_bridge_compute_stress(
     if (hypo_drive_get_system_state(bridge->drives, &sys_state)) {
         stress.arousal_level = sys_state.arousal_level;
         /* NE correlates with arousal */
-        stress.norepinephrine_level = clamp_f(stress.arousal_level * 0.7f, 0.0f, 1.0f);
+        stress.norepinephrine_level = nimcp_clampf(stress.arousal_level * 0.7f, 0.0f, 1.0f);
     }
 
     /* Chronicity from accumulator */
@@ -355,7 +345,7 @@ hypo_amyg_drive_context_t hypo_amyg_bridge_compute_drive_context(
     context.social_drive_level = urgencies[HYPO_DRIVE_SOCIAL];
 
     /* Physiological stress (survival drives) */
-    context.physiological_stress = clamp_f(
+    context.physiological_stress = nimcp_clampf(
         (urgencies[HYPO_DRIVE_HUNGER] +
          urgencies[HYPO_DRIVE_THIRST] +
          urgencies[HYPO_DRIVE_TEMPERATURE] +
@@ -363,7 +353,7 @@ hypo_amyg_drive_context_t hypo_amyg_bridge_compute_drive_context(
         0.0f, 1.0f);
 
     /* Psychological stress (psychological drives) */
-    context.psychological_stress = clamp_f(
+    context.psychological_stress = nimcp_clampf(
         (urgencies[HYPO_DRIVE_SOCIAL] +
          urgencies[HYPO_DRIVE_CURIOSITY] +
          urgencies[HYPO_DRIVE_SAFETY] +
@@ -468,7 +458,7 @@ float hypo_amyg_bridge_process_threat(
 
         /* Compute stress response magnitude */
         stress_response = threat->threat_intensity * bridge->config.threat_boost_factor;
-        stress_response = clamp_f(stress_response, 0.0f, 1.0f);
+        stress_response = nimcp_clampf(stress_response, 0.0f, 1.0f);
 
         /* Trigger acute stress via hypothalamus */
         hypo_amyg_bridge_trigger_acute_stress(bridge, stress_response);
@@ -591,7 +581,7 @@ int hypo_amyg_bridge_send_drive_context(
     if (bridge->amygdala && context->any_drive_critical) {
         /* Critical drives increase baseline anxiety */
         float current_anxiety = amygdala_get_anxiety_level(bridge->amygdala);
-        float new_anxiety = clamp_f(current_anxiety + 0.1f, 0.0f, 1.0f);
+        float new_anxiety = nimcp_clampf(current_anxiety + 0.1f, 0.0f, 1.0f);
         amygdala_set_anxiety(bridge->amygdala, new_anxiety);
     }
 
@@ -632,7 +622,7 @@ int hypo_amyg_bridge_trigger_acute_stress(
         return -1;
     }
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
 
     /* Activate stress nuclei */
     /* PVN for CRH release */

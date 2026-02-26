@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_types)
 
@@ -111,16 +112,6 @@ void fuzzy_types_destroy(fuzzy_types_engine_t* engine) {
 }
 
 //=============================================================================
-// Clamp helper
-//=============================================================================
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
-//=============================================================================
 // Membership Function Evaluation
 //=============================================================================
 
@@ -176,7 +167,7 @@ static float mf_sigmoid_diff(float x, const float* p) {
     float s1 = 1.0f / (1.0f + expf(-p[0] * (x - p[1])));
     float s2 = 1.0f / (1.0f + expf(-p[2] * (x - p[3])));
     float result = s1 - s2;
-    return clampf(result, 0.0f, 1.0f);
+    return nimcp_clampf(result, 0.0f, 1.0f);
 }
 
 static float mf_sigmoid_prod(float x, const float* p) {
@@ -232,10 +223,10 @@ static float mf_piecewise_linear(float x, const float* p, uint32_t num_params) {
     uint32_t num_points = num_params / 2;
 
     /* Below first point */
-    if (x <= p[0]) return clampf(p[1], 0.0f, 1.0f);
+    if (x <= p[0]) return nimcp_clampf(p[1], 0.0f, 1.0f);
 
     /* Above last point */
-    if (x >= p[(num_points - 1) * 2]) return clampf(p[(num_points - 1) * 2 + 1], 0.0f, 1.0f);
+    if (x >= p[(num_points - 1) * 2]) return nimcp_clampf(p[(num_points - 1) * 2 + 1], 0.0f, 1.0f);
 
     /* Linear interpolation between points */
     for (uint32_t i = 0; i < num_points - 1; i++) {
@@ -243,9 +234,9 @@ static float mf_piecewise_linear(float x, const float* p, uint32_t num_params) {
         float x1 = p[(i + 1) * 2], y1 = p[(i + 1) * 2 + 1];
         if (x >= x0 && x <= x1) {
             float dx = x1 - x0;
-            if (fabsf(dx) < FUZZY_PRECISION) return clampf(y0, 0.0f, 1.0f);
+            if (fabsf(dx) < FUZZY_PRECISION) return nimcp_clampf(y0, 0.0f, 1.0f);
             float t = (x - x0) / dx;
-            return clampf(y0 + t * (y1 - y0), 0.0f, 1.0f);
+            return nimcp_clampf(y0 + t * (y1 - y0), 0.0f, 1.0f);
         }
     }
     return 0.0f;
@@ -281,7 +272,7 @@ float fuzzy_mf_evaluate(const fuzzy_mf_t* mf, float x) {
             break;
     }
 
-    return clampf(result, 0.0f, 1.0f);
+    return nimcp_clampf(result, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -289,7 +280,7 @@ float fuzzy_mf_evaluate(const fuzzy_mf_t* mf, float x) {
 //=============================================================================
 
 float fuzzy_apply_hedge(float membership, fuzzy_hedge_t hedge) {
-    float mu = clampf(membership, 0.0f, 1.0f);
+    float mu = nimcp_clampf(membership, 0.0f, 1.0f);
     switch (hedge) {
         case FUZZY_HEDGE_NONE:         return mu;
         case FUZZY_HEDGE_VERY:         return mu * mu;
@@ -692,13 +683,13 @@ float fuzzy_cardinality(const float* memberships, uint32_t count) {
 
 int fuzzy_types_set_inflammation(fuzzy_types_engine_t* engine, float level) {
     if (!engine) return FUZZY_ERR_NULL;
-    engine->inflammation_level = clampf(level, 0.0f, 1.0f);
+    engine->inflammation_level = nimcp_clampf(level, 0.0f, 1.0f);
     return FUZZY_ERR_OK;
 }
 
 int fuzzy_types_set_fatigue(fuzzy_types_engine_t* engine, float level) {
     if (!engine) return FUZZY_ERR_NULL;
-    engine->fatigue_level = clampf(level, 0.0f, 1.0f);
+    engine->fatigue_level = nimcp_clampf(level, 0.0f, 1.0f);
     return FUZZY_ERR_OK;
 }
 

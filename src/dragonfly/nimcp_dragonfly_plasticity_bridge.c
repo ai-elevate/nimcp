@@ -24,6 +24,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_plasticity_bridge)
 
@@ -43,12 +44,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 //=============================================================================
@@ -305,7 +300,7 @@ int dragonfly_plasticity_learn(
         float delta = bridge->config.tsdn_learning_rate * reward * eligibility;
         bridge->state.tsdn_state.gain[nearest_neuron] += delta;
         bridge->state.tsdn_state.gain[nearest_neuron] =
-            clamp_f(bridge->state.tsdn_state.gain[nearest_neuron], 0.1f, 2.0f);
+            nimcp_clampf(bridge->state.tsdn_state.gain[nearest_neuron], 0.1f, 2.0f);
         bridge->stats.tsdn_updates++;
     }
 
@@ -318,7 +313,7 @@ int dragonfly_plasticity_learn(
         float sum = 0.0f;
         for (int i = 0; i < PLASTICITY_IMM_MODELS; i++) {
             bridge->state.imm_state.model_priors[i] =
-                clamp_f(bridge->state.imm_state.model_priors[i], 0.01f, 1.0f);
+                nimcp_clampf(bridge->state.imm_state.model_priors[i], 0.01f, 1.0f);
             sum += bridge->state.imm_state.model_priors[i];
         }
         for (int i = 0; i < PLASTICITY_IMM_MODELS; i++) {
@@ -331,13 +326,13 @@ int dragonfly_plasticity_learn(
     float nav_delta = bridge->config.intercept_learning_rate * reward * 0.1f;
     bridge->state.intercept_state.nav_gain += nav_delta;
     bridge->state.intercept_state.nav_gain =
-        clamp_f(bridge->state.intercept_state.nav_gain,
+        nimcp_clampf(bridge->state.intercept_state.nav_gain,
                 bridge->config.min_nav_gain, bridge->config.max_nav_gain);
     bridge->stats.nav_gain_change += fabsf(nav_delta);
     bridge->stats.intercept_updates++;
 
     bridge->stats.learning_progress =
-        clamp_f(bridge->state.cumulative_reward * 0.01f + 0.5f, 0.0f, 1.0f);
+        nimcp_clampf(bridge->state.cumulative_reward * 0.01f + 0.5f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -353,7 +348,7 @@ int dragonfly_plasticity_reward(
 ) {
     plasticity_event_t event = {
         .signal = LEARN_REWARD,
-        .magnitude = 1.0f - clamp_f(miss_distance * 10.0f, 0.0f, 0.9f),
+        .magnitude = 1.0f - nimcp_clampf(miss_distance * 10.0f, 0.0f, 0.9f),
         .target_direction_rad = target_direction,
         .target_speed = target_speed,
         .motion_model = motion_model,
@@ -377,7 +372,7 @@ int dragonfly_plasticity_punish(
 
     plasticity_event_t event = {
         .signal = LEARN_PUNISHMENT,
-        .magnitude = 0.5f + clamp_f(miss_distance * 5.0f, 0.0f, 0.5f),
+        .magnitude = 0.5f + nimcp_clampf(miss_distance * 5.0f, 0.0f, 0.5f),
         .target_direction_rad = target_direction,
         .target_speed = target_speed,
         .motion_model = motion_model,

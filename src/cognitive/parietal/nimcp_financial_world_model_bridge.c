@@ -47,6 +47,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_world_model_bridge_health_agent = NULL;
@@ -168,16 +169,6 @@ static const char* model_names[] = {
     "momentum",
     "regime_switch"
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 /** Simple LCG random number generator */
 static inline float random_uniform(financial_world_model_bridge_t* bridge) {
@@ -647,7 +638,7 @@ static void predict_step_momentum(financial_world_model_bridge_t* bridge,
         float momentum = 0.0f;
         if (prev_prices && prev_prices[i] > 0.01f) {
             momentum = (state->asset_prices[i] - prev_prices[i]) / prev_prices[i];
-            momentum = clampf(momentum, -0.1f, 0.1f);  /* Cap momentum */
+            momentum = nimcp_clampf(momentum, -0.1f, 0.1f);  /* Cap momentum */
         }
         float drift = momentum * 0.1f;  /* Momentum contribution */
         state->asset_prices[i] *= (1.0f + drift + shock);

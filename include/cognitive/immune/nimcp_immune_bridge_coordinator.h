@@ -253,7 +253,7 @@ typedef immune_bridge_health_t (*immune_bridge_health_fn_t)(immune_bridge_handle
  */
 typedef struct {
     uint32_t bridge_id;                      /**< Unique bridge ID */
-    const char* bridge_name;                 /**< Human-readable name */
+    char bridge_name[64];                    /**< Human-readable name (owned copy) */
     immune_bridge_category_t category;       /**< Bridge category */
     immune_bridge_handle_t handle;           /**< Opaque bridge pointer */
 

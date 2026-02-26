@@ -118,6 +118,36 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.speech_cortex_process(*args, **kwargs)
 
+    # Read-only accessors — still need RLock because the underlying C
+    # brain may be mid-mutation from another thread.
+    def get_neuron_count(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.get_neuron_count(*args, **kwargs)
+
+    def get_accuracy(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.get_accuracy(*args, **kwargs)
+
+    def get_synapse_count(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.get_synapse_count(*args, **kwargs)
+
+    def get_last_loss(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.get_last_loss(*args, **kwargs)
+
+    def get_uncertainty(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.get_uncertainty(*args, **kwargs)
+
+    def self_assess(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.self_assess(*args, **kwargs)
+
+    def curiosity_detect_gaps(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.curiosity_detect_gaps(*args, **kwargs)
+
     def __getattr__(self, name):
         """Proxy all other attributes to the underlying brain.
 

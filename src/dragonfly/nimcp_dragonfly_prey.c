@@ -20,6 +20,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_prey)
 
@@ -38,12 +39,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 static inline float vec3_length(const float v[3]) {
@@ -635,7 +630,7 @@ int dragonfly_prey_predict(
     prediction->evasion_likely = (prey->classification.behavior == PREY_BEHAVIOR_EVASIVE ||
                                   prey->features.direction_variance > 1.0f);
     prediction->evasion_probability = prey->features.direction_variance * 0.3f;
-    prediction->evasion_probability = clamp_f(prediction->evasion_probability, 0.0f, 0.9f);
+    prediction->evasion_probability = nimcp_clampf(prediction->evasion_probability, 0.0f, 0.9f);
 
     /* Random expected evasion direction */
     prediction->expected_evasion_dir_rad = atan2f(prey->last_velocity[1],

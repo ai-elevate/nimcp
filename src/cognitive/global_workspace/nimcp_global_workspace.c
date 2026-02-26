@@ -59,6 +59,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(global_workspace, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -136,19 +137,4 @@ static nimcp_error_t handle_attention_shift(const void*, size_t, nimcp_bio_promi
 static int global_workspace_wiring_handler_callback( bio_module_context_t ctx, const bio_message_type_t* message_types, uint32_t message_count, void* user_data);
 static void bio_broadcast_workspace_event(struct global_workspace_struct* ws, uint32_t broadcast_id, float strength);
 static uint64_t get_time_ms(void);
-static inline float clamp_float(float value, float min, float max);
-static float apply_decay(float original_strength, uint64_t age_ms, float tau_ms);
-static bool resolve_winner_take_all( struct global_workspace_struct* workspace, uint32_t* winner_idx, float* winner_strength);
-static bool resolve_priority_based( struct global_workspace_struct* workspace, uint32_t* winner_idx, float* winner_strength);
-static bool resolve_round_robin( struct global_workspace_struct* workspace, uint32_t* winner_idx, float* winner_strength);
-static void broadcast_winner( struct global_workspace_struct* workspace, uint32_t winner_idx, float winner_strength);
-
-//=============================================================================
-// SRP Split: Function implementations organized by responsibility
-//=============================================================================
-#include "nimcp_global_workspace_part_processing.c"  // 2 functions: processing
-#include "nimcp_global_workspace_part_helpers.c"  // 9 functions: helpers
-#include "nimcp_global_workspace_part_lifecycle.c"  // 4 functions: lifecycle
-#include "nimcp_global_workspace_part_core.c"  // 11 functions: core
-#include "nimcp_global_workspace_part_io.c"  // 4 functions: io
-#include "nimcp_global_workspace_part_accessors.c"  // 16 functions: accessors
+static inline float nimcp_clampf(float value, float min, float max);

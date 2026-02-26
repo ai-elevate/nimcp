@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,17 +53,11 @@ typedef enum {
  * ============================================================================ */
 
 /**
- * @brief Clamp a float value between min and max bounds
- *
- * @param value The value to clamp
- * @param min_val Minimum bound (inclusive)
- * @param max_val Maximum bound (inclusive)
- * @return Clamped value
- *
- * Previously duplicated as static clamp_f() in 80+ substrate bridge files.
+ * @brief Backward-compat alias for nimcp_clampf() (from nimcp_math_helpers.h)
+ * @deprecated Use nimcp_clampf() directly.
  */
 static inline float nimcp_clamp_f(float value, float min_val, float max_val) {
-    return value < min_val ? min_val : (value > max_val ? max_val : value);
+    return nimcp_clampf(value, min_val, max_val);
 }
 
 /**

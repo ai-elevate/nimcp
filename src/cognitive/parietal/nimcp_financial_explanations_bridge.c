@@ -47,6 +47,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_explanations_bridge_health_agent = NULL;
@@ -177,16 +178,6 @@ static const char* state_names[] = {
     "degraded",
     "error"
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 /**
  * @brief Publish message through KG wiring
@@ -381,7 +372,7 @@ static float compute_confidence(const fin_decision_record_t* decision) {
         confidence += 0.05f;
     }
 
-    return clampf(confidence, 0.0f, 1.0f);
+    return nimcp_clampf(confidence, 0.0f, 1.0f);
 }
 
 /**

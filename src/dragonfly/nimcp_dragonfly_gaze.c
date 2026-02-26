@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_gaze)
 
@@ -29,12 +30,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 static inline float vec3_length(const float v[3]) {
@@ -229,15 +224,15 @@ static void apply_vor_compensation(
 }
 
 static void apply_head_limits(dragonfly_gaze_t gaze) {
-    gaze->head.yaw_rad = clamp_f(gaze->head.yaw_rad,
+    gaze->head.yaw_rad = nimcp_clampf(gaze->head.yaw_rad,
                                   -gaze->config.max_yaw_rad,
                                   gaze->config.max_yaw_rad);
 
-    gaze->head.pitch_rad = clamp_f(gaze->head.pitch_rad,
+    gaze->head.pitch_rad = nimcp_clampf(gaze->head.pitch_rad,
                                     -gaze->config.max_pitch_down_rad,
                                     gaze->config.max_pitch_up_rad);
 
-    gaze->head.roll_rad = clamp_f(gaze->head.roll_rad,
+    gaze->head.roll_rad = nimcp_clampf(gaze->head.roll_rad,
                                    -gaze->config.max_roll_rad,
                                    gaze->config.max_roll_rad);
 
@@ -515,8 +510,8 @@ int dragonfly_gaze_update(
         float pitch_rate = pitch_error * gaze->config.pursuit_gain / dt_s;
 
         /* Rate limiting */
-        yaw_rate = clamp_f(yaw_rate, -gaze->config.max_yaw_rate, gaze->config.max_yaw_rate);
-        pitch_rate = clamp_f(pitch_rate, -gaze->config.max_pitch_rate, gaze->config.max_pitch_rate);
+        yaw_rate = nimcp_clampf(yaw_rate, -gaze->config.max_yaw_rate, gaze->config.max_yaw_rate);
+        pitch_rate = nimcp_clampf(pitch_rate, -gaze->config.max_pitch_rate, gaze->config.max_pitch_rate);
 
         gaze->head.yaw_rad += yaw_rate * dt_s;
         gaze->head.pitch_rad += pitch_rate * dt_s;

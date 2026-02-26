@@ -26,6 +26,7 @@
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_neural_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_predictive_health_agent = NULL;
@@ -145,16 +146,6 @@ static float predictive_randn(uint64_t* state) {
     float u1 = predictive_randf(state) + 1e-10f;
     float u2 = predictive_randf(state);
     return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
-}
-
-//=============================================================================
-// Utility Functions
-//=============================================================================
-
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
 }
 
 static float s_shaped(float low, float high, float x) {
@@ -728,7 +719,7 @@ int financial_predictive_bridge_predict(
 
     /* Clamp precisions to valid range */
     for (uint32_t i = 0; i < num_assets * horizon; i++) {
-        state->precisions[i] = clampf(state->precisions[i],
+        state->precisions[i] = nimcp_clampf(state->precisions[i],
                                        bridge->config.min_precision,
                                        bridge->config.max_precision);
     }
@@ -834,7 +825,7 @@ int financial_predictive_bridge_update(
                 float precision_update = bridge->config.precision_learning_rate *
                     (1.0f / (error_magnitude + 0.1f) - bridge->belief_precision[idx]);
                 bridge->belief_precision[idx] += precision_update * health_mod;
-                bridge->belief_precision[idx] = clampf(bridge->belief_precision[idx],
+                bridge->belief_precision[idx] = nimcp_clampf(bridge->belief_precision[idx],
                     bridge->config.min_precision, bridge->config.max_precision);
             }
         }
@@ -1291,7 +1282,7 @@ int financial_predictive_bridge_set_inflammation(
             "financial_predictive_bridge_set_inflammation: bridge is NULL");
         return FIN_PREDICTIVE_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_PREDICTIVE_ERR_OK;
 }
 
@@ -1304,7 +1295,7 @@ int financial_predictive_bridge_set_fatigue(
             "financial_predictive_bridge_set_fatigue: bridge is NULL");
         return FIN_PREDICTIVE_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_PREDICTIVE_ERR_OK;
 }
 

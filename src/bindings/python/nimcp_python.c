@@ -1675,15 +1675,28 @@ static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* 
     brain_ti_modulation_state_t state;
     memset(&state, 0, sizeof(state));
     int rc = brain_ti_compute_modulation_state(self->brain->internal_brain, &state);
+
+    /* Helper macros — PyDict_SetItemString does NOT steal the reference,
+       so we must Py_DECREF the temporary after insertion. */
+#define SET_FLOAT(d, key, val) do { \
+    PyObject* _tmp = PyFloat_FromDouble(val); \
+    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+} while(0)
+#define SET_BOOL(d, key, val) do { \
+    PyObject* _tmp = (val) ? Py_True : Py_False; \
+    Py_INCREF(_tmp); \
+    PyDict_SetItemString(d, key, _tmp); \
+    Py_DECREF(_tmp); \
+} while(0)
+
     if (rc != 0) {
         /* Return defaults on error */
         PyObject* d = PyDict_New();
         if (!d) return PyErr_NoMemory();
-        PyDict_SetItemString(d, "final_lr_factor", PyFloat_FromDouble(1.0));
-        PyDict_SetItemString(d, "final_batch_factor", PyFloat_FromDouble(1.0));
-        PyDict_SetItemString(d, "final_clip_factor", PyFloat_FromDouble(1.0));
-        PyDict_SetItemString(d, "should_pause", Py_False);
-        Py_INCREF(Py_False);
+        SET_FLOAT(d, "final_lr_factor", 1.0);
+        SET_FLOAT(d, "final_batch_factor", 1.0);
+        SET_FLOAT(d, "final_clip_factor", 1.0);
+        SET_BOOL(d, "should_pause", 0);
         return d;
     }
 
@@ -1691,28 +1704,30 @@ static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* 
     if (!d) return PyErr_NoMemory();
 
     /* Individual module outputs */
-    PyDict_SetItemString(d, "arousal_level", PyFloat_FromDouble(state.arousal_level));
-    PyDict_SetItemString(d, "arousal_cognitive_gain", PyFloat_FromDouble(state.arousal_cognitive_gain));
-    PyDict_SetItemString(d, "arousal_memory_consolidation", PyFloat_FromDouble(state.arousal_memory_consolidation));
-    PyDict_SetItemString(d, "circadian_efficiency", PyFloat_FromDouble(state.circadian_efficiency));
-    PyDict_SetItemString(d, "rpe_bonus", PyFloat_FromDouble(state.rpe_bonus));
-    PyDict_SetItemString(d, "inflammation_learning_factor", PyFloat_FromDouble(state.inflammation_learning_factor));
-    PyDict_SetItemString(d, "inflammation_precision", PyFloat_FromDouble(state.inflammation_precision));
-    PyDict_SetItemString(d, "instability_lr_scale", PyFloat_FromDouble(state.instability_lr_scale));
-    PyDict_SetItemString(d, "instability_batch_scale", PyFloat_FromDouble(state.instability_batch_scale));
-    PyDict_SetItemString(d, "instability_clip_factor", PyFloat_FromDouble(state.instability_clip_factor));
-    PyDict_SetItemString(d, "portia_learning_gate", PyFloat_FromDouble(state.portia_learning_gate));
-    PyDict_SetItemString(d, "portia_compute_budget", PyFloat_FromDouble(state.portia_compute_budget));
-    PyDict_SetItemString(d, "stress_level", PyFloat_FromDouble(state.stress_level));
-    PyDict_SetItemString(d, "cognitive_capacity", PyFloat_FromDouble(state.cognitive_capacity));
-    PyDict_SetItemString(d, "conflict_level", PyFloat_FromDouble(state.conflict_level));
+    SET_FLOAT(d, "arousal_level", state.arousal_level);
+    SET_FLOAT(d, "arousal_cognitive_gain", state.arousal_cognitive_gain);
+    SET_FLOAT(d, "arousal_memory_consolidation", state.arousal_memory_consolidation);
+    SET_FLOAT(d, "circadian_efficiency", state.circadian_efficiency);
+    SET_FLOAT(d, "rpe_bonus", state.rpe_bonus);
+    SET_FLOAT(d, "inflammation_learning_factor", state.inflammation_learning_factor);
+    SET_FLOAT(d, "inflammation_precision", state.inflammation_precision);
+    SET_FLOAT(d, "instability_lr_scale", state.instability_lr_scale);
+    SET_FLOAT(d, "instability_batch_scale", state.instability_batch_scale);
+    SET_FLOAT(d, "instability_clip_factor", state.instability_clip_factor);
+    SET_FLOAT(d, "portia_learning_gate", state.portia_learning_gate);
+    SET_FLOAT(d, "portia_compute_budget", state.portia_compute_budget);
+    SET_FLOAT(d, "stress_level", state.stress_level);
+    SET_FLOAT(d, "cognitive_capacity", state.cognitive_capacity);
+    SET_FLOAT(d, "conflict_level", state.conflict_level);
 
     /* Composed final modulation factors */
-    PyDict_SetItemString(d, "final_lr_factor", PyFloat_FromDouble(state.final_lr_factor));
-    PyDict_SetItemString(d, "final_batch_factor", PyFloat_FromDouble(state.final_batch_factor));
-    PyDict_SetItemString(d, "final_clip_factor", PyFloat_FromDouble(state.final_clip_factor));
-    PyDict_SetItemString(d, "should_pause", state.should_pause ? Py_True : Py_False);
-    Py_INCREF(state.should_pause ? Py_True : Py_False);
+    SET_FLOAT(d, "final_lr_factor", state.final_lr_factor);
+    SET_FLOAT(d, "final_batch_factor", state.final_batch_factor);
+    SET_FLOAT(d, "final_clip_factor", state.final_clip_factor);
+    SET_BOOL(d, "should_pause", state.should_pause);
+
+#undef SET_FLOAT
+#undef SET_BOOL
 
     return d;
 }
@@ -1893,14 +1908,15 @@ static PyObject* Brain_cache_communities(BrainObject* self, PyObject* Py_UNUSED(
     PyObject* result = PyDict_New();
     if (!result) return NULL;
 
-    PyDict_SetItemString(result, "num_communities",
-                         PyLong_FromUnsignedLong(self->community_cache->num_communities));
-    PyDict_SetItemString(result, "num_hubs",
-                         PyLong_FromUnsignedLong(self->community_cache->num_hubs));
-    PyDict_SetItemString(result, "modularity",
-                         PyFloat_FromDouble(self->community_cache->modularity));
-    PyDict_SetItemString(result, "num_neurons",
-                         PyLong_FromUnsignedLong(self->community_cache->num_neurons));
+    PyObject* tmp;
+    tmp = PyLong_FromUnsignedLong(self->community_cache->num_communities);
+    if (tmp) { PyDict_SetItemString(result, "num_communities", tmp); Py_DECREF(tmp); }
+    tmp = PyLong_FromUnsignedLong(self->community_cache->num_hubs);
+    if (tmp) { PyDict_SetItemString(result, "num_hubs", tmp); Py_DECREF(tmp); }
+    tmp = PyFloat_FromDouble(self->community_cache->modularity);
+    if (tmp) { PyDict_SetItemString(result, "modularity", tmp); Py_DECREF(tmp); }
+    tmp = PyLong_FromUnsignedLong(self->community_cache->num_neurons);
+    if (tmp) { PyDict_SetItemString(result, "num_neurons", tmp); Py_DECREF(tmp); }
 
     return result;
 }
@@ -2370,29 +2386,50 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
     brain_ti_decision_cycle_result_t result;
     int rc = brain_ti_compute_decision_cycle(self->brain->internal_brain,
                                               &metrics, &result);
+
+    /* Helper macros — PyDict_SetItemString does NOT steal the reference,
+       so we must Py_DECREF the temporary after insertion. */
+#define SET_FLOAT(d, key, val) do { \
+    PyObject* _tmp = PyFloat_FromDouble(val); \
+    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+} while(0)
+#define SET_LONG(d, key, val) do { \
+    PyObject* _tmp = PyLong_FromLong(val); \
+    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+} while(0)
+#define SET_ULONG(d, key, val) do { \
+    PyObject* _tmp = PyLong_FromUnsignedLong(val); \
+    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+} while(0)
+#define SET_BOOL(d, key, val) do { \
+    PyObject* _tmp = (val) ? Py_True : Py_False; \
+    Py_INCREF(_tmp); \
+    PyDict_SetItemString(d, key, _tmp); \
+    Py_DECREF(_tmp); \
+} while(0)
+#define SET_STR(d, key, val) do { \
+    PyObject* _tmp = PyUnicode_FromString(val); \
+    if (_tmp) { PyDict_SetItemString(d, key, _tmp); Py_DECREF(_tmp); } \
+} while(0)
+
     if (rc != 0) {
         /* Return safe defaults on error */
         PyObject* d = PyDict_New();
         if (!d) return PyErr_NoMemory();
-        PyDict_SetItemString(d, "consensus_action",
-                             PyLong_FromLong(TRAINING_EVIDENCE_CONTINUE));
-        PyDict_SetItemString(d, "lr_factor", PyFloat_FromDouble(1.0));
-        PyDict_SetItemString(d, "batch_factor", PyFloat_FromDouble(1.0));
-        PyDict_SetItemString(d, "grad_clip_factor", PyFloat_FromDouble(1.0));
-        PyDict_SetItemString(d, "urgency", PyFloat_FromDouble(0.0));
-        PyDict_SetItemString(d, "converged", Py_False);
-        Py_INCREF(Py_False);
-        PyDict_SetItemString(d, "num_contributors", PyLong_FromLong(0));
-        PyDict_SetItemString(d, "primary_diagnosis", PyUnicode_FromString(""));
-        PyDict_SetItemString(d, "diagnosis_plausibility", PyFloat_FromDouble(0.0));
-        PyDict_SetItemString(d, "recommend_pause", Py_False);
-        Py_INCREF(Py_False);
-        PyDict_SetItemString(d, "recommend_rollback", Py_False);
-        Py_INCREF(Py_False);
-        PyDict_SetItemString(d, "causal_explanation", PyUnicode_FromString(""));
-        PyDict_SetItemString(d, "causal_confidence", PyFloat_FromDouble(0.0));
-        PyDict_SetItemString(d, "lr_change_beneficial", Py_False);
-        Py_INCREF(Py_False);
+        SET_LONG(d, "consensus_action", TRAINING_EVIDENCE_CONTINUE);
+        SET_FLOAT(d, "lr_factor", 1.0);
+        SET_FLOAT(d, "batch_factor", 1.0);
+        SET_FLOAT(d, "grad_clip_factor", 1.0);
+        SET_FLOAT(d, "urgency", 0.0);
+        SET_BOOL(d, "converged", 0);
+        SET_LONG(d, "num_contributors", 0);
+        SET_STR(d, "primary_diagnosis", "");
+        SET_FLOAT(d, "diagnosis_plausibility", 0.0);
+        SET_BOOL(d, "recommend_pause", 0);
+        SET_BOOL(d, "recommend_rollback", 0);
+        SET_STR(d, "causal_explanation", "");
+        SET_FLOAT(d, "causal_confidence", 0.0);
+        SET_BOOL(d, "lr_change_beneficial", 0);
         return d;
     }
 
@@ -2400,47 +2437,30 @@ static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* ar
     if (!d) return PyErr_NoMemory();
 
     /* Convergent decision (Layer 1) */
-    PyDict_SetItemString(d, "consensus_action",
-                         PyLong_FromLong(result.consensus_action));
-    PyDict_SetItemString(d, "lr_factor",
-                         PyFloat_FromDouble(result.lr_factor));
-    PyDict_SetItemString(d, "batch_factor",
-                         PyFloat_FromDouble(result.batch_factor));
-    PyDict_SetItemString(d, "grad_clip_factor",
-                         PyFloat_FromDouble(result.grad_clip_factor));
-    PyDict_SetItemString(d, "urgency",
-                         PyFloat_FromDouble(result.urgency));
-
-    PyObject* converged_val = result.converged ? Py_True : Py_False;
-    Py_INCREF(converged_val);
-    PyDict_SetItemString(d, "converged", converged_val);
-
-    PyDict_SetItemString(d, "num_contributors",
-                         PyLong_FromUnsignedLong(result.num_contributors));
+    SET_LONG(d, "consensus_action", result.consensus_action);
+    SET_FLOAT(d, "lr_factor", result.lr_factor);
+    SET_FLOAT(d, "batch_factor", result.batch_factor);
+    SET_FLOAT(d, "grad_clip_factor", result.grad_clip_factor);
+    SET_FLOAT(d, "urgency", result.urgency);
+    SET_BOOL(d, "converged", result.converged);
+    SET_ULONG(d, "num_contributors", result.num_contributors);
 
     /* Diagnosis (Layer 3) */
-    PyDict_SetItemString(d, "primary_diagnosis",
-                         PyUnicode_FromString(result.primary_diagnosis));
-    PyDict_SetItemString(d, "diagnosis_plausibility",
-                         PyFloat_FromDouble(result.diagnosis_plausibility));
-
-    PyObject* pause_val = result.recommend_pause ? Py_True : Py_False;
-    Py_INCREF(pause_val);
-    PyDict_SetItemString(d, "recommend_pause", pause_val);
-
-    PyObject* rollback_val = result.recommend_rollback ? Py_True : Py_False;
-    Py_INCREF(rollback_val);
-    PyDict_SetItemString(d, "recommend_rollback", rollback_val);
+    SET_STR(d, "primary_diagnosis", result.primary_diagnosis);
+    SET_FLOAT(d, "diagnosis_plausibility", result.diagnosis_plausibility);
+    SET_BOOL(d, "recommend_pause", result.recommend_pause);
+    SET_BOOL(d, "recommend_rollback", result.recommend_rollback);
 
     /* Causal reasoning (Layer 2) */
-    PyDict_SetItemString(d, "causal_explanation",
-                         PyUnicode_FromString(result.causal_explanation));
-    PyDict_SetItemString(d, "causal_confidence",
-                         PyFloat_FromDouble(result.causal_confidence));
+    SET_STR(d, "causal_explanation", result.causal_explanation);
+    SET_FLOAT(d, "causal_confidence", result.causal_confidence);
+    SET_BOOL(d, "lr_change_beneficial", result.lr_change_beneficial);
 
-    PyObject* beneficial_val = result.lr_change_beneficial ? Py_True : Py_False;
-    Py_INCREF(beneficial_val);
-    PyDict_SetItemString(d, "lr_change_beneficial", beneficial_val);
+#undef SET_FLOAT
+#undef SET_LONG
+#undef SET_ULONG
+#undef SET_BOOL
+#undef SET_STR
 
     return d;
 }

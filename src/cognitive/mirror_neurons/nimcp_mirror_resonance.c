@@ -29,6 +29,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_resonance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -91,16 +92,6 @@ struct motor_resonance_system {
     uint32_t social_releases;
     uint32_t voluntary_releases;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 static inline float exp_decay(float dt_ms, float tau_ms) {
     return expf(-dt_ms / tau_ms);
@@ -455,12 +446,12 @@ float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
         scaled_obs *= (1.0F - fatigue_penalty * 0.5F);  // Max 50% reduction
     }
 
-    ch->target_resonance = clamp_f(scaled_obs, 0.0F, NIMCP_RESONANCE_MAX);
+    ch->target_resonance = nimcp_clampf(scaled_obs, 0.0F, NIMCP_RESONANCE_MAX);
 
     // Instant update toward target (for responsiveness)
     float rise_factor = 0.3F;  // Portion to move instantly
     ch->resonance_level += (ch->target_resonance - ch->resonance_level) * rise_factor;
-    ch->resonance_level = clamp_f(ch->resonance_level, 0.0F, NIMCP_RESONANCE_MAX);
+    ch->resonance_level = nimcp_clampf(ch->resonance_level, 0.0F, NIMCP_RESONANCE_MAX);
 
     // Track peak
     if (ch->resonance_level > ch->peak_resonance) {
@@ -470,7 +461,7 @@ float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
     // Update fatigue
     if (cfg->enable_fatigue && ch->resonance_level > 0.5F) {
         ch->fatigue_level += 0.01F;
-        ch->fatigue_level = clamp_f(ch->fatigue_level, 0.0F, 1.0F);
+        ch->fatigue_level = nimcp_clampf(ch->fatigue_level, 0.0F, 1.0F);
     }
 
     return ch->resonance_level;
@@ -515,7 +506,7 @@ void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level)
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_set_", 0.0f);
 
 
-    resonance->bg_inhibition = clamp_f(level, 0.0F, 1.0F);
+    resonance->bg_inhibition = nimcp_clampf(level, 0.0F, 1.0F);
 
     // Update all channels with BG suppression
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
@@ -549,7 +540,7 @@ void motor_resonance_set_pfc_suppression(motor_resonance_t resonance,
 
     motor_channel_t* ch = &resonance->channels[channel_id];
 
-    level = clamp_f(level, 0.0F, 1.0F);
+    level = nimcp_clampf(level, 0.0F, 1.0F);
 
     // PFC suppression takes priority over BG
     if (level > 0.1F) {
@@ -571,7 +562,7 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_rele", 0.0f);
 
 
-    resonance->learning_context = clamp_f(learning_context, 0.0F, 1.0F);
+    resonance->learning_context = nimcp_clampf(learning_context, 0.0F, 1.0F);
 
     // Reduce suppression proportional to learning context
     float release_amount = learning_context * resonance->config.bg_release_rate;
@@ -587,7 +578,7 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
 
             motor_channel_t* ch = &resonance->channels[i];
             ch->suppression_level -= release_amount;
-            ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
+            ch->suppression_level = nimcp_clampf(ch->suppression_level, 0.0F, 1.0F);
 
             if (ch->suppression_level < 0.2F && learning_context > 0.5F) {
                 ch->release_reason = RESONANCE_RELEASE_LEARNING;
@@ -597,7 +588,7 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
     } else if ((uint32_t)channel_id < resonance->num_channels) {
         motor_channel_t* ch = &resonance->channels[channel_id];
         ch->suppression_level -= release_amount;
-        ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
+        ch->suppression_level = nimcp_clampf(ch->suppression_level, 0.0F, 1.0F);
 
         if (ch->suppression_level < 0.2F && learning_context > 0.5F) {
             ch->release_reason = RESONANCE_RELEASE_LEARNING;
@@ -617,7 +608,7 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_rele", 0.0f);
 
 
-    resonance->social_context = clamp_f(social_strength, 0.0F, 1.0F);
+    resonance->social_context = nimcp_clampf(social_strength, 0.0F, 1.0F);
 
     float release_amount = social_strength * resonance->config.bg_release_rate * 0.5F;
 
@@ -631,7 +622,7 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
 
             motor_channel_t* ch = &resonance->channels[i];
             ch->suppression_level -= release_amount;
-            ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
+            ch->suppression_level = nimcp_clampf(ch->suppression_level, 0.0F, 1.0F);
 
             if (ch->suppression_level < 0.2F && social_strength > 0.5F) {
                 ch->release_reason = RESONANCE_RELEASE_SOCIAL;
@@ -641,7 +632,7 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
     } else if ((uint32_t)channel_id < resonance->num_channels) {
         motor_channel_t* ch = &resonance->channels[channel_id];
         ch->suppression_level -= release_amount;
-        ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
+        ch->suppression_level = nimcp_clampf(ch->suppression_level, 0.0F, 1.0F);
 
         if (ch->suppression_level < 0.2F && social_strength > 0.5F) {
             ch->release_reason = RESONANCE_RELEASE_SOCIAL;
@@ -805,7 +796,7 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
 
         // Compute final motor output
         ch->motor_output = ch->resonance_level - ch->suppression_level;
-        ch->motor_output = clamp_f(ch->motor_output, 0.0F, 1.0F);
+        ch->motor_output = nimcp_clampf(ch->motor_output, 0.0F, 1.0F);
 
         // Check threshold
         bool was_above = ch->above_threshold;

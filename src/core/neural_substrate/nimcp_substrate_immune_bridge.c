@@ -17,18 +17,9 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(substrate_immune_bridge)
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get cytokine concentration from immune system
@@ -46,7 +37,7 @@ static float get_cytokine_concentration(
         }
     }
 
-    return clamp_f(total, 0.0f, 1.0f);
+    return nimcp_clampf(total, 0.0f, 1.0f);
 }
 
 /**
@@ -294,11 +285,11 @@ int substrate_immune_apply_fever(substrate_immune_bridge_t* bridge) {
 
     /* Calculate fever intensity */
     bridge->cytokine_effects.fever_intensity =
-        clamp_f(bridge->cytokine_effects.total_temp_increase / 3.0f, 0.0f, 1.0f);
+        nimcp_clampf(bridge->cytokine_effects.total_temp_increase / 3.0f, 0.0f, 1.0f);
 
     /* Apply to substrate (relative to normal) */
     float new_temp = SUBSTRATE_NORMAL_TEMPERATURE + bridge->cytokine_effects.total_temp_increase;
-    new_temp = clamp_f(new_temp, 35.0f, bridge->config.max_fever_temperature);
+    new_temp = nimcp_clampf(new_temp, 35.0f, bridge->config.max_fever_temperature);
     substrate_set_temperature(bridge->substrate, new_temp);
 
     /* Track stats */
@@ -338,7 +329,7 @@ int substrate_immune_apply_metabolic_effects(substrate_immune_bridge_t* bridge) 
     bridge->cytokine_effects.ifn_o2_effect = ifn * CYTOKINE_IFN_O2_CONSUMPTION * sens;
 
     /* Metabolic burden */
-    bridge->cytokine_effects.metabolic_burden = clamp_f(
+    bridge->cytokine_effects.metabolic_burden = nimcp_clampf(
         bridge->cytokine_effects.il1_metabolic_effect +
         bridge->cytokine_effects.il6_metabolic_effect +
         bridge->cytokine_effects.tnf_atp_effect +
@@ -404,7 +395,7 @@ int substrate_immune_apply_damage(substrate_immune_bridge_t* bridge) {
     bridge->cytokine_effects.ion_imbalance_effect = ion_effect * sens;
 
     /* Damage severity */
-    bridge->cytokine_effects.damage_severity = clamp_f(
+    bridge->cytokine_effects.damage_severity = nimcp_clampf(
         bridge->cytokine_effects.tnf_membrane_effect +
         bridge->cytokine_effects.ion_imbalance_effect,
         0.0f, 1.0f
@@ -450,7 +441,7 @@ int substrate_immune_apply_il10_recovery(
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
-    float recovery = clamp_f(il10_concentration, 0.0f, 1.0f);
+    float recovery = nimcp_clampf(il10_concentration, 0.0f, 1.0f);
 
     /* Temperature reduction */
     substrate_physical_state_t physical;
@@ -467,12 +458,12 @@ int substrate_immune_apply_il10_recovery(
     substrate_get_metabolic_state(bridge->substrate, &metabolic);
 
     float atp_boost = IL10_ATP_RECOVERY_BOOST * recovery;
-    float new_atp = clamp_f(metabolic.atp_level + atp_boost, 0.0f, 1.0f);
+    float new_atp = nimcp_clampf(metabolic.atp_level + atp_boost, 0.0f, 1.0f);
     substrate_set_atp(bridge->substrate, new_atp);
 
     /* Membrane repair boost */
     float membrane_boost = IL10_MEMBRANE_REPAIR_BOOST * recovery;
-    float new_membrane = clamp_f(physical.membrane_integrity + membrane_boost, 0.0f, 1.0f);
+    float new_membrane = nimcp_clampf(physical.membrane_integrity + membrane_boost, 0.0f, 1.0f);
     substrate_set_membrane_integrity(bridge->substrate, new_membrane);
 
     if (recovery > 0.1f) {

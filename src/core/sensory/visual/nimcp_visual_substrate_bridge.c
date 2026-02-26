@@ -10,6 +10,7 @@
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(visual_substrate_bridge)
 
@@ -136,9 +137,9 @@ int visual_substrate_bridge_update(visual_substrate_bridge_t* bridge) {
      * and contrast sensitivity.
      */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.visual_acuity = nimcp_clamp_f(
+        bridge->effects.visual_acuity = nimcp_clampf(
             atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.contrast_sensitivity = nimcp_clamp_f(
+        bridge->effects.contrast_sensitivity = nimcp_clampf(
             atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
@@ -147,9 +148,9 @@ int visual_substrate_bridge_update(visual_substrate_bridge_t* bridge) {
      * and feature binding (visual attention).
      */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.motion_processing = nimcp_clamp_f(
+        bridge->effects.motion_processing = nimcp_clampf(
             metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.feature_binding = nimcp_clamp_f(
+        bridge->effects.feature_binding = nimcp_clampf(
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 

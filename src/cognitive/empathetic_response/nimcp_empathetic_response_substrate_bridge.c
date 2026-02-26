@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(empathetic_response_substrate_bridge)
 //=============================================================================
@@ -194,16 +195,16 @@ int empathetic_response_substrate_bridge_update(empathetic_response_substrate_br
 
     if (bridge->config.enable_atp_modulation) {
         /* Empathic accuracy requires stable prefrontal resources */
-        bridge->effects.empathic_accuracy = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.empathic_accuracy = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Perspective-taking is cognitively demanding */
-        bridge->effects.perspective_taking = nimcp_clamp_f(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.perspective_taking = nimcp_clampf(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Response depth decreases with fatigue */
-        bridge->effects.response_depth = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.response_depth = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Compassion endurance is vulnerable to metabolic stress */
-        bridge->effects.compassion_endurance = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.compassion_endurance = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.empathic_accuracy +

@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(salience_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -72,16 +73,6 @@ struct salience_plasticity_bridge {
     uint64_t sim_time_us;
 };
 
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
 static salience_plasticity_synapse_t* find_synapse(
     salience_plasticity_bridge_t* bridge,
     uint32_t synapse_id
@@ -122,7 +113,7 @@ static void apply_weight_bounds(
     salience_plasticity_bridge_t* bridge,
     salience_plasticity_synapse_t* synapse
 ) {
-    synapse->weight = clamp(synapse->weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(synapse->weight, bridge->config.weight_min, bridge->config.weight_max);
 }
 
 //=============================================================================
@@ -299,7 +290,7 @@ int salience_plasticity_register_synapse(
     synapse->synapse_id = synapse_id;
     synapse->type = type;
     synapse->feature_index = feature_index;
-    synapse->weight = clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     synapse->initial_weight = synapse->weight;
     synapse->eligibility_trace = 0.0f;
     synapse->bcm_threshold = bridge->bcm_global_threshold;
@@ -388,7 +379,7 @@ int salience_plasticity_attention_event(
 
 
     bridge->state = SALIENCE_PLASTICITY_STATE_ATTENDING;
-    bridge->current_attention_level = clamp(attention_strength, 0.0f, 1.0f);
+    bridge->current_attention_level = nimcp_clampf(attention_strength, 0.0f, 1.0f);
 
     // Find or create feature learning state
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
@@ -408,7 +399,7 @@ int salience_plasticity_attention_event(
         if (bridge->config.enable_habituation) {
             float old_hab = feature->habituation_level;
             feature->habituation_level += bridge->config.habituation_rate;
-            feature->habituation_level = clamp(feature->habituation_level, 0.0f, 1.0f);
+            feature->habituation_level = nimcp_clampf(feature->habituation_level, 0.0f, 1.0f);
 
             if (bridge->habituation_callback) {
                 bridge->habituation_callback(feature_index, old_hab, feature->habituation_level,
@@ -431,7 +422,7 @@ int salience_plasticity_attention_event(
             if (bridge->config.enable_eligibility) {
                 bridge->synapses[i].eligibility_trace += attention_strength;
                 bridge->synapses[i].eligibility_trace =
-                    clamp(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
+                    nimcp_clampf(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
             }
         }
     }
@@ -464,10 +455,10 @@ int salience_plasticity_attention_feedback(
     if (feature) {
         if (was_correct) {
             feature->learned_salience += 0.05f;
-            feature->learned_salience = clamp(feature->learned_salience, 0.0f, 1.0f);
+            feature->learned_salience = nimcp_clampf(feature->learned_salience, 0.0f, 1.0f);
         } else {
             feature->learned_salience -= 0.02f;
-            feature->learned_salience = clamp(feature->learned_salience, 0.0f, 1.0f);
+            feature->learned_salience = nimcp_clampf(feature->learned_salience, 0.0f, 1.0f);
         }
     }
 
@@ -550,7 +541,7 @@ int salience_plasticity_feature_exposure(
         if (bridge->config.enable_habituation) {
             float old_hab = feature->habituation_level;
             feature->habituation_level += bridge->config.habituation_rate * intensity;
-            feature->habituation_level = clamp(feature->habituation_level, 0.0f, 1.0f);
+            feature->habituation_level = nimcp_clampf(feature->habituation_level, 0.0f, 1.0f);
 
             if (bridge->habituation_callback && feature->habituation_level != old_hab) {
                 bridge->habituation_callback(feature_index, old_hab, feature->habituation_level,
@@ -563,7 +554,7 @@ int salience_plasticity_feature_exposure(
         if (bridge->config.enable_habituation && feature->habituation_level > 0.5f && intensity > 0.8f) {
             float old_hab = feature->habituation_level;
             feature->habituation_level *= (1.0f - bridge->config.dishabituation_boost);
-            feature->habituation_level = clamp(feature->habituation_level, 0.0f, 1.0f);
+            feature->habituation_level = nimcp_clampf(feature->habituation_level, 0.0f, 1.0f);
 
             if (bridge->habituation_callback) {
                 bridge->habituation_callback(feature_index, old_hab, feature->habituation_level,
@@ -699,13 +690,13 @@ int salience_plasticity_reward(
             if (bridge->config.enable_value_learning) {
                 bridge->synapses[i].value_estimate += reward * bridge->config.value_ltp_gain;
                 bridge->synapses[i].value_estimate =
-                    clamp(bridge->synapses[i].value_estimate, -1.0f, 1.0f);
+                    nimcp_clampf(bridge->synapses[i].value_estimate, -1.0f, 1.0f);
 
                 // Also update feature value estimate
                 salience_feature_learning_t* feature = find_feature(bridge, bridge->synapses[i].feature_index);
                 if (feature) {
                     feature->value_estimate += reward * bridge->config.value_ltp_gain;
-                    feature->value_estimate = clamp(feature->value_estimate, -1.0f, 1.0f);
+                    feature->value_estimate = nimcp_clampf(feature->value_estimate, -1.0f, 1.0f);
                 }
             }
 
@@ -828,7 +819,7 @@ int salience_plasticity_update(
         float attention_error = bridge->config.target_attention_level - bridge->current_attention_level;
 
         bridge->global_learning_rate += attention_error * homeo_rate;
-        bridge->global_learning_rate = clamp(bridge->global_learning_rate, 0.1f, 2.0f);
+        bridge->global_learning_rate = nimcp_clampf(bridge->global_learning_rate, 0.1f, 2.0f);
     }
 
     bridge->sim_time_us += (uint64_t)(dt_ms * 1000.0f);

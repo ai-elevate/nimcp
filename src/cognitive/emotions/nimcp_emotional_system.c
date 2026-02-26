@@ -50,6 +50,7 @@
 #undef LOG_MODULE  // Undefine from quantum bridge header
 #define LOG_MODULE "EMOTIONS"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
@@ -61,7 +62,6 @@ BRIDGE_BOILERPLATE(emotional_system, MESH_ADAPTER_CATEGORY_COGNITIVE)
 // Forward Declarations
 //=============================================================================
 
-static float clamp(float value, float min, float max);
 
 //=============================================================================
 // Constants
@@ -205,7 +205,7 @@ static nimcp_error_t handle_salience_query(
 
     /* Calculate emotional boost based on current emotional state */
     float emotional_boost = 1.0F + current_arousal * arousal_sensitivity;
-    emotional_boost = clamp(emotional_boost, 1.0F, 3.0F);
+    emotional_boost = nimcp_clampf(emotional_boost, 1.0F, 3.0F);
 
     /* Calculate emotionally-modulated salience score */
     /* Formula: base_salience * emotional_boost * (1 + novelty_factor) */
@@ -323,13 +323,8 @@ static void bio_broadcast_emotion_state(emotional_system_t* system) {
  *
  * WHAT: Ensure value stays within bounds
  * WHY:  Prevent invalid emotional states
- * HOW:  Return min if too low, max if too high, value otherwise
+ * HOW:  Uses nimcp_clampf() from nimcp_math_helpers.h
  */
-static float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Calculate emotional intensity from valence and arousal
@@ -372,7 +367,7 @@ static float calculate_stability(float current_valence, float current_arousal,
     float arousal_diff = fabsf(current_arousal - avg_arousal);
     float total_diff = (valence_diff + arousal_diff) / 2.0F;
 
-    return clamp(1.0F - total_diff, 0.0F, 1.0F);
+    return nimcp_clampf(1.0F - total_diff, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -668,8 +663,8 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
     LOG_DEBUG(LOG_MODULE, "Setting emotional state: valence=%.3f, arousal=%.3f", valence, arousal);
 
     // Clamp inputs to valid ranges
-    valence = clamp(valence, -1.0F, 1.0F);
-    arousal = clamp(arousal, 0.0F, 1.0F);
+    valence = nimcp_clampf(valence, -1.0F, 1.0F);
+    arousal = nimcp_clampf(arousal, 0.0F, 1.0F);
 
     // Lock mutex for thread-safe state modification
     nimcp_platform_mutex_lock(&system->mutex);
@@ -677,8 +672,8 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
     // Update state
     system->state.valence = valence * system->config.valence_sensitivity;
     system->state.arousal = arousal * system->config.arousal_sensitivity;
-    system->state.valence = clamp(system->state.valence, -1.0F, 1.0F);
-    system->state.arousal = clamp(system->state.arousal, 0.0F, 1.0F);
+    system->state.valence = nimcp_clampf(system->state.valence, -1.0F, 1.0F);
+    system->state.arousal = nimcp_clampf(system->state.arousal, 0.0F, 1.0F);
 
     // Recalculate intensity
     system->state.intensity = calculate_intensity(system->state.valence,
@@ -743,7 +738,7 @@ bool emotion_system_decay(emotional_system_t* system, float delta_time,
     system->state.arousal *= decay_factor;
 
     // Clamp to prevent negative values
-    system->state.arousal = clamp(system->state.arousal, 0.0F, 1.0F);
+    system->state.arousal = nimcp_clampf(system->state.arousal, 0.0F, 1.0F);
 
     // Recalculate intensity
     system->state.intensity = calculate_intensity(system->state.valence,
@@ -964,8 +959,8 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
                 system->state.arousal += delta_a * step_size;
 
                 // Clamp to valid ranges
-                system->state.valence = clamp(system->state.valence, -1.0F, 1.0F);
-                system->state.arousal = clamp(system->state.arousal, 0.0F, 1.0F);
+                system->state.valence = nimcp_clampf(system->state.valence, -1.0F, 1.0F);
+                system->state.arousal = nimcp_clampf(system->state.arousal, 0.0F, 1.0F);
 
                 // Recalculate intensity
                 system->state.intensity = calculate_intensity(system->state.valence,
@@ -1027,7 +1022,7 @@ float emotion_system_get_salience_boost(const emotional_system_t* system) {
     // High arousal increases salience
     // Boost range: [1.0, 2.0]
     float boost = 1.0F + system->state.arousal * system->config.arousal_sensitivity;
-    float result = clamp(boost, 1.0F, 3.0F);
+    float result = nimcp_clampf(boost, 1.0F, 3.0F);
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
     return result;
@@ -1051,7 +1046,7 @@ float emotion_system_get_memory_priority(const emotional_system_t* system) {
 
     float valence_extremity = fabsf(system->state.valence);
     float priority = (system->state.arousal + valence_extremity) / 2.0F;
-    float result = clamp(priority, 0.0F, 1.0F);
+    float result = nimcp_clampf(priority, 0.0F, 1.0F);
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
     return result;
@@ -1090,7 +1085,7 @@ float emotion_system_get_mental_health_impact(const emotional_system_t* system) 
                    stability_impact * 0.2F +
                    shadow_impact * 0.3F);
 
-    float result = clamp(impact, 0.0F, 1.0F);
+    float result = nimcp_clampf(impact, 0.0F, 1.0F);
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
     return result;

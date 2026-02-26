@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(biology, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -92,12 +93,6 @@ static _Thread_local char g_biology_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_biology_error(const char* msg) {
     strncpy(g_biology_error, msg, sizeof(g_biology_error) - 1);
     g_biology_error[sizeof(g_biology_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 /**
@@ -1020,7 +1015,7 @@ float biology_selection_frequency(
         float q = 1.0f - p;
         float w_bar = 1.0f - s * q * q;
         float delta_p = (s * p * q * q) / w_bar;
-        p = clamp01(p + delta_p);
+        p = nimcp_clamp01(p + delta_p);
     }
 
     return p;
@@ -1064,7 +1059,7 @@ int biology_set_inflammation(biology_t* bio, float level) {
 
 
     nimcp_mutex_lock(bio->lock);
-    bio->inflammation_level = clamp01(level);
+    bio->inflammation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(bio->lock);
 
     return 0;
@@ -1081,7 +1076,7 @@ int biology_set_sleep_deprivation(biology_t* bio, float level) {
 
 
     nimcp_mutex_lock(bio->lock);
-    bio->sleep_deprivation_level = clamp01(level);
+    bio->sleep_deprivation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(bio->lock);
 
     return 0;

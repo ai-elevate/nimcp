@@ -21,25 +21,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sequence_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation level from immune system
@@ -229,7 +217,7 @@ int sequence_immune_apply_cytokine_effects(sequence_immune_bridge_t* bridge) {
     float proinflam_total = effects->il1_timing_penalty +
                            effects->il6_timing_penalty +
                            effects->tnf_timing_penalty;
-    effects->learning_impairment = clamp_f(proinflam_total / 100.0f, 0.0f, 0.8f);
+    effects->learning_impairment = nimcp_clampf(proinflam_total / 100.0f, 0.0f, 0.8f);
 
     /* Apply IL-10 precision boost */
     if (effects->il10_precision_boost > 0.1f) {
@@ -275,27 +263,27 @@ int sequence_immune_apply_inflammation_effects(sequence_immune_bridge_t* bridge)
 
     if (state->is_chronic) {
         /* Chronic amplifies impairment */
-        float duration_factor = clamp_f(
+        float duration_factor = nimcp_clampf(
             state->inflammation_duration_sec / (604800.0f * 2.0f),  /* 2 weeks */
             0.0f, 1.0f
         );
-        state->accuracy_reduction = clamp_f(inflammation_intensity * 0.7f * (1.0f + duration_factor), 0.0f, 0.8f);
+        state->accuracy_reduction = nimcp_clampf(inflammation_intensity * 0.7f * (1.0f + duration_factor), 0.0f, 0.8f);
     } else {
         /* Acute inflammation */
-        state->accuracy_reduction = clamp_f(inflammation_intensity * 0.5f, 0.0f, 0.6f);
+        state->accuracy_reduction = nimcp_clampf(inflammation_intensity * 0.5f, 0.0f, 0.6f);
     }
 
     /* Timing precision loss */
-    state->timing_precision_loss = clamp_f(inflammation_intensity * 0.6f, 0.0f, 0.7f);
+    state->timing_precision_loss = nimcp_clampf(inflammation_intensity * 0.6f, 0.0f, 0.7f);
 
     /* Pattern threshold increase (harder to detect patterns) */
-    state->pattern_threshold_increase = clamp_f(inflammation_intensity * 0.3f, 0.0f, 0.5f);
+    state->pattern_threshold_increase = nimcp_clampf(inflammation_intensity * 0.3f, 0.0f, 0.5f);
 
     /* Learning rate reduction */
-    state->learning_rate_reduction = clamp_f(inflammation_intensity * 0.8f, 0.0f, 0.9f);
+    state->learning_rate_reduction = nimcp_clampf(inflammation_intensity * 0.8f, 0.0f, 0.9f);
 
     /* Basal ganglia function (procedural memory) */
-    state->procedural_memory_impairment = clamp_f(inflammation_intensity * 0.75f, 0.0f, 0.85f);
+    state->procedural_memory_impairment = nimcp_clampf(inflammation_intensity * 0.75f, 0.0f, 0.85f);
     state->sequence_consolidation_rate = 1.0f - state->learning_rate_reduction;
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
@@ -380,7 +368,7 @@ int sequence_immune_trigger_from_anomaly(
 
     /* Calculate anomaly severity */
     if (is_anomaly) {
-        trigger->anomaly_severity = clamp_f(
+        trigger->anomaly_severity = nimcp_clampf(
             (1.0f - detection->strength) * 0.5f +
             (fabs(timing_ratio - 1.0f) / 2.0f) * 0.3f +
             (float)trigger->corrupted_sequence_count * 0.1f,

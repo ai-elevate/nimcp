@@ -29,6 +29,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_curiosity_health_agent = NULL;
@@ -127,16 +128,6 @@ struct financial_curiosity_bridge {
     /* Operational state */
     fin_curiosity_op_state_t operational_state;
 };
-
-//=============================================================================
-// Utility Functions
-//=============================================================================
-
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
 
 /* Simple xorshift32 PRNG */
 static uint32_t xorshift32(uint32_t* state) {
@@ -1390,11 +1381,11 @@ int financial_curiosity_bridge_compute_information_gain(
     float unknown_factor = 1.0f - hypothesis->prior_success_rate * hypothesis->prior_success_rate;
 
     float ig = 0.3f * novelty_factor + 0.4f * uncertainty_factor + 0.3f * unknown_factor;
-    ig = clampf(ig, 0.0f, 1.0f);
+    ig = nimcp_clampf(ig, 0.0f, 1.0f);
 
     /* Modulate by curiosity boost */
     ig *= bridge->curiosity_boost;
-    ig = clampf(ig, 0.0f, 1.0f);
+    ig = nimcp_clampf(ig, 0.0f, 1.0f);
 
     *information_gain = ig;
 
@@ -1418,7 +1409,7 @@ int financial_curiosity_bridge_set_inflammation(
             "financial_curiosity_bridge_set_inflammation: bridge is NULL");
         return FIN_CURIOSITY_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_CURIOSITY_ERR_OK;
 }
 
@@ -1431,7 +1422,7 @@ int financial_curiosity_bridge_set_fatigue(
             "financial_curiosity_bridge_set_fatigue: bridge is NULL");
         return FIN_CURIOSITY_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_CURIOSITY_ERR_OK;
 }
 
@@ -1444,7 +1435,7 @@ int financial_curiosity_bridge_set_curiosity_boost(
             "financial_curiosity_bridge_set_curiosity_boost: bridge is NULL");
         return FIN_CURIOSITY_ERR_NULL;
     }
-    bridge->curiosity_boost = clampf(boost, 0.5f, 2.0f);
+    bridge->curiosity_boost = nimcp_clampf(boost, 0.5f, 2.0f);
     return FIN_CURIOSITY_ERR_OK;
 }
 

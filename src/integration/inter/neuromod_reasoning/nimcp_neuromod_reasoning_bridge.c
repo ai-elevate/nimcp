@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_reasoning_bridge)
 
@@ -42,16 +43,6 @@ struct neuromod_reasoning_bridge_struct {
     float cumulative_accuracy;
     uint32_t calibration_samples;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
@@ -168,7 +159,7 @@ int neuromod_reasoning_apply_da_confidence(neuromod_reasoning_bridge_t* bridge,
         return 0;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
 
     /* DA increases confidence (but can lead to overconfidence) */
@@ -190,7 +181,7 @@ int neuromod_reasoning_apply_da_curiosity(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
 
     /* DA drives curiosity and exploration */
     float base_curiosity = 0.3f;
@@ -213,7 +204,7 @@ int neuromod_reasoning_apply_ne_control(neuromod_reasoning_bridge_t* bridge,
         return 0;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
 
     /* NE enhances cognitive control (inverted-U)
@@ -245,7 +236,7 @@ int neuromod_reasoning_apply_ne_alertness(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
 
     /* NE directly affects alertness */
     float base_alertness = 0.2f;
@@ -268,7 +259,7 @@ int neuromod_reasoning_apply_ht_deliberation(neuromod_reasoning_bridge_t* bridge
         return 0;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
     bridge->state.ht_level = ht_level;
 
     /* 5-HT enables deliberate, careful thinking */
@@ -290,7 +281,7 @@ int neuromod_reasoning_apply_ht_patience(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
 
     /* 5-HT enables patience and impulse control */
     float base_patience = 0.2f;
@@ -313,7 +304,7 @@ int neuromod_reasoning_apply_hab_error(neuromod_reasoning_bridge_t* bridge,
         return 0;
     }
 
-    hab_level = clamp(hab_level, 0.0f, 1.0f);
+    hab_level = nimcp_clampf(hab_level, 0.0f, 1.0f);
     bridge->state.hab_level = hab_level;
 
     /* Habenula increases error sensitivity and triggers strategy revision */
@@ -343,7 +334,7 @@ int neuromod_reasoning_report_success(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    success = clamp(success, 0.0f, 1.0f);
+    success = nimcp_clampf(success, 0.0f, 1.0f);
     bridge->state.success_signal = success;
 
     /* Reasoning success triggers VTA reward */
@@ -372,7 +363,7 @@ int neuromod_reasoning_report_novelty(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    novelty = clamp(novelty, 0.0f, 1.0f);
+    novelty = nimcp_clampf(novelty, 0.0f, 1.0f);
     bridge->state.novelty_signal = novelty;
 
     /* Novel problems trigger LC activation */
@@ -396,7 +387,7 @@ int neuromod_reasoning_report_depth_need(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    depth = clamp(depth, 0.0f, 1.0f);
+    depth = nimcp_clampf(depth, 0.0f, 1.0f);
     bridge->state.depth_demand = depth;
 
     /* Deep thinking need triggers 5-HT demand */
@@ -420,7 +411,7 @@ int neuromod_reasoning_report_error(neuromod_reasoning_bridge_t* bridge,
         return -1;
     }
 
-    error_severity = clamp(error_severity, 0.0f, 1.0f);
+    error_severity = nimcp_clampf(error_severity, 0.0f, 1.0f);
     bridge->state.error_signal = error_severity;
 
     /* Reasoning errors trigger habenula */
@@ -456,7 +447,7 @@ float neuromod_reasoning_get_confidence_calibration(neuromod_reasoning_bridge_t*
     float calibration = 1.0f - fabsf(avg_conf - avg_acc);
     bridge->stats.confidence_accuracy_corr = calibration;
 
-    return clamp(calibration, 0.0f, 1.0f);
+    return nimcp_clampf(calibration, 0.0f, 1.0f);
 }
 
 bool neuromod_reasoning_should_switch_mode(neuromod_reasoning_bridge_t* bridge) {
@@ -492,7 +483,7 @@ float neuromod_reasoning_estimate_effort_needed(neuromod_reasoning_bridge_t* bri
                                                  float problem_complexity) {
     if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return 0.5f;
 
-    problem_complexity = clamp(problem_complexity, 0.0f, 1.0f);
+    problem_complexity = nimcp_clampf(problem_complexity, 0.0f, 1.0f);
 
     /* Effort needed based on:
      * - Problem complexity
@@ -504,7 +495,7 @@ float neuromod_reasoning_estimate_effort_needed(neuromod_reasoning_bridge_t* bri
                                    bridge->state.deliberation_level) / 3.0f;
 
     float effort = problem_complexity * (1.5f - resource_availability);
-    return clamp(effort, 0.0f, 1.0f);
+    return nimcp_clampf(effort, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -611,7 +602,7 @@ int neuromod_reasoning_compute_modulation(neuromod_reasoning_bridge_t* bridge,
         0.20f * bridge->state.deliberation_level +
         0.15f * bridge->state.confidence_level +
         0.15f * (1.0f - bridge->state.error_sensitivity * 0.5f);
-    bridge->state.reasoning_quality = clamp(bridge->state.reasoning_quality, 0.0f, 1.0f);
+    bridge->state.reasoning_quality = nimcp_clampf(bridge->state.reasoning_quality, 0.0f, 1.0f);
 
     /* Compute metacognitive awareness */
     bridge->state.metacognitive_awareness =
@@ -629,7 +620,7 @@ int neuromod_reasoning_compute_modulation(neuromod_reasoning_bridge_t* bridge,
     if (bridge->state.current_mode == REASONING_MODE_IMPAIRED) {
         coherence -= 0.3f;
     }
-    bridge->state.bridge_coherence = clamp(coherence, 0.0f, 1.0f);
+    bridge->state.bridge_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
 
     bridge->state.last_update_us = get_timestamp_us();
     bridge->stats.bottom_up_messages += 7;

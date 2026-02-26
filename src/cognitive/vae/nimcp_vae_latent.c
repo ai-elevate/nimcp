@@ -32,21 +32,12 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vae_latent, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "VAE_LATENT"
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static inline bool is_nan_f(float value) {
     return value != value;
@@ -119,7 +110,7 @@ int vae_latent_sample(const nimcp_tensor_t* mu,
 
     /* Reparameterization trick: z = mu + exp(0.5 * log_var) * epsilon */
     for (size_t i = 0; i < total_size; i++) {
-        float log_var_clamped = clamp_f(logvar_data[i],
+        float log_var_clamped = nimcp_clampf(logvar_data[i],
                                         VAE_LATENT_MIN_LOG_VAR,
                                         VAE_LATENT_MAX_LOG_VAR);
         float std = expf(0.5f * log_var_clamped);
@@ -194,7 +185,7 @@ int vae_latent_sample_with_noise(const nimcp_tensor_t* mu,
     float* z_data = (float*)z->data;
 
     for (size_t i = 0; i < total_size; i++) {
-        float log_var_clamped = clamp_f(logvar_data[i],
+        float log_var_clamped = nimcp_clampf(logvar_data[i],
                                         VAE_LATENT_MIN_LOG_VAR,
                                         VAE_LATENT_MAX_LOG_VAR);
         float std = expf(0.5f * log_var_clamped);
@@ -255,7 +246,7 @@ float vae_latent_kl_divergence(const nimcp_tensor_t* mu,
         for (uint32_t d = 0; d < latent_dim; d++) {
             size_t idx = b * latent_dim + d;
             float m = mu_data[idx];
-            float lv = clamp_f(logvar_data[idx], VAE_LATENT_MIN_LOG_VAR, VAE_LATENT_MAX_LOG_VAR);
+            float lv = nimcp_clampf(logvar_data[idx], VAE_LATENT_MIN_LOG_VAR, VAE_LATENT_MAX_LOG_VAR);
 
             /* KL for single dimension: -0.5 * (1 + log_var - mu^2 - exp(log_var)) */
             float kl_d = -0.5f * (1.0f + lv - m * m - expf(lv));
@@ -344,7 +335,7 @@ int vae_latent_compute_precision(const nimcp_tensor_t* log_var,
 
     /* Precision = 1 / variance = exp(-log_var) */
     for (size_t i = 0; i < total_size; i++) {
-        float lv = clamp_f(logvar_data[i], VAE_LATENT_MIN_LOG_VAR, VAE_LATENT_MAX_LOG_VAR);
+        float lv = nimcp_clampf(logvar_data[i], VAE_LATENT_MIN_LOG_VAR, VAE_LATENT_MAX_LOG_VAR);
         prec_data[i] = expf(-lv);
     }
 
@@ -363,7 +354,7 @@ float vae_latent_avg_precision(const nimcp_tensor_t* log_var) {
 
     float sum_precision = 0.0f;
     for (size_t i = 0; i < total_size; i++) {
-        float lv = clamp_f(logvar_data[i], VAE_LATENT_MIN_LOG_VAR, VAE_LATENT_MAX_LOG_VAR);
+        float lv = nimcp_clampf(logvar_data[i], VAE_LATENT_MIN_LOG_VAR, VAE_LATENT_MAX_LOG_VAR);
         sum_precision += expf(-lv);
     }
 
@@ -579,7 +570,7 @@ int vae_latent_slerp(const nimcp_tensor_t* z1,
 
     /* Normalize dot product */
     float cos_omega = dot / (norm1 * norm2 + 1e-8f);
-    cos_omega = clamp_f(cos_omega, -1.0f, 1.0f);
+    cos_omega = nimcp_clampf(cos_omega, -1.0f, 1.0f);
 
     float omega = acosf(cos_omega);
 
@@ -747,7 +738,7 @@ int vae_latent_state_update(vae_latent_state_t* state,
 
         /* Update precision */
         for (uint32_t i = 0; i < latent_dim; i++) {
-            float lv = clamp_f(state->log_var[i],
+            float lv = nimcp_clampf(state->log_var[i],
                                VAE_LATENT_MIN_LOG_VAR,
                                VAE_LATENT_MAX_LOG_VAR);
             state->precision[i] = expf(-lv);

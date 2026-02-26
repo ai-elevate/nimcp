@@ -15,19 +15,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(norepinephrine_release, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static float michaelis_menten(float substrate, float km, float vmax) {
     if (substrate <= 0.0f) return 0.0f;
@@ -263,7 +253,7 @@ int nimcp_ne_release_update(
         float uptake_rate = michaelis_menten(system->concentrations.synaptic,
                                               system->transporter.km, effective_vmax);
         float uptake = uptake_rate * dt;
-        uptake = clamp_f(uptake, 0.0f, system->concentrations.synaptic);
+        uptake = nimcp_clampf(uptake, 0.0f, system->concentrations.synaptic);
 
         system->concentrations.synaptic -= uptake;
         system->concentrations.cytosolic += uptake;
@@ -324,7 +314,7 @@ int nimcp_ne_release_update(
         float desens_rate = 0.0001f * rec->response;
         float desens_recovery = 0.001f * (1.0f - rec->response);
         rec->desensitization += dt * (desens_rate - desens_recovery);
-        rec->desensitization = clamp_f(rec->desensitization, 0.0f, 0.8f);
+        rec->desensitization = nimcp_clampf(rec->desensitization, 0.0f, 0.8f);
     }
 
     /* Update autoreceptor feedback (alpha-2) */
@@ -332,10 +322,10 @@ int nimcp_ne_release_update(
     system->release_inhibition = system->autoreceptor_activation * 0.5f;
 
     /* Clamp concentrations */
-    system->concentrations.vesicular = clamp_f(system->concentrations.vesicular, 0.0f, 10000.0f);
-    system->concentrations.cytosolic = clamp_f(system->concentrations.cytosolic, 0.0f, 1000.0f);
-    system->concentrations.synaptic = clamp_f(system->concentrations.synaptic, 0.0f, 1000.0f);
-    system->concentrations.extrasynaptic = clamp_f(system->concentrations.extrasynaptic, 0.0f, 500.0f);
+    system->concentrations.vesicular = nimcp_clampf(system->concentrations.vesicular, 0.0f, 10000.0f);
+    system->concentrations.cytosolic = nimcp_clampf(system->concentrations.cytosolic, 0.0f, 1000.0f);
+    system->concentrations.synaptic = nimcp_clampf(system->concentrations.synaptic, 0.0f, 1000.0f);
+    system->concentrations.extrasynaptic = nimcp_clampf(system->concentrations.extrasynaptic, 0.0f, 500.0f);
 
     system->current_time += dt;
     return 0;
@@ -439,7 +429,7 @@ int nimcp_ne_apply_net_inhibition(nimcp_ne_release_system_t* system, float inhib
         return -1;
     }
 
-    system->transporter.inhibition = clamp_f(inhibition, 0.0f, 1.0f);
+    system->transporter.inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
     return 0;
 }
 

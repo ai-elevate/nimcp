@@ -18,25 +18,13 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuron_substrate_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- *
- * WHAT: Constrain value within [min, max]
- * WHY:  Prevent out-of-range modulation factors
- * HOW:  Simple min/max comparison
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute Q10 temperature scaling factor
@@ -366,7 +354,7 @@ int neuron_substrate_update_effects(neuron_substrate_bridge_t* bridge) {
             compute_o2_transmission(metabolic.oxygen_saturation) * sens +
             (1.0f - sens);
         bridge->substrate_effects.o2_recovery_mod =
-            clamp_f(metabolic.oxygen_saturation, 0.1f, 1.0f);
+            nimcp_clampf(metabolic.oxygen_saturation, 0.1f, 1.0f);
     } else {
         bridge->substrate_effects.o2_transmission_mod = 1.0f;
         bridge->substrate_effects.o2_recovery_mod = 1.0f;
@@ -386,7 +374,7 @@ int neuron_substrate_update_effects(neuron_substrate_bridge_t* bridge) {
     bridge->substrate_effects.firing_rate_mod =
         bridge->substrate_effects.q10_firing_rate_mod *
         bridge->substrate_effects.atp_excitability_mod;
-    bridge->substrate_effects.firing_rate_mod = clamp_f(
+    bridge->substrate_effects.firing_rate_mod = nimcp_clampf(
         bridge->substrate_effects.firing_rate_mod,
         0.0f,
         bridge->config.max_firing_rate_mod
@@ -395,7 +383,7 @@ int neuron_substrate_update_effects(neuron_substrate_bridge_t* bridge) {
     bridge->substrate_effects.excitability_mod =
         bridge->substrate_effects.atp_excitability_mod *
         bridge->substrate_effects.o2_transmission_mod;
-    bridge->substrate_effects.excitability_mod = clamp_f(
+    bridge->substrate_effects.excitability_mod = nimcp_clampf(
         bridge->substrate_effects.excitability_mod,
         bridge->config.min_excitability,
         1.5f

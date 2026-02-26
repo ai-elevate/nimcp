@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -45,13 +46,6 @@ static uint64_t get_timestamp_us(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -167,7 +161,7 @@ static float compute_recon_loss(const float* target, const float* output,
     } else {
         /* Binary cross-entropy */
         for (uint32_t i = 0; i < dim; i++) {
-            float p = clampf(output[i], 1e-7f, 1.0f - 1e-7f);
+            float p = nimcp_clampf(output[i], 1e-7f, 1.0f - 1e-7f);
             loss -= target[i] * logf(p) + (1.0f - target[i]) * logf(1.0f - p);
         }
         loss /= dim;

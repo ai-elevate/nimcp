@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(executive_snn_bridge)
 //=============================================================================
@@ -119,16 +120,6 @@ struct executive_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(executive_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -423,7 +414,7 @@ int executive_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -496,9 +487,9 @@ int executive_snn_encode_inhibition(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[EXEC_DIM_COUNT] = {0};
-    dims[EXEC_DIM_INHIBITION] = clamp_f(inhibition_strength, 0.0f, 1.0f);
-    dims[EXEC_DIM_ATTENTION_CONTROL] = clamp_f(urgency, 0.0f, 1.0f);
-    dims[EXEC_DIM_CONFLICT_MONITOR] = clamp_f(urgency * 0.5f, 0.0f, 1.0f);
+    dims[EXEC_DIM_INHIBITION] = nimcp_clampf(inhibition_strength, 0.0f, 1.0f);
+    dims[EXEC_DIM_ATTENTION_CONTROL] = nimcp_clampf(urgency, 0.0f, 1.0f);
+    dims[EXEC_DIM_CONFLICT_MONITOR] = nimcp_clampf(urgency * 0.5f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -522,9 +513,9 @@ int executive_snn_encode_task(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[EXEC_DIM_COUNT] = {0};
-    dims[EXEC_DIM_WORKING_MEMORY] = clamp_f(task_load, 0.0f, 1.0f);
-    dims[EXEC_DIM_TASK_SWITCHING] = clamp_f((float)task_count / 10.0f, 0.0f, 1.0f);
-    dims[EXEC_DIM_RESOURCE_ALLOCATION] = clamp_f(task_load * 0.8f, 0.0f, 1.0f);
+    dims[EXEC_DIM_WORKING_MEMORY] = nimcp_clampf(task_load, 0.0f, 1.0f);
+    dims[EXEC_DIM_TASK_SWITCHING] = nimcp_clampf((float)task_count / 10.0f, 0.0f, 1.0f);
+    dims[EXEC_DIM_RESOURCE_ALLOCATION] = nimcp_clampf(task_load * 0.8f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -548,8 +539,8 @@ int executive_snn_encode_conflict(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[EXEC_DIM_COUNT] = {0};
-    dims[EXEC_DIM_CONFLICT_MONITOR] = clamp_f(conflict_magnitude, 0.0f, 1.0f);
-    dims[EXEC_DIM_ERROR_CORRECTION] = clamp_f(conflict_magnitude * 0.5f, 0.0f, 1.0f);
+    dims[EXEC_DIM_CONFLICT_MONITOR] = nimcp_clampf(conflict_magnitude, 0.0f, 1.0f);
+    dims[EXEC_DIM_ERROR_CORRECTION] = nimcp_clampf(conflict_magnitude * 0.5f, 0.0f, 1.0f);
 
     bridge->conflict_signal = conflict_magnitude;
 
@@ -634,12 +625,12 @@ int executive_snn_simulate(executive_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_output.inhibition_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_output.flexibility_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_output.planning_activity = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_output.goal_strength = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_output.conflict_magnitude = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_output.attention_control = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_output.inhibition_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_output.flexibility_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_output.planning_activity = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_output.goal_strength = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_output.conflict_magnitude = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_output.attention_control = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check conflict threshold */
     if (bridge->last_output.conflict_magnitude > bridge->config.conflict_threshold) {

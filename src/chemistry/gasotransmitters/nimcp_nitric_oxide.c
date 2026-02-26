@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nitric_oxide)
 
@@ -41,16 +42,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nitric_oxide)
 
 /** Potentiation sigmoid steepness */
 #define POTENTIATION_SIGMOID_SLOPE 0.1f
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Michaelis-Menten kinetics
@@ -158,14 +149,14 @@ static float calculate_nos_activity(
         /* Cofactor and oxygen requirements */
         float substrate_factor = arginine_factor * source->oxygen_level * source->bh4_level;
 
-        return clampf(activation * substrate_factor * source->nos_expression,
+        return nimcp_clampf(activation * substrate_factor * source->nos_expression,
                      0.0f, NOS_MAX_ACTIVITY);
     }
     /* iNOS - constitutively active when expressed */
     else if (source->nos_type == NOS_TYPE_INOS) {
         float substrate_factor = michaelis_menten(source->arginine_level,
                                                  config->nos_km_arginine, 1.0f);
-        return clampf(source->nos_expression * substrate_factor,
+        return nimcp_clampf(source->nos_expression * substrate_factor,
                      0.0f, NOS_MAX_ACTIVITY);
     }
     /* eNOS - Ca2+/calmodulin and phosphorylation dependent */
@@ -174,7 +165,7 @@ static float calculate_nos_activity(
                          (config->nos_km_calcium + source->calcium_level);
         float substrate_factor = michaelis_menten(source->arginine_level,
                                                  config->nos_km_arginine, 1.0f);
-        return clampf(ca_factor * substrate_factor * source->nos_expression,
+        return nimcp_clampf(ca_factor * substrate_factor * source->nos_expression,
                      0.0f, NOS_MAX_ACTIVITY);
     }
 
@@ -486,7 +477,7 @@ nimcp_no_error_t nimcp_no_set_calcium(
         return NO_ERR_NULL_PTR;
     }
 
-    source->calcium_level = clampf(calcium_um, 0.0f, 100.0f);
+    source->calcium_level = nimcp_clampf(calcium_um, 0.0f, 100.0f);
 
     /* Update calmodulin binding */
     float ca_for_cam = source->calcium_level;
@@ -505,7 +496,7 @@ nimcp_no_error_t nimcp_no_set_nmda_activation(
         return NO_ERR_NULL_PTR;
     }
 
-    source->nmda_activation = clampf(activation, 0.0f, 1.0f);
+    source->nmda_activation = nimcp_clampf(activation, 0.0f, 1.0f);
 
     return NO_OK;
 }
@@ -521,9 +512,9 @@ nimcp_no_error_t nimcp_no_set_substrate(
         return NO_ERR_NULL_PTR;
     }
 
-    source->arginine_level = clampf(arginine, 0.0f, 1000.0f);
-    source->oxygen_level = clampf(oxygen, 0.0f, 1.0f);
-    source->bh4_level = clampf(bh4, 0.0f, 1.0f);
+    source->arginine_level = nimcp_clampf(arginine, 0.0f, 1000.0f);
+    source->oxygen_level = nimcp_clampf(oxygen, 0.0f, 1.0f);
+    source->bh4_level = nimcp_clampf(bh4, 0.0f, 1.0f);
 
     return NO_OK;
 }
@@ -573,7 +564,7 @@ nimcp_no_error_t nimcp_no_update_source(
     float production = source->no_production_rate * dt_sec;
     float decay = source->no_concentration * system->config.decay_rate * dt_sec;
     source->no_concentration += production - decay;
-    source->no_concentration = clampf(source->no_concentration, 0.0f, NO_PEAK_CONCENTRATION * 1.5f);
+    source->no_concentration = nimcp_clampf(source->no_concentration, 0.0f, NO_PEAK_CONCENTRATION * 1.5f);
 
     /* Callback for significant release */
     if (production > 1.0f && system->config.on_release) {
@@ -628,7 +619,7 @@ nimcp_no_error_t nimcp_no_diffuse(
                           system->config.pde_activity;
 
         target->cgmp_concentration += (cgmp_production - cgmp_decay) * 0.001f;
-        target->cgmp_concentration = clampf(target->cgmp_concentration,
+        target->cgmp_concentration = nimcp_clampf(target->cgmp_concentration,
                                             CGMP_BASAL_CONCENTRATION * 0.1f,
                                             CGMP_PEAK_CONCENTRATION);
 
@@ -648,7 +639,7 @@ nimcp_no_error_t nimcp_no_diffuse(
                 system->config.potentiation_threshold
             );
             target->potentiation_factor = 2.0f - inhibition;  /* Invert */
-            target->potentiation_factor = clampf(target->potentiation_factor, 0.5f, 1.0f);
+            target->potentiation_factor = nimcp_clampf(target->potentiation_factor, 0.5f, 1.0f);
         }
 
         /* Callback for significant change */
@@ -719,13 +710,13 @@ nimcp_no_error_t nimcp_no_update(
     /* Calculate vasodilation */
     system->vasodilation_factor = 1.0f + (system->global_no_level / NO_PEAK_CONCENTRATION) *
                                   system->config.vasodilation_sensitivity;
-    system->vasodilation_factor = clampf(system->vasodilation_factor, 1.0f, 2.0f);
+    system->vasodilation_factor = nimcp_clampf(system->vasodilation_factor, 1.0f, 2.0f);
     system->metrics.vasodilation_index = system->vasodilation_factor;
 
     /* Calculate plasticity modifier */
     system->plasticity_modifier = 1.0f + (system->global_no_level - NO_BASAL_CONCENTRATION) /
                                   (NO_PEAK_CONCENTRATION - NO_BASAL_CONCENTRATION) * 0.5f;
-    system->plasticity_modifier = clampf(system->plasticity_modifier, 1.0f, 1.5f);
+    system->plasticity_modifier = nimcp_clampf(system->plasticity_modifier, 1.0f, 1.5f);
 
     /* Update time tracking */
     system->metrics.total_simulation_time += dt;

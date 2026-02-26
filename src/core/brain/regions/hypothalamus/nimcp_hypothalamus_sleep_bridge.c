@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_sleep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -52,16 +53,6 @@ struct hypo_sleep_bridge {
     bool bio_registered;
     bio_module_context_t bio_ctx;
 };
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
 
 /**
  * @brief Compute circadian phase zone from hour
@@ -95,7 +86,7 @@ static float compute_circadian_sleep_propensity(float phase_hours) {
     float radians = (phase_hours - 3.0f) * (NIMCP_TWO_PI_F / 24.0f);
     float propensity = 0.5f + 0.5f * cosf(radians);
 
-    return clamp_01(propensity);
+    return nimcp_clamp01(propensity);
 }
 
 /**
@@ -236,7 +227,7 @@ int hypo_sleep_bridge_compute_sleep_propensity(hypo_sleep_bridge_t* bridge) {
         scn->cortisol_anticipation *= 0.9f;  /* Decay during day */
     }
 
-    scn->cortisol_anticipation = clamp_01(scn->cortisol_anticipation);
+    scn->cortisol_anticipation = nimcp_clamp01(scn->cortisol_anticipation);
 
     return 0;
 }

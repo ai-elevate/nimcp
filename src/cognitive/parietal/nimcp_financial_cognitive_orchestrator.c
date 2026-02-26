@@ -37,6 +37,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(fin_orch, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -123,16 +124,6 @@ struct financial_cognitive_orchestrator_internal {
     /* Timing */
     uint64_t creation_time_ms;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline uint64_t get_timestamp_ms(void) {
     struct timespec ts;
@@ -1069,10 +1060,10 @@ int financial_cognitive_orchestrator_make_decision(
 
     if (combined > 0.6f) {
         result->decision.decision_type = FIN_DECISION_BUY;
-        result->decision.magnitude = clampf(combined - 0.5f, 0.0f, 1.0f);
+        result->decision.magnitude = nimcp_clampf(combined - 0.5f, 0.0f, 1.0f);
     } else if (combined < 0.4f) {
         result->decision.decision_type = FIN_DECISION_SELL;
-        result->decision.magnitude = clampf(0.5f - combined, 0.0f, 1.0f);
+        result->decision.magnitude = nimcp_clampf(0.5f - combined, 0.0f, 1.0f);
     } else {
         result->decision.decision_type = FIN_DECISION_HOLD;
         result->decision.magnitude = 0.0f;
@@ -1180,9 +1171,9 @@ int financial_cognitive_orchestrator_learn_from_outcome(
     /* Compute reward signal */
     float reward = 0.0f;
     if (outcome->outcome == FIN_OUTCOME_PROFIT) {
-        reward = clampf(outcome->return_pct, 0.0f, 1.0f);
+        reward = nimcp_clampf(outcome->return_pct, 0.0f, 1.0f);
     } else if (outcome->outcome == FIN_OUTCOME_LOSS) {
-        reward = clampf(outcome->return_pct, -1.0f, 0.0f);
+        reward = nimcp_clampf(outcome->return_pct, -1.0f, 0.0f);
     }
 
     /* STDP reward learning */

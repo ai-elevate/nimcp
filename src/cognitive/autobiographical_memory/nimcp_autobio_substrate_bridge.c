@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(autobio_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -112,13 +113,13 @@ int autobio_substrate_bridge_update(autobio_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables vivid recall and detail resolution */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.recall_vividness = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.detail_resolution = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.recall_vividness = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.detail_resolution = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables temporal accuracy and coherence */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.temporal_accuracy = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.narrative_coherence = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.temporal_accuracy = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.narrative_coherence = nimcp_clampf(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.recall_vividness + bridge->effects.detail_resolution +
                                         bridge->effects.temporal_accuracy + bridge->effects.narrative_coherence) / 4.0f;

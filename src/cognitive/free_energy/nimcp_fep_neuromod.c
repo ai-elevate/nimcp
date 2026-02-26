@@ -19,19 +19,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_neuromod, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static uint64_t get_time_ms(void) {
     struct timespec ts;
@@ -46,7 +36,7 @@ static void update_precision_multiplier(fep_neuromod_system_t* sys) {
     /* Precision multiplier: Π = (1 + ACh*gain_ach) * (1 + NE*gain_ne) */
     float pi_ach = 1.0f + ach_level * sys->config.precision_gain_ach;
     float pi_ne = 1.0f + ne_level * sys->config.precision_gain_ne;
-    sys->state.precision_multiplier = clamp_f(
+    sys->state.precision_multiplier = nimcp_clampf(
         pi_ach * pi_ne,
         FEP_NEUROMOD_MIN_PRECISION,
         FEP_NEUROMOD_MAX_PRECISION
@@ -239,7 +229,7 @@ int fep_neuromod_release(
 
     nimcp_platform_mutex_lock(sys->mutex);
 
-    sys->state.levels[type] = clamp_f(
+    sys->state.levels[type] = nimcp_clampf(
         sys->state.levels[type] + amount,
         FEP_NEUROMOD_MIN_LEVEL,
         FEP_NEUROMOD_MAX_LEVEL
@@ -282,7 +272,7 @@ int fep_neuromod_set_level(
 
 
     nimcp_platform_mutex_lock(sys->mutex);
-    sys->state.levels[type] = clamp_f(level, FEP_NEUROMOD_MIN_LEVEL, FEP_NEUROMOD_MAX_LEVEL);
+    sys->state.levels[type] = nimcp_clampf(level, FEP_NEUROMOD_MIN_LEVEL, FEP_NEUROMOD_MAX_LEVEL);
 
     /* Update precision multiplier if ACh or NE changed */
     if (type == FEP_NEUROMOD_ACH || type == FEP_NEUROMOD_NE) {
@@ -329,7 +319,7 @@ float fep_neuromod_compute_precision(
 
     nimcp_platform_mutex_unlock(sys->mutex);
 
-    return clamp_f(modulated, FEP_NEUROMOD_MIN_PRECISION, FEP_NEUROMOD_MAX_PRECISION);
+    return nimcp_clampf(modulated, FEP_NEUROMOD_MIN_PRECISION, FEP_NEUROMOD_MAX_PRECISION);
 }
 
 int fep_neuromod_apply_to_fep(
@@ -366,7 +356,7 @@ int fep_neuromod_apply_to_fep(
 
             float base_precision = level->errors.precision[i];
             float modulated = base_precision * neuromod->state.precision_multiplier;
-            level->errors.precision[i] = clamp_f(
+            level->errors.precision[i] = nimcp_clampf(
                 modulated,
                 FEP_NEUROMOD_MIN_PRECISION,
                 FEP_NEUROMOD_MAX_PRECISION
@@ -399,7 +389,7 @@ int fep_neuromod_on_prediction_error(
     fep_neuromod_heartbeat("fep_neuromod_on_prediction_error", 0.0f);
 
 
-    float normalized_error = clamp_f(error_magnitude / 10.0f, 0.0f, 1.0f);
+    float normalized_error = nimcp_clampf(error_magnitude / 10.0f, 0.0f, 1.0f);
     float ach_change = -0.2f * normalized_error;
 
     return fep_neuromod_release(sys, FEP_NEUROMOD_ACH, ach_change);
@@ -422,7 +412,7 @@ int fep_neuromod_on_surprise(
     fep_neuromod_heartbeat("fep_neuromod_on_surprise", 0.0f);
 
 
-    float normalized_surprise = clamp_f(surprise / 10.0f, 0.0f, 0.5f);
+    float normalized_surprise = nimcp_clampf(surprise / 10.0f, 0.0f, 0.5f);
     return fep_neuromod_release(sys, FEP_NEUROMOD_NE, normalized_surprise);
 }
 
@@ -443,7 +433,7 @@ int fep_neuromod_on_reward(
     fep_neuromod_heartbeat("fep_neuromod_on_reward", 0.0f);
 
 
-    float da_change = clamp_f(reward * 0.3f, -0.3f, 0.3f);
+    float da_change = nimcp_clampf(reward * 0.3f, -0.3f, 0.3f);
     return fep_neuromod_release(sys, FEP_NEUROMOD_DA, da_change);
 }
 

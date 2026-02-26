@@ -19,22 +19,12 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(free_energy_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 /* Alias: tests reference free_energy_set_health_agent (without _instance suffix) */
 void free_energy_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute L2 norm of vector
@@ -888,7 +878,7 @@ int fep_update_precision(fep_system_t* fep) {
             float delta = target_precision - level->errors.precision[i];
 
             level->errors.precision[i] += lr * delta;
-            level->errors.precision[i] = clamp_f(
+            level->errors.precision[i] = nimcp_clampf(
                 level->errors.precision[i],
                 FEP_MIN_PRECISION,
                 FEP_MAX_PRECISION

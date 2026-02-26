@@ -30,6 +30,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(imagination_fep_bridge)
 //=============================================================================
@@ -134,16 +135,6 @@ struct imagination_fep_bridge {
     void* divergence_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -177,10 +168,10 @@ static void compute_free_energy(
         /* Lower coherence = higher divergence from expected reality model */
         divergence = 1.0f - engine_stats->avg_coherence;
     }
-    bridge->simulation_divergence = clamp_f(divergence, 0.0f, 1.0f);
+    bridge->simulation_divergence = nimcp_clampf(divergence, 0.0f, 1.0f);
 
     /* Coherence from engine stats */
-    bridge->coherence = clamp_f(engine_stats->avg_coherence, 0.0f, 1.0f);
+    bridge->coherence = nimcp_clampf(engine_stats->avg_coherence, 0.0f, 1.0f);
 
     /* Counterfactual cost: scenarios that required hypothetical reasoning */
     /* Use scenarios created as proxy for counterfactual load */
@@ -189,7 +180,7 @@ static void compute_free_energy(
         /* More scenarios = more counterfactual reasoning = more metabolic cost */
         counterfactual_load = (float)engine_stats->scenarios_created * cfg->counterfactual_cost;
         /* Normalize to reasonable range */
-        counterfactual_load = clamp_f(counterfactual_load / 100.0f, 0.0f, 1.0f);
+        counterfactual_load = nimcp_clampf(counterfactual_load / 100.0f, 0.0f, 1.0f);
     }
     bridge->counterfactual_cost_accumulated = counterfactual_load;
 
@@ -209,14 +200,14 @@ static void compute_free_energy(
                      coherence_penalty -
                      prediction_bonus;  /* Bonus reduces FE */
 
-    bridge->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    bridge->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* Prediction error: unexpected changes in imagination state */
     float divergence_delta = fabsf(bridge->simulation_divergence - bridge->prev_divergence);
     float coherence_delta = fabsf(bridge->coherence - bridge->prev_coherence);
     float fe_delta = fabsf(bridge->free_energy - bridge->prev_free_energy);
 
-    bridge->prediction_error = clamp_f(
+    bridge->prediction_error = nimcp_clampf(
         (divergence_delta * 0.4f + coherence_delta * 0.3f + fe_delta * 0.3f),
         0.0f, 1.0f
     );

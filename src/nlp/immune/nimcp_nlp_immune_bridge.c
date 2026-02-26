@@ -20,6 +20,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(nlp_immune_bridge)
 
@@ -38,15 +39,6 @@ static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range [0, 1]
- */
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -191,7 +183,7 @@ int nlp_immune_apply_cytokine_effects(nlp_immune_bridge_t* bridge) {
 
     /* Compute cytokine effects (proportional to inflammation sites) */
     float inflammation_factor = (float)stats.inflammation_sites / 10.0f;
-    inflammation_factor = clamp_0_1(inflammation_factor);
+    inflammation_factor = nimcp_clamp01(inflammation_factor);
 
     /* Apply cytokine impacts */
     bridge->cytokine_effects.il1_language_deficit =
@@ -208,7 +200,7 @@ int nlp_immune_apply_cytokine_effects(nlp_immune_bridge_t* bridge) {
         CYTOKINE_IL10_LANGUAGE_IMPACT * (1.0f - inflammation_factor);
 
     /* Aggregate effects */
-    bridge->cytokine_effects.total_capacity_reduction = clamp_0_1(
+    bridge->cytokine_effects.total_capacity_reduction = nimcp_clamp01(
         -(bridge->cytokine_effects.il1_language_deficit +
           bridge->cytokine_effects.il6_language_deficit +
           bridge->cytokine_effects.tnf_language_deficit +
@@ -272,7 +264,7 @@ int nlp_immune_apply_inflammation_effects(nlp_immune_bridge_t* bridge) {
     bridge->inflammation_state.error_rate =
         INFLAMMATION_ERROR_BASE +
         (float)level * INFLAMMATION_ERROR_PER_LEVEL * bridge->config.inflammation_sensitivity;
-    bridge->inflammation_state.error_rate = clamp_0_1(bridge->inflammation_state.error_rate);
+    bridge->inflammation_state.error_rate = nimcp_clamp01(bridge->inflammation_state.error_rate);
 
     /* Specific impairments */
     bridge->inflammation_state.vocab_reduction = 1.0f - bridge->inflammation_state.capacity_factor;
@@ -302,7 +294,7 @@ float nlp_immune_compute_error_rate(const nlp_immune_bridge_t* bridge) {
     /* Combine semantic errors and inflammation errors */
     float total_error = bridge->cytokine_effects.semantic_error_rate +
                         bridge->inflammation_state.error_rate;
-    return clamp_0_1(total_error);
+    return nimcp_clamp01(total_error);
 }
 
 /* ============================================================================
@@ -332,7 +324,7 @@ int nlp_immune_trigger_error_inflammation(
     uint32_t cytokine_id;
     float concentration = (error_rate - bridge->config.error_threshold) *
                          bridge->config.error_immune_sensitivity;
-    concentration = clamp_0_1(concentration);
+    concentration = nimcp_clamp01(concentration);
 
     int result = brain_immune_release_cytokine(
         bridge->immune_system,
@@ -374,7 +366,7 @@ int nlp_immune_release_il10_from_success(
     uint32_t cytokine_id;
     float concentration = (success_rate - bridge->config.success_threshold) *
                          LANGUAGE_SUCCESS_IL10_BOOST;
-    concentration = clamp_0_1(concentration);
+    concentration = nimcp_clamp01(concentration);
 
     int result = brain_immune_release_cytokine(
         bridge->immune_system,
@@ -415,7 +407,7 @@ int nlp_immune_trigger_complexity_inflammation(
     /* Trigger IL-6 release (cognitive load inflammation) */
     uint32_t cytokine_id;
     float concentration = (complexity_level - bridge->config.complexity_threshold) * 0.5f;
-    concentration = clamp_0_1(concentration);
+    concentration = nimcp_clamp01(concentration);
 
     int result = brain_immune_release_cytokine(
         bridge->immune_system,

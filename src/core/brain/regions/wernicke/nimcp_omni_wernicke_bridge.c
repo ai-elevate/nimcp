@@ -32,6 +32,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_neural_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(omni_wernicke_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -67,15 +68,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(omni_wernicke_bridge, MESH_ADAPTER_CATEGORY_COGNITI
 /*=============================================================================
  * INTERNAL HELPERS
  *=============================================================================*/
-
-/**
- * @brief Clamp value to [0, 1]
- */
-static inline float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
-}
 
 /**
  * @brief Compute softmax for probability distribution
@@ -948,7 +940,7 @@ int omni_wernicke_set_precision(omni_wernicke_bridge_t* bridge,
         return -1;
     }
 
-    precision = clamp01(precision);
+    precision = nimcp_clamp01(precision);
 
     switch (level) {
         case OMNI_WERNICKE_LEVEL_PHONEME:

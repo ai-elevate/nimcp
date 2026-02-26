@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(habenula_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -42,8 +43,6 @@ struct nimcp_habenula_snn_bridge {
     nimcp_habenula_snn_stats_t stats;
     uint64_t current_time_us;
 };
-
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 nimcp_habenula_snn_config_t nimcp_habenula_snn_config_default(void) {
     return (nimcp_habenula_snn_config_t){
@@ -152,7 +151,7 @@ int nimcp_habenula_snn_encode_aversive(nimcp_habenula_snn_bridge_t* b, nimcp_hab
         return -1;
     }
     b->state.habenula.event_type = event;
-    b->state.habenula.aversive_level = clamp(intensity, 0.0f, 1.0f);
+    b->state.habenula.aversive_level = nimcp_clampf(intensity, 0.0f, 1.0f);
     b->state.habenula.last_aversive_us = b->current_time_us;
     b->stats.aversive_events++;
     return nimcp_habenula_snn_encode_state(b);
@@ -163,7 +162,7 @@ int nimcp_habenula_snn_encode_negative_rpe(nimcp_habenula_snn_bridge_t* b, float
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_negative_rpe: b is NULL");
         return -1;
     }
-    b->state.habenula.negative_rpe = clamp(neg_rpe, 0.0f, 1.0f);
+    b->state.habenula.negative_rpe = nimcp_clampf(neg_rpe, 0.0f, 1.0f);
     b->current_modulation.error_signal = neg_rpe * b->config.error_amplification;
     return nimcp_habenula_snn_encode_state(b);
 }
@@ -173,7 +172,7 @@ int nimcp_habenula_snn_encode_disappointment(nimcp_habenula_snn_bridge_t* b, flo
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_disappointment: b is NULL");
         return -1;
     }
-    float disappointment = clamp(expected - actual, 0.0f, 1.0f);
+    float disappointment = nimcp_clampf(expected - actual, 0.0f, 1.0f);
     b->state.habenula.disappointment = disappointment;
     return nimcp_habenula_snn_encode_aversive(b, HABENULA_SNN_AVERSIVE_DISAPPOINTMENT, disappointment);
 }
@@ -183,7 +182,7 @@ int nimcp_habenula_snn_encode_relief(nimcp_habenula_snn_bridge_t* b, float relie
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_relief: b is NULL");
         return -1;
     }
-    b->state.habenula.relief = clamp(relief, 0.0f, 1.0f);
+    b->state.habenula.relief = nimcp_clampf(relief, 0.0f, 1.0f);
     b->state.habenula.aversive_level *= (1.0f - relief * b->config.relief_suppression);
     b->stats.relief_events++;
     return 0;

@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(consolidation_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -150,15 +151,15 @@ int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* brid
 
     if (bridge->config.enable_atp_modulation) {
         /* Consolidation rate heavily dependent on ATP for protein synthesis */
-        bridge->effects.consolidation_rate = nimcp_clamp_f(atp * 1.2f * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.protein_synthesis = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.consolidation_rate = nimcp_clampf(atp * 1.2f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.protein_synthesis = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Encoding fidelity decreases with fatigue */
-        bridge->effects.encoding_fidelity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.encoding_fidelity = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Priority threshold increases (more selective) under metabolic stress */
-        bridge->effects.priority_threshold = nimcp_clamp_f(1.0f - (metabolic_cap * 0.3f), min_cap, 1.0f);
+        bridge->effects.priority_threshold = nimcp_clampf(1.0f - (metabolic_cap * 0.3f), min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.consolidation_rate +

@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(shadow_emotions_substrate_bridge)
 //=============================================================================
@@ -140,13 +141,13 @@ int shadow_emotions_substrate_bridge_update(shadow_emotions_substrate_bridge_t* 
     float atp = metabolic.atp_level, fatigue = 1.0f - metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables suppression and regulation - low ATP allows emergence */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.suppression_strength = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.regulation_capacity = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.suppression_strength = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.regulation_capacity = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Fatigue lowers emergence threshold and reduces integration */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.emergence_threshold = nimcp_clamp_f(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
-        bridge->effects.integration_ability = nimcp_clamp_f((1.0f - fatigue) * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.emergence_threshold = nimcp_clampf(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
+        bridge->effects.integration_ability = nimcp_clampf((1.0f - fatigue) * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.suppression_strength + bridge->effects.regulation_capacity +
                                         bridge->effects.integration_ability) / 3.0f;

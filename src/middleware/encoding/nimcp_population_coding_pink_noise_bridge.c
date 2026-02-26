@@ -16,6 +16,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_frequency_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_pink_noise_bridge)
 
@@ -25,17 +26,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_pink_noise_bridge)
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Ensure rates stay within valid bounds
- * HOW:  Standard min/max clamping
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * WHAT: Validate configuration parameters
@@ -456,7 +446,7 @@ int population_pink_bridge_modulate_rates(
 
         // Clamp if enabled
         if (bridge->config.clamp_rates) {
-            modulated = clamp_f(modulated, 0.0f, 1000.0f);  // Assume max rate of 1000 Hz
+            modulated = nimcp_clampf(modulated, 0.0f, 1000.0f);  // Assume max rate of 1000 Hz
         }
 
         rates_out[i] = modulated;
@@ -503,7 +493,7 @@ int population_pink_bridge_modulate_tuning(
         float modulated_width = tuning_width * (1.0f + strength * noise);
 
         // Clamp to valid range
-        modulated_width = clamp_f(modulated_width,
+        modulated_width = nimcp_clampf(modulated_width,
                                    bridge->config.min_tuning_width,
                                    bridge->config.max_tuning_width);
 

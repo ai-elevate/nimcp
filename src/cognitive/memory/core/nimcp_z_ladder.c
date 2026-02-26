@@ -33,6 +33,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(z_ladder, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -167,15 +168,6 @@ static uint64_t get_current_time_ms(void) {
 //=============================================================================
 // Internal Helper Functions - Math
 //=============================================================================
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static inline float clampf(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 /**
  * @brief Absolute value of float
@@ -1685,7 +1677,7 @@ z_ladder_error_t z_ladder_apply_decay(z_ladder_t ladder, float dt_seconds) {
 
             pr_memory_node_t* node = tier->nodes[i];
             node->current_strength *= decay_factor;
-            node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+            node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
 
             // Sync with quaternion consolidation component
             node->state.w = node->current_strength;
@@ -1733,7 +1725,7 @@ z_ladder_error_t z_ladder_decay_tier(z_ladder_t ladder, pr_memory_tier_t tier,
 
             pr_memory_node_t* node = storage->nodes[i];
             node->current_strength *= decay_factor;
-            node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+            node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
             node->state.w = node->current_strength;
         }
     }
@@ -2122,7 +2114,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
 
                 pr_memory_node_t* node = tier->nodes[i];
                 node->current_strength *= decay_factor;
-                node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+                node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
                 node->state.w = node->current_strength;
             }
         }
@@ -2270,7 +2262,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
 
             pr_memory_node_t* node = storage->nodes[i];
             node->current_strength *= decay_factor;
-            node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+            node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
             node->state.w = node->current_strength;
         }
     }
@@ -2436,7 +2428,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
             pr_memory_node_t* node = z0->nodes[i];
             // Give rehearsal boost during "sleep"
             node->current_strength += 0.1f;
-            node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+            node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
             node->state.w = node->current_strength;
         }
 
@@ -2570,8 +2562,8 @@ float z_ladder_reinforce(z_ladder_t ladder, uint64_t node_id, float amount) {
     pr_memory_node_t* node = entry->node;
 
     // Add reinforcement
-    node->current_strength += clampf(amount, 0.0f, 1.0f);
-    node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+    node->current_strength += nimcp_clampf(amount, 0.0f, 1.0f);
+    node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
 
     // Sync with quaternion
     node->state.w = node->current_strength;
@@ -2608,7 +2600,7 @@ z_ladder_error_t z_ladder_access(z_ladder_t ladder, uint64_t node_id) {
 
     // Small strength boost on access
     node->current_strength += ACCESS_STRENGTH_BOOST;
-    node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+    node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
     node->state.w = node->current_strength;
 
     nimcp_mutex_unlock(&ladder->mutex);
@@ -2636,18 +2628,18 @@ float z_ladder_emotional_boost(z_ladder_t ladder, uint64_t node_id, float valenc
     pr_memory_node_t* node = entry->node;
 
     // Update emotional valence
-    valence = clampf(valence, -1.0f, 1.0f);
+    valence = nimcp_clampf(valence, -1.0f, 1.0f);
     node->state.x = valence;
 
     // Boost strength based on emotional intensity (both positive and negative)
     float boost = absf(valence) * EMOTIONAL_BOOST_FACTOR;
     node->current_strength += boost;
-    node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+    node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
     node->state.w = node->current_strength;
 
     // Also boost salience for emotional memories
     node->state.y += absf(valence) * 0.1f;
-    node->state.y = clampf(node->state.y, 0.0f, 1.0f);
+    node->state.y = nimcp_clampf(node->state.y, 0.0f, 1.0f);
 
     float result = node->current_strength;
 

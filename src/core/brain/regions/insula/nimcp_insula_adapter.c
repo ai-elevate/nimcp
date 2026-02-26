@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(insula_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -129,15 +130,6 @@ static float sigmoid(float x) {
 }
 
 /**
- * @brief Clamp value to range
- */
-static float clamp(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
-/**
  * @brief Exponential moving average
  */
 static float ema(float current, float new_val, float alpha) {
@@ -220,7 +212,7 @@ static void update_body_state_from_channels(insula_adapter_t* adapter) {
     state->pain_level = channels[INTERO_CHANNEL_PAIN].current_value;
     state->comfort_level = channels[INTERO_CHANNEL_PLEASURE].current_value -
                            channels[INTERO_CHANNEL_DISCOMFORT].current_value;
-    state->comfort_level = clamp(state->comfort_level, 0.0f, 1.0f);
+    state->comfort_level = nimcp_clampf(state->comfort_level, 0.0f, 1.0f);
 
     /* Homeostatic error - average deviation from baseline */
     float total_error = 0.0f;
@@ -268,9 +260,9 @@ static void update_emotional_dynamics(insula_adapter_t* adapter, float dt_sec) {
                           0.3f);
 
     /* Clamp to valid range */
-    state->valence = clamp(state->valence, -1.0f, 1.0f);
-    state->arousal = clamp(state->arousal, -1.0f, 1.0f);
-    state->dominance = clamp(state->dominance, -1.0f, 1.0f);
+    state->valence = nimcp_clampf(state->valence, -1.0f, 1.0f);
+    state->arousal = nimcp_clampf(state->arousal, -1.0f, 1.0f);
+    state->dominance = nimcp_clampf(state->dominance, -1.0f, 1.0f);
 
     /* Derive categorical emotions from dimensional space */
     /* Using simplified mapping */
@@ -285,7 +277,7 @@ static void update_emotional_dynamics(insula_adapter_t* adapter, float dt_sec) {
     /* Meta-emotional metrics */
     float valence_change = fabsf(adapter->emotional_momentum[0]);
     float arousal_change = fabsf(adapter->emotional_momentum[1]);
-    state->emotional_stability = 1.0f - clamp(valence_change + arousal_change, 0.0f, 1.0f);
+    state->emotional_stability = 1.0f - nimcp_clampf(valence_change + arousal_change, 0.0f, 1.0f);
     state->emotional_intensity = sqrtf(state->valence * state->valence +
                                          state->arousal * state->arousal);
 
@@ -596,7 +588,7 @@ bool insula_set_interoceptive_sensitivity(insula_adapter_t* adapter,
         return false;
     }
 
-    sensitivity = clamp(sensitivity, 0.0f, 1.0f);
+    sensitivity = nimcp_clampf(sensitivity, 0.0f, 1.0f);
 
     if (channel < 0) {
         /* Set all channels */
@@ -683,7 +675,7 @@ bool insula_create_somatic_marker(insula_adapter_t* adapter,
     }
 
     node->context = context;
-    node->valence = clamp(valence, -1.0f, 1.0f);
+    node->valence = nimcp_clampf(valence, -1.0f, 1.0f);
     node->confidence = 0.8f;
     node->creation_time = adapter->current_time_ms;
     node->next = NULL;
@@ -781,7 +773,7 @@ float insula_process_disgust(insula_adapter_t* adapter,
             break;
     }
 
-    float response = clamp(base_response * type_modifier, 0.0f, 1.0f);
+    float response = nimcp_clampf(base_response * type_modifier, 0.0f, 1.0f);
 
     /* Update emotional state */
     adapter->emotional_state.disgust = ema(adapter->emotional_state.disgust, response, 0.5f);
@@ -813,7 +805,7 @@ float insula_process_empathy(insula_adapter_t* adapter,
 
     /* Empathic resonance scales with similarity and sensitivity */
     float resonance = fabsf(other_valence) * similarity * adapter->config.social_sensitivity;
-    resonance = clamp(resonance, 0.0f, 1.0f);
+    resonance = nimcp_clampf(resonance, 0.0f, 1.0f);
 
     /* Mirror the other's emotional state (scaled) */
     float mirror_weight = resonance * 0.3f;
@@ -849,7 +841,7 @@ float insula_assess_trust(insula_adapter_t* adapter,
                   behavior_reliability * 0.4f +    /* Past behavior (most important) */
                   reciprocity * 0.4f;              /* Reciprocal behavior */
 
-    trust = clamp(trust, 0.0f, 1.0f);
+    trust = nimcp_clampf(trust, 0.0f, 1.0f);
 
     /* Detect betrayal (sharp trust drop) - check before updating */
     float previous_estimate = adapter->social_state.trustworthiness_estimate;
@@ -892,7 +884,7 @@ float insula_process_fairness(insula_adapter_t* adapter,
         fairness = -fabsf(difference) * 0.5f;
     }
 
-    fairness = clamp(fairness, -1.0f, 1.0f);
+    fairness = nimcp_clampf(fairness, -1.0f, 1.0f);
 
     /* Update social state */
     adapter->social_state.fairness_assessment = fairness;
@@ -918,14 +910,14 @@ float insula_process_rejection(insula_adapter_t* adapter,
 
     /* Social pain scales with rejection intensity and source importance */
     float social_pain = rejection_intensity * source_importance * adapter->config.social_sensitivity;
-    social_pain = clamp(social_pain, 0.0f, 1.0f);
+    social_pain = nimcp_clampf(social_pain, 0.0f, 1.0f);
 
     /* Update social state */
     adapter->social_state.rejection_sensitivity = social_pain;
     adapter->social_state.social_pain = social_pain;
     adapter->social_state.belonging_need = ema(adapter->social_state.belonging_need,
                                                   social_pain * 1.2f, 0.5f);
-    adapter->social_state.belonging_need = clamp(adapter->social_state.belonging_need, 0.0f, 1.0f);
+    adapter->social_state.belonging_need = nimcp_clampf(adapter->social_state.belonging_need, 0.0f, 1.0f);
 
     /* Rejection affects emotional state */
     if (social_pain > 0.3f) {
@@ -1004,7 +996,7 @@ bool insula_integrate(insula_adapter_t* adapter, insula_output_t* output) {
         adapter->emotional_state.fear * 0.4f +
         adapter->social_state.social_pain * 0.3f;
     adapter->current_output.risk_assessment =
-        clamp(adapter->current_output.risk_assessment, 0.0f, 1.0f);
+        nimcp_clampf(adapter->current_output.risk_assessment, 0.0f, 1.0f);
 
     /* Set urgent flag if any alarm is active */
     adapter->current_output.urgent_signal =

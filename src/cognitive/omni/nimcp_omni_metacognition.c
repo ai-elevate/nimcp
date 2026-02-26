@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(omni_metacognition, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -78,15 +79,6 @@ static double get_current_time(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec + ts.tv_nsec / 1e9;
-}
-
-/**
- * @brief Clamp value to [0, 1]
- */
-static float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
 }
 
 /**
@@ -518,7 +510,7 @@ nimcp_error_t omni_metacog_set_resource_budget(
     NIMCP_CHECK_THROW(resource < OMNI_RESOURCE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "resource out of range");
 
     nimcp_mutex_lock(ctx->mutex);
-    ctx->self_model->resources.budget[resource] = clamp01(budget);
+    ctx->self_model->resources.budget[resource] = nimcp_clamp01(budget);
     nimcp_mutex_unlock(ctx->mutex);
 
     return NIMCP_SUCCESS;
@@ -988,7 +980,7 @@ nimcp_error_t omni_metacog_plan_resources(
                                  (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
             }
 
-            plan->allocations[i] = clamp01(base_cost * accuracy_ratio);
+            plan->allocations[i] = nimcp_clamp01(base_cost * accuracy_ratio);
             plan->total_budget += plan->allocations[i];
 
             /* Check against budget */
@@ -1195,7 +1187,7 @@ nimcp_error_t omni_metacog_adjust_precision(
             }
 
             float new_budget = ctx->self_model->resources.budget[i] + adjustment * 0.1f;
-            ctx->self_model->resources.budget[i] = clamp01(new_budget);
+            ctx->self_model->resources.budget[i] = nimcp_clamp01(new_budget);
         }
     }
 
@@ -1263,7 +1255,7 @@ nimcp_error_t omni_metacog_learn(
     }
 
     /* Update self-model confidence based on prediction accuracy */
-    ctx->self_model->self_model_confidence = clamp01(
+    ctx->self_model->self_model_confidence = nimcp_clamp01(
         ctx->self_model->self_model_confidence + lr * 0.01f);
 
     ctx->state = OMNI_METACOG_STATE_MONITORING;
@@ -1291,7 +1283,7 @@ nimcp_error_t omni_metacog_update_policy(
      * Both cases use the same formula: rate - lr * reward * 0.1f
      */
     float lr = ctx->config.meta_learning_rate;
-    ctx->config.exploration_rate = clamp01(
+    ctx->config.exploration_rate = nimcp_clamp01(
         ctx->config.exploration_rate - lr * reward * 0.1f);
 
     /* Update intervention threshold based on reward */
@@ -1300,11 +1292,11 @@ nimcp_error_t omni_metacog_update_policy(
 
         if (intervention_effectiveness > 0.0f) {
             /* Interventions are helping: lower threshold (intervene more) */
-            ctx->config.intervention_threshold = clamp01(
+            ctx->config.intervention_threshold = nimcp_clamp01(
                 ctx->config.intervention_threshold - lr * 0.01f);
         } else {
             /* Interventions not helping: raise threshold (intervene less) */
-            ctx->config.intervention_threshold = clamp01(
+            ctx->config.intervention_threshold = nimcp_clamp01(
                 ctx->config.intervention_threshold + lr * 0.01f);
         }
     }
@@ -1394,7 +1386,7 @@ nimcp_error_t omni_metacog_get_learning_stats(
         variance /= n;
 
         /* Low variance = high convergence */
-        *convergence = clamp01(1.0f - sqrtf(variance) * 2.0f);
+        *convergence = nimcp_clamp01(1.0f - sqrtf(variance) * 2.0f);
     }
 
     nimcp_mutex_unlock(ctx->mutex);
@@ -1512,7 +1504,7 @@ nimcp_error_t omni_metacog_step(omni_metacog_ctx_t* ctx) {
             }
 
             float replenish = ctx->self_model->resources.replenishment_rate[i];
-            ctx->self_model->resources.available[i] = clamp01(
+            ctx->self_model->resources.available[i] = nimcp_clamp01(
                 ctx->self_model->resources.available[i] + replenish);
         }
     }

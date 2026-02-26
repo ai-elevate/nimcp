@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metabolic_plasticity)
 
@@ -42,19 +43,6 @@ struct metabolic_plasticity {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Update energy state classification
@@ -280,7 +268,7 @@ int metabolic_plasticity_consume_atp(
 
     /* Consume ATP */
     metabolic->atp_state.current_atp -= total_cost;
-    metabolic->atp_state.current_atp = clamp_f(
+    metabolic->atp_state.current_atp = nimcp_clampf(
         metabolic->atp_state.current_atp,
         METABOLIC_ATP_MIN,
         METABOLIC_ATP_FULL_CAPACITY
@@ -351,7 +339,7 @@ int metabolic_plasticity_update(metabolic_plasticity_t* metabolic, uint64_t delt
     /* Recover ATP */
     float old_atp = metabolic->atp_state.current_atp;
     metabolic->atp_state.current_atp += recovery_amount;
-    metabolic->atp_state.current_atp = clamp_f(
+    metabolic->atp_state.current_atp = nimcp_clampf(
         metabolic->atp_state.current_atp,
         METABOLIC_ATP_MIN,
         METABOLIC_ATP_FULL_CAPACITY
@@ -422,7 +410,7 @@ int metabolic_plasticity_restore_atp(metabolic_plasticity_t* metabolic, float at
 
     nimcp_platform_mutex_lock(metabolic->mutex);
 
-    metabolic->atp_state.current_atp = clamp_f(
+    metabolic->atp_state.current_atp = nimcp_clampf(
         atp_level,
         METABOLIC_ATP_MIN,
         METABOLIC_ATP_FULL_CAPACITY

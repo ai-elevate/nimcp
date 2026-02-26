@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_snn_bridge)
 //=============================================================================
@@ -119,16 +120,6 @@ struct fep_snn_bridge {
     /* Statistics */
     fep_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -421,7 +412,7 @@ int fep_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -497,8 +488,8 @@ int fep_snn_encode_prediction_error(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[FEP_DIM_COUNT] = {0};
-    dims[FEP_DIM_PREDICTION_ERROR] = clamp_f(pred_error, 0.0f, 1.0f);
-    dims[FEP_DIM_PRECISION] = clamp_f(precision, 0.0f, 1.0f);
+    dims[FEP_DIM_PREDICTION_ERROR] = nimcp_clampf(pred_error, 0.0f, 1.0f);
+    dims[FEP_DIM_PRECISION] = nimcp_clampf(precision, 0.0f, 1.0f);
     dims[FEP_DIM_FREE_ENERGY] = (pred_error * precision);
 
     bridge->pred_error_signal = pred_error;
@@ -526,8 +517,8 @@ int fep_snn_encode_free_energy(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[FEP_DIM_COUNT] = {0};
-    dims[FEP_DIM_FREE_ENERGY] = clamp_f(free_energy, 0.0f, 1.0f);
-    dims[FEP_DIM_MODEL_COMPLEXITY] = clamp_f(complexity, 0.0f, 1.0f);
+    dims[FEP_DIM_FREE_ENERGY] = nimcp_clampf(free_energy, 0.0f, 1.0f);
+    dims[FEP_DIM_MODEL_COMPLEXITY] = nimcp_clampf(complexity, 0.0f, 1.0f);
 
     /* Free energy change callback */
     if (bridge->free_energy_callback) {
@@ -559,8 +550,8 @@ int fep_snn_encode_active_inference(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[FEP_DIM_COUNT] = {0};
-    dims[FEP_DIM_ACTIVE_INFERENCE] = clamp_f(action_drive, 0.0f, 1.0f);
-    dims[FEP_DIM_BELIEF_STRENGTH] = clamp_f(action_drive * 0.8f, 0.0f, 1.0f);
+    dims[FEP_DIM_ACTIVE_INFERENCE] = nimcp_clampf(action_drive, 0.0f, 1.0f);
+    dims[FEP_DIM_BELIEF_STRENGTH] = nimcp_clampf(action_drive * 0.8f, 0.0f, 1.0f);
 
     bridge->last_belief.active_inference_drive = action_drive;
 
@@ -634,12 +625,12 @@ int fep_snn_simulate(fep_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs into belief state */
-    bridge->last_belief.prediction_error = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_belief.free_energy = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_belief.precision = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_belief.belief_strength = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_belief.active_inference_drive = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_belief.variational_bound = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_belief.prediction_error = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_belief.free_energy = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_belief.precision = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_belief.belief_strength = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_belief.active_inference_drive = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_belief.variational_bound = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Calculate derived values */
     bridge->last_belief.entropy_estimate = 1.0f - bridge->last_belief.belief_strength;

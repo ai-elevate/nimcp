@@ -36,6 +36,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_temporal_credit)
 
@@ -124,16 +125,6 @@ struct financial_temporal_credit_bridge {
     fin_custom_credit_fn_t custom_credit_fn;
     void* custom_credit_fn_data;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline uint64_t get_time_ms(void) {
     struct timespec ts;
@@ -1217,7 +1208,7 @@ int financial_temporal_credit_bridge_set_lambda(
     if (bridge->magic != FINANCIAL_TEMPORAL_CREDIT_BRIDGE_MAGIC) {
         return FIN_TEMPORAL_CREDIT_ERR_STATE;
     }
-    bridge->config.lambda = clampf(lambda, 0.0f, 1.0f);
+    bridge->config.lambda = nimcp_clampf(lambda, 0.0f, 1.0f);
     return FIN_TEMPORAL_CREDIT_ERR_OK;
 }
 
@@ -1231,7 +1222,7 @@ int financial_temporal_credit_bridge_set_gamma(
     if (bridge->magic != FINANCIAL_TEMPORAL_CREDIT_BRIDGE_MAGIC) {
         return FIN_TEMPORAL_CREDIT_ERR_STATE;
     }
-    bridge->config.gamma = clampf(gamma, 0.0f, 1.0f);
+    bridge->config.gamma = nimcp_clampf(gamma, 0.0f, 1.0f);
     return FIN_TEMPORAL_CREDIT_ERR_OK;
 }
 

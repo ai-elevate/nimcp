@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_curiosity_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -73,16 +74,6 @@ struct fep_curiosity_system {
     /* Thread safety */
     nimcp_mutex_t* mutex;               /**< Mutex for thread safety */
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float safe_log(float x) {
     if (x <= 0.0f) return -100.0f;
@@ -319,7 +310,7 @@ float fep_compute_information_gain(
             surprise += observation[i] * (safe_log(observation[i]) - safe_log(expected));
         }
     }
-    info_gain = clamp_f(surprise, 0.0f, 10.0f);
+    info_gain = nimcp_clampf(surprise, 0.0f, 10.0f);
 
     sys->state.information_gain = info_gain;
     sys->stats.total_information_gain += info_gain;

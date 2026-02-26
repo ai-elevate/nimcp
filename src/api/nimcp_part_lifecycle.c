@@ -154,9 +154,9 @@ nimcp_brain_t nimcp_brain_create(
     /* Use exception-integrated validation (returns NULL on error) */
     NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
 
-    /* Allocate handle with exception-integrated check */
+    /* Allocate handle with calloc (zero-init last_loss/last_gradient_norm) */
     LOG_DEBUG("Allocating brain handle (%zu bytes)", sizeof(struct nimcp_brain_handle));
-    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
     NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
                                "Failed to allocate brain handle");
 
@@ -185,10 +185,10 @@ nimcp_brain_t nimcp_brain_create(
 
 nimcp_status_t nimcp_brain_freeze(nimcp_brain_t brain) {
     if (!brain || !brain->internal_brain) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return NIMCP_ERROR_NULL_ARG;
     }
     bool ok = brain_freeze(brain->internal_brain);
-    return ok ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+    return ok ? NIMCP_OK : NIMCP_ERROR;
 }
 
 bool nimcp_brain_is_frozen(nimcp_brain_t brain) {
@@ -236,7 +236,7 @@ nimcp_brain_t nimcp_brain_create_with_neurons(
 
     NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
 
-    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
     NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
                                "Failed to allocate brain handle");
 

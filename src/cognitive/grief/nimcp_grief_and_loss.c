@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(grief_and_loss, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -117,16 +118,6 @@ static void bio_broadcast_grief_state(grief_system_t* system) {
     LOG_DEBUG(LOG_MODULE, "Broadcast grief state: pain=%.2f, stage=%d",
               system->current_grief.emotional_pain_intensity,
               system->current_grief.current_stage);
-}
-
-//=============================================================================
-// HELPER FUNCTIONS
-//=============================================================================
-
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 static inline float exponential_decay(float current, float target, float decay_rate, float dt) {
@@ -311,9 +302,9 @@ uint32_t grief_create_attachment(grief_system_t* system,
     bond->active = true;
     bond->attachment_id = attachment_id;
     bond->type = type;
-    bond->strength = clamp(strength, 0.0F, 1.0F);
-    bond->positive_valence = clamp(positive_valence, 0.0F, 1.0F);
-    bond->dependency = clamp(dependency, 0.0F, 1.0F);
+    bond->strength = nimcp_clampf(strength, 0.0F, 1.0F);
+    bond->positive_valence = nimcp_clampf(positive_valence, 0.0F, 1.0F);
+    bond->dependency = nimcp_clampf(dependency, 0.0F, 1.0F);
     bond->formation_time = 0;  // Will be set by caller if needed
     bond->duration = 0;
     bond->associated_memories = 0;
@@ -349,7 +340,7 @@ void grief_strengthen_attachment(grief_system_t* system,
             system->attachments[i].attachment_id == attachment_id) {
 
             system->attachments[i].strength += amount;
-            system->attachments[i].strength = clamp(system->attachments[i].strength, 0.0F, 1.0F);
+            system->attachments[i].strength = nimcp_clampf(system->attachments[i].strength, 0.0F, 1.0F);
             system->attachments[i].duration++;
             return;
         }
@@ -383,7 +374,7 @@ void grief_add_shared_memory(grief_system_t* system, uint32_t attachment_id) {
             float memory_boost = 0.01F;
             system->attachments[i].memory_vividness += memory_boost;
             system->attachments[i].memory_vividness =
-                clamp(system->attachments[i].memory_vividness, 0.0F, 1.0F);
+                nimcp_clampf(system->attachments[i].memory_vividness, 0.0F, 1.0F);
             return;
         }
     }
@@ -480,20 +471,20 @@ void grief_process_loss(grief_system_t* system,
 
     // Memory influence (more shared memories = more intense grief)
     float memory_influence = 1.0F + (lost_bond->associated_memories / 100.0F) * lost_bond->memory_vividness;
-    memory_influence = clamp(memory_influence, 1.0F, 1.5F);  // Up to 50% increase
+    memory_influence = nimcp_clampf(memory_influence, 1.0F, 1.5F);  // Up to 50% increase
 
     // Combine all intensity factors with safety ceiling
     float combined_intensity = loss_type_intensity * attachment_type_intensity * memory_influence;
-    combined_intensity = clamp(combined_intensity, 0.0F, 1.3F);  // Cap to prevent extreme values
+    combined_intensity = nimcp_clampf(combined_intensity, 0.0F, 1.3F);  // Cap to prevent extreme values
 
     // SAFETY: Grief symptoms capped to prevent complete incapacitation
     // Maximum emotional pain is 0.85 (never complete shutdown)
-    system->current_grief.emotional_pain_intensity = clamp(bond_strength * 0.9F * combined_intensity, 0.0F, 0.85F);
-    system->current_grief.anhedonia_level = clamp(bond_strength * 0.7F * combined_intensity, 0.0F, 0.80F);
-    system->current_grief.intrusive_thoughts_frequency = clamp(bond_strength * 0.8F * combined_intensity, 0.0F, 0.85F);
+    system->current_grief.emotional_pain_intensity = nimcp_clampf(bond_strength * 0.9F * combined_intensity, 0.0F, 0.85F);
+    system->current_grief.anhedonia_level = nimcp_clampf(bond_strength * 0.7F * combined_intensity, 0.0F, 0.80F);
+    system->current_grief.intrusive_thoughts_frequency = nimcp_clampf(bond_strength * 0.8F * combined_intensity, 0.0F, 0.85F);
     system->current_grief.avoidance_level = 0.5F;
     // SAFETY: Functional impairment capped at 0.85 (system remains minimally functional)
-    system->current_grief.functional_impairment = clamp(bond_strength * 0.7F * combined_intensity, 0.0F, 0.85F);
+    system->current_grief.functional_impairment = nimcp_clampf(bond_strength * 0.7F * combined_intensity, 0.0F, 0.85F);
 
     // Dual process: Initially loss-oriented
     system->current_grief.loss_orientation = 0.9F;
@@ -503,10 +494,10 @@ void grief_process_loss(grief_system_t* system,
     // Neurobiological changes with safety limits
     // SAFETY: Neuromodulator changes capped to prevent complete depletion/excess
     // System retains 15-20% baseline function even in severe grief
-    system->current_grief.serotonin_depletion = clamp(GRIEF_SEROTONIN_DEPLETION * bond_strength, 0.0F, 0.80F);  // Max 80% depletion
-    system->current_grief.dopamine_depletion = clamp(GRIEF_DOPAMINE_DEPLETION * bond_strength, 0.0F, 0.75F);   // Max 75% depletion
-    system->current_grief.norepinephrine_elevation = clamp(GRIEF_NOREPINEPHRINE_INCREASE * bond_strength, 1.0F, 2.5F);
-    system->current_grief.cortisol_elevation = clamp(GRIEF_CORTISOL_INCREASE * bond_strength, 1.0F, 2.5F);
+    system->current_grief.serotonin_depletion = nimcp_clampf(GRIEF_SEROTONIN_DEPLETION * bond_strength, 0.0F, 0.80F);  // Max 80% depletion
+    system->current_grief.dopamine_depletion = nimcp_clampf(GRIEF_DOPAMINE_DEPLETION * bond_strength, 0.0F, 0.75F);   // Max 75% depletion
+    system->current_grief.norepinephrine_elevation = nimcp_clampf(GRIEF_NOREPINEPHRINE_INCREASE * bond_strength, 1.0F, 2.5F);
+    system->current_grief.cortisol_elevation = nimcp_clampf(GRIEF_CORTISOL_INCREASE * bond_strength, 1.0F, 2.5F);
 
     // Default to adaptive coping (can change)
     system->current_grief.predominant_coping = COPING_ADAPTIVE;
@@ -538,7 +529,7 @@ void grief_process_loss(grief_system_t* system,
     } else {
         system->existential.mortality_salience += 0.3F;  // Moderate reminder
     }
-    system->existential.mortality_salience = clamp(system->existential.mortality_salience, 0.0F, 1.0F);
+    system->existential.mortality_salience = nimcp_clampf(system->existential.mortality_salience, 0.0F, 1.0F);
     system->existential.last_mortality_reminder = current_time_us;
 }
 
@@ -603,7 +594,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Avoidance coping maintains denial and slows acceptance
     if (grief->predominant_coping == COPING_AVOIDANT) {
         grief->stage_intensities[GRIEF_STAGE_DENIAL] += 0.1F * dt / 86400.0F;  // Slowly increases denial
-        grief->stage_intensities[GRIEF_STAGE_DENIAL] = clamp(grief->stage_intensities[GRIEF_STAGE_DENIAL], 0.0F, 0.8F);
+        grief->stage_intensities[GRIEF_STAGE_DENIAL] = nimcp_clampf(grief->stage_intensities[GRIEF_STAGE_DENIAL], 0.0F, 0.8F);
     }
 
     // Anger rises then falls (weeks)
@@ -627,7 +618,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Meaning-making emerges later
     if (time_since_loss > 86400.0F * 60.0F) {  // After 2 months
         float meaning_growth = (time_since_loss - 86400.0F * 60.0F) / (86400.0F * 180.0F);
-        grief->stage_intensities[GRIEF_STAGE_MEANING_MAKING] = clamp(meaning_growth, 0.0F, 0.8F);
+        grief->stage_intensities[GRIEF_STAGE_MEANING_MAKING] = nimcp_clampf(meaning_growth, 0.0F, 0.8F);
     }
 
     // Update current predominant stage
@@ -681,7 +672,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
         impairment_decay_rate *= 0.1F;  // Very slow recovery
         grief->functional_impairment += 0.08F * dt / 86400.0F;  // Worsens over time
         // SAFETY: Even with maladaptive coping, cap impairment at 0.90 (retain minimal function)
-        grief->functional_impairment = clamp(grief->functional_impairment, 0.0F, 0.90F);
+        grief->functional_impairment = nimcp_clampf(grief->functional_impairment, 0.0F, 0.90F);
         // Still apply some decay to prevent unbounded growth
         grief->functional_impairment = exponential_decay(
             grief->functional_impairment, 0.2F, impairment_decay_rate, dt);  // Floor at 0.2
@@ -693,7 +684,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
         grief->functional_impairment = exponential_decay(
             grief->functional_impairment, avoidance_impairment_floor, impairment_decay_rate, dt);
         // SAFETY: Cap at 0.85 even with high avoidance
-        grief->functional_impairment = clamp(grief->functional_impairment, 0.0F, 0.85F);
+        grief->functional_impairment = nimcp_clampf(grief->functional_impairment, 0.0F, 0.85F);
     } else {
         // Adaptive coping allows normal recovery
         grief->functional_impairment = exponential_decay(
@@ -716,7 +707,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Early grief: mostly loss-oriented
     // Later grief: more restoration-oriented
     float restoration_bias = time_since_loss / (86400.0F * 180.0F);  // Grows over 6 months
-    restoration_bias = clamp(restoration_bias, 0.0F, 0.8F);
+    restoration_bias = nimcp_clampf(restoration_bias, 0.0F, 0.8F);
 
     // Oscillate between loss and restoration with sinusoidal pattern
     // Range: [0.1, 0.9] for loss orientation (never fully 0 or 1)
@@ -768,10 +759,10 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Maladaptive/avoidant coping gradually increases prolonged grief severity
     if (grief->predominant_coping == COPING_MALADAPTIVE) {
         grief->prolonged_grief_severity += 0.15F * dt / (86400.0F * 30.0F);  // 0.15 per month (increased from 0.1)
-        grief->prolonged_grief_severity = clamp(grief->prolonged_grief_severity, 0.0F, 1.0F);
+        grief->prolonged_grief_severity = nimcp_clampf(grief->prolonged_grief_severity, 0.0F, 1.0F);
     } else if (grief->predominant_coping == COPING_AVOIDANT && time_since_loss > 86400.0F * 60.0F) {
         grief->prolonged_grief_severity += 0.08F * dt / (86400.0F * 30.0F);  // 0.08 per month after 2 months (increased from 0.05, earlier trigger)
-        grief->prolonged_grief_severity = clamp(grief->prolonged_grief_severity, 0.0F, 1.0F);
+        grief->prolonged_grief_severity = nimcp_clampf(grief->prolonged_grief_severity, 0.0F, 1.0F);
     } else if (grief->predominant_coping == COPING_ADAPTIVE) {
         // Adaptive coping reduces severity
         grief->prolonged_grief_severity *= 0.99F;  // Slow reduction
@@ -835,7 +826,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
 
     // Acute sadness can spike above baseline
     grief->grief_induced_sadness = fmaxf(grief->grief_induced_sadness, acute_sadness);
-    grief->grief_induced_sadness = clamp(grief->grief_induced_sadness, permanent_sadness_baseline, 1.0F);
+    grief->grief_induced_sadness = nimcp_clampf(grief->grief_induced_sadness, permanent_sadness_baseline, 1.0F);
 
     // Update sadness emotional tag (valence and arousal computed from current state)
     grief->sadness_emotion = grief_get_sadness_emotion(system);
@@ -852,7 +843,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
         // Wisdom grows with meaning-making and acceptance
         float wisdom_increment = grief->meaning_making_progress * grief->stage_intensities[GRIEF_STAGE_ACCEPTANCE] * dt / (86400.0F * 30.0F);
         system->accumulated_grief_wisdom += wisdom_increment;
-        system->accumulated_grief_wisdom = clamp(system->accumulated_grief_wisdom, 0.0F, 1.0F);
+        system->accumulated_grief_wisdom = nimcp_clampf(system->accumulated_grief_wisdom, 0.0F, 1.0F);
     }
 
     //=========================================================================
@@ -870,7 +861,7 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
 
         // Completion bonus wisdom
         system->accumulated_grief_wisdom += 0.05F;
-        system->accumulated_grief_wisdom = clamp(system->accumulated_grief_wisdom, 0.0F, 1.0F);
+        system->accumulated_grief_wisdom = nimcp_clampf(system->accumulated_grief_wisdom, 0.0F, 1.0F);
 
         // Update average duration
         float this_duration = time_since_loss;
@@ -907,7 +898,7 @@ void grief_contemplate_mortality(grief_system_t* system,
 
     // Mortality salience increases with reminders
     ex->mortality_salience += mortality_reminder_intensity * 0.3F;
-    ex->mortality_salience = clamp(ex->mortality_salience, 0.0F, 1.0F);
+    ex->mortality_salience = nimcp_clampf(ex->mortality_salience, 0.0F, 1.0F);
     ex->last_mortality_reminder = current_time_us;
 
     // Death anxiety may increase or decrease depending on acceptance
@@ -918,14 +909,14 @@ void grief_contemplate_mortality(grief_system_t* system,
         // High acceptance → less anxiety
         ex->death_anxiety -= mortality_reminder_intensity * 0.1F;
     }
-    ex->death_anxiety = clamp(ex->death_anxiety, 0.0F, 1.0F);
+    ex->death_anxiety = nimcp_clampf(ex->death_anxiety, 0.0F, 1.0F);
 
     // Existential anxiety (meaninglessness) increases with mortality salience
     // and low-to-moderate sense of purpose (confronting death raises existential questions)
     if (ex->sense_of_purpose < 0.7F) {
         ex->existential_anxiety += mortality_reminder_intensity * 0.15F;
     }
-    ex->existential_anxiety = clamp(ex->existential_anxiety, 0.0F, 1.0F);
+    ex->existential_anxiety = nimcp_clampf(ex->existential_anxiety, 0.0F, 1.0F);
 
     // Legacy concerns increase with mortality awareness
     ex->legacy_motivation = ex->mortality_salience * 0.7F;
@@ -947,27 +938,27 @@ void grief_find_meaning(grief_system_t* system, float meaning_making_effort) {
 
     // Meaning-making progress
     grief->meaning_making_progress += meaning_making_effort * 0.1F;
-    grief->meaning_making_progress = clamp(grief->meaning_making_progress, 0.0F, 1.0F);
+    grief->meaning_making_progress = nimcp_clampf(grief->meaning_making_progress, 0.0F, 1.0F);
 
     // Increases sense of purpose
     ex->sense_of_purpose += meaning_making_effort * 0.05F;
-    ex->sense_of_purpose = clamp(ex->sense_of_purpose, 0.0F, 1.0F);
+    ex->sense_of_purpose = nimcp_clampf(ex->sense_of_purpose, 0.0F, 1.0F);
 
     // Reduces existential anxiety
     ex->existential_anxiety -= meaning_making_effort * 0.05F;
-    ex->existential_anxiety = clamp(ex->existential_anxiety, 0.0F, 1.0F);
+    ex->existential_anxiety = nimcp_clampf(ex->existential_anxiety, 0.0F, 1.0F);
 
     // Increases acceptance of finitude
     ex->acceptance_of_finitude += meaning_making_effort * 0.03F;
-    ex->acceptance_of_finitude = clamp(ex->acceptance_of_finitude, 0.0F, 1.0F);
+    ex->acceptance_of_finitude = nimcp_clampf(ex->acceptance_of_finitude, 0.0F, 1.0F);
 
     // Increases generativity (creating for future generations)
     ex->generativity += meaning_making_effort * 0.08F;
-    ex->generativity = clamp(ex->generativity, 0.0F, 1.0F);
+    ex->generativity = nimcp_clampf(ex->generativity, 0.0F, 1.0F);
 
     // Legacy motivation (desire to leave impact)
     ex->legacy_motivation += meaning_making_effort * 0.06F;
-    ex->legacy_motivation = clamp(ex->legacy_motivation, 0.0F, 1.0F);
+    ex->legacy_motivation = nimcp_clampf(ex->legacy_motivation, 0.0F, 1.0F);
 
     // Facilitates movement toward acceptance stage
     grief->stage_intensities[GRIEF_STAGE_ACCEPTANCE] += meaning_making_effort * 0.05F;
@@ -1000,7 +991,7 @@ void grief_seek_support(grief_system_t* system, float support_quality) {
 
     // Increases restoration orientation
     grief->restoration_orientation += support_quality * 0.1F;
-    grief->restoration_orientation = clamp(grief->restoration_orientation, 0.0F, 1.0F);
+    grief->restoration_orientation = nimcp_clampf(grief->restoration_orientation, 0.0F, 1.0F);
 }
 
 void grief_avoid_reminders(grief_system_t* system, float avoidance_intensity) {
@@ -1161,7 +1152,7 @@ emotional_tag_t grief_get_sadness_emotion(const grief_system_t* system) {
     // Valence: More negative with higher grief intensity
     // Emotional pain [0, 1] → valence [-0.3, -0.9]
     float valence = -0.3F - (grief->emotional_pain_intensity * 0.6F);
-    valence = clamp(valence, -1.0F, -0.3F);
+    valence = nimcp_clampf(valence, -1.0F, -0.3F);
 
     // Arousal: Low during sadness (psychomotor retardation)
     // Depression and sadness are characterized by low energy
@@ -1169,7 +1160,7 @@ emotional_tag_t grief_get_sadness_emotion(const grief_system_t* system) {
     float baseline_arousal = 0.2F;  // Low baseline for sadness
     float anxiety_boost = grief->stage_intensities[GRIEF_STAGE_ANGER] * 0.2F;  // Anger can increase arousal
     float arousal = baseline_arousal + anxiety_boost;
-    arousal = clamp(arousal, 0.0F, 0.4F);  // Sadness has low arousal
+    arousal = nimcp_clampf(arousal, 0.0F, 0.4F);  // Sadness has low arousal
 
     // Get current time (use 0 if not available - will be updated by caller)
     uint64_t timestamp_ms = 0;
@@ -1195,7 +1186,7 @@ float grief_get_total_sadness(const grief_system_t* system) {
     // Total sadness = pre-existing + grief-induced
     float total = grief->baseline_sadness + grief->grief_induced_sadness;
 
-    return clamp(total, 0.0F, 1.0F);
+    return nimcp_clampf(total, 0.0F, 1.0F);
 }
 
 void grief_set_baseline_sadness(grief_system_t* system, float sadness_level) {
@@ -1210,7 +1201,7 @@ void grief_set_baseline_sadness(grief_system_t* system, float sadness_level) {
     grief_and_loss_heartbeat("grief_and_lo_grief_set_baseline_s", 0.0f);
 
 
-    system->current_grief.baseline_sadness = clamp(sadness_level, 0.0F, 1.0F);
+    system->current_grief.baseline_sadness = nimcp_clampf(sadness_level, 0.0F, 1.0F);
 }
 
 /* ============================================================================

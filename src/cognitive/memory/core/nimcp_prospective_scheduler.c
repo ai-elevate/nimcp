@@ -35,6 +35,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(prospective_scheduler, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -77,15 +78,6 @@ static uint64_t get_current_time_ms(void) {
 //=============================================================================
 // Internal Helper Functions - Math
 //=============================================================================
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static inline float clampf(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 /**
  * @brief Safe string copy with null termination
@@ -770,7 +762,7 @@ prospective_intention_t* prospective_intention_create(
     intention->time_window.is_absolute = false;
 
     // Set priority factors
-    intention->importance = clampf(importance, 0.0f, 1.0f);
+    intention->importance = nimcp_clampf(importance, 0.0f, 1.0f);
     intention->urgency_base = 0.5f;
     intention->flexibility = 0.5f;
 
@@ -849,7 +841,7 @@ pr_sched_error_t prospective_intention_set_event_trigger(
     safe_strcpy(intention->event_trigger.event_type, event_type ? event_type : "",
                 sizeof(intention->event_trigger.event_type));
     intention->event_trigger.cue_signature = (prime_signature_t*)cue_signature;  // Not copied
-    intention->event_trigger.similarity_threshold = clampf(similarity_threshold, 0.0f, 1.0f);
+    intention->event_trigger.similarity_threshold = nimcp_clampf(similarity_threshold, 0.0f, 1.0f);
     intention->last_updated_ms = get_current_time_ms();
 
     return PR_SCHED_SUCCESS;
@@ -1743,7 +1735,7 @@ pr_sched_error_t prospective_scheduler_update_importance(
         return PR_SCHED_ERROR_NOT_FOUND;
     }
 
-    scheduled->intention->importance = clampf(new_importance, 0.0f, 1.0f);
+    scheduled->intention->importance = nimcp_clampf(new_importance, 0.0f, 1.0f);
     scheduled->intention->last_updated_ms = get_current_time_ms();
 
     // Recompute priority
@@ -1780,7 +1772,7 @@ pr_sched_error_t prospective_scheduler_mark_completed(
     prospective_intention_t* intent = scheduled->intention;
     intent->state = PR_INTENT_STATE_COMPLETED;
     intent->completed_time_ms = get_current_time_ms();
-    intent->completion_quality = clampf(quality, 0.0f, 1.0f);
+    intent->completion_quality = nimcp_clampf(quality, 0.0f, 1.0f);
 
     // Update statistics
     if (scheduler->config.track_statistics) {
@@ -2023,7 +2015,7 @@ pr_sched_error_t prospective_scheduler_estimate_load(
     float conflict_factor = (float)out_load->num_conflicts / fmaxf((float)out_load->num_pending, 1.0f);
     float priority_factor = out_load->avg_priority;
 
-    out_load->total_load = clampf(
+    out_load->total_load = nimcp_clampf(
         0.3f * pending_factor +
         0.3f * imminent_factor +
         0.2f * conflict_factor +

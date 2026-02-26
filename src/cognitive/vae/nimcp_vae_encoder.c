@@ -32,6 +32,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Custom set_health_agent API (instance-level, not global) - don't use BRIDGE_BOILERPLATE */
 static nimcp_health_agent_t* g_vae_encoder_health_agent = NULL;
@@ -45,16 +46,6 @@ static inline void vae_encoder_heartbeat(const char* op, float progress) {
 }
 
 #define LOG_MODULE "VAE_ENCODER"
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static inline bool is_nan_f(float value) {
     return value != value;
@@ -911,7 +902,7 @@ int vae_encoder_forward(vae_encoder_t* encoder,
                 sum += curr_data[b * final_dim + k] * logvar_w[k * latent_dim + j];
             }
             /* Clamp log_var to prevent extreme values */
-            logvar_out[b * latent_dim + j] = clamp_f(sum, -10.0f, 10.0f);
+            logvar_out[b * latent_dim + j] = nimcp_clampf(sum, -10.0f, 10.0f);
         }
     }
 

@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic)
 
@@ -96,19 +97,6 @@ static void normalize_vector(float v[3]) {
         v[1] /= mag;
         v[2] /= mag;
     }
-}
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Restrict value to [min, max]
- * WHY:  Prevent out-of-range values
- * HOW:  Simple comparison
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -601,9 +589,9 @@ nimcp_error_t nimcp_ephaptic_update_field(
     }
 
     /* Clamp to physical limits */
-    field_x = clamp_f(field_x, -EPHAPTIC_MAX_FIELD_STRENGTH, EPHAPTIC_MAX_FIELD_STRENGTH);
-    field_y = clamp_f(field_y, -EPHAPTIC_MAX_FIELD_STRENGTH, EPHAPTIC_MAX_FIELD_STRENGTH);
-    field_z = clamp_f(field_z, -EPHAPTIC_MAX_FIELD_STRENGTH, EPHAPTIC_MAX_FIELD_STRENGTH);
+    field_x = nimcp_clampf(field_x, -EPHAPTIC_MAX_FIELD_STRENGTH, EPHAPTIC_MAX_FIELD_STRENGTH);
+    field_y = nimcp_clampf(field_y, -EPHAPTIC_MAX_FIELD_STRENGTH, EPHAPTIC_MAX_FIELD_STRENGTH);
+    field_z = nimcp_clampf(field_z, -EPHAPTIC_MAX_FIELD_STRENGTH, EPHAPTIC_MAX_FIELD_STRENGTH);
 
     /* Apply temporal smoothing (LFP-like decay) */
     float alpha = dt / (system->config.lfp_tau + dt);
@@ -645,10 +633,10 @@ nimcp_error_t nimcp_ephaptic_update_field(
         system->magnetic_field[2] = 0.0f;  /* Assume 2D current flow */
 
         /* Clamp magnetic field */
-        system->magnetic_field[0] = clamp_f(system->magnetic_field[0],
+        system->magnetic_field[0] = nimcp_clampf(system->magnetic_field[0],
                                              -EPHAPTIC_MAX_MAGNETIC_FIELD,
                                              EPHAPTIC_MAX_MAGNETIC_FIELD);
-        system->magnetic_field[1] = clamp_f(system->magnetic_field[1],
+        system->magnetic_field[1] = nimcp_clampf(system->magnetic_field[1],
                                              -EPHAPTIC_MAX_MAGNETIC_FIELD,
                                              EPHAPTIC_MAX_MAGNETIC_FIELD);
     }
@@ -837,7 +825,7 @@ nimcp_error_t nimcp_ephaptic_modulate_neuron(
                     system->config.coupling_strength;
 
     /* Clamp to reasonable range (ephaptic effects are typically < 1 mV) */
-    *polarization = clamp_f(*polarization, -2.0f, 2.0f);
+    *polarization = nimcp_clampf(*polarization, -2.0f, 2.0f);
 
     return NIMCP_OK;
 }

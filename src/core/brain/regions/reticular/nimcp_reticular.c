@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(reticular, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,15 +72,6 @@ static const reticular_modulator_t s_nucleus_modulators[RETICULAR_NUCLEUS_COUNT]
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /**
  * @brief Sigmoid activation function
@@ -182,7 +174,7 @@ static void update_modulator(reticular_modulator_state_t* mod, float dt) {
     /* Apply release and decay */
     float change = mod->release_rate - mod->decay_rate * (mod->concentration - mod->baseline);
     mod->concentration += change * dt;
-    mod->concentration = clamp_f(mod->concentration, 0.0f, 1.0f);
+    mod->concentration = nimcp_clampf(mod->concentration, 0.0f, 1.0f);
 }
 
 /*=============================================================================
@@ -481,14 +473,14 @@ int reticular_update_arousal(nimcp_reticular_t* reticular, float dt) {
                           vta_contribution + ne_effect + ach_effect + orexin_effect +
                           circadian_effect + sleep_pressure_effect;
 
-    float target_arousal = clamp_f(0.5f + arousal_drive, 0.0f, 1.0f);
+    float target_arousal = nimcp_clampf(0.5f + arousal_drive, 0.0f, 1.0f);
 
     /* Apply arousal dynamics with momentum */
     reticular->arousal_momentum = exp_decay(reticular->arousal_momentum,
                                             (target_arousal - reticular->arousal_level) * 2.0f,
                                             0.5f, dt);
     reticular->arousal_level += reticular->arousal_momentum * dt;
-    reticular->arousal_level = clamp_f(reticular->arousal_level, 0.0f, 1.0f);
+    reticular->arousal_level = nimcp_clampf(reticular->arousal_level, 0.0f, 1.0f);
 
     /* Determine state */
     reticular_arousal_state_t new_state = arousal_level_to_state(reticular->arousal_level);
@@ -636,7 +628,7 @@ int reticular_wake(nimcp_reticular_t* reticular, float urgency) {
 
     nimcp_mutex_lock(reticular->mutex);
 
-    urgency = clamp_f(urgency, 0.0f, 1.0f);
+    urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
 
     /* Activate arousal systems based on urgency */
     float activation = 0.3f + urgency * 0.5f;
@@ -810,8 +802,8 @@ int reticular_update_autonomic(nimcp_reticular_t* reticular, float dt) {
         float symp_target = reticular->config.sympathetic_baseline + arousal_effect * 0.3f;
         float para_target = reticular->config.parasympathetic_baseline - arousal_effect * 0.2f;
 
-        symp_target = clamp_f(symp_target, 0.0f, 1.0f);
-        para_target = clamp_f(para_target, 0.0f, 1.0f);
+        symp_target = nimcp_clampf(symp_target, 0.0f, 1.0f);
+        para_target = nimcp_clampf(para_target, 0.0f, 1.0f);
 
         auto_state->sympathetic_tone = exp_decay(auto_state->sympathetic_tone,
                                                   symp_target, 0.5f, dt);
@@ -848,7 +840,7 @@ int reticular_set_autonomic_setpoint(nimcp_reticular_t* reticular,
     }
 
     nimcp_mutex_lock(reticular->mutex);
-    reticular->autonomic[function].setpoint = clamp_f(setpoint, 0.0f, 1.0f);
+    reticular->autonomic[function].setpoint = nimcp_clampf(setpoint, 0.0f, 1.0f);
     nimcp_mutex_unlock(reticular->mutex);
 
     return 0;
@@ -865,12 +857,12 @@ int reticular_apply_sympathetic_drive(nimcp_reticular_t* reticular, float intens
 
     nimcp_mutex_lock(reticular->mutex);
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
 
     for (int i = 0; i < RETICULAR_AUTONOMIC_COUNT; i++) {
         reticular->autonomic[i].sympathetic_tone += intensity * 0.3f;
         reticular->autonomic[i].sympathetic_tone =
-            clamp_f(reticular->autonomic[i].sympathetic_tone, 0.0f, 1.0f);
+            nimcp_clampf(reticular->autonomic[i].sympathetic_tone, 0.0f, 1.0f);
     }
 
     /* Also increase NE */
@@ -891,12 +883,12 @@ int reticular_apply_parasympathetic_drive(nimcp_reticular_t* reticular, float in
 
     nimcp_mutex_lock(reticular->mutex);
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
 
     for (int i = 0; i < RETICULAR_AUTONOMIC_COUNT; i++) {
         reticular->autonomic[i].parasympathetic_tone += intensity * 0.3f;
         reticular->autonomic[i].parasympathetic_tone =
-            clamp_f(reticular->autonomic[i].parasympathetic_tone, 0.0f, 1.0f);
+            nimcp_clampf(reticular->autonomic[i].parasympathetic_tone, 0.0f, 1.0f);
     }
 
     /* Also increase ACh */
@@ -962,7 +954,7 @@ int reticular_set_reflex_threshold(nimcp_reticular_t* reticular,
     }
 
     nimcp_mutex_lock(reticular->mutex);
-    reticular->reflexes[reflex].threshold = clamp_f(threshold, 0.1f, 1.0f);
+    reticular->reflexes[reflex].threshold = nimcp_clampf(threshold, 0.1f, 1.0f);
     nimcp_mutex_unlock(reticular->mutex);
 
     return 0;
@@ -1016,14 +1008,14 @@ int reticular_update_motor_tone(nimcp_reticular_t* reticular, float dt) {
     float target_postural = reticular->config.postural_tone_baseline +
                             (arousal - 0.5f) * 0.4f;
     target_postural *= (1.0f - reticular->motor.atonia_level);
-    target_postural = clamp_f(target_postural, 0.0f, 1.0f);
+    target_postural = nimcp_clampf(target_postural, 0.0f, 1.0f);
 
     reticular->motor.postural_tone = exp_decay(reticular->motor.postural_tone,
                                                 target_postural, 0.2f, dt);
     reticular->motor.limb_tone = reticular->motor.postural_tone * 0.9f;
 
     /* Startle readiness depends on arousal */
-    reticular->motor.startle_readiness = clamp_f(arousal * 1.2f, 0.0f, 1.0f);
+    reticular->motor.startle_readiness = nimcp_clampf(arousal * 1.2f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(reticular->mutex);
     return 0;
@@ -1065,7 +1057,7 @@ int reticular_set_locomotor_drive(nimcp_reticular_t* reticular, float drive) {
     }
 
     nimcp_mutex_lock(reticular->mutex);
-    reticular->motor.locomotor_drive = clamp_f(drive, 0.0f, 1.0f);
+    reticular->motor.locomotor_drive = nimcp_clampf(drive, 0.0f, 1.0f);
 
     /* Locomotion activates PPN */
     reticular->nuclei[RETICULAR_NUCLEUS_PEDUNCULOPONTINE].excitatory_input +=
@@ -1104,7 +1096,7 @@ int reticular_update_pain_modulation(nimcp_reticular_t* reticular, float dt) {
         reticular->pain.noradrenergic_mod +
         reticular->pain.stress_analgesia * 0.5f;
     reticular->pain.endogenous_analgesia =
-        clamp_f(reticular->pain.endogenous_analgesia, 0.0f, 1.0f);
+        nimcp_clampf(reticular->pain.endogenous_analgesia, 0.0f, 1.0f);
 
     /* Gate control: higher analgesia closes the gate */
     float target_gate = reticular->config.pain_gate_baseline +
@@ -1138,7 +1130,7 @@ int reticular_apply_pain_inhibition(nimcp_reticular_t* reticular, float inhibiti
 
     nimcp_mutex_lock(reticular->mutex);
 
-    inhibition = clamp_f(inhibition, 0.0f, 1.0f);
+    inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
 
     /* Activate raphe magnus for descending inhibition */
     reticular->nuclei[RETICULAR_NUCLEUS_RAPHE_MAGNUS].excitatory_input += inhibition * 0.5f;
@@ -1166,7 +1158,7 @@ int reticular_activate_stress_analgesia(nimcp_reticular_t* reticular, float stre
 
     nimcp_mutex_lock(reticular->mutex);
 
-    stress_level = clamp_f(stress_level, 0.0f, 1.0f);
+    stress_level = nimcp_clampf(stress_level, 0.0f, 1.0f);
     reticular->pain.stress_analgesia = fmaxf(reticular->pain.stress_analgesia,
                                               stress_level * reticular->config.analgesia_gain);
 
@@ -1195,11 +1187,11 @@ int reticular_update_sensory_gating(nimcp_reticular_t* reticular, float dt) {
     /* Higher arousal opens gates (more sensory processing) */
     float target_gate = reticular->config.thalamic_gate_baseline +
                         (arousal - 0.5f) * 0.4f;
-    target_gate = clamp_f(target_gate, 0.0f, 1.0f);
+    target_gate = nimcp_clampf(target_gate, 0.0f, 1.0f);
 
     /* Apply attention bias */
     target_gate *= (1.0f + reticular->sensory_gate.attention_bias * 0.3f);
-    target_gate = clamp_f(target_gate, 0.0f, 1.0f);
+    target_gate = nimcp_clampf(target_gate, 0.0f, 1.0f);
 
     /* Apply habituation */
     target_gate *= (1.0f - reticular->sensory_gate.habituation_level * 0.3f);
@@ -1214,11 +1206,11 @@ int reticular_update_sensory_gating(nimcp_reticular_t* reticular, float dt) {
 
     /* Clamp modality gates */
     reticular->sensory_gate.visual_gate =
-        clamp_f(reticular->sensory_gate.visual_gate, 0.0f, 1.0f);
+        nimcp_clampf(reticular->sensory_gate.visual_gate, 0.0f, 1.0f);
     reticular->sensory_gate.auditory_gate =
-        clamp_f(reticular->sensory_gate.auditory_gate, 0.0f, 1.0f);
+        nimcp_clampf(reticular->sensory_gate.auditory_gate, 0.0f, 1.0f);
     reticular->sensory_gate.somatosensory_gate =
-        clamp_f(reticular->sensory_gate.somatosensory_gate, 0.0f, 1.0f);
+        nimcp_clampf(reticular->sensory_gate.somatosensory_gate, 0.0f, 1.0f);
 
     /* Decay habituation */
     reticular->sensory_gate.habituation_level *= expf(-dt * 0.1f);
@@ -1242,7 +1234,7 @@ int reticular_set_attention_bias(nimcp_reticular_t* reticular, float bias) {
     }
 
     nimcp_mutex_lock(reticular->mutex);
-    reticular->sensory_gate.attention_bias = clamp_f(bias, 0.0f, 1.0f);
+    reticular->sensory_gate.attention_bias = nimcp_clampf(bias, 0.0f, 1.0f);
     reticular->stats.attention_alerts++;
     nimcp_mutex_unlock(reticular->mutex);
 
@@ -1263,7 +1255,7 @@ int reticular_apply_habituation(nimcp_reticular_t* reticular, float stimulus) {
     reticular->sensory_gate.habituation_level +=
         stimulus * reticular->config.habituation_rate;
     reticular->sensory_gate.habituation_level =
-        clamp_f(reticular->sensory_gate.habituation_level, 0.0f, 1.0f);
+        nimcp_clampf(reticular->sensory_gate.habituation_level, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(reticular->mutex);
     return 0;
@@ -1337,7 +1329,7 @@ int reticular_update_sleep_pressure(nimcp_reticular_t* reticular, float wake_dur
     }
 
     reticular->homeostatic_sleep_pressure =
-        clamp_f(reticular->homeostatic_sleep_pressure, 0.0f, 1.0f);
+        nimcp_clampf(reticular->homeostatic_sleep_pressure, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(reticular->mutex);
     return 0;
@@ -1349,7 +1341,7 @@ float reticular_get_sleep_propensity(const nimcp_reticular_t* reticular) {
     /* Two-process model: sleep propensity = pressure - circadian drive */
     float propensity = reticular->homeostatic_sleep_pressure -
                        reticular->circadian_drive;
-    return clamp_f(propensity, 0.0f, 1.0f);
+    return nimcp_clampf(propensity, 0.0f, 1.0f);
 }
 
 /*=============================================================================

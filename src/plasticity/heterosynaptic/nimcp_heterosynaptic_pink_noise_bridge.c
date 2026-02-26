@@ -16,6 +16,7 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(heterosynaptic_pink_noise_bridge)
 
@@ -25,17 +26,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(hetero_pink_noise_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Ensure modulated parameters stay within valid bounds
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Compute competition rate from heterosynaptic statistics
@@ -418,7 +408,7 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
         float factor = 1.0f + mod->competition_alpha * noise;
         bridge->noise_state.effective_competition =
             bridge->noise_state.base_competition * factor;
-        bridge->noise_state.effective_competition = clamp(
+        bridge->noise_state.effective_competition = nimcp_clampf(
             bridge->noise_state.effective_competition, 0.0f, 1.0f);
     } else {
         bridge->noise_state.effective_competition = bridge->noise_state.base_competition;
@@ -429,7 +419,7 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
         float factor = 1.0f + mod->radius_alpha * noise;
         bridge->noise_state.effective_radius =
             bridge->noise_state.base_radius * factor;
-        bridge->noise_state.effective_radius = clamp(
+        bridge->noise_state.effective_radius = nimcp_clampf(
             bridge->noise_state.effective_radius, 1.0f, 100.0f);
     } else {
         bridge->noise_state.effective_radius = bridge->noise_state.base_radius;
@@ -440,7 +430,7 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
         bridge->noise_state.effective_wta_threshold =
             bridge->noise_state.base_wta_threshold +
             mod->wta_threshold_alpha * noise;
-        bridge->noise_state.effective_wta_threshold = clamp(
+        bridge->noise_state.effective_wta_threshold = nimcp_clampf(
             bridge->noise_state.effective_wta_threshold, 0.0f, 1.0f);
     } else {
         bridge->noise_state.effective_wta_threshold =
@@ -452,7 +442,7 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
         float factor = 1.0f + mod->delay_alpha * noise;
         bridge->noise_state.effective_delay =
             bridge->noise_state.base_delay * factor;
-        bridge->noise_state.effective_delay = clamp(
+        bridge->noise_state.effective_delay = nimcp_clampf(
             bridge->noise_state.effective_delay, 10.0f, 5000.0f);
     } else {
         bridge->noise_state.effective_delay = bridge->noise_state.base_delay;
@@ -592,7 +582,7 @@ float hetero_pink_noise_adapt_amplitude(
     bridge->adaptive_amplitude += delta;
 
     /* Clamp to valid range */
-    bridge->adaptive_amplitude = clamp(
+    bridge->adaptive_amplitude = nimcp_clampf(
         bridge->adaptive_amplitude,
         HETERO_PINK_MIN_AMPLITUDE,
         HETERO_PINK_MAX_AMPLITUDE

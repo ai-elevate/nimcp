@@ -41,8 +41,15 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(topographic_maps)
+
+/* Forward declarations for helper functions used before definition */
+static uint32_t coords_to_column_id(uint32_t x, uint32_t y,
+                                     uint32_t width, uint32_t height);
+static void column_id_to_coords(uint32_t column_id, uint32_t width,
+                                 uint32_t* out_x, uint32_t* out_y);
 
 //=============================================================================
 // Bio-Async Module Context (Thread-Safe Initialization)
@@ -177,97 +184,7 @@ static float somatotopic_get_magnification(topographic_map_t* map,
     const float* input);
 
 /* Utility helpers */
-static float clampf(float value, float min_val, float max_val);
-static uint32_t coords_to_column_id(uint32_t x, uint32_t y,
-    uint32_t width, uint32_t height);
-static void column_id_to_coords(uint32_t id, uint32_t width,
-    uint32_t* x, uint32_t* y);
-
-/* ============================================================================
- * Core API Implementation
- * ========================================================================== */
-
-/**
- * WHAT: Creates a topographic map from configuration
- * WHY: Initialize mapping structure with specified parameters
- * HOW: Allocates memory, validates config, initializes cache
- */
-topographic_map_t* topographic_map_create(const topographic_map_config_t* config)
-{
-    /* Guard: Validate input */
-    if (!config) {
-        TOPO_LOG_ERROR("[TopographicMaps] NULL configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
-
-        return NULL;
-    }
-
-    if (!topographic_map_validate_config(config)) {
-        TOPO_LOG_ERROR("[TopographicMaps] Invalid configuration");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topographic_map_create: topographic_map_validate_config is NULL");
-        return NULL;
-    }
-
-    /* Allocate map structure */
-    topographic_map_t* map = (topographic_map_t*)nimcp_malloc(sizeof(topographic_map_t));
-    if (!map) {
-        TOPO_LOG_ERROR("[TopographicMaps] Failed to allocate map");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "map is NULL");
-
-        return NULL;
-    }
-
-    /* Initialize fields */
-    memcpy(&map->config, config, sizeof(topographic_map_config_t));
-    map->cache_valid = false;
-    map->column_rf_centers = NULL;
-    map->column_rf_sizes = NULL;
-    map->column_magnifications = NULL;
-
-    /* Create mutex */
-    map->mutex = nimcp_platform_mutex_create();
-    if (!map->mutex) {
-        TOPO_LOG_ERROR("[TopographicMaps] Failed to create mutex");
-        nimcp_free(map);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create: map->mutex is NULL");
-        return NULL;
-    }
-
-    /* Compute cortical dimensions from config */
-    float cortical_width_f = config->cortical_range[1] - config->cortical_range[0];
-    float cortical_height_f = config->cortical_range[3] - config->cortical_range[2];
-
-    /* Default to 100x100 grid if not specified by type */
-    map->cortical_width = (uint32_t)(cortical_width_f + 0.5F);
-    map->cortical_height = (uint32_t)(cortical_height_f + 0.5F);
-
-    if (map->cortical_width == 0) map->cortical_width = 100;
-    if (map->cortical_height == 0) map->cortical_height = 100;
-
-    map->total_columns = map->cortical_width * map->cortical_height;
-
-    /* Compute transform scales */
-    map->transform_scale_x = cortical_width_f /
-        (config->input_range[1] - config->input_range[0] + TOPOGRAPHIC_EPSILON);
-    map->transform_scale_y = cortical_height_f /
-        (config->input_range[3] - config->input_range[2] + TOPOGRAPHIC_EPSILON);
-    map->transform_offset_x = config->cortical_range[0];
-    map->transform_offset_y = config->cortical_range[2];
-
-    /* Initialize cache */
-    if (!topographic_initialize_cache(map)) {
-        TOPO_LOG_ERROR("[TopographicMaps] Failed to initialize cache");
-        topographic_map_destroy(map);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "topographic_map_create: topographic_initialize_cache is NULL");
-        return NULL;
-    }
-
-    TOPO_LOG_INFO("[TopographicMaps] Created: type=%d, dims=%ux%u, columns=%u",
-        config->type, map->cortical_width, map->cortical_height, map->total_columns);
-
-    return map;
-}
-
+static float nimcp_clampf(float value, float min_val, float max_val);
 /**
  * WHAT: Destroys a topographic map and frees resources
  * WHY: Prevent memory leaks
@@ -1258,9 +1175,9 @@ static void retinotopic_cortex_to_input(
     float eccentricity = expf(log_ecc) - params->log_polar_a;
     float angle = norm_y * params->angle_coverage;
 
-    input[0] = clampf(eccentricity, map->config.input_range[0], map->config.input_range[1]);
+    input[0] = nimcp_clampf(eccentricity, map->config.input_range[0], map->config.input_range[1]);
     if (map->config.input_dims > 1) {
-        input[1] = clampf(angle, map->config.input_range[2], map->config.input_range[3]);
+        input[1] = nimcp_clampf(angle, map->config.input_range[2], map->config.input_range[3]);
     }
 }
 
@@ -1281,7 +1198,7 @@ static float retinotopic_get_magnification(
     float mag = params->cortical_magnification /
         (1.0F + eccentricity / params->eccentricity_half);
 
-    return clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
+    return nimcp_clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
 }
 
 /* ============================================================================
@@ -1341,13 +1258,13 @@ static void tonotopic_cortex_to_input(
         float log_range = log2f(params->max_frequency / params->min_frequency);
         float frequency = params->min_frequency * powf(2.0F, norm_x * log_range);
 
-        input[0] = clampf(frequency, params->min_frequency, params->max_frequency);
+        input[0] = nimcp_clampf(frequency, params->min_frequency, params->max_frequency);
     } else {
         /* Inverse linear */
         float frequency = params->min_frequency +
             norm_x * (params->max_frequency - params->min_frequency);
 
-        input[0] = clampf(frequency, params->min_frequency, params->max_frequency);
+        input[0] = nimcp_clampf(frequency, params->min_frequency, params->max_frequency);
     }
 }
 
@@ -1369,7 +1286,7 @@ static float tonotopic_get_magnification(
         float mag = map->config.magnification_factor *
             params->min_frequency / (frequency + TOPOGRAPHIC_EPSILON);
 
-        return clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
+        return nimcp_clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
     } else {
         /* Linear mapping has constant magnification */
         return map->config.magnification_factor;
@@ -1470,7 +1387,7 @@ static float somatotopic_get_magnification(
 
         if (body_pos >= region->input_start && body_pos <= region->input_end) {
             float mag = region->magnification;
-            return clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
+            return nimcp_clampf(mag, TOPOGRAPHIC_MIN_MAGNIFICATION, TOPOGRAPHIC_MAX_MAGNIFICATION);
         }
     }
 
@@ -1481,18 +1398,6 @@ static float somatotopic_get_magnification(
 /* ============================================================================
  * Utility Helper Functions
  * ========================================================================== */
-
-/**
- * WHAT: Clamps a float value to a range
- * WHY: Ensure values stay within valid bounds
- * HOW: Returns min if below, max if above, value otherwise
- */
-static float clampf(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * WHAT: Converts 2D grid coordinates to linear column ID

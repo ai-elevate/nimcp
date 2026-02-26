@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_cerebellar_coord, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -62,16 +63,6 @@ struct bg_cerebellar_coord {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /* ============================================================================
  * LIFECYCLE IMPLEMENTATION
@@ -531,7 +522,7 @@ int bgcb_step(bg_cerebellar_coord_t* coord, float dt_ms) {
     if (coord->cb_refinement_valid && coord->cb_refinement.predicted_error > 0) {
         quality = 1.0f - coord->cb_refinement.predicted_error;
     }
-    coord->stats.coordination_quality = clamp_f(quality, 0.0f, 1.0f);
+    coord->stats.coordination_quality = nimcp_clampf(quality, 0.0f, 1.0f);
     coord->stats.timing_accuracy = coord->timing.timing_accuracy;
     coord->stats.current_phase = coord->phase;
     coord->stats.error_correlation = coord->error.error_correlation;
@@ -550,7 +541,7 @@ int bgcb_adapt_weights(bg_cerebellar_coord_t* coord, float performance) {
 
     if (coord->config.enable_adaptive_weighting) {
         /* Shift weights based on performance */
-        float perf = clamp_f(performance, 0.0f, 1.0f);
+        float perf = nimcp_clampf(performance, 0.0f, 1.0f);
 
         /* If performance is good, favor current balance */
         /* If poor, shift toward CB for refinement */

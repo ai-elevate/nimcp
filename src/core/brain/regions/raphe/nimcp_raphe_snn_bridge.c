@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(raphe_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -42,8 +43,6 @@ struct nimcp_raphe_snn_bridge {
     nimcp_raphe_snn_stats_t stats;
     uint64_t current_time_us;
 };
-
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 nimcp_raphe_snn_config_t nimcp_raphe_snn_config_default(void) {
     return (nimcp_raphe_snn_config_t){
@@ -167,7 +166,7 @@ int nimcp_raphe_snn_encode_impulse_control(nimcp_raphe_snn_bridge_t* b, float le
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_encode_impulse_control: b is NULL");
         return -1;
     }
-    b->state.ht.impulse_control = clamp(level, 0.0f, 1.0f);
+    b->state.ht.impulse_control = nimcp_clampf(level, 0.0f, 1.0f);
     b->current_modulation.inhibition_strength = level;
     return 0;
 }

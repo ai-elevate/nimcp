@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hh_quantum_bridge)
 
@@ -50,15 +51,6 @@ typedef struct {
 //=============================================================================
 
 /**
- * @brief Clamp value to range
- */
-static float clamp_f(float v, float min_val, float max_val) {
-    if (v < min_val) return min_val;
-    if (v > max_val) return max_val;
-    return v;
-}
-
-/**
  * @brief Simulate neuron and measure firing rate
  */
 static float measure_firing_rate(
@@ -93,24 +85,24 @@ static void apply_params_to_neuron(
 ) {
     // Basic parameters: g_Na, g_K, E_Na, E_K
     neuron->channels[NIMCP_ION_CHANNEL_NA].g_max =
-        clamp_f(params[0], config->g_Na_min, config->g_Na_max);
+        nimcp_clampf(params[0], config->g_Na_min, config->g_Na_max);
     neuron->channels[NIMCP_ION_CHANNEL_K].g_max =
-        clamp_f(params[1], config->g_K_min, config->g_K_max);
+        nimcp_clampf(params[1], config->g_K_min, config->g_K_max);
     neuron->channels[NIMCP_ION_CHANNEL_NA].E_rev =
-        clamp_f(params[2], config->E_Na_min, config->E_Na_max);
+        nimcp_clampf(params[2], config->E_Na_min, config->E_Na_max);
     neuron->channels[NIMCP_ION_CHANNEL_K].E_rev =
-        clamp_f(params[3], config->E_K_min, config->E_K_max);
+        nimcp_clampf(params[3], config->E_K_min, config->E_K_max);
 
     // Extended parameters if applicable
     if (config->optimize_extended) {
         neuron->channels[NIMCP_ION_CHANNEL_CA_L].g_max =
-            clamp_f(params[4], config->g_Ca_min, config->g_Ca_max);
+            nimcp_clampf(params[4], config->g_Ca_min, config->g_Ca_max);
         neuron->channels[NIMCP_ION_CHANNEL_CA_L].E_rev =
-            clamp_f(params[5], config->E_Ca_min, config->E_Ca_max);
+            nimcp_clampf(params[5], config->E_Ca_min, config->E_Ca_max);
         neuron->channels[NIMCP_ION_CHANNEL_LEAK].g_max =
-            clamp_f(params[6], config->g_L_min, config->g_L_max);
+            nimcp_clampf(params[6], config->g_L_min, config->g_L_max);
         neuron->channels[NIMCP_ION_CHANNEL_LEAK].E_rev =
-            clamp_f(params[7], config->E_L_min, config->E_L_max);
+            nimcp_clampf(params[7], config->E_L_min, config->E_L_max);
     }
 }
 

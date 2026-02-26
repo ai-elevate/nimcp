@@ -31,6 +31,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(time_dilation)
 
@@ -100,17 +101,6 @@ struct time_dilation_system {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow
- * HOW:  Return min/max if out of bounds
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Get current time in microseconds
@@ -594,7 +584,7 @@ int time_dilation_set_factor(time_dilation_system_t* system, float factor) {
         return TIME_DILATION_ERROR_NULL_POINTER;
     }
 
-    factor = clamp_f(factor, system->config.min_dilation_factor,
+    factor = nimcp_clampf(factor, system->config.min_dilation_factor,
                      system->config.max_dilation_factor);
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -666,7 +656,7 @@ int time_dilation_activate(time_dilation_system_t* system,
         }
     }
 
-    factor = clamp_f(factor, system->config.min_dilation_factor,
+    factor = nimcp_clampf(factor, system->config.min_dilation_factor,
                      system->config.max_dilation_factor);
 
     /* Check energy budget */

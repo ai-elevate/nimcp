@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_drive_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -41,16 +42,6 @@ static const char* s_compute_mode_names[] = {
     "CLASSICAL_ONLY",
     "MINIMAL"
 };
-
-/*=============================================================================
- * INTERNAL HELPERS
- *===========================================================================*/
-
-static float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static uint32_t simple_rand(uint32_t* state) {
     *state = *state * 1103515245 + 12345;
@@ -920,7 +911,7 @@ float hypo_drive_quantum_verify_alignment(
     /* High variance = less predictable */
     score -= action_variance * a->predictability_weight * 0.5f;
 
-    return clamp_f(score, 0.0f, 1.0f);
+    return nimcp_clampf(score, 0.0f, 1.0f);
 }
 
 bool hypo_drive_quantum_has_violations(

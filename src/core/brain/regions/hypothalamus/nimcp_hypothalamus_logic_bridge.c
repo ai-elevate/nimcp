@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_logic_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -70,18 +71,6 @@ struct hypo_logic_bridge {
     uint64_t creation_time_us;
     uint64_t last_update_us;
 };
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    return (v < 0.0f) ? 0.0f : ((v > 1.0f) ? 1.0f : v);
-}
-
-static float clamp_range(float v, float min_val, float max_val) {
-    return (v < min_val) ? min_val : ((v > max_val) ? max_val : v);
-}
 
 /**
  * @brief Check if predicate name matches a pattern
@@ -547,8 +536,8 @@ int hypo_logic_compute_modulation(hypo_logic_bridge_t* bridge) {
     float arousal_effect = 1.0f - fabsf(arousal - 0.5f) * 2.0f * cfg->arousal_capacity_weight;
     float fatigue_effect = 1.0f - fatigue * cfg->fatigue_capacity_weight;
 
-    mod->reasoning_capacity = clamp_01(arousal_effect * fatigue_effect);
-    mod->effort_willingness = clamp_01(1.0f - fatigue);
+    mod->reasoning_capacity = nimcp_clamp01(arousal_effect * fatigue_effect);
+    mod->effort_willingness = nimcp_clamp01(1.0f - fatigue);
 
     mod->last_modulation_us = nimcp_time_get_us();
     bridge->modulation_valid = true;
@@ -626,7 +615,7 @@ float hypo_logic_get_predicate_salience(
     /* Apply global bias */
     salience *= (1.0f + bridge->modulation.global_salience_bias);
 
-    return clamp_range(salience, 0.1f, 10.0f);
+    return nimcp_clampf(salience, 0.1f, 10.0f);
 }
 
 float hypo_logic_get_goal_threshold(
@@ -664,7 +653,7 @@ float hypo_logic_get_goal_threshold(
         }
     }
 
-    return clamp_range(threshold, 0.1f, 1.0f);
+    return nimcp_clampf(threshold, 0.1f, 1.0f);
 }
 
 int hypo_logic_create_motivated_goal(
@@ -686,7 +675,7 @@ int hypo_logic_create_motivated_goal(
 
     goal->motivating_drive = drive;
     goal->goal_clause = goal_clause;  /* Note: ownership semantics matter */
-    goal->anticipated_satisfaction = clamp_01(anticipated_satisfaction);
+    goal->anticipated_satisfaction = nimcp_clamp01(anticipated_satisfaction);
     goal->active = true;
     goal->created_us = nimcp_time_get_us();
     goal->deadline_us = 0;
@@ -850,7 +839,7 @@ int hypo_logic_process_conclusion(
     bridge->conclusions[idx].conclusion = conclusion;
     bridge->conclusions[idx].type = type;
     bridge->conclusions[idx].affected_drive = affected;
-    bridge->conclusions[idx].confidence = clamp_01(confidence);
+    bridge->conclusions[idx].confidence = nimcp_clamp01(confidence);
     bridge->conclusions[idx].processed = false;
     bridge->conclusions[idx].timestamp_us = start_us;
 
@@ -866,7 +855,7 @@ int hypo_logic_process_conclusion(
         case HYPO_CONCL_RESOURCE_AVAILABLE:
             if (affected < HYPO_DRIVE_COUNT) {
                 bridge->anticipation.anticipation[affected] += confidence * bridge->config.anticipation_gain;
-                bridge->anticipation.anticipation[affected] = clamp_01(bridge->anticipation.anticipation[affected]);
+                bridge->anticipation.anticipation[affected] = nimcp_clamp01(bridge->anticipation.anticipation[affected]);
                 bridge->stats.drive_boosts++;
                 impact = confidence * bridge->config.anticipation_gain;
             }
@@ -875,7 +864,7 @@ int hypo_logic_process_conclusion(
         case HYPO_CONCL_RESOURCE_UNAVAILABLE:
             if (affected < HYPO_DRIVE_COUNT) {
                 bridge->anticipation.frustration[affected] += confidence * bridge->config.frustration_gain;
-                bridge->anticipation.frustration[affected] = clamp_01(bridge->anticipation.frustration[affected]);
+                bridge->anticipation.frustration[affected] = nimcp_clamp01(bridge->anticipation.frustration[affected]);
                 bridge->stats.frustration_events++;
                 impact = -confidence * bridge->config.frustration_gain;
             }
@@ -885,7 +874,7 @@ int hypo_logic_process_conclusion(
             /* Boost safety drive urgency */
             bridge->anticipation.anticipation[HYPO_DRIVE_SAFETY] += confidence * 0.5f;
             bridge->anticipation.anticipation[HYPO_DRIVE_SAFETY] =
-                clamp_01(bridge->anticipation.anticipation[HYPO_DRIVE_SAFETY]);
+                nimcp_clamp01(bridge->anticipation.anticipation[HYPO_DRIVE_SAFETY]);
             bridge->stats.drive_boosts++;
             impact = confidence * 0.5f;
             break;
@@ -907,7 +896,7 @@ int hypo_logic_process_conclusion(
         case HYPO_CONCL_GOAL_IMPOSSIBLE:
             if (affected < HYPO_DRIVE_COUNT) {
                 bridge->anticipation.frustration[affected] += confidence * bridge->config.frustration_gain;
-                bridge->anticipation.frustration[affected] = clamp_01(bridge->anticipation.frustration[affected]);
+                bridge->anticipation.frustration[affected] = nimcp_clamp01(bridge->anticipation.frustration[affected]);
                 bridge->stats.goals_abandoned++;
                 impact = -confidence * bridge->config.frustration_gain;
             }
@@ -916,7 +905,7 @@ int hypo_logic_process_conclusion(
         case HYPO_CONCL_OPPORTUNITY:
             if (affected < HYPO_DRIVE_COUNT) {
                 bridge->anticipation.anticipation[affected] += confidence * bridge->config.anticipation_gain * 0.5f;
-                bridge->anticipation.anticipation[affected] = clamp_01(bridge->anticipation.anticipation[affected]);
+                bridge->anticipation.anticipation[affected] = nimcp_clamp01(bridge->anticipation.anticipation[affected]);
                 impact = confidence * bridge->config.anticipation_gain * 0.5f;
             }
             break;
@@ -955,7 +944,7 @@ float hypo_logic_goal_achieved(
     float reward = bridge->config.anticipation_gain;
 
     bridge->anticipation.anticipation[drive] += reward;
-    bridge->anticipation.anticipation[drive] = clamp_01(bridge->anticipation.anticipation[drive]);
+    bridge->anticipation.anticipation[drive] = nimcp_clamp01(bridge->anticipation.anticipation[drive]);
 
     /* Find and mark goal as achieved */
     for (uint32_t i = 0; i < bridge->num_goals; i++) {
@@ -983,7 +972,7 @@ float hypo_logic_goal_impossible(
     float frustration = bridge->config.frustration_gain;
 
     bridge->anticipation.frustration[drive] += frustration;
-    bridge->anticipation.frustration[drive] = clamp_01(bridge->anticipation.frustration[drive]);
+    bridge->anticipation.frustration[drive] = nimcp_clamp01(bridge->anticipation.frustration[drive]);
 
     /* Find and mark goal as abandoned */
     for (uint32_t i = 0; i < bridge->num_goals; i++) {
@@ -1105,7 +1094,7 @@ float hypo_logic_update_predictions(
 
     /* Update prediction for next time (learning) */
     pred->predicted_probability += error * bridge->config.prediction_learning_rate;
-    pred->predicted_probability = clamp_01(pred->predicted_probability);
+    pred->predicted_probability = nimcp_clamp01(pred->predicted_probability);
 
     return weighted_error;
 }

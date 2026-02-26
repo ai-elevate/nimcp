@@ -20,6 +20,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_operators)
 
@@ -51,16 +52,6 @@ const char* fuzzy_operator_get_last_error(void) {
 
 static fuzzy_operator_stats_t g_operator_stats = {0};
 
-//=============================================================================
-// Helpers
-//=============================================================================
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float minf(float a, float b) { return (a < b) ? a : b; }
 static inline float maxf(float a, float b) { return (a > b) ? a : b; }
 
@@ -69,8 +60,8 @@ static inline float maxf(float a, float b) { return (a > b) ? a : b; }
 //=============================================================================
 
 float fuzzy_tnorm(float a, float b, fuzzy_tnorm_type_t type) {
-    a = clampf(a, 0.0f, 1.0f);
-    b = clampf(b, 0.0f, 1.0f);
+    a = nimcp_clampf(a, 0.0f, 1.0f);
+    b = nimcp_clampf(b, 0.0f, 1.0f);
 
     switch (type) {
         case FUZZY_TNORM_MIN:
@@ -114,8 +105,8 @@ float fuzzy_tnorm_array(const float* values, uint32_t count, fuzzy_tnorm_type_t 
 //=============================================================================
 
 float fuzzy_tconorm(float a, float b, fuzzy_tconorm_type_t type) {
-    a = clampf(a, 0.0f, 1.0f);
-    b = clampf(b, 0.0f, 1.0f);
+    a = nimcp_clampf(a, 0.0f, 1.0f);
+    b = nimcp_clampf(b, 0.0f, 1.0f);
 
     switch (type) {
         case FUZZY_TCONORM_MAX:
@@ -159,7 +150,7 @@ float fuzzy_tconorm_array(const float* values, uint32_t count, fuzzy_tconorm_typ
 //=============================================================================
 
 float fuzzy_complement(float a, fuzzy_complement_type_t type, float param) {
-    a = clampf(a, 0.0f, 1.0f);
+    a = nimcp_clampf(a, 0.0f, 1.0f);
 
     switch (type) {
         case FUZZY_COMPLEMENT_STANDARD:
@@ -169,14 +160,14 @@ float fuzzy_complement(float a, fuzzy_complement_type_t type, float param) {
             float lambda = param;
             float denom = 1.0f + lambda * a;
             if (fabsf(denom) < FUZZY_PRECISION) return 0.0f;
-            return clampf((1.0f - a) / denom, 0.0f, 1.0f);
+            return nimcp_clampf((1.0f - a) / denom, 0.0f, 1.0f);
         }
         case FUZZY_COMPLEMENT_YAGER: {
             /* (1 - a^w)^(1/w), w > 0 */
             float w = param;
             if (w <= FUZZY_PRECISION) return 1.0f - a;
             float aw = powf(a, w);
-            return clampf(powf(1.0f - aw, 1.0f / w), 0.0f, 1.0f);
+            return nimcp_clampf(powf(1.0f - aw, 1.0f / w), 0.0f, 1.0f);
         }
         default:
             return 1.0f - a;
@@ -189,8 +180,8 @@ float fuzzy_complement(float a, fuzzy_complement_type_t type, float param) {
 
 float fuzzy_implication(float antecedent, float consequent,
                          fuzzy_implication_type_t type) {
-    float a = clampf(antecedent, 0.0f, 1.0f);
-    float b = clampf(consequent, 0.0f, 1.0f);
+    float a = nimcp_clampf(antecedent, 0.0f, 1.0f);
+    float b = nimcp_clampf(consequent, 0.0f, 1.0f);
 
     switch (type) {
         case FUZZY_IMPL_MAMDANI:
@@ -215,8 +206,8 @@ float fuzzy_implication(float antecedent, float consequent,
 //=============================================================================
 
 float fuzzy_aggregate(float a, float b, fuzzy_aggregation_type_t type) {
-    a = clampf(a, 0.0f, 1.0f);
-    b = clampf(b, 0.0f, 1.0f);
+    a = nimcp_clampf(a, 0.0f, 1.0f);
+    b = nimcp_clampf(b, 0.0f, 1.0f);
 
     switch (type) {
         case FUZZY_AGG_MAX:
@@ -267,7 +258,7 @@ float fuzzy_weighted_tnorm(const float* values, const float* weights, uint32_t c
     for (uint32_t i = 0; i < count; i++) {
         float w = weights[i] / wsum;
         float adjusted = w * values[i] + (1.0f - w);
-        result = fuzzy_tnorm(result, clampf(adjusted, 0.0f, 1.0f), type);
+        result = fuzzy_tnorm(result, nimcp_clampf(adjusted, 0.0f, 1.0f), type);
     }
     return result;
 }
@@ -285,7 +276,7 @@ float fuzzy_weighted_tconorm(const float* values, const float* weights, uint32_t
     for (uint32_t i = 0; i < count; i++) {
         float w = weights[i] / wsum;
         float adjusted = w * values[i];
-        result = fuzzy_tconorm(result, clampf(adjusted, 0.0f, 1.0f), type);
+        result = fuzzy_tconorm(result, nimcp_clampf(adjusted, 0.0f, 1.0f), type);
     }
     return result;
 }

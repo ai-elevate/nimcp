@@ -23,6 +23,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_emotion_bridge)
 
@@ -37,12 +38,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 //=============================================================================
@@ -238,17 +233,17 @@ static void update_modulation(dragonfly_emotion_bridge_t bridge) {
     mod->pursuit_aggression = state->drives[DRIVE_HUNGER] * 0.5f +
                               state->confidence * 0.3f +
                               (1.0f - state->drives[DRIVE_FEAR]) * 0.2f;
-    mod->pursuit_aggression = clamp_f(mod->pursuit_aggression, 0.0f, 1.0f);
+    mod->pursuit_aggression = nimcp_clampf(mod->pursuit_aggression, 0.0f, 1.0f);
 
     /* Abort threshold (lower when hungry or confident) */
     mod->abort_threshold = 0.5f - state->drives[DRIVE_HUNGER] * 0.3f -
                            state->confidence * 0.1f +
                            state->drives[DRIVE_FEAR] * 0.3f;
-    mod->abort_threshold = clamp_f(mod->abort_threshold, 0.1f, 0.9f);
+    mod->abort_threshold = nimcp_clampf(mod->abort_threshold, 0.1f, 0.9f);
 
     /* Target selectivity (hungrier = less selective) */
     mod->target_selectivity = 1.0f - state->drives[DRIVE_HUNGER] * 0.5f;
-    mod->target_selectivity = clamp_f(mod->target_selectivity, 0.2f, 1.0f);
+    mod->target_selectivity = nimcp_clampf(mod->target_selectivity, 0.2f, 1.0f);
 
     /* Performance modulation */
     float arousal_factor = 1.0f;
@@ -261,15 +256,15 @@ static void update_modulation(dragonfly_emotion_bridge_t bridge) {
     }
 
     mod->focus_level = arousal_factor * (1.0f - state->drives[DRIVE_FEAR] * 0.3f);
-    mod->focus_level = clamp_f(mod->focus_level, 0.0f, 1.0f);
+    mod->focus_level = nimcp_clampf(mod->focus_level, 0.0f, 1.0f);
 
     mod->reaction_speed = arousal_factor *
                           (1.0f + state->confidence * bridge->config.confidence_performance_bonus) *
                           (1.0f - state->drives[DRIVE_FEAR] * bridge->config.fear_performance_penalty);
-    mod->reaction_speed = clamp_f(mod->reaction_speed, 0.3f, 1.3f);
+    mod->reaction_speed = nimcp_clampf(mod->reaction_speed, 0.3f, 1.3f);
 
     mod->decision_speed = state->confidence * 0.5f + (1.0f - state->drives[DRIVE_FEAR]) * 0.5f;
-    mod->decision_speed = clamp_f(mod->decision_speed, 0.3f, 1.0f);
+    mod->decision_speed = nimcp_clampf(mod->decision_speed, 0.3f, 1.0f);
 
     /* Strategic modulation */
     mod->prefer_safe_targets = state->drives[DRIVE_FEAR] > 0.4f ||
@@ -280,7 +275,7 @@ static void update_modulation(dragonfly_emotion_bridge_t bridge) {
                                  state->drives[DRIVE_FEAR] < 0.3f;
 
     mod->energy_investment = state->drives[DRIVE_HUNGER] * 0.6f + state->confidence * 0.4f;
-    mod->energy_investment = clamp_f(mod->energy_investment, 0.0f, 1.0f);
+    mod->energy_investment = nimcp_clampf(mod->energy_investment, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -409,11 +404,11 @@ int dragonfly_emotion_bridge_update(
 
     /* Natural hunger increase */
     state->drives[DRIVE_HUNGER] += bridge->config.hunger_decay_rate * dt_s;
-    state->drives[DRIVE_HUNGER] = clamp_f(state->drives[DRIVE_HUNGER], 0.0f, 1.0f);
+    state->drives[DRIVE_HUNGER] = nimcp_clampf(state->drives[DRIVE_HUNGER], 0.0f, 1.0f);
 
     /* Fear decay */
     state->drives[DRIVE_FEAR] *= (1.0f - bridge->config.fear_decay_rate * dt_s);
-    state->drives[DRIVE_FEAR] = clamp_f(state->drives[DRIVE_FEAR], 0.0f, 1.0f);
+    state->drives[DRIVE_FEAR] = nimcp_clampf(state->drives[DRIVE_FEAR], 0.0f, 1.0f);
 
     /* Rest drive increases when motivation is low */
     if (state->motivation < 0.3f) {
@@ -421,7 +416,7 @@ int dragonfly_emotion_bridge_update(
     } else {
         state->drives[DRIVE_REST] *= (1.0f - 0.1f * dt_s);
     }
-    state->drives[DRIVE_REST] = clamp_f(state->drives[DRIVE_REST], 0.0f, 1.0f);
+    state->drives[DRIVE_REST] = nimcp_clampf(state->drives[DRIVE_REST], 0.0f, 1.0f);
 
     /* Homeostatic regulation */
     if (bridge->config.enable_emotional_homeostasis) {
@@ -441,17 +436,17 @@ int dragonfly_emotion_bridge_update(
                         state->drives[DRIVE_CURIOSITY] * 0.2f +
                         state->confidence * 0.3f -
                         state->drives[DRIVE_REST] * 0.3f;
-    state->motivation = clamp_f(state->motivation, 0.0f, 1.0f);
+    state->motivation = nimcp_clampf(state->motivation, 0.0f, 1.0f);
 
     state->persistence = state->drives[DRIVE_HUNGER] * 0.4f +
                          state->confidence * 0.4f +
                          state->drives[DRIVE_AGGRESSION] * 0.2f;
-    state->persistence = clamp_f(state->persistence, 0.0f, 1.0f);
+    state->persistence = nimcp_clampf(state->persistence, 0.0f, 1.0f);
 
     state->risk_tolerance = state->drives[DRIVE_HUNGER] * 0.5f +
                             state->confidence * 0.3f -
                             state->drives[DRIVE_FEAR] * 0.4f;
-    state->risk_tolerance = clamp_f(state->risk_tolerance, 0.0f, 1.0f);
+    state->risk_tolerance = nimcp_clampf(state->risk_tolerance, 0.0f, 1.0f);
 
     /* Update primary drive */
     state->primary_drive = find_primary_drive(state);
@@ -495,10 +490,10 @@ int dragonfly_emotion_process_event(
     if (event->is_success) {
         /* Successful hunt */
         state->drives[DRIVE_HUNGER] -= bridge->config.hunger_satisfaction;
-        state->drives[DRIVE_HUNGER] = clamp_f(state->drives[DRIVE_HUNGER], 0.0f, 1.0f);
+        state->drives[DRIVE_HUNGER] = nimcp_clampf(state->drives[DRIVE_HUNGER], 0.0f, 1.0f);
 
         state->confidence += bridge->config.success_confidence_boost;
-        state->confidence = clamp_f(state->confidence, 0.0f, 1.0f);
+        state->confidence = nimcp_clampf(state->confidence, 0.0f, 1.0f);
 
         bridge->stats.positive_events++;
     } else if (event->is_escape) {
@@ -507,10 +502,10 @@ int dragonfly_emotion_process_event(
                            (1.0f + (float)event->consecutive_failures * 0.2f);
 
         state->confidence -= bridge->config.failure_confidence_penalty;
-        state->confidence = clamp_f(state->confidence, 0.0f, 1.0f);
+        state->confidence = nimcp_clampf(state->confidence, 0.0f, 1.0f);
 
         state->drives[DRIVE_AGGRESSION] += frustration * 0.3f;
-        state->drives[DRIVE_AGGRESSION] = clamp_f(state->drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
+        state->drives[DRIVE_AGGRESSION] = nimcp_clampf(state->drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
 
         /* Check if should rest due to frustration */
         if (event->consecutive_failures >= 3) {
@@ -523,7 +518,7 @@ int dragonfly_emotion_process_event(
 
     if (event->is_threat) {
         /* Predator detected */
-        state->drives[DRIVE_FEAR] = clamp_f(state->drives[DRIVE_FEAR] + 0.5f, 0.0f, 1.0f);
+        state->drives[DRIVE_FEAR] = nimcp_clampf(state->drives[DRIVE_FEAR] + 0.5f, 0.0f, 1.0f);
 
         if (state->drives[DRIVE_FEAR] > bridge->config.fear_abort_threshold) {
             bridge->stats.fear_aborts++;
@@ -535,7 +530,7 @@ int dragonfly_emotion_process_event(
     if (event->is_competitor) {
         /* Competitor detected */
         state->drives[DRIVE_AGGRESSION] += 0.3f;
-        state->drives[DRIVE_AGGRESSION] = clamp_f(state->drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
+        state->drives[DRIVE_AGGRESSION] = nimcp_clampf(state->drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -559,10 +554,10 @@ int dragonfly_emotion_report_success(
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.drives[DRIVE_HUNGER] -= satisfaction_level * bridge->config.hunger_satisfaction;
-    bridge->state.drives[DRIVE_HUNGER] = clamp_f(bridge->state.drives[DRIVE_HUNGER], 0.0f, 1.0f);
+    bridge->state.drives[DRIVE_HUNGER] = nimcp_clampf(bridge->state.drives[DRIVE_HUNGER], 0.0f, 1.0f);
 
     bridge->state.confidence += bridge->config.success_confidence_boost * satisfaction_level;
-    bridge->state.confidence = clamp_f(bridge->state.confidence, 0.0f, 1.0f);
+    bridge->state.confidence = nimcp_clampf(bridge->state.confidence, 0.0f, 1.0f);
 
     bridge->stats.positive_events++;
 
@@ -585,10 +580,10 @@ int dragonfly_emotion_report_failure(
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.confidence -= bridge->config.failure_confidence_penalty * frustration_level;
-    bridge->state.confidence = clamp_f(bridge->state.confidence, 0.0f, 1.0f);
+    bridge->state.confidence = nimcp_clampf(bridge->state.confidence, 0.0f, 1.0f);
 
     bridge->state.drives[DRIVE_AGGRESSION] += frustration_level * 0.2f;
-    bridge->state.drives[DRIVE_AGGRESSION] = clamp_f(bridge->state.drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
+    bridge->state.drives[DRIVE_AGGRESSION] = nimcp_clampf(bridge->state.drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
 
     bridge->stats.negative_events++;
 
@@ -611,7 +606,7 @@ int dragonfly_emotion_report_threat(
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.drives[DRIVE_FEAR] += threat_level * 0.5f;
-    bridge->state.drives[DRIVE_FEAR] = clamp_f(bridge->state.drives[DRIVE_FEAR], 0.0f, 1.0f);
+    bridge->state.drives[DRIVE_FEAR] = nimcp_clampf(bridge->state.drives[DRIVE_FEAR], 0.0f, 1.0f);
 
     if (bridge->state.drives[DRIVE_FEAR] > bridge->config.fear_abort_threshold) {
         bridge->stats.fear_aborts++;

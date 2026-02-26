@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(autobio_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -74,16 +75,6 @@ struct autobio_snn_bridge {
     /* Statistics */
     autobio_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -376,7 +367,7 @@ int autobio_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -448,9 +439,9 @@ int autobio_snn_encode_episodic(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[AUTOBIO_DIM_COUNT] = {0};
-    dims[AUTOBIO_DIM_IMPORTANCE] = clamp_f(importance, 0.0f, 1.0f);
-    dims[AUTOBIO_DIM_SELF_RELEVANCE] = clamp_f(self_relevance, 0.0f, 1.0f);
-    dims[AUTOBIO_DIM_VIVIDNESS] = clamp_f(vividness, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_IMPORTANCE] = nimcp_clampf(importance, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_SELF_RELEVANCE] = nimcp_clampf(self_relevance, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_VIVIDNESS] = nimcp_clampf(vividness, 0.0f, 1.0f);
     dims[AUTOBIO_DIM_ENCODING_DEPTH] = (importance + vividness) / 2.0f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -475,7 +466,7 @@ int autobio_snn_encode_temporal(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[AUTOBIO_DIM_COUNT] = {0};
-    dims[AUTOBIO_DIM_TEMPORAL_CONTEXT] = clamp_f(recency, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_TEMPORAL_CONTEXT] = nimcp_clampf(recency, 0.0f, 1.0f);
     dims[AUTOBIO_DIM_RETRIEVAL_STRENGTH] = recency * 0.8f; /* Recent = easier to retrieve */
 
     bridge->temporal_signal = recency;
@@ -505,9 +496,9 @@ int autobio_snn_encode_emotional(
 
     float dims[AUTOBIO_DIM_COUNT] = {0};
     /* Convert valence from [-1,1] to [0,1] for encoding */
-    dims[AUTOBIO_DIM_EMOTIONAL_VALENCE] = clamp_f((valence + 1.0f) / 2.0f, 0.0f, 1.0f);
-    dims[AUTOBIO_DIM_EMOTIONAL_INTENSITY] = clamp_f(intensity, 0.0f, 1.0f);
-    dims[AUTOBIO_DIM_AROUSAL] = clamp_f(arousal, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_EMOTIONAL_VALENCE] = nimcp_clampf((valence + 1.0f) / 2.0f, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_EMOTIONAL_INTENSITY] = nimcp_clampf(intensity, 0.0f, 1.0f);
+    dims[AUTOBIO_DIM_AROUSAL] = nimcp_clampf(arousal, 0.0f, 1.0f);
 
     bridge->emotional_signal = intensity;
 
@@ -592,13 +583,13 @@ int autobio_snn_simulate(autobio_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_recall.temporal_context = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_recall.temporal_context = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
     /* Convert back from [0,1] to [-1,1] for valence */
-    bridge->last_recall.emotional_valence = clamp_f(bridge->output_buffer[1] * 2.0f - 1.0f, -1.0f, 1.0f);
-    bridge->last_recall.emotional_intensity = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_recall.self_relevance = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_recall.vividness = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_recall.recall_confidence = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_recall.emotional_valence = nimcp_clampf(bridge->output_buffer[1] * 2.0f - 1.0f, -1.0f, 1.0f);
+    bridge->last_recall.emotional_intensity = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_recall.self_relevance = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_recall.vividness = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_recall.recall_confidence = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check recall threshold */
     if (bridge->last_recall.vividness > bridge->config.recall_threshold) {

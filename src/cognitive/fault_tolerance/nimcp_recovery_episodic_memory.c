@@ -51,6 +51,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(recovery_episodic_memory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -690,19 +691,6 @@ static void evict_episode_at_index(episodic_memory_t* memory, uint32_t idx)
     }
 }
 
-/**
- * @brief Clamp emotional tag to valid range
- *
- * WHAT: Ensure emotion in [-1.0, +1.0]
- * WHY:  Prevent invalid values
- */
-static inline float clamp_emotion(float emotion)
-{
-    if (emotion < -1.0F) return -1.0F;
-    if (emotion > 1.0F) return 1.0F;
-    return emotion;
-}
-
 bool episodic_memory_store(
     episodic_memory_t* memory,
     const recovery_episode_t* episode)
@@ -740,7 +728,7 @@ bool episodic_memory_store(
     }
 
     // Clamp emotional tag
-    ep.emotional_tag = clamp_emotion(ep.emotional_tag);
+    ep.emotional_tag = nimcp_clamp01(ep.emotional_tag);
 
     // Handle capacity limit
     if (memory->count >= memory->capacity) {

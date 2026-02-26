@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_continual_learning_fep_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -40,15 +41,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_continual_learning_fep_bridge, MESH_ADAPTE
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /**
  * @brief Sigmoid function
@@ -367,7 +359,7 @@ int security_cl_fep_compute_effects(security_cl_fep_bridge_t* bridge) {
 
     /* Compute severity score (normalized to [0,1]) */
     bridge->fep_effects.forgetting_severity_score =
-        clamp_f(total_fe / SECURITY_CL_FEP_CRITICAL_THRESHOLD, 0.0f, 1.0f);
+        nimcp_clampf(total_fe / SECURITY_CL_FEP_CRITICAL_THRESHOLD, 0.0f, 1.0f);
 
     /* Attack likelihood via sigmoid */
     float normalized_fe = (total_fe - SECURITY_CL_FEP_SUSPICIOUS_THRESHOLD) /
@@ -396,7 +388,7 @@ int security_cl_fep_compute_effects(security_cl_fep_bridge_t* bridge) {
             (1.0f + urgency * 2.0f) : 1.0f;
         bridge->fep_effects.lr_reduction_factor =
             (response >= SECURITY_CL_FEP_RESPONSE_LR_REDUCE) ?
-            clamp_f(1.0f - urgency * 0.5f, 0.1f, 1.0f) : 1.0f;
+            nimcp_clampf(1.0f - urgency * 0.5f, 0.1f, 1.0f) : 1.0f;
     } else {
         bridge->fep_effects.response = select_response_from_severity(
             bridge->fep_effects.severity
@@ -511,7 +503,7 @@ int security_cl_fep_apply_precision_modulation(security_cl_fep_bridge_t* bridge)
     float lr = bridge->config.precision_learning_rate;
     bridge->state.current_precision =
         (1.0f - lr) * bridge->state.current_precision + lr * target_precision;
-    bridge->state.current_precision = clamp_f(
+    bridge->state.current_precision = nimcp_clampf(
         bridge->state.current_precision,
         SECURITY_CL_FEP_MIN_PRECISION,
         SECURITY_CL_FEP_MAX_PRECISION
@@ -542,7 +534,7 @@ int security_cl_fep_select_response(
     *response = select_response_from_severity(severity);
 
     /* Compute urgency based on free energy */
-    *urgency = clamp_f(fe / SECURITY_CL_FEP_CRITICAL_THRESHOLD, 0.0f, 1.0f);
+    *urgency = nimcp_clampf(fe / SECURITY_CL_FEP_CRITICAL_THRESHOLD, 0.0f, 1.0f);
 
     /* Track response */
     if (*response != SECURITY_CL_FEP_RESPONSE_NONE) {

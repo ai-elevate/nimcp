@@ -13,6 +13,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(buffer_systems)
 
@@ -28,16 +29,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(buffer_systems)
 
 /** Default regeneration time constant (ms) */
 #define BUFFER_REGEN_TAU 10000.0f
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Initialize bicarbonate buffer with defaults
@@ -301,7 +292,7 @@ nimcp_buffer_error_t nimcp_bicarbonate_calculate_ph(
     }
 
     *ph = buffer->pka + log10f(ratio);
-    *ph = clampf(*ph, 0.0f, 14.0f);
+    *ph = nimcp_clampf(*ph, 0.0f, 14.0f);
 
     return BUFFER_OK;
 }
@@ -349,7 +340,7 @@ nimcp_buffer_error_t nimcp_bicarbonate_apply_acid(
 
     /* Update saturation */
     buffer->saturation = 1.0f - (buffer->hco3_concentration / BUFFER_HCO3_NORMAL);
-    buffer->saturation = clampf(buffer->saturation, 0.0f, 1.0f);
+    buffer->saturation = nimcp_clampf(buffer->saturation, 0.0f, 1.0f);
 
     return BUFFER_OK;
 }
@@ -422,13 +413,13 @@ nimcp_buffer_error_t nimcp_phosphate_apply_acid(
     }
 
     float new_ph = buffer->pka + log10f(ratio);
-    new_ph = clampf(new_ph, 0.0f, 14.0f);
+    new_ph = nimcp_clampf(new_ph, 0.0f, 14.0f);
 
     *delta_ph = new_ph - current_ph;
 
     /* Update saturation */
     buffer->saturation = buffer->h2po4_concentration / buffer->total_phosphate;
-    buffer->saturation = clampf(buffer->saturation, 0.0f, 1.0f);
+    buffer->saturation = nimcp_clampf(buffer->saturation, 0.0f, 1.0f);
 
     return BUFFER_OK;
 }
@@ -490,7 +481,7 @@ nimcp_buffer_error_t nimcp_protein_apply_acid(
     float total_sites = buffer->total_protein * buffer->histidine_content;
     if (total_sites > MIN_BUFFER_CONCENTRATION) {
         buffer->protonated_fraction += h_buffered / total_sites;
-        buffer->protonated_fraction = clampf(buffer->protonated_fraction, 0.0f, 1.0f);
+        buffer->protonated_fraction = nimcp_clampf(buffer->protonated_fraction, 0.0f, 1.0f);
     }
 
     /* Update saturation */
@@ -579,7 +570,7 @@ nimcp_buffer_error_t nimcp_buffer_apply_acid_load(
         float h_conc = powf(10.0f, -current_ph);
         h_conc += h_load * 0.001f;
         *new_ph = -log10f(h_conc);
-        *new_ph = clampf(*new_ph, 0.0f, 14.0f);
+        *new_ph = nimcp_clampf(*new_ph, 0.0f, 14.0f);
         return BUFFER_OK;
     }
 
@@ -633,7 +624,7 @@ nimcp_buffer_error_t nimcp_buffer_apply_acid_load(
     }
 
     *new_ph = current_ph + total_delta_ph;
-    *new_ph = clampf(*new_ph, 0.0f, 14.0f);
+    *new_ph = nimcp_clampf(*new_ph, 0.0f, 14.0f);
 
     manager->current_ph = *new_ph;
     manager->proton_load += h_load;

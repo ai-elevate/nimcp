@@ -27,6 +27,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(executive_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -332,7 +333,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
     if (bridge->config.enable_decision_modulation) {
         float base_quality = atp_level * metabolic_capacity;
         float modulated = 1.0f - (1.0f - base_quality) * bridge->config.decision_sensitivity;
-        bridge->effects.decision_quality = nimcp_clamp_f(modulated, 0.3f, 1.0f);
+        bridge->effects.decision_quality = nimcp_clampf(modulated, 0.3f, 1.0f);
     } else {
         bridge->effects.decision_quality = 1.0f;
     }
@@ -347,7 +348,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
     if (bridge->config.enable_inhibition_modulation) {
         float base_inhibition = atp_level * 1.3f;
         float modulated = 1.0f - (1.0f - base_inhibition) * bridge->config.inhibition_sensitivity;
-        bridge->effects.inhibition_strength = nimcp_clamp_f(modulated, 0.2f, 1.0f);
+        bridge->effects.inhibition_strength = nimcp_clampf(modulated, 0.2f, 1.0f);
     } else {
         bridge->effects.inhibition_strength = 1.0f;
     }
@@ -360,7 +361,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
      * ======================================================================== */
     if (bridge->config.enable_planning_modulation) {
         float modulated = 1.0f - (1.0f - metabolic_capacity) * bridge->config.planning_sensitivity;
-        bridge->effects.planning_depth = nimcp_clamp_f(modulated, 0.2f, 1.0f);
+        bridge->effects.planning_depth = nimcp_clampf(modulated, 0.2f, 1.0f);
     } else {
         bridge->effects.planning_depth = 1.0f;
     }
@@ -374,7 +375,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
     if (bridge->config.enable_flexibility_modulation) {
         float base_flexibility = (atp_level + glucose_level) / 2.0f;
         float modulated = 1.0f - (1.0f - base_flexibility) * bridge->config.flexibility_sensitivity;
-        bridge->effects.cognitive_flexibility = nimcp_clamp_f(modulated, 0.3f, 1.0f);
+        bridge->effects.cognitive_flexibility = nimcp_clampf(modulated, 0.3f, 1.0f);
     } else {
         bridge->effects.cognitive_flexibility = 1.0f;
     }
@@ -407,7 +408,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
         bridge->effects.fatigue_level = (bridge->effects.fatigue_level + base_fatigue) / 2.0f;
 
         /* Clamp to valid range */
-        bridge->effects.fatigue_level = nimcp_clamp_f(bridge->effects.fatigue_level, 0.0f, 1.0f);
+        bridge->effects.fatigue_level = nimcp_clampf(bridge->effects.fatigue_level, 0.0f, 1.0f);
 
         /* Track maximum fatigue */
         if (bridge->effects.fatigue_level > bridge->stats.max_fatigue_level) {

@@ -33,6 +33,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(schemas, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -106,15 +107,6 @@ static void set_error(const char* format, ...) {
  */
 static void clear_error(void) {
     s_last_error[0] = '\0';
-}
-
-/**
- * @brief Clamp float to [0, 1] range
- */
-static inline float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -1602,7 +1594,7 @@ float schema_compute_fit(
     }
 
     float fit = (max_score > 0.0f) ? (total_score / max_score) : 0.0f;
-    return clamp01(fit);
+    return nimcp_clamp01(fit);
 }
 
 bool schema_match(
@@ -2801,7 +2793,7 @@ float schema_similarity(const schema_t* schema1, const schema_t* schema2) {
         similarity = similarity * 0.8f + 0.2f;
     }
 
-    return clamp01(similarity);
+    return nimcp_clamp01(similarity);
 }
 
 uint64_t schema_current_time_ms(void) {

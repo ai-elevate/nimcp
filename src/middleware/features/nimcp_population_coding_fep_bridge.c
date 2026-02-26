@@ -22,18 +22,9 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_fep_bridge)
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float map_precision_to_tuning(float precision) {
     /* High precision → narrow tuning */
@@ -227,7 +218,7 @@ int population_coding_fep_apply_precision_tuning(
     /* Map precision to tuning width */
     float base_tuning = map_precision_to_tuning(precision);
     float tuning_width = base_tuning * bridge->config.tuning_sensitivity;
-    tuning_width = clamp_f(tuning_width,
+    tuning_width = nimcp_clampf(tuning_width,
                            bridge->config.min_tuning_width,
                            bridge->config.max_tuning_width);
 
@@ -273,7 +264,7 @@ int population_coding_fep_set_baseline(
 
     /* Scale prediction to baseline activation */
     float baseline = prediction * bridge->config.baseline_sensitivity;
-    baseline = clamp_f(baseline, 0.0f, MAX_BASELINE_ACTIVATION);
+    baseline = nimcp_clampf(baseline, 0.0f, MAX_BASELINE_ACTIVATION);
 
     /* Update state */
     bridge->state.current_prediction = prediction;
@@ -313,7 +304,7 @@ int population_coding_fep_adjust_synchrony_threshold(
     /* High PE increases threshold (require stronger synchrony) */
     float threshold = bridge->config.min_synchrony_threshold +
                      prediction_error * 0.3f;
-    threshold = clamp_f(threshold, 0.1f, 0.9f);
+    threshold = nimcp_clampf(threshold, 0.1f, 0.9f);
 
     /* Update state */
     bridge->state.prediction_error = prediction_error;
@@ -380,7 +371,7 @@ int population_coding_fep_update_precision_from_synchrony(
     /* Map synchrony to confidence/precision */
     float confidence = map_synchrony_to_confidence(synchrony);
     confidence *= bridge->config.synchrony_sensitivity;
-    confidence = clamp_f(confidence, 0.0f, 1.0f);
+    confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     /* Update state */
     bridge->state.population_synchrony = synchrony;

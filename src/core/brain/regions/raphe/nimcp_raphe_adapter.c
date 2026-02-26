@@ -18,6 +18,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(raphe_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -74,16 +75,6 @@ struct nimcp_raphe_adapter {
     uint32_t training_events_received;
     uint32_t training_modulations_sent;
 };
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float lerp(float a, float b, float t) {
     return a + t * (b - a);
@@ -393,7 +384,7 @@ int nimcp_raphe_adapter_update(nimcp_raphe_adapter_t adapter, float dt) {
         /* Higher 5-HT -> more patience */
         float patience_recovery = 0.01f * ht_ratio * dt_sec;
         adapter->training_patience += patience_recovery;
-        adapter->training_patience = clamp_f(adapter->training_patience, 0.0f, 1.0f);
+        adapter->training_patience = nimcp_clampf(adapter->training_patience, 0.0f, 1.0f);
 
         /* Update current modulation based on Raphe state */
         float mood, inhibition, patience_raphe;
@@ -403,12 +394,12 @@ int nimcp_raphe_adapter_update(nimcp_raphe_adapter_t adapter, float dt) {
 
         /* Learning rate modulation: positive mood -> slightly higher LR */
         adapter->current_modulation.lr_multiplier = 1.0f + mood * 0.2f;
-        adapter->current_modulation.lr_multiplier = clamp_f(
+        adapter->current_modulation.lr_multiplier = nimcp_clampf(
             adapter->current_modulation.lr_multiplier, 0.5f, 1.5f);
 
         /* Exploration: lower 5-HT -> more exploration */
         adapter->current_modulation.exploration_rate = 0.5f - (ht_ratio - 1.0f) * 0.3f;
-        adapter->current_modulation.exploration_rate = clamp_f(
+        adapter->current_modulation.exploration_rate = nimcp_clampf(
             adapter->current_modulation.exploration_rate, 0.1f, 0.9f);
 
         /* Patience factor from Raphe patience */
@@ -468,7 +459,7 @@ int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
                 loss_stress *= (1.0f + state->loss_trend);
             }
             adapter->training_stress += loss_stress * 0.1f;
-            adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+            adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
 
             /* Apply stress to Raphe mood */
             nimcp_raphe_modulate_anxiety(&adapter->raphe, loss_stress * 0.2f);
@@ -481,7 +472,7 @@ int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
                 float gradient_stress = (state->gradient_norm -
                     adapter->config.gradient_stress_threshold) * 0.1f;
                 adapter->training_stress += gradient_stress * 0.05f;
-                adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+                adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
             }
             break;
         }
@@ -489,21 +480,21 @@ int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
         case RAPHE_TRAIN_EVENT_LR_CHANGE: {
             /* LR changes can be stressful */
             adapter->training_stress += 0.05f;
-            adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+            adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
             break;
         }
 
         case RAPHE_TRAIN_EVENT_EPOCH_START: {
             /* New epoch -> slight patience recovery */
             adapter->training_patience += 0.1f;
-            adapter->training_patience = clamp_f(adapter->training_patience, 0.0f, 1.0f);
+            adapter->training_patience = nimcp_clampf(adapter->training_patience, 0.0f, 1.0f);
             break;
         }
 
         case RAPHE_TRAIN_EVENT_EPOCH_END: {
             /* Epoch completion -> reward, reduce stress */
             adapter->training_stress -= 0.1f;
-            adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+            adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
 
             /* Positive mood input */
             nimcp_raphe_apply_mood_input(&adapter->raphe, 0.1f);
@@ -513,7 +504,7 @@ int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
         case RAPHE_TRAIN_EVENT_REWARD: {
             /* Positive reward -> mood boost, stress reduction */
             adapter->training_stress -= 0.15f;
-            adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+            adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
 
             nimcp_raphe_apply_mood_input(&adapter->raphe, 0.2f);
             break;
@@ -522,10 +513,10 @@ int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
         case RAPHE_TRAIN_EVENT_TIMEOUT: {
             /* Training timeout -> patience drain, stress */
             adapter->training_patience -= adapter->config.patience_decay_rate * 10.0f;
-            adapter->training_patience = clamp_f(adapter->training_patience, 0.0f, 1.0f);
+            adapter->training_patience = nimcp_clampf(adapter->training_patience, 0.0f, 1.0f);
 
             adapter->training_stress += 0.2f;
-            adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+            adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
             break;
         }
 
@@ -601,7 +592,7 @@ int nimcp_raphe_adapter_process_stress(nimcp_raphe_adapter_t adapter, float stre
 
     /* Also affects training patience */
     adapter->training_patience -= stress_level * 0.1f;
-    adapter->training_patience = clamp_f(adapter->training_patience, 0.0f, 1.0f);
+    adapter->training_patience = nimcp_clampf(adapter->training_patience, 0.0f, 1.0f);
 
     return 0;
 }
@@ -618,7 +609,7 @@ int nimcp_raphe_adapter_process_positive_feedback(nimcp_raphe_adapter_t adapter,
 
     /* Reduces training stress */
     adapter->training_stress -= feedback_magnitude * 0.2f;
-    adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+    adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
 
     return 0;
 }

@@ -29,6 +29,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_attention_fep_bridge)
 //=============================================================================
@@ -127,16 +128,6 @@ struct pa_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -166,9 +157,9 @@ static void compute_free_energy(pa_fep_bridge_t* bridge) {
     const pa_fep_config_t* cfg = &bridge->config;
 
     /* Clamp input metrics */
-    m->prediction_accuracy = clamp_f(m->prediction_accuracy, 0.0f, 1.0f);
-    m->attention_precision = clamp_f(m->attention_precision, 0.0f, 1.0f);
-    m->error_signal_quality = clamp_f(m->error_signal_quality, 0.0f, 1.0f);
+    m->prediction_accuracy = nimcp_clampf(m->prediction_accuracy, 0.0f, 1.0f);
+    m->attention_precision = nimcp_clampf(m->attention_precision, 0.0f, 1.0f);
+    m->error_signal_quality = nimcp_clampf(m->error_signal_quality, 0.0f, 1.0f);
 
     /* Prediction accuracy contribution:
      * Low prediction accuracy = high free energy (model doesn't match reality) */
@@ -188,7 +179,7 @@ static void compute_free_energy(pa_fep_bridge_t* bridge) {
                       m->precision_contribution +
                       m->error_quality_contribution) * cfg->free_energy_weight;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* High precision mode check */
     m->high_precision_mode = (m->attention_precision > (1.0f - cfg->precision_epsilon));
@@ -199,7 +190,7 @@ static void compute_free_energy(pa_fep_bridge_t* bridge) {
                                    m->error_signal_quality * 0.15f);
 
     /* Apply decay to smooth transitions */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_prediction_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -211,7 +202,7 @@ static void compute_free_energy(pa_fep_bridge_t* bridge) {
     float precision_change = fabsf(m->attention_precision - bridge->prev_attention_precision);
     float quality_change = fabsf(m->error_signal_quality - bridge->prev_error_signal_quality);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.3f + accuracy_change * 0.3f +
          precision_change * 0.2f + quality_change * 0.2f),
         0.0f, 1.0f
@@ -219,7 +210,7 @@ static void compute_free_energy(pa_fep_bridge_t* bridge) {
 
     /* Entropy: based on precision variance and prediction uncertainty
      * Higher variance in precision = higher entropy */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         (1.0f - m->attention_precision) * 0.5f +
         (1.0f - m->prediction_accuracy) * 0.3f +
         m->precision_variance * 0.2f,
@@ -652,7 +643,7 @@ int pa_fep_update_callback(void* handle) {
                 /* More prediction errors = lower accuracy */
                 float error_rate = (float)pa_stats.prediction_errors /
                                   (float)pa_stats.total_events;
-                bridge->metrics.prediction_accuracy = clamp_f(
+                bridge->metrics.prediction_accuracy = nimcp_clampf(
                     1.0f - error_rate,
                     0.0f, 1.0f
                 );
@@ -663,7 +654,7 @@ int pa_fep_update_callback(void* handle) {
                 /* More surprise shifts = attention was less precise */
                 float shift_rate = (float)pa_stats.surprise_shifts /
                                   (float)pa_stats.total_events;
-                bridge->metrics.attention_precision = clamp_f(
+                bridge->metrics.attention_precision = nimcp_clampf(
                     1.0f - shift_rate * 2.0f,
                     0.0f, 1.0f
                 );
@@ -674,7 +665,7 @@ int pa_fep_update_callback(void* handle) {
             float avg_error = pa_stats.avg_error_magnitude;
             if (avg_precision > 0.0f || avg_error > 0.0f) {
                 /* High precision + low error = good error signals */
-                bridge->metrics.error_signal_quality = clamp_f(
+                bridge->metrics.error_signal_quality = nimcp_clampf(
                     avg_precision * 0.5f + (1.0f - avg_error) * 0.5f,
                     0.0f, 1.0f
                 );
@@ -769,7 +760,7 @@ int pa_fep_bridge_update_prediction_accuracy(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.prediction_accuracy = clamp_f(accuracy, 0.0f, 1.0f);
+    bridge->metrics.prediction_accuracy = nimcp_clampf(accuracy, 0.0f, 1.0f);
     bridge->stats.prediction_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -790,7 +781,7 @@ int pa_fep_bridge_update_attention_precision(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.attention_precision = clamp_f(precision, 0.0f, 1.0f);
+    bridge->metrics.attention_precision = nimcp_clampf(precision, 0.0f, 1.0f);
     bridge->stats.precision_updates++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -811,7 +802,7 @@ int pa_fep_bridge_update_error_signal_quality(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.error_signal_quality = clamp_f(quality, 0.0f, 1.0f);
+    bridge->metrics.error_signal_quality = nimcp_clampf(quality, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;

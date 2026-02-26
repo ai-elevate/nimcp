@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(extended_metaplasticity)
 
@@ -45,17 +46,6 @@ typedef struct metaplasticity_controller_struct {
 /* ============================================================================
  * Static Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Prevent threshold from going out of bounds
- * HOW:  Return min/max if outside range
- */
-static inline float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * WHAT: Get sleep reset factor for sleep state
@@ -328,7 +318,7 @@ int metaplasticity_update_baseline(
                             state->theta_baseline_target * baseline_alpha;
 
     /* Clamp to bounds */
-    state->theta_baseline = clamp_float(state->theta_baseline,
+    state->theta_baseline = nimcp_clampf(state->theta_baseline,
                                         config->min_theta,
                                         config->max_theta);
 
@@ -485,7 +475,7 @@ int metaplasticity_apply_sleep_reset(
                                  state->theta_baseline * state->sleep_reset_factor;
 
         /* Clamp */
-        state->theta_effective = clamp_float(state->theta_effective,
+        state->theta_effective = nimcp_clampf(state->theta_effective,
                                             config->min_theta,
                                             config->max_theta);
 
@@ -553,7 +543,7 @@ float metaplasticity_compute_effective_threshold(
     theta *= neuromod_factor;
 
     /* Clamp */
-    theta = clamp_float(theta, config->min_theta, config->max_theta);
+    theta = nimcp_clampf(theta, config->min_theta, config->max_theta);
 
     return theta;
 }

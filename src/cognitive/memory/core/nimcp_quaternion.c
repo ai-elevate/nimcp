@@ -27,6 +27,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(quaternion, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -36,19 +37,10 @@ BRIDGE_BOILERPLATE(quaternion, MESH_ADAPTER_CATEGORY_MEMORY)
 //=============================================================================
 
 /**
- * @brief Clamp float to range [min, max]
- */
-static inline float clampf(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
-/**
  * @brief Safe arccos with clamping to avoid NaN from numerical errors
  */
 static inline float safe_acos(float x) {
-    return acosf(clampf(x, -1.0f, 1.0f));
+    return acosf(nimcp_clampf(x, -1.0f, 1.0f));
 }
 
 /**
@@ -266,7 +258,7 @@ nimcp_quaternion_t quat_slerp(nimcp_quaternion_t q1, nimcp_quaternion_t q2, floa
     quaternion_heartbeat("quaternion_quat_slerp", 0.0f);
 
 
-    t = clampf(t, 0.0f, 1.0f);
+    t = nimcp_clampf(t, 0.0f, 1.0f);
 
     // Compute dot product (cosine of angle)
     float dot = quat_dot(q1, q2);
@@ -311,7 +303,7 @@ nimcp_quaternion_t quat_nlerp(nimcp_quaternion_t q1, nimcp_quaternion_t q2, floa
     quaternion_heartbeat("quaternion_quat_nlerp", 0.0f);
 
 
-    t = clampf(t, 0.0f, 1.0f);
+    t = nimcp_clampf(t, 0.0f, 1.0f);
 
     // Handle antipodal quaternions
     float dot = quat_dot(q1, q2);
@@ -348,7 +340,7 @@ float quat_geodesic_distance(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
     float abs_dot = fabsf(dot);
 
     // Clamp to [-1, 1] for numerical stability
-    abs_dot = clampf(abs_dot, 0.0f, 1.0f);
+    abs_dot = nimcp_clampf(abs_dot, 0.0f, 1.0f);
 
     return safe_acos(abs_dot);
 }
@@ -421,7 +413,7 @@ nimcp_quaternion_t quat_log(nimcp_quaternion_t q) {
     }
 
     float v_mag = sqrtf(v_mag_sq);
-    float theta = safe_acos(clampf(q.w / q_mag, -1.0f, 1.0f));
+    float theta = safe_acos(nimcp_clampf(q.w / q_mag, -1.0f, 1.0f));
     float coeff = theta / v_mag;
 
     nimcp_quaternion_t result;

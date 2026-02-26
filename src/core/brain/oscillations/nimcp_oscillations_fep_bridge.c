@@ -23,19 +23,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(oscillations_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float safe_divide(float num, float denom, float default_val) {
     return (fabsf(denom) > 1e-10f) ? (num / denom) : default_val;
@@ -231,7 +221,7 @@ int oscillations_fep_modulate_gamma_from_pe(
     /* Gamma power = PE × precision × gain */
     float gamma_modulation = mean_pe * mean_precision *
         bridge->config.pe_gamma_gain;
-    gamma_modulation = clamp_f(gamma_modulation, 0.0f, 10.0f);
+    gamma_modulation = nimcp_clampf(gamma_modulation, 0.0f, 10.0f);
 
     bridge->effects.gamma_modulation = gamma_modulation;
     bridge->state.current_gamma = gamma_modulation;
@@ -280,7 +270,7 @@ int oscillations_fep_modulate_beta_from_predictions(
     /* Beta power = prediction strength × gain */
     float beta_modulation = mean_prediction_strength *
         bridge->config.prediction_beta_gain;
-    beta_modulation = clamp_f(beta_modulation, 0.0f, 10.0f);
+    beta_modulation = nimcp_clampf(beta_modulation, 0.0f, 10.0f);
 
     bridge->effects.beta_modulation = beta_modulation;
     bridge->state.current_beta = beta_modulation;
@@ -323,7 +313,7 @@ int oscillations_fep_modulate_alpha_from_precision(
         bridge->config.precision_alpha_gain,
         mean_precision,
         1.0f);
-    alpha_modulation = clamp_f(alpha_modulation, 0.0f, 10.0f);
+    alpha_modulation = nimcp_clampf(alpha_modulation, 0.0f, 10.0f);
 
     bridge->effects.alpha_modulation = alpha_modulation;
     bridge->state.current_alpha = alpha_modulation;
@@ -357,14 +347,14 @@ int oscillations_fep_generate_theta_gamma_pac(
 
     float theta_modulation = (float)fep->num_levels *
         bridge->config.hierarchy_theta_gain;
-    theta_modulation = clamp_f(theta_modulation, 0.0f, 10.0f);
+    theta_modulation = nimcp_clampf(theta_modulation, 0.0f, 10.0f);
 
     bridge->effects.theta_modulation = theta_modulation;
     bridge->state.current_theta = theta_modulation;
 
     /* Simplified PAC strength based on hierarchy activity */
     float pac_strength = theta_modulation * bridge->state.current_gamma / 10.0f;
-    pac_strength = clamp_f(pac_strength, 0.0f, 1.0f);
+    pac_strength = nimcp_clampf(pac_strength, 0.0f, 1.0f);
 
     bridge->effects.theta_gamma_pac = pac_strength;
     bridge->state.theta_gamma_pac_strength = pac_strength;
@@ -443,7 +433,7 @@ int oscillations_fep_bind_beliefs_via_coherence(
 
     /* For now, set coherence based on gamma power (simplified) */
     float coherence = bridge->state.current_gamma / 10.0f;
-    coherence = clamp_f(coherence, 0.0f, 1.0f);
+    coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
 
     bridge->state.cross_regional_coherence = coherence;
 

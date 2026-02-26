@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_epistemic_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -115,16 +116,6 @@ static int find_source_index(
     }
     /* Source not found - normal case during registration checks, not an error */
     return -1;
-}
-
-/**
- * @brief Clamp float to range
- */
-static float clamp_float(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -581,7 +572,7 @@ int security_epist_correct_confidence(
 
     BRIDGE_LOCK(bridge);
 
-    float corrected = clamp_float(
+    float corrected = nimcp_clampf(
         confidence,
         bridge->config.min_confidence,
         bridge->config.max_confidence
@@ -772,7 +763,7 @@ int security_epist_update_belief(
         NIMCP_CHECK_THROW(false, NIMCP_ERROR_PERMISSION_DENIED, "belief is locked");
     }
 
-    belief->current_confidence = clamp_float(
+    belief->current_confidence = nimcp_clampf(
         new_confidence,
         bridge->config.min_confidence,
         bridge->config.max_confidence
@@ -885,7 +876,7 @@ int security_epist_adjust_uncertainty(
 
     BRIDGE_LOCK(bridge);
 
-    float adjusted = clamp_float(
+    float adjusted = nimcp_clampf(
         uncertainty,
         bridge->config.min_uncertainty,
         bridge->config.max_uncertainty
@@ -1083,7 +1074,7 @@ int security_epist_register_source(
 
     source_entry_t* source = &internal->sources[internal->source_count++];
     source->source_id = source_id;
-    source->reliability = clamp_float(reliability, 0.0f, 1.0f);
+    source->reliability = nimcp_clampf(reliability, 0.0f, 1.0f);
     source->correct_count = 0;
     source->incorrect_count = 0;
     source->last_update = get_timestamp_us();

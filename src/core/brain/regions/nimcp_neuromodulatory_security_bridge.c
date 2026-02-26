@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(neuromodulatory_security_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -68,12 +69,6 @@ static uint64_t get_timestamp_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static float clamp_float(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /* ============================================================================
@@ -270,7 +265,7 @@ int neuromod_security_apply_arousal(neuromod_security_bridge_t* bridge, const ne
     /* Apply arousal effects to security modulation state */
     bridge->modulation.threat_sensitivity_boost = 1.0f +
         (payload->arousal_level * bridge->config.ne_sensitivity_weight);
-    bridge->modulation.vigilance_level = clamp_float(payload->vigilance, 0.0f, 1.0f);
+    bridge->modulation.vigilance_level = nimcp_clampf(payload->vigilance, 0.0f, 1.0f);
     bridge->modulation.gain_modulation = 1.0f + (payload->sensitivity_boost * 0.5f);
     bridge->modulation.phasic_alert_active = payload->phasic_burst;
 
@@ -312,8 +307,8 @@ int neuromod_security_apply_patience(neuromod_security_bridge_t* bridge, const n
     /* Apply patience/mood effects to security modulation state */
     bridge->modulation.tolerance_window = 1.0f +
         (payload->patience * bridge->config.ht_patience_weight);
-    bridge->modulation.impulse_inhibition = clamp_float(payload->impulse_inhibition, 0.0f, 1.0f);
-    bridge->modulation.patience_level = clamp_float(payload->patience, 0.0f, 1.0f);
+    bridge->modulation.impulse_inhibition = nimcp_clampf(payload->impulse_inhibition, 0.0f, 1.0f);
+    bridge->modulation.patience_level = nimcp_clampf(payload->patience, 0.0f, 1.0f);
     bridge->modulation.false_positive_threshold = payload->tolerance_boost;
 
     bridge->stats.raphe_modulations_sent++;
@@ -333,7 +328,7 @@ int neuromod_security_apply_aversive(neuromod_security_bridge_t* bridge, const n
     /* Apply aversive signals to security modulation state */
     bridge->modulation.defensive_boost = 1.0f +
         (payload->punishment_strength * bridge->config.hab_defensive_weight);
-    bridge->modulation.avoidance_drive = clamp_float(payload->avoidance_drive, 0.0f, 1.0f);
+    bridge->modulation.avoidance_drive = nimcp_clampf(payload->avoidance_drive, 0.0f, 1.0f);
     bridge->modulation.punishment_signal = payload->punishment_strength;
     bridge->modulation.quarantine_mode = payload->quarantine_request;
 
@@ -356,7 +351,7 @@ int neuromod_security_report_threat(neuromod_security_bridge_t* bridge, const ne
     if (!bridge->config.enable_threat_feedback) return 0;
 
     /* Update security feedback state */
-    bridge->feedback.current_threat_level = clamp_float(payload->threat_level, 0.0f, 1.0f);
+    bridge->feedback.current_threat_level = nimcp_clampf(payload->threat_level, 0.0f, 1.0f);
     bridge->feedback.threats_detected = payload->threat_count;
     bridge->feedback.under_attack = payload->urgent;
     bridge->feedback.last_update_us = get_timestamp_us();

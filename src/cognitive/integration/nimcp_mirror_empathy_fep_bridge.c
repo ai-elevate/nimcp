@@ -29,6 +29,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mirror_empathy_fep_bridge)
 //=============================================================================
@@ -127,16 +128,6 @@ struct me_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -167,9 +158,9 @@ static void compute_free_energy(me_fep_bridge_t* bridge) {
     const me_fep_config_t* cfg = &bridge->config;
 
     /* Clamp input metrics */
-    m->mirroring_error = clamp_f(m->mirroring_error, 0.0f, 1.0f);
-    m->empathy_prediction_error = clamp_f(m->empathy_prediction_error, 0.0f, 1.0f);
-    m->resonance_deficit = clamp_f(m->resonance_deficit, 0.0f, 1.0f);
+    m->mirroring_error = nimcp_clampf(m->mirroring_error, 0.0f, 1.0f);
+    m->empathy_prediction_error = nimcp_clampf(m->empathy_prediction_error, 0.0f, 1.0f);
+    m->resonance_deficit = nimcp_clampf(m->resonance_deficit, 0.0f, 1.0f);
 
     /* Mirroring accuracy contribution:
      * High error in understanding observed actions = prediction error */
@@ -190,7 +181,7 @@ static void compute_free_energy(me_fep_bridge_t* bridge) {
                       m->empathy_contribution +
                       m->resonance_contribution) * cfg->free_energy_weight;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* High resonance state check (low deficit = high resonance) */
     m->high_resonance_state = (m->resonance_deficit < cfg->resonance_epsilon);
@@ -201,7 +192,7 @@ static void compute_free_energy(me_fep_bridge_t* bridge) {
                                    m->resonance_deficit * 0.30f);
 
     /* Apply decay to smooth transitions */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_prediction_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -213,7 +204,7 @@ static void compute_free_energy(me_fep_bridge_t* bridge) {
     float empathy_change = fabsf(m->empathy_prediction_error - bridge->prev_empathy_error);
     float resonance_change = fabsf(m->resonance_deficit - bridge->prev_resonance_deficit);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.3f + mirroring_change * 0.25f +
          empathy_change * 0.25f + resonance_change * 0.2f),
         0.0f, 1.0f
@@ -221,7 +212,7 @@ static void compute_free_energy(me_fep_bridge_t* bridge) {
 
     /* Entropy: based on prediction uncertainty
      * Higher uncertainty about social states = higher entropy */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         m->mirroring_error * 0.4f + m->empathy_prediction_error * 0.4f +
         m->resonance_deficit * 0.2f,
         0.0f, 1.0f
@@ -638,7 +629,7 @@ int me_fep_update_callback(void* handle) {
                 float action_success_rate = (float)me_stats.actions_mirrored /
                                            (float)me_stats.total_events;
                 /* Lower success rate = higher mirroring error */
-                bridge->metrics.mirroring_error = clamp_f(
+                bridge->metrics.mirroring_error = nimcp_clampf(
                     1.0f - action_success_rate * 2.0f,  /* Scale up */
                     0.0f, 1.0f
                 );
@@ -649,14 +640,14 @@ int me_fep_update_callback(void* handle) {
                 float response_rate = (float)me_stats.empathetic_responses /
                                      (float)me_stats.events_received;
                 /* Lower response rate = higher prediction error */
-                bridge->metrics.empathy_prediction_error = clamp_f(
+                bridge->metrics.empathy_prediction_error = nimcp_clampf(
                     1.0f - response_rate,
                     0.0f, 1.0f
                 );
             }
 
             /* Resonance deficit from average resonance strength */
-            bridge->metrics.resonance_deficit = clamp_f(
+            bridge->metrics.resonance_deficit = nimcp_clampf(
                 1.0f - me_stats.avg_resonance_strength,
                 0.0f, 1.0f
             );
@@ -748,7 +739,7 @@ int me_fep_bridge_update_mirroring_error(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.mirroring_error = clamp_f(error, 0.0f, 1.0f);
+    bridge->metrics.mirroring_error = nimcp_clampf(error, 0.0f, 1.0f);
     bridge->stats.mirroring_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -769,7 +760,7 @@ int me_fep_bridge_update_empathy_error(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.empathy_prediction_error = clamp_f(error, 0.0f, 1.0f);
+    bridge->metrics.empathy_prediction_error = nimcp_clampf(error, 0.0f, 1.0f);
     bridge->stats.empathy_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -790,7 +781,7 @@ int me_fep_bridge_update_resonance_deficit(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.resonance_deficit = clamp_f(deficit, 0.0f, 1.0f);
+    bridge->metrics.resonance_deficit = nimcp_clampf(deficit, 0.0f, 1.0f);
     bridge->stats.resonance_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 

@@ -15,6 +15,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cross_modal_immune_bridge)
 
@@ -33,15 +34,6 @@ static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range [0, 1]
- */
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -69,7 +61,7 @@ static float compute_binding_window_ms(brain_inflammation_level_t level) {
     const float BASE_WINDOW_MS = 200.0f;  /* Normal binding window */
     float narrowing = INFLAMMATION_WINDOW_BASE +
                      (level * INFLAMMATION_WINDOW_PER_LEVEL);
-    narrowing = clamp_0_1(narrowing);
+    narrowing = nimcp_clamp01(narrowing);
     return BASE_WINDOW_MS * (1.0f - narrowing);
 }
 
@@ -209,7 +201,7 @@ int cross_modal_immune_apply_cytokine_effects(cross_modal_immune_bridge_t* bridg
         stats.cytokine_ifn_gamma * CYTOKINE_IFN_GAMMA_BINDING_IMPACT * bridge->config.cytokine_sensitivity;
 
     /* Total binding impairment */
-    bridge->cytokine_effects.total_binding_impairment = clamp_0_1(
+    bridge->cytokine_effects.total_binding_impairment = nimcp_clamp01(
         fabsf(bridge->cytokine_effects.il1_binding_disruption) +
         fabsf(bridge->cytokine_effects.il6_binding_disruption) +
         fabsf(bridge->cytokine_effects.tnf_binding_disruption) +
@@ -294,7 +286,7 @@ float cross_modal_immune_compute_efficiency(const cross_modal_immune_bridge_t* b
 
     /* Combined efficiency: multiplicative reduction */
     float efficiency = inflammation_factor * (1.0f - cytokine_loss);
-    return clamp_0_1(efficiency);
+    return nimcp_clamp01(efficiency);
 }
 
 float cross_modal_immune_compute_binding_window(const cross_modal_immune_bridge_t* bridge) {

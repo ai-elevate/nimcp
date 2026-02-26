@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dendritic_immune_bridge)
 
@@ -32,19 +33,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(dendritic_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute dendritic atrophy level from inflammation
@@ -66,7 +54,7 @@ static float compute_atrophy_severity(
     /* Duration factor (saturates at 2x chronic threshold) */
     float duration_factor = 0.0f;
     if (is_chronic) {
-        duration_factor = clamp_f(
+        duration_factor = nimcp_clampf(
             duration_sec / (CHRONIC_INFLAMMATION_DENDRITIC_THRESHOLD * 2.0f),
             0.0f, 1.0f
         );
@@ -74,7 +62,7 @@ static float compute_atrophy_severity(
 
     /* Atrophy severity */
     float atrophy = (intensity * 0.6f) + (duration_factor * 0.4f);
-    return clamp_f(atrophy, 0.0f, 1.0f);
+    return nimcp_clampf(atrophy, 0.0f, 1.0f);
 }
 
 /**
@@ -268,17 +256,17 @@ int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
     float proinflam_total = fabs(effects->il1_spine_loss) +
                            fabs(effects->il6_spine_loss) +
                            fabs(effects->tnf_spine_loss);
-    effects->complexity_reduction = clamp_f(proinflam_total * 0.5f, 0.0f, 1.0f);
+    effects->complexity_reduction = nimcp_clampf(proinflam_total * 0.5f, 0.0f, 1.0f);
 
     /* Integration impairment (IL-1β specifically affects NMDA) */
-    effects->integration_impairment = clamp_f(fabs(effects->il1_spine_loss) * 1.2f, 0.0f, 1.0f);
+    effects->integration_impairment = nimcp_clampf(fabs(effects->il1_spine_loss) * 1.2f, 0.0f, 1.0f);
 
     /* Growth suppression */
-    effects->growth_suppression = clamp_f(proinflam_total * 0.7f, 0.0f, 1.0f);
+    effects->growth_suppression = nimcp_clampf(proinflam_total * 0.7f, 0.0f, 1.0f);
 
     /* Update spine density in inflammation state */
     float new_density = bridge->inflammation_state.spine_density + effects->total_spine_density_change;
-    bridge->inflammation_state.spine_density = clamp_f(
+    bridge->inflammation_state.spine_density = nimcp_clampf(
         new_density,
         SPINE_DENSITY_MIN,
         SPINE_DENSITY_MAX
@@ -329,16 +317,16 @@ int dendritic_immune_apply_inflammation_effects(dendritic_immune_bridge_t* bridg
 
     /* Complexity loss based on inflammation level */
     float inflammation_intensity = (float)state->current_level / (float)INFLAMMATION_STORM;
-    state->complexity_loss = clamp_f(inflammation_intensity * 0.6f, 0.0f, 1.0f);
+    state->complexity_loss = nimcp_clampf(inflammation_intensity * 0.6f, 0.0f, 1.0f);
 
     /* NMDA trafficking impairment (IL-1β effect) */
-    state->nmda_trafficking_impairment = clamp_f(inflammation_intensity * 0.5f, 0.0f, 1.0f);
+    state->nmda_trafficking_impairment = nimcp_clampf(inflammation_intensity * 0.5f, 0.0f, 1.0f);
 
     /* Dendritic spike generation impairment */
-    state->spike_generation_impairment = clamp_f(inflammation_intensity * 0.4f, 0.0f, 1.0f);
+    state->spike_generation_impairment = nimcp_clampf(inflammation_intensity * 0.4f, 0.0f, 1.0f);
 
     /* Calcium dysregulation */
-    state->calcium_dysregulation = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
+    state->calcium_dysregulation = nimcp_clampf(inflammation_intensity * 0.7f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
@@ -352,7 +340,7 @@ float dendritic_immune_compute_spine_loss(const dendritic_immune_bridge_t* bridg
     float current = bridge->inflammation_state.spine_density;
     float loss = baseline - current;
 
-    return clamp_f(loss, 0.0f, 1.0f);
+    return nimcp_clampf(loss, 0.0f, 1.0f);
 }
 
 float dendritic_immune_compute_complexity_loss(const dendritic_immune_bridge_t* bridge) {
@@ -389,7 +377,7 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
 
     /* Compute pruning rate */
     trigger->pruning_rate = spine_loss * 1.2f;  /* Pruning slightly higher than loss */
-    trigger->pruning_rate = clamp_f(trigger->pruning_rate, 0.0f, 1.0f);
+    trigger->pruning_rate = nimcp_clampf(trigger->pruning_rate, 0.0f, 1.0f);
 
     /* Complexity reduction rate */
     trigger->complexity_reduction_rate = bridge->inflammation_state.complexity_loss;
@@ -400,7 +388,7 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
         trigger->synaptic_debris_detected = true;
 
         /* Compute danger signal strength */
-        trigger->danger_signal_strength = clamp_f(
+        trigger->danger_signal_strength = nimcp_clampf(
             (trigger->spine_loss_rate - SPINE_LOSS_IMMUNE_THRESHOLD) * 2.0f,
             0.0f,
             1.0f
@@ -448,7 +436,7 @@ int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
     /* Homeostatic scaling dysfunction */
     if (calcium_problem > 0.5f || complexity_problem > 0.6f) {
         trigger->scaling_dysfunction = true;
-        trigger->compensation_failure = clamp_f(
+        trigger->compensation_failure = nimcp_clampf(
             (calcium_problem * 0.6f) + (complexity_problem * 0.4f),
             0.0f,
             1.0f
@@ -496,7 +484,7 @@ int dendritic_immune_support_from_health(dendritic_immune_bridge_t* bridge) {
     /* Immune support from healthy dendrites */
     float health_score = (support->spine_density_health * 0.6f) +
                         (support->complexity_health * 0.4f);
-    support->immune_support = clamp_f(health_score, 0.0f, 1.0f);
+    support->immune_support = nimcp_clampf(health_score, 0.0f, 1.0f);
 
     /* Healthy dendrites promote IL-10 release */
     if (support->immune_support > 0.7f) {

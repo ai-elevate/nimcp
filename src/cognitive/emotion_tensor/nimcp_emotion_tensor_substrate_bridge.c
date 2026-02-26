@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_tensor_substrate_bridge)
 //=============================================================================
@@ -195,15 +196,15 @@ int emotion_tensor_substrate_bridge_update(emotion_tensor_substrate_bridge_t* br
 
     if (bridge->config.enable_atp_modulation) {
         /* Tensor complexity scales with available ATP */
-        bridge->effects.tensor_complexity = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.valence_resolution = nimcp_clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.tensor_complexity = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.valence_resolution = nimcp_clampf(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Regulation decreases with fatigue, intensity may paradoxically increase */
-        bridge->effects.regulation_capacity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.regulation_capacity = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Low metabolic capacity leads to heightened emotional reactivity */
-        bridge->effects.intensity_capacity = nimcp_clamp_f(1.0f + (1.0f - metabolic_cap) * 0.3f, min_cap, 1.3f);
+        bridge->effects.intensity_capacity = nimcp_clampf(1.0f + (1.0f - metabolic_cap) * 0.3f, min_cap, 1.3f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.intensity_capacity +

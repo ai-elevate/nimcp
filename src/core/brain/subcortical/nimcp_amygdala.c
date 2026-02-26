@@ -24,6 +24,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(amygdala, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -31,24 +32,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(amygdala, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to [0, 1] range
- */
-static inline float clamp01(float val) {
-    if (val < 0.0f) return 0.0f;
-    if (val > 1.0f) return 1.0f;
-    return val;
-}
-
-/**
- * @brief Clamp value to [-1, 1] range
- */
-static inline float clamp_neg1_1(float val) {
-    if (val < -1.0f) return -1.0f;
-    if (val > 1.0f) return 1.0f;
-    return val;
-}
 
 /**
  * @brief Compute cosine similarity between feature vectors
@@ -144,7 +127,7 @@ static void update_nucleus_activation(amyg_nucleus_t* nucleus,
 
     /* Activation dynamics (simple exponential approach) */
     float tau = AMYG_ACTIVATION_TAU_MS;
-    float target = clamp01(nucleus->baseline + modulated_input);
+    float target = nimcp_clamp01(nucleus->baseline + modulated_input);
 
     /* P2 fix: Validate dt_ms to prevent NaN/Inf from expf */
     if (dt_ms <= 0.0f || dt_ms > 10000.0f) {
@@ -161,7 +144,7 @@ static void update_nucleus_activation(amyg_nucleus_t* nucleus,
     if (isnan(new_activation) || isinf(new_activation)) {
         new_activation = nucleus->baseline;  /* Reset to baseline if corrupted */
     }
-    nucleus->activation = clamp01(new_activation);
+    nucleus->activation = nimcp_clamp01(new_activation);
 }
 
 /**
@@ -465,7 +448,7 @@ int amygdala_process_stimulus(amygdala_t* amyg,
         amyg->total_fear_events++;
 
         /* Increase background anxiety */
-        amyg->current_anxiety_level = clamp01(amyg->current_anxiety_level + AMYG_ANXIETY_INCREMENT);
+        amyg->current_anxiety_level = nimcp_clamp01(amyg->current_anxiety_level + AMYG_ANXIETY_INCREMENT);
     }
 
     /* Prepare response */
@@ -476,11 +459,11 @@ int amygdala_process_stimulus(amygdala_t* amyg,
     amyg->last_response.memory_match_score = max_match_score;
 
     /* Set output activations */
-    amyg->last_response.outputs[AMYG_OUTPUT_FREEZING] = clamp01(cea_output * AMYG_OUTPUT_FREEZING_MULT);
-    amyg->last_response.outputs[AMYG_OUTPUT_STARTLE] = clamp01(cea_output * AMYG_OUTPUT_STARTLE_MULT);
-    amyg->last_response.outputs[AMYG_OUTPUT_AUTONOMIC] = clamp01(cea_output * AMYG_OUTPUT_AUTONOMIC_MULT);
-    amyg->last_response.outputs[AMYG_OUTPUT_HORMONAL] = clamp01(cea_output * AMYG_OUTPUT_HORMONAL_MULT);
-    amyg->last_response.outputs[AMYG_OUTPUT_ATTENTION] = clamp01(cea_output * AMYG_OUTPUT_ATTENTION_MULT);
+    amyg->last_response.outputs[AMYG_OUTPUT_FREEZING] = nimcp_clamp01(cea_output * AMYG_OUTPUT_FREEZING_MULT);
+    amyg->last_response.outputs[AMYG_OUTPUT_STARTLE] = nimcp_clamp01(cea_output * AMYG_OUTPUT_STARTLE_MULT);
+    amyg->last_response.outputs[AMYG_OUTPUT_AUTONOMIC] = nimcp_clamp01(cea_output * AMYG_OUTPUT_AUTONOMIC_MULT);
+    amyg->last_response.outputs[AMYG_OUTPUT_HORMONAL] = nimcp_clamp01(cea_output * AMYG_OUTPUT_HORMONAL_MULT);
+    amyg->last_response.outputs[AMYG_OUTPUT_ATTENTION] = nimcp_clamp01(cea_output * AMYG_OUTPUT_ATTENTION_MULT);
 
     if (response) {
         *response = amyg->last_response;
@@ -507,12 +490,12 @@ int amygdala_step(amygdala_t* amyg, float dt_ms) {
         float decay = amyg->config.activation_decay_rate * dt_ms / 1000.0f;
         float diff = amyg->nuclei[i].activation - amyg->nuclei[i].baseline;
         amyg->nuclei[i].activation -= diff * decay;
-        amyg->nuclei[i].activation = clamp01(amyg->nuclei[i].activation);
+        amyg->nuclei[i].activation = nimcp_clamp01(amyg->nuclei[i].activation);
     }
 
     /* Decay anxiety */
     amyg->current_anxiety_level -= amyg->config.anxiety_decay_rate * dt_ms / 1000.0f;
-    amyg->current_anxiety_level = clamp01(amyg->current_anxiety_level);
+    amyg->current_anxiety_level = nimcp_clamp01(amyg->current_anxiety_level);
 
     /* Update fear level from CeA */
     amyg->current_fear_level = amyg->nuclei[AMYG_NUCLEUS_CENTRAL].activation;
@@ -592,7 +575,7 @@ int amygdala_condition_fear(amygdala_t* amyg,
 
         /* Strengthen association */
         float delta = amyg->config.conditioning_rate * us->intensity;
-        mem->association_strength = clamp01(mem->association_strength + delta);
+        mem->association_strength = nimcp_clamp01(mem->association_strength + delta);
         mem->us = *us;
         mem->phase = AMYG_PHASE_ACQUISITION;
         mem->last_retrieval_ms = amyg->current_time_ms;
@@ -631,9 +614,9 @@ int amygdala_condition_fear(amygdala_t* amyg,
 
     /* Boost LA and CeA activation for US */
     amyg->nuclei[AMYG_NUCLEUS_LATERAL].activation =
-        clamp01(amyg->nuclei[AMYG_NUCLEUS_LATERAL].activation + us->intensity * AMYG_US_LA_BOOST);
+        nimcp_clamp01(amyg->nuclei[AMYG_NUCLEUS_LATERAL].activation + us->intensity * AMYG_US_LA_BOOST);
     amyg->nuclei[AMYG_NUCLEUS_CENTRAL].activation =
-        clamp01(amyg->nuclei[AMYG_NUCLEUS_CENTRAL].activation + us->intensity * AMYG_US_CEA_BOOST);
+        nimcp_clamp01(amyg->nuclei[AMYG_NUCLEUS_CENTRAL].activation + us->intensity * AMYG_US_CEA_BOOST);
 
     nimcp_mutex_unlock(amyg->mutex);
 
@@ -666,7 +649,7 @@ int amygdala_extinction_trial(amygdala_t* amyg,
             /* PFC inhibition enhances extinction */
             delta *= (1.0f + amyg->prefrontal_inhibition);
 
-            mem->extinction_strength = clamp01(mem->extinction_strength + delta);
+            mem->extinction_strength = nimcp_clamp01(mem->extinction_strength + delta);
             mem->phase = AMYG_PHASE_EXTINCTION;
             mem->last_retrieval_ms = amyg->current_time_ms;
             mem->retrieval_count++;
@@ -834,7 +817,7 @@ int amygdala_set_prefrontal_inhibition(amygdala_t* amyg, float inhibition) {
     NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
-    amyg->prefrontal_inhibition = clamp01(inhibition);
+    amyg->prefrontal_inhibition = nimcp_clamp01(inhibition);
     nimcp_mutex_unlock(amyg->mutex);
 
     return 0;
@@ -849,9 +832,9 @@ int amygdala_set_neuromodulators(amygdala_t* amyg,
     nimcp_mutex_lock(amyg->mutex);
 
     for (int i = 0; i < AMYG_NUCLEUS_COUNT; i++) {
-        amyg->nuclei[i].dopamine_level = clamp01(dopamine);
-        amyg->nuclei[i].norepinephrine_level = clamp01(norepinephrine);
-        amyg->nuclei[i].cortisol_level = clamp01(cortisol);
+        amyg->nuclei[i].dopamine_level = nimcp_clamp01(dopamine);
+        amyg->nuclei[i].norepinephrine_level = nimcp_clamp01(norepinephrine);
+        amyg->nuclei[i].cortisol_level = nimcp_clamp01(cortisol);
     }
 
     nimcp_mutex_unlock(amyg->mutex);
@@ -863,7 +846,7 @@ int amygdala_set_anxiety(amygdala_t* amyg, float anxiety) {
     NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
-    amyg->current_anxiety_level = clamp01(anxiety);
+    amyg->current_anxiety_level = nimcp_clamp01(anxiety);
     nimcp_mutex_unlock(amyg->mutex);
 
     return 0;
@@ -894,7 +877,7 @@ int amygdala_set_nucleus_activation(amygdala_t* amyg,
     NIMCP_CHECK_THROW(nucleus < AMYG_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     nimcp_mutex_lock(amyg->mutex);
-    amyg->nuclei[nucleus].activation = clamp01(activation);
+    amyg->nuclei[nucleus].activation = nimcp_clamp01(activation);
     nimcp_mutex_unlock(amyg->mutex);
 
     return 0;
@@ -1011,7 +994,7 @@ int amygdala_sync_to_emotion_system(amygdala_t* amyg) {
     float valence = -fear; /* More fear = more negative */
 
     /* Arousal: combination of fear (acute) and anxiety (chronic) */
-    float arousal = clamp01(fear * AMYG_AROUSAL_FEAR_WEIGHT +
+    float arousal = nimcp_clamp01(fear * AMYG_AROUSAL_FEAR_WEIGHT +
                             anxiety * AMYG_AROUSAL_ANXIETY_WEIGHT);
 
     /* Update emotional system */
@@ -1033,13 +1016,13 @@ int amygdala_sync_from_emotion_system(amygdala_t* amyg) {
 
     /* If emotional system is in self-regulation, increase PFC inhibition */
     if (state.in_self_regulation) {
-        amyg->prefrontal_inhibition = clamp01(amyg->prefrontal_inhibition +
+        amyg->prefrontal_inhibition = nimcp_clamp01(amyg->prefrontal_inhibition +
                                                AMYG_PFC_REGULATION_INCREMENT);
     }
 
     /* Emotional stability reduces anxiety */
     if (state.emotional_stability > AMYG_EMOTIONAL_STABILITY_THRESH) {
-        amyg->current_anxiety_level = clamp01(amyg->current_anxiety_level -
+        amyg->current_anxiety_level = nimcp_clamp01(amyg->current_anxiety_level -
                                                AMYG_EMOTIONAL_ANXIETY_DECR);
     }
 
@@ -1096,7 +1079,7 @@ int amygdala_set_fear_level(amygdala_t* amyg, float fear) {
     NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
-    amyg->current_fear_level = clamp01(fear);
+    amyg->current_fear_level = nimcp_clamp01(fear);
     /* Update threat level based on fear */
     amyg->current_threat = intensity_to_threat(amyg->current_fear_level);
     nimcp_mutex_unlock(amyg->mutex);

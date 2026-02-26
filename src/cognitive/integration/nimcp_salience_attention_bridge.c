@@ -34,6 +34,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(salience_attention_bridge)
 //=============================================================================
@@ -144,15 +145,6 @@ static uint64_t get_timestamp_ms(void) {
         return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
     }
     return 0;
-}
-
-/**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /* ============================================================================
@@ -877,7 +869,7 @@ int salience_attention_publish_salience_detection(
     /* Create payload */
     salience_detection_payload_t payload;
     payload.item = *item;
-    payload.item.salience_score = clamp_float(score, 0.0f, 1.0f);
+    payload.item.salience_score = nimcp_clampf(score, 0.0f, 1.0f);
     payload.captured_attention = (score >= threshold);
 
     /* Create event data */
@@ -945,7 +937,7 @@ int salience_attention_request_attention_shift(
     /* Create payload */
     attention_shift_payload_t payload;
     payload.target = *target;
-    payload.shift_weight = clamp_float(shift_weight, 0.0f, 1.0f);
+    payload.shift_weight = nimcp_clampf(shift_weight, 0.0f, 1.0f);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -1266,7 +1258,7 @@ int salience_attention_bridge_set_threshold(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->config.salience_threshold = clamp_float(threshold, 0.0f, 1.0f);
+    bridge->config.salience_threshold = nimcp_clampf(threshold, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
@@ -1286,7 +1278,7 @@ int salience_attention_bridge_set_shift_weight(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->config.attention_shift_weight = clamp_float(weight, 0.0f, 1.0f);
+    bridge->config.attention_shift_weight = nimcp_clampf(weight, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;

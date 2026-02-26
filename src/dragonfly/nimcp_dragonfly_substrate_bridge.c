@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_substrate_bridge)
 
@@ -54,16 +55,6 @@ struct dragonfly_substrate_bridge_s {
     /* Statistics */
     substrate_bridge_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp_f(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-}
 
 static void update_modulation(dragonfly_substrate_bridge_t* bridge) {
     float energy = bridge->current_energy;
@@ -391,7 +382,7 @@ int dragonfly_substrate_record_prediction(
     }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
-    complexity = clamp_f(complexity, 0.0f, 1.0f);
+    complexity = nimcp_clampf(complexity, 0.0f, 1.0f);
     float cost = bridge->config.costs.prediction_step * (0.5f + 0.5f * complexity);
     consume_energy(bridge, cost);
     bridge->stats.prediction_steps++;
@@ -409,7 +400,7 @@ int dragonfly_substrate_record_intercept_calc(
     }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
-    nav_complexity = clamp_f(nav_complexity, 0.0f, 1.0f);
+    nav_complexity = nimcp_clampf(nav_complexity, 0.0f, 1.0f);
     float cost = bridge->config.costs.intercept_calc * (0.5f + 0.5f * nav_complexity);
     consume_energy(bridge, cost);
     bridge->stats.intercept_calcs++;
@@ -440,7 +431,7 @@ int dragonfly_substrate_record_pursuit(
     }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
     float cost = bridge->config.costs.pursuit_flight * intensity;
     consume_energy(bridge, cost);
     bridge->stats.pursuit_steps++;

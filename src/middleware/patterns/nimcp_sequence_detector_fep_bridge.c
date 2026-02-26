@@ -16,14 +16,9 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sequence_detector_fep_bridge)
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 int sequence_detector_fep_bridge_default_config(
     sequence_detector_fep_config_t* config
@@ -274,7 +269,7 @@ int sequence_detector_fep_report_replay(
     /* Replay contributes to consolidation */
     float consolidation_increment = replay->strength * 0.1f;
     bridge->state.replay_consolidation_progress += consolidation_increment;
-    bridge->state.replay_consolidation_progress = clamp_f(
+    bridge->state.replay_consolidation_progress = nimcp_clampf(
         bridge->state.replay_consolidation_progress, 0.0f, 1.0f);
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);

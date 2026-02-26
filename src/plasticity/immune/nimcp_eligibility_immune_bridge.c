@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eligibility_immune_bridge)
 
@@ -32,19 +33,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(eligibility_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation level from immune system
@@ -262,21 +250,21 @@ int eligibility_immune_apply_cytokine_effects(eligibility_immune_bridge_t* bridg
     float proinflam_total = fabsf(effects->il1_trace_shortening) +
                            fabsf(effects->il6_trace_shortening) +
                            fabsf(effects->tnf_trace_shortening);
-    effects->learning_rate_modifier = clamp_f(1.0f - (proinflam_total * 0.5f), 0.5f, 1.0f);
+    effects->learning_rate_modifier = nimcp_clampf(1.0f - (proinflam_total * 0.5f), 0.5f, 1.0f);
 
     /* Consolidation impairment from cytokines */
-    effects->consolidation_impairment = clamp_f(proinflam_total * 0.6f, 0.0f, 0.8f);
+    effects->consolidation_impairment = nimcp_clampf(proinflam_total * 0.6f, 0.0f, 0.8f);
 
     /* Credit assignment window (shorter with inflammation) */
     effects->credit_assignment_window_ms = bridge->baseline_trace_window_ms *
         (1.0f + effects->total_decay_modifier);
-    effects->credit_assignment_window_ms = clamp_f(
+    effects->credit_assignment_window_ms = nimcp_clampf(
         effects->credit_assignment_window_ms, 50.0f, 1000.0f
     );
 
     /* Apply to eligibility config */
     float lambda_modifier = 1.0f + (effects->total_decay_modifier * 0.3f);
-    lambda_modifier = clamp_f(lambda_modifier, 0.6f, 1.0f);
+    lambda_modifier = nimcp_clampf(lambda_modifier, 0.6f, 1.0f);
     bridge->eligibility_config->decay_lambda = bridge->baseline_decay_lambda * lambda_modifier;
 
     float lr_modifier = effects->learning_rate_modifier;
@@ -322,16 +310,16 @@ int eligibility_immune_apply_inflammation_effects(eligibility_immune_bridge_t* b
 
     /* Distal reward impairment (chronic inflammation worse) */
     float inflammation_intensity = (float)state->current_level / (float)INFLAMMATION_STORM;
-    state->distal_reward_impairment = clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
+    state->distal_reward_impairment = nimcp_clampf(inflammation_intensity * 0.8f, 0.0f, 1.0f);
     if (state->is_chronic) {
-        state->distal_reward_impairment = clamp_f(
+        state->distal_reward_impairment = nimcp_clampf(
             state->distal_reward_impairment * 1.3f, 0.0f, 1.0f
         );
     }
 
     /* Dopamine system disruption */
-    state->dopamine_synthesis_reduction = clamp_f(inflammation_intensity * 0.7f, 0.0f, 0.9f);
-    state->burst_amplitude_reduction = clamp_f(inflammation_intensity * 0.6f, 0.0f, 0.8f);
+    state->dopamine_synthesis_reduction = nimcp_clampf(inflammation_intensity * 0.7f, 0.0f, 0.9f);
+    state->burst_amplitude_reduction = nimcp_clampf(inflammation_intensity * 0.6f, 0.0f, 0.8f);
 
     bridge->trace_shortenings++;
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
@@ -377,14 +365,14 @@ int eligibility_immune_restore_baseline(eligibility_immune_bridge_t* bridge) {
         float current_lambda = bridge->eligibility_config->decay_lambda;
         float target_lambda = bridge->baseline_decay_lambda;
         float lambda_step = (target_lambda - current_lambda) * il10_recovery * 0.2f;
-        bridge->eligibility_config->decay_lambda = clamp_f(
+        bridge->eligibility_config->decay_lambda = nimcp_clampf(
             current_lambda + lambda_step, 0.6f, target_lambda
         );
 
         float current_lr = bridge->eligibility_config->learning_rate;
         float target_lr = bridge->baseline_learning_rate;
         float lr_step = (target_lr - current_lr) * il10_recovery * 0.2f;
-        bridge->eligibility_config->learning_rate = clamp_f(
+        bridge->eligibility_config->learning_rate = nimcp_clampf(
             current_lr + lr_step, target_lr * 0.5f, target_lr
         );
     }
@@ -434,8 +422,8 @@ int eligibility_immune_detect_learning_failure(
     }
 
     /* Compute stress level */
-    float normalized_cum_reward = clamp_f(stress->cumulative_negative_reward / 10.0f, 0.0f, 1.0f);
-    float failure_factor = clamp_f(stress->consecutive_failures / 50.0f, 0.0f, 1.0f);
+    float normalized_cum_reward = nimcp_clampf(stress->cumulative_negative_reward / 10.0f, 0.0f, 1.0f);
+    float failure_factor = nimcp_clampf(stress->consecutive_failures / 50.0f, 0.0f, 1.0f);
     stress->stress_level = (normalized_cum_reward * 0.6f) + (failure_factor * 0.4f);
 
     /* Trigger immune if stress exceeds threshold */
@@ -478,7 +466,7 @@ int eligibility_immune_monitor_consolidation(
         /* Frustration increases with unconsolidated traces */
         if (num_active_traces > 10) {
             stress->consolidation_frustration += 0.01f;
-            stress->consolidation_frustration = clamp_f(
+            stress->consolidation_frustration = nimcp_clampf(
                 stress->consolidation_frustration, 0.0f, 1.0f
             );
         }

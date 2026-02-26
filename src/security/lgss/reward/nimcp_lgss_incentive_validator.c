@@ -16,6 +16,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lgss_incentive_validator, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -32,15 +33,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(lgss_incentive_validator, MESH_ADAPTER_CATEGORY_SEC
 static uint64_t get_timestamp_us(void) {
     static uint64_t counter = 0;
     return counter++;
-}
-
-/**
- * @brief Clamp value to range
- */
-static float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -482,7 +474,7 @@ int incentive_validator_compute_harm(
     /* Domain-based adjustments */
     if (is_restricted_domain(proposal->domain)) {
         *p_harm *= 1.5f;  /* Increase for restricted domains */
-        *p_harm = clampf(*p_harm, 0.0f, 1.0f);
+        *p_harm = nimcp_clampf(*p_harm, 0.0f, 1.0f);
     }
 
     return 0;
@@ -535,8 +527,8 @@ int incentive_validator_set_domain_auth(
     }
 
     validator->domains[domain].authorized = authorized;
-    validator->domains[domain].max_salience = clampf(max_salience, 0.0f, 1.0f);
-    validator->domains[domain].harm_threshold = clampf(harm_threshold, 0.0f, 1.0f);
+    validator->domains[domain].max_salience = nimcp_clampf(max_salience, 0.0f, 1.0f);
+    validator->domains[domain].harm_threshold = nimcp_clampf(harm_threshold, 0.0f, 1.0f);
 
     return 0;
 }
@@ -736,7 +728,7 @@ void incentive_proposal_init(
                 sizeof(proposal->goal_description) - 1);
     }
 
-    proposal->incentive_salience = clampf(salience, 0.0f, 1.0f);
+    proposal->incentive_salience = nimcp_clampf(salience, 0.0f, 1.0f);
     proposal->domain = domain;
     proposal->urgency = 0.0f;
     proposal->effort_required = 0.5f;

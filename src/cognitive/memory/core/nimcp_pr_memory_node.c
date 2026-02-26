@@ -33,6 +33,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(pr_memory_node, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -96,15 +97,6 @@ static uint64_t get_current_time_ms(void) {
 }
 
 /**
- * @brief Clamp float to range [min, max]
- */
-static inline float clampf(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
-/**
  * @brief Check if float is NaN
  */
 static inline bool is_nan(float x) {
@@ -156,12 +148,12 @@ static void init_node_state(pr_memory_node_t* node, const pr_node_config_t* conf
 
     // Initialize quaternion state
     node->state.w = config->initial_strength;  // Consolidation = initial strength
-    node->state.x = clampf(config->emotional_valence, -1.0f, 1.0f);
-    node->state.y = clampf(config->salience, 0.0f, 1.0f);
-    node->state.z = clampf(config->accessibility, 0.0f, 1.0f);
+    node->state.x = nimcp_clampf(config->emotional_valence, -1.0f, 1.0f);
+    node->state.y = nimcp_clampf(config->salience, 0.0f, 1.0f);
+    node->state.z = nimcp_clampf(config->accessibility, 0.0f, 1.0f);
 
     // Initialize consolidation state
-    node->current_strength = clampf(config->initial_strength, 0.0f, 1.0f);
+    node->current_strength = nimcp_clampf(config->initial_strength, 0.0f, 1.0f);
     node->promotion_eligibility = 0.0f;
 
     // Initialize temporal info
@@ -628,10 +620,10 @@ pr_node_error_t pr_memory_node_update_state(
     pr_memory_node_heartbeat("pr_memory_no_update_state", 0.0f);
 
 
-    node->state.w = clampf(state.w, 0.0f, 1.0f);        // Consolidation
-    node->state.x = clampf(state.x, -1.0f, 1.0f);      // Emotion
-    node->state.y = clampf(state.y, 0.0f, 1.0f);       // Salience
-    node->state.z = clampf(state.z, 0.0f, 1.0f);       // Accessibility
+    node->state.w = nimcp_clampf(state.w, 0.0f, 1.0f);        // Consolidation
+    node->state.x = nimcp_clampf(state.x, -1.0f, 1.0f);      // Emotion
+    node->state.y = nimcp_clampf(state.y, 0.0f, 1.0f);       // Salience
+    node->state.z = nimcp_clampf(state.z, 0.0f, 1.0f);       // Accessibility
 
     // Sync consolidation with current_strength
     node->current_strength = node->state.w;
@@ -663,7 +655,7 @@ pr_node_error_t pr_memory_node_blend_state(
     pr_memory_node_heartbeat("pr_memory_no_blend_state", 0.0f);
 
 
-    t = clampf(t, 0.0f, 1.0f);
+    t = nimcp_clampf(t, 0.0f, 1.0f);
 
     // Use SLERP for smooth blending
     node->state = quat_slerp(node->state, other, t);
@@ -687,20 +679,20 @@ pr_node_error_t pr_memory_node_update_state_components(
 
     // Only update components that are not NaN
     if (!is_nan(consolidation)) {
-        node->state.w = clampf(consolidation, 0.0f, 1.0f);
+        node->state.w = nimcp_clampf(consolidation, 0.0f, 1.0f);
         node->current_strength = node->state.w;
     }
 
     if (!is_nan(emotion)) {
-        node->state.x = clampf(emotion, -1.0f, 1.0f);
+        node->state.x = nimcp_clampf(emotion, -1.0f, 1.0f);
     }
 
     if (!is_nan(salience)) {
-        node->state.y = clampf(salience, 0.0f, 1.0f);
+        node->state.y = nimcp_clampf(salience, 0.0f, 1.0f);
     }
 
     if (!is_nan(accessibility)) {
-        node->state.z = clampf(accessibility, 0.0f, 1.0f);
+        node->state.z = nimcp_clampf(accessibility, 0.0f, 1.0f);
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -952,7 +944,7 @@ float pr_memory_node_apply_decay(pr_memory_node_t* node, float elapsed_seconds) 
     node->current_strength *= decay_factor;
 
     // Clamp to valid range
-    node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+    node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
 
     // Sync with quaternion consolidation component
     node->state.w = node->current_strength;
@@ -973,15 +965,15 @@ float pr_memory_node_reinforce(pr_memory_node_t* node, float reinforcement) {
     pr_memory_node_heartbeat("pr_memory_no_reinforce", 0.0f);
 
 
-    node->current_strength += clampf(reinforcement, 0.0f, 1.0f);
-    node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
+    node->current_strength += nimcp_clampf(reinforcement, 0.0f, 1.0f);
+    node->current_strength = nimcp_clampf(node->current_strength, 0.0f, 1.0f);
 
     // Sync with quaternion
     node->state.w = node->current_strength;
 
     // Boost promotion eligibility based on reinforcement
     node->promotion_eligibility += reinforcement * 0.1f;
-    node->promotion_eligibility = clampf(
+    node->promotion_eligibility = nimcp_clampf(
         node->promotion_eligibility,
         PR_NODE_MIN_PROMOTION_ELIGIBILITY,
         PR_NODE_MAX_PROMOTION_ELIGIBILITY
@@ -1031,11 +1023,11 @@ float pr_memory_node_update_eligibility(
     pr_memory_node_heartbeat("pr_memory_no_update_eligibility", 0.0f);
 
 
-    float boost = clampf(access_boost, 0.0f, 1.0f) * clampf(time_factor, 0.0f, 1.0f);
+    float boost = nimcp_clampf(access_boost, 0.0f, 1.0f) * nimcp_clampf(time_factor, 0.0f, 1.0f);
 
     // Update eligibility with gradual increase
     node->promotion_eligibility += boost * 0.05f;
-    node->promotion_eligibility = clampf(
+    node->promotion_eligibility = nimcp_clampf(
         node->promotion_eligibility,
         PR_NODE_MIN_PROMOTION_ELIGIBILITY,
         PR_NODE_MAX_PROMOTION_ELIGIBILITY
@@ -1653,12 +1645,12 @@ float pr_memory_node_resonance(
     float state_distance = quat_geodesic_distance(node1->state, node2->state);
     // Convert distance to similarity (distance 0 = similarity 1, distance pi = similarity 0)
     float state_similarity = 1.0f - (state_distance / (float)M_PI);
-    state_similarity = clampf(state_similarity, 0.0f, 1.0f);
+    state_similarity = nimcp_clampf(state_similarity, 0.0f, 1.0f);
 
     // Combine weighted scores
     float resonance = sig_w * sig_similarity + state_w * state_similarity;
 
-    return clampf(resonance, 0.0f, 1.0f);
+    return nimcp_clampf(resonance, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -1738,10 +1730,10 @@ int pr_memory_node_training_step(void* instance, float progress) {
             if (node) {
                 /* Gradually strengthen nodes during training via reinforcement */
                 float boost = 0.001f * progress;
-                node->current_strength = clampf(
+                node->current_strength = nimcp_clampf(
                     node->current_strength + boost, 0.0f, 1.0f);
                 /* Update quaternion consolidation component */
-                node->state.w = clampf(
+                node->state.w = nimcp_clampf(
                     node->state.w + boost * 0.5f, 0.0f, 1.0f);
             }
         }

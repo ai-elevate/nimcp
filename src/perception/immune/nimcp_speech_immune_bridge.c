@@ -20,25 +20,13 @@
 #include <math.h>
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(speech_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation duration from immune system
@@ -252,16 +240,16 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
 
     /* Compute individual cytokine effects */
     bridge->cytokine_effects.il1_fluency_reduction =
-        clamp_f(il1_level * CYTOKINE_IL1_FLUENCY_IMPACT, -1.0f, 0.0f);
+        nimcp_clampf(il1_level * CYTOKINE_IL1_FLUENCY_IMPACT, -1.0f, 0.0f);
     bridge->cytokine_effects.il6_word_retrieval_delay =
-        clamp_f(il6_level * CYTOKINE_IL6_FLUENCY_IMPACT, -1.0f, 0.0f);
+        nimcp_clampf(il6_level * CYTOKINE_IL6_FLUENCY_IMPACT, -1.0f, 0.0f);
     bridge->cytokine_effects.tnf_phoneme_discrimination =
-        clamp_f(tnf_level * CYTOKINE_TNF_FLUENCY_IMPACT, -1.0f, 0.0f);
+        nimcp_clampf(tnf_level * CYTOKINE_TNF_FLUENCY_IMPACT, -1.0f, 0.0f);
     bridge->cytokine_effects.ifn_gamma_prosody_reduction =
-        clamp_f(ifn_gamma_level * CYTOKINE_IFN_GAMMA_FLUENCY_IMPACT, -1.0f, 0.0f);
+        nimcp_clampf(ifn_gamma_level * CYTOKINE_IFN_GAMMA_FLUENCY_IMPACT, -1.0f, 0.0f);
 
     /* Compute aggregate effects */
-    bridge->cytokine_effects.total_fluency_impairment = clamp_f(
+    bridge->cytokine_effects.total_fluency_impairment = nimcp_clampf(
         -(bridge->cytokine_effects.il1_fluency_reduction +
           bridge->cytokine_effects.il6_word_retrieval_delay +
           bridge->cytokine_effects.tnf_phoneme_discrimination),
@@ -274,7 +262,7 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
 
     /* TNF-α increases phoneme errors */
     bridge->cytokine_effects.phoneme_error_rate =
-        clamp_f(tnf_level * 0.3f, 0.0f, 0.3f);
+        nimcp_clampf(tnf_level * 0.3f, 0.0f, 0.3f);
 
     /* Speech rate reduction from overall cytokine burden */
     bridge->cytokine_effects.speech_rate_reduction =
@@ -282,7 +270,7 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
 
     /* Prosody flattening */
     bridge->cytokine_effects.prosody_flattening =
-        clamp_f(-bridge->cytokine_effects.ifn_gamma_prosody_reduction, 0.0f, 0.8f);
+        nimcp_clampf(-bridge->cytokine_effects.ifn_gamma_prosody_reduction, 0.0f, 0.8f);
 
     bridge->cytokine_modulations++;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -329,7 +317,7 @@ int speech_immune_apply_inflammation_effects(speech_immune_bridge_t* bridge) {
     /* Chronic inflammation amplifies effects */
     if (bridge->inflammation_state.is_chronic) {
         inflammation_factor *= 1.3f;
-        inflammation_factor = clamp_f(inflammation_factor, 0.0f, 1.0f);
+        inflammation_factor = nimcp_clampf(inflammation_factor, 0.0f, 1.0f);
     }
 
     /* Compute speech impacts */
@@ -369,7 +357,7 @@ float speech_immune_compute_impairment(const speech_immune_bridge_t* bridge) {
 
     /* Take maximum (not additive to avoid over-impairment) */
     float total_impairment = fmaxf(cytokine_impairment, inflammation_impairment);
-    return clamp_f(total_impairment, 0.0f, 1.0f);
+    return nimcp_clampf(total_impairment, 0.0f, 1.0f);
 }
 
 float speech_immune_get_retrieval_latency_increase(
@@ -388,7 +376,7 @@ float speech_immune_get_phoneme_error_rate(
     float cytokine_errors = bridge->cytokine_effects.phoneme_error_rate;
     float inflammation_errors = bridge->inflammation_state.phonological_error_rate;
 
-    return clamp_f(cytokine_errors + inflammation_errors, 0.0f, 0.5f);
+    return nimcp_clampf(cytokine_errors + inflammation_errors, 0.0f, 0.5f);
 }
 
 float speech_immune_get_speech_rate_factor(
@@ -398,7 +386,7 @@ float speech_immune_get_speech_rate_factor(
 
     /* Speech rate multiplier (1.0 = normal, 0.5 = half speed) */
     float reduction = bridge->cytokine_effects.speech_rate_reduction;
-    return clamp_f(1.0f - reduction, 0.3f, 1.0f);  /* Min 30% of normal speed */
+    return nimcp_clampf(1.0f - reduction, 0.3f, 1.0f);  /* Min 30% of normal speed */
 }
 
 /* ============================================================================
@@ -580,7 +568,7 @@ int speech_immune_bridge_update(
     bridge->speech_trigger.error_rate = error_rate;
     bridge->speech_trigger.speech_effort_level = error_rate * 1.5f;
     bridge->speech_trigger.frustration_level =
-        clamp_f(error_rate * 2.0f, 0.0f, 1.0f);
+        nimcp_clampf(error_rate * 2.0f, 0.0f, 1.0f);
 
     /* Trigger immune from high effort if threshold exceeded */
     speech_immune_trigger_from_effort(bridge);

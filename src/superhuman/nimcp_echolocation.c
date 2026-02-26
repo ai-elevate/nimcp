@@ -33,6 +33,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_neural_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(echolocation)
 
@@ -111,17 +112,6 @@ struct echolocation_system {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow
- * HOW:  Return min/max if out of bounds
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Get current time in milliseconds
@@ -325,7 +315,7 @@ static float itd_to_azimuth(float itd, float ear_separation) {
 
     /* ITD = (d * sin(theta)) / c */
     float sin_theta = (itd * ECHOLOCATION_SPEED_OF_SOUND) / ear_separation;
-    sin_theta = clamp_f(sin_theta, -1.0f, 1.0f);
+    sin_theta = nimcp_clampf(sin_theta, -1.0f, 1.0f);
 
     return asinf(sin_theta);
 }
@@ -971,7 +961,7 @@ int echolocation_detect_echoes(echolocation_system_t* system,
         echo->time_delay_us = time_delay_us;
         echo->range = range;
         echo->amplitude = system->correlation_buffer[idx];
-        echo->confidence = clamp_f(echo->amplitude / (system->state.ambient_noise_level + 0.001f) / 10.0f,
+        echo->confidence = nimcp_clampf(echo->amplitude / (system->state.ambient_noise_level + 0.001f) / 10.0f,
                                    0.0f, 1.0f);
 
         /* Direction from binaural processing */
@@ -1252,7 +1242,7 @@ int echolocation_track_objects(echolocation_system_t* system,
 
             /* Update position */
             best_track->object.position = obj->position;
-            best_track->object.confidence = clamp_f(best_track->object.confidence + 0.2f, 0.0f, 1.0f);
+            best_track->object.confidence = nimcp_clampf(best_track->object.confidence + 0.2f, 0.0f, 1.0f);
             best_track->object.frames_tracked++;
 
             /* Predict next position */
@@ -1329,7 +1319,7 @@ int echolocation_update_map(echolocation_system_t* system,
             float likelihood = obj->confidence;
             float posterior = (likelihood * prior) /
                               ((likelihood * prior) + (1.0f - likelihood) * (1.0f - prior) + 0.001f);
-            cell->occupancy = clamp_f(posterior, 0.0f, 1.0f);
+            cell->occupancy = nimcp_clampf(posterior, 0.0f, 1.0f);
             cell->material = obj->material;
             cell->observation_count++;
             cell->last_update_time = (float)get_time_ms();

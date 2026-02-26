@@ -44,6 +44,7 @@
 #include <pthread.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cognitive_training_bridge)
 
@@ -148,19 +149,6 @@ struct cognitive_training_bridge {
 /*=============================================================================
  * HELPER FUNCTIONS
  *============================================================================*/
-
-/**
- * @brief Clamp float value to range
- *
- * WHAT: Limits value between min and max
- * WHY:  Prevent extreme modulation factors
- * HOW:  Returns min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Extract cognitive state from modules
@@ -338,7 +326,7 @@ static float compute_lr_modulation(
     }
 
     /* Clamp to safety bounds */
-    return clamp_f(lr_factor, COGNITIVE_LR_FACTOR_MIN, COGNITIVE_LR_FACTOR_MAX);
+    return nimcp_clampf(lr_factor, COGNITIVE_LR_FACTOR_MIN, COGNITIVE_LR_FACTOR_MAX);
 }
 
 /**
@@ -368,7 +356,7 @@ static float compute_batch_modulation(
     }
 
     /* Clamp to safety bounds */
-    return clamp_f(batch_factor, COGNITIVE_BATCH_FACTOR_MIN, COGNITIVE_BATCH_FACTOR_MAX);
+    return nimcp_clampf(batch_factor, COGNITIVE_BATCH_FACTOR_MIN, COGNITIVE_BATCH_FACTOR_MAX);
 }
 
 /**
@@ -400,7 +388,7 @@ static int signal_training_feedback(
         /* Signal satisfaction to emotion module: positive valence, moderate arousal */
         if (bridge->emotion && bridge->config.enable_emotion) {
             float improvement_ratio = -loss_delta / (prev_loss + 1e-10f);
-            float satisfaction = clamp_f(improvement_ratio * 2.0f, 0.1f, 1.0f);
+            float satisfaction = nimcp_clampf(improvement_ratio * 2.0f, 0.1f, 1.0f);
             bridge->cognitive_effects.emotional_valence = satisfaction;
             bridge->cognitive_effects.emotional_arousal = 0.5f + satisfaction * 0.3f;
             bridge->cognitive_effects.stress_level = 0.0f;
@@ -417,7 +405,7 @@ static int signal_training_feedback(
         if (bridge->stagnation_count >= COGNITIVE_STAGNATION_THRESHOLD) {
             /* Signal frustration to emotion module: negative valence, high arousal */
             if (bridge->emotion && bridge->config.enable_emotion) {
-                float severity = clamp_f(
+                float severity = nimcp_clampf(
                     (float)(bridge->stagnation_count - COGNITIVE_STAGNATION_THRESHOLD) /
                     (float)COGNITIVE_STAGNATION_THRESHOLD, 0.0f, 1.0f);
                 float frustration = 0.3f + severity * 0.5f;

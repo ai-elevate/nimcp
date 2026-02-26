@@ -43,6 +43,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_region_predictive, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -80,13 +81,6 @@ static inline bool has_predictive_extension(brain_region_t* region) {
  */
 static inline bool validate_buffer_size(brain_region_t* region, uint32_t buffer_size) {
     return region && buffer_size == region->total_neurons;
-}
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clamp_float(float value, float min_val, float max_val) {
-    return fminf(fmaxf(value, min_val), max_val);
 }
 
 /**
@@ -771,7 +765,7 @@ nimcp_result_t brain_region_set_precision(brain_region_t* region,
     if (precisions) {
         // Copy and clamp precisions
         for (uint32_t i = 0; i < precision_size; i++) {
-            pred->precision_weights[i] = clamp_float(precisions[i], 0.01f, 100.0f);
+            pred->precision_weights[i] = nimcp_clampf(precisions[i], 0.01f, 100.0f);
         }
     } else {
         // Reset to uniform precision
@@ -854,7 +848,7 @@ nimcp_result_t brain_region_learn_precisions(brain_region_t* region, float dt) {
                                           alpha * target_precision;
 
             // Clamp to valid range
-            pred->precision_weights[i] = clamp_float(pred->precision_weights[i], 0.01f, 100.0f);
+            pred->precision_weights[i] = nimcp_clampf(pred->precision_weights[i], 0.01f, 100.0f);
         }
     }
 

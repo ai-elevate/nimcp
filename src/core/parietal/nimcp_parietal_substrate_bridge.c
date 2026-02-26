@@ -10,6 +10,7 @@
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(parietal_substrate_bridge)
 
@@ -136,9 +137,9 @@ int parietal_substrate_bridge_update(parietal_substrate_bridge_t* bridge) {
      * and numerical processing quality.
      */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.spatial_attention = nimcp_clamp_f(
+        bridge->effects.spatial_attention = nimcp_clampf(
             atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.numerical_processing = nimcp_clamp_f(
+        bridge->effects.numerical_processing = nimcp_clampf(
             atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
@@ -147,9 +148,9 @@ int parietal_substrate_bridge_update(parietal_substrate_bridge_t* bridge) {
      * and body awareness.
      */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.sensory_integration = nimcp_clamp_f(
+        bridge->effects.sensory_integration = nimcp_clampf(
             metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.body_awareness = nimcp_clamp_f(
+        bridge->effects.body_awareness = nimcp_clampf(
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 

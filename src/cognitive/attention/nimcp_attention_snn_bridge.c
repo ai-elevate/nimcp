@@ -26,6 +26,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(attention_snn_bridge)
 //=============================================================================
@@ -127,14 +128,6 @@ struct attention_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(attention_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 static inline float sigmoid(float x) {
     return 1.0f / (1.0f + expf(-x));
@@ -605,7 +598,7 @@ int attention_snn_encode_weights(
                              (float)(h + 1) / (float)num_heads);
         }
 
-        float weight = clamp_f(attention_weights[h], 0.0f, 1.0f);
+        float weight = nimcp_clampf(attention_weights[h], 0.0f, 1.0f);
 
         /* WHAT: Store encoded weight for focus/sparsity calculation */
         /* WHY: get_focus_strength computes variance from attention_weights */
@@ -686,7 +679,7 @@ int attention_snn_encode_salience(
                              (float)(i + 1) / (float)n);
         }
 
-        float sal = clamp_f(salience[i], 0.0f, 1.0f);
+        float sal = nimcp_clampf(salience[i], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     sal * bridge->config.salience_gain *
                     (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -791,7 +784,7 @@ int attention_snn_encode_multihead(
 
                 /* Each head gets activity based on its contribution */
                 float head_weight = strength * (1.0f + 0.2f * sinf((float)h * 0.5f));
-                head_weight = clamp_f(head_weight, 0.0f, 1.0f);
+                head_weight = nimcp_clampf(head_weight, 0.0f, 1.0f);
 
                 float rate = bridge->config.baseline_rate_hz +
                             head_weight * bridge->config.encoding_gain *
@@ -908,7 +901,7 @@ int attention_snn_encode_gate(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_gate_mod = clamp_f(gate_signal, 0.0f, 1.0f);
+    bridge->current_gate_mod = nimcp_clampf(gate_signal, 0.0f, 1.0f);
     bridge->attention.gate_activation = bridge->current_gate_mod;
 
     /* The gate modulates the competition layer excitability */
@@ -1119,7 +1112,7 @@ int attention_snn_get_weights(
         } else {
             weights[h] = 0.5f;  /* All rates equal - use neutral weight */
         }
-        weights[h] = clamp_f(weights[h], 0.0f, 1.0f);
+        weights[h] = nimcp_clampf(weights[h], 0.0f, 1.0f);
     }
 
     switch (bridge->config.decoding) {
@@ -1158,7 +1151,7 @@ int attention_snn_get_weights(
 
                     float diff = fabsf(weights[h] - avg);
                     weights[h] = 1.0f - (diff / (avg + 0.001f));
-                    weights[h] = clamp_f(weights[h], 0.0f, 1.0f);
+                    weights[h] = nimcp_clampf(weights[h], 0.0f, 1.0f);
                 }
             }
             break;
@@ -1295,7 +1288,7 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
 
     /* Normalize variance to [0, 1] focus strength */
     float focus = sqrtf(variance) * 2.0f;  /* Scale factor */
-    focus = clamp_f(focus, 0.0f, 1.0f);
+    focus = nimcp_clampf(focus, 0.0f, 1.0f);
 
     bridge->attention.focus_strength = focus;
 
@@ -1574,7 +1567,7 @@ int attention_snn_modulate_by_arousal(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_arousal_mod = clamp_f(arousal_level, 0.1f, 2.0f);
+    bridge->current_arousal_mod = nimcp_clampf(arousal_level, 0.1f, 2.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1596,7 +1589,7 @@ int attention_snn_set_competition_strength(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_competition_strength = clamp_f(strength, 0.0f, 1.0f);
+    bridge->current_competition_strength = nimcp_clampf(strength, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1618,7 +1611,7 @@ int attention_snn_set_gate_modulation(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_gate_mod = clamp_f(gate_level, 0.0f, 1.0f);
+    bridge->current_gate_mod = nimcp_clampf(gate_level, 0.0f, 1.0f);
     bridge->attention.gate_activation = bridge->current_gate_mod;
 
     nimcp_mutex_unlock(bridge->base.mutex);

@@ -51,6 +51,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(collective_fep_bridge)
 //=============================================================================
@@ -185,15 +186,6 @@ static int ensure_initialized(void) {
 }
 
 /**
- * @brief Clamp float value to range [0, 1]
- */
-static float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
  * @brief Normalize phi value to [0, 1] range
  *
  * Phi can theoretically be unbounded, so we use a sigmoid-like transform.
@@ -294,7 +286,7 @@ static float compute_free_energy(
     /* Apply scale factor */
     free_energy *= cfg->free_energy_scale;
 
-    return clamp_01(free_energy);
+    return nimcp_clamp01(free_energy);
 }
 
 /**
@@ -331,7 +323,7 @@ static float compute_prediction_error(
     bridge->prev_sync = sync_quality;
     bridge->prev_consensus = consensus_level;
 
-    return clamp_01(prediction_error);
+    return nimcp_clamp01(prediction_error);
 }
 
 /**
@@ -353,7 +345,7 @@ static float compute_surprise(
     float ratio = prediction_error / threshold;
     float surprise = logf(ratio);
 
-    return clamp_01(surprise / 3.0f); /* Normalize to approx [0, 1] range */
+    return nimcp_clamp01(surprise / 3.0f); /* Normalize to approx [0, 1] range */
 }
 
 /* ============================================================================
@@ -683,9 +675,9 @@ int collective_cognition_fep_update_callback(void* handle) {
     /* Extract relevant metrics */
     float phi_raw = cog_state.phi.phi_total;
     float phi_normalized = normalize_phi(phi_raw);
-    float coherence = clamp_01(cog_state.hyperscanning.global_sync);
-    float sync_quality = clamp_01(cog_state.hyperscanning.gamma_binding);
-    float consensus_level = clamp_01(cog_state.we_mode.we_mode_strength);
+    float coherence = nimcp_clamp01(cog_state.hyperscanning.global_sync);
+    float sync_quality = nimcp_clamp01(cog_state.hyperscanning.gamma_binding);
+    float consensus_level = nimcp_clamp01(cog_state.we_mode.we_mode_strength);
 
     /* Compute free energy */
     float free_energy = compute_free_energy(

@@ -48,6 +48,7 @@
 
 #define LOG_MODULE "plasticity_stp"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stp)
 
@@ -113,21 +114,6 @@ static const char* PRESET_DESCRIPTIONS[] = {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range [0, 1]
- *
- * WHAT: Ensures state variables stay in valid range
- * WHY: Numerical errors can cause slight overshoots
- * HOW: Simple min/max clamping
- *
- * COMPLEXITY: O(1)
- */
-static inline float clamp_01(float value) {
-    if (value < 0.0F) return 0.0F;
-    if (value > 1.0F) return 1.0F;
-    return value;
-}
 
 /**
  * @brief Compute exponential decay
@@ -205,8 +191,8 @@ void stp_update(stp_state_t* state, uint64_t timestamp) {
     state->u = state->params.U + (state->u - state->params.U) * decay_F;
 
     // Clamp to valid range (prevent numerical drift)
-    state->x = clamp_01(state->x);
-    state->u = clamp_01(state->u);
+    state->x = nimcp_clamp01(state->x);
+    state->u = nimcp_clamp01(state->u);
 
     // Update timestamp
     state->last_update = timestamp;
@@ -224,11 +210,11 @@ void stp_process_spike(stp_state_t* state, uint64_t timestamp) {
 
     // Instantaneous facilitation jump: u ← u + U(1-u)
     const float du = state->params.U * (1.0F - state->u);
-    state->u = clamp_01(state->u + du);
+    state->u = nimcp_clamp01(state->u + du);
 
     // Instantaneous resource depletion: x ← x(1-u)
     state->x = state->x * (1.0F - state->u);
-    state->x = clamp_01(state->x);
+    state->x = nimcp_clamp01(state->x);
 
     // Timestamp already updated by stp_update()
 }
@@ -274,7 +260,7 @@ stp_params_t stp_get_preset_params(stp_preset_t preset) {
 stp_params_t stp_create_params(float U, float tau_D, float tau_F) {
     // Clamp parameters to valid ranges
     stp_params_t params;
-    params.U = clamp_01(U);
+    params.U = nimcp_clamp01(U);
     params.tau_D = (tau_D > 0.0F) ? tau_D : STP_DEFAULT_TAU_D;
     params.tau_F = (tau_F > 0.0F) ? tau_F : STP_DEFAULT_TAU_F;
 
@@ -335,14 +321,14 @@ void stp_compute_steady_state(const stp_params_t* params, float frequency, float
     const float numerator_u = params->U * (1.0F - decay_F);
     const float denominator_u = 1.0F - (1.0F - params->U) * decay_F;
     *u_ss = (denominator_u > 1e-6F) ? (numerator_u / denominator_u) : params->U;
-    *u_ss = clamp_01(*u_ss);
+    *u_ss = nimcp_clamp01(*u_ss);
 
     // x_ss = (1 - (1-x_ss(1-u_ss)) * exp(-ISI/τ_D))
     // Simplifying: x_ss = (1 - exp(-ISI/τ_D)) / (1 - (1-u_ss)*exp(-ISI/τ_D))
     const float numerator_x = 1.0F - decay_D;
     const float denominator_x = 1.0F - (1.0F - *u_ss) * decay_D;
     *x_ss = (denominator_x > 1e-6F) ? (numerator_x / denominator_x) : 1.0F;
-    *x_ss = clamp_01(*x_ss);
+    *x_ss = nimcp_clamp01(*x_ss);
 }
 
 int stp_classify_synapse(const stp_params_t* params) {

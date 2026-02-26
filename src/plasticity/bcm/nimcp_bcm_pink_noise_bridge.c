@@ -19,21 +19,12 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bcm_pink_noise_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(bcm_pink_noise_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp_value(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 static float compute_activity_scale(
     const bcm_pink_noise_bridge_t* bridge,
@@ -222,13 +213,13 @@ int bcm_pink_noise_update(bcm_pink_noise_bridge_t* bridge) {
     }
 
     // Clamp to bounds
-    bridge->noisy_threshold = clamp_value(bridge->noisy_threshold,
+    bridge->noisy_threshold = nimcp_clampf(bridge->noisy_threshold,
         bridge->config.threshold_min, bridge->config.threshold_max);
-    bridge->noisy_lr = clamp_value(bridge->noisy_lr,
+    bridge->noisy_lr = nimcp_clampf(bridge->noisy_lr,
         bridge->config.lr_min, bridge->config.lr_max);
-    bridge->noisy_threshold_tau = clamp_value(bridge->noisy_threshold_tau,
+    bridge->noisy_threshold_tau = nimcp_clampf(bridge->noisy_threshold_tau,
         bridge->config.tau_min, bridge->config.tau_max);
-    bridge->noisy_activity_tau = clamp_value(bridge->noisy_activity_tau,
+    bridge->noisy_activity_tau = nimcp_clampf(bridge->noisy_activity_tau,
         bridge->config.tau_min, bridge->config.tau_max);
 
     // Update statistics
@@ -257,7 +248,7 @@ int bcm_pink_noise_update_with_activity(
     NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
 
     // Update activity tracking
-    bridge->current_activity = clamp_value(activity, 0.0f, 1.0f);
+    bridge->current_activity = nimcp_clampf(activity, 0.0f, 1.0f);
     bridge->activity_ema = (bridge->activity_ema * NIMCP_EMA_WEIGHT_MEDIUM) +
                            (bridge->current_activity * NIMCP_EMA_WEIGHT_MEDIUM_NEW);
 

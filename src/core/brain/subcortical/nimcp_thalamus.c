@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(thalamus, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -29,15 +30,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(thalamus, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 //=============================================================================
 // Internal Helpers
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /**
  * @brief Sigmoid activation
@@ -458,7 +450,7 @@ static int nucleus_compute_output(thal_nucleus_t* nucleus) {
         float raw_output = nucleus->input_buffer[input_idx];
 
         /* Apply output gain */
-        nucleus->output_buffer[i] = clamp_f(raw_output * nucleus->output_gain, 0.0f, 1.0f);
+        nucleus->output_buffer[i] = nimcp_clampf(raw_output * nucleus->output_gain, 0.0f, 1.0f);
         total_activity += nucleus->output_buffer[i];
     }
 
@@ -581,7 +573,7 @@ int thalamus_set_attention(
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
     NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
-    attention = clamp_f(attention, 0.0f, 1.0f);
+    attention = nimcp_clampf(attention, 0.0f, 1.0f);
     nucleus->attention_level = attention;
 
     /* Update all channels */
@@ -604,14 +596,14 @@ int thalamus_set_channel_attention(
     NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
     NIMCP_CHECK_THROW(channel < nucleus->num_input_channels, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
-    nucleus->channel_attention[channel] = clamp_f(attention, 0.0f, 1.0f);
+    nucleus->channel_attention[channel] = nimcp_clampf(attention, 0.0f, 1.0f);
     return 0;
 }
 
 int thalamus_set_arousal(thalamus_t* thal, float arousal) {
     NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
-    thal->global_arousal = clamp_f(arousal, 0.0f, 1.0f);
+    thal->global_arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
 
     /* High arousal → tonic mode, low arousal → burst mode */
     if (thal->config.enable_mode_switching) {
@@ -662,7 +654,7 @@ int thalamus_apply_trn_inhibition(
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
     NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
-    inhibition = clamp_f(inhibition, 0.0f, 1.0f);
+    inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
     nucleus->trn_inhibition = inhibition;
 
     /* Update mode if fully inhibited */
@@ -687,7 +679,7 @@ int thalamus_apply_channel_inhibition(
     NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
     NIMCP_CHECK_THROW(channel < nucleus->num_input_channels, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
-    nucleus->channel_inhibition[channel] = clamp_f(inhibition, 0.0f, 1.0f);
+    nucleus->channel_inhibition[channel] = nimcp_clampf(inhibition, 0.0f, 1.0f);
     return 0;
 }
 
@@ -842,7 +834,7 @@ int thalamus_update_trn(thalamus_t* thal) {
         /* And modulated by cortical feedback */
         drive += trn->cortical_drive[i] * 0.5f;
 
-        trn->inhibition_map[i] = clamp_f(drive, 0.0f, 1.0f);
+        trn->inhibition_map[i] = nimcp_clampf(drive, 0.0f, 1.0f);
         total_inhibition += trn->inhibition_map[i];
     }
 

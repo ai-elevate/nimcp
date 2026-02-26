@@ -37,6 +37,7 @@
 
 #define LOG_MODULE "axon_refactored_example"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(axon_refactored_example)
 
@@ -211,16 +212,6 @@ bool axon_validate_params(float length, float diameter)
     return true;
 }
 
-/**
- * @brief Clamp float to range
- */
-static float clamp_f(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
 //=============================================================================
 // AXON CREATION AND DESTRUCTION
 //=============================================================================
@@ -290,7 +281,7 @@ nimcp_future_t axon_create_async(uint32_t id,
 
     // Initialize morphology
     axon->length = length;
-    axon->diameter = clamp_f(diameter, NIMCP_AXON_MIN_DIAMETER_UM,
+    axon->diameter = nimcp_clampf(diameter, NIMCP_AXON_MIN_DIAMETER_UM,
                              NIMCP_AXON_MAX_DIAMETER_UM);
 
     LOG_MODULE_DEBUG(MODULE_NAME, "Axon %u: Set morphology length=%f diameter=%f",
@@ -496,7 +487,7 @@ float axon_calculate_velocity(const axon_t* axon)
     }
 
     // Clamp to valid range
-    velocity = clamp_f(velocity, get_min_velocity(), NIMCP_AXON_MAX_VELOCITY_MS);
+    velocity = nimcp_clampf(velocity, get_min_velocity(), NIMCP_AXON_MAX_VELOCITY_MS);
 
     // Apply damage penalty
     if (axon->damage > 0.0f) {

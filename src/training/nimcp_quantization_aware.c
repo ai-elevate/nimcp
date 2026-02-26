@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(quantization_aware)
 
@@ -110,62 +111,7 @@ static const char* scheme_names[] = {
 static void compute_scale_zp(float min_val, float max_val, qat_dtype_t dtype,
                              qat_scheme_t scheme, float* scale, int32_t* zero_point);
 static void get_qmin_qmax(qat_dtype_t dtype, int32_t* qmin, int32_t* qmax);
-static float clamp(float x, float min_val, float max_val);
-
-//=============================================================================
-// Lifecycle API Implementation
-//=============================================================================
-
-int qat_default_config(qat_config_t* config) {
-    if (!config) {
-        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qat_default_config: config is NULL");
-        return -1;
-    }
-
-    memset(config, 0, sizeof(qat_config_t));
-
-    /* Default: INT8 symmetric */
-    config->default_weight_dtype = QAT_DTYPE_INT8;
-    config->default_activation_dtype = QAT_DTYPE_INT8;
-    config->default_scheme = QAT_SCHEME_SYMMETRIC;
-    config->default_granularity = QAT_GRANULARITY_TENSOR;
-
-    /* Observer: MinMax with EMA */
-    config->observer.method = QAT_OBSERVER_MOVING_AVG;
-    config->observer.ema_decay = QAT_DEFAULT_EMA_DECAY;
-    config->observer.percentile = 0.999f;
-    config->observer.num_bins = 2048;
-    config->observer.calibration_batches = QAT_DEFAULT_CALIBRATION_BATCHES;
-    config->observer.symmetric = true;
-
-    /* Fake quant: STE */
-    config->fake_quant.method = QAT_FAKE_QUANT_STE;
-    config->fake_quant.learn_scale = false;
-    config->fake_quant.learn_zero_point = false;
-    config->fake_quant.initial_scale = 1.0f;
-    config->fake_quant.scale_lr_multiplier = 1.0f;
-    config->fake_quant.grad_scale_factor = 1.0f;
-
-    /* Training schedule */
-    config->warmup_epochs = 0;
-    config->freeze_bn_epochs = 0;
-    config->start_with_calibration = true;
-
-    /* No per-layer configs by default */
-    config->layer_configs = NULL;
-    config->num_layer_configs = 0;
-
-    /* Integration */
-    config->integrate_tensor_layer = true;
-    config->integrate_brain_factory = false;
-
-    /* Debugging */
-    config->verbose = false;
-    config->track_statistics = true;
-
-    return 0;
-}
-
+static float nimcp_clampf(float x, float min_val, float max_val);
 int qat_int4_config(qat_config_t* config) {
     int result = qat_default_config(config);
     if (result != 0) {
@@ -769,7 +715,7 @@ int qat_quantize(
 
     float inv_scale = (scale > 1e-10f) ? 1.0f / scale : 1.0f;
 
-    /* Quantize: q = clamp(round(x/scale + zp), qmin, qmax) */
+    /* Quantize: q = nimcp_clampf(round(x/scale + zp), qmin, qmax) */
     for (size_t i = 0; i < count; i++) {
         float scaled = input_data[i] * inv_scale + (float)zero_point;
         int32_t quantized = (int32_t)roundf(scaled);
@@ -1117,15 +1063,6 @@ static void compute_scale_zp(
     if (*scale < 1e-10f) {
         *scale = 1e-10f;
     }
-}
-
-/**
- * @brief Clamp value to range
- */
-static float clamp(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
 }
 
 //=============================================================================

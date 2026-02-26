@@ -30,6 +30,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(salience_attention_fep_bridge)
 //=============================================================================
@@ -128,16 +129,6 @@ struct sa_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -168,10 +159,10 @@ static void compute_free_energy(sa_fep_bridge_t* bridge) {
     const sa_fep_config_t* cfg = &bridge->config;
 
     /* Clamp input metrics */
-    m->salience_prediction_error = clamp_f(m->salience_prediction_error, 0.0f, 1.0f);
-    m->attention_allocation_error = clamp_f(m->attention_allocation_error, 0.0f, 1.0f);
-    m->priority_estimation_error = clamp_f(m->priority_estimation_error, 0.0f, 1.0f);
-    m->attention_efficiency = clamp_f(m->attention_efficiency, 0.0f, 1.0f);
+    m->salience_prediction_error = nimcp_clampf(m->salience_prediction_error, 0.0f, 1.0f);
+    m->attention_allocation_error = nimcp_clampf(m->attention_allocation_error, 0.0f, 1.0f);
+    m->priority_estimation_error = nimcp_clampf(m->priority_estimation_error, 0.0f, 1.0f);
+    m->attention_efficiency = nimcp_clampf(m->attention_efficiency, 0.0f, 1.0f);
 
     /* Salience prediction contribution:
      * High error in predicting salient stimuli = prediction error */
@@ -192,7 +183,7 @@ static void compute_free_energy(sa_fep_bridge_t* bridge) {
                       m->attention_contribution +
                       m->priority_contribution) * cfg->free_energy_weight;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* Attention captured check - attention is captured when salience is high
      * and attention successfully shifted */
@@ -205,7 +196,7 @@ static void compute_free_energy(sa_fep_bridge_t* bridge) {
                                    m->priority_estimation_error * 0.2f);
 
     /* Apply decay to smooth transitions */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_prediction_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -217,7 +208,7 @@ static void compute_free_energy(sa_fep_bridge_t* bridge) {
     float attention_change = fabsf(m->attention_allocation_error - bridge->prev_attention_error);
     float priority_change = fabsf(m->priority_estimation_error - bridge->prev_priority_error);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.3f + salience_change * 0.3f +
          attention_change * 0.2f + priority_change * 0.2f),
         0.0f, 1.0f
@@ -226,7 +217,7 @@ static void compute_free_energy(sa_fep_bridge_t* bridge) {
     /* Entropy: based on attention distribution
      * More spread attention = higher entropy = higher free energy
      * Approximate based on allocation error */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         m->attention_allocation_error * 0.7f + m->salience_prediction_error * 0.3f,
         0.0f, 1.0f
     );
@@ -656,7 +647,7 @@ int sa_fep_update_callback(void* handle) {
             if (sa_stats.salience_detections > 0) {
                 /* Lower average salience = higher prediction error
                  * (detecting non-salient items or missing salient ones) */
-                bridge->metrics.salience_prediction_error = clamp_f(
+                bridge->metrics.salience_prediction_error = nimcp_clampf(
                     1.0f - sa_stats.avg_salience_score,
                     0.0f, 1.0f
                 );
@@ -668,7 +659,7 @@ int sa_fep_update_callback(void* handle) {
                 float shift_rate = (float)sa_stats.attention_shifts /
                                    (float)sa_stats.total_events;
                 /* Higher shift rate = less stable = higher error */
-                bridge->metrics.attention_allocation_error = clamp_f(
+                bridge->metrics.attention_allocation_error = nimcp_clampf(
                     shift_rate,
                     0.0f, 1.0f
                 );
@@ -678,7 +669,7 @@ int sa_fep_update_callback(void* handle) {
             /* Estimate attention efficiency from average attention strength
              * and focus notifications */
             if (sa_stats.focus_notifications > 0) {
-                bridge->metrics.attention_efficiency = clamp_f(
+                bridge->metrics.attention_efficiency = nimcp_clampf(
                     sa_stats.avg_attention_strength,
                     0.0f, 1.0f
                 );
@@ -690,7 +681,7 @@ int sa_fep_update_callback(void* handle) {
                 float priority_update_rate = (float)sa_stats.priority_updates /
                                              (float)sa_stats.total_events;
                 /* Higher update rate = more volatile = higher estimation error */
-                bridge->metrics.priority_estimation_error = clamp_f(
+                bridge->metrics.priority_estimation_error = nimcp_clampf(
                     priority_update_rate * 2.0f,  /* Scale factor */
                     0.0f, 1.0f
                 );
@@ -783,7 +774,7 @@ int sa_fep_bridge_update_salience_error(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.salience_prediction_error = clamp_f(error, 0.0f, 1.0f);
+    bridge->metrics.salience_prediction_error = nimcp_clampf(error, 0.0f, 1.0f);
     bridge->stats.salience_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -805,7 +796,7 @@ int sa_fep_bridge_update_attention_error(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.attention_allocation_error = clamp_f(error, 0.0f, 1.0f);
+    bridge->metrics.attention_allocation_error = nimcp_clampf(error, 0.0f, 1.0f);
     bridge->stats.attention_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -827,7 +818,7 @@ int sa_fep_bridge_update_priority_error(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.priority_estimation_error = clamp_f(error, 0.0f, 1.0f);
+    bridge->metrics.priority_estimation_error = nimcp_clampf(error, 0.0f, 1.0f);
     bridge->stats.priority_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -849,7 +840,7 @@ int sa_fep_bridge_update_attention_efficiency(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.attention_efficiency = clamp_f(efficiency, 0.0f, 1.0f);
+    bridge->metrics.attention_efficiency = nimcp_clampf(efficiency, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;

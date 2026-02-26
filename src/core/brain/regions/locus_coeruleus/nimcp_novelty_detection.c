@@ -20,19 +20,9 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(novelty_detection, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint32_t simple_hash(const float* data, uint32_t size) {
     uint32_t hash = 0;
@@ -278,7 +268,7 @@ int nimcp_novelty_detect(
         combined_novelty = statistical_novelty;
     }
 
-    combined_novelty = clamp_f(combined_novelty, 0.0f, 1.0f);
+    combined_novelty = nimcp_clampf(combined_novelty, 0.0f, 1.0f);
 
     /* Fill result structure */
     result->novelty_score = combined_novelty;
@@ -302,7 +292,7 @@ int nimcp_novelty_detect(
 
     /* Determine if phasic burst should be triggered */
     result->should_trigger_burst = combined_novelty > system->burst_threshold;
-    result->recommended_burst_intensity = clamp_f(combined_novelty, 0.0f, 1.0f);
+    result->recommended_burst_intensity = nimcp_clampf(combined_novelty, 0.0f, 1.0f);
 
     /* Update system state */
     if (combined_novelty > system->current_novelty) {
@@ -410,14 +400,14 @@ float nimcp_novelty_compute_statistical(
     if (valid_features == 0) {
         /* Fall back to simple magnitude-based novelty */
         float mag = compute_input_magnitude(input, input_size);
-        return clamp_f(mag, 0.0f, 1.0f);
+        return nimcp_clampf(mag, 0.0f, 1.0f);
     }
 
     /* Convert average z-score to novelty (0-1) */
     float avg_z = total_z_score / valid_features;
     float novelty = 1.0f - expf(-avg_z * avg_z / 8.0f);
 
-    return clamp_f(novelty, 0.0f, 1.0f);
+    return nimcp_clampf(novelty, 0.0f, 1.0f);
 }
 
 float nimcp_novelty_compute_surprise(
@@ -451,7 +441,7 @@ float nimcp_novelty_compute_surprise(
 
     system->predictor.prediction_error = surprise;
 
-    return clamp_f(surprise, 0.0f, 1.0f);
+    return nimcp_clampf(surprise, 0.0f, 1.0f);
 }
 
 float nimcp_novelty_get_familiarity(
@@ -484,7 +474,7 @@ float nimcp_novelty_get_familiarity(
         }
     }
 
-    return clamp_f(max_familiarity, 0.0f, 1.0f);
+    return nimcp_clampf(max_familiarity, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -556,7 +546,7 @@ int nimcp_novelty_dishabituate(nimcp_novelty_system_t* system, float strength) {
         return -1;
     }
 
-    strength = clamp_f(strength, 0.0f, 1.0f);
+    strength = nimcp_clampf(strength, 0.0f, 1.0f);
 
     /* Reduce habituation for all entries */
     for (uint32_t i = 0; i < system->memory_count; i++) {

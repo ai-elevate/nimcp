@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fuzzy_inference)
 
@@ -44,16 +45,6 @@ static void set_error(const char* fmt, ...) {
     va_start(args, fmt);
     vsnprintf(tls_fuzzy_inference_error, sizeof(tls_fuzzy_inference_error), fmt, args);
     va_end(args);
-}
-
-//=============================================================================
-// Helpers
-//=============================================================================
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 static inline float minf(float a, float b) { return (a < b) ? a : b; }
@@ -748,7 +739,7 @@ int fuzzy_inference_set_inflammation(fuzzy_inference_engine_t* engine, float lev
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_inference_set_inflammation: NULL engine");
         return FUZZY_INF_ERR_NULL;
     }
-    engine->inflammation_level = clampf(level, 0.0f, 1.0f);
+    engine->inflammation_level = nimcp_clampf(level, 0.0f, 1.0f);
     return FUZZY_INF_ERR_OK;
 }
 
@@ -758,7 +749,7 @@ int fuzzy_inference_set_fatigue(fuzzy_inference_engine_t* engine, float level) {
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_inference_set_fatigue: NULL engine");
         return FUZZY_INF_ERR_NULL;
     }
-    engine->fatigue_level = clampf(level, 0.0f, 1.0f);
+    engine->fatigue_level = nimcp_clampf(level, 0.0f, 1.0f);
     return FUZZY_INF_ERR_OK;
 }
 

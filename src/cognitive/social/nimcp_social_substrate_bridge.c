@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(social_substrate_bridge)
 //=============================================================================
@@ -160,16 +161,16 @@ int social_substrate_bridge_update(social_substrate_bridge_t* bridge) {
 
     if (bridge->config.enable_atp_modulation) {
         /* Bonding capacity requires sustained neural resources */
-        bridge->effects.bonding_capacity = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.bonding_capacity = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Trust evaluation is cognitively demanding */
-        bridge->effects.trust_evaluation = nimcp_clamp_f(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.trust_evaluation = nimcp_clampf(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Loyalty strength maintained but may waver under fatigue */
-        bridge->effects.loyalty_strength = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.loyalty_strength = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Prosocial motivation decreases with fatigue */
-        bridge->effects.prosocial_motivation = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.prosocial_motivation = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.bonding_capacity +

@@ -12,13 +12,12 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(structural_pink_noise_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(struct_pink_noise_bridge)
-
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 struct_pink_noise_bridge_t* struct_pink_noise_create(const struct_pink_noise_config_t* config) {
     struct_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(struct_pink_noise_bridge_t));
@@ -86,8 +85,8 @@ int struct_pink_noise_update(struct_pink_noise_bridge_t* bridge) {
     bridge->noisy_growth_rate = 0.01f * (1.0f + amp * bridge->growth_noise);
     bridge->noisy_prune_rate = 0.005f * (1.0f + amp * bridge->prune_noise);
 
-    bridge->noisy_growth_rate = clamp(bridge->noisy_growth_rate, 0.001f, 0.1f);
-    bridge->noisy_prune_rate = clamp(bridge->noisy_prune_rate, 0.0001f, 0.05f);
+    bridge->noisy_growth_rate = nimcp_clampf(bridge->noisy_growth_rate, 0.001f, 0.1f);
+    bridge->noisy_prune_rate = nimcp_clampf(bridge->noisy_prune_rate, 0.0001f, 0.05f);
 
     bridge->samples_generated++;
 

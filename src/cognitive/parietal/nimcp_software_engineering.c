@@ -24,6 +24,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(software_engineering, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -98,12 +99,6 @@ static _Thread_local char g_sweng_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_sweng_error(const char* msg) {
     strncpy(g_sweng_error, msg, sizeof(g_sweng_error) - 1);
     g_sweng_error[sizeof(g_sweng_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 /* ============================================================================
@@ -1057,7 +1052,7 @@ int software_eng_set_inflammation(software_eng_t* se, float level) {
 
 
     nimcp_mutex_lock(se->lock);
-    se->inflammation_level = clamp01(level);
+    se->inflammation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(se->lock);
 
     return 0;
@@ -1074,7 +1069,7 @@ int software_eng_set_sleep_deprivation(software_eng_t* se, float level) {
 
 
     nimcp_mutex_lock(se->lock);
-    se->sleep_deprivation_level = clamp01(level);
+    se->sleep_deprivation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(se->lock);
 
     return 0;
@@ -1287,7 +1282,7 @@ int software_eng_add_data_point(
 
     series->points[series->num_points].timestamp = timestamp;
     series->points[series->num_points].value = value;
-    series->points[series->num_points].confidence = clamp01(confidence);
+    series->points[series->num_points].confidence = nimcp_clamp01(confidence);
     series->num_points++;
     return 0;
 }

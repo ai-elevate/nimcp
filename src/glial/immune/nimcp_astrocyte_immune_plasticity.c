@@ -21,18 +21,9 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_immune_plasticity)
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float inflammation_to_d_serine_factor(brain_inflammation_level_t level) {
     switch (level) {
@@ -104,7 +95,7 @@ static int plasticity_apply_cytokine_effects(astrocyte_immune_base_t* base) {
     float pro_inflammatory =
         (2.0f - CYTOKINE_IL1_D_SERINE_REDUCTION - CYTOKINE_TNF_D_SERINE_REDUCTION) / 2.0f;
     float anti_inflammatory = CYTOKINE_IL10_D_SERINE_RESTORATION - 1.0f;
-    base->cytokine_state.total_reactivity = clamp_f(
+    base->cytokine_state.total_reactivity = nimcp_clampf(
         pro_inflammatory - anti_inflammatory, 0.0f, 1.0f);
 
     base->cytokine_state.is_reactive = base->cytokine_state.total_reactivity > 0.4f;
@@ -242,7 +233,7 @@ static int plasticity_update(astrocyte_immune_base_t* base, uint64_t delta_ms) {
         if (bridge->dysfunction.d_serine_depleted) severity += 0.3f;
         if (bridge->dysfunction.calcium_excessive) severity += 0.2f;
         if (bridge->dysfunction.excitotoxicity_risk) severity += 0.3f;
-        bridge->dysfunction.dysfunction_severity = clamp_f(severity, 0.0f, 1.0f);
+        bridge->dysfunction.dysfunction_severity = nimcp_clampf(severity, 0.0f, 1.0f);
 
         /* Alert if severe */
         if (bridge->dysfunction.dysfunction_severity >= 0.5f) {
@@ -439,7 +430,7 @@ int astro_plasticity_alert_dysfunction(
     }
 
     uint32_t severity = (uint32_t)(bridge->dysfunction.dysfunction_severity * 10.0f);
-    severity = clamp_f(severity, 1, 10);
+    severity = nimcp_clampf(severity, 1, 10);
 
     int result = brain_immune_present_antigen(
         bridge->base.immune_system,

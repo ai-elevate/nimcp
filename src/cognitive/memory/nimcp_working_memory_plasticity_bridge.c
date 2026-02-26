@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(working_memory_plasticity_bridge, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -75,14 +76,6 @@ struct wm_plasticity_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(wm_plasticity_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Find synapse by ID
@@ -421,7 +414,7 @@ int wm_plasticity_register_synapse(
     synapse->synapse_id = synapse_id;
     synapse->type = type;
     synapse->slot_idx = (slot_idx >= 0 && slot_idx < (int32_t)bridge->num_slots) ? slot_idx : -1;
-    synapse->weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     synapse->initial_weight = synapse->weight;
     synapse->last_pre_spike_us = 0;
     synapse->last_post_spike_us = 0;
@@ -537,7 +530,7 @@ int wm_plasticity_encode(
     slot->occupied = true;
     slot->encoding_strength = 1.0f;
     slot->current_strength = 1.0f;
-    slot->salience = clamp_f(salience, 0.0f, 1.0f);
+    slot->salience = nimcp_clampf(salience, 0.0f, 1.0f);
     slot->consolidation_progress = 0.0f;
     slot->rehearsal_count = 0;
     slot->last_access_time_us = timestamp_us;
@@ -561,7 +554,7 @@ int wm_plasticity_encode(
             /* Encoding LTP */
             float dw = bridge->config.stdp_a_plus * salience_mod * bridge->global_learning_rate;
             float old_weight = syn->weight;
-            syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_clampf(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
             if (bridge->weight_callback) {
                 bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
@@ -640,7 +633,7 @@ int wm_plasticity_maintain(
 
                 float dw = bridge->config.maintenance_ltp_rate * activity_level * rehearsal_boost;
                 float old_weight = syn->weight;
-                syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+                syn->weight = nimcp_clampf(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
                 if (bridge->weight_callback) {
                     bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
@@ -657,7 +650,7 @@ int wm_plasticity_maintain(
     float time_held_ms = (float)(timestamp_us - slot->last_access_time_us + 1000) / 1000.0f;
     if (time_held_ms > 0 && bridge->config.enable_consolidation) {
         slot->consolidation_progress += time_held_ms / bridge->config.consolidation_threshold;
-        slot->consolidation_progress = clamp_f(slot->consolidation_progress, 0.0f, 1.0f);
+        slot->consolidation_progress = nimcp_clampf(slot->consolidation_progress, 0.0f, 1.0f);
     }
 
     bridge->stats.total_maintenance_cycles++;
@@ -713,7 +706,7 @@ int wm_plasticity_retrieve(
                 if (dt_ms > 0 && dt_ms < bridge->config.stdp_ltp_window_ms) {
                     float dw = compute_stdp_weight_change(&bridge->config, dt_ms, retrieval_strength);
                     float old_weight = syn->weight;
-                    syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+                    syn->weight = nimcp_clampf(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
                     if (bridge->weight_callback) {
                         bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
@@ -772,7 +765,7 @@ int wm_plasticity_evict(
             if (syn->slot_idx == (int32_t)slot_idx) {
                 float dw = -bridge->config.capacity_ltd_rate * bridge->current_capacity_pressure;
                 float old_weight = syn->weight;
-                syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+                syn->weight = nimcp_clampf(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
                 if (bridge->weight_callback) {
                     bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
@@ -834,7 +827,7 @@ int wm_plasticity_decay(
                 if (syn->slot_idx == (int32_t)slot_idx && syn->type == WM_SYNAPSE_MAINTENANCE) {
                     float dw = -decay_amount * 0.001f;
                     float old_weight = syn->weight;
-                    syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+                    syn->weight = nimcp_clampf(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
                     if (bridge->weight_callback) {
                         bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
@@ -888,7 +881,7 @@ int wm_plasticity_reward(
             if (syn->eligibility_trace > 0.01f) {
                 float dw = apply_eligibility(syn, reward, bridge->config.reward_modulation_gain);
                 float old_weight = syn->weight;
-                syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+                syn->weight = nimcp_clampf(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
 
                 if (reward > 0) bridge->stats.ltp_events++;
                 else bridge->stats.ltd_events++;
@@ -969,7 +962,7 @@ int wm_plasticity_update(
                 /* Full consolidation reached */
                 float consol_boost = bridge->config.consolidation_ltp_boost;
                 syn->consolidation_level = 1.0f;
-                syn->weight = clamp_f(syn->weight * consol_boost,
+                syn->weight = nimcp_clampf(syn->weight * consol_boost,
                                      bridge->config.weight_min, bridge->config.weight_max);
             }
         }
@@ -979,7 +972,7 @@ int wm_plasticity_update(
             float diff = bridge->config.target_capacity_utilization - bridge->current_capacity_pressure;
             float scale = 1.0f + diff * (dt_ms / bridge->config.homeostatic_tau_ms);
             syn->weight *= scale;
-            syn->weight = clamp_f(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_clampf(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
         }
 
         /* Update activity average */
@@ -1034,7 +1027,7 @@ int wm_plasticity_consolidate_slot(
                 syn->consolidation_level = 1.0f;
                 float old_weight = syn->weight;
                 syn->weight *= bridge->config.consolidation_ltp_boost;
-                syn->weight = clamp_f(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
+                syn->weight = nimcp_clampf(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
 
                 if (bridge->weight_callback) {
                     bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
@@ -1208,7 +1201,7 @@ int wm_plasticity_get_maintenance_modulation(
         wm_slot_plasticity_t* slot = &bridge->slot_states[s];
         modulation[s] = slot->encoding_strength *
                        (1.0f + 0.1f * (float)slot->rehearsal_count);
-        modulation[s] = clamp_f(modulation[s], 0.0f, 2.0f);
+        modulation[s] = nimcp_clampf(modulation[s], 0.0f, 2.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1379,7 +1372,7 @@ int wm_plasticity_set_capacity_pressure(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_capacity_pressure = clamp_f(pressure, 0.0f, 1.0f);
+    bridge->current_capacity_pressure = nimcp_clampf(pressure, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1401,7 +1394,7 @@ int wm_plasticity_set_salience_modulation(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_salience_mod = clamp_f(salience_level, 0.0f, 2.0f);
+    bridge->current_salience_mod = nimcp_clampf(salience_level, 0.0f, 2.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

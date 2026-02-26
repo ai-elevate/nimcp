@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(trigeminal_oral_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -80,12 +81,6 @@ struct trigeminal_oral_bridge_struct {
 
 static float randf(void) {
     return (float)nimcp_tl_rand() / (float)RAND_MAX;
-}
-
-static float clampf(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
 }
 
 static temp_perception_t classify_temperature(float temp_c) {
@@ -364,8 +359,8 @@ int trigeminal_oral_detect_chemesthesis(trigeminal_oral_bridge_t* bridge,
             break;
     }
 
-    result->intensity = clampf(base_intensity, 0.0f, 1.0f);
-    result->spread = clampf(concentration * 0.5f, 0.0f, 1.0f);
+    result->intensity = nimcp_clampf(base_intensity, 0.0f, 1.0f);
+    result->spread = nimcp_clampf(concentration * 0.5f, 0.0f, 1.0f);
 
     /* Store current chemesthesis */
     memcpy(&bridge->current_chemesthesis, result, sizeof(chemesthesis_t));
@@ -396,7 +391,7 @@ int trigeminal_oral_update_spice_tolerance(trigeminal_oral_bridge_t* bridge,
 
     /* Tolerance increases with exposure */
     float tolerance_gain = exposure_intensity * duration_s * 0.001f;
-    bridge->config.spice_tolerance = clampf(
+    bridge->config.spice_tolerance = nimcp_clampf(
         bridge->config.spice_tolerance + tolerance_gain, 0.0f, 0.9f);
 
     bridge->stats.spice_tolerance_updates++;
@@ -467,7 +462,7 @@ int trigeminal_oral_analyze_texture(trigeminal_oral_bridge_t* bridge,
     }
 
     /* Compute moisture */
-    texture->moisture = clampf(1.0f - hardness + viscosity * 0.5f, 0.0f, 1.0f);
+    texture->moisture = nimcp_clampf(1.0f - hardness + viscosity * 0.5f, 0.0f, 1.0f);
 
     /* Compute breakdown rate */
     texture->breakdown_rate = (1.0f - hardness) * 0.5f + viscosity * 0.3f;
@@ -580,7 +575,7 @@ int trigeminal_oral_compute_temp_taste(trigeminal_oral_bridge_t* bridge,
      */
 
     float temp_factor = (temperature_c - 20.0f) / 40.0f;  /* Normalize around 20-60C */
-    temp_factor = clampf(temp_factor, -1.0f, 1.0f);
+    temp_factor = nimcp_clampf(temp_factor, -1.0f, 1.0f);
 
     /* Sweet: enhanced by warmth, suppressed by cold */
     interaction->sweet_modulation = 1.0f + temp_factor * 0.3f;
@@ -654,7 +649,7 @@ int trigeminal_oral_optimal_temperature(trigeminal_oral_bridge_t* bridge,
     temp -= bitter_weight * 10.0f;  /* Bitter -> cooler */
     temp -= sour_weight * 5.0f;     /* Sour -> slightly cooler */
 
-    *optimal_temp_c = clampf(temp, 5.0f, 65.0f);
+    *optimal_temp_c = nimcp_clampf(temp, 5.0f, 65.0f);
 
     return 0;
 }
@@ -741,7 +736,7 @@ int trigeminal_oral_compute_mouthfeel(trigeminal_oral_bridge_t* bridge,
             pleasantness -= bridge->current_chemesthesis.intensity * 0.3f;
         }
     }
-    mouthfeel->pleasantness = clampf(pleasantness, -1.0f, 1.0f);
+    mouthfeel->pleasantness = nimcp_clampf(pleasantness, -1.0f, 1.0f);
 
     /* Familiarity (placeholder) */
     mouthfeel->familiarity = 0.5f + randf() * 0.3f;
@@ -851,7 +846,7 @@ int trigeminal_oral_flavor_texture_synergy(trigeminal_oral_bridge_t* bridge,
         synergy -= 0.2f;
     }
 
-    *synergy_score = clampf(synergy, 0.0f, 1.0f);
+    *synergy_score = nimcp_clampf(synergy, 0.0f, 1.0f);
 
     return 0;
 }
@@ -892,7 +887,7 @@ int trigeminal_oral_update_mastication(trigeminal_oral_bridge_t* bridge,
 
         /* Update breakdown based on bite force and hardness */
         float breakdown_per_chew = bite_force * (1.0f - bridge->food_hardness * 0.5f) * 0.1f;
-        bridge->breakdown_progress = clampf(
+        bridge->breakdown_progress = nimcp_clampf(
             bridge->breakdown_progress + breakdown_per_chew, 0.0f, 1.0f);
     }
     bridge->prev_bite_force = bite_force;
@@ -1032,7 +1027,7 @@ float trigeminal_scoville_to_normalized(float scoville) {
     /* Logarithmic scaling for Scoville */
     if (scoville <= 0.0f) return 0.0f;
     float normalized = logf(scoville + 1.0f) / logf(TRIGEMINAL_SCOVILLE_SCALE + 1.0f);
-    return clampf(normalized, 0.0f, 1.0f);
+    return nimcp_clampf(normalized, 0.0f, 1.0f);
 }
 
 float trigeminal_normalized_to_scoville(float normalized) {

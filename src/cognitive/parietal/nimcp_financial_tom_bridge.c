@@ -46,6 +46,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_tom_bridge_health_agent = NULL;
@@ -210,16 +211,6 @@ static const char* state_names[] = {
     "degraded",
     "error"
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 /**
  * @brief Simple hash function for investor IDs
@@ -429,8 +420,8 @@ static void compute_action_prediction(
     sell_signal -= emotional_bias;
 
     /* Clamp signals */
-    buy_signal = clampf(buy_signal, 0.0f, 1.0f);
-    sell_signal = clampf(sell_signal, 0.0f, 1.0f);
+    buy_signal = nimcp_clampf(buy_signal, 0.0f, 1.0f);
+    sell_signal = nimcp_clampf(sell_signal, 0.0f, 1.0f);
 
     /* Determine action */
     if (buy_signal > 0.7f && buy_signal > sell_signal + 0.3f) {
@@ -744,7 +735,7 @@ int financial_tom_bridge_model_investor(
     if (existing) {
         /* Update existing model */
         existing->model.archetype = archetype;
-        existing->model.confidence = clampf(initial_confidence, 0.0f, 1.0f);
+        existing->model.confidence = nimcp_clampf(initial_confidence, 0.0f, 1.0f);
         init_archetype_beliefs(&existing->model);
 
         if (out_model) {
@@ -782,7 +773,7 @@ int financial_tom_bridge_model_investor(
     strncpy(node->model.investor_id, investor_id, FIN_TOM_INVESTOR_ID_LEN - 1);
     node->model.investor_id[FIN_TOM_INVESTOR_ID_LEN - 1] = '\0';
     node->model.archetype = archetype;
-    node->model.confidence = clampf(initial_confidence, 0.0f, 1.0f);
+    node->model.confidence = nimcp_clampf(initial_confidence, 0.0f, 1.0f);
     node->model.emotional_state = FIN_TOM_EMOTION_NEUTRAL;
     init_archetype_beliefs(&node->model);
 
@@ -846,7 +837,7 @@ int financial_tom_bridge_update_beliefs(
 
     uint32_t count = (num_beliefs < FIN_TOM_MAX_BELIEFS) ? num_beliefs : FIN_TOM_MAX_BELIEFS;
     for (uint32_t i = 0; i < count; i++) {
-        node->model.beliefs[i] = clampf(beliefs[i], -1.0f, 1.0f);
+        node->model.beliefs[i] = nimcp_clampf(beliefs[i], -1.0f, 1.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -883,7 +874,7 @@ int financial_tom_bridge_update_desires(
 
     uint32_t count = (num_desires < FIN_TOM_MAX_DESIRES) ? num_desires : FIN_TOM_MAX_DESIRES;
     for (uint32_t i = 0; i < count; i++) {
-        node->model.desires[i] = clampf(desires[i], 0.0f, 1.0f);
+        node->model.desires[i] = nimcp_clampf(desires[i], 0.0f, 1.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -919,7 +910,7 @@ int financial_tom_bridge_update_emotion(
     }
 
     node->model.emotional_state = (int)emotion;
-    node->model.confidence = clampf(confidence, 0.0f, 1.0f);
+    node->model.confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

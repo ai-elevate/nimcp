@@ -18,25 +18,13 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synapse_substrate_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent out-of-range modulation factors
- * HOW:  Return clamped value
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Linear interpolation
@@ -67,7 +55,7 @@ static float compute_atp_release_effect(float atp_level, float sensitivity) {
     if (atp_level < ATP_RELEASE_THRESHOLD) {
         /* Severe impairment below threshold */
         float ratio = atp_level / ATP_RELEASE_THRESHOLD;
-        return clamp_f(ratio * ATP_VESICLE_POOL_SENSITIVITY * sensitivity, 0.0f, 1.0f);
+        return nimcp_clampf(ratio * ATP_VESICLE_POOL_SENSITIVITY * sensitivity, 0.0f, 1.0f);
     } else if (atp_level < ATP_NORMAL_RELEASE) {
         /* Linear recovery from threshold to normal */
         float t = (atp_level - ATP_RELEASE_THRESHOLD) / (ATP_NORMAL_RELEASE - ATP_RELEASE_THRESHOLD);
@@ -96,11 +84,11 @@ static float compute_ca_transmission_effect(float ca_homeostasis, float sensitiv
     if (ca_homeostasis < CA_DEPLETION_THRESHOLD) {
         /* Low Ca2+ impairs transmission */
         float ratio = ca_homeostasis / CA_DEPLETION_THRESHOLD;
-        return clamp_f(ratio * CA_TRANSMISSION_SENSITIVITY * sensitivity, 0.0f, 1.0f);
+        return nimcp_clampf(ratio * CA_TRANSMISSION_SENSITIVITY * sensitivity, 0.0f, 1.0f);
     } else if (ca_homeostasis > CA_OVERLOAD_THRESHOLD) {
         /* Ca2+ overload indicates stress */
         float excess = (ca_homeostasis - CA_OVERLOAD_THRESHOLD) / (1.0f - CA_OVERLOAD_THRESHOLD);
-        return clamp_f((1.0f - excess * 0.3f) * sensitivity, 0.3f, 1.0f);
+        return nimcp_clampf((1.0f - excess * 0.3f) * sensitivity, 0.3f, 1.0f);
     } else {
         /* Normal range */
         return 1.0f;
@@ -145,7 +133,7 @@ static float compute_q10_factor(float temperature, float q10, float sensitivity)
 static float compute_membrane_receptor_effect(float membrane_integrity, float sensitivity) {
     if (membrane_integrity < MEMBRANE_RECEPTOR_THRESHOLD) {
         float ratio = membrane_integrity / MEMBRANE_RECEPTOR_THRESHOLD;
-        return clamp_f(ratio * MEMBRANE_RECEPTOR_SENSITIVITY * sensitivity, 0.0f, 1.0f);
+        return nimcp_clampf(ratio * MEMBRANE_RECEPTOR_SENSITIVITY * sensitivity, 0.0f, 1.0f);
     }
     return 1.0f;
 }
@@ -166,7 +154,7 @@ static float compute_membrane_receptor_effect(float membrane_integrity, float se
 static float compute_ion_driving_force_effect(float ion_balance, float sensitivity) {
     if (ion_balance < ION_DRIVING_FORCE_THRESHOLD) {
         float ratio = ion_balance / ION_DRIVING_FORCE_THRESHOLD;
-        return clamp_f(ratio * ION_DRIVING_FORCE_SENSITIVITY * sensitivity, 0.0f, 1.0f);
+        return nimcp_clampf(ratio * ION_DRIVING_FORCE_SENSITIVITY * sensitivity, 0.0f, 1.0f);
     }
     return 1.0f;
 }

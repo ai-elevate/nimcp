@@ -43,6 +43,7 @@
 #include <pthread.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(perception_training_bridge)
 
@@ -137,19 +138,6 @@ struct perception_training_bridge {
  *============================================================================*/
 
 /**
- * @brief Clamp float value to range
- *
- * WHAT: Limits value between min and max
- * WHY:  Prevent extreme modulation factors
- * HOW:  Returns min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * @brief Extract perception state from cortices
  *
  * WHAT: Queries all connected perception cortices for current state
@@ -235,7 +223,7 @@ static float compute_lr_modulation(
     }
 
     /* Clamp to safety bounds */
-    return clamp_f(lr_factor, PERCEPTION_LR_FACTOR_MIN, PERCEPTION_LR_FACTOR_MAX);
+    return nimcp_clampf(lr_factor, PERCEPTION_LR_FACTOR_MIN, PERCEPTION_LR_FACTOR_MAX);
 }
 
 /**
@@ -275,7 +263,7 @@ static float compute_sample_weight(
     }
 
     /* Clamp to configured range */
-    return clamp_f(weight, PERCEPTION_SAMPLE_WEIGHT_MIN, PERCEPTION_SAMPLE_WEIGHT_MAX);
+    return nimcp_clampf(weight, PERCEPTION_SAMPLE_WEIGHT_MIN, PERCEPTION_SAMPLE_WEIGHT_MAX);
 }
 
 /**

@@ -35,6 +35,7 @@
 #include <math.h>
 #include "utils/platform/nimcp_platform_once.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(oligodendrocytes)
 
@@ -396,13 +397,6 @@ void oligodendrocyte_unregister_bio_handlers(void)
 //=============================================================================
 
 /**
- * @brief Clamp float value to range
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    return fmaxf(min_val, fminf(max_val, value));
-}
-
-/**
  * @brief Find axon index by ID in enhanced array
  *
  * Bounds checking: Validates oligo pointer and axons array before access.
@@ -554,10 +548,10 @@ static void rk4_step(oligodendrocyte_t* oligo, float dt) {
     }
 
     // Clamp state variables
-    oligo->state_variables[0] = clampf(oligo->state_variables[0], 0.0F, NIMCP_OLIGO_MAX_MYELIN_RATE);
-    oligo->state_variables[1] = clampf(oligo->state_variables[1], 0.0F, 100.0F);
-    oligo->state_variables[2] = clampf(oligo->state_variables[2], 0.0F, NIMCP_OLIGO_ATP_MAX);
-    oligo->state_variables[3] = clampf(oligo->state_variables[3], 0.0F, 1.0F);
+    oligo->state_variables[0] = nimcp_clampf(oligo->state_variables[0], 0.0F, NIMCP_OLIGO_MAX_MYELIN_RATE);
+    oligo->state_variables[1] = nimcp_clampf(oligo->state_variables[1], 0.0F, 100.0F);
+    oligo->state_variables[2] = nimcp_clampf(oligo->state_variables[2], 0.0F, NIMCP_OLIGO_ATP_MAX);
+    oligo->state_variables[3] = nimcp_clampf(oligo->state_variables[3], 0.0F, 1.0F);
 
     // Update derived properties
     oligo->myelination_rate = oligo->state_variables[0];
@@ -576,7 +570,7 @@ static float compute_g_ratio_efficiency(float g_ratio) {
     float deviation = fabsf(g_ratio - optimal);
     // Gaussian-like efficiency curve
     float efficiency = expf(-deviation * deviation / (2.0F * 0.1F * 0.1F));
-    return clampf(efficiency, 0.5F, 1.0F);
+    return nimcp_clampf(efficiency, 0.5F, 1.0F);
 }
 
 /**
@@ -597,7 +591,7 @@ static void initialize_internodes(myelinated_axon_t* axon) {
 
     // Compute optimal internode length based on axon diameter
     float optimal_length = axon->axon_diameter * NIMCP_OLIGO_INTERNODE_DIAMETER_RATIO;
-    optimal_length = clampf(optimal_length, NIMCP_OLIGO_INTERNODE_MIN_UM, NIMCP_OLIGO_INTERNODE_MAX_UM);
+    optimal_length = nimcp_clampf(optimal_length, NIMCP_OLIGO_INTERNODE_MIN_UM, NIMCP_OLIGO_INTERNODE_MAX_UM);
 
     // Number of internodes
     uint32_t num_nodes = (uint32_t)(axon->axon_length / optimal_length);
@@ -1022,7 +1016,7 @@ nimcp_result_t oligodendrocyte_set_myelination_level(oligodendrocyte_t* oligo,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    level = clampf(level, 0.0F, 1.0F);
+    level = nimcp_clampf(level, 0.0F, 1.0F);
     oligo->axons[idx].myelination_level = level;
     oligo->axons[idx].myelin_state = compute_myelin_state(level);
 
@@ -1033,7 +1027,7 @@ nimcp_result_t oligodendrocyte_set_myelination_level(oligodendrocyte_t* oligo,
     if (level > 0.0F) {
         // G-ratio decreases (more myelin) as myelination increases
         oligo->axons[idx].g_ratio = 1.0F - level * (1.0F - oligo->axons[idx].optimal_g_ratio);
-        oligo->axons[idx].g_ratio = clampf(oligo->axons[idx].g_ratio,
+        oligo->axons[idx].g_ratio = nimcp_clampf(oligo->axons[idx].g_ratio,
                                            NIMCP_OLIGO_G_RATIO_MIN,
                                            NIMCP_OLIGO_G_RATIO_MAX);
 
@@ -1087,7 +1081,7 @@ float oligodendrocyte_compute_optimal_g_ratio(float axon_diameter, float activit
     float activity_mod = activity_level / 100.0F; // Normalize activity
     float optimal = base_optimal + activity_mod * 0.05F;
 
-    return clampf(optimal, NIMCP_OLIGO_G_RATIO_MIN, NIMCP_OLIGO_G_RATIO_MAX);
+    return nimcp_clampf(optimal, NIMCP_OLIGO_G_RATIO_MIN, NIMCP_OLIGO_G_RATIO_MAX);
 }
 
 void oligodendrocyte_optimize_g_ratios(oligodendrocyte_t* oligo, float dt) {
@@ -1096,7 +1090,7 @@ void oligodendrocyte_optimize_g_ratios(oligodendrocyte_t* oligo, float dt) {
     nimcp_spinlock_lock(&oligo->lock);
 
     float rate = dt / NIMCP_OLIGO_G_RATIO_TAU_S;
-    float atp_factor = clampf(oligo->atp_level, 0.1F, 1.0F);
+    float atp_factor = nimcp_clampf(oligo->atp_level, 0.1F, 1.0F);
     rate *= atp_factor;
 
     float total_g_ratio = 0.0F;
@@ -1114,7 +1108,7 @@ void oligodendrocyte_optimize_g_ratios(oligodendrocyte_t* oligo, float dt) {
             float target = axon->optimal_g_ratio;
             float delta = (target - axon->g_ratio) * rate;
             axon->g_ratio += delta;
-            axon->g_ratio = clampf(axon->g_ratio, NIMCP_OLIGO_G_RATIO_MIN, NIMCP_OLIGO_G_RATIO_MAX);
+            axon->g_ratio = nimcp_clampf(axon->g_ratio, NIMCP_OLIGO_G_RATIO_MIN, NIMCP_OLIGO_G_RATIO_MAX);
 
             // Update fiber diameter
             float myelin_thickness = axon->axon_diameter * (1.0F / axon->g_ratio - 1.0F) / 2.0F;
@@ -1218,7 +1212,7 @@ float oligodendrocyte_compute_saltatory_velocity(const myelinated_axon_t* axon) 
     }
     float optimal_internode = axon->axon_diameter * NIMCP_OLIGO_INTERNODE_DIAMETER_RATIO;
     float internode_factor = 1.0F - 0.3F * fabsf(avg_internode_length - optimal_internode) / optimal_internode;
-    internode_factor = clampf(internode_factor, 0.5F, 1.0F);
+    internode_factor = nimcp_clampf(internode_factor, 0.5F, 1.0F);
 
     // Combined velocity calculation
     float velocity = k * diameter_factor * g_efficiency * myelin_factor * internode_factor;
@@ -1260,13 +1254,13 @@ void oligodendrocyte_optimize_internode_spacing(oligodendrocyte_t* oligo, uint32
 
         // Optimal internode length ≈ 100 × axon diameter
         float optimal_length = axon->axon_diameter * NIMCP_OLIGO_INTERNODE_DIAMETER_RATIO;
-        optimal_length = clampf(optimal_length, NIMCP_OLIGO_INTERNODE_MIN_UM, NIMCP_OLIGO_INTERNODE_MAX_UM);
+        optimal_length = nimcp_clampf(optimal_length, NIMCP_OLIGO_INTERNODE_MIN_UM, NIMCP_OLIGO_INTERNODE_MAX_UM);
 
         // Gradually adjust existing internodes toward optimal
         for (uint32_t i = 0; i < axon->num_internodes; i++) {
             float current = axon->internodes[i].length;
             float delta = (optimal_length - current) * 0.1F; // 10% adjustment per call
-            axon->internodes[i].length = clampf(current + delta,
+            axon->internodes[i].length = nimcp_clampf(current + delta,
                                                  NIMCP_OLIGO_INTERNODE_MIN_UM,
                                                  NIMCP_OLIGO_INTERNODE_MAX_UM);
         }
@@ -1285,7 +1279,7 @@ void oligodendrocyte_track_activity(oligodendrocyte_t* oligo,
                                      uint64_t timestamp) {
     if (!oligo) return;
 
-    activity = clampf(activity, 0.0F, 100.0F);
+    activity = nimcp_clampf(activity, 0.0F, 100.0F);
 
     nimcp_spinlock_lock(&oligo->lock);
 
@@ -1346,7 +1340,7 @@ void oligodendrocyte_remodel_myelination(oligodendrocyte_t* oligo, float dt) {
     nimcp_spinlock_lock(&oligo->lock);
 
     float rate = dt / NIMCP_OLIGO_REMODEL_TAU_S;
-    float atp_factor = clampf(oligo->atp_level, 0.1F, 1.0F);
+    float atp_factor = nimcp_clampf(oligo->atp_level, 0.1F, 1.0F);
     rate *= atp_factor;
 
     // Compute growth factor signal
@@ -1362,7 +1356,7 @@ void oligodendrocyte_remodel_myelination(oligodendrocyte_t* oligo, float dt) {
         myelinated_axon_t* axon = &oligo->axons[i];
 
         // Compute target myelination based on activity and signals
-        float activity_factor = clampf(axon->activity_score / 10.0F, 0.0F, 1.0F);
+        float activity_factor = nimcp_clampf(axon->activity_score / 10.0F, 0.0F, 1.0F);
         float centrality_factor = 1.0F + axon->centrality_score * NIMCP_OLIGO_CENTRALITY_PRIORITY_FACTOR;
 
         // Scale growth factor response by individual axon activity to preserve differentiation
@@ -1379,12 +1373,12 @@ void oligodendrocyte_remodel_myelination(oligodendrocyte_t* oligo, float dt) {
         } else {
             axon->target_myelination = base_target;
         }
-        axon->target_myelination = clampf(axon->target_myelination, 0.0F, 1.0F);
+        axon->target_myelination = nimcp_clampf(axon->target_myelination, 0.0F, 1.0F);
 
         // Move current myelination toward target
         float delta = (axon->target_myelination - axon->myelination_level) * rate;
         axon->myelination_level += delta;
-        axon->myelination_level = clampf(axon->myelination_level, 0.0F, 1.0F);
+        axon->myelination_level = nimcp_clampf(axon->myelination_level, 0.0F, 1.0F);
 
         // Update myelin state
         axon->myelin_state = compute_myelin_state(axon->myelination_level);
@@ -1392,7 +1386,7 @@ void oligodendrocyte_remodel_myelination(oligodendrocyte_t* oligo, float dt) {
         // Update G-ratio based on new myelination level
         if (axon->myelination_level > 0.0F) {
             axon->g_ratio = 1.0F - axon->myelination_level * (1.0F - axon->optimal_g_ratio);
-            axon->g_ratio = clampf(axon->g_ratio, NIMCP_OLIGO_G_RATIO_MIN, NIMCP_OLIGO_G_RATIO_MAX);
+            axon->g_ratio = nimcp_clampf(axon->g_ratio, NIMCP_OLIGO_G_RATIO_MIN, NIMCP_OLIGO_G_RATIO_MAX);
 
             float myelin_thickness = axon->axon_diameter * (1.0F / axon->g_ratio - 1.0F) / 2.0F;
             axon->fiber_diameter = axon->axon_diameter + 2.0F * myelin_thickness;
@@ -1440,7 +1434,7 @@ void oligodendrocyte_set_axon_centrality(oligodendrocyte_t* oligo,
 
     int32_t idx = find_axon_index(oligo, axon_id);
     if (idx >= 0) {
-        oligo->axons[idx].centrality_score = clampf(centrality, 0.0F, 1.0F);
+        oligo->axons[idx].centrality_score = nimcp_clampf(centrality, 0.0F, 1.0F);
         oligo->axons[idx].priority_myelination =
             (centrality >= NIMCP_OLIGO_CENTRALITY_MIN_PRIORITY);
     }
@@ -1481,7 +1475,7 @@ void oligodendrocyte_update_growth_factors(oligodendrocyte_t* oligo, float dt) {
 
         // Update concentration
         oligo->growth_factors.concentrations[i] += dt * (production - decay);
-        oligo->growth_factors.concentrations[i] = clampf(
+        oligo->growth_factors.concentrations[i] = nimcp_clampf(
             oligo->growth_factors.concentrations[i],
             0.0F,
             NIMCP_GROWTH_FACTOR_MAX_CONCENTRATION);
@@ -1506,7 +1500,7 @@ void oligodendrocyte_add_growth_factor(oligodendrocyte_t* oligo,
     nimcp_spinlock_lock(&oligo->lock);
 
     oligo->growth_factors.concentrations[type] += amount;
-    oligo->growth_factors.concentrations[type] = clampf(
+    oligo->growth_factors.concentrations[type] = nimcp_clampf(
         oligo->growth_factors.concentrations[type],
         0.0F,
         NIMCP_GROWTH_FACTOR_MAX_CONCENTRATION);
@@ -1537,7 +1531,7 @@ float oligodendrocyte_compute_myelin_signal(const oligodendrocyte_t* oligo, uint
                    bdnf * NIMCP_BDNF_MYELIN_COEFFICIENT * bdnf_sens +
                    igf1 * 0.2F;
 
-    return clampf(signal / NIMCP_GROWTH_FACTOR_MAX_CONCENTRATION, 0.0F, 1.0F);
+    return nimcp_clampf(signal / NIMCP_GROWTH_FACTOR_MAX_CONCENTRATION, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -1555,7 +1549,7 @@ void oligodendrocyte_update_lactate_shuttle(oligodendrocyte_t* oligo, float dt) 
     oligo->lactate_shuttle.lactate_pool += production;
 
     // Cap lactate pool
-    oligo->lactate_shuttle.lactate_pool = clampf(oligo->lactate_shuttle.lactate_pool, 0.0F, 2.0F);
+    oligo->lactate_shuttle.lactate_pool = nimcp_clampf(oligo->lactate_shuttle.lactate_pool, 0.0F, 2.0F);
 
     // Distribute lactate to myelinated axons
     if (oligo->num_myelinated_axons > 0 && oligo->lactate_shuttle.lactate_pool > 0.0F) {
@@ -1622,7 +1616,7 @@ void oligodendrocyte_set_axon_demand(oligodendrocyte_t* oligo,
 
     int32_t idx = find_axon_index(oligo, axon_id);
     if (idx >= 0) {
-        oligo->axons[idx].metabolic_demand = clampf(demand, 0.0F, 10.0F);
+        oligo->axons[idx].metabolic_demand = nimcp_clampf(demand, 0.0F, 10.0F);
     }
 
     nimcp_spinlock_unlock(&oligo->lock);
@@ -1722,7 +1716,7 @@ void oligodendrocyte_update_atp(oligodendrocyte_t* oligo, float dt) {
 
     // Update ATP
     oligo->atp_level += dt * (regen - cost);
-    oligo->atp_level = clampf(oligo->atp_level, 0.0F, NIMCP_OLIGO_ATP_MAX);
+    oligo->atp_level = nimcp_clampf(oligo->atp_level, 0.0F, NIMCP_OLIGO_ATP_MAX);
 
     // Sync with state variable
     oligo->state_variables[2] = oligo->atp_level;
@@ -1740,7 +1734,7 @@ void oligodendrocyte_add_glucose(oligodendrocyte_t* oligo, float amount) {
 
     nimcp_spinlock_lock(&oligo->lock);
     oligo->glucose_level += amount;
-    oligo->glucose_level = clampf(oligo->glucose_level, 0.0F, 1.0F);
+    oligo->glucose_level = nimcp_clampf(oligo->glucose_level, 0.0F, 1.0F);
     nimcp_spinlock_unlock(&oligo->lock);
 }
 

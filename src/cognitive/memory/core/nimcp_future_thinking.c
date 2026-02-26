@@ -31,6 +31,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(future_thinking, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -124,15 +125,6 @@ static uint64_t get_current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -697,26 +689,26 @@ NIMCP_EXPORT future_error_t future_thinking_elaborate_scene(
         return FUTURE_ERROR_NULL_POINTER;
     }
 
-    detail_level = clamp_float(detail_level, 0.0f, 1.0f);
+    detail_level = nimcp_clampf(detail_level, 0.0f, 1.0f);
 
     // Elaboration adds sensory detail to existing elements
     // Higher detail_level means more vivid, specific imagery
 
     // Scale vividness metrics by detail level
-    scene->visual_detail = clamp_float(scene->visual_detail + 0.2f * detail_level, 0.0f, 1.0f);
-    scene->auditory_detail = clamp_float(scene->auditory_detail + 0.15f * detail_level, 0.0f, 1.0f);
-    scene->kinesthetic_detail = clamp_float(scene->kinesthetic_detail + 0.1f * detail_level, 0.0f, 1.0f);
+    scene->visual_detail = nimcp_clampf(scene->visual_detail + 0.2f * detail_level, 0.0f, 1.0f);
+    scene->auditory_detail = nimcp_clampf(scene->auditory_detail + 0.15f * detail_level, 0.0f, 1.0f);
+    scene->kinesthetic_detail = nimcp_clampf(scene->kinesthetic_detail + 0.1f * detail_level, 0.0f, 1.0f);
 
     // Update overall vividness
     scene->overall_vividness = (scene->visual_detail + scene->auditory_detail +
                                 scene->kinesthetic_detail) / 3.0f;
 
     // Elaboration can also improve coherence through gap-filling
-    scene->spatial_coherence = clamp_float(scene->spatial_coherence + 0.05f * detail_level,
+    scene->spatial_coherence = nimcp_clampf(scene->spatial_coherence + 0.05f * detail_level,
                                            0.0f, 1.0f);
-    scene->temporal_coherence = clamp_float(scene->temporal_coherence + 0.05f * detail_level,
+    scene->temporal_coherence = nimcp_clampf(scene->temporal_coherence + 0.05f * detail_level,
                                             0.0f, 1.0f);
-    scene->causal_coherence = clamp_float(scene->causal_coherence + 0.03f * detail_level,
+    scene->causal_coherence = nimcp_clampf(scene->causal_coherence + 0.03f * detail_level,
                                           0.0f, 1.0f);
     scene->overall_coherence = (scene->spatial_coherence + scene->temporal_coherence +
                                 scene->causal_coherence) / 3.0f;
@@ -880,9 +872,9 @@ NIMCP_EXPORT float future_thinking_evaluate_coherence(
     }
 
     // Clamp values
-    spatial = clamp_float(spatial, 0.0f, 1.0f);
-    temporal = clamp_float(temporal, 0.0f, 1.0f);
-    causal = clamp_float(causal, 0.0f, 1.0f);
+    spatial = nimcp_clampf(spatial, 0.0f, 1.0f);
+    temporal = nimcp_clampf(temporal, 0.0f, 1.0f);
+    causal = nimcp_clampf(causal, 0.0f, 1.0f);
 
     if (spatial_out) *spatial_out = spatial;
     if (temporal_out) *temporal_out = temporal;
@@ -943,7 +935,7 @@ NIMCP_EXPORT float future_thinking_estimate_probability(
     // Add some noise for realism
     probability += 0.1f * (random_float(&ft->rng_state) - 0.5f);
 
-    return clamp_float(probability, 0.0f, 1.0f);
+    return nimcp_clampf(probability, 0.0f, 1.0f);
 }
 
 NIMCP_EXPORT future_error_t future_thinking_emotional_forecast(
@@ -978,9 +970,9 @@ NIMCP_EXPORT future_error_t future_thinking_emotional_forecast(
         confidence *= 1.0f / (1.0f + 0.02f * days);
     }
 
-    if (valence_out) *valence_out = clamp_float(valence, -1.0f, 1.0f);
-    if (arousal_out) *arousal_out = clamp_float(arousal, 0.0f, 1.0f);
-    if (confidence_out) *confidence_out = clamp_float(confidence, 0.0f, 1.0f);
+    if (valence_out) *valence_out = nimcp_clampf(valence, -1.0f, 1.0f);
+    if (arousal_out) *arousal_out = nimcp_clampf(arousal, 0.0f, 1.0f);
+    if (confidence_out) *confidence_out = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     return FUTURE_SUCCESS;
 }
@@ -1055,7 +1047,7 @@ NIMCP_EXPORT float future_thinking_psychological_distance(
     // Combined psychological distance
     float distance = 0.5f * temporal_norm + 0.3f * spatial_norm + 0.2f * social_norm;
 
-    return clamp_float(distance, 0.0f, 1.0f);
+    return nimcp_clampf(distance, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -1433,7 +1425,7 @@ NIMCP_EXPORT future_error_t future_thinking_create_goal(
     }
 
     goal_out->goal_state = quat_create(0.5f, 0.3f, priority, 0.5f);
-    goal_out->priority = clamp_float(priority, 0.0f, 1.0f);
+    goal_out->priority = nimcp_clampf(priority, 0.0f, 1.0f);
     goal_out->deadline = deadline;
     goal_out->status = GOAL_STATUS_ACTIVE;
     goal_out->current_progress = 0.0f;
@@ -1541,7 +1533,7 @@ NIMCP_EXPORT future_error_t future_thinking_update_goal_progress(
         }
 
         if (ft->goals[i].goal_id == goal_id) {
-            ft->goals[i].current_progress = clamp_float(new_progress, 0.0f, 1.0f);
+            ft->goals[i].current_progress = nimcp_clampf(new_progress, 0.0f, 1.0f);
             ft->goals[i].last_updated_ms = get_current_time_ms();
 
             if (new_progress >= 1.0f) {

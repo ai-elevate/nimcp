@@ -17,6 +17,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(habenula_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,16 +72,6 @@ struct nimcp_habenula_adapter_impl {
     bool connected;
 };
 
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-}
-
 static void update_training_modulation(nimcp_habenula_adapter_t adapter) {
     if (!adapter) return;
 
@@ -97,21 +88,21 @@ static void update_training_modulation(nimcp_habenula_adapter_t adapter) {
     /* LR reduction during disappointment
      * High disappointment -> reduce learning rate (avoid reinforcing failures) */
     mod->lr_reduction_factor = 1.0f - (disappointment * adapter->config.disappointment_lr_scale);
-    mod->lr_reduction_factor = clamp_f(mod->lr_reduction_factor, 0.3f, 1.0f);
+    mod->lr_reduction_factor = nimcp_clampf(mod->lr_reduction_factor, 0.3f, 1.0f);
 
     /* Exploration penalty during high aversion
      * If currently aversive, penalize exploration */
     mod->exploration_penalty = aversion * 0.5f;
-    mod->exploration_penalty = clamp_f(mod->exploration_penalty, 0.0f, 1.0f);
+    mod->exploration_penalty = nimcp_clampf(mod->exploration_penalty, 0.0f, 1.0f);
 
     /* Negative example weight factor
      * Higher habenula activity -> weight negative examples more */
     mod->negative_weight_factor = 1.0f + firing_ratio * 0.5f;
-    mod->negative_weight_factor = clamp_f(mod->negative_weight_factor, 1.0f, 2.0f);
+    mod->negative_weight_factor = nimcp_clampf(mod->negative_weight_factor, 1.0f, 2.0f);
 
     /* Patience reduction with helplessness */
     mod->patience_reduction = helplessness * 0.3f;
-    mod->patience_reduction = clamp_f(mod->patience_reduction, 0.0f, 0.5f);
+    mod->patience_reduction = nimcp_clampf(mod->patience_reduction, 0.0f, 0.5f);
 
     /* Suggest early stop if very helpless */
     mod->suggest_early_stop = (helplessness > 0.7f);
@@ -377,7 +368,7 @@ int nimcp_habenula_adapter_on_training_event(
                                                -event->value); /* Negative = bad */
             }
             adapter->training_stress += event->value * 0.1f;
-            adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+            adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
             break;
 
         case HABENULA_TRAIN_EVENT_FAILURE:
@@ -423,7 +414,7 @@ int nimcp_habenula_adapter_on_training_event(
             break;
     }
 
-    adapter->training_stress = clamp_f(adapter->training_stress, 0.0f, 1.0f);
+    adapter->training_stress = nimcp_clampf(adapter->training_stress, 0.0f, 1.0f);
 
     return 0;
 }
@@ -495,7 +486,7 @@ int nimcp_habenula_adapter_compute_negative_reinforcement(
     float helplessness = adapter->habenula.depression.helplessness_index;
 
     *negative_signal = (disappointment * 0.5f + aversion * 0.3f + helplessness * 0.2f);
-    *negative_signal = clamp_f(*negative_signal, 0.0f, 1.0f);
+    *negative_signal = nimcp_clampf(*negative_signal, 0.0f, 1.0f);
 
     return 0;
 }
@@ -554,7 +545,7 @@ int nimcp_habenula_adapter_apply_raphe_input(
     if (!adapter->config.enable_raphe_coordination) return 0;
 
     /* High serotonin inhibits habenula (anxiolytic effect) */
-    float normalized = clamp_f(ht_level / 100.0f, 0.0f, 1.0f);
+    float normalized = nimcp_clampf(ht_level / 100.0f, 0.0f, 1.0f);
     if (normalized > 0.5f) {
         nimcp_habenula_apply_inhibition(&adapter->habenula, (normalized - 0.5f) * 0.3f);
     }

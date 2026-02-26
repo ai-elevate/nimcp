@@ -37,6 +37,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(social_fep_bridge)
 //=============================================================================
@@ -138,16 +139,6 @@ struct social_fep_bridge {
 
 BRIDGE_DEFINE_SECURITY_SETTERS(social_fep_bridge)
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -213,7 +204,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
     float friend_contribution = (m->close_friends_count == 0) ? 0.3f :
                                 (m->close_friends_count < 3) ? 0.1f : 0.0f;
 
-    m->social_prediction_error = clamp_f(
+    m->social_prediction_error = nimcp_clampf(
         loneliness_contribution + oxytocin_inverse + friend_contribution,
         0.0f, 1.0f
     );
@@ -230,7 +221,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
     float trust_uncertainty = (1.0f - m->oxytocin_level) * 0.5f;
     float relationship_base = (m->close_friends_count > 0) ? 0.2f : 0.5f;
 
-    m->relationship_uncertainty = clamp_f(
+    m->relationship_uncertainty = nimcp_clampf(
         trust_uncertainty + relationship_base * 0.5f,
         0.0f, 1.0f
     );
@@ -242,7 +233,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
     /* Norm violations would normally come from actual violation events
      * For now, we use loneliness as a proxy (isolation = unexpected social absence)
      */
-    m->norm_violation_surprise = clamp_f(
+    m->norm_violation_surprise = nimcp_clampf(
         m->loneliness * 0.5f,
         0.0f, 1.0f
     );
@@ -252,13 +243,13 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
      *=========================================================================*/
 
     /* Trust prediction error: how wrong our trust predictions are */
-    m->trust_prediction_error = clamp_f(
+    m->trust_prediction_error = nimcp_clampf(
         (1.0f - m->oxytocin_level) * 0.4f,
         0.0f, 1.0f
     );
 
     /* Cooperation prediction error */
-    m->cooperation_prediction_error = clamp_f(
+    m->cooperation_prediction_error = nimcp_clampf(
         m->social_prediction_error * 0.8f,
         0.0f, 1.0f
     );
@@ -278,7 +269,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
                      uncertainty_contrib +
                      norm_contrib;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /*=========================================================================
      * COMPUTE AGGREGATE PREDICTION ERROR
@@ -290,7 +281,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
                        m->cooperation_prediction_error * 0.3f);
 
     /* Apply decay and blend with previous error */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -306,7 +297,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
     float prediction_change = fabsf(m->social_prediction_error -
                                     bridge->prev_prediction_error);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.4f + uncertainty_change * 0.3f + prediction_change * 0.3f),
         0.0f, 1.0f
     );
@@ -316,7 +307,7 @@ static void compute_free_energy(social_fep_bridge_t* bridge) {
      *=========================================================================*/
 
     /* Entropy based on relationship uncertainty and social state variability */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         m->relationship_uncertainty * 0.5f +
         m->loneliness * 0.3f +
         (1.0f - m->oxytocin_level) * 0.2f,

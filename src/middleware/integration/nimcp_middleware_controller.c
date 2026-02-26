@@ -32,6 +32,7 @@
 #define LOG_MODULE "middleware_controller"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_timing_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(middleware_controller)
 
@@ -223,16 +224,6 @@ static inline bool is_valid_region(command_target_region_t region)
     return region <= TARGET_CUSTOM;
 }
 
-/**
- * @brief Clamp float value to range
- */
-static inline float clampf(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
 //=============================================================================
 // Configuration
 //=============================================================================
@@ -404,7 +395,7 @@ bool middleware_controller_set_attention_threshold(
 
     uint64_t start_us = get_time_us();
     float original_threshold = threshold;
-    threshold = clampf(threshold, 0.0F, 1.0F);
+    threshold = nimcp_clampf(threshold, 0.0F, 1.0F);
     if (threshold != original_threshold) {
         LOG_DEBUG("Attention threshold clamped from %.3f to %.3f for region %d",
                   original_threshold, threshold, region);
@@ -449,7 +440,7 @@ bool middleware_controller_set_attention_priority(
     }
 
     uint64_t start_us = get_time_us();
-    priority = clampf(priority, 0.0F, 1.0F);
+    priority = nimcp_clampf(priority, 0.0F, 1.0F);
 
     nimcp_mutex_lock(&controller->mutex);
 
@@ -485,7 +476,7 @@ bool middleware_controller_set_attention_selectivity(
     }
 
     uint64_t start_us = get_time_us();
-    selectivity = clampf(selectivity, 0.0F, 1.0F);
+    selectivity = nimcp_clampf(selectivity, 0.0F, 1.0F);
 
     /* Apply to attention gate if available */
     if (controller->attention_gate != NULL) {
@@ -556,7 +547,7 @@ bool middleware_controller_set_routing_priority(
     }
 
     uint64_t start_us = get_time_us();
-    weight = clampf(weight, 0.0F, 1.0F);
+    weight = nimcp_clampf(weight, 0.0F, 1.0F);
 
     /* Apply to routing table if available */
     if (controller->routing_table != NULL) {
@@ -645,7 +636,7 @@ bool middleware_controller_subscribe_pattern(
     }
 
     uint64_t start_us = get_time_us();
-    confidence_threshold = clampf(confidence_threshold, 0.0F, 1.0F);
+    confidence_threshold = nimcp_clampf(confidence_threshold, 0.0F, 1.0F);
 
     nimcp_mutex_lock(&controller->mutex);
 
@@ -739,7 +730,7 @@ bool middleware_controller_set_pattern_threshold(
     }
 
     uint64_t start_us = get_time_us();
-    threshold = clampf(threshold, 0.0F, 1.0F);
+    threshold = nimcp_clampf(threshold, 0.0F, 1.0F);
 
     controller->config.default_pattern_threshold = threshold;
 
@@ -790,7 +781,7 @@ bool middleware_controller_set_activity_scale(
     }
 
     uint64_t start_us = get_time_us();
-    scale = clampf(scale, controller->config.min_activity_scale,
+    scale = nimcp_clampf(scale, controller->config.min_activity_scale,
                    controller->config.max_activity_scale);
 
     nimcp_mutex_lock(&controller->mutex);
@@ -1066,8 +1057,8 @@ void middleware_controller_set_activity_limits(
 {
     if (controller == NULL) return;
 
-    controller->config.min_activity_scale = clampf(min_scale, 0.01F, 1.0F);
-    controller->config.max_activity_scale = clampf(max_scale, 1.0F, 10.0F);
+    controller->config.min_activity_scale = nimcp_clampf(min_scale, 0.01F, 1.0F);
+    controller->config.max_activity_scale = nimcp_clampf(max_scale, 1.0F, 10.0F);
 }
 
 //=============================================================================

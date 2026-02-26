@@ -37,6 +37,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(attention_substrate_bridge)
 //=============================================================================
@@ -359,7 +360,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
 
     if (bridge->config.enable_focus_modulation) {
         float atp_factor = metabolic.atp_level * bridge->config.atp_sensitivity;
-        bridge->effects.focus_capacity = nimcp_clamp_f(atp_factor, 0.2f, 1.0f);
+        bridge->effects.focus_capacity = nimcp_clampf(atp_factor, 0.2f, 1.0f);
     } else {
         bridge->effects.focus_capacity = 1.0f;
     }
@@ -394,12 +395,12 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
         if (physical.temperature > SUBSTRATE_HYPERTHERMIA_THRESHOLD) {
             /* Above 40°C → impaired switching */
             float hyperthermia_penalty = (physical.temperature - SUBSTRATE_HYPERTHERMIA_THRESHOLD) / 5.0f;
-            temp_factor *= (1.0f - nimcp_clamp_f(hyperthermia_penalty, 0.0f, 0.5f));
+            temp_factor *= (1.0f - nimcp_clampf(hyperthermia_penalty, 0.0f, 0.5f));
         }
 
         /* Combine metabolic capacity and temperature */
         float shifting = metabolic.metabolic_capacity * temp_factor;
-        bridge->effects.shifting_efficiency = nimcp_clamp_f(shifting, 0.3f, 1.0f);
+        bridge->effects.shifting_efficiency = nimcp_clampf(shifting, 0.3f, 1.0f);
     } else {
         bridge->effects.shifting_efficiency = 1.0f;
     }
@@ -421,7 +422,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
     if (bridge->config.enable_filter_modulation) {
         /* Filtering is expensive (1.2x ATP factor models high prefrontal cost) */
         float filter_factor = metabolic.atp_level * 1.2f * bridge->config.atp_sensitivity;
-        bridge->effects.filter_strength = nimcp_clamp_f(filter_factor, 0.2f, 1.0f);
+        bridge->effects.filter_strength = nimcp_clampf(filter_factor, 0.2f, 1.0f);
     } else {
         bridge->effects.filter_strength = 1.0f;
     }
@@ -442,7 +443,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
      * ======================================================================== */
 
     float vigilance = metabolic.metabolic_capacity * physical.physical_capacity;
-    bridge->effects.vigilance_factor = nimcp_clamp_f(vigilance, 0.2f, 1.0f);
+    bridge->effects.vigilance_factor = nimcp_clampf(vigilance, 0.2f, 1.0f);
 
     /* ========================================================================
      * IMPAIRMENT DETECTION

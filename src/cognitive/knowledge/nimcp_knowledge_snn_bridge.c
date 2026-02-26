@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(knowledge_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -75,16 +76,6 @@ struct knowledge_snn_bridge {
     /* Phase 8: Instance-level health agent */
     nimcp_health_agent_t* health_agent;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -371,7 +362,7 @@ int knowledge_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -441,8 +432,8 @@ int knowledge_snn_encode_semantic(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
-    dims[KNOWLEDGE_DIM_SEMANTIC] = clamp_f(semantic, 0.0f, 1.0f);
-    dims[KNOWLEDGE_DIM_ACTIVATION] = clamp_f(activation, 0.0f, 1.0f);
+    dims[KNOWLEDGE_DIM_SEMANTIC] = nimcp_clampf(semantic, 0.0f, 1.0f);
+    dims[KNOWLEDGE_DIM_ACTIVATION] = nimcp_clampf(activation, 0.0f, 1.0f);
     dims[KNOWLEDGE_DIM_RETRIEVAL] = (semantic + activation) / 2.0f;
 
     bridge->semantic_signal = semantic;
@@ -469,8 +460,8 @@ int knowledge_snn_encode_retrieval(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
-    dims[KNOWLEDGE_DIM_RETRIEVAL] = clamp_f(retrieval_strength, 0.0f, 1.0f);
-    dims[KNOWLEDGE_DIM_CATEGORICAL] = clamp_f((float)concept_count / 10.0f, 0.0f, 1.0f);
+    dims[KNOWLEDGE_DIM_RETRIEVAL] = nimcp_clampf(retrieval_strength, 0.0f, 1.0f);
+    dims[KNOWLEDGE_DIM_CATEGORICAL] = nimcp_clampf((float)concept_count / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -494,8 +485,8 @@ int knowledge_snn_encode_association(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
-    dims[KNOWLEDGE_DIM_ASSOCIATION] = clamp_f(association, 0.0f, 1.0f);
-    dims[KNOWLEDGE_DIM_INTEGRATION] = clamp_f(association * 0.8f, 0.0f, 1.0f);
+    dims[KNOWLEDGE_DIM_ASSOCIATION] = nimcp_clampf(association, 0.0f, 1.0f);
+    dims[KNOWLEDGE_DIM_INTEGRATION] = nimcp_clampf(association * 0.8f, 0.0f, 1.0f);
 
     bridge->retrieval_signal = association;
 
@@ -580,12 +571,12 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_retrieval.semantic_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_retrieval.activation_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_retrieval.retrieval_strength = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_retrieval.association_strength = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_retrieval.categorical_coherence = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_retrieval.integration_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_retrieval.semantic_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_retrieval.activation_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_retrieval.retrieval_strength = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_retrieval.association_strength = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_retrieval.categorical_coherence = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_retrieval.integration_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check activation threshold */
     if (bridge->last_retrieval.activation_level > bridge->config.activation_threshold) {

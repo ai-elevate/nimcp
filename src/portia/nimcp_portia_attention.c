@@ -39,6 +39,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_attention)
 
@@ -100,15 +101,6 @@ typedef struct {
 //=============================================================================
 // Utility Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Validate attention state
@@ -242,13 +234,13 @@ portia_attention_state_t portia_attention_init(
     }
 
     // Validate configuration
-    state->config.reallocation_threshold = clamp_f(
+    state->config.reallocation_threshold = nimcp_clampf(
         state->config.reallocation_threshold, 0.0F, 1.0F);
-    state->config.decay_rate_per_second = clamp_f(
+    state->config.decay_rate_per_second = nimcp_clampf(
         state->config.decay_rate_per_second, 0.0F, 1.0F);
-    state->config.hysteresis_factor = clamp_f(
+    state->config.hysteresis_factor = nimcp_clampf(
         state->config.hysteresis_factor, 0.0F, 1.0F);
-    state->config.smoothing_alpha = clamp_f(
+    state->config.smoothing_alpha = nimcp_clampf(
         state->config.smoothing_alpha, 0.0F, 1.0F);
 
     LOG_DEBUG("Config: threshold=%.3f, decay=%.3f/s, interval=%ums",
@@ -647,7 +639,7 @@ int portia_attention_request(
         return -1;
     }
 
-    amount = clamp_f(amount, MIN_ALLOCATION, MAX_ALLOCATION);
+    amount = nimcp_clampf(amount, MIN_ALLOCATION, MAX_ALLOCATION);
 
     nimcp_platform_mutex_lock(&state->mutex);
 
@@ -684,7 +676,7 @@ int portia_attention_release(
         return -1;
     }
 
-    amount = clamp_f(amount, MIN_ALLOCATION, MAX_ALLOCATION);
+    amount = nimcp_clampf(amount, MIN_ALLOCATION, MAX_ALLOCATION);
 
     nimcp_platform_mutex_lock(&state->mutex);
 

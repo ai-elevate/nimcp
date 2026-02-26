@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(shadow_snn_bridge)
 //=============================================================================
@@ -123,16 +124,6 @@ struct shadow_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(shadow_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -374,7 +365,7 @@ int shadow_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -428,8 +419,8 @@ int shadow_snn_encode_suppression(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SHADOW_DIM_COUNT] = {0};
-    dims[SHADOW_DIM_REPRESSION_STRENGTH] = clamp_f(repression, 0.0f, 1.0f);
-    dims[SHADOW_DIM_DEFENSE_ACTIVATION] = clamp_f(suppression, 0.0f, 1.0f);
+    dims[SHADOW_DIM_REPRESSION_STRENGTH] = nimcp_clampf(repression, 0.0f, 1.0f);
+    dims[SHADOW_DIM_DEFENSE_ACTIVATION] = nimcp_clampf(suppression, 0.0f, 1.0f);
     dims[SHADOW_DIM_SUPPRESSED_FEAR] = (suppression + repression) / 2.0f;
 
     bridge->suppression_signal = suppression;
@@ -452,8 +443,8 @@ int shadow_snn_encode_unconscious(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SHADOW_DIM_COUNT] = {0};
-    dims[SHADOW_DIM_DEFENSE_ACTIVATION] = clamp_f((float)defense_count / 5.0f, 0.0f, 1.0f);
-    dims[SHADOW_DIM_SUPPRESSED_SHAME] = clamp_f(unconscious_level, 0.0f, 1.0f);
+    dims[SHADOW_DIM_DEFENSE_ACTIVATION] = nimcp_clampf((float)defense_count / 5.0f, 0.0f, 1.0f);
+    dims[SHADOW_DIM_SUPPRESSED_SHAME] = nimcp_clampf(unconscious_level, 0.0f, 1.0f);
 
     bridge->unconscious_signal = unconscious_level;
 
@@ -475,8 +466,8 @@ int shadow_snn_encode_defense(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SHADOW_DIM_COUNT] = {0};
-    dims[SHADOW_DIM_DEFENSE_ACTIVATION] = clamp_f(defense_strength, 0.0f, 1.0f);
-    dims[SHADOW_DIM_REPRESSION_STRENGTH] = clamp_f(defense_strength * 0.8f, 0.0f, 1.0f);
+    dims[SHADOW_DIM_DEFENSE_ACTIVATION] = nimcp_clampf(defense_strength, 0.0f, 1.0f);
+    dims[SHADOW_DIM_REPRESSION_STRENGTH] = nimcp_clampf(defense_strength * 0.8f, 0.0f, 1.0f);
 
     /* Invoke defense callback if defense is significant */
     if (defense_strength > bridge->config.defense_threshold) {
@@ -543,12 +534,12 @@ int shadow_snn_simulate(shadow_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_output.suppression_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_output.repression_strength = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_output.shadow_integration = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_output.defense_activation = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_output.unconscious_activity = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_output.breakthrough_magnitude = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_output.suppression_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_output.repression_strength = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_output.shadow_integration = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_output.defense_activation = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_output.unconscious_activity = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_output.breakthrough_magnitude = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check suppression threshold */
     if (bridge->last_output.suppression_level > bridge->config.suppression_threshold) {

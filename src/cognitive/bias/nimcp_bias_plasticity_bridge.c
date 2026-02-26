@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(bias_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,16 +72,6 @@ struct bias_plasticity_bridge {
     uint64_t sim_time_us;
 };
 
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
 static bias_plasticity_synapse_t* find_synapse(
     bias_plasticity_bridge_t* bridge,
     uint32_t synapse_id
@@ -122,7 +113,7 @@ static void apply_weight_bounds(
     bias_plasticity_bridge_t* bridge,
     bias_plasticity_synapse_t* synapse
 ) {
-    synapse->weight = clamp(synapse->weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(synapse->weight, bridge->config.weight_min, bridge->config.weight_max);
 }
 
 //=============================================================================
@@ -300,7 +291,7 @@ int bias_plasticity_register_synapse(
     synapse->synapse_id = synapse_id;
     synapse->type = type;
     synapse->bias_type = bias_type;
-    synapse->weight = clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     synapse->initial_weight = synapse->weight;
     synapse->last_pre_spike_us = 0;
     synapse->last_post_spike_us = 0;
@@ -426,7 +417,7 @@ int bias_plasticity_bias_detected(
             if (bridge->config.enable_eligibility) {
                 bridge->synapses[i].eligibility_trace += confidence;
                 bridge->synapses[i].eligibility_trace =
-                    clamp(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
+                    nimcp_clampf(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
             }
         }
     }
@@ -611,7 +602,7 @@ int bias_plasticity_metacognitive_insight(
         type_learn->metacognitive_awareness +=
             insight_magnitude * bridge->config.awareness_growth_rate;
         type_learn->metacognitive_awareness =
-            clamp(type_learn->metacognitive_awareness, 0.0f, 1.0f);
+            nimcp_clampf(type_learn->metacognitive_awareness, 0.0f, 1.0f);
 
         if (bridge->metacognitive_callback) {
             bridge->metacognitive_callback(bias_type, old_awareness,
@@ -788,7 +779,7 @@ int bias_plasticity_update(
         float accuracy_error = bridge->config.target_detection_accuracy - accuracy;
 
         bridge->global_learning_rate += accuracy_error * homeo_rate;
-        bridge->global_learning_rate = clamp(bridge->global_learning_rate, 0.1f, 2.0f);
+        bridge->global_learning_rate = nimcp_clampf(bridge->global_learning_rate, 0.1f, 2.0f);
     }
 
     // Update mean detection accuracy
@@ -832,7 +823,7 @@ int bias_plasticity_consolidate(bias_plasticity_bridge_t* bridge) {
             if (accuracy > 0.7f) {
                 bridge->synapses[i].consolidation_level += 0.1f * accuracy;
                 bridge->synapses[i].consolidation_level =
-                    clamp(bridge->synapses[i].consolidation_level, 0.0f, 1.0f);
+                    nimcp_clampf(bridge->synapses[i].consolidation_level, 0.0f, 1.0f);
             }
         }
     }

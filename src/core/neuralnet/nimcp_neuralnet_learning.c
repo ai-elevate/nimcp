@@ -282,6 +282,9 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
         // Apply weight update with meta-plasticity
         float new_weight = handle->weight + delta_w * meta_plasticity;
 
+        // Guard against NaN/Inf from numerical instability
+        if (!isfinite(new_weight)) new_weight = 0.0f;
+
         // Apply weight constraints
         new_weight = fmaxf(network->config.min_weight,
                           fminf(network->config.max_weight, new_weight));
@@ -294,6 +297,7 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
 
         // Update synaptic strength
         float new_strength = fminf(handle->strength * (1.0f + delta_w), MAX_SYNAPTIC_STRENGTH);
+        if (!isfinite(new_strength)) new_strength = 1.0f;
         handle->strength = new_strength;
         if (meta) {
             meta->weight = handle->weight;
@@ -369,6 +373,9 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // Apply weight update with meta-plasticity modulation
         float new_weight = handle->weight + delta_w * meta_plasticity;
 
+        // Guard against NaN/Inf from numerical instability
+        if (!isfinite(new_weight)) new_weight = 0.0f;
+
         // Clamp weight to configured bounds
         new_weight = fmaxf(network->config.min_weight,
                           fminf(network->config.max_weight, new_weight));
@@ -383,7 +390,7 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // Apply BCM homeostatic plasticity after STDP (if enabled)
         if (meta && meta->enable_bcm && meta->bcm) {
             bcm_params_t bcm_params = bcm_params_cortical();
-            float dt_sec = (float)(timestamp - meta->last_active) / 1000000.0f;
+            float dt_sec = (float)(timestamp - meta->last_active) / 1000.0f;  // ms (timesteps) to seconds
             float pre_activity = trace_val;
             float post_activity = post_neuron->state;
 
@@ -508,8 +515,8 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
         }
     }
 
-    // Iterate over all neurons in the network
-    for (uint32_t neuron_id = 0; neuron_id < network->config.num_neurons; neuron_id++) {
+    // Iterate over all neurons in the network (use num_neurons to include dynamically-added)
+    for (uint32_t neuron_id = 0; neuron_id < network->num_neurons; neuron_id++) {
         neuron_t* neuron = &network->neurons[neuron_id];
 
         // Apply STDP if enabled for this neuron
@@ -559,6 +566,9 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 float old_weight = handle->weight;
                 syn->weight = handle->weight;  // sync before eligibility modifies it
                 eligibility_apply_reward(syn, syn->eligibility, &elig_config, reward, dopamine);
+
+                // Guard against NaN/Inf from numerical instability
+                if (!isfinite(syn->weight)) syn->weight = old_weight;
 
                 // Biological security: Validate weight change
                 if (!nimcp_security_validate_weight_change(old_weight, syn->weight,

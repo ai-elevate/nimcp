@@ -682,7 +682,7 @@ int brain_immune_present_antigen(
 
     /* Copy antigen data before unlocking for safe callback invocation */
     brain_antigen_t antigen_copy = *antigen;
-    void* callback_user_data = system->callback_user_data;
+    void* callback_user_data = system->on_antigen_user_data;
     brain_immune_antigen_cb_t antigen_callback = system->on_antigen;
 
     nimcp_mutex_unlock(system->mutex);
@@ -1126,7 +1126,7 @@ int brain_immune_t_cell_kill(
     nimcp_mutex_lock(system->mutex);
     t_cell->kills++;
     kill_callback = system->on_kill;
-    callback_user_data = system->callback_user_data;
+    callback_user_data = system->on_kill_user_data;
     t_cell_copy = *t_cell;  /* Copy for safe callback invocation */
     nimcp_mutex_unlock(system->mutex);
 
@@ -1331,7 +1331,7 @@ int brain_immune_neutralize(
     bool should_convert_to_memory = (producer && producer->state != B_CELL_MEMORY);
 
     /* Copy callback info before unlock */
-    void* callback_user_data = system->callback_user_data;
+    void* callback_user_data = system->on_neutralize_user_data;
     brain_immune_neutralize_cb_t neutralize_callback = system->on_neutralize;
     bool enable_logging = system->config.enable_logging;
 
@@ -1456,7 +1456,7 @@ int brain_immune_release_cytokine(
 
     /* Copy callback data before unlock to prevent race condition */
     brain_immune_cytokine_cb_t callback = system->on_cytokine;
-    void* callback_data = system->callback_user_data;
+    void* callback_data = system->on_cytokine_user_data;
     bio_module_context_t bio_ctx = system->bio_context;
 
     /* Set delivered flag BEFORE unlock to prevent race condition */
@@ -1559,7 +1559,7 @@ int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t s
 
     /* Capture callback and data under mutex to prevent race condition */
     brain_immune_inflammation_cb_t inflammation_callback = system->on_inflammation;
-    void* callback_user_data = system->callback_user_data;
+    void* callback_user_data = system->on_inflammation_user_data;
     brain_inflammation_site_t site_copy = *site;  /* Copy for safe callback invocation */
 
     nimcp_mutex_unlock(system->mutex);

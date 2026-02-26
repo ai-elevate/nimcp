@@ -22,6 +22,7 @@
 
 #define LOG_MODULE "INFORMATION"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(shannon)
 
@@ -125,16 +126,6 @@ static inline float safe_log2(float x)
         return 0.0F;
     }
     return log2f(x);
-}
-
-/**
- * @brief Clamp value to range [min, max]
- */
-static inline float clamp(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 //=============================================================================
@@ -461,7 +452,7 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
     }
 
     // Validate inputs
-    weight = clamp(weight, -1.0F, 1.0F);
+    weight = nimcp_clampf(weight, -1.0F, 1.0F);
     pre_firing_rate = fmaxf(0.0F, pre_firing_rate);
     noise_level = fmaxf(SHANNON_EPSILON, noise_level);
     bandwidth = fmaxf(SHANNON_MIN_BANDWIDTH, bandwidth);
@@ -488,7 +479,7 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
     }
 
     // Clamp SNR
-    metrics.snr = clamp(metrics.snr, 0.0F, SHANNON_MAX_SNR);
+    metrics.snr = nimcp_clampf(metrics.snr, 0.0F, SHANNON_MAX_SNR);
 
     // Compute channel capacity: C = B × log₂(1 + SNR)
     metrics.channel_capacity = shannon_channel_capacity(bandwidth, metrics.snr);
@@ -514,7 +505,7 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
 
     // Information rate: capacity weighted by current activity
     float activity_factor = pre_firing_rate / (bandwidth + SHANNON_EPSILON);
-    activity_factor = clamp(activity_factor, 0.0F, 1.0F);
+    activity_factor = nimcp_clampf(activity_factor, 0.0F, 1.0F);
     metrics.information_rate = metrics.channel_capacity * activity_factor;
 
     // Coding efficiency: how well capacity is being used
@@ -525,7 +516,7 @@ shannon_synapse_metrics_t shannon_analyze_synapse(
     } else {
         metrics.coding_efficiency = 0.0F;
     }
-    metrics.coding_efficiency = clamp(metrics.coding_efficiency, 0.0F, 1.0F);
+    metrics.coding_efficiency = nimcp_clampf(metrics.coding_efficiency, 0.0F, 1.0F);
 
     return metrics;
 }
@@ -567,7 +558,7 @@ float shannon_optimize_synapse_weight(
     float weight_delta = learning_rate * error * (dC_dw > 0.0F ? 1.0F : -1.0F);
 
     float new_weight = current_weight + weight_delta;
-    new_weight = clamp(new_weight, -1.0F, 1.0F);
+    new_weight = nimcp_clampf(new_weight, -1.0F, 1.0F);
 
     return new_weight;
 }
@@ -613,7 +604,7 @@ shannon_neuron_metrics_t shannon_analyze_neuron(
     // Map state to 10 bins
     uint32_t num_bins = 10;
     /* P2-SH-2: Use float clamp to match function signature (float, float, float) */
-    float state_bin_f = clamp(neuron_state * (float)num_bins, 0.0f, (float)(num_bins - 1));
+    float state_bin_f = nimcp_clampf(neuron_state * (float)num_bins, 0.0f, (float)(num_bins - 1));
     int state_bin = (int)state_bin_f;
 
     // Simplified: assume uniform distribution for now
@@ -768,7 +759,7 @@ uint32_t shannon_detect_bottlenecks(
             float weight_scale = sqrtf(target_snr / (current_snr + SHANNON_EPSILON));
             bottlenecks[num_found].suggested_weight = weight_scale * 0.5F;  // Heuristic
             bottlenecks[num_found].suggested_weight =
-                clamp(bottlenecks[num_found].suggested_weight, 0.1F, 1.0F);
+                nimcp_clampf(bottlenecks[num_found].suggested_weight, 0.1F, 1.0F);
 
             num_found++;
         }

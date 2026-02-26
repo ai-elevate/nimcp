@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sleep_wake_snn_bridge)
 //=============================================================================
@@ -120,16 +121,6 @@ struct sleep_wake_snn_bridge {
     /* Statistics */
     sleep_wake_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -372,7 +363,7 @@ int sleep_wake_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -426,8 +417,8 @@ int sleep_wake_snn_encode_pressure(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SLEEP_WAKE_DIM_COUNT] = {0};
-    dims[SLEEP_WAKE_DIM_SLEEP_PRESSURE] = clamp_f(pressure, 0.0f, 1.0f);
-    dims[SLEEP_WAKE_DIM_CIRCADIAN_PHASE] = clamp_f(circadian_phase, 0.0f, 1.0f);
+    dims[SLEEP_WAKE_DIM_SLEEP_PRESSURE] = nimcp_clampf(pressure, 0.0f, 1.0f);
+    dims[SLEEP_WAKE_DIM_CIRCADIAN_PHASE] = nimcp_clampf(circadian_phase, 0.0f, 1.0f);
 
     /* Sleep drive increases with pressure */
     dims[SLEEP_WAKE_DIM_SLEEP_PROMOTION] = pressure * 0.8f;
@@ -455,9 +446,9 @@ int sleep_wake_snn_encode_arousal(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SLEEP_WAKE_DIM_COUNT] = {0};
-    dims[SLEEP_WAKE_DIM_AROUSAL] = clamp_f(arousal, 0.0f, 1.0f);
-    dims[SLEEP_WAKE_DIM_WAKE_PROMOTION] = clamp_f(wake_drive, 0.0f, 1.0f);
-    dims[SLEEP_WAKE_DIM_SLEEP_PROMOTION] = clamp_f(1.0f - arousal, 0.0f, 1.0f);
+    dims[SLEEP_WAKE_DIM_AROUSAL] = nimcp_clampf(arousal, 0.0f, 1.0f);
+    dims[SLEEP_WAKE_DIM_WAKE_PROMOTION] = nimcp_clampf(wake_drive, 0.0f, 1.0f);
+    dims[SLEEP_WAKE_DIM_SLEEP_PROMOTION] = nimcp_clampf(1.0f - arousal, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -481,7 +472,7 @@ int sleep_wake_snn_encode_stage(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SLEEP_WAKE_DIM_COUNT] = {0};
-    float depth = clamp_f(stage_depth, 0.0f, 1.0f);
+    float depth = nimcp_clampf(stage_depth, 0.0f, 1.0f);
 
     /* Encode stage-specific activity */
     switch (stage) {
@@ -580,12 +571,12 @@ int sleep_wake_snn_simulate(sleep_wake_snn_bridge_t* bridge, float duration_ms) 
     }
 
     /* Decode outputs */
-    bridge->last_arousal.sleep_pressure = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_arousal.arousal_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_arousal.circadian_phase = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_arousal.wake_drive = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_arousal.sleep_drive = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_arousal.consolidation_signal = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_arousal.sleep_pressure = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_arousal.arousal_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_arousal.circadian_phase = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_arousal.wake_drive = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_arousal.sleep_drive = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_arousal.consolidation_signal = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check high arousal threshold */
     if (bridge->last_arousal.arousal_level > bridge->config.arousal_threshold) {

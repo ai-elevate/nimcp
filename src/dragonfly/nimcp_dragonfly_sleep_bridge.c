@@ -22,6 +22,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_sleep_bridge)
 
@@ -42,12 +43,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 //=============================================================================
@@ -354,7 +349,7 @@ int dragonfly_sleep_bridge_update(
         /* Apply fatigue reduction */
         base_activity *= (1.0f - bridge->state.fatigue_level * 0.5f);
 
-        bridge->state.activity_level = clamp_f(base_activity, 0.0f, 1.5f);
+        bridge->state.activity_level = nimcp_clampf(base_activity, 0.0f, 1.5f);
         bridge->state.is_hunting_allowed = bridge->state.activity_level > 0.2f;
     }
 

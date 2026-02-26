@@ -31,6 +31,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(procedural, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -110,15 +111,6 @@ static float get_current_time_seconds(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (float)ts.tv_sec + (float)ts.tv_nsec / 1e9f;
-}
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -1028,7 +1020,7 @@ NIMCP_EXPORT procedural_error_t procedural_add_step_ex(
 
     // Set step properties
     step->duration_ms = duration_ms;
-    step->precision_required = clamp_float(precision_required, 0.0f, 1.0f);
+    step->precision_required = nimcp_clampf(precision_required, 0.0f, 1.0f);
 
     // Compute action signature
     prime_signature_t* sig = prime_sig_from_text(action_description);
@@ -1115,7 +1107,7 @@ NIMCP_EXPORT procedural_error_t procedural_insert_step(
     }
 
     step->duration_ms = duration_ms;
-    step->precision_required = clamp_float(precision_required, 0.0f, 1.0f);
+    step->precision_required = nimcp_clampf(precision_required, 0.0f, 1.0f);
     step->mean_duration_ms = duration_ms;
     step->requires_attention = true;
 
@@ -1193,7 +1185,7 @@ NIMCP_EXPORT procedural_error_t procedural_practice(
         return PROC_ERROR_NOT_FOUND;
     }
 
-    practice_accuracy = clamp_float(practice_accuracy, 0.0f, 1.0f);
+    practice_accuracy = nimcp_clampf(practice_accuracy, 0.0f, 1.0f);
     pm->current_time = get_current_time_seconds();
 
     // Update practice count
@@ -1212,7 +1204,7 @@ NIMCP_EXPORT procedural_error_t procedural_practice(
     float practice_factor = logf(1.0f + skill->practice_count) / 10.0f;
     float accuracy_factor = skill->accuracy * skill->accuracy; // Accuracy squared
 
-    skill->automaticity = clamp_float(
+    skill->automaticity = nimcp_clampf(
         practice_factor * accuracy_factor,
         0.0f, 1.0f
     );
@@ -1221,7 +1213,7 @@ NIMCP_EXPORT procedural_error_t procedural_practice(
     skill->speed = 1.0f + logf(1.0f + skill->practice_count * 0.1f);
 
     // Update strength (reinforced by practice)
-    skill->strength = clamp_float(
+    skill->strength = nimcp_clampf(
         skill->strength + pm->config.base_learning_rate * 0.1f,
         PROC_MIN_SKILL_STRENGTH, 1.0f
     );
@@ -1300,7 +1292,7 @@ NIMCP_EXPORT procedural_error_t procedural_practice_detailed(
         }
 
         procedural_step_t* step = &skill->steps[i];
-        float acc = clamp_float(step_accuracies[i], 0.0f, 1.0f);
+        float acc = nimcp_clampf(step_accuracies[i], 0.0f, 1.0f);
 
         step->execution_count++;
         step->success_rate = update_running_average(step->success_rate, acc,
@@ -1430,7 +1422,7 @@ NIMCP_EXPORT float procedural_compute_automaticity(
     // Automaticity factors:
     // 1. Practice repetitions (logarithmic)
     float practice_factor = logf(1.0f + skill->practice_count) / 10.0f;
-    practice_factor = clamp_float(practice_factor, 0.0f, 1.0f);
+    practice_factor = nimcp_clampf(practice_factor, 0.0f, 1.0f);
 
     // 2. Accuracy consistency (low variance = high automaticity)
     float accuracy_variance = 0.0f;
@@ -1451,10 +1443,10 @@ NIMCP_EXPORT float procedural_compute_automaticity(
         accuracy_variance /= count;
     }
     float consistency = 1.0f - sqrtf(accuracy_variance);
-    consistency = clamp_float(consistency, 0.0f, 1.0f);
+    consistency = nimcp_clampf(consistency, 0.0f, 1.0f);
 
     // 3. Speed improvement
-    float speed_factor = clamp_float((skill->speed - 1.0f) / 2.0f, 0.0f, 1.0f);
+    float speed_factor = nimcp_clampf((skill->speed - 1.0f) / 2.0f, 0.0f, 1.0f);
 
     // 4. Base accuracy
     float accuracy_factor = skill->accuracy;
@@ -1465,7 +1457,7 @@ NIMCP_EXPORT float procedural_compute_automaticity(
                          0.2f * speed_factor +
                          0.2f * accuracy_factor;
 
-    skill->automaticity = clamp_float(automaticity, 0.0f, 1.0f);
+    skill->automaticity = nimcp_clampf(automaticity, 0.0f, 1.0f);
     return skill->automaticity;
 }
 
@@ -1764,7 +1756,7 @@ NIMCP_EXPORT procedural_error_t procedural_create_habit(
     // Set initial strength
     habit->strength = (initial_strength > 0) ? initial_strength :
                        pm->config.habit_initial_strength;
-    habit->strength = clamp_float(habit->strength, 0.0f, 1.0f);
+    habit->strength = nimcp_clampf(habit->strength, 0.0f, 1.0f);
 
     // Initialize reward tracking
     habit->history_capacity = pm->config.reward_history_len;
@@ -1909,7 +1901,7 @@ NIMCP_EXPORT float procedural_reinforce_habit(
 
     // Update habit strength using TD-like learning
     float delta = pm->config.habit_reinforcement_rate * prediction_error;
-    habit->strength = clamp_float(habit->strength + delta, 0.0f, 1.0f);
+    habit->strength = nimcp_clampf(habit->strength + delta, 0.0f, 1.0f);
 
     // Update reward prediction
     habit->reward_prediction += pm->config.habit_reinforcement_rate *
@@ -1940,7 +1932,7 @@ NIMCP_EXPORT float procedural_reinforce_habit(
     habit->mean_reward = habit->history_len > 0 ? sum / habit->history_len : 0.0f;
 
     // Update automaticity
-    habit->automaticity = clamp_float(
+    habit->automaticity = nimcp_clampf(
         habit->automaticity + 0.01f * (reward > 0 ? 1.0f : -0.5f),
         0.0f, 1.0f
     );
@@ -2292,7 +2284,7 @@ NIMCP_EXPORT float procedural_decay_skill(
     }
 
     skill->automaticity *= decay;
-    skill->automaticity = clamp_float(skill->automaticity, 0.0f, 1.0f);
+    skill->automaticity = nimcp_clampf(skill->automaticity, 0.0f, 1.0f);
 
     update_skill_stats(pm);
     return skill->strength;
@@ -2809,7 +2801,7 @@ NIMCP_EXPORT float procedural_compute_learning_rate(
     // Less room to improve with high accuracy
     rate *= (1.0f - skill->accuracy * 0.5f);
 
-    return clamp_float(rate, 0.001f, 1.0f);
+    return nimcp_clampf(rate, 0.001f, 1.0f);
 }
 
 NIMCP_EXPORT float procedural_estimate_mastery_time(

@@ -46,6 +46,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_emo_attention_bridge_health_agent = NULL;
@@ -170,16 +171,6 @@ static const char* tunnel_vision_names[] = {
     "critical"
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float maxf(float a, float b) {
     return (a > b) ? a : b;
 }
@@ -248,7 +239,7 @@ static float compute_attention_width(
         width = width * (1.0f - surprise_effect) + config->baseline_width * surprise_effect;
     }
 
-    return clampf(width, 0.0f, 1.0f);
+    return nimcp_clampf(width, 0.0f, 1.0f);
 }
 
 /**
@@ -288,11 +279,11 @@ static void compute_stimulus_boosts(
 
     /* Routine signals suppressed by high arousal states */
     float arousal = emotion->fear + emotion->panic + emotion->joy + emotion->anger + emotion->surprise;
-    boosts[FIN_STIMULUS_ROUTINE] = clampf(1.0f - arousal * 0.2f, 0.5f, 1.0f);
+    boosts[FIN_STIMULUS_ROUTINE] = nimcp_clampf(1.0f - arousal * 0.2f, 0.5f, 1.0f);
 
     /* Clamp all boosts to reasonable range */
     for (int i = 0; i < FIN_STIMULUS_COUNT; i++) {
-        boosts[i] = clampf(boosts[i], 0.5f, 3.0f);
+        boosts[i] = nimcp_clampf(boosts[i], 0.5f, 3.0f);
     }
 }
 
@@ -704,7 +695,7 @@ int financial_emo_attention_bridge_boost_stimuli(
         output[i].boosted_salience = output[i].base_salience * output[i].boost_factor;
 
         /* Clamp to [0, 1] */
-        output[i].boosted_salience = clampf(output[i].boosted_salience, 0.0f, 1.0f);
+        output[i].boosted_salience = nimcp_clampf(output[i].boosted_salience, 0.0f, 1.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -776,7 +767,7 @@ int financial_emo_attention_bridge_decay(
     /* Decay attention width toward baseline */
     float baseline = bridge->config.baseline_width;
     float decay_factor = bridge->config.width_decay_rate * (float)elapsed_ms / 1000.0f;
-    decay_factor = clampf(decay_factor, 0.0f, 1.0f);
+    decay_factor = nimcp_clampf(decay_factor, 0.0f, 1.0f);
 
     /* Move toward baseline by decay_factor */
     bridge->current_width = bridge->current_width + (baseline - bridge->current_width) * decay_factor;

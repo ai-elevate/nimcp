@@ -266,14 +266,14 @@ uint32_t bio_router_process_inbox(bio_module_context_t ctx, uint32_t max_message
 
         if (handler) {
             // Invoke handler
-            entry->handler_invocations++;
+            __atomic_fetch_add(&entry->handler_invocations, 1, __ATOMIC_RELAXED);
 
             nimcp_error_t handler_result = handler(msg_data, msg_size,
                                                     response_promise,
                                                     entry->user_data);
 
             if (handler_result != NIMCP_SUCCESS) {
-                entry->handler_errors++;
+                __atomic_fetch_add(&entry->handler_errors, 1, __ATOMIC_RELAXED);
 
                 nimcp_platform_mutex_lock(&g_router->stats_mutex);
                 g_router->stats.handler_errors++;
@@ -283,6 +283,10 @@ uint32_t bio_router_process_inbox(bio_module_context_t ctx, uint32_t max_message
                          header->type, entry->module_name);
             }
         } else {
+            /* Complete orphaned promise so caller's future doesn't block forever */
+            if (response_promise) {
+                nimcp_bio_promise_complete(response_promise, NULL);
+            }
             LOG_DEBUG("No handler for message type 0x%04X in module %s",
                       header->type, entry->module_name);
         }

@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(neuromodulatory_immune_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,12 +72,6 @@ static uint64_t get_timestamp_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static float clamp_float(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /* ============================================================================
@@ -286,7 +281,7 @@ int neuromod_immune_apply_ne_stress(neuromod_immune_bridge_t* bridge, const neur
     }
     if (!bridge->config.enable_lc_immune_modulation) return 0;
 
-    bridge->modulation.ne_level = clamp_float(payload->ne_level, 0.0f, 1.0f);
+    bridge->modulation.ne_level = nimcp_clampf(payload->ne_level, 0.0f, 1.0f);
 
     /* Determine acute vs chronic based on duration */
     if (payload->stress_duration_ms < bridge->config.chronic_stress_threshold_ms) {
@@ -322,7 +317,7 @@ int neuromod_immune_apply_da_reward(neuromod_immune_bridge_t* bridge, const neur
     }
     if (!bridge->config.enable_vta_immune_modulation) return 0;
 
-    bridge->modulation.da_level = clamp_float(payload->da_level, 0.0f, 1.0f);
+    bridge->modulation.da_level = nimcp_clampf(payload->da_level, 0.0f, 1.0f);
     bridge->modulation.positive_affect = payload->positive_outcome;
 
     if (payload->positive_outcome) {
@@ -353,7 +348,7 @@ int neuromod_immune_apply_ht_mood(neuromod_immune_bridge_t* bridge, const neurom
     }
     if (!bridge->config.enable_raphe_immune_modulation) return 0;
 
-    bridge->modulation.ht_level = clamp_float(payload->ht_level, 0.0f, 1.0f);
+    bridge->modulation.ht_level = nimcp_clampf(payload->ht_level, 0.0f, 1.0f);
     bridge->modulation.good_mood = (payload->mood_valence > 0.0f);
 
     if (payload->mood_valence > 0.0f) {
@@ -384,7 +379,7 @@ int neuromod_immune_apply_hab_aversion(neuromod_immune_bridge_t* bridge, const n
     }
     if (!bridge->config.enable_habenula_immune_modulation) return 0;
 
-    bridge->modulation.habenula_activation = clamp_float(payload->habenula_activation, 0.0f, 1.0f);
+    bridge->modulation.habenula_activation = nimcp_clampf(payload->habenula_activation, 0.0f, 1.0f);
     bridge->modulation.chronic_aversion_suppression =
         payload->suppression_strength * bridge->config.hab_suppression_weight;
 
@@ -409,12 +404,12 @@ int neuromod_immune_report_cytokines(neuromod_immune_bridge_t* bridge, const neu
     if (!bridge->config.enable_cytokine_feedback) return 0;
 
     /* Update cytokine levels */
-    bridge->feedback.il1_level = clamp_float(payload->il1_level, 0.0f, 1.0f);
-    bridge->feedback.il6_level = clamp_float(payload->il6_level, 0.0f, 1.0f);
-    bridge->feedback.il10_level = clamp_float(payload->il10_level, 0.0f, 1.0f);
-    bridge->feedback.tnf_level = clamp_float(payload->tnf_level, 0.0f, 1.0f);
-    bridge->feedback.ifn_level = clamp_float(payload->ifn_level, 0.0f, 1.0f);
-    bridge->feedback.inflammation_level = clamp_float(payload->inflammation_level, 0.0f, 1.0f);
+    bridge->feedback.il1_level = nimcp_clampf(payload->il1_level, 0.0f, 1.0f);
+    bridge->feedback.il6_level = nimcp_clampf(payload->il6_level, 0.0f, 1.0f);
+    bridge->feedback.il10_level = nimcp_clampf(payload->il10_level, 0.0f, 1.0f);
+    bridge->feedback.tnf_level = nimcp_clampf(payload->tnf_level, 0.0f, 1.0f);
+    bridge->feedback.ifn_level = nimcp_clampf(payload->ifn_level, 0.0f, 1.0f);
+    bridge->feedback.inflammation_level = nimcp_clampf(payload->inflammation_level, 0.0f, 1.0f);
     bridge->feedback.systemic_inflammation = (payload->inflammation_level > 0.7f);
     bridge->feedback.cytokine_storm = payload->urgent;
     bridge->feedback.last_update_us = get_timestamp_us();
@@ -511,11 +506,11 @@ int neuromod_immune_compute_modulation(neuromod_immune_bridge_t* bridge) {
     }
 
     /* Clamp and store */
-    bridge->modulation.il1_modulation = clamp_float(il1_mod, 0.1f, 2.0f);
-    bridge->modulation.il6_modulation = clamp_float(il6_mod, 0.1f, 2.0f);
-    bridge->modulation.il10_modulation = clamp_float(il10_mod, 0.1f, 2.0f);
-    bridge->modulation.tnf_modulation = clamp_float(tnf_mod, 0.1f, 2.0f);
-    bridge->modulation.ifn_modulation = clamp_float(ifn_mod, 0.1f, 2.0f);
+    bridge->modulation.il1_modulation = nimcp_clampf(il1_mod, 0.1f, 2.0f);
+    bridge->modulation.il6_modulation = nimcp_clampf(il6_mod, 0.1f, 2.0f);
+    bridge->modulation.il10_modulation = nimcp_clampf(il10_mod, 0.1f, 2.0f);
+    bridge->modulation.tnf_modulation = nimcp_clampf(tnf_mod, 0.1f, 2.0f);
+    bridge->modulation.ifn_modulation = nimcp_clampf(ifn_mod, 0.1f, 2.0f);
 
     bridge->modulation.timestamp_us = get_timestamp_us();
 

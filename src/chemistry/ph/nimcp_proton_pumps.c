@@ -13,6 +13,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(proton_pumps)
 
@@ -28,16 +29,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(proton_pumps)
 
 /** Default pump rate scaling */
 #define PUMP_RATE_SCALE 0.001f
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Michaelis-Menten kinetics
@@ -239,7 +230,7 @@ nimcp_pump_error_t nimcp_vatpase_set_activity(
         return PUMP_ERR_NULL_PTR;
     }
 
-    vatpase->activity_level = clampf(activity, 0.0f, 1.0f);
+    vatpase->activity_level = nimcp_clampf(activity, 0.0f, 1.0f);
 
     /* Update state based on activity */
     if (activity < MIN_ACTIVITY_THRESHOLD) {
@@ -264,7 +255,7 @@ nimcp_pump_error_t nimcp_vatpase_set_assembly(
         return PUMP_ERR_NULL_PTR;
     }
 
-    vatpase->v0_v1_assembly = clampf(assembly, 0.0f, 1.0f);
+    vatpase->v0_v1_assembly = nimcp_clampf(assembly, 0.0f, 1.0f);
 
     return PUMP_OK;
 }
@@ -324,7 +315,7 @@ nimcp_pump_error_t nimcp_nhe_set_activity(
         return PUMP_ERR_NULL_PTR;
     }
 
-    nhe->activity_level = clampf(activity, 0.0f, 1.0f);
+    nhe->activity_level = nimcp_clampf(activity, 0.0f, 1.0f);
 
     /* Update state */
     if (activity < MIN_ACTIVITY_THRESHOLD) {
@@ -409,7 +400,7 @@ nimcp_pump_error_t nimcp_nbc_set_activity(
         return PUMP_ERR_NULL_PTR;
     }
 
-    nbc->activity_level = clampf(activity, 0.0f, 1.0f);
+    nbc->activity_level = nimcp_clampf(activity, 0.0f, 1.0f);
 
     /* Update state */
     if (activity < MIN_ACTIVITY_THRESHOLD) {
@@ -547,7 +538,7 @@ nimcp_pump_error_t nimcp_pump_update(
     /* Update ATP */
     system->atp_available -= total_atp_cost;
     system->atp_available += system->config.atp_regeneration_rate * dt_sec;
-    system->atp_available = clampf(system->atp_available, 0.0f, 10.0f);
+    system->atp_available = nimcp_clampf(system->atp_available, 0.0f, 10.0f);
     system->atp_consumed += total_atp_cost;
 
     /* Update net fluxes */
@@ -603,7 +594,7 @@ nimcp_pump_error_t nimcp_pump_supply_atp(
     }
 
     system->atp_available += atp_amount;
-    system->atp_available = clampf(system->atp_available, 0.0f, 10.0f);
+    system->atp_available = nimcp_clampf(system->atp_available, 0.0f, 10.0f);
 
     return PUMP_OK;
 }

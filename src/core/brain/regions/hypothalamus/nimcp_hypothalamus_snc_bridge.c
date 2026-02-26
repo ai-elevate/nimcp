@@ -29,12 +29,19 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_snc_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "HYPOTHALAMUS_SNC_BRIDGE"
 
+
+/* Forward declarations for bio-async handler callbacks */
+static nimcp_error_t snc_handle_reward_signal(
+    const void* msg, size_t msg_size, nimcp_bio_promise_t promise, void* ctx);
+static nimcp_error_t snc_handle_value_update(
+    const void* msg, size_t msg_size, nimcp_bio_promise_t promise, void* ctx);
 
 /*=============================================================================
  * INTERNAL CONSTANTS
@@ -60,41 +67,7 @@ static void snc_bridge_compute_rpe(hypo_snc_bridge_t* bridge,
 static void snc_bridge_update_dopamine(hypo_snc_bridge_t* bridge,
                                        const hypo_rpe_t* rpe);
 static void snc_bridge_decay_phasic(hypo_snc_bridge_t* bridge, float dt_sec);
-static float clamp_float(float val, float min_val, float max_val);
-
-/* Bio-async handlers */
-static nimcp_error_t snc_handle_reward_signal(
-    const void* msg, size_t msg_size, nimcp_bio_promise_t promise, void* ctx);
-static nimcp_error_t snc_handle_value_update(
-    const void* msg, size_t msg_size, nimcp_bio_promise_t promise, void* ctx);
-
-/*=============================================================================
- * LIFECYCLE FUNCTIONS
- *===========================================================================*/
-
-hypo_snc_bridge_config_t hypo_snc_bridge_default_config(void) {
-    hypo_snc_bridge_config_t config = {0};
-
-    config.discount_gamma = HYPO_SNC_DEFAULT_GAMMA;
-    config.rpe_threshold = MIN_PHASIC_RPE;
-    config.burst_magnitude = 0.4f;  /* DA increases by 40% on positive RPE */
-    config.dip_magnitude = 0.3f;    /* DA decreases by 30% on negative RPE */
-    config.decay_rate = 2.0f;       /* Decay time constant ~500ms */
-
-    /* Default channel gains (all equal) */
-    for (int i = 0; i < HYPO_DA_CHANNEL_COUNT; i++) {
-        config.channel_gains[i] = 1.0f;
-    }
-
-    /* Alignment sensitivity (high - alignment signals are important) */
-    config.alignment_sensitivity = 1.5f;
-
-    config.use_external_snc = false;
-    config.broadcast_enabled = true;
-
-    return config;
-}
-
+static float nimcp_clampf(float val, float min_val, float max_val);
 hypo_snc_bridge_t* hypo_snc_bridge_create(
     hypo_drive_system_handle_t* drives,
     const hypo_snc_bridge_config_t* config) {
@@ -311,12 +284,12 @@ void hypo_snc_bridge_modulate_tonic(
 
     /* Combined effect on global gain */
     bridge->dopamine.global_gain = arousal_effect * stress_effect;
-    bridge->dopamine.global_gain = clamp_float(
+    bridge->dopamine.global_gain = nimcp_clampf(
         bridge->dopamine.global_gain, 0.5f, 2.0f);
 
     /* Update tonic baseline for all channels */
     float new_tonic = HYPO_SNC_TONIC_BASELINE * bridge->dopamine.global_gain;
-    new_tonic = clamp_float(new_tonic, 0.2f, 0.8f);
+    new_tonic = nimcp_clampf(new_tonic, 0.2f, 0.8f);
 
     for (int i = 0; i < HYPO_DA_CHANNEL_COUNT; i++) {
         bridge->dopamine.channels[i].tonic_baseline = new_tonic;
@@ -334,7 +307,7 @@ void hypo_snc_bridge_set_channel_gain(
     if (!bridge || channel >= HYPO_DA_CHANNEL_COUNT) return;
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->config.channel_gains[channel] = clamp_float(gain, 0.0f, 10.0f);
+    bridge->config.channel_gains[channel] = nimcp_clampf(gain, 0.0f, 10.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 }
 
@@ -621,7 +594,7 @@ static void snc_bridge_update_dopamine(
                           phasic_change * gain;
 
         /* Clamp to valid range */
-        new_level = clamp_float(new_level, HYPO_SNC_DIP_MIN, HYPO_SNC_BURST_MAX);
+        new_level = nimcp_clampf(new_level, HYPO_SNC_DIP_MIN, HYPO_SNC_BURST_MAX);
         bridge->dopamine.channels[i].level = new_level;
 
         /* Set signal type */
@@ -654,12 +627,6 @@ static void snc_bridge_decay_phasic(hypo_snc_bridge_t* bridge, float dt_sec) {
             ch->level = ch->tonic_baseline + diff * expf(-decay);
         }
     }
-}
-
-static float clamp_float(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /*=============================================================================

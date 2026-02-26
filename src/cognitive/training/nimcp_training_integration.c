@@ -37,6 +37,8 @@
 #include "portia/nimcp_portia_tier_switch.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 
+#include "utils/thread/nimcp_thread.h"
+
 #include <string.h>
 #include <math.h>
 
@@ -90,9 +92,18 @@ static basal_ganglia_t* get_bg_core(brain_t brain) {
  * typically operates on a single brain, so this is sufficient.
  *===========================================================================*/
 
-static reasoning_engine_t* g_cached_engine = NULL;
-static brain_t g_cached_brain = NULL;
-static uint32_t g_last_reasoning_steps = 0;
+/*
+ * Thread-local reasoning engine cache.
+ *
+ * WHY:  Athena uses 4 concurrent instructors that each call brain_ti_reason().
+ *       Static globals without synchronization cause data races.
+ * HOW:  _Thread_local gives each instructor thread its own engine instance.
+ *       This is correct because each instructor works on its own brain or
+ *       its own reasoning queries, and the engine is cheap to create per-thread.
+ */
+static _Thread_local reasoning_engine_t* g_cached_engine = NULL;
+static _Thread_local brain_t g_cached_brain = NULL;
+static _Thread_local uint32_t g_last_reasoning_steps = 0;
 
 /*=============================================================================
  * BASAL GANGLIA TRAINING INTEGRATION
@@ -596,19 +607,51 @@ int brain_ti_get_reasoning_phases_disabled(void) {
  * HYPOTHALAMUS-REASONING MOTIVATIONAL MODULATION
  *===========================================================================*/
 
+/**
+ * @brief Cached hypothalamus modulation to avoid redundant computation
+ *
+ * WHY:  brain_ti_get_cognitive_capacity(), brain_ti_get_urgency_mode(), and
+ *       brain_ti_get_stress_level() each independently called
+ *       reasoning_hypo_compute_modulation(brain), tripling the cost.
+ * HOW:  Cache per-brain result; invalidate when brain changes.
+ *       Thread-local to remain safe under concurrent instructor access.
+ */
+static _Thread_local brain_t g_hypo_cached_brain = NULL;
+static _Thread_local reasoning_hypo_modulation_t g_hypo_cached_mod;
+static _Thread_local bool g_hypo_cache_valid = false;
+
+static inline const reasoning_hypo_modulation_t* get_cached_hypo_modulation(brain_t brain) {
+    if (!g_hypo_cache_valid || g_hypo_cached_brain != brain) {
+        g_hypo_cached_mod = reasoning_hypo_compute_modulation(brain);
+        g_hypo_cached_brain = brain;
+        g_hypo_cache_valid = true;
+    }
+    return &g_hypo_cached_mod;
+}
+
+/**
+ * @brief Invalidate cached hypothalamus modulation
+ *
+ * Call at the start of brain_ti_compute_modulation_state() so that each
+ * full modulation cycle gets fresh hypothalamus data.
+ */
+static inline void invalidate_hypo_cache(void) {
+    g_hypo_cache_valid = false;
+}
+
 float brain_ti_get_cognitive_capacity(brain_t brain) {
-    reasoning_hypo_modulation_t mod = reasoning_hypo_compute_modulation(brain);
-    return mod.cognitive_capacity;
+    const reasoning_hypo_modulation_t* mod = get_cached_hypo_modulation(brain);
+    return mod->cognitive_capacity;
 }
 
 int brain_ti_get_urgency_mode(brain_t brain) {
-    reasoning_hypo_modulation_t mod = reasoning_hypo_compute_modulation(brain);
-    return (int)mod.urgency_mode;
+    const reasoning_hypo_modulation_t* mod = get_cached_hypo_modulation(brain);
+    return (int)mod->urgency_mode;
 }
 
 float brain_ti_get_stress_level(brain_t brain) {
-    reasoning_hypo_modulation_t mod = reasoning_hypo_compute_modulation(brain);
-    return mod.stress_level;
+    const reasoning_hypo_modulation_t* mod = get_cached_hypo_modulation(brain);
+    return mod->stress_level;
 }
 
 /*=============================================================================
@@ -663,6 +706,9 @@ float brain_ti_mesh_get_coherence(void) {
 int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t* state) {
     if (!state) { return -1; }
     memset(state, 0, sizeof(*state));
+
+    /* Invalidate cached hypothalamus data so this cycle gets fresh values */
+    invalidate_hypo_cache();
 
     /*
      * NULL brain: return sensible identity defaults so that
@@ -735,11 +781,48 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
     }
 
     /* --- Training instability response --- */
-    /* The training logic bridge is not directly accessible from brain_t.
-     * Use defaults; the caller can override via Layer 1 convergent decisions. */
-    state->instability_lr_scale    = 1.0f;
-    state->instability_batch_scale = 1.0f;
-    state->instability_clip_factor = 1.0f;
+    /*
+     * Compute instability from loss volatility and gradient variance.
+     *
+     * WHY:  Previously hardcoded to 1.0, making the documented
+     *       exp(-3*instability_score) behavior never execute.
+     * HOW:  Derive instability_score from the training logic bridge if
+     *       available; otherwise estimate from brain immune system's
+     *       inflammation capacity (high inflammation correlates with
+     *       training instability).
+     *
+     * The training_logic_bridge_t is not stored on brain_t, so we cannot
+     * call training_logic_get_instability_metrics() directly. Instead, we
+     * use the inflammation capacity factor as a proxy: when the immune
+     * system detects instability, it raises inflammation, reducing capacity.
+     *
+     * instability_score = 1.0 - inflammation_capacity_factor
+     *   - healthy (capacity=1.0) → instability=0.0 → lr_scale=1.0
+     *   - inflamed (capacity=0.5) → instability=0.5 → lr_scale=exp(-1.5)≈0.22
+     *   - severe  (capacity=0.1) → instability=0.9 → lr_scale=exp(-2.7)≈0.07
+     */
+    {
+        float instability_score = 0.0f;
+
+        /* Use inflammation_learning_factor as proxy for instability.
+         * Inflammation is already computed above, so reuse it. */
+        if (state->inflammation_learning_factor < 1.0f) {
+            instability_score = 1.0f - state->inflammation_learning_factor;
+        }
+
+        /* Also factor in conflict level from BG — high conflict indicates
+         * the model is uncertain between competing strategies */
+        float bg_conflict = brain_ti_get_conflict(brain);
+        if (bg_conflict > instability_score) {
+            instability_score = 0.5f * instability_score + 0.5f * bg_conflict;
+        }
+
+        instability_score = clampf(instability_score, 0.0f, 1.0f);
+
+        state->instability_lr_scale    = expf(-3.0f * instability_score);
+        state->instability_batch_scale = 1.0f + instability_score;  /* increase batch size under instability */
+        state->instability_clip_factor = fmaxf(0.1f, 1.0f - instability_score);  /* tighter clipping under instability */
+    }
 
     /* --- Stress level (HPA axis cortisol) --- */
     /* NOTE: Computed before Portia so we can use stress as a resource pressure proxy */
@@ -904,33 +987,41 @@ int brain_ti_compute_decision_cycle(
     result->batch_factor = 1.0f;
     result->grad_clip_factor = 1.0f;
 
-    /* Get brain state */
+    /* Get brain state — compute modulation once and cache for reuse below.
+     * FIX #8: Previously brain_ti_compute_modulation_state() was called twice
+     * in this function (once here and again at line ~1034). Now computed once. */
     float arousal_level = 0.5f;
     float inflammation_level = 0.0f;
     float resource_pressure = 0.0f;
+    brain_ti_modulation_state_t cached_mod_state;
+    bool has_mod_state = false;
     if (brain) {
         arousal_level = brain_ti_get_arousal(brain);
         /* Get inflammation and resource pressure from modulation state */
-        brain_ti_modulation_state_t mod_state;
-        if (brain_ti_compute_modulation_state(brain, &mod_state) == 0) {
+        if (brain_ti_compute_modulation_state(brain, &cached_mod_state) == 0) {
+            has_mod_state = true;
             /*
              * Semantic conversion:
-             *   mod_state.inflammation_learning_factor is CAPACITY (1.0=healthy, 0.0=impaired)
+             *   cached_mod_state.inflammation_learning_factor is CAPACITY (1.0=healthy, 0.0=impaired)
              *   diagnoser expects inflammation as SEVERITY (0.0=none, 1.0=severe)
              *   severity = 1.0 - capacity
              */
-            inflammation_level = 1.0f - mod_state.inflammation_learning_factor;
+            inflammation_level = 1.0f - cached_mod_state.inflammation_learning_factor;
             /*
              * Semantic conversion:
-             *   mod_state.portia_compute_budget is BUDGET (1.0=full, 0.0=exhausted)
+             *   cached_mod_state.portia_compute_budget is BUDGET (1.0=full, 0.0=exhausted)
              *   diagnoser expects resource_pressure as PRESSURE (0.0=idle, 1.0=critical)
              *   pressure = 1.0 - budget
              */
-            resource_pressure = 1.0f - mod_state.portia_compute_budget;
+            resource_pressure = 1.0f - cached_mod_state.portia_compute_budget;
         }
     }
 
     /* --- Layer 3: Abductive Diagnosis --- */
+    /* TODO(perf): training_diagnoser_create/destroy every call causes heap churn.
+     * Consider caching in _Thread_local storage and using training_diagnoser_reset()
+     * between calls. Same applies to training_causal_model and
+     * training_convergent_session below. */
     training_diagnoser_t* diag = training_diagnoser_create();
     training_diagnosis_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));
@@ -1028,15 +1119,16 @@ int brain_ti_compute_decision_cycle(
             training_convergent_submit_evidence(session, &causal_ev);
         }
 
-        /* Submit evidence from brain subsystems via modulation state */
-        if (brain) {
-            brain_ti_modulation_state_t mod;
-            if (brain_ti_compute_modulation_state(brain, &mod) == 0) {
+        /* Submit evidence from brain subsystems via cached modulation state
+         * FIX #8: Reuse cached_mod_state computed earlier instead of calling
+         * brain_ti_compute_modulation_state() a second time. */
+        if (brain && has_mod_state) {
+            const brain_ti_modulation_state_t* mod = &cached_mod_state;
                 /* Arousal evidence */
                 training_evidence_t arousal_ev = {
                     .source_name = "arousal",
                     .type = TRAINING_EVIDENCE_CONTINUE,
-                    .lr_factor = mod.arousal_cognitive_gain,
+                    .lr_factor = mod->arousal_cognitive_gain,
                     .batch_factor = 1.0f,
                     .grad_clip_factor = 1.0f,
                     .urgency = 0.1f,
@@ -1047,12 +1139,12 @@ int brain_ti_compute_decision_cycle(
                 /* Instability evidence */
                 training_evidence_t instability_ev = {
                     .source_name = "instability",
-                    .type = mod.instability_lr_scale < 0.5f ?
+                    .type = mod->instability_lr_scale < 0.5f ?
                             TRAINING_EVIDENCE_PAUSE : TRAINING_EVIDENCE_CONTINUE,
-                    .lr_factor = mod.instability_lr_scale,
-                    .batch_factor = mod.instability_batch_scale,
-                    .grad_clip_factor = mod.instability_clip_factor,
-                    .urgency = mod.instability_lr_scale < 0.3f ? 0.9f : 0.2f,
+                    .lr_factor = mod->instability_lr_scale,
+                    .batch_factor = mod->instability_batch_scale,
+                    .grad_clip_factor = mod->instability_clip_factor,
+                    .urgency = mod->instability_lr_scale < 0.3f ? 0.9f : 0.2f,
                     .confidence = 0.9f,
                 };
                 training_convergent_submit_evidence(session, &instability_ev);
@@ -1060,12 +1152,12 @@ int brain_ti_compute_decision_cycle(
                 /* Inflammation evidence */
                 training_evidence_t inflam_ev = {
                     .source_name = "inflammation",
-                    .type = mod.inflammation_learning_factor < 0.3f ?
+                    .type = mod->inflammation_learning_factor < 0.3f ?
                             TRAINING_EVIDENCE_PAUSE : TRAINING_EVIDENCE_CONTINUE,
-                    .lr_factor = mod.inflammation_learning_factor,
+                    .lr_factor = mod->inflammation_learning_factor,
                     .batch_factor = 1.0f,
                     .grad_clip_factor = 1.0f,
-                    .urgency = mod.inflammation_learning_factor < 0.3f ? 0.7f : 0.1f,
+                    .urgency = mod->inflammation_learning_factor < 0.3f ? 0.7f : 0.1f,
                     .confidence = 0.85f,
                 };
                 training_convergent_submit_evidence(session, &inflam_ev);
@@ -1074,10 +1166,10 @@ int brain_ti_compute_decision_cycle(
                 training_evidence_t portia_ev = {
                     .source_name = "portia",
                     .type = TRAINING_EVIDENCE_CONTINUE,
-                    .lr_factor = mod.portia_learning_gate,
-                    .batch_factor = mod.portia_compute_budget,
+                    .lr_factor = mod->portia_learning_gate,
+                    .batch_factor = mod->portia_compute_budget,
                     .grad_clip_factor = 1.0f,
-                    .urgency = mod.portia_compute_budget < 0.2f ? 0.6f : 0.1f,
+                    .urgency = mod->portia_compute_budget < 0.2f ? 0.6f : 0.1f,
                     .confidence = 0.85f,
                 };
                 training_convergent_submit_evidence(session, &portia_ev);
@@ -1085,16 +1177,15 @@ int brain_ti_compute_decision_cycle(
                 /* Stress/capacity evidence */
                 training_evidence_t stress_ev = {
                     .source_name = "stress",
-                    .type = mod.stress_level > 0.8f ?
+                    .type = mod->stress_level > 0.8f ?
                             TRAINING_EVIDENCE_PAUSE : TRAINING_EVIDENCE_CONTINUE,
-                    .lr_factor = 1.0f - 0.3f * mod.stress_level,
+                    .lr_factor = 1.0f - 0.3f * mod->stress_level,
                     .batch_factor = 1.0f,
                     .grad_clip_factor = 1.0f,
-                    .urgency = mod.stress_level > 0.8f ? 0.7f : 0.1f,
+                    .urgency = mod->stress_level > 0.8f ? 0.7f : 0.1f,
                     .confidence = 0.7f,
                 };
                 training_convergent_submit_evidence(session, &stress_ev);
-            }
         }
 
         /* Compute decision */

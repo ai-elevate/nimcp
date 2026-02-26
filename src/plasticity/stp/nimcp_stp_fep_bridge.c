@@ -24,6 +24,7 @@
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stp_fep_bridge)
 
@@ -34,19 +35,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(stp_fep_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Restrict value within [min, max]
- * WHY:  Prevent parameter overflow
- * HOW:  Standard clamping logic
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /* ============================================================================
  * Lifecycle API
@@ -197,7 +185,7 @@ float stp_fep_apply_pe_modulation(stp_fep_bridge_t* bridge, float pe) {
     if (!bridge->config.enable_pe_modulation) return 1.0f;
 
     /* Clamp PE to valid range */
-    float pe_clamped = clamp(fabsf(pe), bridge->config.pe_min_threshold, bridge->config.pe_max_threshold);
+    float pe_clamped = nimcp_clampf(fabsf(pe), bridge->config.pe_min_threshold, bridge->config.pe_max_threshold);
 
     /* Scale PE to [0, 1] range */
     float pe_normalized = (pe_clamped - bridge->config.pe_min_threshold) /
@@ -206,7 +194,7 @@ float stp_fep_apply_pe_modulation(stp_fep_bridge_t* bridge, float pe) {
     /* Apply scaling: higher PE → higher U */
     float scaling = 1.0f + bridge->config.pe_sensitivity * pe_normalized;
 
-    return clamp(scaling, STP_FEP_PRECISION_MIN, STP_FEP_PRECISION_MAX);
+    return nimcp_clampf(scaling, STP_FEP_PRECISION_MIN, STP_FEP_PRECISION_MAX);
 }
 
 float stp_fep_apply_precision_facilitation(stp_fep_bridge_t* bridge, float precision) {
@@ -216,7 +204,7 @@ float stp_fep_apply_precision_facilitation(stp_fep_bridge_t* bridge, float preci
     /* Higher precision → shorter facilitation time constant (faster facilitation) */
     float scaling = 1.0f / (1.0f + bridge->config.precision_gain * precision * bridge->config.precision_sensitivity);
 
-    return clamp(scaling, STP_FEP_TAU_F_MIN_FACTOR, STP_FEP_TAU_F_MAX_FACTOR);
+    return nimcp_clampf(scaling, STP_FEP_TAU_F_MIN_FACTOR, STP_FEP_TAU_F_MAX_FACTOR);
 }
 
 float stp_fep_apply_free_energy_recovery(stp_fep_bridge_t* bridge, float free_energy) {
@@ -226,7 +214,7 @@ float stp_fep_apply_free_energy_recovery(stp_fep_bridge_t* bridge, float free_en
     /* Higher free energy → faster recovery (lower τ_D) */
     float scaling = 1.0f / (1.0f + bridge->config.free_energy_gain * free_energy);
 
-    return clamp(scaling, STP_FEP_TAU_D_MIN_FACTOR, STP_FEP_TAU_D_MAX_FACTOR);
+    return nimcp_clampf(scaling, STP_FEP_TAU_D_MIN_FACTOR, STP_FEP_TAU_D_MAX_FACTOR);
 }
 
 float stp_fep_get_effective_u(const stp_fep_bridge_t* bridge, float base_u) {
@@ -238,7 +226,7 @@ float stp_fep_get_effective_u(const stp_fep_bridge_t* bridge, float base_u) {
     /* Apply precision modulation */
     effective_u *= bridge->fep_effects.precision_facilitation_scaling;
 
-    return clamp(effective_u, bridge->config.u_min, bridge->config.u_max);
+    return nimcp_clampf(effective_u, bridge->config.u_min, bridge->config.u_max);
 }
 
 /* ============================================================================

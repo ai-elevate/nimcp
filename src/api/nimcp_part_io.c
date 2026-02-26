@@ -26,8 +26,8 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         return NULL;
     }
 
-    // Allocate handle
-    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    // Allocate handle (calloc to zero-init last_loss/last_gradient_norm)
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
     if (!handle) {
         set_error("Failed to allocate brain handle");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle is NULL");

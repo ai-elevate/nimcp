@@ -21,6 +21,7 @@
 #include "core/brain/regions/occipital/nimcp_occipital_cortical_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
@@ -35,6 +36,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_cortical_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -351,7 +353,7 @@ static void apply_lateral_inhibition(occipital_cortical_bridge_t* bridge) {
             float relative = oc->activity / max_activity;
             float suppression = (1.0f - relative) * inhibition;
             oc->activity *= (1.0f - suppression);
-            oc->activity = nimcp_clamp_f(oc->activity, 0.0f, 1.0f);
+            oc->activity = nimcp_clampf(oc->activity, 0.0f, 1.0f);
         }
     }
 }
@@ -675,7 +677,7 @@ int occipital_cortical_bridge_process(occipital_cortical_bridge_t* bridge) {
                 response *= (1.0f - 0.3f * bridge->current_inflammation);
             }
 
-            oc->activity = nimcp_clamp_f(response + oc->baseline, 0.0f, 1.0f);
+            oc->activity = nimcp_clampf(response + oc->baseline, 0.0f, 1.0f);
             pop_activity += oc->activity;
 
             if (oc->activity > max_response) {
@@ -795,7 +797,7 @@ int occipital_cortical_bridge_update(occipital_cortical_bridge_t* bridge) {
 
     /* Signal quality based on selectivity */
     bridge->effects.signal_quality =
-        nimcp_clamp_f(bridge->effects.orientation_selectivity * 2.0f, 0.0f, 1.0f);
+        nimcp_clampf(bridge->effects.orientation_selectivity * 2.0f, 0.0f, 1.0f);
 
     /* Update average stats */
     if (active_count > 0) {

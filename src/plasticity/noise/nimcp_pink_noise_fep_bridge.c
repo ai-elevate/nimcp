@@ -17,13 +17,12 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
-#include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "mesh/nimcp_mesh_participant.h"
+#include "mesh/nimcp_mesh_adapter.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pink_noise_fep_bridge)
-
-/* Security integration */
-BRIDGE_DEFINE_SECURITY_SETTERS(pink_noise_fep_bridge)
+BRIDGE_BOILERPLATE_MESH_ONLY(pink_noise_fep_bridge, MESH_ADAPTER_CATEGORY_PLASTICITY)
 
 #define LOG_MODULE "PINK_NOISE_FEP_BRIDGE"
 

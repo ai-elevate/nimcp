@@ -19,6 +19,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(occipital_training_bridge)
 
@@ -68,16 +69,16 @@ static float compute_area_confidence(
     switch (area) {
         case VISUAL_AREA_V1:
             /* V1 confidence based on edges per frame */
-            return nimcp_clamp_f((float)stats.edges_detected / frames / 50.0f, 0.0f, 1.0f);
+            return nimcp_clampf((float)stats.edges_detected / frames / 50.0f, 0.0f, 1.0f);
         case VISUAL_AREA_V2:
             /* V2 confidence based on features per frame */
-            return nimcp_clamp_f((float)stats.features_extracted / frames / 100.0f, 0.0f, 1.0f);
+            return nimcp_clampf((float)stats.features_extracted / frames / 100.0f, 0.0f, 1.0f);
         case VISUAL_AREA_V4:
             /* V4 confidence based on feature extraction rate */
-            return nimcp_clamp_f((float)stats.features_extracted / frames / 150.0f, 0.0f, 1.0f);
+            return nimcp_clampf((float)stats.features_extracted / frames / 150.0f, 0.0f, 1.0f);
         case VISUAL_AREA_V5_MT:
             /* V5 confidence based on motion detection rate */
-            return nimcp_clamp_f((float)stats.motions_detected / frames / 30.0f, 0.0f, 1.0f);
+            return nimcp_clampf((float)stats.motions_detected / frames / 30.0f, 0.0f, 1.0f);
         default:
             return 0.5f;
     }
@@ -111,7 +112,7 @@ static float compute_feature_novelty(occipital_training_bridge_t* bridge) {
     /* More features extracted = potentially more novel content */
     float novelty = (float)stats.features_extracted /
                     (float)(stats.frames_processed + 1) / 100.0f;
-    return nimcp_clamp_f(novelty, 0.0f, 1.0f);
+    return nimcp_clampf(novelty, 0.0f, 1.0f);
 }
 
 /**
@@ -133,7 +134,7 @@ static float compute_motion_stability(occipital_training_bridge_t* bridge) {
     float motions_per_frame = (float)stats.motions_detected / frames;
 
     /* High motion rate = less stable */
-    float stability = 1.0f - nimcp_clamp_f(motions_per_frame / 20.0f, 0.0f, 1.0f);
+    float stability = 1.0f - nimcp_clampf(motions_per_frame / 20.0f, 0.0f, 1.0f);
     return stability;
 }
 
@@ -162,7 +163,7 @@ static float compute_lr_factor(
                           cfg->stability_lr_scale;
     base_factor += stability_adj;
 
-    return nimcp_clamp_f(base_factor, cfg->lr_min_factor, cfg->lr_max_factor);
+    return nimcp_clampf(base_factor, cfg->lr_min_factor, cfg->lr_max_factor);
 }
 
 /**

@@ -29,6 +29,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -78,15 +79,6 @@ struct hypothalamus_quantum_bridge {
 static float random_float(hypothalamus_quantum_bridge_t* bridge) {
     bridge->rng_state = bridge->rng_state * 1103515245 + 12345;
     return (float)(bridge->rng_state & 0x7FFFFFFF) / (float)0x7FFFFFFF;
-}
-
-/**
- * @brief Clamp value to [0, 1] range
- */
-static float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -733,7 +725,7 @@ int hypothalamus_quantum_evaluate_autonomic(
 
         /* Smoothness: minimize extreme changes */
         float smoothness_score = 1.0f - fabsf(c->heart_rate_mod - 1.0f) * 2.0f;
-        smoothness_score = clamp01(smoothness_score);
+        smoothness_score = nimcp_clamp01(smoothness_score);
         score += input->smoothness_weight * smoothness_score;
 
         result->candidate_scores[i] = score;
@@ -847,7 +839,7 @@ int hypothalamus_quantum_optimize_circadian(
 
         /* Predictions */
         result->predicted_adaptation_time = shift_magnitude / shift_per_exposure * 24.0f;
-        result->predicted_jet_lag_severity = clamp01(shift_magnitude / (float)M_PI);
+        result->predicted_jet_lag_severity = nimcp_clamp01(shift_magnitude / (float)M_PI);
         result->phase_shift_confidence = 0.7f;  /* Moderate confidence */
     }
 
@@ -952,10 +944,10 @@ int hypothalamus_quantum_optimize_hpa(
 
     if (current_hpa->chronic_stress) {
         /* Reduce sensitivity to prevent HPA exhaustion */
-        *optimal_sensitivity = clamp01(0.5f - avg_stress * 0.3f);
+        *optimal_sensitivity = nimcp_clamp01(0.5f - avg_stress * 0.3f);
     } else if (stress_variability > 0.3f) {
         /* High variability needs responsive HPA */
-        *optimal_sensitivity = clamp01(0.8f + stress_variability * 0.2f);
+        *optimal_sensitivity = nimcp_clamp01(0.8f + stress_variability * 0.2f);
     } else {
         /* Normal conditions */
         *optimal_sensitivity = 1.0f;
@@ -966,7 +958,7 @@ int hypothalamus_quantum_optimize_hpa(
     /* Lower feedback with acute stress for full response */
 
     if (current_hpa->chronic_stress) {
-        *optimal_feedback = clamp01(0.7f + avg_stress * 0.2f);
+        *optimal_feedback = nimcp_clamp01(0.7f + avg_stress * 0.2f);
     } else if (avg_stress > 0.5f) {
         *optimal_feedback = 0.4f;  /* Allow stronger response */
     } else {

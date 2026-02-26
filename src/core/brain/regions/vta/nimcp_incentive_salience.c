@@ -13,19 +13,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(incentive_salience, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Internal Helpers
- *===========================================================================*/
-
-static float clampf(float x, float lo, float hi) {
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
 
 static nimcp_motivation_level_t classify_motivation(float wanting) {
     if (wanting < 0.1f) return MOTIVATION_NONE;
@@ -154,11 +144,11 @@ int nimcp_salience_update(
     /* Smooth update */
     float tau = 100.0f;
     system->state.wanting += (wanting - system->state.wanting) * (dt / tau);
-    system->state.wanting = clampf(system->state.wanting, 0.0f, 1.0f);
+    system->state.wanting = nimcp_clampf(system->state.wanting, 0.0f, 1.0f);
 
     /* Update vigor */
     system->state.vigor = system->state.wanting * (da_level / system->da_baseline);
-    system->state.vigor = clampf(system->state.vigor, 0.0f, 1.0f);
+    system->state.vigor = nimcp_clampf(system->state.vigor, 0.0f, 1.0f);
 
     /* Update overall motivation */
     system->state.motivation = (system->state.wanting + system->state.vigor) * 0.5f;
@@ -202,7 +192,7 @@ int nimcp_salience_compute_wanting(
     float raw_wanting = system->config.wanting_baseline +
                         (da_ratio - 1.0f) * system->config.da_wanting_gain;
 
-    *wanting = clampf(raw_wanting, 0.0f, 1.0f);
+    *wanting = nimcp_clampf(raw_wanting, 0.0f, 1.0f);
     return 0;
 }
 
@@ -337,7 +327,7 @@ int nimcp_salience_update_goal_progress(
         return -1;
     }
 
-    system->goals[goal_id].distance = clampf(progress, 0.0f, 1.0f);
+    system->goals[goal_id].distance = nimcp_clampf(progress, 0.0f, 1.0f);
     return 0;
 }
 
@@ -360,7 +350,7 @@ int nimcp_salience_goal_achieved(
     system->total_effort_expended += goal->effort_required;
 
     /* Liking from goal achievement */
-    system->state.liking = clampf(actual_reward / goal->value, 0.0f, 1.0f);
+    system->state.liking = nimcp_clampf(actual_reward / goal->value, 0.0f, 1.0f);
 
     return 0;
 }
@@ -400,7 +390,7 @@ int nimcp_salience_get_goal_wanting(
     /* Wanting scaled by DA and utility */
     float da_ratio = system->current_da / system->da_baseline;
     *wanting = result.net_utility * da_ratio * system->state.wanting;
-    *wanting = clampf(*wanting, 0.0f, 1.0f);
+    *wanting = nimcp_clampf(*wanting, 0.0f, 1.0f);
 
     return 0;
 }
@@ -560,7 +550,7 @@ int nimcp_salience_add_cue(
     memset(cue, 0, sizeof(*cue));
 
     cue->id = system->num_cues;
-    cue->salience = clampf(initial_salience, 0.0f, 1.0f);
+    cue->salience = nimcp_clampf(initial_salience, 0.0f, 1.0f);
     cue->da_boost = initial_salience * 0.5f;
     cue->decay_rate = 0.01f;
 
@@ -613,7 +603,7 @@ int nimcp_salience_update_cue(
     float lr = system->config.cue_salience_lr;
     float delta = reward_received - cue->salience;
     cue->salience += lr * delta;
-    cue->salience = clampf(cue->salience, 0.0f, 1.0f);
+    cue->salience = nimcp_clampf(cue->salience, 0.0f, 1.0f);
 
     /* Update DA boost */
     cue->da_boost = cue->salience * 0.5f;
@@ -642,7 +632,7 @@ int nimcp_salience_get_cue_wanting(
         }
     }
 
-    *cue_wanting = clampf(total, 0.0f, 1.0f);
+    *cue_wanting = nimcp_clampf(total, 0.0f, 1.0f);
     return 0;
 }
 
@@ -659,7 +649,7 @@ int nimcp_salience_signal_liking(
         return -1;
     }
 
-    system->state.liking = clampf(liking, 0.0f, 1.0f);
+    system->state.liking = nimcp_clampf(liking, 0.0f, 1.0f);
     return 0;
 }
 

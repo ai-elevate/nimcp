@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(reasoning_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -77,16 +78,6 @@ struct reasoning_snn_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(reasoning_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -381,7 +372,7 @@ int reasoning_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -455,8 +446,8 @@ int reasoning_snn_encode_deduction(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[REASON_DIM_COUNT] = {0};
-    dims[REASON_DIM_DEDUCTION] = clamp_f(premise_strength * rule_validity, 0.0f, 1.0f);
-    dims[REASON_DIM_LOGICAL_VALIDITY] = clamp_f(rule_validity, 0.0f, 1.0f);
+    dims[REASON_DIM_DEDUCTION] = nimcp_clampf(premise_strength * rule_validity, 0.0f, 1.0f);
+    dims[REASON_DIM_LOGICAL_VALIDITY] = nimcp_clampf(rule_validity, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -480,8 +471,8 @@ int reasoning_snn_encode_causal(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[REASON_DIM_COUNT] = {0};
-    dims[REASON_DIM_CAUSAL] = clamp_f(cause_strength * effect_probability, 0.0f, 1.0f);
-    dims[REASON_DIM_PROBABILITY] = clamp_f(effect_probability, 0.0f, 1.0f);
+    dims[REASON_DIM_CAUSAL] = nimcp_clampf(cause_strength * effect_probability, 0.0f, 1.0f);
+    dims[REASON_DIM_PROBABILITY] = nimcp_clampf(effect_probability, 0.0f, 1.0f);
 
     bridge->causal_signal = dims[REASON_DIM_CAUSAL];
     bridge->stats.causal_chains++;
@@ -508,8 +499,8 @@ int reasoning_snn_encode_evidence(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[REASON_DIM_COUNT] = {0};
-    dims[REASON_DIM_EVIDENCE_WEIGHT] = clamp_f(evidence_strength, 0.0f, 1.0f);
-    dims[REASON_DIM_INFERENCE_DEPTH] = clamp_f((float)evidence_count / 10.0f, 0.0f, 1.0f);
+    dims[REASON_DIM_EVIDENCE_WEIGHT] = nimcp_clampf(evidence_strength, 0.0f, 1.0f);
+    dims[REASON_DIM_INFERENCE_DEPTH] = nimcp_clampf((float)evidence_count / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -589,14 +580,14 @@ int reasoning_snn_simulate(reasoning_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_inference.deduction_strength = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_inference.induction_strength = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_inference.abduction_strength = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_inference.causal_confidence = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_inference.analogy_match = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_inference.logical_validity = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
-    bridge->last_inference.evidence_weight = clamp_f(bridge->output_buffer[6], 0.0f, 1.0f);
-    bridge->last_inference.inference_depth = clamp_f(bridge->output_buffer[7], 0.0f, 1.0f);
+    bridge->last_inference.deduction_strength = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_inference.induction_strength = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_inference.abduction_strength = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_inference.causal_confidence = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_inference.analogy_match = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_inference.logical_validity = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_inference.evidence_weight = nimcp_clampf(bridge->output_buffer[6], 0.0f, 1.0f);
+    bridge->last_inference.inference_depth = nimcp_clampf(bridge->output_buffer[7], 0.0f, 1.0f);
 
     /* Check conclusion validity */
     float mean_inference = (bridge->last_inference.deduction_strength +

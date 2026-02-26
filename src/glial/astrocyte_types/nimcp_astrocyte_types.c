@@ -28,6 +28,7 @@
 // Logging module identifier
 #define LOG_MODULE "ASTROCYTE_TYPES"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_types)
 
@@ -93,21 +94,6 @@ static inline float gaussian_tuning(float distance, float sigma)
     }
     float normalized = distance / sigma;
     return expf(-0.5F * normalized * normalized);
-}
-
-/**
- * @brief Clamp value to range
- *
- * @param value Input value
- * @param min Minimum
- * @param max Maximum
- * @return Clamped value
- */
-static inline float clamp(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 //=============================================================================
@@ -251,13 +237,13 @@ float astrocyte_type_v1_modulate(struct astrocyte_t* astro,
 
     // Contrast adaptation: reduce gain for high contrast
     float contrast_factor = 1.0F - context->v1.contrast_adaptation_state * V1_CONTRAST_ADAPTATION_RATE;
-    contrast_factor = clamp(contrast_factor, 0.5F, 1.0F);
+    contrast_factor = nimcp_clampf(contrast_factor, 0.5F, 1.0F);
 
     // Combine all factors
     float modulation = calcium_factor * orientation_tuning * contrast_factor;
 
     // Clamp to biological range
-    return clamp(modulation, V1_MIN_SUPPRESSION, V1_MAX_ENHANCEMENT);
+    return nimcp_clampf(modulation, V1_MIN_SUPPRESSION, V1_MAX_ENHANCEMENT);
 }
 
 //=============================================================================
@@ -306,12 +292,12 @@ float astrocyte_type_a1_modulate(struct astrocyte_t* astro,
     // Adaptation to sustained tones
     // Higher current_frequency_input = more adaptation
     float adaptation_factor = 1.0F - 0.4F * tanhf(context->a1.current_frequency_input / 5.0F);
-    adaptation_factor = clamp(adaptation_factor, 0.6F, 1.0F);
+    adaptation_factor = nimcp_clampf(adaptation_factor, 0.6F, 1.0F);
 
     // Combine factors
     float modulation = calcium_factor * frequency_tuning * adaptation_factor;
 
-    return clamp(modulation, A1_MIN_SUPPRESSION, A1_MAX_ENHANCEMENT);
+    return nimcp_clampf(modulation, A1_MIN_SUPPRESSION, A1_MAX_ENHANCEMENT);
 }
 
 //=============================================================================
@@ -368,7 +354,7 @@ float astrocyte_type_multimodal_modulate(struct astrocyte_t* astro,
     // Combine factors
     float modulation = calcium_factor * multimodal_enhancement * temporal_factor;
 
-    return clamp(modulation, 1.0F, MULTIMODAL_MAX_ENHANCEMENT);
+    return nimcp_clampf(modulation, 1.0F, MULTIMODAL_MAX_ENHANCEMENT);
 }
 
 //=============================================================================
@@ -425,7 +411,7 @@ float astrocyte_type_metacognitive_modulate(struct astrocyte_t* astro,
     float modulation = calcium_factor * d_serine_factor * uncertainty_factor *
                        error_factor * conflict_factor;
 
-    return clamp(modulation, METACOG_MIN_SUPPRESSION, METACOG_MAX_ENHANCEMENT);
+    return nimcp_clampf(modulation, METACOG_MIN_SUPPRESSION, METACOG_MAX_ENHANCEMENT);
 }
 
 //=============================================================================
@@ -482,13 +468,13 @@ float astrocyte_type_executive_modulate(struct astrocyte_t* astro,
 
     // Distractor suppression
     float distractor_factor = 1.0F - context->executive.distractor_suppression;
-    distractor_factor = clamp(distractor_factor, 0.3F, 1.0F);
+    distractor_factor = nimcp_clampf(distractor_factor, 0.3F, 1.0F);
 
     // Combine factors
     float modulation = calcium_factor * atp_factor * goal_factor *
                        wm_factor * priority_factor * distractor_factor;
 
-    return clamp(modulation, EXEC_MIN_SUPPRESSION, EXEC_MAX_ENHANCEMENT);
+    return nimcp_clampf(modulation, EXEC_MIN_SUPPRESSION, EXEC_MAX_ENHANCEMENT);
 }
 
 //=============================================================================
@@ -520,7 +506,7 @@ float astrocyte_type_generic_modulate(struct astrocyte_t* astro,
     // Include glutamate pool depletion
     modulation *= (0.5F + 0.5F * astro->glutamate_pool);
 
-    return clamp(modulation, GENERIC_MIN_MODULATION, GENERIC_MAX_MODULATION);
+    return nimcp_clampf(modulation, GENERIC_MIN_MODULATION, GENERIC_MAX_MODULATION);
 }
 
 //=============================================================================

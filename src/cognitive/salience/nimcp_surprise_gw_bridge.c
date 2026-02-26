@@ -36,6 +36,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_gw_bridge_health_agent = NULL;
@@ -129,16 +130,6 @@ struct surprise_gw_bridge {
 
     bool initialized;
 };
-
-/* ============================================================================
- * Helpers
- * ============================================================================ */
-
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
 
 /* ============================================================================
  * Lifecycle API
@@ -302,7 +293,7 @@ int surprise_gw_submit_broadcast(
         return 0;
     }
 
-    float mag = clamp_f(magnitude, 0.0f, 1.0f);
+    float mag = nimcp_clampf(magnitude, 0.0f, 1.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -405,7 +396,7 @@ int surprise_gw_bridge_update(surprise_gw_bridge_t* bridge, float dt_seconds) {
         /* High current surprise → reduced sensitivity (refractory at GW level) */
         bridge->effects.sensitivity_modifier = 1.0f - 0.5f * surprise_level;
         bridge->effects.sensitivity_modifier =
-            clamp_f(bridge->effects.sensitivity_modifier, 0.2f, 1.0f);
+            nimcp_clampf(bridge->effects.sensitivity_modifier, 0.2f, 1.0f);
     }
 
     bridge->effects.time_since_broadcast += dt_seconds;

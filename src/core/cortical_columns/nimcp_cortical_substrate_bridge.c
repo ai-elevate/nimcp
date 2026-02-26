@@ -31,25 +31,13 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_substrate_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent runaway modulation
- * HOW:  Standard clamping
- */
-static float clamp_f(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute Q10-based temperature scaling factor
@@ -363,7 +351,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
 
     if (bridge->config.enable_column_fidelity_modulation) {
         float atp_factor = atp * metabolic_capacity * bridge->config.atp_sensitivity;
-        bridge->effects.column_fidelity = clamp_f(atp_factor, 0.2f, 1.0f);
+        bridge->effects.column_fidelity = nimcp_clampf(atp_factor, 0.2f, 1.0f);
     } else {
         bridge->effects.column_fidelity = 1.0f;
     }
@@ -410,10 +398,10 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
             if (temperature > hyperthermia_threshold) {
                 float hyperthermia_penalty =
                     (temperature - hyperthermia_threshold) / 5.0f;
-                temp_factor *= (1.0f - clamp_f(hyperthermia_penalty, 0.0f, 0.5f));
+                temp_factor *= (1.0f - nimcp_clampf(hyperthermia_penalty, 0.0f, 0.5f));
             }
 
-            bridge->effects.layer_gain[i] = clamp_f(temp_factor, 0.3f, 1.5f);
+            bridge->effects.layer_gain[i] = nimcp_clampf(temp_factor, 0.3f, 1.5f);
         }
     } else {
         for (int i = 0; i < CORTICAL_SUBSTRATE_NUM_LAYERS; i++) {
@@ -441,7 +429,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
             bridge->effects.competition_efficiency = atp * 2.0f;
         }
         bridge->effects.competition_efficiency =
-            clamp_f(bridge->effects.competition_efficiency, 0.0f, 1.0f);
+            nimcp_clampf(bridge->effects.competition_efficiency, 0.0f, 1.0f);
     } else {
         bridge->effects.competition_efficiency = 1.0f;
     }
@@ -463,7 +451,7 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
         float stress_factor = 1.0f - metabolic_capacity;
         bridge->effects.sparsity_modulation = 1.0f + stress_factor * 0.5f;
         bridge->effects.sparsity_modulation =
-            clamp_f(bridge->effects.sparsity_modulation, 0.5f, 2.0f);
+            nimcp_clampf(bridge->effects.sparsity_modulation, 0.5f, 2.0f);
     } else {
         bridge->effects.sparsity_modulation = 1.0f;
     }
@@ -488,13 +476,13 @@ int cortical_substrate_update(cortical_substrate_bridge_t* bridge)
         if (temperature > hyperthermia_threshold) {
             hyperthermia_penalty =
                 (temperature - hyperthermia_threshold) / 10.0f;
-            hyperthermia_penalty = clamp_f(hyperthermia_penalty, 0.0f, 0.8f);
+            hyperthermia_penalty = nimcp_clampf(hyperthermia_penalty, 0.0f, 0.8f);
         }
 
         bridge->effects.hierarchical_depth =
             physical_capacity * (1.0f - hyperthermia_penalty);
         bridge->effects.hierarchical_depth =
-            clamp_f(bridge->effects.hierarchical_depth, 0.2f, 1.0f);
+            nimcp_clampf(bridge->effects.hierarchical_depth, 0.2f, 1.0f);
     } else {
         bridge->effects.hierarchical_depth = 1.0f;
     }

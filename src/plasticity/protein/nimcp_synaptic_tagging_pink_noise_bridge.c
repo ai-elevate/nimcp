@@ -12,14 +12,12 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synaptic_tagging_pink_noise_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(tag_pink_noise_bridge)
-
-
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 tag_pink_noise_bridge_t* tag_pink_noise_create(const tag_pink_noise_config_t* config) {
     tag_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(tag_pink_noise_bridge_t));
@@ -92,9 +90,9 @@ int tag_pink_noise_update(tag_pink_noise_bridge_t* bridge) {
     bridge->noisy_capture_prob = 0.5f * (1.0f + amp * bridge->capture_noise);
     bridge->noisy_prp_level = 1.0f * (1.0f + amp * bridge->prp_noise);
 
-    bridge->noisy_tag_decay = clamp(bridge->noisy_tag_decay, 0.01f, 0.5f);
-    bridge->noisy_capture_prob = clamp(bridge->noisy_capture_prob, 0.1f, 1.0f);
-    bridge->noisy_prp_level = clamp(bridge->noisy_prp_level, 0.1f, 2.0f);
+    bridge->noisy_tag_decay = nimcp_clampf(bridge->noisy_tag_decay, 0.01f, 0.5f);
+    bridge->noisy_capture_prob = nimcp_clampf(bridge->noisy_capture_prob, 0.1f, 1.0f);
+    bridge->noisy_prp_level = nimcp_clampf(bridge->noisy_prp_level, 0.1f, 2.0f);
 
     bridge->samples_generated++;
 

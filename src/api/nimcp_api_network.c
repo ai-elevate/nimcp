@@ -109,7 +109,7 @@ nimcp_status_t nimcp_network_forward(
     if (!bbb_validate_buffer_access(inputs, 0, num_inputs * sizeof(float),
                                     num_inputs * sizeof(float), "nimcp_network_forward")) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_INPUT, "BBB validation failed for inputs buffer");
-        return NIMCP_ERROR_INVALID_INPUT;
+        return NIMCP_ERROR_INVALID;
     }
 
     // Call internal network API

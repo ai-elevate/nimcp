@@ -28,6 +28,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_knowledge_graph_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -112,15 +113,6 @@ static const char* s_injection_patterns[] = {
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Check if string contains injection pattern

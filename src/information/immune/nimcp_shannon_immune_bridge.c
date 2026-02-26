@@ -15,6 +15,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(shannon_immune_bridge)
 
@@ -33,15 +34,6 @@ static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range [0, 1]
- */
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -194,7 +186,7 @@ int shannon_immune_apply_cytokine_effects(shannon_immune_bridge_t* bridge) {
         stats.cytokine_ifn_gamma * CYTOKINE_IFN_GAMMA_ENTROPY_IMPACT * bridge->config.cytokine_sensitivity;
 
     /* Total entropy error */
-    bridge->cytokine_effects.total_entropy_error = clamp_0_1(
+    bridge->cytokine_effects.total_entropy_error = nimcp_clamp01(
         fabsf(bridge->cytokine_effects.il1_entropy_error) +
         fabsf(bridge->cytokine_effects.il6_entropy_error) +
         fabsf(bridge->cytokine_effects.tnf_entropy_error) +
@@ -252,7 +244,7 @@ int shannon_immune_apply_inflammation_effects(shannon_immune_bridge_t* bridge) {
     /* SNR reduction */
     float snr_reduction = INFLAMMATION_SNR_DEGRADATION_BASE +
                          (level * INFLAMMATION_SNR_DEGRADATION_PER_LEVEL);
-    bridge->inflammation_state.snr_reduction = clamp_0_1(snr_reduction);
+    bridge->inflammation_state.snr_reduction = nimcp_clamp01(snr_reduction);
 
     /* Bandwidth reduction */
     bridge->inflammation_state.bandwidth_reduction =
@@ -281,7 +273,7 @@ float shannon_immune_compute_capacity(const shannon_immune_bridge_t* bridge) {
 
     /* Combined capacity: multiplicative reduction */
     float capacity = inflammation_factor * (1.0f - cytokine_reduction);
-    return clamp_0_1(capacity);
+    return nimcp_clamp01(capacity);
 }
 
 float shannon_immune_compute_snr_degradation(const shannon_immune_bridge_t* bridge) {
@@ -295,7 +287,7 @@ float shannon_immune_compute_snr_degradation(const shannon_immune_bridge_t* brid
 
     /* Take maximum (most severe degradation) */
     float degradation = fmaxf(cytokine_snr, inflammation_snr);
-    return clamp_0_1(degradation);
+    return nimcp_clamp01(degradation);
 }
 
 /* ============================================================================

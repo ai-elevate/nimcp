@@ -27,6 +27,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(joy_euphoria, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -128,16 +129,6 @@ static void bio_broadcast_joy_state(joy_system_t* system) {
     bio_router_broadcast(system->bio_ctx_ptr, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast joy state: valence=%.2f, euphoria=%d",
               system->emotion.positive_valence, system->emotion.experiencing_euphoria);
-}
-
-//=============================================================================
-// HELPER FUNCTIONS
-//=============================================================================
-
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 static inline float exponential_decay(float current, float target, float decay_rate, float dt) {
@@ -324,8 +315,8 @@ uint32_t joy_add_value(joy_system_t* system,
     joy_euphoria_heartbeat("joy_euphoria_joy_add_value", 0.0f);
 
 
-    importance = clamp(importance, 0.0F, 1.0F);
-    weight = clamp(weight, 0.0F, 1.0F);
+    importance = nimcp_clampf(importance, 0.0F, 1.0F);
+    weight = nimcp_clampf(weight, 0.0F, 1.0F);
 
     // Find empty slot
     for (int i = 0; i < JOY_MAX_VALUES; i++) {
@@ -375,7 +366,7 @@ void joy_update_value_satisfaction(joy_system_t* system,
 
         if (system->values[i].active && system->values[i].value_id == value_id) {
             system->values[i].satisfaction += satisfaction_delta;
-            system->values[i].satisfaction = clamp(system->values[i].satisfaction, 0.0F, 1.0F);
+            system->values[i].satisfaction = nimcp_clampf(system->values[i].satisfaction, 0.0F, 1.0F);
             return;
         }
     }
@@ -403,8 +394,8 @@ void joy_process_success(joy_system_t* system,
     joy_euphoria_heartbeat("joy_euphoria_joy_process_success", 0.0f);
 
 
-    difficulty = clamp(difficulty, 0.0F, 1.0F);
-    novelty = clamp(novelty, 0.0F, 1.0F);
+    difficulty = nimcp_clampf(difficulty, 0.0F, 1.0F);
+    novelty = nimcp_clampf(novelty, 0.0F, 1.0F);
     num_values = (num_values > JOY_MAX_VALUES) ? JOY_MAX_VALUES : num_values;
 
     // Calculate total value alignment
@@ -434,7 +425,7 @@ void joy_process_success(joy_system_t* system,
 
                 // Update value satisfaction
                 value->satisfaction += 0.1F;
-                value->satisfaction = clamp(value->satisfaction, 0.0F, 1.0F);
+                value->satisfaction = nimcp_clampf(value->satisfaction, 0.0F, 1.0F);
                 value->times_satisfied++;
                 value->last_satisfied_time = current_time_us;
 
@@ -487,7 +478,7 @@ void joy_process_success(joy_system_t* system,
 
     // Final intensity
     float joy_intensity = (base_intensity + difficulty_bonus + novelty_bonus + multiple_values_bonus) * type_modifier;
-    joy_intensity = clamp(joy_intensity, 0.0F, 1.0F);
+    joy_intensity = nimcp_clampf(joy_intensity, 0.0F, 1.0F);
 
     // Determine if this triggers euphoria (requires high alignment + importance)
     bool triggers_euphoria = false;
@@ -694,7 +685,7 @@ void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {
     } else if (system->overall_value_satisfaction < 0.3F) {
         emotion->baseline_happiness -= 0.01F * dt / 86400.0F;  // -0.01 per day
     }
-    emotion->baseline_happiness = clamp(emotion->baseline_happiness, 0.2F, 0.8F);
+    emotion->baseline_happiness = nimcp_clampf(emotion->baseline_happiness, 0.2F, 0.8F);
 
     //=========================================================================
     // UPDATE EMOTIONAL TAG
@@ -806,8 +797,8 @@ void joy_get_neuromodulator_effects(const joy_system_t* system,
     *serotonin_factor = 1.0F + (positive_emotion * 0.4F);
 
     // Clamp to reasonable ranges
-    *dopamine_factor = clamp(*dopamine_factor, 1.0F, 2.0F);
-    *serotonin_factor = clamp(*serotonin_factor, 1.0F, 1.4F);
+    *dopamine_factor = nimcp_clampf(*dopamine_factor, 1.0F, 2.0F);
+    *serotonin_factor = nimcp_clampf(*serotonin_factor, 1.0F, 1.4F);
 }
 
 //=============================================================================
@@ -836,11 +827,11 @@ emotional_tag_t joy_get_emotion(const joy_system_t* system) {
 
     // Valence: Positive, scaled by intensity
     float valence = emotion->positive_valence;
-    valence = clamp(valence, 0.0F, 0.95F);  // Never fully 1.0 (always room for more joy)
+    valence = nimcp_clampf(valence, 0.0F, 0.95F);  // Never fully 1.0 (always room for more joy)
 
     // Arousal: Variable based on emotional state
     float arousal = emotion->arousal;
-    arousal = clamp(arousal, 0.0F, 0.9F);
+    arousal = nimcp_clampf(arousal, 0.0F, 0.9F);
 
     return emotional_tag_create(valence, arousal, 0);
 }

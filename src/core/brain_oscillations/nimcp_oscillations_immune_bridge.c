@@ -20,25 +20,13 @@
 #include <math.h>
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(oscillations_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get cytokine concentration from immune system
@@ -61,7 +49,7 @@ static float get_cytokine_concentration(
         }
     }
 
-    return clamp_f(total_concentration, 0.0f, 1.0f);
+    return nimcp_clampf(total_concentration, 0.0f, 1.0f);
 }
 
 /**
@@ -353,9 +341,9 @@ int oscillations_immune_apply_cytokine_effects(oscillations_immune_bridge_t* bri
 
     /* Network disruption scales with pro-inflammatory burden */
     float proinflam_total = (il1_conc + il6_conc + tnf_conc) / 3.0f;
-    effects->coherence_disruption = clamp_f(proinflam_total * 0.6f, 0.0f, 0.8f);
-    effects->synchrony_disruption = clamp_f(proinflam_total * 0.5f, 0.0f, 0.7f);
-    effects->theta_gamma_decoupling = clamp_f(proinflam_total * 0.7f, 0.0f, 0.9f);
+    effects->coherence_disruption = nimcp_clampf(proinflam_total * 0.6f, 0.0f, 0.8f);
+    effects->synchrony_disruption = nimcp_clampf(proinflam_total * 0.5f, 0.0f, 0.7f);
+    effects->theta_gamma_decoupling = nimcp_clampf(proinflam_total * 0.7f, 0.0f, 0.9f);
 
     /* Apply to oscillation analyzer */
     immune_oscillation_effects_t osc_effects = {
@@ -397,7 +385,7 @@ int oscillations_immune_apply_inflammation_effects(oscillations_immune_bridge_t*
     state->current_level = get_max_inflammation_level(bridge->immune_system);
     state->inflammation_intensity = (float)state->current_level / (float)INFLAMMATION_STORM;
     state->inflammation_intensity *= bridge->inflammation_sensitivity;
-    state->inflammation_intensity = clamp_f(state->inflammation_intensity, 0.0f, 1.0f);
+    state->inflammation_intensity = nimcp_clampf(state->inflammation_intensity, 0.0f, 1.0f);
 
     uint64_t current_time = 0; /* Would use actual time */
     state->inflammation_duration_sec = get_inflammation_duration_sec(
@@ -574,7 +562,7 @@ bool oscillations_immune_detect_abnormality(oscillations_immune_bridge_t* bridge
 
     /* Apply sensitivity */
     trigger->abnormality_score *= bridge->abnormality_sensitivity;
-    trigger->abnormality_score = clamp_f(trigger->abnormality_score, 0.0f, 1.0f);
+    trigger->abnormality_score = nimcp_clampf(trigger->abnormality_score, 0.0f, 1.0f);
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
     return any_abnormal;

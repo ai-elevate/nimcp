@@ -35,6 +35,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(reasoning_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -70,7 +71,7 @@ static float compute_inference_depth(float atp_level, float metabolic_capacity)
     float depth = atp_level * metabolic_capacity * 1.2f;
 
     /* Clamp to valid range: minimum 0.2 (basic reasoning), maximum 1.0 (full depth) */
-    return nimcp_clamp_f(depth, 0.2f, 1.0f);
+    return nimcp_clampf(depth, 0.2f, 1.0f);
 }
 
 /**
@@ -99,7 +100,7 @@ static float compute_logical_accuracy(float metabolic_capacity, float physical_c
     float accuracy = (metabolic_capacity + physical_capacity) / 2.0f;
 
     /* Clamp to valid range: minimum 0.3 (error-prone), maximum 1.0 (highly accurate) */
-    return nimcp_clamp_f(accuracy, 0.3f, 1.0f);
+    return nimcp_clampf(accuracy, 0.3f, 1.0f);
 }
 
 /**
@@ -131,7 +132,7 @@ static float compute_processing_speed(float atp_level, float temperature)
     float speed = atp_level * temp_factor;
 
     /* Clamp to valid range: minimum 0.3 (very slow), maximum 1.5 (enhanced) */
-    return nimcp_clamp_f(speed, 0.3f, 1.5f);
+    return nimcp_clampf(speed, 0.3f, 1.5f);
 }
 
 /**
@@ -157,7 +158,7 @@ static float compute_abstraction_capacity(float metabolic_capacity)
     float capacity = metabolic_capacity * 0.9f;
 
     /* Clamp to valid range: minimum 0.2 (concrete only), maximum 1.0 (full abstraction) */
-    return nimcp_clamp_f(capacity, 0.2f, 1.0f);
+    return nimcp_clampf(capacity, 0.2f, 1.0f);
 }
 
 /**

@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(self_awareness_extended_substrate_bridge)
 //=============================================================================
@@ -176,16 +177,16 @@ int self_awareness_ext_substrate_bridge_update(self_awareness_ext_substrate_brid
 
     if (bridge->config.enable_atp_modulation) {
         /* Metacognitive depth requires stable prefrontal resources */
-        bridge->effects.metacognitive_depth = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.metacognitive_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Future self projection is cognitively demanding */
-        bridge->effects.future_self_projection = nimcp_clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.future_self_projection = nimcp_clampf(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Temporal self coherence decreases with fatigue */
-        bridge->effects.temporal_self_coherence = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.temporal_self_coherence = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Narrative integration is vulnerable to metabolic stress */
-        bridge->effects.narrative_integration = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.narrative_integration = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.metacognitive_depth +

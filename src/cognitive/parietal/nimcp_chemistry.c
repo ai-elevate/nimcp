@@ -23,6 +23,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(chemistry, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -115,12 +116,6 @@ static _Thread_local char g_chemistry_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_chemistry_error(const char* msg) {
     strncpy(g_chemistry_error, msg, sizeof(g_chemistry_error) - 1);
     g_chemistry_error[sizeof(g_chemistry_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 /**
@@ -1069,7 +1064,7 @@ int chemistry_set_inflammation(chemistry_t* chem, float level) {
 
 
     nimcp_mutex_lock(chem->lock);
-    chem->inflammation_level = clamp01(level);
+    chem->inflammation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(chem->lock);
 
     return 0;
@@ -1089,7 +1084,7 @@ int chemistry_set_sleep_deprivation(chemistry_t* chem, float level) {
 
 
     nimcp_mutex_lock(chem->lock);
-    chem->sleep_deprivation_level = clamp01(level);
+    chem->sleep_deprivation_level = nimcp_clamp01(level);
     nimcp_mutex_unlock(chem->lock);
 
     return 0;

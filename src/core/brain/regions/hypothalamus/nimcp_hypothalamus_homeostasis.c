@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_homeostasis, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -94,20 +95,6 @@ struct hypo_homeostasis {
     bool mutex_owned;
 };
 
-/*=============================================================================
- * INTERNAL HELPERS
- *===========================================================================*/
-
-static float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-static float clamp01(float value) {
-    return clamp(value, 0.0f, 1.0f);
-}
-
 /**
  * @brief Initialize a PID controller
  */
@@ -160,7 +147,7 @@ static float update_pid_controller(hypo_pid_controller_t* ctrl,
     float i_term = 0.0f;
     if (ctrl->type == HYPO_CTRL_PI || ctrl->type == HYPO_CTRL_PID) {
         ctrl->integral += ctrl->error * dt;
-        ctrl->integral = clamp(ctrl->integral,
+        ctrl->integral = nimcp_clampf(ctrl->integral,
                                -ctrl->gains.integral_max,
                                ctrl->gains.integral_max);
         i_term = ctrl->gains.ki * ctrl->integral;
@@ -183,7 +170,7 @@ static float update_pid_controller(hypo_pid_controller_t* ctrl,
 
     /* Compute output */
     ctrl->output_raw = p_term + i_term + d_term;
-    ctrl->output = clamp(ctrl->output_raw, ctrl->output_min, ctrl->output_max);
+    ctrl->output = nimcp_clampf(ctrl->output_raw, ctrl->output_min, ctrl->output_max);
 
     /* Track saturation */
     ctrl->saturated = (fabsf(ctrl->output_raw) > fabsf(ctrl->output));
@@ -457,7 +444,7 @@ bool hypo_homeostasis_modify_setpoint(hypo_homeostasis_handle_t* system,
     /* Check lock state */
     if (var->setpoint_lock == HYPO_LOCK_UNLOCKED) {
         /* Clamp to valid range */
-        new_setpoint = clamp(new_setpoint, var->setpoint_min, var->setpoint_max);
+        new_setpoint = nimcp_clampf(new_setpoint, var->setpoint_min, var->setpoint_max);
 
         var->setpoint = new_setpoint;
         var->controller.setpoint = new_setpoint;
@@ -508,7 +495,7 @@ bool hypo_homeostasis_update(hypo_homeostasis_handle_t* system,
         /* Compute reward contribution */
         float abs_error = fabsf(var->error);
         var->reward_contribution = var->alignment_weight *
-                                    (1.0f - clamp01(abs_error / var->critical_threshold));
+                                    (1.0f - nimcp_clamp01(abs_error / var->critical_threshold));
 
         /* Check thresholds */
         bool was_warning = var->warning_active;
@@ -627,20 +614,20 @@ bool hypo_homeostasis_compute_reward(const hypo_homeostasis_handle_t* system,
     );
 
     /* Clamp to [-1, +1] */
-    reward->total_reward = clamp(reward->total_reward, -1.0f, 1.0f);
+    reward->total_reward = nimcp_clampf(reward->total_reward, -1.0f, 1.0f);
 
     /* RPE (simple model) */
     reward->reward_prediction_error = reward->total_reward - system->current_reward.total_reward;
 
     /* Convert to dopamine (nonlinear) */
     if (reward->total_reward >= 0) {
-        reward->dopamine_signal = clamp01(0.5f + reward->total_reward * 0.5f);
+        reward->dopamine_signal = nimcp_clamp01(0.5f + reward->total_reward * 0.5f);
     } else {
-        reward->dopamine_signal = clamp01(0.5f + reward->total_reward * 0.3f);
+        reward->dopamine_signal = nimcp_clamp01(0.5f + reward->total_reward * 0.3f);
     }
 
     /* Learning rate modulation */
-    reward->learning_rate_mod = clamp01(0.5f + fabsf(reward->reward_prediction_error) * 0.5f);
+    reward->learning_rate_mod = nimcp_clamp01(0.5f + fabsf(reward->reward_prediction_error) * 0.5f);
 
     /* Update statistics */
     ((hypo_homeostasis_handle_t*)system)->stats.total_rewards_computed++;
@@ -683,7 +670,7 @@ bool hypo_homeostasis_check_alignment(const hypo_homeostasis_handle_t* system,
     score += align->honesty_weight * 0.2f;
     score += align->helpfulness_weight * 0.2f;
 
-    score = clamp01(score);
+    score = nimcp_clamp01(score);
 
     if (alignment_score) {
         *alignment_score = score;

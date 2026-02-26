@@ -33,6 +33,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ethics_executive_bridge)
 //=============================================================================
@@ -128,15 +129,6 @@ struct ethics_executive_bridge {
  * ============================================================================ */
 
 /**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
  * @brief Get current timestamp in milliseconds
  */
 static uint64_t get_timestamp_ms(void) {
@@ -181,7 +173,7 @@ static float compute_ethical_score(uint32_t action_id, float strictness) {
     /* Apply strictness: higher strictness reduces scores more aggressively */
     float adjusted_score = base_score * (1.0f - (strictness * 0.2f));
 
-    return clamp_float(adjusted_score, ETHICS_EXECUTIVE_SCORE_MIN, ETHICS_EXECUTIVE_SCORE_MAX);
+    return nimcp_clampf(adjusted_score, ETHICS_EXECUTIVE_SCORE_MIN, ETHICS_EXECUTIVE_SCORE_MAX);
 }
 
 /**

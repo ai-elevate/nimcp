@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synaptic_scaling_immune_bridge)
 
@@ -32,19 +33,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(synaptic_scaling_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get TNF-α concentration from immune system
@@ -65,7 +53,7 @@ static float get_tnf_alpha_concentration(const brain_immune_system_t* immune) {
         }
     }
 
-    return clamp_f(tnf_concentration, 0.0f, 1.0f);
+    return nimcp_clampf(tnf_concentration, 0.0f, 1.0f);
 }
 
 /**
@@ -86,7 +74,7 @@ static float get_il1_beta_concentration(const brain_immune_system_t* immune) {
         }
     }
 
-    return clamp_f(il1_concentration, 0.0f, 1.0f);
+    return nimcp_clampf(il1_concentration, 0.0f, 1.0f);
 }
 
 /**
@@ -107,7 +95,7 @@ static float get_il10_concentration(const brain_immune_system_t* immune) {
         }
     }
 
-    return clamp_f(il10_concentration, 0.0f, 1.0f);
+    return nimcp_clampf(il10_concentration, 0.0f, 1.0f);
 }
 
 /**
@@ -386,18 +374,18 @@ int synaptic_scaling_immune_apply_tnf_effects(
 
     /* TNF-α enhances AMPA receptor surface expression */
     /* Linear relationship: more TNF-α → more surface receptors */
-    bridge->tnf_effects.ampa_receptor_trafficking = clamp_f(
+    bridge->tnf_effects.ampa_receptor_trafficking = nimcp_clampf(
         0.5f + (tnf_conc * 0.5f), 0.0f, 1.0f
     );
 
     /* Surface receptor density tracks trafficking rate */
-    bridge->tnf_effects.receptor_surface_density = clamp_f(
+    bridge->tnf_effects.receptor_surface_density = nimcp_clampf(
         0.7f + (tnf_conc * 0.3f), 0.5f, 1.0f
     );
 
     /* Receptor insertion rate increases with TNF-α */
     bridge->tnf_effects.receptor_insertion_rate = tnf_conc;
-    bridge->tnf_effects.receptor_internalization_rate = clamp_f(
+    bridge->tnf_effects.receptor_internalization_rate = nimcp_clampf(
         0.5f - (tnf_conc * 0.3f), 0.1f, 0.5f
     );
 
@@ -405,7 +393,7 @@ int synaptic_scaling_immune_apply_tnf_effects(
     bridge->tnf_effects.effective_scaling_rate = scaling_mod;
 
     /* High TNF-α shifts homeostatic set point higher */
-    bridge->tnf_effects.homeostatic_set_point = clamp_f(
+    bridge->tnf_effects.homeostatic_set_point = nimcp_clampf(
         1.0f + (tnf_conc * 0.3f), 1.0f, 1.5f
     );
 
@@ -443,12 +431,12 @@ int synaptic_scaling_immune_apply_il1_effects(
     }
 
     /* IL-1β also affects LTD (slightly reduces) */
-    bridge->il1_effects.ltd_threshold_modulation = clamp_f(
+    bridge->il1_effects.ltd_threshold_modulation = nimcp_clampf(
         1.0f - (il1_conc * 0.2f), 0.8f, 1.0f
     );
 
     /* Overall plasticity rate is reduced by IL-1β */
-    bridge->il1_effects.plasticity_rate_modulation = clamp_f(
+    bridge->il1_effects.plasticity_rate_modulation = nimcp_clampf(
         1.0f - (il1_conc * 0.3f), 0.7f, 1.0f
     );
 
@@ -482,10 +470,10 @@ int synaptic_scaling_immune_apply_inflammation_effects(
 
     /* Chronic inflammation increases risk of aberrant scaling */
     if (bridge->inflammation_state.is_chronic) {
-        bridge->inflammation_state.scaling_aberrance_risk = clamp_f(
+        bridge->inflammation_state.scaling_aberrance_risk = nimcp_clampf(
             0.3f + (duration / 3600.0f) * 0.5f, 0.0f, 0.9f
         );
-        bridge->inflammation_state.homeostatic_impairment = clamp_f(
+        bridge->inflammation_state.homeostatic_impairment = nimcp_clampf(
             (duration / 7200.0f), 0.0f, 0.8f
         );
     } else {
@@ -496,10 +484,10 @@ int synaptic_scaling_immune_apply_inflammation_effects(
     /* Systemic/storm inflammation disrupts E/I balance */
     if (level >= INFLAMMATION_SYSTEMIC) {
         /* Shift toward excitation */
-        bridge->inflammation_state.excitation_inhibition_balance = clamp_f(
+        bridge->inflammation_state.excitation_inhibition_balance = nimcp_clampf(
             0.5f + (float)(level - INFLAMMATION_SYSTEMIC) * 0.2f, 0.0f, 1.0f
         );
-        bridge->inflammation_state.network_stability = clamp_f(
+        bridge->inflammation_state.network_stability = nimcp_clampf(
             1.0f - (float)(level - INFLAMMATION_SYSTEMIC) * 0.3f, 0.2f, 1.0f
         );
     } else {
@@ -545,7 +533,7 @@ int synaptic_scaling_immune_restore_from_il10(
     /* IL-10 restores normal scaling (reduces TNF-α effects) */
     if (il10_conc > 0.3f) {
         /* Gradually restore to baseline */
-        float restoration_factor = clamp_f((il10_conc - 0.3f) / 0.7f, 0.0f, 1.0f);
+        float restoration_factor = nimcp_clampf((il10_conc - 0.3f) / 0.7f, 0.0f, 1.0f);
 
         /* Restore scaling factor toward baseline */
         float current = bridge->tnf_effects.scaling_factor_modulation;
@@ -622,7 +610,7 @@ int synaptic_scaling_immune_detect_aberrance(
     if (bridge->aberrance.excessive_scale_down) severity += 0.3f;
     if (bridge->aberrance.scaling_oscillations) severity += 0.2f;
     if (bridge->aberrance.homeostatic_failure) severity += 0.2f;
-    bridge->aberrance.severity = clamp_f(severity, 0.0f, 1.0f);
+    bridge->aberrance.severity = nimcp_clampf(severity, 0.0f, 1.0f);
 
     /* Update statistics */
     if (bridge->aberrance.severity > 0.3f) {
@@ -749,7 +737,7 @@ int synaptic_scaling_immune_signal_recovery(
 
     /* Update recovery progress */
     bridge->recovery.current_scaling_factor = current_factor;
-    bridge->recovery.recovery_progress = clamp_f(
+    bridge->recovery.recovery_progress = nimcp_clampf(
         1.0f - fabsf(current_factor - 1.0f) / 2.5f, 0.0f, 1.0f
     );
 
@@ -900,7 +888,7 @@ float synaptic_scaling_immune_get_effective_scaling_factor(
     float effective = bridge->tnf_effects.scaling_factor_modulation *
                      bridge->inflammation_state.scaling_rate_multiplier;
 
-    return clamp_f(effective, 0.1f, 5.0f);
+    return nimcp_clampf(effective, 0.1f, 5.0f);
 }
 
 float synaptic_scaling_immune_get_ampa_density(

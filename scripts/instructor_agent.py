@@ -796,7 +796,7 @@ class InstructorAgent(threading.Thread):
         for features, label in self.adversarial_bank[:200]:
             if self.stop_event.is_set():
                 break
-            self.brain.learn(features, label, 0.8)
+            self.brain.learn(features, label, self._modulate_lr(0.8))
             self.total_examples += 1
             self.socratic.mastery.record(domain, True)
 

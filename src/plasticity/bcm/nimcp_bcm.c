@@ -41,6 +41,7 @@
 #define LOG_MODULE "plasticity_bcm"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bcm)
 
@@ -55,19 +56,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bcm)
 //=============================================================================
 // Inline Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range [min, max]
- *
- * WHAT: Branchless clamp using fmin/fmax
- * WHY:  Faster than if-else on modern CPUs
- *
- * COMPLEXITY: O(1)
- * PERFORMANCE: ~2 CPU cycles (no branch misprediction)
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    return fminf(fmaxf(value, min_val), max_val);
-}
 
 /**
  * @brief Compute BCM plasticity factor
@@ -114,7 +102,7 @@ bcm_synapse_t bcm_synapse_init(float initial_weight, float initial_threshold) {
     /* WHAT: Clamp initial weight to valid range
      * WHY:  Prevent invalid initial states
      */
-    synapse.weight = clamp_f(initial_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
+    synapse.weight = nimcp_clampf(initial_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
 
     /* WHAT: Set initial threshold
      * WHY:  Starting point for sliding threshold dynamics
@@ -220,7 +208,7 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
     /* WHAT: Clamp threshold to physiological range
      * WHY:  Prevent numerical instabilities and unrealistic values
      */
-    synapse->threshold = clamp_f(synapse->threshold, params->min_threshold,
+    synapse->threshold = nimcp_clampf(synapse->threshold, params->min_threshold,
                                  params->max_threshold);
 
     /* WHAT: Update running average of post-synaptic activity
@@ -317,7 +305,7 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
      * WHY:  Weights must stay in [0, 1] for biological realism
      * NOTE: Branchless clamp for performance
      */
-    synapse->weight = clamp_f(new_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
+    synapse->weight = nimcp_clampf(new_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
 
     /* WHAT: Update eligibility trace for delayed reward
      * WHY:  Allows credit assignment when reward is delayed
@@ -331,7 +319,7 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
      * HOW:  Use clamp_f helper function
      * BIOLOGICAL: Eligibility traces represent recent plasticity, should be bounded
      */
-    synapse->eligibility = clamp_f(synapse->eligibility, -2.0F, 2.0F);
+    synapse->eligibility = nimcp_clampf(synapse->eligibility, -2.0F, 2.0F);
 
     /* WHAT: Release spinlock
      * WHY:  Allow other threads to access synapse
@@ -369,7 +357,7 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
     /* WHAT: Clamp neuromodulator to valid range
      * WHY:  Ensure modulation factor is in [0, 1]
      */
-    float modulation = clamp_f(neuromodulator_level, 0.0F, 1.0F);
+    float modulation = nimcp_clampf(neuromodulator_level, 0.0F, 1.0F);
 
     /* WHAT: Acquire spinlock for atomic weight update
      * WHY:  Prevent race conditions when multiple threads access same synapse
@@ -409,7 +397,7 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
         return;  /* Skip this update to protect weight integrity */
     }
 
-    synapse->weight = clamp_f(new_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
+    synapse->weight = nimcp_clampf(new_weight, BCM_WEIGHT_MIN, BCM_WEIGHT_MAX);
 
     /* WHAT: Update eligibility trace
      * WHY:  Track recent plasticity for delayed reward
@@ -422,7 +410,7 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
      * HOW:  Use clamp_f helper function
      * BIOLOGICAL: Eligibility traces represent recent plasticity, should be bounded
      */
-    synapse->eligibility = clamp_f(synapse->eligibility, -2.0F, 2.0F);
+    synapse->eligibility = nimcp_clampf(synapse->eligibility, -2.0F, 2.0F);
 
     /* WHAT: Release spinlock
      * WHY:  Allow other threads to access synapse

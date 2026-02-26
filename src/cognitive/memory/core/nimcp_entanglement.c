@@ -64,6 +64,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(entanglement, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -167,15 +168,6 @@ static void set_error(const char* format, ...) {
  */
 static void clear_error(void) {
     s_last_error[0] = '\0';
-}
-
-/**
- * @brief Clamp float to [0, 1] range
- */
-static inline float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -798,7 +790,7 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
     }
 
     new_edge->edge = *edge;
-    new_edge->edge.weight = clamp01(edge->weight);
+    new_edge->edge.weight = nimcp_clamp01(edge->weight);
 
     /* Add timestamp if enabled */
     if (graph->config.track_creation_time && edge->created_time_ms == 0) {
@@ -991,7 +983,7 @@ bool entangle_update_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
     entry->edge.quat_similarity = edge->quat_similarity;
     entry->edge.phase_coherence = edge->phase_coherence;
     entry->edge.type = edge->type;
-    entry->edge.weight = clamp01(edge->weight);
+    entry->edge.weight = nimcp_clamp01(edge->weight);
     entry->edge.bidirectional = edge->bidirectional;
     /* Note: we don't update created_time_ms */
 
@@ -1105,7 +1097,7 @@ float entangle_strengthen_edge(entangle_graph_t graph, uint64_t from_id, uint64_
     }
 
     float old_weight = entry->edge.weight;
-    entry->edge.weight = clamp01(entry->edge.weight + delta);
+    entry->edge.weight = nimcp_clamp01(entry->edge.weight + delta);
 
     /* Update stats */
     if (entry->edge.weight > graph->stats.max_weight) {
@@ -1142,7 +1134,7 @@ float entangle_weaken_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to
     }
 
     float old_weight = entry->edge.weight;
-    entry->edge.weight = clamp01(entry->edge.weight - delta);
+    entry->edge.weight = nimcp_clamp01(entry->edge.weight - delta);
 
     /* Update stats */
     if (entry->edge.weight < graph->stats.min_weight) {
@@ -2175,7 +2167,7 @@ bool entangle_spread_activation(
         return true;
     }
 
-    decay = clamp01(decay);
+    decay = nimcp_clamp01(decay);
     if (decay < ENTANGLE_EPSILON) {
         clear_error();
         return true;  /* No spreading with zero decay */

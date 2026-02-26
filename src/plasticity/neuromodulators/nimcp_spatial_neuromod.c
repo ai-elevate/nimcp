@@ -50,6 +50,7 @@
 
 #define LOG_MODULE "spatial_neuromod"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spatial_neuromod)
 
@@ -464,17 +465,6 @@ static uint32_t spatial_neuromod_bio_async_process(uint32_t max_messages) {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * WHAT: Clamps value to [min, max]
- * WHY:  Ensure concentrations remain in valid range
- * HOW:  Standard clamping operation
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Validates neuron ID
@@ -949,7 +939,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
 
     if (dt <= 0.0F || dt > 1.0F) {
         LOG_WARN("Unusual timestep dt=%.3f, clamping to [1e-6, 1.0]", dt);
-        dt = clamp(dt, 1e-6F, 1.0F);
+        dt = nimcp_clampf(dt, 1e-6F, 1.0F);
     }
 
     const float D = field->diffusion_coeff;
@@ -1019,7 +1009,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
             // Apply decay and source
             float dc = (-k * c + S) * dt;
             c += dc;
-            concentration[i] = clamp(c, field->min_concentration, field->max_concentration);
+            concentration[i] = nimcp_clampf(c, field->min_concentration, field->max_concentration);
         }
 
         // Update statistics
@@ -1059,7 +1049,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
             float c_new = c + sub_dt * dcdt;
 
             // Clamp to valid range
-            c_new = clamp(c_new, field->min_concentration, field->max_concentration);
+            c_new = nimcp_clampf(c_new, field->min_concentration, field->max_concentration);
 
             concentration[i] = c_new;
             sum_concentration += c_new;
@@ -1189,7 +1179,7 @@ bool spatial_neuromod_set_concentration(spatial_neuromod_field_t* field,
         return false;
     }
 
-    field->concentration[neuron_id] = clamp(concentration,
+    field->concentration[neuron_id] = nimcp_clampf(concentration,
                                              field->min_concentration,
                                              field->max_concentration);
     return true;

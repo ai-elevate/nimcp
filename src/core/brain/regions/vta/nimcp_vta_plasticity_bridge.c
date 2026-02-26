@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vta_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -48,10 +49,6 @@ struct nimcp_vta_plasticity_bridge {
     nimcp_vta_plasticity_stats_t stats;
     uint64_t current_time_us;
 };
-
-static float clamp(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 static nimcp_vta_plasticity_synapse_t* find_synapse(nimcp_vta_plasticity_bridge_t* b, uint32_t id) {
     for (uint32_t i = 0; i < b->synapse_count; i++)
@@ -254,8 +251,8 @@ int nimcp_vta_plasticity_set_da_level(nimcp_vta_plasticity_bridge_t* b, float da
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_set_da_level: b is NULL");
         return -1;
     }
-    b->state.da.da_level = clamp(da, 0.0f, 100.0f);
-    b->state.da.motivation = clamp(m, 0.0f, 1.0f);
+    b->state.da.da_level = nimcp_clampf(da, 0.0f, 100.0f);
+    b->state.da.motivation = nimcp_clampf(m, 0.0f, 1.0f);
     float n = da / 100.0f;
     b->current_modulation.lr_multiplier = b->config.da_lr_multiplier_min +
         (b->config.da_lr_multiplier_max - b->config.da_lr_multiplier_min) * n;
@@ -295,7 +292,7 @@ int nimcp_vta_plasticity_convert_traces(nimcp_vta_plasticity_bridge_t* b, float 
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         if (b->synapses[i].eligibility_trace > 0.1f) {
             float dw = b->synapses[i].eligibility_trace * da * b->config.da_trace_conversion;
-            b->synapses[i].weight = clamp(b->synapses[i].weight + dw * 0.01f,
+            b->synapses[i].weight = nimcp_clampf(b->synapses[i].weight + dw * 0.01f,
                 b->config.weight_min, b->config.weight_max);
         }
     }
@@ -321,7 +318,7 @@ float nimcp_vta_plasticity_get_learning_progress(nimcp_vta_plasticity_bridge_t* 
 
 float nimcp_vta_plasticity_get_prediction_accuracy(nimcp_vta_plasticity_bridge_t* b) {
     if (!b) return 0.0f;
-    return 1.0f - clamp(fabsf(b->stats.avg_rpe), 0.0f, 1.0f);
+    return 1.0f - nimcp_clampf(fabsf(b->stats.avg_rpe), 0.0f, 1.0f);
 }
 
 float nimcp_vta_plasticity_get_avg_value(nimcp_vta_plasticity_bridge_t* b) {

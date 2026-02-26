@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ethics_snn_bridge)
 //=============================================================================
@@ -114,16 +115,6 @@ struct ethics_snn_bridge {
     /* Statistics */
     ethics_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -405,7 +396,7 @@ int ethics_snn_encode_context(
                              (float)(d + 1) / (float)n);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         bridge->dim_states[d].activation = value;
 
         /* Calculate firing rate */
@@ -472,12 +463,12 @@ int ethics_snn_encode_harm(
 
     bridge->state = ETHICS_SNN_STATE_ENCODING;
 
-    harm_level = clamp_f(harm_level, 0.0f, 1.0f);
-    urgency = clamp_f(urgency, 0.0f, 1.0f);
+    harm_level = nimcp_clampf(harm_level, 0.0f, 1.0f);
+    urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
 
     /* Encode harm with urgency boost */
     float effective_harm = harm_level * (1.0f + urgency);
-    effective_harm = clamp_f(effective_harm, 0.0f, 1.0f);
+    effective_harm = nimcp_clampf(effective_harm, 0.0f, 1.0f);
 
     /* Update harm dimension */
     bridge->dim_states[ETHICS_DIM_HARM].activation = effective_harm;
@@ -540,9 +531,9 @@ int ethics_snn_encode_golden_rule(
 
     bridge->state = ETHICS_SNN_STATE_ENCODING;
 
-    self_impact = clamp_f(self_impact, 0.0f, 1.0f);
-    other_impact = clamp_f(other_impact, 0.0f, 1.0f);
-    empathy_level = clamp_f(empathy_level, 0.0f, 1.0f);
+    self_impact = nimcp_clampf(self_impact, 0.0f, 1.0f);
+    other_impact = nimcp_clampf(other_impact, 0.0f, 1.0f);
+    empathy_level = nimcp_clampf(empathy_level, 0.0f, 1.0f);
 
     /* Golden Rule: would I want this done to me? */
     float golden_rule_score = fabsf(self_impact - other_impact);
@@ -718,7 +709,7 @@ int ethics_snn_get_judgment(
         }
 
         outputs[i] = (outputs[i] - min_out) / (max_out - min_out);
-        outputs[i] = clamp_f(outputs[i], 0.0f, 1.0f);
+        outputs[i] = nimcp_clampf(outputs[i], 0.0f, 1.0f);
     }
 
     /* Apply decoding method */

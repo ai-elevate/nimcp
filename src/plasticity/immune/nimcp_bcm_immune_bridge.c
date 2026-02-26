@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bcm_immune_bridge)
 
@@ -32,19 +33,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(bcm_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get cytokine concentration from immune system
@@ -65,7 +53,7 @@ static float get_cytokine_concentration(
             total += immune->cytokines[i].concentration;
         }
     }
-    return clamp_f(total, 0.0f, 1.0f);
+    return nimcp_clampf(total, 0.0f, 1.0f);
 }
 
 /**
@@ -307,12 +295,12 @@ int bcm_immune_apply_cytokine_effects(bcm_immune_bridge_t* bridge) {
     }
 
     /* Clamp multipliers to safe ranges */
-    effects->theta_m_multiplier = clamp_f(effects->theta_m_multiplier,
+    effects->theta_m_multiplier = nimcp_clampf(effects->theta_m_multiplier,
                                          INFLAMMATION_THETA_MIN_FACTOR,
                                          INFLAMMATION_THETA_MAX_FACTOR);
-    effects->learning_rate_multiplier = clamp_f(effects->learning_rate_multiplier,
+    effects->learning_rate_multiplier = nimcp_clampf(effects->learning_rate_multiplier,
                                                INFLAMMATION_LR_MIN_FACTOR, 1.0f);
-    effects->tau_multiplier = clamp_f(effects->tau_multiplier, 0.5f, 2.0f);
+    effects->tau_multiplier = nimcp_clampf(effects->tau_multiplier, 0.5f, 2.0f);
 
     /* Apply modulations to BCM parameters */
     /* Note: We store original values and apply multipliers during BCM updates */
@@ -351,17 +339,17 @@ int bcm_immune_apply_inflammation_effects(bcm_immune_bridge_t* bridge) {
     float inflammation_intensity = (float)state->current_level / (float)INFLAMMATION_STORM;
 
     /* Threshold instability increases with inflammation */
-    state->threshold_instability = clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
+    state->threshold_instability = nimcp_clampf(inflammation_intensity * 0.8f, 0.0f, 1.0f);
 
     /* Metaplasticity impairment */
-    state->metaplasticity_impairment = clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
+    state->metaplasticity_impairment = nimcp_clampf(inflammation_intensity * 0.7f, 0.0f, 1.0f);
 
     /* Learning suppression */
-    state->learning_suppression = clamp_f(inflammation_intensity * 0.9f, 0.0f, 1.0f);
+    state->learning_suppression = nimcp_clampf(inflammation_intensity * 0.9f, 0.0f, 1.0f);
 
     /* Chronic inflammation amplifies disruptions */
     if (state->is_chronic) {
-        float duration_factor = clamp_f(
+        float duration_factor = nimcp_clampf(
             state->inflammation_duration_sec / (86400.0f * 14.0f), /* 2 weeks */
             0.0f, 1.0f
         );
@@ -370,13 +358,13 @@ int bcm_immune_apply_inflammation_effects(bcm_immune_bridge_t* bridge) {
         state->learning_suppression += duration_factor * 0.1f;
 
         /* Clamp after amplification */
-        state->threshold_instability = clamp_f(state->threshold_instability, 0.0f, 1.0f);
-        state->metaplasticity_impairment = clamp_f(state->metaplasticity_impairment, 0.0f, 1.0f);
-        state->learning_suppression = clamp_f(state->learning_suppression, 0.0f, 1.0f);
+        state->threshold_instability = nimcp_clampf(state->threshold_instability, 0.0f, 1.0f);
+        state->metaplasticity_impairment = nimcp_clampf(state->metaplasticity_impairment, 0.0f, 1.0f);
+        state->learning_suppression = nimcp_clampf(state->learning_suppression, 0.0f, 1.0f);
     }
 
     /* Homeostatic error (distance from healthy state) */
-    state->homeostatic_error = clamp_f(
+    state->homeostatic_error = nimcp_clampf(
         (state->threshold_instability + state->metaplasticity_impairment + state->learning_suppression) / 3.0f,
         0.0f, 1.0f
     );
@@ -398,7 +386,7 @@ float bcm_immune_compute_theta_modulation(const bcm_immune_bridge_t* bridge) {
     /* Inflammation adds additional elevation */
     float total_modulation = cytokine_modulation * (1.0f + inflammation_factor * 0.5f);
 
-    return clamp_f(total_modulation, INFLAMMATION_THETA_MIN_FACTOR, INFLAMMATION_THETA_MAX_FACTOR);
+    return nimcp_clampf(total_modulation, INFLAMMATION_THETA_MIN_FACTOR, INFLAMMATION_THETA_MAX_FACTOR);
 }
 
 int bcm_immune_assist_recovery(bcm_immune_bridge_t* bridge) {
@@ -540,7 +528,7 @@ int bcm_immune_detect_abnormalities(
 
     /* 1. Threshold instability detection */
     float variance_ratio = abnormality->threshold_variance / baseline->baseline_threshold_variance;
-    abnormality->threshold_instability_score = clamp_f(variance_ratio / BCM_THRESHOLD_INSTABILITY_FACTOR, 0.0f, 1.0f);
+    abnormality->threshold_instability_score = nimcp_clampf(variance_ratio / BCM_THRESHOLD_INSTABILITY_FACTOR, 0.0f, 1.0f);
     abnormality->threshold_unstable = (variance_ratio > BCM_THRESHOLD_INSTABILITY_FACTOR);
 
     if (abnormality->threshold_unstable) {
@@ -554,7 +542,7 @@ int bcm_immune_detect_abnormalities(
     float baseline_activity = baseline->baseline_ltp_rate + baseline->baseline_ltd_rate;
     float activity_ratio = (baseline_activity > 0.0f) ? (current_activity / baseline_activity) : 1.0f;
 
-    abnormality->learning_activity_score = clamp_f(activity_ratio, 0.0f, 1.0f);
+    abnormality->learning_activity_score = nimcp_clampf(activity_ratio, 0.0f, 1.0f);
     abnormality->learning_collapsed = (activity_ratio < BCM_LEARNING_COLLAPSE_FACTOR);
 
     if (abnormality->learning_collapsed) {
@@ -567,7 +555,7 @@ int bcm_immune_detect_abnormalities(
     float sliding_ratio = (baseline->baseline_sliding_rate > 0.0f) ?
                           (abnormality->sliding_rate / baseline->baseline_sliding_rate) : 1.0f;
 
-    abnormality->metaplasticity_health = clamp_f(sliding_ratio, 0.0f, 1.0f);
+    abnormality->metaplasticity_health = nimcp_clampf(sliding_ratio, 0.0f, 1.0f);
     abnormality->metaplasticity_stuck = (sliding_ratio < BCM_METAPLASTICITY_STUCK_FACTOR);
 
     if (abnormality->metaplasticity_stuck) {

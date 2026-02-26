@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_neural_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(salience_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -94,16 +95,6 @@ struct salience_snn_bridge {
     // Simulation time
     uint64_t sim_time_us;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static void reset_neuron(salience_neuron_t* neuron) {
     neuron->membrane_potential = 0.0f;
@@ -472,7 +463,7 @@ int salience_snn_encode_with_prediction(
     if (prediction && prediction_count > 0) {
         uint32_t compare_count = feature_count < prediction_count ? feature_count : prediction_count;
         float surprise = compute_distance(features, prediction, compare_count);
-        surprise = clamp(surprise, 0.0f, 1.0f);
+        surprise = nimcp_clampf(surprise, 0.0f, 1.0f);
 
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
             /* Phase 8: Loop progress heartbeat */
@@ -524,7 +515,7 @@ int salience_snn_encode_temporal(
             float change_rate = compute_distance(features, bridge->history[recent_idx].features,
                                                 feature_count);
             urgency = change_rate * (100000.0f / time_delta);  // Scale by temporal proximity
-            urgency = clamp(urgency, 0.0f, 1.0f);
+            urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
         }
     }
 
@@ -616,7 +607,7 @@ int salience_snn_step(salience_snn_bridge_t* bridge) {
         // Combine spike and membrane activity
         float spike_rate = (bridge->config.neurons_per_dim > 0) ? (channel_activity / bridge->config.neurons_per_dim) : 0.0f;
         if (bridge->config.neurons_per_dim > 0) membrane_activity /= bridge->config.neurons_per_dim;
-        bridge->channel_activations[c] = clamp(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
+        bridge->channel_activations[c] = nimcp_clampf(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
     }
 
     // Output neurons integrate weighted channel activity
@@ -752,7 +743,7 @@ int salience_snn_decode_salience(
         output_variance += diff * diff;
     }
     if (bridge->num_output_neurons > 0) { output_variance /= bridge->num_output_neurons; }
-    output->confidence = clamp(1.0f - sqrtf(output_variance), 0.0f, 1.0f);
+    output->confidence = nimcp_clampf(1.0f - sqrtf(output_variance), 0.0f, 1.0f);
 
     // High salience detection
     output->high_salience = (output->combined_salience > 0.6f);
@@ -920,7 +911,7 @@ float salience_snn_compute_novelty(
 
     // Convert distance to novelty (closer = less novel)
     float novelty = 1.0f - expf(-min_distance * 2.0f);
-    return clamp(novelty, 0.0f, 1.0f);
+    return nimcp_clampf(novelty, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -1156,9 +1147,9 @@ int salience_snn_set_thresholds(
     salience_snn_bridge_heartbeat("salience_snn_salience_snn_set_thr", 0.0f);
 
 
-    bridge->config.novelty_threshold = clamp(novelty_threshold, 0.0f, 1.0f);
-    bridge->config.surprise_threshold = clamp(surprise_threshold, 0.0f, 1.0f);
-    bridge->config.urgency_threshold = clamp(urgency_threshold, 0.0f, 1.0f);
+    bridge->config.novelty_threshold = nimcp_clampf(novelty_threshold, 0.0f, 1.0f);
+    bridge->config.surprise_threshold = nimcp_clampf(surprise_threshold, 0.0f, 1.0f);
+    bridge->config.urgency_threshold = nimcp_clampf(urgency_threshold, 0.0f, 1.0f);
 
     return 0;
 }

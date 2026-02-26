@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(nucleus_accumbens, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -32,8 +33,6 @@ struct nucleus_accumbens {
     nac_stats_t stats;
     nimcp_mutex_t* mutex;
 };
-
-static float clamp_f(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 void nac_default_config(nac_config_t* config) {
     if (!config) return;
@@ -117,7 +116,7 @@ int nac_process_reward(nucleus_accumbens_t* nac, uint32_t reward_id, float magni
     nimcp_mutex_lock(nac->mutex);
     nac_reward_t* r = &nac->rewards[reward_id];
     r->current_satiation += magnitude * r->satiation_rate;
-    r->current_satiation = clamp_f(r->current_satiation, 0, 1);
+    r->current_satiation = nimcp_clampf(r->current_satiation, 0, 1);
     nac->liking = magnitude * (1.0f - r->current_satiation);
     nac->stats.rewards_processed++;
     if (nac->liking > 0.5f) nac->state = NAC_STATE_LIKING;
@@ -175,7 +174,7 @@ int nac_process_cue(nucleus_accumbens_t* nac, uint32_t cue_id, float intensity) 
     nac_cue_t* c = &nac->cues[cue_id];
     c->conditioned_response = c->association_strength * intensity * nac->dopamine;
     nac->wanting += c->conditioned_response * nac->config.pavlovian_weight;
-    nac->wanting = clamp_f(nac->wanting, 0, 1);
+    nac->wanting = nimcp_clampf(nac->wanting, 0, 1);
     nimcp_mutex_unlock(nac->mutex);
     return 0;
 }
@@ -236,8 +235,8 @@ int nac_set_pit_balance(nucleus_accumbens_t* nac, float pavlovian_weight, float 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_set_pit_balance: nac is NULL");
         return -1;
     }
-    nac->config.pavlovian_weight = clamp_f(pavlovian_weight, 0, 1);
-    nac->config.instrumental_weight = clamp_f(instrumental_weight, 0, 1);
+    nac->config.pavlovian_weight = nimcp_clampf(pavlovian_weight, 0, 1);
+    nac->config.instrumental_weight = nimcp_clampf(instrumental_weight, 0, 1);
     return 0;
 }
 
@@ -246,7 +245,7 @@ int nac_set_dopamine(nucleus_accumbens_t* nac, float level) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_set_dopamine: nac is NULL");
         return -1;
     }
-    nac->dopamine = clamp_f(level, 0, 1);
+    nac->dopamine = nimcp_clampf(level, 0, 1);
     return 0;
 }
 
@@ -255,7 +254,7 @@ int nac_trigger_dopamine_burst(nucleus_accumbens_t* nac, float magnitude) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_trigger_dopamine_burst: nac is NULL");
         return -1;
     }
-    nac->dopamine = clamp_f(nac->dopamine + magnitude * NAC_DA_BURST_MULTIPLIER * 0.1f, 0, 1);
+    nac->dopamine = nimcp_clampf(nac->dopamine + magnitude * NAC_DA_BURST_MULTIPLIER * 0.1f, 0, 1);
     return 0;
 }
 
@@ -264,7 +263,7 @@ int nac_trigger_dopamine_pause(nucleus_accumbens_t* nac, float magnitude) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_trigger_dopamine_pause: nac is NULL");
         return -1;
     }
-    nac->dopamine = clamp_f(nac->dopamine * NAC_DA_PAUSE_MULTIPLIER, 0, 1);
+    nac->dopamine = nimcp_clampf(nac->dopamine * NAC_DA_PAUSE_MULTIPLIER, 0, 1);
     return 0;
 }
 

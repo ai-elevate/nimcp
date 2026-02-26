@@ -23,25 +23,13 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(population_coding_immune_bridge)
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get cytokine concentration from immune system
@@ -63,7 +51,7 @@ static float get_cytokine_level(
         }
     }
 
-    return clamp_f(total_concentration, 0.0f, 1.0f);
+    return nimcp_clampf(total_concentration, 0.0f, 1.0f);
 }
 
 /**
@@ -407,7 +395,7 @@ float population_immune_compute_noise(
     /* Add inflammation noise */
     total_noise += bridge->inflammation_state.noise_level - bridge->baseline_noise;
 
-    return clamp_f(total_noise, 0.0f, 1.0f);
+    return nimcp_clampf(total_noise, 0.0f, 1.0f);
 }
 
 float population_immune_compute_gain(
@@ -423,7 +411,7 @@ float population_immune_compute_gain(
     /* Reduce by inflammation */
     gain -= bridge->inflammation_state.gain_reduction;
 
-    return clamp_f(gain, 0.1f, 1.0f);
+    return nimcp_clampf(gain, 0.1f, 1.0f);
 }
 
 float population_immune_compute_precision(
@@ -439,7 +427,7 @@ float population_immune_compute_precision(
     /* Reduce by inflammation */
     precision -= bridge->inflammation_state.precision_degradation;
 
-    return clamp_f(precision, 0.0f, 1.0f);
+    return nimcp_clampf(precision, 0.0f, 1.0f);
 }
 
 float population_immune_compute_tuning_broadening(
@@ -455,7 +443,7 @@ float population_immune_compute_tuning_broadening(
     /* Broaden from inflammation */
     broadening *= bridge->inflammation_state.tuning_broadening;
 
-    return clamp_f(broadening, 1.0f, 3.0f);
+    return nimcp_clampf(broadening, 1.0f, 3.0f);
 }
 
 /* ============================================================================
@@ -766,7 +754,7 @@ int population_immune_modulate_vector_decoding(
     for (uint32_t i = 0; i < num_neurons; i++) {
         float modulated = rates[i] * gain;
         modulated = add_gaussian_noise(modulated, noise * 10.0f); /* Scale noise */
-        noisy_rates_out[i] = clamp_f(modulated, 0.0f, 100.0f); /* Max 100Hz */
+        noisy_rates_out[i] = nimcp_clampf(modulated, 0.0f, 100.0f); /* Max 100Hz */
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);

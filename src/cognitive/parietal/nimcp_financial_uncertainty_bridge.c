@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_uncertainty_health_agent = NULL;
@@ -113,16 +114,6 @@ struct financial_uncertainty_bridge {
     /* Operational state */
     fin_uncertainty_op_state_t operational_state;
 };
-
-//=============================================================================
-// Utility Functions
-//=============================================================================
-
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
 
 /* Weighted mean/variance kept local as central stats module doesn't provide weighted variants */
 static float compute_weighted_mean(const float* values, const float* weights, uint32_t count) {
@@ -556,7 +547,7 @@ int financial_uncertainty_bridge_decompose(
         for (uint32_t i = 0; i < prediction->count; i++) {
             float conf = prediction->confidences[i];
             if (conf < bridge->config.confidence_threshold) continue;
-            conf = clampf(conf, 0.01f, 0.99f);
+            conf = nimcp_clampf(conf, 0.01f, 0.99f);
 
             /* Convert confidence to variance estimate */
             /* High confidence -> low variance, low confidence -> high variance */
@@ -1228,7 +1219,7 @@ int financial_uncertainty_bridge_set_inflammation(
             "financial_uncertainty_bridge_set_inflammation: bridge is NULL");
         return FIN_UNCERTAINTY_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_UNCERTAINTY_ERR_OK;
 }
 
@@ -1241,7 +1232,7 @@ int financial_uncertainty_bridge_set_fatigue(
             "financial_uncertainty_bridge_set_fatigue: bridge is NULL");
         return FIN_UNCERTAINTY_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_UNCERTAINTY_ERR_OK;
 }
 

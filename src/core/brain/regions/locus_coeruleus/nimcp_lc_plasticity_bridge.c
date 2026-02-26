@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lc_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -72,12 +73,6 @@ static uint64_t get_timestamp_us(void) {
     return ++counter;
 }
 
-static float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
 static nimcp_lc_plasticity_synapse_t* find_synapse(
     nimcp_lc_plasticity_bridge_t* bridge,
     uint32_t synapse_id
@@ -95,7 +90,7 @@ static void compute_lr_modulation(nimcp_lc_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     float ne_level = bridge->state.ne.ne_level;
-    float ne_normalized = clamp(ne_level / 100.0f, 0.0f, 1.0f);
+    float ne_normalized = nimcp_clampf(ne_level / 100.0f, 0.0f, 1.0f);
 
     /* Linear interpolation for LR multiplier */
     float lr_range = bridge->config.ne_lr_multiplier_max -
@@ -165,7 +160,7 @@ static void apply_stdp(
     /* Apply weight change */
     if (dw != 0.0f) {
         float old_weight = synapse->weight;
-        synapse->weight = clamp(synapse->weight + dw,
+        synapse->weight = nimcp_clampf(synapse->weight + dw,
                                bridge->config.weight_min,
                                bridge->config.weight_max);
 
@@ -473,7 +468,7 @@ int nimcp_lc_plasticity_ne_burst(
             float conversion = bridge->synapses[i].eligibility_trace *
                               intensity *
                               bridge->config.phasic_conversion_boost;
-            bridge->synapses[i].weight = clamp(
+            bridge->synapses[i].weight = nimcp_clampf(
                 bridge->synapses[i].weight + conversion * 0.1f,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -496,8 +491,8 @@ int nimcp_lc_plasticity_set_ne_level(
         return -1;
     }
 
-    bridge->state.ne.ne_level = clamp(ne_level, 0.0f, 100.0f);
-    bridge->state.ne.arousal = clamp(arousal, 0.0f, 1.0f);
+    bridge->state.ne.ne_level = nimcp_clampf(ne_level, 0.0f, 100.0f);
+    bridge->state.ne.arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
 
     compute_lr_modulation(bridge);
 

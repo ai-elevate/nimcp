@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(habenula_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -44,7 +45,6 @@ struct nimcp_habenula_plasticity_bridge {
     nimcp_habenula_plasticity_stats_t stats;
 };
 
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 static nimcp_habenula_plasticity_synapse_t* find_synapse(nimcp_habenula_plasticity_bridge_t* b, uint32_t id) {
     for (uint32_t i = 0; i < b->synapse_count; i++) if (b->synapses[i].synapse_id == id) return &b->synapses[i];
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
@@ -198,7 +198,7 @@ int nimcp_habenula_plasticity_negative_rpe(nimcp_habenula_plasticity_bridge_t* b
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_plasticity_negative_rpe: b is NULL");
         return -1;
     }
-    b->state.habenula.negative_rpe = clamp(rpe, 0.0f, 1.0f);
+    b->state.habenula.negative_rpe = nimcp_clampf(rpe, 0.0f, 1.0f);
     b->current_modulation.ltd_boost = 1.0f + rpe * b->config.negative_rpe_scale;
     return 0;
 }
@@ -221,7 +221,7 @@ int nimcp_habenula_plasticity_avoidance_success(nimcp_habenula_plasticity_bridge
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         if (b->synapses[i].type == HABENULA_SYNAPSE_AVOIDANCE && b->synapses[i].eligibility_trace > 0.1f) {
             float boost = b->synapses[i].eligibility_trace * b->config.successful_avoidance_boost * 0.01f;
-            b->synapses[i].weight = clamp(b->synapses[i].weight + boost, b->config.weight_min, b->config.weight_max);
+            b->synapses[i].weight = nimcp_clampf(b->synapses[i].weight + boost, b->config.weight_min, b->config.weight_max);
             b->synapses[i].avoidance_strength += 0.1f;
             b->synapses[i].avoidance_successes++;
         }
@@ -248,7 +248,7 @@ int nimcp_habenula_plasticity_relief(nimcp_habenula_plasticity_bridge_t* b, floa
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         if (b->synapses[i].eligibility_trace > 0.1f) {
             float boost = b->synapses[i].eligibility_trace * r * b->config.relief_ltp_boost * 0.01f;
-            b->synapses[i].weight = clamp(b->synapses[i].weight + boost, b->config.weight_min, b->config.weight_max);
+            b->synapses[i].weight = nimcp_clampf(b->synapses[i].weight + boost, b->config.weight_min, b->config.weight_max);
         }
     }
     return 0;
@@ -259,8 +259,8 @@ int nimcp_habenula_plasticity_set_state(nimcp_habenula_plasticity_bridge_t* b, f
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_plasticity_set_state: b is NULL");
         return -1;
     }
-    b->state.habenula.aversive_level = clamp(av, 0.0f, 1.0f);
-    b->state.habenula.negative_rpe = clamp(rpe, 0.0f, 1.0f);
+    b->state.habenula.aversive_level = nimcp_clampf(av, 0.0f, 1.0f);
+    b->state.habenula.negative_rpe = nimcp_clampf(rpe, 0.0f, 1.0f);
     b->current_modulation.lr_multiplier = b->config.habenula_lr_multiplier * (1.0f + av);
     b->state.global_lr_modulation = b->current_modulation.lr_multiplier;
     return 0;
@@ -288,7 +288,7 @@ int nimcp_habenula_plasticity_convert_traces(nimcp_habenula_plasticity_bridge_t*
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         if (b->synapses[i].punishment_trace > 0.1f) {
             float dw = -b->synapses[i].punishment_trace * aversive * b->config.punishment_ltd_boost * 0.01f;
-            b->synapses[i].weight = clamp(b->synapses[i].weight + dw, b->config.weight_min, b->config.weight_max);
+            b->synapses[i].weight = nimcp_clampf(b->synapses[i].weight + dw, b->config.weight_min, b->config.weight_max);
             b->stats.ltd_events++;
         }
     }
@@ -302,7 +302,7 @@ float nimcp_habenula_plasticity_get_avoidance_progress(nimcp_habenula_plasticity
     for (uint32_t i = 0; i < b->synapse_count; i++) total += b->synapses[i].avoidance_strength;
     return total / b->synapse_count;
 }
-float nimcp_habenula_plasticity_get_prediction_accuracy(nimcp_habenula_plasticity_bridge_t* b) { return b ? 1.0f - clamp(b->stats.avg_negative_rpe, 0.0f, 1.0f) : 0.0f; }
+float nimcp_habenula_plasticity_get_prediction_accuracy(nimcp_habenula_plasticity_bridge_t* b) { return b ? 1.0f - nimcp_clampf(b->stats.avg_negative_rpe, 0.0f, 1.0f) : 0.0f; }
 float nimcp_habenula_plasticity_get_inhibition_strength(nimcp_habenula_plasticity_bridge_t* b) { return b ? b->state.avg_avoidance_strength : 0.0f; }
 int nimcp_habenula_plasticity_get_state(const nimcp_habenula_plasticity_bridge_t* b, nimcp_habenula_plasticity_bridge_state_t* s) { if (!b||!s) return -1; *s = b->state; return 0; }
 int nimcp_habenula_plasticity_get_stats(const nimcp_habenula_plasticity_bridge_t* b, nimcp_habenula_plasticity_stats_t* s) { if (!b||!s) return -1; *s = b->stats; return 0; }

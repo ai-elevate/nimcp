@@ -21,21 +21,13 @@
 
 #define LOG_MODULE "plasticity_metabolic_pathways"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metabolic_pathways)
 
 //=============================================================================
 // HELPER FUNCTIONS
 //=============================================================================
-
-/**
- * @brief Clamp value to range [min, max]
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Exponential moving average update
@@ -297,7 +289,7 @@ void metabolic_set_precursor(metabolic_state_t* state, float precursor_level) {
         return;
     }
 
-    state->synthesis.precursor_concentration = clamp(precursor_level, 0.0F, 1000.0F);
+    state->synthesis.precursor_concentration = nimcp_clampf(precursor_level, 0.0F, 1000.0F);
 }
 
 void metabolic_set_enzyme_activity(metabolic_state_t* state, float activity) {
@@ -310,7 +302,7 @@ void metabolic_set_enzyme_activity(metabolic_state_t* state, float activity) {
         return;
     }
 
-    state->synthesis.enzyme_activity = clamp(activity, 0.0F, 2.0F);  // Allow up to 2x upregulation
+    state->synthesis.enzyme_activity = nimcp_clampf(activity, 0.0F, 2.0F);  // Allow up to 2x upregulation
 }
 
 //=============================================================================
@@ -368,7 +360,7 @@ void metabolic_apply_mao_inhibitor(metabolic_state_t* state, float inhibition) {
         return;
     }
 
-    state->degradation.inhibitor_blockade = clamp(inhibition, 0.0F, 1.0F);
+    state->degradation.inhibitor_blockade = nimcp_clampf(inhibition, 0.0F, 1.0F);
 }
 
 void metabolic_apply_comt_inhibitor(metabolic_state_t* state, float inhibition) {
@@ -383,7 +375,7 @@ void metabolic_apply_comt_inhibitor(metabolic_state_t* state, float inhibition) 
 
     // COMT inhibition reduces effective degradation rate
     // For simplicity, treat similarly to MAO inhibition
-    state->degradation.inhibitor_blockade = clamp(inhibition, 0.0F, 1.0F);
+    state->degradation.inhibitor_blockade = nimcp_clampf(inhibition, 0.0F, 1.0F);
 }
 
 //=============================================================================
@@ -452,8 +444,8 @@ void metabolic_apply_reuptake_inhibitor(metabolic_state_t* state,
         return;
     }
 
-    state->reuptake.inhibitor_concentration = clamp(inhibitor_concentration, 0.0F, 100.0F);
-    state->reuptake.inhibitor_ki = clamp(inhibitor_ki, 0.001F, 10.0F);
+    state->reuptake.inhibitor_concentration = nimcp_clampf(inhibitor_concentration, 0.0F, 100.0F);
+    state->reuptake.inhibitor_ki = nimcp_clampf(inhibitor_ki, 0.001F, 10.0F);
 }
 
 void metabolic_reverse_transporter(metabolic_state_t* state, float magnitude) {
@@ -467,7 +459,7 @@ void metabolic_reverse_transporter(metabolic_state_t* state, float magnitude) {
     }
 
     state->reuptake.is_reversed = (magnitude > 0.0F);
-    state->reuptake.reversal_magnitude = clamp(magnitude, 0.0F, 0.01F);  // Max 0.01 µM/s
+    state->reuptake.reversal_magnitude = nimcp_clampf(magnitude, 0.0F, 0.01F);  // Max 0.01 µM/s
 }
 
 //=============================================================================
@@ -493,7 +485,7 @@ float metabolic_update(metabolic_state_t* state, float dt, float release_amount)
     // Vesicular uptake: cytoplasmic → vesicular
     // This removes from cytoplasm and stores in vesicles
     float vesicular_uptake = state->vesicular_uptake_rate * dt * state->concentration;
-    vesicular_uptake = clamp(vesicular_uptake, 0.0F, state->concentration);
+    vesicular_uptake = nimcp_clampf(vesicular_uptake, 0.0F, state->concentration);
     state->vesicular_concentration += vesicular_uptake;
 
     // Release: vesicular → synaptic cleft
@@ -509,8 +501,8 @@ float metabolic_update(metabolic_state_t* state, float dt, float release_amount)
     state->concentration -= degraded;
 
     // Clamp concentration to valid range
-    state->concentration = clamp(state->concentration, 0.0F, 100.0F);
-    state->vesicular_concentration = clamp(state->vesicular_concentration, 0.0F, 1000.0F);
+    state->concentration = nimcp_clampf(state->concentration, 0.0F, 100.0F);
+    state->vesicular_concentration = nimcp_clampf(state->vesicular_concentration, 0.0F, 1000.0F);
 
     return state->concentration;
 }

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ph_dynamics)
 
@@ -41,15 +42,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ph_dynamics)
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Convert pH to H+ concentration (molar)
@@ -100,7 +92,7 @@ static float calculate_conductance_modifier(float ph) {
 
     /* Sigmoidal decrease with deviation */
     float modifier = 1.0f / (1.0f + expf(5.0f * (deviation - 0.3f)));
-    return clampf(modifier, 0.1f, 1.0f);
+    return nimcp_clampf(modifier, 0.1f, 1.0f);
 }
 
 /**
@@ -119,7 +111,7 @@ static float calculate_release_modifier(float vesicular_ph, float extracellular_
     float vesicle_factor = expf(-vesicle_dev * 2.0f);
     float extra_factor = expf(-extra_dev * 3.0f);
 
-    return clampf(vesicle_factor * extra_factor, 0.1f, 1.0f);
+    return nimcp_clampf(vesicle_factor * extra_factor, 0.1f, 1.0f);
 }
 
 /**
@@ -132,7 +124,7 @@ static float calculate_metabolic_modifier(float intracellular_ph) {
 
     /* Gaussian-like decrease */
     float modifier = expf(-deviation * deviation * 10.0f);
-    return clampf(modifier, 0.2f, 1.0f);
+    return nimcp_clampf(modifier, 0.2f, 1.0f);
 }
 
 /**
@@ -464,7 +456,7 @@ nimcp_ph_error_t nimcp_ph_apply_acid_load(
 
     /* Convert back to pH */
     float new_ph = h_concentration_to_ph(new_h);
-    new_ph = clampf(new_ph, PH_MINIMUM_VIABLE, PH_MAXIMUM_VIABLE);
+    new_ph = nimcp_clampf(new_ph, PH_MINIMUM_VIABLE, PH_MAXIMUM_VIABLE);
 
     region->ph[compartment] = new_ph;
 
@@ -500,7 +492,7 @@ nimcp_ph_error_t nimcp_ph_apply_base_load(
 
     /* Convert back to pH */
     float new_ph = h_concentration_to_ph(new_h);
-    new_ph = clampf(new_ph, PH_MINIMUM_VIABLE, PH_MAXIMUM_VIABLE);
+    new_ph = nimcp_clampf(new_ph, PH_MINIMUM_VIABLE, PH_MAXIMUM_VIABLE);
 
     region->ph[compartment] = new_ph;
 
@@ -641,7 +633,7 @@ nimcp_ph_error_t nimcp_ph_set_pump_activity(
         return PH_ERR_INVALID_PARAM;
     }
 
-    region->pumps[pump_type].current_activity = clampf(activity, 0.0f, 1.0f);
+    region->pumps[pump_type].current_activity = nimcp_clampf(activity, 0.0f, 1.0f);
 
     return PH_OK;
 }
@@ -728,7 +720,7 @@ nimcp_ph_error_t nimcp_ph_update_region(
             float vesicle_h = ph_to_h_concentration(region->ph[PH_COMPARTMENT_VESICULAR]);
             vesicle_h += pump_rate * 0.001f;
             region->ph[PH_COMPARTMENT_VESICULAR] = h_concentration_to_ph(vesicle_h);
-            region->ph[PH_COMPARTMENT_VESICULAR] = clampf(
+            region->ph[PH_COMPARTMENT_VESICULAR] = nimcp_clampf(
                 region->ph[PH_COMPARTMENT_VESICULAR], 4.5f, 7.0f);
         }
         /* NHE: exports H+ from intracellular */
@@ -755,7 +747,7 @@ nimcp_ph_error_t nimcp_ph_update_region(
 
     /* Clamp pH values */
     for (int comp = 0; comp < PH_COMPARTMENT_COUNT; comp++) {
-        region->ph[comp] = clampf(region->ph[comp], PH_MINIMUM_VIABLE, PH_MAXIMUM_VIABLE);
+        region->ph[comp] = nimcp_clampf(region->ph[comp], PH_MINIMUM_VIABLE, PH_MAXIMUM_VIABLE);
     }
 
     /* Update status */
@@ -855,7 +847,7 @@ nimcp_ph_error_t nimcp_ph_set_activity(
         return PH_ERR_NULL_PTR;
     }
 
-    region->activity_level = clampf(activity, 0.0f, 1.0f);
+    region->activity_level = nimcp_clampf(activity, 0.0f, 1.0f);
 
     return PH_OK;
 }

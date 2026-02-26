@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vta_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -61,12 +62,6 @@ static uint64_t get_timestamp_us(void) {
     return ++counter;
 }
 
-static float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
 static void compute_modulation(nimcp_vta_snn_bridge_t* bridge) {
     if (!bridge) return;
 
@@ -80,7 +75,7 @@ static void compute_modulation(nimcp_vta_snn_bridge_t* bridge) {
 
     /* Effort willingness based on DA and motivation */
     bridge->current_modulation.effort_willingness =
-        clamp(0.3f + 0.7f * motivation * (da_level / 100.0f), 0.0f, 1.0f);
+        nimcp_clampf(0.3f + 0.7f * motivation * (da_level / 100.0f), 0.0f, 1.0f);
 
     /* Reward sensitivity */
     bridge->current_modulation.reward_sensitivity =
@@ -307,7 +302,7 @@ int nimcp_vta_snn_encode_pause(
 
     /* Pause encoding - suppress activity */
     float suppression_factor = 1.0f - (suppression * bridge->config.pause_suppression);
-    suppression_factor = clamp(suppression_factor, 0.0f, 1.0f);
+    suppression_factor = nimcp_clampf(suppression_factor, 0.0f, 1.0f);
 
     for (uint32_t i = 0; i < bridge->spike_buffer_size; i++) {
         bridge->input_spikes[i] *= suppression_factor;
@@ -326,8 +321,8 @@ int nimcp_vta_snn_encode_motivation(
         return -1;
     }
 
-    bridge->state.da.motivation = clamp(motivation, 0.0f, 1.0f);
-    bridge->state.da.wanting = clamp(wanting, 0.0f, 1.0f);
+    bridge->state.da.motivation = nimcp_clampf(motivation, 0.0f, 1.0f);
+    bridge->state.da.wanting = nimcp_clampf(wanting, 0.0f, 1.0f);
     bridge->state.da.vigor = motivation * wanting;
 
     compute_modulation(bridge);
@@ -518,7 +513,7 @@ int nimcp_vta_snn_set_goal(
     }
 
     /* Update motivation based on goal value and distance */
-    float proximity = 1.0f - clamp(distance, 0.0f, 1.0f);
+    float proximity = 1.0f - nimcp_clampf(distance, 0.0f, 1.0f);
     bridge->state.da.motivation = value * (0.5f + 0.5f * proximity);
     bridge->state.da.wanting = value;
 

@@ -16,6 +16,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lgss_vta_guard, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -73,15 +74,6 @@ static uint32_t compute_pathway_hash(const vta_guard_t* guard, da_pathway_t path
     hash ^= (uint32_t)(guard->config.max_burst_frequency * 1000.0f);
 
     return hash;
-}
-
-/**
- * @brief Clamp value to range
- */
-static float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /*=============================================================================
@@ -436,7 +428,7 @@ vta_guard_status_t vta_guard_trigger_burst(
     }
 
     /* Clamp intensity */
-    intensity = clampf(intensity, 0.0f, 1.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
 
     /* Calculate DA based on intensity and duration */
     float da_amount = intensity * duration_ms * 0.1f;  /* Scale factor */
@@ -491,7 +483,7 @@ float vta_guard_get_rate_limit_factor(const vta_guard_t* guard) {
     }
 
     float available = guard->config.max_da_rate - current_rate;
-    return clampf(available / guard->config.max_da_rate, 0.0f, 1.0f);
+    return nimcp_clampf(available / guard->config.max_da_rate, 0.0f, 1.0f);
 }
 
 /*=============================================================================
@@ -549,8 +541,8 @@ int vta_guard_update_receptor_activation(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
-    guard->d1_activation = clampf(d1_activation, 0.0f, 1.0f);
-    guard->d2_activation = clampf(d2_activation, 0.0f, 1.0f);
+    guard->d1_activation = nimcp_clampf(d1_activation, 0.0f, 1.0f);
+    guard->d2_activation = nimcp_clampf(d2_activation, 0.0f, 1.0f);
 
     /* Check D1/D2 balance */
     float ratio = (d2_activation > 0.001f)

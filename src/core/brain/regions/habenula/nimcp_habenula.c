@@ -11,19 +11,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(habenula, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-}
 
 static float lerp_f(float a, float b, float t) {
     return a + t * (b - a);
@@ -142,15 +132,15 @@ static void update_lhb(nimcp_habenula_system_t* habenula, float dt_sec) {
     /* Smooth transition to target */
     float rate_tau = 0.1f;
     lhb->firing_rate = lerp_f(lhb->firing_rate, target_rate, dt_sec / rate_tau);
-    lhb->firing_rate = clamp_f(lhb->firing_rate, 0.0f, habenula->config.max_firing_rate);
+    lhb->firing_rate = nimcp_clampf(lhb->firing_rate, 0.0f, habenula->config.max_firing_rate);
 
     /* Decay disappointment over time */
     lhb->disappointment *= (1.0f - habenula->config.disappointment_decay * dt_sec);
-    lhb->disappointment = clamp_f(lhb->disappointment, 0.0f, 1.0f);
+    lhb->disappointment = nimcp_clampf(lhb->disappointment, 0.0f, 1.0f);
 
     /* Compute VTA inhibition output */
     lhb->vta_inhibition_output = lhb->disappointment * habenula->config.vta_inhibition_gain;
-    lhb->vta_inhibition_output = clamp_f(lhb->vta_inhibition_output, 0.0f, 1.0f);
+    lhb->vta_inhibition_output = nimcp_clampf(lhb->vta_inhibition_output, 0.0f, 1.0f);
 }
 
 static void update_mhb(nimcp_habenula_system_t* habenula, float dt_sec) {
@@ -165,11 +155,11 @@ static void update_mhb(nimcp_habenula_system_t* habenula, float dt_sec) {
     /* Smooth transition */
     float rate_tau = 0.15f;
     mhb->firing_rate = lerp_f(mhb->firing_rate, target_rate, dt_sec / rate_tau);
-    mhb->firing_rate = clamp_f(mhb->firing_rate, 0.0f, habenula->config.max_firing_rate * 0.5f);
+    mhb->firing_rate = nimcp_clampf(mhb->firing_rate, 0.0f, habenula->config.max_firing_rate * 0.5f);
 
     /* Decay aversion */
     mhb->aversion_level *= (1.0f - 0.05f * dt_sec);
-    mhb->aversion_level = clamp_f(mhb->aversion_level, 0.0f, 1.0f);
+    mhb->aversion_level = nimcp_clampf(mhb->aversion_level, 0.0f, 1.0f);
 
     /* Update IPN output */
     mhb->ipn_output = mhb->firing_rate / (habenula->config.max_firing_rate * 0.5f);
@@ -193,7 +183,7 @@ static void update_depression_model(nimcp_habenula_system_t* habenula, float dt_
 
     /* Natural recovery */
     dep->helplessness_index -= dep->recovery_rate * dt_sec;
-    dep->helplessness_index = clamp_f(dep->helplessness_index, 0.0f, 1.0f);
+    dep->helplessness_index = nimcp_clampf(dep->helplessness_index, 0.0f, 1.0f);
 
     /* Anhedonia correlates with helplessness */
     dep->anhedonia_level = dep->helplessness_index * 0.8f;
@@ -210,7 +200,7 @@ static void update_combined_state(nimcp_habenula_system_t* habenula) {
         habenula->mhb.firing_rate * habenula->config.mhb_weight;
 
     /* Clamp combined rate */
-    habenula->neurons.combined_firing_rate = clamp_f(
+    habenula->neurons.combined_firing_rate = nimcp_clampf(
         habenula->neurons.combined_firing_rate,
         0.0f,
         habenula->config.max_firing_rate);
@@ -301,7 +291,7 @@ nimcp_habenula_error_t nimcp_habenula_process_outcome(
         /* Disappointment! */
         habenula->lhb.negative_rpe = -rpe;
         habenula->lhb.disappointment += -rpe;
-        habenula->lhb.disappointment = clamp_f(habenula->lhb.disappointment, 0.0f, 1.0f);
+        habenula->lhb.disappointment = nimcp_clampf(habenula->lhb.disappointment, 0.0f, 1.0f);
         habenula->lhb.cumulative_disappointment += -rpe;
         habenula->metrics.disappointment_events++;
         habenula->metrics.avg_negative_rpe =
@@ -336,14 +326,14 @@ nimcp_habenula_error_t nimcp_habenula_apply_aversive(
     if (!habenula) return HABENULA_ERROR_NULL;
     if (!habenula->initialized) return HABENULA_ERROR_NOT_INITIALIZED;
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
 
     /* Aversive stimuli activate both LHb and MHb */
     habenula->lhb.disappointment += intensity * 0.5f;
-    habenula->lhb.disappointment = clamp_f(habenula->lhb.disappointment, 0.0f, 1.0f);
+    habenula->lhb.disappointment = nimcp_clampf(habenula->lhb.disappointment, 0.0f, 1.0f);
 
     habenula->mhb.aversion_level += intensity;
-    habenula->mhb.aversion_level = clamp_f(habenula->mhb.aversion_level, 0.0f, 1.0f);
+    habenula->mhb.aversion_level = nimcp_clampf(habenula->mhb.aversion_level, 0.0f, 1.0f);
 
     habenula->metrics.aversion_events++;
 
@@ -373,7 +363,7 @@ nimcp_habenula_error_t nimcp_habenula_apply_vta_feedback(
     if (!habenula->config.enable_vta_feedback) return HABENULA_OK;
 
     /* High DA inhibits habenula (reciprocal inhibition) */
-    float normalized_da = clamp_f(da_level / 100.0f, 0.0f, 1.0f);
+    float normalized_da = nimcp_clampf(da_level / 100.0f, 0.0f, 1.0f);
     if (normalized_da > 0.6f) {
         habenula->neurons.inhibitory_input += (normalized_da - 0.6f) * 0.5f;
     }
@@ -412,7 +402,7 @@ nimcp_habenula_error_t nimcp_habenula_get_avoidance_signal(
 
     /* Avoidance signal based on disappointment and aversion */
     *avoidance = (habenula->lhb.disappointment + habenula->mhb.aversion_level) * 0.5f;
-    *avoidance = clamp_f(*avoidance, 0.0f, 1.0f);
+    *avoidance = nimcp_clampf(*avoidance, 0.0f, 1.0f);
 
     return HABENULA_OK;
 }
@@ -475,7 +465,7 @@ nimcp_habenula_error_t nimcp_habenula_record_coping_failure(
 
     habenula->depression.coping_failure_count += 1.0f;
     habenula->depression.helplessness_index += 0.1f;
-    habenula->depression.helplessness_index = clamp_f(
+    habenula->depression.helplessness_index = nimcp_clampf(
         habenula->depression.helplessness_index, 0.0f, 1.0f);
 
     return HABENULA_OK;
@@ -488,7 +478,7 @@ nimcp_habenula_error_t nimcp_habenula_record_coping_success(
 
     /* Success reduces helplessness */
     habenula->depression.helplessness_index -= 0.15f;
-    habenula->depression.helplessness_index = clamp_f(
+    habenula->depression.helplessness_index = nimcp_clampf(
         habenula->depression.helplessness_index, 0.0f, 1.0f);
 
     /* Also reduces disappointment */
@@ -531,7 +521,7 @@ nimcp_habenula_error_t nimcp_habenula_apply_excitation(
     if (!habenula) return HABENULA_ERROR_NULL;
     if (!habenula->initialized) return HABENULA_ERROR_NOT_INITIALIZED;
 
-    habenula->neurons.excitatory_input += clamp_f(strength, 0.0f, 1.0f);
+    habenula->neurons.excitatory_input += nimcp_clampf(strength, 0.0f, 1.0f);
     return HABENULA_OK;
 }
 
@@ -541,7 +531,7 @@ nimcp_habenula_error_t nimcp_habenula_apply_inhibition(
     if (!habenula) return HABENULA_ERROR_NULL;
     if (!habenula->initialized) return HABENULA_ERROR_NOT_INITIALIZED;
 
-    habenula->neurons.inhibitory_input += clamp_f(strength, 0.0f, 1.0f);
+    habenula->neurons.inhibitory_input += nimcp_clampf(strength, 0.0f, 1.0f);
     return HABENULA_OK;
 }
 
@@ -604,7 +594,7 @@ nimcp_habenula_error_t nimcp_habenula_add_projection(
 
     proj->target = target;
     proj->source = source;
-    proj->weight = clamp_f(weight, 0.0f, 1.0f);
+    proj->weight = nimcp_clampf(weight, 0.0f, 1.0f);
     proj->delay_ms = 5.0f; /* Default delay */
     proj->is_inhibitory = is_inhibitory;
     proj->active = true;

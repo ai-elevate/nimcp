@@ -14,25 +14,13 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_neuron_immune_bridge)
 
 /* ============================================================================
  * Internal Helpers
  * ============================================================================ */
-
-/**
- * @brief Clamp float to range [0, 1]
- *
- * WHAT: Constrain value to [0, 1]
- * WHY:  Prevent invalid factor values
- * HOW:  Simple conditional clamping
- */
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 /**
  * @brief Get inflammation GPU factor
@@ -198,7 +186,7 @@ int gpu_neuron_immune_apply_cytokine_effects(gpu_neuron_immune_bridge_t* bridge)
                      fabsf(bridge->cytokine_effects.tnf_batch_reduction) +
                      fabsf(bridge->cytokine_effects.ifn_gamma_batch_reduction);
 
-    bridge->cytokine_effects.total_batch_factor = clamp_0_1(1.0f - reduction);
+    bridge->cytokine_effects.total_batch_factor = nimcp_clamp01(1.0f - reduction);
 
     /* Kernel throttle, memory, and clock speed factors mirror batch factor */
     bridge->cytokine_effects.kernel_throttle_factor = bridge->cytokine_effects.total_batch_factor;
@@ -228,7 +216,7 @@ float gpu_neuron_immune_compute_batch_factor(const gpu_neuron_immune_bridge_t* b
     float cytokine_factor = bridge->cytokine_effects.total_batch_factor;
 
     /* Multiplicative reduction */
-    return clamp_0_1(inflammation_factor * cytokine_factor);
+    return nimcp_clamp01(inflammation_factor * cytokine_factor);
 }
 
 uint32_t gpu_neuron_immune_get_batch_size(const gpu_neuron_immune_bridge_t* bridge) {
@@ -312,7 +300,7 @@ int gpu_neuron_immune_monitor_stress(gpu_neuron_immune_bridge_t* bridge) {
     /* Check utilization stress (simplified - would need actual utilization metric) */
     float utilization = avg_firing_rate / 100.0f;  /* Proxy */
     if (utilization > GPU_UTILIZATION_HIGH_THRESHOLD) {
-        bridge->immune_modulation.utilization_stress_level = clamp_0_1(
+        bridge->immune_modulation.utilization_stress_level = nimcp_clamp01(
             (utilization - GPU_UTILIZATION_HIGH_THRESHOLD) /
             (1.0f - GPU_UTILIZATION_HIGH_THRESHOLD)
         );
@@ -322,7 +310,7 @@ int gpu_neuron_immune_monitor_stress(gpu_neuron_immune_bridge_t* bridge) {
     if (bridge->error_state.memory_total_bytes > 0) {
         float memory_usage = (float)gpu_memory_used / bridge->error_state.memory_total_bytes;
         if (memory_usage > 0.85f) {
-            bridge->immune_modulation.memory_stress_level = clamp_0_1((memory_usage - 0.85f) / 0.15f);
+            bridge->immune_modulation.memory_stress_level = nimcp_clamp01((memory_usage - 0.85f) / 0.15f);
         }
     }
 

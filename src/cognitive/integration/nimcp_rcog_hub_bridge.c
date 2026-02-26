@@ -33,6 +33,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(rcog_hub_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -91,15 +92,6 @@ static uint64_t get_timestamp_ms(void) {
     return 0;
 }
 
-/**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
 /* ============================================================================
  * Hub Event Callback (internal)
  * ============================================================================ */
@@ -142,7 +134,7 @@ static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_dat
             if (callback && event->payload) {
                 /* Parse input payload - assume text query with priority */
                 const char* query = (const char*)event->payload;
-                float priority = clamp_float((float)event->priority / 3.0f, 0.0f, 1.0f);
+                float priority = nimcp_clampf((float)event->priority / 3.0f, 0.0f, 1.0f);
 
                 int result = callback(query, RCOG_GOAL_QUESTION_ANSWERING, priority, cb_data);
 
@@ -168,7 +160,7 @@ static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_dat
                 const uint64_t* ids = (const uint64_t*)event->payload;
                 uint64_t new_focus = ids[0];
                 uint64_t old_focus = (event->payload_size >= sizeof(uint64_t) * 2) ? ids[1] : 0;
-                float urgency = clamp_float((float)event->priority / 3.0f, 0.0f, 1.0f);
+                float urgency = nimcp_clampf((float)event->priority / 3.0f, 0.0f, 1.0f);
 
                 callback(new_focus, old_focus, urgency, cb_data);
 
@@ -754,7 +746,7 @@ int rcog_hub_publish_recursion_start(
     payload.goal_id = goal_id;
     payload.goal_type = goal_type;
     payload.max_depth = max_depth;
-    payload.priority = clamp_float(priority, 0.0f, 1.0f);
+    payload.priority = nimcp_clampf(priority, 0.0f, 1.0f);
     payload.timestamp = get_timestamp_ms();
 
     /* Create event data */
@@ -816,7 +808,7 @@ int rcog_hub_publish_recursion_complete(
     rcog_hub_recursion_complete_payload_t payload;
     payload.goal_id = goal_id;
     payload.success = success;
-    payload.final_confidence = clamp_float(final_confidence, 0.0f, 1.0f);
+    payload.final_confidence = nimcp_clampf(final_confidence, 0.0f, 1.0f);
     payload.subtasks_total = subtasks_total;
     payload.subtasks_completed = subtasks_completed;
     payload.max_depth_reached = max_depth_reached;
@@ -887,7 +879,7 @@ int rcog_hub_publish_subtask_spawned(
     payload.subtask_id = subtask_id;
     payload.current_depth = current_depth;
     payload.subtask_type = subtask_type;
-    payload.priority = clamp_float(priority, 0.0f, 1.0f);
+    payload.priority = nimcp_clampf(priority, 0.0f, 1.0f);
     payload.timestamp = get_timestamp_ms();
 
     /* Create event data */

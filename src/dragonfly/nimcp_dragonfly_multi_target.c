@@ -19,6 +19,7 @@
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_multi_target)
 
@@ -30,12 +31,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 static inline float vec3_length(const float v[3]) {
@@ -255,7 +250,7 @@ static void compute_priority_scores(
     target->factor_scores[PRIORITY_DISTANCE] = 1.0f / (1.0f + distance * 0.5f);
 
     /* Size score (larger is better, within limits) */
-    target->factor_scores[PRIORITY_SIZE] = clamp_f(target->size * 10.0f, 0.0f, 1.0f);
+    target->factor_scores[PRIORITY_SIZE] = nimcp_clampf(target->size * 10.0f, 0.0f, 1.0f);
 
     /* Velocity score (slower is easier) */
     float speed = vec3_length(target->velocity);
@@ -276,7 +271,7 @@ static void compute_priority_scores(
         priority += target->factor_scores[i] * mt->config.priority_weights[i];
     }
 
-    target->priority_score = clamp_f(priority, 0.0f, 1.0f);
+    target->priority_score = nimcp_clampf(priority, 0.0f, 1.0f);
 }
 
 static void sort_targets_by_priority(dragonfly_multi_target_t mt) {

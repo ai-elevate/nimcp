@@ -73,16 +73,6 @@ static uint64_t get_time_ms(void) {
 
 
 /**
- * @brief Clamp float value to range [min, max]
- */
-static inline float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-
-/**
  * @brief Apply exponential decay to competitor signal
  *
  * WHAT: Reduce strength of stale competition entries

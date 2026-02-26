@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(executive_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -63,16 +64,6 @@ struct executive_plasticity_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(executive_plasticity_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static executive_plasticity_synapse_t* find_synapse(
     executive_plasticity_bridge_t* bridge,
@@ -288,7 +279,7 @@ int executive_plasticity_register_synapse(
     executive_plasticity_synapse_t* syn = &bridge->synapses[bridge->num_synapses];
     syn->synapse_id = synapse_id;
     syn->type = type;
-    syn->weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     syn->initial_weight = syn->weight;
     syn->eligibility_trace = 0.0f;
     syn->bcm_threshold = bridge->config.bcm_target_rate;
@@ -510,7 +501,7 @@ int executive_plasticity_learn(
 
     /* Update weight with bounds */
     float old_weight = syn->weight;
-    syn->weight = clamp_f(syn->weight + delta_weight, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_clampf(syn->weight + delta_weight, bridge->config.weight_min, bridge->config.weight_max);
     float actual_delta = syn->weight - old_weight;
 
     /* Update statistics */
@@ -586,7 +577,7 @@ float executive_plasticity_apply_stdp(
 
     /* Update weight */
     float old_weight = syn->weight;
-    syn->weight = clamp_f(syn->weight + delta_weight, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_clampf(syn->weight + delta_weight, bridge->config.weight_min, bridge->config.weight_max);
     float actual_delta = syn->weight - old_weight;
 
     /* Update statistics */
@@ -619,7 +610,7 @@ int executive_plasticity_apply_reward(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
+    reward = nimcp_clampf(reward, -1.0f, 1.0f);
     bridge->last_reward = reward;
 
     /* Apply reward-modulated learning to all synapses with eligibility */
@@ -639,7 +630,7 @@ int executive_plasticity_apply_reward(
         float delta = bridge->config.base_learning_rate * reward *
                      syn->eligibility_trace * bridge->config.control_modulation;
 
-        syn->weight = clamp_f(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
+        syn->weight = nimcp_clampf(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
 
         if (delta > 0) {
             bridge->stats.total_potentiation += delta;
@@ -692,7 +683,7 @@ int executive_plasticity_update_bcm(
             float bcm_factor = (syn->avg_activity - syn->bcm_threshold) * syn->avg_activity;
             float delta = bridge->config.base_learning_rate * bcm_factor * 0.001f;
 
-            syn->weight = clamp_f(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_clampf(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
         }
     }
 
@@ -750,7 +741,7 @@ int executive_plasticity_homeostatic_update(
 
     /* Homeostatic scaling */
     float scale_factor = 1.0f + error * dt_ms / bridge->config.homeostatic_tau_ms;
-    scale_factor = clamp_f(scale_factor, 0.99f, 1.01f);
+    scale_factor = nimcp_clampf(scale_factor, 0.99f, 1.01f);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -760,7 +751,7 @@ int executive_plasticity_homeostatic_update(
         }
 
         if (!bridge->synapses[i].is_protected) {
-            bridge->synapses[i].weight = clamp_f(
+            bridge->synapses[i].weight = nimcp_clampf(
                 bridge->synapses[i].weight * scale_factor,
                 bridge->config.weight_min,
                 bridge->config.weight_max

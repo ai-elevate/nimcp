@@ -29,6 +29,7 @@
 
 #define LOG_MODULE "cognitive.mental_health"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 
@@ -78,12 +79,7 @@ struct mental_health_monitor {
     nimcp_mutex_t* lock;
 };
 
-/* Helpers */
-static inline float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
-}
+/* Helpers — nimcp_clamp01 from nimcp_math_helpers.h */
 
 static inline bool is_valid_monitor(const mental_health_monitor_t* m) {
     return m != NULL && m->magic == MENTAL_HEALTH_MAGIC;
@@ -92,37 +88,37 @@ static inline bool is_valid_monitor(const mental_health_monitor_t* m) {
 /* Disorder detectors */
 static float detect_sociopathy(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01((float)m->ethics_violations_recent / 100.0f) * 0.30f;
-    score += clamp01(1.0f - m->ethics_approval_rate) * 0.30f;
-    score += clamp01(m->theory_of_mind_failures) * 0.20f;
-    score += clamp01(m->social_interaction_deficit) * 0.20f;
-    return clamp01(score);
+    score += nimcp_clamp01((float)m->ethics_violations_recent / 100.0f) * 0.30f;
+    score += nimcp_clamp01(1.0f - m->ethics_approval_rate) * 0.30f;
+    score += nimcp_clamp01(m->theory_of_mind_failures) * 0.20f;
+    score += nimcp_clamp01(m->social_interaction_deficit) * 0.20f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_psychopathy(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01((float)m->impulse_control_failures / 100.0f) * 0.25f;
-    score += clamp01(m->emotional_flatness) * 0.25f;
-    score += clamp01((float)m->ethics_violations_recent / 100.0f) * 0.25f;
-    score += clamp01(m->high_risk_decisions / 50.0f) * 0.25f;
-    return clamp01(score);
+    score += nimcp_clamp01((float)m->impulse_control_failures / 100.0f) * 0.25f;
+    score += nimcp_clamp01(m->emotional_flatness) * 0.25f;
+    score += nimcp_clamp01((float)m->ethics_violations_recent / 100.0f) * 0.25f;
+    score += nimcp_clamp01(m->high_risk_decisions / 50.0f) * 0.25f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_conduct(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01((float)m->ethics_violations_recent / 100.0f) * 0.40f;
-    score += clamp01(m->high_risk_decisions / 50.0f) * 0.30f;
-    score += clamp01((float)m->impulse_control_failures / 100.0f) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01((float)m->ethics_violations_recent / 100.0f) * 0.40f;
+    score += nimcp_clamp01(m->high_risk_decisions / 50.0f) * 0.30f;
+    score += nimcp_clamp01((float)m->impulse_control_failures / 100.0f) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_mania(const behavioral_markers_t* m) {
     float score = 0.0f;
     if (m->dopamine_avg > 0.7f) score += (m->dopamine_avg - 0.7f) / 0.3f * 0.30f;
-    score += clamp01((float)m->impulse_control_failures / 50.0f) * 0.25f;
+    score += nimcp_clamp01((float)m->impulse_control_failures / 50.0f) * 0.25f;
     if (m->engagement_level > 0.8f) score += (m->engagement_level - 0.8f) / 0.2f * 0.25f;
-    score += clamp01(m->high_risk_decisions / 30.0f) * 0.20f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->high_risk_decisions / 30.0f) * 0.20f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_depression(const behavioral_markers_t* m) {
@@ -132,9 +128,9 @@ static float detect_depression(const behavioral_markers_t* m) {
     if (m->engagement_level < 0.4f) score += (0.4f - m->engagement_level) / 0.4f * 0.20f;
     if (m->baseline_latency > 0 && m->decision_latency_avg > m->baseline_latency * 1.5f) {
         float slowdown = (m->decision_latency_avg / m->baseline_latency) - 1.0f;
-        score += clamp01(slowdown) * 0.20f;
+        score += nimcp_clamp01(slowdown) * 0.20f;
     }
-    return clamp01(score);
+    return nimcp_clamp01(score);
 }
 
 static float detect_bipolar(const behavioral_markers_t* m) {
@@ -142,67 +138,67 @@ static float detect_bipolar(const behavioral_markers_t* m) {
     float depression = detect_depression(m);
     float mood_variance = m->emotional_volatility;
     float episode_severity = fmaxf(mania, depression);
-    return clamp01(mood_variance * 0.5f + episode_severity * 0.5f);
+    return nimcp_clamp01(mood_variance * 0.5f + episode_severity * 0.5f);
 }
 
 static float detect_schizophrenia(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->reality_testing_errors) * 0.40f;
-    score += clamp01(m->decision_variance) * 0.30f;
-    score += clamp01(m->social_interaction_deficit) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->reality_testing_errors) * 0.40f;
+    score += nimcp_clamp01(m->decision_variance) * 0.30f;
+    score += nimcp_clamp01(m->social_interaction_deficit) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_paranoid_schizophrenia(const behavioral_markers_t* m) {
-    return clamp01(detect_schizophrenia(m) + clamp01(m->avoidance_rate) * 0.2f);
+    return nimcp_clamp01(detect_schizophrenia(m) + nimcp_clamp01(m->avoidance_rate) * 0.2f);
 }
 
 static float detect_schizoaffective(const behavioral_markers_t* m) {
-    return clamp01(detect_schizophrenia(m) * 0.6f + fmaxf(detect_mania(m), detect_depression(m)) * 0.4f);
+    return nimcp_clamp01(detect_schizophrenia(m) * 0.6f + fmaxf(detect_mania(m), detect_depression(m)) * 0.4f);
 }
 
 static float detect_delusional(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->reality_testing_errors) * 0.50f;
-    score += clamp01(m->cognitive_rigidity) * 0.30f;
-    score += clamp01(1.0f - m->decision_accuracy) * 0.20f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->reality_testing_errors) * 0.50f;
+    score += nimcp_clamp01(m->cognitive_rigidity) * 0.30f;
+    score += nimcp_clamp01(1.0f - m->decision_accuracy) * 0.20f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_anxiety(const behavioral_markers_t* m) {
     float score = 0.0f;
     if (m->norepinephrine_avg > 0.6f) score += (m->norepinephrine_avg - 0.6f) / 0.4f * 0.30f;
-    score += clamp01(m->avoidance_rate) * 0.30f;
+    score += nimcp_clamp01(m->avoidance_rate) * 0.30f;
     float fear_ratio = (float)m->fear_count / (float)(m->joy_count + m->fear_count + 1);
-    score += clamp01(fear_ratio) * 0.20f;
-    score += clamp01(m->emotional_volatility) * 0.20f;
-    return clamp01(score);
+    score += nimcp_clamp01(fear_ratio) * 0.20f;
+    score += nimcp_clamp01(m->emotional_volatility) * 0.20f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_ptsd(const behavioral_markers_t* m) {
     float score = 0.0f;
     if (m->norepinephrine_avg > 0.7f) score += 0.30f;
-    score += clamp01(m->avoidance_rate) * 0.30f;
+    score += nimcp_clamp01(m->avoidance_rate) * 0.30f;
     float fear_ratio = (float)m->fear_count / (float)(m->joy_count + m->fear_count + 1);
-    score += clamp01(fear_ratio) * 0.20f;
-    score += clamp01(m->emotional_volatility) * 0.20f;
-    return clamp01(score);
+    score += nimcp_clamp01(fear_ratio) * 0.20f;
+    score += nimcp_clamp01(m->emotional_volatility) * 0.20f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_ocd(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01((float)m->repetitive_behaviors / 50.0f) * 0.40f;
-    score += clamp01(m->cognitive_rigidity) * 0.30f;
-    score += clamp01(m->accuracy_obsession) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01((float)m->repetitive_behaviors / 50.0f) * 0.40f;
+    score += nimcp_clamp01(m->cognitive_rigidity) * 0.30f;
+    score += nimcp_clamp01(m->accuracy_obsession) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_autism(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->theory_of_mind_failures) * 0.35f;
-    score += clamp01(m->social_interaction_deficit) * 0.35f;
-    score += clamp01(m->cognitive_rigidity) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->theory_of_mind_failures) * 0.35f;
+    score += nimcp_clamp01(m->social_interaction_deficit) * 0.35f;
+    score += nimcp_clamp01(m->cognitive_rigidity) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_aspergers(const behavioral_markers_t* m) {
@@ -212,71 +208,71 @@ static float detect_aspergers(const behavioral_markers_t* m) {
 
 static float detect_malignant_narcissism(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(1.0f - m->ethics_approval_rate) * 0.30f;
-    score += clamp01((float)m->ethics_violations_recent / 100.0f) * 0.30f;
+    score += nimcp_clamp01(1.0f - m->ethics_approval_rate) * 0.30f;
+    score += nimcp_clamp01((float)m->ethics_violations_recent / 100.0f) * 0.30f;
     float grandiosity = m->decision_accuracy < 0.5f ? (1.0f - m->decision_accuracy) * m->engagement_level : 0.0f;
-    score += clamp01(grandiosity) * 0.20f;
-    score += clamp01(m->high_risk_decisions / 30.0f) * 0.20f;
-    return clamp01(score);
+    score += nimcp_clamp01(grandiosity) * 0.20f;
+    score += nimcp_clamp01(m->high_risk_decisions / 30.0f) * 0.20f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_borderline(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->emotional_volatility) * 0.40f;
-    score += clamp01((float)m->impulse_control_failures / 50.0f) * 0.30f;
-    score += clamp01((float)m->rapid_mood_changes / 10.0f) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->emotional_volatility) * 0.40f;
+    score += nimcp_clamp01((float)m->impulse_control_failures / 50.0f) * 0.30f;
+    score += nimcp_clamp01((float)m->rapid_mood_changes / 10.0f) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_histrionic(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->avg_emotional_intensity) * 0.40f;
-    score += clamp01(m->emotional_volatility) * 0.30f;
+    score += nimcp_clamp01(m->avg_emotional_intensity) * 0.40f;
+    score += nimcp_clamp01(m->emotional_volatility) * 0.30f;
     /* Only flag VERY HIGH engagement (> 0.85) as attention-seeking behavior */
     if (m->engagement_level > 0.85f)
         score += (m->engagement_level - 0.85f) / 0.15f * 0.30f;
-    return clamp01(score);
+    return nimcp_clamp01(score);
 }
 
 static float detect_avoidant(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->avoidance_rate) * 0.40f;
-    score += clamp01(m->social_interaction_deficit) * 0.30f;
-    score += clamp01(1.0f - m->engagement_level) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->avoidance_rate) * 0.40f;
+    score += nimcp_clamp01(m->social_interaction_deficit) * 0.30f;
+    score += nimcp_clamp01(1.0f - m->engagement_level) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_dependent(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(1.0f - m->decision_accuracy) * 0.40f;
-    score += clamp01(1.0f - (float)m->task_completion_rate / 100.0f) * 0.30f;
-    score += clamp01(m->avoidance_rate) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(1.0f - m->decision_accuracy) * 0.40f;
+    score += nimcp_clamp01(1.0f - (float)m->task_completion_rate / 100.0f) * 0.30f;
+    score += nimcp_clamp01(m->avoidance_rate) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_ocpd(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->accuracy_obsession) * 0.40f;
-    score += clamp01(m->cognitive_rigidity) * 0.30f;
-    score += clamp01(m->task_switching_difficulty) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->accuracy_obsession) * 0.40f;
+    score += nimcp_clamp01(m->cognitive_rigidity) * 0.30f;
+    score += nimcp_clamp01(m->task_switching_difficulty) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_paranoid(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->avoidance_rate) * 0.40f;
-    score += clamp01(m->social_interaction_deficit) * 0.30f;
+    score += nimcp_clamp01(m->avoidance_rate) * 0.40f;
+    score += nimcp_clamp01(m->social_interaction_deficit) * 0.30f;
     float fear_ratio = (float)m->fear_count / (float)(m->joy_count + m->fear_count + 1);
-    score += clamp01(fear_ratio) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(fear_ratio) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 static float detect_adhd(const behavioral_markers_t* m) {
     float score = 0.0f;
-    score += clamp01(m->attention_fragmentation) * 0.35f;
-    score += clamp01((float)m->impulse_control_failures / 50.0f) * 0.35f;
-    score += clamp01(m->task_switching_difficulty) * 0.30f;
-    return clamp01(score);
+    score += nimcp_clamp01(m->attention_fragmentation) * 0.35f;
+    score += nimcp_clamp01((float)m->impulse_control_failures / 50.0f) * 0.35f;
+    score += nimcp_clamp01(m->task_switching_difficulty) * 0.30f;
+    return nimcp_clamp01(score);
 }
 
 /**

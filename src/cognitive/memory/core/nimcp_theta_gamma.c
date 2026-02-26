@@ -37,6 +37,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(theta_gamma, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -113,22 +114,6 @@ static void set_error(const char* format, ...) {
  */
 static void clear_error(void) {
     s_last_error[0] = '\0';
-}
-
-/**
- * @brief Clamp float to specified range
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
- * @brief Clamp float to [0, 1] range
- */
-static inline float clamp01(float value) {
-    return clampf(value, 0.0f, 1.0f);
 }
 
 /**
@@ -282,7 +267,7 @@ static float compute_encode_strength(float theta_phase) {
      * We want: 0→1 (encoding), π→0 (no encoding)
      * Transform: (cos(phase) + 1) / 2 */
     float cos_val = cosf(theta_phase);
-    return clamp01((cos_val + 1.0f) / 2.0f);
+    return nimcp_clamp01((cos_val + 1.0f) / 2.0f);
 }
 
 /**
@@ -298,7 +283,7 @@ static float compute_retrieve_strength(float theta_phase) {
     /* Opposite of encode: (1 - cos(phase)) / 2
      * Or equivalently: (-cos(phase) + 1) / 2 */
     float cos_val = cosf(theta_phase);
-    return clamp01((1.0f - cos_val) / 2.0f);
+    return nimcp_clamp01((1.0f - cos_val) / 2.0f);
 }
 
 /**
@@ -435,7 +420,7 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "theta_gamma_config_validate: capacity exceeded");
         return false;
     }
-    config->theta_freq_default = clampf(config->theta_freq_default,
+    config->theta_freq_default = nimcp_clampf(config->theta_freq_default,
                                          config->theta_freq_min,
                                          config->theta_freq_max);
 
@@ -455,13 +440,13 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     config->retrieve_phase_end = wrap_phase_internal(config->retrieve_phase_end);
 
     /* Validate gating parameters */
-    config->transition_gate = clamp01(config->transition_gate);
-    config->min_gate_strength = clamp01(config->min_gate_strength);
+    config->transition_gate = nimcp_clamp01(config->transition_gate);
+    config->min_gate_strength = nimcp_clamp01(config->min_gate_strength);
 
     /* Validate PAC parameters */
     if (config->pac_num_bins < 4) config->pac_num_bins = 4;
     if (config->pac_num_bins > 72) config->pac_num_bins = 72;
-    config->pac_smoothing = clamp01(config->pac_smoothing);
+    config->pac_smoothing = nimcp_clamp01(config->pac_smoothing);
 
     /* Validate burst detection */
     if (config->burst_threshold < 0.5f) config->burst_threshold = 0.5f;
@@ -687,7 +672,7 @@ bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
     float retrieve_str = compute_retrieve_strength(mgr->state.theta_phase);
     float modulation = encode_str + retrieve_str;  /* Both windows have high gamma */
     modulation = 0.5f + 0.5f * modulation * mgr->state.pac_strength;
-    mgr->state.gamma_amplitude = clamp01(modulation);
+    mgr->state.gamma_amplitude = nimcp_clamp01(modulation);
 
     /* Update window and operation type */
     theta_phase_window_t new_window = phase_to_window_internal(mgr->state.theta_phase);
@@ -742,7 +727,7 @@ bool theta_gamma_set_theta_freq(theta_gamma_manager_t manager, float freq) {
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Clamp to valid range */
-    freq = clampf(freq, mgr->config.theta_freq_min, mgr->config.theta_freq_max);
+    freq = nimcp_clampf(freq, mgr->config.theta_freq_min, mgr->config.theta_freq_max);
     mgr->state.theta_frequency = freq;
 
     clear_error();
@@ -763,7 +748,7 @@ bool theta_gamma_set_gamma_freq(theta_gamma_manager_t manager, float freq) {
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Clamp to valid gamma range (full band) */
-    freq = clampf(freq, mgr->config.gamma_freq_low_min, mgr->config.gamma_freq_high_max);
+    freq = nimcp_clampf(freq, mgr->config.gamma_freq_low_min, mgr->config.gamma_freq_high_max);
     mgr->state.gamma_frequency = freq;
 
     clear_error();
@@ -1104,7 +1089,7 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     float mi = (h_max - h) / h_max;
 
     /* Update state and stats */
-    mgr->state.modulation_index = clamp01(mi);
+    mgr->state.modulation_index = nimcp_clamp01(mi);
 
     float stat_n = (float)(mgr->stats.total_updates + 1);
     mgr->stats.mean_pac = ((stat_n - 1.0f) * mgr->stats.mean_pac + mi) / stat_n;
@@ -1113,7 +1098,7 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     }
 
     clear_error();
-    return clamp01(mi);
+    return nimcp_clamp01(mi);
 }
 
 float theta_gamma_preferred_phase(theta_gamma_manager_t manager,

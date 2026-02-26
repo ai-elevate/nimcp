@@ -19,6 +19,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_ocelli)
 
@@ -35,12 +36,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 //=============================================================================
@@ -279,7 +274,7 @@ int dragonfly_ocelli_process(
     float intensity_variance = (fabsf(median - avg_intensity) +
                                 fabsf(left - avg_intensity) +
                                 fabsf(right - avg_intensity)) / 3.0f;
-    ocelli->attitude.confidence = clamp_f(1.0f - intensity_variance * 2.0f, 0.0f, 1.0f);
+    ocelli->attitude.confidence = nimcp_clampf(1.0f - intensity_variance * 2.0f, 0.0f, 1.0f);
     ocelli->attitude.timestamp_us = input->timestamp_us;
 
     /* Update statistics */
@@ -358,12 +353,12 @@ int dragonfly_ocelli_get_correction(
     }
 
     /* Apply limits */
-    correction->pitch_correction_rad = clamp_f(
+    correction->pitch_correction_rad = nimcp_clampf(
         pitch_correction,
         -ocelli->config.max_pitch_correction_rad,
         ocelli->config.max_pitch_correction_rad
     );
-    correction->roll_correction_rad = clamp_f(
+    correction->roll_correction_rad = nimcp_clampf(
         roll_correction,
         -ocelli->config.max_roll_correction_rad,
         ocelli->config.max_roll_correction_rad
@@ -371,7 +366,7 @@ int dragonfly_ocelli_get_correction(
 
     /* Compute urgency based on error magnitude */
     float max_error = fmaxf(fabsf(pitch_error), fabsf(roll_error));
-    correction->urgency = clamp_f(max_error / (float)(M_PI / 4.0), 0.0f, 1.0f);
+    correction->urgency = nimcp_clampf(max_error / (float)(M_PI / 4.0), 0.0f, 1.0f);
     correction->is_valid = true;
 
     /* Update stats */
@@ -396,12 +391,12 @@ int dragonfly_ocelli_simulate_input(
     /* Simulate ocelli readings based on body attitude */
     /* Median ocellus sees more sky when pitched down */
     float median_sky_fraction = 0.5f + sinf(pitch_rad + sun_elevation_rad) * 0.5f;
-    input->intensity[OCELLUS_MEDIAN] = clamp_f(median_sky_fraction, 0.0f, 1.0f);
+    input->intensity[OCELLUS_MEDIAN] = nimcp_clampf(median_sky_fraction, 0.0f, 1.0f);
 
     /* Lateral ocelli see different amounts based on roll */
     float roll_effect = sinf(roll_rad) * 0.3f;
-    input->intensity[OCELLUS_LEFT] = clamp_f(0.5f + roll_effect, 0.0f, 1.0f);
-    input->intensity[OCELLUS_RIGHT] = clamp_f(0.5f - roll_effect, 0.0f, 1.0f);
+    input->intensity[OCELLUS_LEFT] = nimcp_clampf(0.5f + roll_effect, 0.0f, 1.0f);
+    input->intensity[OCELLUS_RIGHT] = nimcp_clampf(0.5f - roll_effect, 0.0f, 1.0f);
 
     input->timestamp_us = get_time_us();
 

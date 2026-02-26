@@ -27,6 +27,7 @@
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_jepa_health_agent = NULL;
@@ -158,16 +159,6 @@ static float jepa_randn(uint64_t* state) {
     float u1 = jepa_randf(state) + 1e-10f;
     float u2 = jepa_randf(state);
     return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
-}
-
-//=============================================================================
-// Utility Functions
-//=============================================================================
-
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
 }
 
 static float relu(float x) {
@@ -408,7 +399,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
         bridge->config.predictor_hidden_dim = NIMCP_MEDIUM_HIDDEN_SIZE;
     }
     if (bridge->config.mask_ratio < 0.0f || bridge->config.mask_ratio > FIN_JEPA_MAX_MASK_RATIO) {
-        bridge->config.mask_ratio = clampf(bridge->config.mask_ratio, 0.1f, FIN_JEPA_MAX_MASK_RATIO);
+        bridge->config.mask_ratio = nimcp_clampf(bridge->config.mask_ratio, 0.1f, FIN_JEPA_MAX_MASK_RATIO);
     }
 
     uint32_t num_factors = bridge->config.num_factors;
@@ -904,7 +895,7 @@ int financial_jepa_bridge_predict_missing(
             float context_confidence = (float)num_visible / (float)num_factors;
             float base_confidence = 0.5f + 0.5f * context_confidence;
             output->confidence[pred_idx] = base_confidence * health_mod;
-            output->confidence[pred_idx] = clampf(output->confidence[pred_idx],
+            output->confidence[pred_idx] = nimcp_clampf(output->confidence[pred_idx],
                                                    bridge->config.min_confidence, 1.0f);
 
             pred_idx++;
@@ -1045,7 +1036,7 @@ int financial_jepa_bridge_cross_modal_predict(
 
             /* Cross-modal confidence is generally lower */
             float base_confidence = 0.4f * health_mod;
-            output->confidence[pred_idx] = clampf(base_confidence,
+            output->confidence[pred_idx] = nimcp_clampf(base_confidence,
                                                    bridge->config.min_confidence, 0.8f);
             pred_idx++;
         }
@@ -1059,7 +1050,7 @@ int financial_jepa_bridge_cross_modal_predict(
         coherence += source_embedding[e] * bridge->predicted_embedding[e];
     }
     coherence = (coherence + 1.0f) * 0.5f; /* Map [-1, 1] to [0, 1] */
-    output->cross_modal_coherence = clampf(coherence * health_mod, 0.0f, 1.0f);
+    output->cross_modal_coherence = nimcp_clampf(coherence * health_mod, 0.0f, 1.0f);
 
     nimcp_free(source_embedding);
     nimcp_free(all_decoded);
@@ -1380,7 +1371,7 @@ int financial_jepa_bridge_set_inflammation(
             "financial_jepa_bridge_set_inflammation: bridge is NULL");
         return FIN_JEPA_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_JEPA_ERR_OK;
 }
 
@@ -1393,7 +1384,7 @@ int financial_jepa_bridge_set_fatigue(
             "financial_jepa_bridge_set_fatigue: bridge is NULL");
         return FIN_JEPA_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_JEPA_ERR_OK;
 }
 

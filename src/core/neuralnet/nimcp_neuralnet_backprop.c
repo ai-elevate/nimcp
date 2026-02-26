@@ -655,7 +655,7 @@ void backprop_store_activations_from_network(backprop_ctx_t* ctx,
                 } else if (neuron->activation_type == ACTIVATION_RELU) {
                     z = (a > 0.0f) ? a : 0.0f;  /* ReLU is identity for positive */
                 } else if (neuron->activation_type == ACTIVATION_LEAKY_RELU) {
-                    z = (a > 0.0f) ? a : a / 0.01f;  /* inverse leaky ReLU */
+                    z = (a > 0.0f) ? a : fminf(fmaxf(a / 0.01f, -20.0f), 20.0f);  /* inverse leaky ReLU, clamped */
                 }
                 ctx->activations[l].pre_activation[i] = z;
 

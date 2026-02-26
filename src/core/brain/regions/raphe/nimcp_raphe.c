@@ -13,19 +13,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(raphe, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float lerp(float a, float b, float t) {
     return a + t * (b - a);
@@ -198,7 +188,7 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
 
     /* Apply net input */
     target_rate += net_input * 5.0f;
-    target_rate = clamp_f(target_rate, 0.1f, RAPHE_PHASIC_MAX_RATE);
+    target_rate = nimcp_clampf(target_rate, 0.1f, RAPHE_PHASIC_MAX_RATE);
 
     /* Smooth firing rate transition */
     float rate_alpha = 1.0f - expf(-dt / 200.0f);
@@ -211,7 +201,7 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
         float autoreceptor_inhibition = (ht_ratio - 1.0f) *
                                         raphe->config.autoreceptor_sensitivity;
         raphe->neurons.firing_rate -= autoreceptor_inhibition;
-        raphe->neurons.firing_rate = clamp_f(raphe->neurons.firing_rate, 0.1f,
+        raphe->neurons.firing_rate = nimcp_clampf(raphe->neurons.firing_rate, 0.1f,
                                              RAPHE_PHASIC_MAX_RATE);
     }
 
@@ -225,7 +215,7 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
     float decay = raphe->ht_concentration * decay_rate * dt;
 
     raphe->ht_concentration += release - decay;
-    raphe->ht_concentration = clamp_f(raphe->ht_concentration, 1.0f, 200.0f);
+    raphe->ht_concentration = nimcp_clampf(raphe->ht_concentration, 1.0f, 200.0f);
     raphe->ht_release_rate = (fabsf(dt_sec) > 1e-10f) ? (release / dt_sec) : 0.0f;
 
     /* 3. Update mood state */
@@ -234,7 +224,7 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
 
     /* Higher 5-HT -> better mood (more positive valence) */
     float mood_target = (ht_ratio - 1.0f) * 0.5f;
-    mood_target = clamp_f(mood_target, -1.0f, 1.0f);
+    mood_target = nimcp_clampf(mood_target, -1.0f, 1.0f);
 
     float mood_alpha = (fabsf(raphe->config.mood_time_constant) > 1e-10f) ?
         (1.0f - expf(-dt / raphe->config.mood_time_constant)) : 1.0f;
@@ -245,17 +235,17 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
 
     /* Update stability (higher 5-HT -> more stable) */
     float stability_target = 0.5f + (ht_ratio - 1.0f) * 0.3f;
-    stability_target = clamp_f(stability_target, 0.2f, 0.95f);
+    stability_target = nimcp_clampf(stability_target, 0.2f, 0.95f);
     raphe->mood.stability = lerp(raphe->mood.stability, stability_target, mood_alpha * 0.5f);
 
     /* Update anxiety (lower 5-HT -> more anxiety) */
     float anxiety_target = 0.5f - (ht_ratio - 1.0f) * 0.4f;
-    anxiety_target = clamp_f(anxiety_target, 0.0f, 1.0f);
+    anxiety_target = nimcp_clampf(anxiety_target, 0.0f, 1.0f);
     raphe->mood.anxiety = lerp(raphe->mood.anxiety, anxiety_target, mood_alpha);
 
     /* Update irritability */
     float irritability_target = 0.3f - (ht_ratio - 1.0f) * 0.3f;
-    irritability_target = clamp_f(irritability_target, 0.0f, 1.0f);
+    irritability_target = nimcp_clampf(irritability_target, 0.0f, 1.0f);
     raphe->mood.irritability = lerp(raphe->mood.irritability, irritability_target, mood_alpha);
 
     /* Categorize mood state */
@@ -279,30 +269,30 @@ nimcp_raphe_error_t nimcp_raphe_update(nimcp_raphe_system_t* raphe, float dt) {
     /* 4. Update impulse control state */
     /* Higher 5-HT -> stronger inhibition */
     float inhibition_target = 0.5f + (ht_ratio - 1.0f) * raphe->config.impulse_sensitivity;
-    inhibition_target = clamp_f(inhibition_target, 0.1f, 0.95f);
+    inhibition_target = nimcp_clampf(inhibition_target, 0.1f, 0.95f);
     raphe->impulse.inhibition_strength = lerp(raphe->impulse.inhibition_strength,
                                                inhibition_target, mood_alpha);
     raphe->impulse.impulsivity = 1.0f - raphe->impulse.inhibition_strength;
 
     /* Higher 5-HT -> more patience */
     float patience_target = 0.5f + (ht_ratio - 1.0f) * 0.4f;
-    patience_target = clamp_f(patience_target, 0.1f, 0.9f);
+    patience_target = nimcp_clampf(patience_target, 0.1f, 0.9f);
     raphe->impulse.patience = lerp(raphe->impulse.patience, patience_target, mood_alpha);
 
     /* Higher 5-HT -> more risk aversion */
     float risk_target = 0.5f + (ht_ratio - 1.0f) * 0.3f;
-    risk_target = clamp_f(risk_target, 0.1f, 0.9f);
+    risk_target = nimcp_clampf(risk_target, 0.1f, 0.9f);
     raphe->impulse.risk_aversion = lerp(raphe->impulse.risk_aversion, risk_target, mood_alpha);
 
     /* 5. Update temporal discounting */
     /* Higher 5-HT -> lower discount rate (more patient) */
     float k_target = 0.1f - (ht_ratio - 1.0f) * 0.05f;
-    k_target = clamp_f(k_target, 0.01f, 0.5f);
+    k_target = nimcp_clampf(k_target, 0.01f, 0.5f);
     raphe->temporal.discount_rate = lerp(raphe->temporal.discount_rate, k_target, mood_alpha);
 
     /* Higher 5-HT -> more future-oriented */
     float future_target = 0.5f + (ht_ratio - 1.0f) * 0.3f;
-    future_target = clamp_f(future_target, 0.1f, 0.9f);
+    future_target = nimcp_clampf(future_target, 0.1f, 0.9f);
     raphe->temporal.future_orientation = lerp(raphe->temporal.future_orientation,
                                                future_target, mood_alpha);
 
@@ -380,7 +370,7 @@ nimcp_raphe_error_t nimcp_raphe_apply_mood_input(nimcp_raphe_system_t* raphe, fl
 
     /* Positive input -> increase mood valence target */
     raphe->mood.valence += input * 0.1f;
-    raphe->mood.valence = clamp_f(raphe->mood.valence, -1.0f, 1.0f);
+    raphe->mood.valence = nimcp_clampf(raphe->mood.valence, -1.0f, 1.0f);
     return RAPHE_OK;
 }
 
@@ -397,7 +387,7 @@ nimcp_raphe_error_t nimcp_raphe_modulate_anxiety(nimcp_raphe_system_t* raphe, fl
     if (!raphe->initialized) return RAPHE_ERROR_NOT_INITIALIZED;
 
     raphe->mood.anxiety += input * 0.2f;
-    raphe->mood.anxiety = clamp_f(raphe->mood.anxiety, 0.0f, 1.0f);
+    raphe->mood.anxiety = nimcp_clampf(raphe->mood.anxiety, 0.0f, 1.0f);
     return RAPHE_OK;
 }
 
@@ -437,7 +427,7 @@ nimcp_raphe_error_t nimcp_raphe_compute_inhibition(nimcp_raphe_system_t* raphe,
 
     /* Net inhibition = inhibition strength - impulse strength */
     float net = raphe->impulse.inhibition_strength - impulse_strength;
-    *inhibition_output = clamp_f(net, -1.0f, 1.0f);
+    *inhibition_output = nimcp_clampf(net, -1.0f, 1.0f);
     return RAPHE_OK;
 }
 
@@ -482,7 +472,7 @@ nimcp_raphe_error_t nimcp_raphe_apply_excitation(nimcp_raphe_system_t* raphe, fl
     if (!raphe) return RAPHE_ERROR_NULL;
     if (!raphe->initialized) return RAPHE_ERROR_NOT_INITIALIZED;
 
-    raphe->neurons.excitatory_input += clamp_f(strength, 0.0f, 1.0f);
+    raphe->neurons.excitatory_input += nimcp_clampf(strength, 0.0f, 1.0f);
     return RAPHE_OK;
 }
 
@@ -490,7 +480,7 @@ nimcp_raphe_error_t nimcp_raphe_apply_inhibition(nimcp_raphe_system_t* raphe, fl
     if (!raphe) return RAPHE_ERROR_NULL;
     if (!raphe->initialized) return RAPHE_ERROR_NOT_INITIALIZED;
 
-    raphe->neurons.inhibitory_input += clamp_f(strength, 0.0f, 1.0f);
+    raphe->neurons.inhibitory_input += nimcp_clampf(strength, 0.0f, 1.0f);
     return RAPHE_OK;
 }
 
@@ -552,7 +542,7 @@ nimcp_raphe_error_t nimcp_raphe_add_projection(nimcp_raphe_system_t* raphe,
     proj->target = target;
     strncpy(proj->name, name, RAPHE_MAX_NAME_LEN - 1);
     proj->name[RAPHE_MAX_NAME_LEN - 1] = '\0';
-    proj->weight = clamp_f(weight, 0.0f, 1.0f);
+    proj->weight = nimcp_clampf(weight, 0.0f, 1.0f);
     proj->ht_delivered = 0.0f;
     proj->enabled = true;
 
@@ -649,11 +639,11 @@ nimcp_raphe_error_t nimcp_raphe_update_sleep_wake(nimcp_raphe_system_t* raphe, f
     /* Sleep pressure builds during wakefulness */
     if (raphe->mode != RAPHE_MODE_SLEEP) {
         raphe->sleep_wake.sleep_pressure += 0.01f * dt_hours;
-        raphe->sleep_wake.sleep_pressure = clamp_f(raphe->sleep_wake.sleep_pressure, 0.0f, 1.0f);
+        raphe->sleep_wake.sleep_pressure = nimcp_clampf(raphe->sleep_wake.sleep_pressure, 0.0f, 1.0f);
     } else {
         /* Sleep pressure dissipates during sleep */
         raphe->sleep_wake.sleep_pressure -= 0.02f * dt_hours;
-        raphe->sleep_wake.sleep_pressure = clamp_f(raphe->sleep_wake.sleep_pressure, 0.0f, 1.0f);
+        raphe->sleep_wake.sleep_pressure = nimcp_clampf(raphe->sleep_wake.sleep_pressure, 0.0f, 1.0f);
     }
 
     /* Circadian modulation of wake promotion */
@@ -661,7 +651,7 @@ nimcp_raphe_error_t nimcp_raphe_update_sleep_wake(nimcp_raphe_system_t* raphe, f
     float circadian_factor = cosf((raphe->sleep_wake.circadian_phase - 12.0f) * NIMCP_PI_F / 12.0f);
     raphe->sleep_wake.wake_promotion = 0.5f + 0.3f * circadian_factor -
                                         0.3f * raphe->sleep_wake.sleep_pressure;
-    raphe->sleep_wake.wake_promotion = clamp_f(raphe->sleep_wake.wake_promotion, 0.0f, 1.0f);
+    raphe->sleep_wake.wake_promotion = nimcp_clampf(raphe->sleep_wake.wake_promotion, 0.0f, 1.0f);
 
     return RAPHE_OK;
 }

@@ -33,6 +33,7 @@
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_neural_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(retrosplenial, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -63,24 +64,6 @@ static const float IDENTITY_MATRIX[16] = {
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
-
-/**
- * @brief Clamp value to [0, 1] range
- */
-static inline float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
- * @brief Clamp value to [min, max] range
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Normalize angle to [-PI, PI]
@@ -891,7 +874,7 @@ nimcp_rsc_error_t nimcp_rsc_encode_context(
 
     /* Update context metadata */
     rsc->current_context.context_strength = 1.0f;
-    rsc->current_context.context_stability = clamp01(rsc->current_context.context_stability + 0.1f);
+    rsc->current_context.context_stability = nimcp_clamp01(rsc->current_context.context_stability + 0.1f);
     rsc->current_context.encoding_time_us = get_timestamp_us();
 
     /* Update context activations */
@@ -1027,7 +1010,7 @@ nimcp_rsc_error_t nimcp_rsc_update_context(
 
     if (rsc->mutex) nimcp_mutex_lock(rsc->mutex);
 
-    blend_factor = clamp01(blend_factor);
+    blend_factor = nimcp_clamp01(blend_factor);
     uint32_t ctx_dim = rsc->config.context_dim;
     uint32_t copy_dim = (feature_dim < ctx_dim) ? feature_dim : ctx_dim;
 
@@ -1113,7 +1096,7 @@ nimcp_rsc_error_t nimcp_rsc_process_scene(
             uint32_t cmp_dim = (lm->feature_dim < feature_dim) ? lm->feature_dim : feature_dim;
             float sim = vector_dot(scene_features, lm->visual_features, cmp_dim);
             if (sim > familiarity_score) {
-                familiarity_score = clamp01(sim);
+                familiarity_score = nimcp_clamp01(sim);
             }
         }
     }
@@ -1227,7 +1210,7 @@ nimcp_rsc_error_t nimcp_rsc_integrate_head_direction(
 
     if (rsc->mutex) nimcp_mutex_lock(rsc->mutex);
 
-    confidence = clamp01(confidence);
+    confidence = nimcp_clamp01(confidence);
     float blend = confidence * rsc->config.hd_integration_gain;
 
     rsc->navigation.head_direction = exponential_decay(
@@ -1488,7 +1471,7 @@ nimcp_rsc_error_t nimcp_rsc_start_imagination(
     rsc->imagination.active = true;
     rsc->imagination.vividness = rsc->config.imagination_vividness_default;
     rsc->imagination.plausibility = 1.0f;
-    rsc->imagination.temporal_distance = clampf(temporal_distance,
+    rsc->imagination.temporal_distance = nimcp_clampf(temporal_distance,
         -rsc->config.temporal_projection_max, rsc->config.temporal_projection_max);
     rsc->imagination.steps_simulated = 0;
 
@@ -1531,7 +1514,7 @@ nimcp_rsc_error_t nimcp_rsc_step_imagination(nimcp_retrosplenial_t* rsc, float d
                     rsc->imagination.imagined_pose.position.x += (dx / dist) * step;
                     rsc->imagination.imagined_pose.position.y += (dy / dist) * step;
                 }
-                rsc->imagination.goal_proximity = 1.0f - clamp01(dist / 10.0f);
+                rsc->imagination.goal_proximity = 1.0f - nimcp_clamp01(dist / 10.0f);
             }
             break;
 
@@ -1966,10 +1949,10 @@ float nimcp_rsc_get_health_status(const nimcp_retrosplenial_t* rsc) {
     if (rsc->stats.updates_processed > 0) {
         float error_rate = (float)(rsc->stats.transform_errors + rsc->stats.context_errors) /
                           (float)rsc->stats.updates_processed;
-        health *= (1.0f - clamp01(error_rate));
+        health *= (1.0f - nimcp_clamp01(error_rate));
     }
 
-    return clamp01(health);
+    return nimcp_clamp01(health);
 }
 
 nimcp_rsc_error_t nimcp_rsc_log_diagnostics(const nimcp_retrosplenial_t* rsc) {

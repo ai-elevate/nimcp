@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(wernicke_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -89,15 +90,6 @@ struct wernicke_substrate_bridge {
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
-
-/**
- * @brief Clamp value to [0, 1]
- */
-static inline float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
-}
 
 /**
  * @brief Compute ATP modulation factor
@@ -196,36 +188,36 @@ static void compute_effects(wernicke_substrate_bridge_t* bridge) {
     wernicke_substrate_effects_t* fx = &bridge->effects;
 
     /* Phoneme recognition: primarily ATP-dependent */
-    fx->phoneme_recognition = clamp01(
+    fx->phoneme_recognition = nimcp_clamp01(
         base * (1.0f + (atp_factor - 0.5f) * bridge->config.phoneme_atp_weight)
     );
     if (fx->phoneme_recognition < min_cap) fx->phoneme_recognition = min_cap;
 
     /* Word recognition: ATP + mild fatigue effect */
-    fx->word_recognition = clamp01(base);
+    fx->word_recognition = nimcp_clamp01(base);
     if (fx->word_recognition < min_cap) fx->word_recognition = min_cap;
 
     /* Semantic access: ATP-dependent */
-    fx->semantic_access = clamp01(
+    fx->semantic_access = nimcp_clamp01(
         base * (1.0f + (atp_factor - 0.5f) * bridge->config.semantic_atp_weight)
     );
     if (fx->semantic_access < min_cap) fx->semantic_access = min_cap;
 
     /* Disambiguation: fatigue-sensitive */
-    fx->disambiguation_capacity = clamp01(
+    fx->disambiguation_capacity = nimcp_clamp01(
         base * (1.0f + (fatigue_factor - 0.5f) * bridge->config.disambig_fatigue_weight)
     );
     if (fx->disambiguation_capacity < min_cap) fx->disambiguation_capacity = min_cap;
 
     /* Working memory span: highly fatigue-sensitive */
-    fx->working_memory_span = clamp01(
+    fx->working_memory_span = nimcp_clamp01(
         fatigue_factor * temp_factor *
         (1.0f + (fatigue_factor - 0.5f) * bridge->config.wm_fatigue_weight)
     );
     if (fx->working_memory_span < min_cap) fx->working_memory_span = min_cap;
 
     /* Context integration: balanced */
-    fx->context_integration = clamp01(base);
+    fx->context_integration = nimcp_clamp01(base);
     if (fx->context_integration < min_cap) fx->context_integration = min_cap;
 
     /* Overall comprehension: weighted average */
@@ -409,7 +401,7 @@ int wernicke_substrate_bridge_set_atp(
         return -1;
     }
 
-    bridge->atp_level = clamp01(atp);
+    bridge->atp_level = nimcp_clamp01(atp);
     bridge->use_manual_state = true;
     bridge->effects_valid = false;
 
@@ -425,7 +417,7 @@ int wernicke_substrate_bridge_set_fatigue(
         return -1;
     }
 
-    bridge->fatigue_level = clamp01(fatigue);
+    bridge->fatigue_level = nimcp_clamp01(fatigue);
     bridge->use_manual_state = true;
     bridge->effects_valid = false;
 

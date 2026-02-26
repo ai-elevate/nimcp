@@ -26,6 +26,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(microglia_immune_bridge)
 
@@ -86,17 +87,6 @@ static float get_cytokine_concentration(
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)immune->mutex);
 
     return total;
-}
-
-/**
- * @brief Clamp float to [0, 1] range
- *
- * WHAT: Saturate value to unit interval
- * WHY:  Many parameters must be in [0, 1]
- * HOW:  Simple min/max
- */
-static inline float clamp01(float x) {
-    return fmaxf(0.0f, fminf(1.0f, x));
 }
 
 /* ============================================================================
@@ -266,11 +256,11 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
 
     float m2_total = bridge->cytokine_effects.il10_m2_drive;
 
-    bridge->cytokine_effects.m1_polarization_strength = clamp01(m1_total);
-    bridge->cytokine_effects.m2_polarization_strength = clamp01(m2_total);
+    bridge->cytokine_effects.m1_polarization_strength = nimcp_clamp01(m1_total);
+    bridge->cytokine_effects.m2_polarization_strength = nimcp_clamp01(m2_total);
 
     /* Total activation is combined pro-inflammatory drive */
-    bridge->cytokine_effects.total_activation = clamp01(m1_total);
+    bridge->cytokine_effects.total_activation = nimcp_clamp01(m1_total);
 
     /* Determine polarization state */
     if (m1_total >= M1_POLARIZATION_THRESHOLD && m1_total > m2_total * M1_M2_DOMINANCE_RATIO) {
@@ -286,12 +276,12 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
     }
 
     /* Process retraction scales with activation */
-    bridge->cytokine_effects.process_retraction = clamp01(
+    bridge->cytokine_effects.process_retraction = nimcp_clamp01(
         m1_total * PROCESS_RETRACTION_ACTIVATION
     );
 
     /* Phagocytic capacity increases with M1, decreases with M2 */
-    bridge->cytokine_effects.phagocytic_capacity = clamp01(
+    bridge->cytokine_effects.phagocytic_capacity = nimcp_clamp01(
         0.3f + m1_total * 0.5f - m2_total * 0.2f
     );
 
@@ -346,7 +336,7 @@ int microglia_immune_apply_inflammation_effects(microglia_immune_bridge_t* bridg
 
     bridge->inflammation_state.activated_microglia_fraction = activated_fraction;
     bridge->inflammation_state.m1_fraction = m1_fraction;
-    bridge->inflammation_state.m2_fraction = clamp01(1.0f - m1_fraction - 0.1f);
+    bridge->inflammation_state.m2_fraction = nimcp_clamp01(1.0f - m1_fraction - 0.1f);
 
     /* Calculate average cytokine production and phagocytosis rates */
     bridge->inflammation_state.avg_cytokine_production = m1_fraction * 0.8f;

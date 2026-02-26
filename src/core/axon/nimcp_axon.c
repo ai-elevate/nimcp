@@ -33,6 +33,7 @@
 
 #define LOG_MODULE "axon"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(axon)
 
@@ -162,16 +163,6 @@ bool axon_validate_params(float length, float diameter)
     return true;
 }
 
-/**
- * @brief Clamp float to range
- */
-static float clamp_f(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
 //=============================================================================
 // AXON CREATION AND DESTRUCTION
 //=============================================================================
@@ -206,7 +197,7 @@ axon_t* axon_create(uint32_t id,
 
     // Initialize morphology
     axon->length = length;
-    axon->diameter = clamp_f(diameter, NIMCP_AXON_MIN_DIAMETER_UM,
+    axon->diameter = nimcp_clampf(diameter, NIMCP_AXON_MIN_DIAMETER_UM,
                              NIMCP_AXON_MAX_DIAMETER_UM);
 
     // No segments initially
@@ -454,7 +445,7 @@ bool axon_set_segment_myelination(axon_t* axon,
     }
 
     // Update myelination
-    seg->myelination = clamp_f(myelination, 0.0F, 1.0F);
+    seg->myelination = nimcp_clampf(myelination, 0.0F, 1.0F);
     seg->oligo_id = oligo_id;
 
     // Recalculate local velocity
@@ -532,7 +523,7 @@ float axon_calculate_velocity(const axon_t* axon)
     }
 
     // Clamp to valid range
-    velocity = clamp_f(velocity, MIN_VELOCITY, NIMCP_AXON_MAX_VELOCITY_MS);
+    velocity = nimcp_clampf(velocity, MIN_VELOCITY, NIMCP_AXON_MAX_VELOCITY_MS);
 
     // Apply damage penalty
     velocity *= (1.0F - axon->damage * 0.9F);
@@ -651,7 +642,7 @@ void axon_set_myelination(axon_t* axon, float myelination_level)
 {
     if (!axon) return;
 
-    axon->myelination_level = clamp_f(myelination_level, 0.0F, 1.0F);
+    axon->myelination_level = nimcp_clampf(myelination_level, 0.0F, 1.0F);
 
     // Update all internode segments
     if (axon->segments) {
@@ -673,7 +664,7 @@ float axon_get_myelination_signal(const axon_t* axon)
     // Myelination signal based on activity
     // Higher activity = stronger signal for myelination
     float rate_factor = axon->activity.firing_rate / 50.0F;  // Normalize to 50 Hz
-    rate_factor = clamp_f(rate_factor, 0.0F, 1.0F);
+    rate_factor = nimcp_clampf(rate_factor, 0.0F, 1.0F);
 
     // EMA provides smoothing
     float ema_factor = axon->activity.activity_ema;
@@ -2012,7 +2003,7 @@ void axon_set_temperature(axon_t* axon, float temperature_c)
 {
     if (!axon) return;
 
-    axon->temperature_c = clamp_f(temperature_c, 20.0F, 45.0F);
+    axon->temperature_c = nimcp_clampf(temperature_c, 20.0F, 45.0F);
 
     if (axon->biophysics) {
         axon->biophysics->temperature_c = axon->temperature_c;
@@ -2134,7 +2125,7 @@ float axon_apply_activity_myelination(axon_t* axon, float activity, float dt)
             total_delta += delta;
 
             // Update myelination level
-            seg->myelination = clamp_f(new_lamellae / 40.0F, 0.0F, 1.0F);
+            seg->myelination = nimcp_clampf(new_lamellae / 40.0F, 0.0F, 1.0F);
         }
     }
 
@@ -2194,7 +2185,7 @@ void axon_apply_myelination_variability(axon_t* axon)
             // Apply variability to myelination level
             float target_myelination = seg->myelination;
             float varied = nimcp_myelin_rng_normal(rng, target_myelination, 0.05F);
-            seg->myelination = clamp_f(varied, 0.0F, 1.0F);
+            seg->myelination = nimcp_clampf(varied, 0.0F, 1.0F);
 
             // Apply variability to g-ratio
             float varied_g = nimcp_myelin_vary_g_ratio(rng, seg->g_ratio);

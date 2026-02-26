@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_self_other, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -55,14 +56,6 @@ struct self_other_system {
     /** Bio-async */
     bool bio_async_registered;
 };
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static inline float clamp_f(float v, float lo, float hi) {
-    return (v < lo) ? lo : (v > hi) ? hi : v;
-}
 
 static inline float pose_distance(const body_pose_t* a, const body_pose_t* b) {
     float dx = a->x - b->x;
@@ -547,7 +540,7 @@ bool self_other_classify_agency(
     if (observation->in_peripersonal_space) {
         float dist_factor = 1.0f - (observation->distance_from_self /
                                      system->body_schema.personal_space_radius);
-        spatial_score = clamp_f(dist_factor, 0.0f, 1.0f);
+        spatial_score = nimcp_clampf(dist_factor, 0.0f, 1.0f);
     }
     decision->spatial_match = spatial_score;
 

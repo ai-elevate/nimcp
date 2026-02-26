@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(attention_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -77,14 +78,6 @@ struct attention_plasticity_bridge {
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS(attention_plasticity_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Find synapse by ID
@@ -425,7 +418,7 @@ int attention_plasticity_register_synapse(
     synapse->synapse_id = synapse_id;
     synapse->type = type;
     synapse->head_idx = head_idx;
-    synapse->weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     synapse->initial_weight = synapse->weight;
     synapse->original_strength = synapse->weight;
     synapse->last_pre_spike_us = 0;
@@ -547,7 +540,7 @@ int attention_plasticity_focus(
     /* Update attention bias based on repeated focus */
     float focus_delta = attention_weight * bridge->config.attention_learning_gain;
     head->attention_bias += focus_delta * 0.01f;
-    head->attention_bias = clamp_f(head->attention_bias, -1.0f, 1.0f);
+    head->attention_bias = nimcp_clampf(head->attention_bias, -1.0f, 1.0f);
 
     /* Record pre-spike for all synapses of this head */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -618,7 +611,7 @@ int attention_plasticity_shift(
                 if (dt < bridge->config.stdp_ltd_window_ms) {
                     float dw = -bridge->config.stdp_a_minus * shift_strength * 0.5f;
                     float old_weight = bridge->synapses[i].weight;
-                    bridge->synapses[i].weight = clamp_f(
+                    bridge->synapses[i].weight = nimcp_clampf(
                         bridge->synapses[i].weight + dw,
                         bridge->config.weight_min,
                         bridge->config.weight_max);
@@ -652,7 +645,7 @@ int attention_plasticity_shift(
 
             float dw = bridge->config.stdp_a_plus * shift_strength;
             float old_weight = bridge->synapses[i].weight;
-            bridge->synapses[i].weight = clamp_f(
+            bridge->synapses[i].weight = nimcp_clampf(
                 bridge->synapses[i].weight + dw,
                 bridge->config.weight_min,
                 bridge->config.weight_max);
@@ -728,7 +721,7 @@ int attention_plasticity_salience(
     /* Modulate learning rate based on salience */
     if (bridge->config.enable_salience_modulation) {
         bridge->global_learning_rate = 1.0f + (avg_salience - 0.5f) * bridge->config.salience_learning_gain;
-        bridge->global_learning_rate = clamp_f(bridge->global_learning_rate, 0.5f, 2.0f);
+        bridge->global_learning_rate = nimcp_clampf(bridge->global_learning_rate, 0.5f, 2.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -771,7 +764,7 @@ int attention_plasticity_reward(
                     bridge->config.reward_modulation_gain);
 
                 float old_weight = bridge->synapses[i].weight;
-                bridge->synapses[i].weight = clamp_f(
+                bridge->synapses[i].weight = nimcp_clampf(
                     bridge->synapses[i].weight + dw,
                     bridge->config.weight_min,
                     bridge->config.weight_max);
@@ -821,7 +814,7 @@ int attention_plasticity_habituation_trial(
 
     /* Increase habituation */
     head->habituation_level += bridge->config.habituation_rate;
-    head->habituation_level = clamp_f(head->habituation_level, 0.0f, 1.0f);
+    head->habituation_level = nimcp_clampf(head->habituation_level, 0.0f, 1.0f);
 
     /* Apply habituation to synapses of this head */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -839,7 +832,7 @@ int attention_plasticity_habituation_trial(
                                        bridge->config.habituation_rate;
             float old_weight = bridge->synapses[i].weight;
             bridge->synapses[i].weight *= (1.0f - effective_reduction);
-            bridge->synapses[i].weight = clamp_f(
+            bridge->synapses[i].weight = nimcp_clampf(
                 bridge->synapses[i].weight,
                 bridge->config.weight_min,
                 bridge->config.weight_max);
@@ -897,7 +890,7 @@ int attention_plasticity_novelty(
                 float boost = bridge->config.novelty_boost * novelty_score;
                 float dw = bridge->config.stdp_a_plus * boost * 0.1f;
                 float old_weight = bridge->synapses[i].weight;
-                bridge->synapses[i].weight = clamp_f(
+                bridge->synapses[i].weight = nimcp_clampf(
                     bridge->synapses[i].weight + dw,
                     bridge->config.weight_min,
                     bridge->config.weight_max);
@@ -924,7 +917,7 @@ int attention_plasticity_novelty(
 
             if (bridge->synapses[i].head_idx == head_idx) {
                 bridge->synapses[i].familiarity += 0.1f * (1.0f - novelty_score);
-                bridge->synapses[i].familiarity = clamp_f(
+                bridge->synapses[i].familiarity = nimcp_clampf(
                     bridge->synapses[i].familiarity, 0.0f, 1.0f);
             }
         }
@@ -982,7 +975,7 @@ int attention_plasticity_update(
             float recovery_rate = (fabsf(bridge->config.spontaneous_recovery_tau) > 1e-10f) ?
                 (dt_ms / bridge->config.spontaneous_recovery_tau) : 0.0f;
             syn->habituation_level -= recovery_rate;
-            syn->habituation_level = clamp_f(syn->habituation_level, 0.0f, 1.0f);
+            syn->habituation_level = nimcp_clampf(syn->habituation_level, 0.0f, 1.0f);
 
             /* Recover weight towards original */
             if (syn->habituation_level < 0.1f && syn->weight < syn->original_strength) {
@@ -997,7 +990,7 @@ int attention_plasticity_update(
             float diff = bridge->config.target_attention_rate - current_rate;
             float scale = 1.0f + diff * (dt_ms / bridge->config.homeostatic_tau_ms);
             syn->weight *= scale;
-            syn->weight = clamp_f(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_clampf(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
         }
 
         /* Update average activity */
@@ -1021,13 +1014,13 @@ int attention_plasticity_update(
         if (bridge->config.enable_habituation) {
             float recovery_rate = dt_ms / bridge->config.spontaneous_recovery_tau;
             head->habituation_level -= recovery_rate;
-            head->habituation_level = clamp_f(head->habituation_level, 0.0f, 1.0f);
+            head->habituation_level = nimcp_clampf(head->habituation_level, 0.0f, 1.0f);
         }
 
         /* Compute head learning rate based on recent focus */
         float time_since_focus = (float)(now_us - head->last_focus_time_us) / 1000000.0f;
         head->learning_rate = expf(-time_since_focus * 0.1f);
-        head->learning_rate = clamp_f(head->learning_rate, 0.1f, 1.0f);
+        head->learning_rate = nimcp_clampf(head->learning_rate, 0.1f, 1.0f);
     }
 
     bridge->state = ATTENTION_PLASTICITY_STATE_IDLE;
@@ -1075,7 +1068,7 @@ int attention_plasticity_consolidate(attention_plasticity_bridge_t* bridge) {
         }
 
         /* Clamp */
-        syn->weight = clamp_f(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
+        syn->weight = nimcp_clampf(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
 
         /* Reset eligibility traces during consolidation */
         syn->eligibility_trace = 0.0f;
@@ -1164,7 +1157,7 @@ int attention_plasticity_get_modulation(
         float nov = bridge->head_states[h].novelty_score;
 
         modulation[h] = (1.0f + bias) * (1.0f - hab) * (0.5f + 0.5f * nov);
-        modulation[h] = clamp_f(modulation[h], 0.0f, 2.0f);
+        modulation[h] = nimcp_clampf(modulation[h], 0.0f, 2.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1402,7 +1395,7 @@ int attention_plasticity_set_attention_modulation(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_attention_mod = clamp_f(attention_level, 0.1f, 2.0f);
+    bridge->current_attention_mod = nimcp_clampf(attention_level, 0.1f, 2.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1424,7 +1417,7 @@ int attention_plasticity_set_salience_modulation(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_salience_mod = clamp_f(salience_level, 0.0f, 2.0f);
+    bridge->current_salience_mod = nimcp_clampf(salience_level, 0.0f, 2.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

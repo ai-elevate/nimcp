@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_neuromodulators, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -30,10 +31,6 @@ struct bg_neuromod_system {
     nimcp_mutex_t* mutex;
     float time_ms;
 };
-
-static float clamp_f(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
 
 /* ============================================================================
  * LIFECYCLE
@@ -123,7 +120,7 @@ int bg_neuromod_set_level(bg_neuromod_system_t* system, bg_neuromod_type_t type,
         return -1;
     }
     nimcp_mutex_lock(system->mutex);
-    level = clamp_f(level, 0.0f, 1.0f);
+    level = nimcp_clampf(level, 0.0f, 1.0f);
     switch (type) {
         case BG_NEUROMOD_DOPAMINE: system->levels.dopamine = level; break;
         case BG_NEUROMOD_SEROTONIN: system->levels.serotonin = level; break;
@@ -142,14 +139,14 @@ int bg_neuromod_trigger_release(bg_neuromod_system_t* system, bg_neuromod_type_t
         return -1;
     }
     nimcp_mutex_lock(system->mutex);
-    magnitude = clamp_f(magnitude, 0.0f, 1.0f);
+    magnitude = nimcp_clampf(magnitude, 0.0f, 1.0f);
     float boost = magnitude * system->config.release_rate;
     switch (type) {
-        case BG_NEUROMOD_DOPAMINE: system->levels.dopamine = clamp_f(system->levels.dopamine + boost, 0, 1); break;
-        case BG_NEUROMOD_SEROTONIN: system->levels.serotonin = clamp_f(system->levels.serotonin + boost, 0, 1); break;
-        case BG_NEUROMOD_ACETYLCHOLINE: system->levels.acetylcholine = clamp_f(system->levels.acetylcholine + boost, 0, 1); break;
-        case BG_NEUROMOD_NOREPINEPHRINE: system->levels.norepinephrine = clamp_f(system->levels.norepinephrine + boost, 0, 1); break;
-        case BG_NEUROMOD_ADENOSINE: system->levels.adenosine = clamp_f(system->levels.adenosine + boost, 0, 1); break;
+        case BG_NEUROMOD_DOPAMINE: system->levels.dopamine = nimcp_clampf(system->levels.dopamine + boost, 0, 1); break;
+        case BG_NEUROMOD_SEROTONIN: system->levels.serotonin = nimcp_clampf(system->levels.serotonin + boost, 0, 1); break;
+        case BG_NEUROMOD_ACETYLCHOLINE: system->levels.acetylcholine = nimcp_clampf(system->levels.acetylcholine + boost, 0, 1); break;
+        case BG_NEUROMOD_NOREPINEPHRINE: system->levels.norepinephrine = nimcp_clampf(system->levels.norepinephrine + boost, 0, 1); break;
+        case BG_NEUROMOD_ADENOSINE: system->levels.adenosine = nimcp_clampf(system->levels.adenosine + boost, 0, 1); break;
         default: break;
     }
     nimcp_mutex_unlock(system->mutex);
@@ -162,14 +159,14 @@ int bg_neuromod_trigger_pause(bg_neuromod_system_t* system, bg_neuromod_type_t t
         return -1;
     }
     nimcp_mutex_lock(system->mutex);
-    magnitude = clamp_f(magnitude, 0.0f, 1.0f);
+    magnitude = nimcp_clampf(magnitude, 0.0f, 1.0f);
     float drop = magnitude * system->config.release_rate;
     switch (type) {
-        case BG_NEUROMOD_DOPAMINE: system->levels.dopamine = clamp_f(system->levels.dopamine - drop, 0, 1); break;
-        case BG_NEUROMOD_SEROTONIN: system->levels.serotonin = clamp_f(system->levels.serotonin - drop, 0, 1); break;
-        case BG_NEUROMOD_ACETYLCHOLINE: system->levels.acetylcholine = clamp_f(system->levels.acetylcholine - drop, 0, 1); break;
-        case BG_NEUROMOD_NOREPINEPHRINE: system->levels.norepinephrine = clamp_f(system->levels.norepinephrine - drop, 0, 1); break;
-        case BG_NEUROMOD_ADENOSINE: system->levels.adenosine = clamp_f(system->levels.adenosine - drop, 0, 1); break;
+        case BG_NEUROMOD_DOPAMINE: system->levels.dopamine = nimcp_clampf(system->levels.dopamine - drop, 0, 1); break;
+        case BG_NEUROMOD_SEROTONIN: system->levels.serotonin = nimcp_clampf(system->levels.serotonin - drop, 0, 1); break;
+        case BG_NEUROMOD_ACETYLCHOLINE: system->levels.acetylcholine = nimcp_clampf(system->levels.acetylcholine - drop, 0, 1); break;
+        case BG_NEUROMOD_NOREPINEPHRINE: system->levels.norepinephrine = nimcp_clampf(system->levels.norepinephrine - drop, 0, 1); break;
+        case BG_NEUROMOD_ADENOSINE: system->levels.adenosine = nimcp_clampf(system->levels.adenosine - drop, 0, 1); break;
         default: break;
     }
     nimcp_mutex_unlock(system->mutex);

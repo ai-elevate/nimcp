@@ -75,6 +75,7 @@
 
 #define LOG_MODULE "plasticity_neuromodulators"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromodulators)
 
@@ -400,24 +401,3 @@ struct neuromodulator_system_struct {
     void* brain_ref;
     bool use_medulla_integration;
 };
-
-
-// Forward declarations for static functions (SRP split)
-static inline float clamp(float value, float min, float max);
-static inline float exponential_decay(float current, float baseline, float dt, float tau);
-static inline float update_ema(float current_avg, float new_value, float alpha);
-static neuromodulator_type_t bio_channel_to_neuromod_type(nimcp_bio_channel_type_t channel);
-static nimcp_error_t neuromod_handle_release_message( const void* msg, size_t msg_size, nimcp_bio_promise_t response_promise, void* user_data);
-static nimcp_error_t neuromod_handle_learning_rate_message( const void* msg, size_t msg_size, nimcp_bio_promise_t response_promise, void* user_data);
-static int neuromodulator_wiring_handler_callback( bio_module_context_t ctx, const bio_message_type_t* message_types, uint32_t message_count, void* user_data );
-static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system);
-static void neuromod_bio_async_shutdown(void);
-
-//=============================================================================
-// SRP Split: Function implementations organized by responsibility
-//=============================================================================
-#include "nimcp_neuromodulators_part_helpers.c"  // 4 functions: helpers
-#include "nimcp_neuromodulators_part_processing.c"  // 5 functions: processing
-#include "nimcp_neuromodulators_part_lifecycle.c"  // 11 functions: lifecycle
-#include "nimcp_neuromodulators_part_core.c"  // 15 functions: core
-#include "nimcp_neuromodulators_part_accessors.c"  // 43 functions: accessors

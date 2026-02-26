@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(epistemic_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -70,16 +71,6 @@ struct epistemic_plasticity_bridge {
     // Simulation time
     uint64_t sim_time_us;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static float stdp_ltp(float dt_ms, float a_plus, float tau_plus) {
     if (dt_ms <= 0.0f) return 0.0f;
@@ -132,7 +123,7 @@ static void apply_weight_bounds(
     epistemic_plasticity_bridge_t* bridge,
     epistemic_plasticity_synapse_t* synapse
 ) {
-    synapse->weight = clamp(synapse->weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(synapse->weight, bridge->config.weight_min, bridge->config.weight_max);
 }
 
 //=============================================================================
@@ -304,7 +295,7 @@ int epistemic_plasticity_register_synapse(
     synapse->synapse_id = synapse_id;
     synapse->type = type;
     synapse->source_id = source_id;
-    synapse->weight = clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    synapse->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     synapse->initial_weight = synapse->weight;
     synapse->last_pre_spike_us = 0;
     synapse->last_post_spike_us = 0;
@@ -397,7 +388,7 @@ int epistemic_plasticity_evidence_update(
 
 
     bridge->state = EPISTEMIC_PLASTICITY_STATE_EVALUATING;
-    bridge->current_epistemic_quality = clamp(evidence_quality, 0.0f, 1.0f);
+    bridge->current_epistemic_quality = nimcp_clampf(evidence_quality, 0.0f, 1.0f);
 
     // Update eligibility traces for source-related synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
@@ -414,7 +405,7 @@ int epistemic_plasticity_evidence_update(
                 bridge->synapses[i].eligibility_trace +=
                     evidence_quality * bridge->config.evidence_quality_gain;
                 bridge->synapses[i].eligibility_trace =
-                    clamp(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
+                    nimcp_clampf(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
             }
         }
     }
@@ -761,7 +752,7 @@ int epistemic_plasticity_update(
         float quality_error = bridge->config.target_epistemic_quality - bridge->current_epistemic_quality;
 
         bridge->global_learning_rate += quality_error * homeo_rate;
-        bridge->global_learning_rate = clamp(bridge->global_learning_rate, 0.1f, 2.0f);
+        bridge->global_learning_rate = nimcp_clampf(bridge->global_learning_rate, 0.1f, 2.0f);
     }
 
     // Update source reliability averages
@@ -814,7 +805,7 @@ int epistemic_plasticity_consolidate(epistemic_plasticity_bridge_t* bridge) {
         if (reliability > 0.7f && total > 10) {
             bridge->synapses[i].consolidation_level += 0.1f * reliability;
             bridge->synapses[i].consolidation_level =
-                clamp(bridge->synapses[i].consolidation_level, 0.0f, 1.0f);
+                nimcp_clampf(bridge->synapses[i].consolidation_level, 0.0f, 1.0f);
 
             // Consolidated synapses become more stable
             float stability_factor = bridge->synapses[i].consolidation_level;

@@ -33,6 +33,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mirror_empathy_bridge)
 //=============================================================================
@@ -150,15 +151,6 @@ static uint64_t get_timestamp_ms(void) {
 }
 
 /**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * @brief Find or create agent state entry
  */
 static agent_empathy_state_t* find_or_create_agent(
@@ -256,7 +248,7 @@ static float calculate_empathy_intensity(
     }
 
     float intensity = base_empathy * arousal_factor * rapport_factor * emotion_factor;
-    return clamp_float(intensity, 0.0f, 1.0f);
+    return nimcp_clampf(intensity, 0.0f, 1.0f);
 }
 
 /**
@@ -396,7 +388,7 @@ static int mirror_empathy_on_event(
 
                 /* Calculate resonance strength */
                 float resonance = bridge->config.emotional_resonance_weight * 0.8f;
-                agent->resonance_strength = clamp_float(
+                agent->resonance_strength = nimcp_clampf(
                     agent->resonance_strength * 0.7f + resonance * 0.3f,
                     0.0f, 1.0f
                 );
@@ -451,7 +443,7 @@ static int mirror_empathy_on_event(
                 nimcp_mutex_lock(bridge->base.mutex);
 
                 agent_empathy_state_t* agent = find_or_create_agent(bridge, agent_id);
-                agent->empathy_level = clamp_float(
+                agent->empathy_level = nimcp_clampf(
                     agent->empathy_level * 0.8f + intensity * 0.2f,
                     0.0f, 1.0f
                 );

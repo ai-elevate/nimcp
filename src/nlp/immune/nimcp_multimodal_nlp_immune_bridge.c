@@ -20,6 +20,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(multimodal_nlp_immune_bridge)
 
@@ -31,12 +32,6 @@ static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 static float get_inflammation_multimodal_capacity(brain_inflammation_level_t level) {
@@ -149,7 +144,7 @@ int multimodal_nlp_immune_apply_cytokine_effects(multimodal_nlp_immune_bridge_t*
     }
 
     float inflammation_factor = (float)stats.inflammation_sites / 10.0f;
-    inflammation_factor = clamp_0_1(inflammation_factor);
+    inflammation_factor = nimcp_clamp01(inflammation_factor);
 
     bridge->cytokine_effects.il1_multimodal_deficit =
         CYTOKINE_IL1_MULTIMODAL_IMPACT * inflammation_factor * bridge->config.cytokine_sensitivity;
@@ -158,7 +153,7 @@ int multimodal_nlp_immune_apply_cytokine_effects(multimodal_nlp_immune_bridge_t*
     bridge->cytokine_effects.il10_multimodal_recovery =
         CYTOKINE_IL10_MULTIMODAL_IMPACT * (1.0f - inflammation_factor);
 
-    bridge->cytokine_effects.total_integration_impairment = clamp_0_1(
+    bridge->cytokine_effects.total_integration_impairment = nimcp_clamp01(
         -(bridge->cytokine_effects.il1_multimodal_deficit +
           bridge->cytokine_effects.tnf_multimodal_deficit -
           bridge->cytokine_effects.il10_multimodal_recovery)
@@ -248,7 +243,7 @@ int multimodal_nlp_immune_trigger_binding_failure_inflammation(
 
     uint32_t cytokine_id;
     float concentration = binding_error_rate * bridge->config.error_immune_sensitivity;
-    concentration = clamp_0_1(concentration);
+    concentration = nimcp_clamp01(concentration);
 
     int result = brain_immune_release_cytokine(
         bridge->immune_system,
@@ -283,7 +278,7 @@ int multimodal_nlp_immune_trigger_speech_error_inflammation(
 
     uint32_t cytokine_id;
     float concentration = speech_error_rate * bridge->config.error_immune_sensitivity;
-    concentration = clamp_0_1(concentration);
+    concentration = nimcp_clamp01(concentration);
 
     int result = brain_immune_release_cytokine(
         bridge->immune_system,
@@ -318,7 +313,7 @@ int multimodal_nlp_immune_release_il10_from_fluent_speech(
 
     uint32_t cytokine_id;
     float concentration = (fluency_rate - bridge->config.fluency_success_threshold) * 0.5f;
-    concentration = clamp_0_1(concentration);
+    concentration = nimcp_clamp01(concentration);
 
     int result = brain_immune_release_cytokine(
         bridge->immune_system,

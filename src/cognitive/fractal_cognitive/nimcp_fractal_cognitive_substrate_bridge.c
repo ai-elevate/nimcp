@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fractal_cognitive_substrate_bridge)
 //=============================================================================
@@ -195,16 +196,16 @@ int fractal_cognitive_substrate_bridge_update(fractal_cognitive_substrate_bridge
 
     if (bridge->config.enable_atp_modulation) {
         /* Fractal depth is exponentially sensitive to ATP (each level compounds) */
-        bridge->effects.fractal_depth = nimcp_clamp_f(powf(atp, 0.7f) * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.fractal_depth = nimcp_clampf(powf(atp, 0.7f) * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Scale invariance requires consistent ATP across scales */
-        bridge->effects.scale_invariance = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.scale_invariance = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Self-similarity degrades with fatigue */
-        bridge->effects.self_similarity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.self_similarity = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Complexity generation requires sustained metabolic resources */
-        bridge->effects.complexity_capacity = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.complexity_capacity = nimcp_clampf(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.fractal_depth +

@@ -24,6 +24,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(plasticity_astrocyte_immune)
 
@@ -33,15 +34,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(astrocyte_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Map inflammation level to D-serine factor
@@ -219,7 +211,7 @@ int astrocyte_immune_apply_cytokine_effects(astrocyte_immune_bridge_t* bridge) {
                 effects->tnf_d_serine_reduction) / 2.0f;
     float anti_inflammatory_factor =
         (effects->il10_d_serine_restoration - 1.0f);
-    effects->reactive_state_intensity = clamp_f(
+    effects->reactive_state_intensity = nimcp_clampf(
         pro_inflammatory_factor - anti_inflammatory_factor, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
@@ -255,7 +247,7 @@ int astrocyte_immune_apply_inflammation_effects(
     /* Calcium dysregulation increases with inflammation */
     float inflammation_intensity =
         (float)state->current_level / (float)INFLAMMATION_STORM;
-    state->calcium_dysregulation = clamp_f(inflammation_intensity * 0.5f, 0.0f, 0.8f);
+    state->calcium_dysregulation = nimcp_clampf(inflammation_intensity * 0.5f, 0.0f, 0.8f);
 
     /* ATP/adenosine balance alteration */
     state->atp_release_alteration = inflammation_intensity * 0.3f;
@@ -367,7 +359,7 @@ int astrocyte_immune_detect_dysfunction(astrocyte_immune_bridge_t* bridge) {
     if (state->d_serine_depleted) severity += 0.3f;
     if (state->calcium_excessive) severity += 0.2f;
     if (state->excitotoxicity_risk) severity += 0.3f;
-    state->dysfunction_severity = clamp_f(severity, 0.0f, 1.0f);
+    state->dysfunction_severity = nimcp_clampf(severity, 0.0f, 1.0f);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;

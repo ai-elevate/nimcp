@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(homeostatic_immune_bridge)
 
@@ -32,19 +33,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(homeostatic_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation duration
@@ -306,23 +294,23 @@ int homeostatic_immune_apply_cytokine_effects(
                             fabsf(effects->ifn_gamma_scaling_disruption);
     float anti_inflammatory = effects->il10_restoration_factor;
     effects->homeostatic_disruption_level =
-        clamp_f(pro_inflammatory - anti_inflammatory, 0.0f, 1.0f);
+        nimcp_clampf(pro_inflammatory - anti_inflammatory, 0.0f, 1.0f);
 
     /* Apply to current homeostatic parameters */
     bridge->current_scaling_factor =
         bridge->base_scaling_factor + effects->total_scaling_factor_shift;
     bridge->current_scaling_factor =
-        clamp_f(bridge->current_scaling_factor, 0.1f, 2.0f);
+        nimcp_clampf(bridge->current_scaling_factor, 0.1f, 2.0f);
 
     bridge->current_target_rate =
         bridge->base_target_rate + effects->total_target_rate_shift;
     bridge->current_target_rate =
-        clamp_f(bridge->current_target_rate, 1.0f, 20.0f);
+        nimcp_clampf(bridge->current_target_rate, 1.0f, 20.0f);
 
     bridge->current_threshold =
         bridge->base_threshold + effects->total_threshold_shift;
     bridge->current_threshold =
-        clamp_f(bridge->current_threshold, 0.0f, 1.0f);
+        nimcp_clampf(bridge->current_threshold, 0.0f, 1.0f);
 
     bridge->cytokine_modulations++;
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
@@ -363,16 +351,16 @@ int homeostatic_immune_apply_inflammation_effects(
 
     /* Scaling disruption increases with inflammation */
     state->scaling_disruption =
-        clamp_f(inflammation_intensity * 0.8f, 0.0f, 1.0f);
+        nimcp_clampf(inflammation_intensity * 0.8f, 0.0f, 1.0f);
 
     /* Setpoint shift (inflammation pushes away from baseline) */
     state->setpoint_shift =
-        clamp_f(inflammation_intensity * INFLAMMATION_SETPOINT_SHIFT_MAX,
+        nimcp_clampf(inflammation_intensity * INFLAMMATION_SETPOINT_SHIFT_MAX,
                 0.0f, INFLAMMATION_SETPOINT_SHIFT_MAX);
 
     /* Adaptation impairment (chronic inflammation reduces adaptability) */
     if (state->is_chronic) {
-        float duration_factor = clamp_f(
+        float duration_factor = nimcp_clampf(
             state->inflammation_duration_sec /
             (CHRONIC_INFLAMMATION_HOMEOSTATIC_THRESHOLD * 2.0f),
             0.0f, 1.0f
@@ -384,7 +372,7 @@ int homeostatic_immune_apply_inflammation_effects(
 
     /* Excitability dysregulation */
     state->excitability_dysregulation =
-        clamp_f(inflammation_intensity * 0.7f, 0.0f, 1.0f);
+        nimcp_clampf(inflammation_intensity * 0.7f, 0.0f, 1.0f);
 
     /* Stability loss */
     state->stability_loss =
@@ -550,7 +538,7 @@ float homeostatic_immune_detect_hyperexcitability(
     if (rate_deviation < 0.0f) return 0.0f;
 
     /* Normalize to [0-1] range, saturate at 3x target */
-    float hyperexcitability = clamp_f(rate_deviation / 3.0f, 0.0f, 1.0f);
+    float hyperexcitability = nimcp_clampf(rate_deviation / 3.0f, 0.0f, 1.0f);
 
     return hyperexcitability;
 }
@@ -573,7 +561,7 @@ float homeostatic_immune_detect_scaling_failure(
 
     /* Failure level based on consecutive failures */
     /* 5+ failures = critical (1.0) */
-    float failure_level = clamp_f(
+    float failure_level = nimcp_clampf(
         (float)trigger->consecutive_failures / 5.0f,
         0.0f, 1.0f
     );

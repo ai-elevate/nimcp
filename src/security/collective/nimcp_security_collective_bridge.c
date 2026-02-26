@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_collective_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -49,15 +50,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_collective_bridge, MESH_ADAPTER_CATEGORY_S
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current timestamp in milliseconds
@@ -366,7 +358,7 @@ int security_collective_detect_byzantine(
         float health = 1.0f;
         health -= (float)bridge->state.quarantined_count / (float)bridge->state.total_agents;
         health *= bridge->state.avg_trust_score;
-        bridge->state.swarm_health = clamp_float(health, 0.0f, 1.0f);
+        bridge->state.swarm_health = nimcp_clampf(health, 0.0f, 1.0f);
     }
 
     uint64_t elapsed = get_timestamp_ns() - start_time;
@@ -523,7 +515,7 @@ int security_collective_quarantine_agent(
         float health = 1.0f;
         health -= (float)bridge->state.quarantined_count / (float)bridge->state.total_agents;
         health *= bridge->state.avg_trust_score;
-        bridge->state.swarm_health = clamp_float(health, 0.0f, 1.0f);
+        bridge->state.swarm_health = nimcp_clampf(health, 0.0f, 1.0f);
     }
 
     (void)reason;  /* Used for logging in full implementation */
@@ -751,7 +743,7 @@ int security_collective_report_action(
 ) {
     BRIDGE_NULL_CHECK(bridge);
 
-    weight = clamp_float(weight, 0.0f, 1.0f);
+    weight = nimcp_clampf(weight, 0.0f, 1.0f);
 
     BRIDGE_LOCK(bridge);
 
@@ -776,7 +768,7 @@ int security_collective_report_action(
         bridge->agent_byzantine_status[idx].message_count++;
     }
 
-    trust->trust_score = clamp_float(trust->trust_score, MIN_TRUST_SCORE, MAX_TRUST_SCORE);
+    trust->trust_score = nimcp_clampf(trust->trust_score, MIN_TRUST_SCORE, MAX_TRUST_SCORE);
     trust->last_action_time = get_timestamp_ms();
 
     /* Update trend */
@@ -905,7 +897,7 @@ int security_collective_bridge_update(
 
         for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
             bridge->agent_trust_scores[i].trust_score -= decay;
-            bridge->agent_trust_scores[i].trust_score = clamp_float(
+            bridge->agent_trust_scores[i].trust_score = nimcp_clampf(
                 bridge->agent_trust_scores[i].trust_score,
                 MIN_TRUST_SCORE, MAX_TRUST_SCORE);
             bridge->agent_trust_scores[i].level = score_to_trust_level(
@@ -944,7 +936,7 @@ int security_collective_bridge_update(
         health -= (float)bridge->state.quarantined_count / (float)bridge->state.total_agents;
         health *= bridge->state.avg_trust_score;
     }
-    bridge->state.swarm_health = clamp_float(health, 0.0f, 1.0f);
+    bridge->state.swarm_health = nimcp_clampf(health, 0.0f, 1.0f);
 
     /* Record update time */
     uint64_t update_time = get_timestamp_ns() - start_time;
@@ -967,7 +959,7 @@ int security_collective_apply_security_effects(
 
     BRIDGE_LOCK(bridge);
 
-    float sensitivity = clamp_float(bridge->config.security_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.security_sensitivity, 0.5f, 2.0f);
 
     /* Update security effects */
     bridge->security_effects.avg_swarm_trust = bridge->state.avg_trust_score;
@@ -1000,7 +992,7 @@ int security_collective_apply_collective_effects(
 
     BRIDGE_LOCK(bridge);
 
-    float sensitivity = clamp_float(bridge->config.collective_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.collective_sensitivity, 0.5f, 2.0f);
 
     /* Update collective effects from state */
     bridge->collective_effects.current_behavior = bridge->state.swarm_behavior;

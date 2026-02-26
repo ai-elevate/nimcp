@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_consciousness, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -55,16 +56,6 @@ struct fep_consciousness_bridge {
     uint32_t attention_count;
 
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static uint64_t get_time_ms(void) {
     struct timespec ts;
@@ -294,7 +285,7 @@ int fep_consciousness_modulate_precision(
     *precision *= boost;
 
     /* Clamp to valid range */
-    *precision = clamp_f(*precision, FEP_CONSCIOUSNESS_MIN_PRECISION_FACTOR,
+    *precision = nimcp_clampf(*precision, FEP_CONSCIOUSNESS_MIN_PRECISION_FACTOR,
                         FEP_CONSCIOUSNESS_MAX_PRECISION_BOOST);
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -328,7 +319,7 @@ int fep_consciousness_evaluate_coherence(
         }
     }
 
-    *coherence = clamp_f(c, 0.0f, 1.0f);
+    *coherence = nimcp_clampf(c, 0.0f, 1.0f);
     bridge->state.action_coherence = *coherence;
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -369,7 +360,7 @@ int fep_consciousness_assess_model_quality(
 
     /* Quality is inverse of normalized error */
     *quality = 1.0f / (1.0f + avg_error);
-    *quality = clamp_f(*quality, 0.0f, 1.0f);
+    *quality = nimcp_clampf(*quality, 0.0f, 1.0f);
 
     bridge->state.metacognitive_confidence = *quality;
 

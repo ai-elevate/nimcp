@@ -46,6 +46,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wm_hypothalamus_bridge)
 //=============================================================================
@@ -175,44 +176,7 @@ static nimcp_error_t update_circadian_state(omni_wm_hypothalamus_bridge_t* bridg
 static nimcp_error_t check_conservative_mode(omni_wm_hypothalamus_bridge_t* bridge);
 static nimcp_error_t predict_resources_internal(omni_wm_hypothalamus_bridge_t* bridge);
 static float compute_drive_priority_boost(float urgency, float threshold, float strength);
-static float clamp_float(float value, float min_val, float max_val);
-
-/* Bio-async handlers */
-static nimcp_error_t handle_drive_state(const void* msg, size_t msg_size,
-                                         nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_circadian(const void* msg, size_t msg_size,
-                                       nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_stress_state(const void* msg, size_t msg_size,
-                                          nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_resource_update(const void* msg, size_t msg_size,
-                                             nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_reward_signal(const void* msg, size_t msg_size,
-                                           nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_homeostasis(const void* msg, size_t msg_size,
-                                         nimcp_bio_promise_t promise, void* user_data);
-
-/* ============================================================================
- * Internal Helper Functions
- * ============================================================================ */
-
-/**
- * @brief Get current time in microseconds
- */
-static uint64_t get_current_time_us(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
-
-/**
- * @brief Clamp float to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
+static float nimcp_clampf(float value, float min_val, float max_val);
 /**
  * @brief Compute priority boost from drive urgency
  *
@@ -226,7 +190,7 @@ static float compute_drive_priority_boost(float urgency, float threshold, float 
     /* Superlinear boost above threshold */
     float excess = urgency - threshold;
     float boost = 1.0f + strength * excess * excess;
-    return clamp_float(boost, 1.0f, 2.0f);
+    return nimcp_clampf(boost, 1.0f, 2.0f);
 }
 
 /**
@@ -1137,8 +1101,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_on_drive_change(
     /* Update the specific drive in our vector */
     wm_hypothal_drive_vector_t* dv = &bridge->hypo_to_wm.drive_vector;
     if (drive_type < dv->drive_count) {
-        dv->drives[drive_type].level = clamp_float(new_level, 0.0f, 1.0f);
-        dv->drives[drive_type].urgency = clamp_float(new_urgency, 0.0f, 1.0f);
+        dv->drives[drive_type].level = nimcp_clampf(new_level, 0.0f, 1.0f);
+        dv->drives[drive_type].urgency = nimcp_clampf(new_urgency, 0.0f, 1.0f);
         dv->drives[drive_type].is_active = (new_urgency > 0.3f);
 
         /* Recalculate priority boost */
@@ -1186,7 +1150,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_on_phase_change(
     /* Update circadian state */
     wm_circadian_state_t* cs = &bridge->hypo_to_wm.circadian_state;
     cs->phase = new_phase;
-    cs->cycle_position = clamp_float(cycle_position, 0.0f, 1.0f);
+    cs->cycle_position = nimcp_clampf(cycle_position, 0.0f, 1.0f);
     cs->timestamp_us = get_current_time_us();
 
     /* Update modulation factors based on phase */
@@ -1348,7 +1312,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_set_stress(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    stress_level = clamp_float(stress_level, 0.0f, 1.0f);
+    stress_level = nimcp_clampf(stress_level, 0.0f, 1.0f);
 
     /* Direct assignment for explicit API call - smoothing is applied
      * internally during update cycles, not on explicit set */
@@ -1377,7 +1341,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_set_arousal(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    arousal_level = clamp_float(arousal_level, 0.0f, 1.0f);
+    arousal_level = nimcp_clampf(arousal_level, 0.0f, 1.0f);
 
     /* Exponential moving average smoothing */
     bridge->current_arousal_smoothed =
@@ -1562,7 +1526,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update_resource(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->resource_levels[resource_type] = clamp_float(level, 0.0f, 1.0f);
+    bridge->resource_levels[resource_type] = nimcp_clampf(level, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1628,7 +1592,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_reward(
         predicted *= bridge->hypo_to_wm.alignment_score;
     }
 
-    *reward_out = clamp_float(predicted, -1.0f, 1.0f);
+    *reward_out = nimcp_clampf(predicted, -1.0f, 1.0f);
     if (confidence_out) *confidence_out = confidence;
 
     bridge->stats.reward_predictions_made++;

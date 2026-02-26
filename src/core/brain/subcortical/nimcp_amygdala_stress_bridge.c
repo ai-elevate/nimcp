@@ -16,6 +16,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(amygdala_stress_bridge, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -23,17 +24,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(amygdala_stress_bridge, MESH_ADAPTER_CATEGORY_SUBCO
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to [0, 1]
- *
- * WHAT: Restrict value to valid range
- * WHY:  Prevent invalid probability values
- * HOW:  Use fminf/fmaxf
- */
-static inline float clamp01(float value) {
-    return fmaxf(0.0f, fminf(1.0f, value));
-}
 
 /**
  * @brief Normalize threat level enum to [0, 1]
@@ -203,7 +193,7 @@ int amygdala_stress_apply_fear_cortisol(amygdala_stress_bridge_t* bridge) {
     bridge->amygdala_effects.fear_cortisol_contribution = cortisol_contrib;
 
     /* Add to total cortisol */
-    bridge->cortisol_level = clamp01(bridge->cortisol_level + cortisol_contrib);
+    bridge->cortisol_level = nimcp_clamp01(bridge->cortisol_level + cortisol_contrib);
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
@@ -225,7 +215,7 @@ int amygdala_stress_apply_anxiety_cortisol(amygdala_stress_bridge_t* bridge) {
     bridge->amygdala_effects.anxiety_cortisol_contribution = cortisol_contrib;
 
     /* Add to total cortisol */
-    bridge->cortisol_level = clamp01(bridge->cortisol_level + cortisol_contrib);
+    bridge->cortisol_level = nimcp_clamp01(bridge->cortisol_level + cortisol_contrib);
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
@@ -240,7 +230,7 @@ int amygdala_stress_update_allostatic_load(amygdala_stress_bridge_t* bridge, flo
     /* Accumulate load from cortisol */
     if (bridge->cortisol_level > bridge->config.stress_mild_threshold) {
         float load_increment = bridge->cortisol_level * ALLOSTATIC_LOAD_ACCUMULATION_RATE * delta_sec;
-        bridge->allostatic_load.current_load = clamp01(bridge->allostatic_load.current_load + load_increment);
+        bridge->allostatic_load.current_load = nimcp_clamp01(bridge->allostatic_load.current_load + load_increment);
 
         /* Update peak */
         if (bridge->allostatic_load.current_load > bridge->allostatic_load.peak_load) {

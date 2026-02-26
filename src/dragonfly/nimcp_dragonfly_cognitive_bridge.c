@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_cognitive_bridge)
 
@@ -81,12 +82,6 @@ static uint64_t get_time_us(void) {
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 
-static float clamp_f(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-}
-
 static float vec3_magnitude(const float v[3]) {
     return sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
 }
@@ -94,7 +89,7 @@ static float vec3_magnitude(const float v[3]) {
 static float compute_motion_salience(float speed, float max_speed) {
     /* Motion salience increases with speed */
     if (max_speed <= 0) return 0;
-    return clamp_f(speed / max_speed, 0, 1);
+    return nimcp_clampf(speed / max_speed, 0, 1);
 }
 
 static float compute_direction_salience(const float velocity[3], const float to_self[3]) {
@@ -108,7 +103,7 @@ static float compute_direction_salience(const float velocity[3], const float to_
     float cos_angle = dot / (v_mag * d_mag);
 
     /* Map [-1, 1] to [0, 1] where 1 = moving toward, 0 = moving away */
-    return clamp_f((cos_angle + 1.0f) / 2.0f, 0, 1);
+    return nimcp_clampf((cos_angle + 1.0f) / 2.0f, 0, 1);
 }
 
 static dragonfly_attention_priority_t compute_priority_from_salience(float salience) {
@@ -402,7 +397,7 @@ int dragonfly_cognitive_compute_salience(
                 bridge->config.direction_salience_weight * salience->direction_salience +
                 bridge->config.evasion_salience_weight * salience->evasion_salience;
 
-            salience->combined_salience = clamp_f(salience->combined_salience, 0, 1);
+            salience->combined_salience = nimcp_clampf(salience->combined_salience, 0, 1);
         }
     }
 

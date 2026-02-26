@@ -14,19 +14,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(arousal_modulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 //=============================================================================
 // Lifecycle Implementation
@@ -195,7 +185,7 @@ int nimcp_arousal_update(
     /* Apply homeostatic pressure (fatigue decreases arousal) */
     system->target_arousal *= (1.0f - system->homeostatic_pressure * 0.5f);
 
-    system->target_arousal = clamp_f(system->target_arousal, 0.0f, 1.0f);
+    system->target_arousal = nimcp_clampf(system->target_arousal, 0.0f, 1.0f);
 
     /* Smooth arousal transition */
     float alpha = (fabsf(system->arousal_tau) > 1e-10f) ?
@@ -209,7 +199,7 @@ int nimcp_arousal_update(
     float alert_tau = 200.0f;
     alpha = 1.0f - expf(-dt / alert_tau);
     float target_alertness = system->dimensions.arousal * 1.2f;
-    target_alertness = clamp_f(target_alertness, 0.0f, 1.0f);
+    target_alertness = nimcp_clampf(target_alertness, 0.0f, 1.0f);
     system->dimensions.alertness += alpha * (target_alertness - system->dimensions.alertness);
 
     /* Update vigilance (slower dynamics, decays without input) */
@@ -226,11 +216,11 @@ int nimcp_arousal_update(
     float gain_optimal = 0.6f;
     float arousal_deviation = fabsf(system->dimensions.arousal - gain_optimal);
     float base_gain = 1.0f + 0.5f * (1.0f - arousal_deviation);
-    system->gain.signal_gain = clamp_f(base_gain, AROUSAL_MIN_GAIN, AROUSAL_MAX_GAIN);
+    system->gain.signal_gain = nimcp_clampf(base_gain, AROUSAL_MIN_GAIN, AROUSAL_MAX_GAIN);
 
     /* Noise suppression increases with NE (up to a point) */
     system->gain.noise_suppression = 0.3f + 0.5f * system->dimensions.arousal;
-    system->gain.noise_suppression = clamp_f(system->gain.noise_suppression, 0.0f, 1.0f);
+    system->gain.noise_suppression = nimcp_clampf(system->gain.noise_suppression, 0.0f, 1.0f);
 
     /* Signal to noise */
     system->gain.signal_to_noise = system->gain.signal_gain *
@@ -245,7 +235,7 @@ int nimcp_arousal_update(
 
     /* Reaction time: faster at optimal arousal */
     float rt_modifier = 1.0f + 0.5f * arousal_deviation;
-    system->performance.reaction_time_modifier = clamp_f(rt_modifier, 0.5f, 2.0f);
+    system->performance.reaction_time_modifier = nimcp_clampf(rt_modifier, 0.5f, 2.0f);
 
     /* Accuracy: decreases at extremes */
     system->performance.accuracy_modifier = system->performance.cognitive_efficiency;
@@ -254,7 +244,7 @@ int nimcp_arousal_update(
     float fatigue_rate = 0.0001f * (1.0f + system->dimensions.arousal);
     float fatigue_recovery = 0.0002f * (1.0f - system->dimensions.arousal);
     system->performance.fatigue_level += dt * (fatigue_rate - fatigue_recovery);
-    system->performance.fatigue_level = clamp_f(system->performance.fatigue_level, 0.0f, 1.0f);
+    system->performance.fatigue_level = nimcp_clampf(system->performance.fatigue_level, 0.0f, 1.0f);
 
     /* Update homeostatic pressure from fatigue */
     system->homeostatic_pressure = system->performance.fatigue_level * 0.5f;
@@ -300,7 +290,7 @@ int nimcp_arousal_set_target(nimcp_arousal_system_t* system, float target) {
         return -1;
     }
 
-    system->target_arousal = clamp_f(target, 0.0f, 1.0f);
+    system->target_arousal = nimcp_clampf(target, 0.0f, 1.0f);
     return 0;
 }
 
@@ -329,7 +319,7 @@ int nimcp_arousal_apply_circadian(nimcp_arousal_system_t* system, float time_of_
         drive = 1.0f - 0.5f * (hour - evening_peak) / (24.0f - evening_peak);
     }
 
-    system->circadian_drive = clamp_f(drive, 0.3f, 1.0f);
+    system->circadian_drive = nimcp_clampf(drive, 0.3f, 1.0f);
     return 0;
 }
 

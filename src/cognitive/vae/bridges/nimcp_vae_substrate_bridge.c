@@ -22,6 +22,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -41,13 +42,6 @@ static uint64_t get_timestamp_us(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -110,10 +104,10 @@ static float compute_encoding_modulation(const vae_substrate_bridge_t* bridge)
     const vae_substrate_metabolic_state_t* state = &bridge->current_state;
 
     /* ATP-based modulation: low ATP → slow down encoding */
-    float atp_mod = clampf(state->atp_level, 0.3f, 1.0f);
+    float atp_mod = nimcp_clampf(state->atp_level, 0.3f, 1.0f);
 
     /* O2-based modulation */
-    float o2_mod = clampf(state->o2_saturation, 0.5f, 1.0f);
+    float o2_mod = nimcp_clampf(state->o2_saturation, 0.5f, 1.0f);
 
     /* Temperature-based modulation via Q10 */
     float temp_mod = 1.0f;
@@ -122,7 +116,7 @@ static float compute_encoding_modulation(const vae_substrate_bridge_t* bridge)
                             bridge->config.temperature.q10_encoding,
                             state->temperature_c,
                             bridge->config.temperature.reference_temp_c);
-        temp_mod = clampf(temp_mod, 0.5f, 2.0f);
+        temp_mod = nimcp_clampf(temp_mod, 0.5f, 2.0f);
     }
 
     return atp_mod * o2_mod * temp_mod;
@@ -438,7 +432,7 @@ int vae_substrate_update_state(vae_substrate_bridge_t* bridge)
             bridge->current_state.temperature_c,
             bridge->config.temperature.reference_temp_c);
         bridge->current_modulation.learning_modulation =
-            clampf(bridge->current_modulation.learning_modulation, 0.5f, 2.0f);
+            nimcp_clampf(bridge->current_modulation.learning_modulation, 0.5f, 2.0f);
     }
 
     /* Inference modulation */
@@ -647,7 +641,7 @@ int vae_substrate_set_latent_dim(vae_substrate_bridge_t* bridge, uint32_t dim)
 {
     if (!bridge) return NIMCP_ERROR_VAE_SUB_NULL;
 
-    dim = clampf(dim, bridge->config.compression.min_latent_dim,
+    dim = nimcp_clampf(dim, bridge->config.compression.min_latent_dim,
                  bridge->config.compression.normal_latent_dim);
     bridge->current_latent_dim = dim;
 
@@ -732,7 +726,7 @@ int vae_substrate_consume_energy(vae_substrate_bridge_t* bridge,
 
     /* Update internal state (would normally update actual substrate) */
     bridge->current_state.atp_level -= cost;
-    bridge->current_state.atp_level = clampf(bridge->current_state.atp_level, 0.0f, 1.0f);
+    bridge->current_state.atp_level = nimcp_clampf(bridge->current_state.atp_level, 0.0f, 1.0f);
 
     result->atp_used = cost;
     result->atp_remaining = bridge->current_state.atp_level;

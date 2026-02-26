@@ -16,6 +16,7 @@
 #include <math.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 //=============================================================================
 // Internal Structures
@@ -49,15 +50,6 @@ struct bgv_system {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static float bgv_clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Find action by ID
@@ -103,7 +95,7 @@ static float bgv_compute_total_effort(const bgv_effort_t* effort) {
                   effort->cognitive_cost * 0.3f +
                   effort->emotional_cost * 0.2f +
                   effort->temporal_cost * 0.1f;
-    return bgv_clamp(total, 0.0f, 1.0f);
+    return nimcp_clampf(total, 0.0f, 1.0f);
 }
 
 /**
@@ -260,8 +252,8 @@ int bgv_register_action(bgv_system_t* system,
 
     /* Set effort costs */
     action->effort.action_id = action_id;
-    action->effort.physical_cost = bgv_clamp(physical_cost, 0.0f, 1.0f);
-    action->effort.cognitive_cost = bgv_clamp(cognitive_cost, 0.0f, 1.0f);
+    action->effort.physical_cost = nimcp_clampf(physical_cost, 0.0f, 1.0f);
+    action->effort.cognitive_cost = nimcp_clampf(cognitive_cost, 0.0f, 1.0f);
     action->effort.emotional_cost = 0.0f;
     action->effort.temporal_cost = 0.0f;
     action->effort.total_cost = bgv_compute_total_effort(&action->effort);
@@ -283,8 +275,8 @@ int bgv_set_additional_costs(bgv_system_t* system,
     bgv_action_vigor_t* action = bgv_find_action(system, action_id);
     if (!action) return NIMCP_ERROR_NOT_FOUND;
 
-    action->effort.emotional_cost = bgv_clamp(emotional_cost, 0.0f, 1.0f);
-    action->effort.temporal_cost = bgv_clamp(temporal_cost, 0.0f, 1.0f);
+    action->effort.emotional_cost = nimcp_clampf(emotional_cost, 0.0f, 1.0f);
+    action->effort.temporal_cost = nimcp_clampf(temporal_cost, 0.0f, 1.0f);
     action->effort.total_cost = bgv_compute_total_effort(&action->effort);
 
     return NIMCP_OK;
@@ -353,7 +345,7 @@ int bgv_compute_vigor(bgv_system_t* system,
     computed *= action->vigor_gain;
 
     /* Clamp to valid range */
-    computed = bgv_clamp(computed, BGV_MIN_VIGOR, BGV_MAX_VIGOR);
+    computed = nimcp_clampf(computed, BGV_MIN_VIGOR, BGV_MAX_VIGOR);
 
     /* Update action's current vigor */
     action->current_vigor = computed;
@@ -390,7 +382,7 @@ int bgv_compute_effort(bgv_system_t* system,
         effort->subjective_cost *= (1.0f + system->fatigue_level * 0.3f);
     }
 
-    effort->subjective_cost = bgv_clamp(effort->subjective_cost, 0.0f, 1.0f);
+    effort->subjective_cost = nimcp_clampf(effort->subjective_cost, 0.0f, 1.0f);
 
     /* Update statistics */
     system->cumulative_effort += effort->subjective_cost;
@@ -408,7 +400,7 @@ float bgv_get_motor_scaling(const bgv_system_t* system, uint32_t action_id) {
     float scaling = action->current_vigor / action->base_vigor;
 
     /* Clamp to reasonable range */
-    return bgv_clamp(scaling, 0.5f, 2.0f);
+    return nimcp_clampf(scaling, 0.5f, 2.0f);
 }
 
 float bgv_predict_duration(const bgv_system_t* system, uint32_t action_id) {
@@ -432,7 +424,7 @@ float bgv_predict_duration(const bgv_system_t* system, uint32_t action_id) {
 int bgv_set_dopamine(bgv_system_t* system, float dopamine) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
 
-    system->dopamine_level = bgv_clamp(dopamine, 0.0f, 1.0f);
+    system->dopamine_level = nimcp_clampf(dopamine, 0.0f, 1.0f);
     bgv_update_state(system);
 
     return NIMCP_OK;
@@ -441,7 +433,7 @@ int bgv_set_dopamine(bgv_system_t* system, float dopamine) {
 int bgv_set_motivation(bgv_system_t* system, float motivation) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
 
-    system->motivation_level = bgv_clamp(motivation, 0.0f, 1.0f);
+    system->motivation_level = nimcp_clampf(motivation, 0.0f, 1.0f);
     bgv_update_state(system);
 
     return NIMCP_OK;
@@ -450,7 +442,7 @@ int bgv_set_motivation(bgv_system_t* system, float motivation) {
 int bgv_set_urgency(bgv_system_t* system, float urgency) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
 
-    system->urgency_level = bgv_clamp(urgency, 0.0f, 1.0f);
+    system->urgency_level = nimcp_clampf(urgency, 0.0f, 1.0f);
 
     return NIMCP_OK;
 }
@@ -458,7 +450,7 @@ int bgv_set_urgency(bgv_system_t* system, float urgency) {
 int bgv_set_fatigue(bgv_system_t* system, float fatigue) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
 
-    system->fatigue_level = bgv_clamp(fatigue, 0.0f, 1.0f);
+    system->fatigue_level = nimcp_clampf(fatigue, 0.0f, 1.0f);
     bgv_update_state(system);
 
     return NIMCP_OK;
@@ -467,7 +459,7 @@ int bgv_set_fatigue(bgv_system_t* system, float fatigue) {
 int bgv_set_reward_proximity(bgv_system_t* system, float proximity) {
     if (!system) return NIMCP_ERROR_NULL_POINTER;
 
-    system->reward_proximity = bgv_clamp(proximity, 0.0f, 1.0f);
+    system->reward_proximity = nimcp_clampf(proximity, 0.0f, 1.0f);
 
     return NIMCP_OK;
 }
@@ -480,13 +472,13 @@ int bgv_process_bidir(bgv_system_t* system, bgv_bidir_data_t* data) {
     if (!system || !data) return NIMCP_ERROR_NULL_POINTER;
 
     /* Process inputs */
-    system->dopamine_level = bgv_clamp(data->dopamine_level, 0.0f, 1.0f);
-    system->motivation_level = bgv_clamp(data->motivation_signal, 0.0f, 1.0f);
-    system->urgency_level = bgv_clamp(data->urgency_signal, 0.0f, 1.0f);
-    system->reward_proximity = bgv_clamp(data->reward_proximity, 0.0f, 1.0f);
+    system->dopamine_level = nimcp_clampf(data->dopamine_level, 0.0f, 1.0f);
+    system->motivation_level = nimcp_clampf(data->motivation_signal, 0.0f, 1.0f);
+    system->urgency_level = nimcp_clampf(data->urgency_signal, 0.0f, 1.0f);
+    system->reward_proximity = nimcp_clampf(data->reward_proximity, 0.0f, 1.0f);
 
     if (data->fatigue_input > 0.0f) {
-        system->fatigue_level = bgv_clamp(data->fatigue_input, 0.0f, 1.0f);
+        system->fatigue_level = nimcp_clampf(data->fatigue_input, 0.0f, 1.0f);
     }
 
     /* Update global state */
@@ -566,7 +558,7 @@ int bgv_step(bgv_system_t* system, float dt_ms) {
     /* Process natural recovery if fatigued */
     if (system->config.enable_fatigue && system->fatigue_level > 0.0f) {
         float recovery = system->config.recovery_rate * (dt_ms / 1000.0f);
-        system->fatigue_level = bgv_clamp(system->fatigue_level - recovery, 0.0f, 1.0f);
+        system->fatigue_level = nimcp_clampf(system->fatigue_level - recovery, 0.0f, 1.0f);
     }
 
     /* Update vigor state */
@@ -604,7 +596,7 @@ int bgv_apply_fatigue(bgv_system_t* system, uint32_t action_id) {
 
     /* Fatigue increases based on effort cost */
     float fatigue_increase = action->effort.total_cost * system->config.fatigue_rate;
-    system->fatigue_level = bgv_clamp(system->fatigue_level + fatigue_increase, 0.0f, 1.0f);
+    system->fatigue_level = nimcp_clampf(system->fatigue_level + fatigue_increase, 0.0f, 1.0f);
 
     bgv_update_state(system);
 
@@ -622,7 +614,7 @@ int bgv_process_recovery(bgv_system_t* system, float dt_ms) {
     /* Recovery is faster at higher dopamine levels */
     recovery *= (1.0f + system->dopamine_level * 0.5f);
 
-    system->fatigue_level = bgv_clamp(system->fatigue_level - recovery, 0.0f, 1.0f);
+    system->fatigue_level = nimcp_clampf(system->fatigue_level - recovery, 0.0f, 1.0f);
 
     bgv_update_state(system);
 

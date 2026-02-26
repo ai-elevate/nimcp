@@ -21,6 +21,7 @@
 #include <float.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spatial_neuromod_pink_noise_bridge)
 
@@ -31,15 +32,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(spatial_pink_bridge)
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to [min, max]
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Compute Euclidean distance between two 3D points
@@ -364,7 +356,7 @@ int spatial_pink_bridge_map_neuron_to_region(
 
     // Update neuron→region mapping
     bridge->neuron_to_region[neuron_id] = region_index;
-    bridge->neuron_region_weights[neuron_id] = clamp_f(weight, 0.0f, 1.0f);
+    bridge->neuron_region_weights[neuron_id] = nimcp_clampf(weight, 0.0f, 1.0f);
 
     // Add to region's neuron list (simplified - reallocate if needed)
     // NOTE: For production, use dynamic array or pre-allocate
@@ -540,7 +532,7 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
                 float delta = noise_amp * noise;
                 bridge->neuromod_field->concentration[i] += delta;
                 // Clamp to valid range
-                bridge->neuromod_field->concentration[i] = clamp_f(
+                bridge->neuromod_field->concentration[i] = nimcp_clampf(
                     bridge->neuromod_field->concentration[i],
                     bridge->neuromod_field->min_concentration,
                     bridge->neuromod_field->max_concentration
@@ -553,7 +545,7 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
             for (uint32_t i = 0; i < num_neurons; i++) {
                 float noise = bridge->current_noise_values[i];
                 float mod_factor = 1.0f + diffusion_strength * noise;
-                bridge->diffusion_modulation[i] = clamp_f(mod_factor, 0.5f, 2.0f);
+                bridge->diffusion_modulation[i] = nimcp_clampf(mod_factor, 0.5f, 2.0f);
             }
             // NOTE: Actual application to diffusion requires access to per-neuron
             // diffusion coefficients (not in current spatial_neuromod_field_t)
@@ -564,7 +556,7 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
             for (uint32_t i = 0; i < num_neurons; i++) {
                 float noise = bridge->current_noise_values[i];
                 float mod_factor = 1.0f + decay_strength * noise;
-                bridge->decay_modulation[i] = clamp_f(mod_factor, 0.5f, 2.0f);
+                bridge->decay_modulation[i] = nimcp_clampf(mod_factor, 0.5f, 2.0f);
             }
             break;
 
@@ -589,7 +581,7 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
                 // Additive component (50% weight)
                 float delta = 0.5f * noise_amp * noise;
                 bridge->neuromod_field->concentration[i] += delta;
-                bridge->neuromod_field->concentration[i] = clamp_f(
+                bridge->neuromod_field->concentration[i] = nimcp_clampf(
                     bridge->neuromod_field->concentration[i],
                     bridge->neuromod_field->min_concentration,
                     bridge->neuromod_field->max_concentration
@@ -597,7 +589,7 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
 
                 // Multiplicative component (50% weight)
                 float mod_factor = 1.0f + 0.5f * diffusion_strength * noise;
-                bridge->diffusion_modulation[i] = clamp_f(mod_factor, 0.5f, 2.0f);
+                bridge->diffusion_modulation[i] = nimcp_clampf(mod_factor, 0.5f, 2.0f);
             }
             break;
 

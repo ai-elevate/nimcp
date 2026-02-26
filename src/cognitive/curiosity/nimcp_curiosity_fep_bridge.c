@@ -40,6 +40,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(curiosity_fep_bridge)
 //=============================================================================
@@ -92,17 +93,6 @@ static inline void curiosity_fep_bridge_heartbeat_instance(
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow
- * HOW:  Return min/max if out of bounds
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Get current time in milliseconds
@@ -329,7 +319,7 @@ int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
 
     /* Map prediction error to epistemic value */
     /* High PE → high uncertainty → high epistemic value */
-    float epistemic_value = clamp_f(avg_pe * bridge->config.epistemic_value_weight,
+    float epistemic_value = nimcp_clampf(avg_pe * bridge->config.epistemic_value_weight,
                                      0.0f, EPISTEMIC_VALUE_MAX);
 
     /* Update state */
@@ -401,7 +391,7 @@ int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
     /* Detect knowledge gap if uncertainty exceeds threshold */
     float gap_size = 0.0f;
     if (avg_uncertainty > KNOWLEDGE_GAP_THRESHOLD) {
-        gap_size = clamp_f((avg_uncertainty - KNOWLEDGE_GAP_THRESHOLD) /
+        gap_size = nimcp_clampf((avg_uncertainty - KNOWLEDGE_GAP_THRESHOLD) /
                           (1.0f - KNOWLEDGE_GAP_THRESHOLD), 0.0f, 1.0f);
         bridge->state.knowledge_gaps_detected++;
     }
@@ -443,7 +433,7 @@ int curiosity_fep_trigger_exploration(curiosity_fep_bridge_t* bridge) {
     float uncertainty_component = bridge->state.current_uncertainty *
                                   bridge->config.uncertainty_sensitivity;
 
-    float exploration_motivation = clamp_f(
+    float exploration_motivation = nimcp_clampf(
         epistemic_component + uncertainty_component + bridge->config.exploration_boost,
         0.0f, 1.0f);
 
@@ -517,7 +507,7 @@ int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
                 level->errors.precision[j] *= precision_boost;
 
                 /* Clamp to valid range */
-                level->errors.precision[j] = clamp_f(level->errors.precision[j],
+                level->errors.precision[j] = nimcp_clampf(level->errors.precision[j],
                                                       FEP_MIN_PRECISION,
                                                       FEP_MAX_PRECISION);
             }

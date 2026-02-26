@@ -13,15 +13,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sfa_pink_noise_bridge)
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
-
-/**
- * @brief Helper to clamp a float value to [min, max]
- */
-static inline float sfa_clampf(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
+#include "utils/math/nimcp_math_helpers.h"
 
 sfa_pink_noise_bridge_t* sfa_pink_noise_create(const sfa_pink_noise_config_t* config) {
     sfa_pink_noise_bridge_t* bridge = (sfa_pink_noise_bridge_t*)nimcp_calloc(1, sizeof(sfa_pink_noise_bridge_t));
@@ -137,7 +129,7 @@ int sfa_pink_noise_update(sfa_pink_noise_bridge_t* bridge) {
     /* Modulate SFA tau using pink noise */
     bridge->tau_noise = noise_sample * bridge->config.tau_noise_scale;
     bridge->noisy_tau = SFA_DEFAULT_TAU * (1.0f + bridge->tau_noise);
-    bridge->noisy_tau = sfa_clampf(bridge->noisy_tau, bridge->config.tau_min, bridge->config.tau_max);
+    bridge->noisy_tau = nimcp_clampf(bridge->noisy_tau, bridge->config.tau_min, bridge->config.tau_max);
 
     /* Modulate SFA strength using pink noise (generate next sample for decorrelation) */
     float strength_sample = 0.0f;
@@ -146,7 +138,7 @@ int sfa_pink_noise_update(sfa_pink_noise_bridge_t* bridge) {
     }
     bridge->strength_noise = strength_sample * bridge->config.strength_noise_scale;
     bridge->noisy_strength = SFA_DEFAULT_STRENGTH * (1.0f + bridge->strength_noise);
-    bridge->noisy_strength = sfa_clampf(bridge->noisy_strength, bridge->config.strength_min, bridge->config.strength_max);
+    bridge->noisy_strength = nimcp_clampf(bridge->noisy_strength, bridge->config.strength_min, bridge->config.strength_max);
 
     /* Modulate threshold using pink noise */
     float threshold_sample = 0.0f;

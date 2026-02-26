@@ -14,6 +14,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_temporal_credit, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -54,16 +55,6 @@ struct bg_temporal_credit {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /* ============================================================================
  * LIFECYCLE IMPLEMENTATION
@@ -528,7 +519,7 @@ static void bgtc_update_timing_unlocked(bg_temporal_credit_t* tc, float dt_ms) {
         switch (cell->type) {
             case BGTC_TIMING_RAMPING:
                 /* Ramps up to preferred time */
-                cell->current_activity = clamp_f(t / pref, 0.0f, 1.0f);
+                cell->current_activity = nimcp_clampf(t / pref, 0.0f, 1.0f);
                 break;
 
             case BGTC_TIMING_PEAKING:
@@ -614,7 +605,7 @@ int bgtc_learn_interval(bg_temporal_credit_t* tc,
             tc->timing_cells[i].preferred_interval +=
                 lr * error * tc->timing_cells[i].current_activity;
             tc->timing_cells[i].preferred_interval =
-                clamp_f(tc->timing_cells[i].preferred_interval, 10.0f, BGTC_MAX_INTERVAL_MS);
+                nimcp_clampf(tc->timing_cells[i].preferred_interval, 10.0f, BGTC_MAX_INTERVAL_MS);
         }
     }
 

@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_emotion_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -53,16 +54,6 @@ struct hypo_emotion_bridge {
     bool bio_registered;
     bio_module_context_t bio_ctx;
 };
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
 
 static uint64_t get_current_time_ms(void) {
     /* Placeholder - would use actual time source */
@@ -230,7 +221,7 @@ int hypo_emotion_bridge_process_hpa_response(hypo_emotion_bridge_t* bridge) {
         crh_drive *= 1.3f;
     }
 
-    crh_drive = clamp_01(crh_drive);
+    crh_drive = nimcp_clamp01(crh_drive);
 
     /* Update HPA cascade: CRH → ACTH → Cortisol (with delays modeled) */
     /* CRH responds quickly */
@@ -243,7 +234,7 @@ int hypo_emotion_bridge_process_hpa_response(hypo_emotion_bridge_t* bridge) {
     hpa->cortisol_level = 0.9f * hpa->cortisol_level + 0.1f * hpa->acth_level;
 
     /* Accumulate cortisol for chronic stress tracking */
-    hpa->cortisol_accumulated = clamp_01(
+    hpa->cortisol_accumulated = nimcp_clamp01(
         hpa->cortisol_accumulated + hpa->cortisol_level * 0.01f -
         (1.0f - hpa->cortisol_level) * 0.005f
     );
@@ -288,7 +279,7 @@ int hypo_emotion_bridge_process_hpa_response(hypo_emotion_bridge_t* bridge) {
             hpa->recovery_progress = 1.0f;
 
             /* Build resilience through recovery */
-            hpa->stress_resilience = clamp_01(hpa->stress_resilience + 0.02f);
+            hpa->stress_resilience = nimcp_clamp01(hpa->stress_resilience + 0.02f);
         }
     } else if (crh_drive > 0.2f) {
         /* Mild alertness */
@@ -366,7 +357,7 @@ int hypo_emotion_bridge_compute_emotional_modulation(
         dampening = 1.0f + hpa->cortisol_level * 0.2f;
     }
 
-    *dampening_factor = clamp_01(dampening);
+    *dampening_factor = nimcp_clamp01(dampening);
     return 0;
 }
 

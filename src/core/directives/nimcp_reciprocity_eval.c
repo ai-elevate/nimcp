@@ -18,6 +18,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(reciprocity_eval)
 
@@ -46,19 +47,6 @@ struct reciprocity_evaluator_struct {
 /* ============================================================================
  * Internal Helpers
  * ============================================================================ */
-
-/**
- * @brief Clamp float to range [0, 1]
- *
- * WHAT: Ensure value stays in [0, 1] range
- * WHY:  Prevent invalid scores
- * HOW:  Min/max bounds checking
- */
-static inline float clamp_0_1(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 /**
  * @brief Compute string similarity (Levenshtein-based)
@@ -434,7 +422,7 @@ float reciprocity_eval_get_symmetry_score(
         similarity = fminf(1.0f, similarity * 1.2f);
     }
 
-    return clamp_0_1(similarity);
+    return nimcp_clamp01(similarity);
 }
 
 /* ============================================================================

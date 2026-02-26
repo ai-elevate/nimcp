@@ -41,18 +41,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(convergence, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/* ============================================================================
- * Local Utilities
- * ============================================================================ */
-
-/** Clamp float value (local, matches nimcp_clamp_f from metabolic_modulation) */
-static inline float clamp_f(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
 
 /** Safe isnan check */
 static inline bool is_nan_f(float v) {
@@ -176,7 +167,7 @@ float inner_dialogue_convergence_agreement(
     float agreement = (sum_w > 0.0f) ? sum_wa / sum_w : 0.0f;
     NIMCP_LOGGING_DEBUG("inner_dialogue_convergence: agreement=%.3f (window=%u)",
                         (double)agreement, n);
-    return clamp_f(agreement, 0.0f, 1.0f);
+    return nimcp_clampf(agreement, 0.0f, 1.0f);
 }
 
 float inner_dialogue_convergence_trend(
@@ -237,7 +228,7 @@ float inner_dialogue_convergence_deadlock(
     float disagree_ratio = (n > 1) ? (float)disagreements / (float)(n - 1) : 0.0f;
 
     float deadlock = 0.6f * osc_ratio + 0.4f * disagree_ratio;
-    deadlock = clamp_f(deadlock, 0.0f, 1.0f);
+    deadlock = nimcp_clampf(deadlock, 0.0f, 1.0f);
 
     NIMCP_LOGGING_DEBUG("inner_dialogue_convergence: deadlock=%.3f (osc=%u, disagree=%u, n=%u)",
                         (double)deadlock, oscillations, disagreements, n);
@@ -290,7 +281,7 @@ float inner_dialogue_convergence_rumination(
     float rumination = 0.4f * avg_similarity +
                        0.35f * low_diversity +
                        0.25f * perspective_repetition;
-    rumination = clamp_f(rumination, 0.0f, 1.0f);
+    rumination = nimcp_clampf(rumination, 0.0f, 1.0f);
 
     NIMCP_LOGGING_DEBUG("inner_dialogue_convergence: rumination=%.3f "
                         "(sim=%.2f, low_div=%.2f, persp_rep=%.2f)",
@@ -315,7 +306,7 @@ float inner_dialogue_convergence_emotional_temperature(
     }
 
     float temperature = (n > 0) ? sum_abs_valence / (float)n : 0.0f;
-    temperature = clamp_f(temperature, 0.0f, 1.0f);
+    temperature = nimcp_clampf(temperature, 0.0f, 1.0f);
 
     NIMCP_LOGGING_DEBUG("inner_dialogue_convergence: emotional_temperature=%.3f (window=%u)",
                         (double)temperature, n);

@@ -38,6 +38,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_neuromod)
 
@@ -118,16 +119,6 @@ struct financial_neuromod_bridge {
     /* Last update timestamp */
     uint64_t last_update_ms;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline float lerpf(float a, float b, float t) {
     return a + t * (b - a);
@@ -588,8 +579,8 @@ int financial_neuromod_bridge_update(
     fin_neuromod_state_t old_state = bridge->neuromod_state;
 
     /* Compute neuromodulator deltas based on event type */
-    float mag = clampf(event->magnitude, 0.0f, 1.0f);
-    float pe = clampf(event->prediction_error, -1.0f, 1.0f);
+    float mag = nimcp_clampf(event->magnitude, 0.0f, 1.0f);
+    float pe = nimcp_clampf(event->prediction_error, -1.0f, 1.0f);
 
     float delta_da = 0.0f;
     float delta_5ht = 0.0f;
@@ -676,15 +667,15 @@ int financial_neuromod_bridge_update(
     }
 
     /* Apply deltas and clamp to [0, 1] */
-    bridge->neuromod_state.dopamine = clampf(
+    bridge->neuromod_state.dopamine = nimcp_clampf(
         bridge->neuromod_state.dopamine + delta_da, 0.0f, 1.0f);
-    bridge->neuromod_state.serotonin = clampf(
+    bridge->neuromod_state.serotonin = nimcp_clampf(
         bridge->neuromod_state.serotonin + delta_5ht, 0.0f, 1.0f);
-    bridge->neuromod_state.norepinephrine = clampf(
+    bridge->neuromod_state.norepinephrine = nimcp_clampf(
         bridge->neuromod_state.norepinephrine + delta_ne, 0.0f, 1.0f);
-    bridge->neuromod_state.acetylcholine = clampf(
+    bridge->neuromod_state.acetylcholine = nimcp_clampf(
         bridge->neuromod_state.acetylcholine + delta_ach, 0.0f, 1.0f);
-    bridge->neuromod_state.adenosine = clampf(
+    bridge->neuromod_state.adenosine = nimcp_clampf(
         bridge->neuromod_state.adenosine + delta_adenosine, 0.0f, 1.0f);
 
     /* Update state */
@@ -765,7 +756,7 @@ int financial_neuromod_bridge_decay(
 
     /* Adenosine: slowly accumulates during activity, decays during rest
      * Here we apply slow accumulation (can be overridden by REST events) */
-    bridge->neuromod_state.adenosine = clampf(
+    bridge->neuromod_state.adenosine = nimcp_clampf(
         bridge->neuromod_state.adenosine +
         bridge->config.adenosine_accumulation * dt,
         0.0f, 1.0f);
@@ -882,7 +873,7 @@ int financial_neuromod_bridge_compute_effects_from_state(
     float da_contrib = (state->dopamine - 0.5f) * 2.0f;  /* Map [0,1] to [-1,1] */
     float sht_contrib = state->serotonin;  /* 5HT provides stability */
 
-    out_effects->risk_tolerance = clampf(
+    out_effects->risk_tolerance = nimcp_clampf(
         0.5f +
         da_contrib * bridge->config.da_risk_weight * 0.3f +
         (sht_contrib - 0.5f) * bridge->config.serotonin_risk_weight * 0.2f,
@@ -892,7 +883,7 @@ int financial_neuromod_bridge_compute_effects_from_state(
      * High 5HT -> more patient, can delay gratification
      * Low 5HT -> impulsive, wants immediate rewards
      */
-    out_effects->patience = clampf(
+    out_effects->patience = nimcp_clampf(
         state->serotonin * bridge->config.serotonin_patience_weight +
         (1.0f - state->adenosine) * 0.2f,  /* Fatigue reduces patience */
         0.0f, 1.0f);
@@ -901,7 +892,7 @@ int financial_neuromod_bridge_compute_effects_from_state(
      * High ACh -> enhanced attention and encoding
      * High DA -> enhanced plasticity, reward-based learning
      */
-    out_effects->learning_rate = clampf(
+    out_effects->learning_rate = nimcp_clampf(
         state->acetylcholine * bridge->config.ach_learning_weight +
         state->dopamine * bridge->config.da_learning_weight,
         0.0f, 1.0f);
@@ -909,14 +900,14 @@ int financial_neuromod_bridge_compute_effects_from_state(
     /* Arousal Level: Primarily modulated by norepinephrine
      * Following Yerkes-Dodson: optimal performance at medium arousal
      */
-    out_effects->arousal_level = clampf(
+    out_effects->arousal_level = nimcp_clampf(
         state->norepinephrine * bridge->config.ne_arousal_weight,
         0.0f, 1.0f);
 
     /* Fatigue Level: Primarily modulated by adenosine
      * High adenosine -> high fatigue, need for rest
      */
-    out_effects->fatigue_level = clampf(
+    out_effects->fatigue_level = nimcp_clampf(
         state->adenosine * bridge->config.adenosine_fatigue_weight,
         0.0f, 1.0f);
 
@@ -970,7 +961,7 @@ int financial_neuromod_bridge_modulate_archetype(
      * Base is shifted toward effect level with a blending factor
      */
     float risk_blend = 0.4f;  /* How much neuromod affects base */
-    out_modulated->modulated_risk_tolerance = clampf(
+    out_modulated->modulated_risk_tolerance = nimcp_clampf(
         lerpf(base_params->base_risk_tolerance, effects.risk_tolerance, risk_blend),
         0.0f, 1.0f);
 
@@ -978,7 +969,7 @@ int financial_neuromod_bridge_modulate_archetype(
      * Low patience from neuromod can override even patient archetypes
      */
     float patience_blend = 0.35f;
-    out_modulated->modulated_patience = clampf(
+    out_modulated->modulated_patience = nimcp_clampf(
         base_params->base_patience * (0.5f + effects.patience * 0.5f) *
         (1.0f - effects.fatigue_level * 0.3f),  /* Fatigue reduces patience */
         0.0f, 1.0f);
@@ -987,7 +978,7 @@ int financial_neuromod_bridge_modulate_archetype(
      * Neuromod can boost or dampen archetype's base learning rate
      */
     float learning_blend = 0.5f;
-    out_modulated->modulated_learning_rate = clampf(
+    out_modulated->modulated_learning_rate = nimcp_clampf(
         lerpf(base_params->base_learning_rate, effects.learning_rate, learning_blend),
         0.0f, 1.0f);
 
@@ -1002,7 +993,7 @@ int financial_neuromod_bridge_modulate_archetype(
     }
     concentration_penalty += effects.fatigue_level * 0.3f;
 
-    out_modulated->modulated_concentration = clampf(
+    out_modulated->modulated_concentration = nimcp_clampf(
         base_params->base_concentration * (1.0f - concentration_penalty),
         0.0f, 1.0f);
 
@@ -1020,7 +1011,7 @@ int financial_neuromod_bridge_modulate_archetype(
         contrarian_mod *= 0.5f;
     }
 
-    out_modulated->modulated_contrarian = clampf(
+    out_modulated->modulated_contrarian = nimcp_clampf(
         base_params->base_contrarian_tendency * contrarian_mod,
         0.0f, 1.0f);
 
@@ -1037,7 +1028,7 @@ int financial_neuromod_bridge_modulate_archetype(
     total_change += fabsf(out_modulated->modulated_contrarian -
                           base_params->base_contrarian_tendency);
 
-    out_modulated->overall_modulation_factor = clampf(total_change / 5.0f, 0.0f, 1.0f);
+    out_modulated->overall_modulation_factor = nimcp_clampf(total_change / 5.0f, 0.0f, 1.0f);
 
     /* Generate summary */
     snprintf(out_modulated->modulation_summary, FIN_NEUROMOD_DESC_LEN,
@@ -1093,7 +1084,7 @@ int financial_neuromod_bridge_analyze_arousal(
      * Performance peaks at optimal arousal
      */
     float norm_dist = out_arousal->optimal_distance / bridge->config.optimal_arousal;
-    out_arousal->performance_factor = clampf(1.0f - norm_dist * norm_dist, 0.3f, 1.0f);
+    out_arousal->performance_factor = nimcp_clampf(1.0f - norm_dist * norm_dist, 0.3f, 1.0f);
 
     /* Categorize arousal level */
     if (arousal < 0.2f) {
@@ -1149,8 +1140,8 @@ int financial_neuromod_bridge_analyze_fatigue(
                     bridge->config.adenosine_fatigue_weight;
 
     out_fatigue->raw_fatigue = fatigue;
-    out_fatigue->cognitive_capacity = clampf(1.0f - fatigue, 0.0f, 1.0f);
-    out_fatigue->rest_urgency = clampf(fatigue * 1.2f, 0.0f, 1.0f);
+    out_fatigue->cognitive_capacity = nimcp_clampf(1.0f - fatigue, 0.0f, 1.0f);
+    out_fatigue->rest_urgency = nimcp_clampf(fatigue * 1.2f, 0.0f, 1.0f);
 
     /* Categorize fatigue level */
     if (fatigue < bridge->config.fatigue_mild_threshold) {

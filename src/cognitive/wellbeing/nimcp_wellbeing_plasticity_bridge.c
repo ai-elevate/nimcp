@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(wellbeing_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -61,16 +62,6 @@ struct wellbeing_plasticity_bridge {
     /* Statistics */
     wellbeing_plasticity_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static wellbeing_plasticity_synapse_t* find_synapse(
     wellbeing_plasticity_bridge_t* bridge,
@@ -294,7 +285,7 @@ int wellbeing_plasticity_register_synapse(
     wellbeing_plasticity_synapse_t* syn = &bridge->synapses[bridge->synapse_count];
     syn->synapse_id = synapse_id;
     syn->type = type;
-    syn->weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     syn->initial_weight = syn->weight;
     syn->eligibility_trace = 0.0f;
     syn->bcm_threshold = bridge->config.bcm_target_rate;
@@ -456,8 +447,8 @@ int wellbeing_plasticity_learn(
 
     float lr = bridge->config.base_learning_rate * bridge->foundation.learning_rate_mod;
     float delta = 0.0f;
-    magnitude = clamp_f(magnitude, 0.0f, 1.0f);
-    context = clamp_f(context, 0.0f, 1.0f);
+    magnitude = nimcp_clampf(magnitude, 0.0f, 1.0f);
+    context = nimcp_clampf(context, 0.0f, 1.0f);
 
     switch (event) {
         case WELLBEING_LEARN_POSITIVE_EXPERIENCE:
@@ -465,7 +456,7 @@ int wellbeing_plasticity_learn(
             bridge->stats.positive_experience_events++;
             /* Boost hedonic sensitivity */
             bridge->foundation.hedonic_sensitivity =
-                clamp_f(bridge->foundation.hedonic_sensitivity + delta * 0.1f, 0.0f, 1.0f);
+                nimcp_clampf(bridge->foundation.hedonic_sensitivity + delta * 0.1f, 0.0f, 1.0f);
             break;
 
         case WELLBEING_LEARN_NEGATIVE_EXPERIENCE:
@@ -478,14 +469,14 @@ int wellbeing_plasticity_learn(
             bridge->stats.stress_recovery_events++;
             /* Strengthen resilience */
             bridge->foundation.resilience_level =
-                clamp_f(bridge->foundation.resilience_level + magnitude * 0.05f, 0.0f, 1.0f);
+                nimcp_clampf(bridge->foundation.resilience_level + magnitude * 0.05f, 0.0f, 1.0f);
             break;
 
         case WELLBEING_LEARN_STRESS_ACCUMULATED:
             delta = -lr * magnitude * 0.8f;
             /* Slightly reduce vitality */
             bridge->foundation.vitality_capacity =
-                clamp_f(bridge->foundation.vitality_capacity - magnitude * 0.02f, 0.0f, 1.0f);
+                nimcp_clampf(bridge->foundation.vitality_capacity - magnitude * 0.02f, 0.0f, 1.0f);
             break;
 
         case WELLBEING_LEARN_SOCIAL_SUPPORT:
@@ -493,14 +484,14 @@ int wellbeing_plasticity_learn(
             bridge->stats.social_support_events++;
             /* Strengthen social connection */
             bridge->foundation.social_connection_strength =
-                clamp_f(bridge->foundation.social_connection_strength + magnitude * 0.1f, 0.0f, 1.0f);
+                nimcp_clampf(bridge->foundation.social_connection_strength + magnitude * 0.1f, 0.0f, 1.0f);
             break;
 
         case WELLBEING_LEARN_MEANING_FOUND:
             delta = lr * magnitude * 1.3f;
             /* Strengthen eudaimonic foundation */
             bridge->foundation.eudaimonic_strength =
-                clamp_f(bridge->foundation.eudaimonic_strength + magnitude * 0.1f, 0.0f, 1.0f);
+                nimcp_clampf(bridge->foundation.eudaimonic_strength + magnitude * 0.1f, 0.0f, 1.0f);
             break;
 
         case WELLBEING_LEARN_GOAL_ACHIEVED:
@@ -527,11 +518,11 @@ int wellbeing_plasticity_learn(
 
     /* Update weight */
     float old_weight = syn->weight;
-    syn->weight = clamp_f(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_clampf(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
     float actual_delta = syn->weight - old_weight;
 
     /* Update eligibility trace */
-    syn->eligibility_trace = clamp_f(syn->eligibility_trace + fabsf(actual_delta), 0.0f, 1.0f);
+    syn->eligibility_trace = nimcp_clampf(syn->eligibility_trace + fabsf(actual_delta), 0.0f, 1.0f);
 
     /* Track statistics */
     syn->update_count++;
@@ -602,7 +593,7 @@ float wellbeing_plasticity_apply_stdp(
 
     /* Update weight */
     float old_weight = syn->weight;
-    syn->weight = clamp_f(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_clampf(syn->weight + delta, bridge->config.weight_min, bridge->config.weight_max);
     float actual_delta = syn->weight - old_weight;
 
     syn->update_count++;
@@ -634,8 +625,8 @@ int wellbeing_plasticity_apply_reward(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
-    bridge->reward_accumulator = clamp_f(bridge->reward_accumulator + reward, -1.0f, 1.0f);
+    reward = nimcp_clampf(reward, -1.0f, 1.0f);
+    bridge->reward_accumulator = nimcp_clampf(bridge->reward_accumulator + reward, -1.0f, 1.0f);
 
     /* Apply reward to all non-protected synapses */
     float reward_factor = 1.0f + reward * 0.1f;
@@ -650,14 +641,14 @@ int wellbeing_plasticity_apply_reward(
             /* Modulate eligibility traces */
             bridge->synapses[i].eligibility_trace *= reward_factor;
             bridge->synapses[i].eligibility_trace =
-                clamp_f(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
+                nimcp_clampf(bridge->synapses[i].eligibility_trace, 0.0f, 1.0f);
         }
     }
 
     /* Positive rewards boost learning rate temporarily */
     if (reward > 0) {
         bridge->foundation.learning_rate_mod =
-            clamp_f(bridge->foundation.learning_rate_mod + reward * 0.05f, 0.5f, 2.0f);
+            nimcp_clampf(bridge->foundation.learning_rate_mod + reward * 0.05f, 0.5f, 2.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -755,7 +746,7 @@ int wellbeing_plasticity_homeostatic_update(
     float error = bridge->config.target_wellbeing - mean_weight;
     float correction = error * dt_ms / bridge->config.homeostatic_tau_ms;
 
-    bridge->homeostatic_factor = clamp_f(1.0f + correction, 0.5f, 2.0f);
+    bridge->homeostatic_factor = nimcp_clampf(1.0f + correction, 0.5f, 2.0f);
 
     /* Apply slow homeostatic scaling to weights */
     float scale = 1.0f + correction * 0.01f;
@@ -767,7 +758,7 @@ int wellbeing_plasticity_homeostatic_update(
         }
 
         if (!bridge->synapses[i].is_protected) {
-            bridge->synapses[i].weight = clamp_f(
+            bridge->synapses[i].weight = nimcp_clampf(
                 bridge->synapses[i].weight * scale,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -851,10 +842,10 @@ int wellbeing_plasticity_consolidate(wellbeing_plasticity_bridge_t* bridge) {
 
         if (syn->weight > threshold) {
             /* Strengthen strong synapses slightly */
-            syn->weight = clamp_f(syn->weight * 1.01f, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_clampf(syn->weight * 1.01f, bridge->config.weight_min, bridge->config.weight_max);
         } else if (syn->weight < threshold * 0.5f && syn->update_count > 0) {
             /* Weaken rarely-used weak synapses */
-            syn->weight = clamp_f(syn->weight * 0.99f, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_clampf(syn->weight * 0.99f, bridge->config.weight_min, bridge->config.weight_max);
         }
 
         /* Clear eligibility traces during consolidation */

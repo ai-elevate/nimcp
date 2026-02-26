@@ -17,6 +17,7 @@
 #include <string.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(calcium_pink_noise_bridge)
 
@@ -26,19 +27,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(calcium_pink_noise_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent invalid modulation factors
- * HOW:  Standard clamping
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /* ============================================================================
  * Lifecycle API Implementation
@@ -287,7 +275,7 @@ static void compute_modulation_factors(
         mode == CALCIUM_PINK_NOISE_MODE_COMPREHENSIVE) {
         float strength = bridge->config.influx_modulation_strength;
         bridge->effects.influx_modulation = 1.0f + strength * noise_sample;
-        bridge->effects.influx_modulation = clamp_f(
+        bridge->effects.influx_modulation = nimcp_clampf(
             bridge->effects.influx_modulation, 0.5f, 1.5f
         );
     } else {
@@ -299,7 +287,7 @@ static void compute_modulation_factors(
         mode == CALCIUM_PINK_NOISE_MODE_COMPREHENSIVE) {
         float strength = bridge->config.transient_modulation_strength;
         bridge->effects.transient_modulation = 1.0f + strength * noise_sample;
-        bridge->effects.transient_modulation = clamp_f(
+        bridge->effects.transient_modulation = nimcp_clampf(
             bridge->effects.transient_modulation, 0.5f, 1.5f
         );
     } else {
@@ -311,7 +299,7 @@ static void compute_modulation_factors(
         mode == CALCIUM_PINK_NOISE_MODE_COMPREHENSIVE) {
         float strength = bridge->config.decay_modulation_strength;
         bridge->effects.decay_modulation = 1.0f + strength * noise_sample;
-        bridge->effects.decay_modulation = clamp_f(
+        bridge->effects.decay_modulation = nimcp_clampf(
             bridge->effects.decay_modulation, 0.5f, 1.5f
         );
     } else {
@@ -408,7 +396,7 @@ float calcium_pink_noise_modulate_influx(
 
     /* Apply influx modulation */
     float modulated = nmda_activation * bridge->effects.influx_modulation;
-    return clamp_f(modulated, 0.0f, 1.0f);
+    return nimcp_clampf(modulated, 0.0f, 1.0f);
 }
 
 float calcium_pink_noise_modulate_transient(
@@ -462,7 +450,7 @@ int calcium_pink_noise_update_ca_dependent_amplitude(
 
     /* Normalize to [0, 1] using max concentration */
     float ca_max = CALCIUM_MAX_CONCENTRATION;
-    float ca_normalized = clamp_f(ca_concentration / ca_max, 0.0f, 1.0f);
+    float ca_normalized = nimcp_clampf(ca_concentration / ca_max, 0.0f, 1.0f);
     bridge->effects.ca_concentration_normalized = ca_normalized;
 
     /* Interpolate amplitude scale: low Ca → high scale, high Ca → low scale */

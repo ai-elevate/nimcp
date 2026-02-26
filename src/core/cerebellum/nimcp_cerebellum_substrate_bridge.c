@@ -10,6 +10,7 @@
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cerebellum_substrate_bridge)
 
@@ -136,9 +137,9 @@ int cerebellum_substrate_bridge_update(cerebellum_substrate_bridge_t* bridge) {
      * and timing precision.
      */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.motor_coordination = nimcp_clamp_f(
+        bridge->effects.motor_coordination = nimcp_clampf(
             atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.timing_precision = nimcp_clamp_f(
+        bridge->effects.timing_precision = nimcp_clampf(
             atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
@@ -147,9 +148,9 @@ int cerebellum_substrate_bridge_update(cerebellum_substrate_bridge_t* bridge) {
      * and error correction.
      */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.procedural_learning = nimcp_clamp_f(
+        bridge->effects.procedural_learning = nimcp_clampf(
             metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.error_correction = nimcp_clamp_f(
+        bridge->effects.error_correction = nimcp_clampf(
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 

@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mental_health_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -67,16 +68,6 @@ struct mental_health_plasticity_bridge {
     /* Statistics */
     mental_health_plasticity_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static synapse_entry_t* find_synapse(mental_health_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -313,7 +304,7 @@ int mental_health_plasticity_register_synapse(
     slot->in_use = true;
     slot->synapse.synapse_id = synapse_id;
     slot->synapse.type = type;
-    slot->synapse.weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    slot->synapse.weight = nimcp_clampf(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     slot->synapse.initial_weight = slot->synapse.weight;
     slot->synapse.eligibility_trace = 0.0f;
     slot->synapse.bcm_threshold = bridge->config.bcm_target_rate;
@@ -515,7 +506,7 @@ int mental_health_plasticity_learn(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_clampf(
         entry->synapse.weight + weight_change,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -587,7 +578,7 @@ float mental_health_plasticity_apply_stdp(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_clampf(
         entry->synapse.weight + delta_w,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -622,7 +613,7 @@ int mental_health_plasticity_apply_stress(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    stress_level = clamp_f(stress_level, 0.0f, 1.0f);
+    stress_level = nimcp_clampf(stress_level, 0.0f, 1.0f);
     bridge->current_stress_level = stress_level;
 
     /* Stress reduces effective learning rate */
@@ -728,7 +719,7 @@ int mental_health_plasticity_homeostatic_update(
     float scale_factor = 1.0f;
     if (mean_mood_regulation > 0.0f) {
         scale_factor = target / mean_mood_regulation;
-        scale_factor = clamp_f(scale_factor, 0.9f, 1.1f);
+        scale_factor = nimcp_clampf(scale_factor, 0.9f, 1.1f);
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -740,7 +731,7 @@ int mental_health_plasticity_homeostatic_update(
 
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
-            bridge->synapses[i].synapse.weight = clamp_f(
+            bridge->synapses[i].synapse.weight = nimcp_clampf(
                 scaled,
                 bridge->config.weight_min,
                 bridge->config.weight_max

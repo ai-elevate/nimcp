@@ -20,6 +20,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vta_adapter, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -71,16 +72,6 @@ struct nimcp_vta_adapter {
     uint32_t updates_processed;
     float total_active_time;
 };
-
-/*=============================================================================
- * Internal Helpers
- *===========================================================================*/
-
-static float clampf(float x, float lo, float hi) {
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
 
 static int enqueue_message(nimcp_vta_adapter_t adapter, const nimcp_vta_message_t* msg) {
     if (adapter->queue_count >= VTA_ADAPTER_MSG_QUEUE_SIZE) {
@@ -548,7 +539,7 @@ int nimcp_vta_adapter_apply_pfc_modulation(
     }
 
     /* PFC provides top-down control over VTA */
-    nimcp_vta_apply_inhibition(&adapter->vta, clampf(inhibition, 0.0f, 1.0f));
+    nimcp_vta_apply_inhibition(&adapter->vta, nimcp_clampf(inhibition, 0.0f, 1.0f));
     return 0;
 }
 
@@ -563,7 +554,7 @@ int nimcp_vta_adapter_apply_habenula_inhibition(
     }
 
     /* Habenula strongly inhibits VTA during negative outcomes */
-    nimcp_vta_apply_inhibition(&adapter->vta, clampf(inhibition, 0.0f, 1.0f) * 1.5f);
+    nimcp_vta_apply_inhibition(&adapter->vta, nimcp_clampf(inhibition, 0.0f, 1.0f) * 1.5f);
 
     /* May trigger pause */
     if (inhibition > 0.5f) {
@@ -641,7 +632,7 @@ static void update_vta_training_modulation(nimcp_vta_adapter_t adapter) {
     if (adapter->accumulated_reward > 0.2f) {
         lr_base += adapter->accumulated_reward * 0.2f;
     }
-    adapter->current_modulation.lr_multiplier = clampf(lr_base, 0.5f, 2.0f);
+    adapter->current_modulation.lr_multiplier = nimcp_clampf(lr_base, 0.5f, 2.0f);
 
     /* Compute reward sensitivity based on DA level */
     /* Low DA -> higher sensitivity to rewards (seeking) */
@@ -652,17 +643,17 @@ static void update_vta_training_modulation(nimcp_vta_adapter_t adapter) {
     } else if (da_ratio > 1.2f) {
         sensitivity = 1.0f - (da_ratio - 1.2f) * 0.3f;
     }
-    adapter->current_modulation.reward_sensitivity = clampf(sensitivity, 0.5f, 2.0f);
+    adapter->current_modulation.reward_sensitivity = nimcp_clampf(sensitivity, 0.5f, 2.0f);
 
     /* Compute motivation signal based on wanting */
-    adapter->current_modulation.motivation_signal = clampf(motivation, 0.0f, 1.0f);
+    adapter->current_modulation.motivation_signal = nimcp_clampf(motivation, 0.0f, 1.0f);
 
     /* Compute persistence factor based on effort willingness and goal progress */
     float persistence = effort_willingness * adapter->config.motivation_persistence_scale;
     if (adapter->goal_progress > 0.5f) {
         persistence += (adapter->goal_progress - 0.5f) * 0.3f;  /* Boost near goal */
     }
-    adapter->current_modulation.persistence_factor = clampf(persistence, 0.0f, 1.0f);
+    adapter->current_modulation.persistence_factor = nimcp_clampf(persistence, 0.0f, 1.0f);
 
     /* Store RPE for training layer */
     adapter->current_modulation.rpe_signal = rpe * adapter->config.rpe_sensitivity;
@@ -864,7 +855,7 @@ int nimcp_vta_adapter_process_goal_progress(
     }
 
     /* Update goal progress */
-    adapter->goal_progress = clampf(progress, 0.0f, 1.0f);
+    adapter->goal_progress = nimcp_clampf(progress, 0.0f, 1.0f);
 
     /* Progress toward goal modulates motivation */
     float motivation_boost = progress * 0.3f;

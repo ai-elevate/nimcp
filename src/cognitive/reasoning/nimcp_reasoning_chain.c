@@ -2486,7 +2486,10 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
     if (reasoning_portia_should_skip()) {
         NIMCP_LOGGING_WARN("reasoning_chain: Portia says skip reasoning "
                            "(EMERGENCY + CRITICAL thermal)");
-        reasoning_chain_init(chain);
+        /* FIX #6: Guard against double-init if caller already initialized */
+        if (chain->steps == NULL) {
+            reasoning_chain_init(chain);
+        }
         chain->start_time_us = nimcp_time_get_us();
         chain->end_time_us = chain->start_time_us;
         chain->overall_confidence = 0.0f;
@@ -2534,12 +2537,28 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         reasoning_mesh_apply_consensus(&effective_config, &mesh_result);
     }
 
-    /* Temporarily swap in the effective config for this query */
+    /*
+     * FIX #2: Use stack-local effective_config throughout instead of mutating
+     * engine->config in place. The old pattern of saving/restoring engine->config
+     * was fragile: any early return between swap and restore would leave the
+     * engine's config permanently corrupted.
+     *
+     * We still save/swap for now because convergent/concurrent functions read
+     * engine->config internally, but we use a goto cleanup pattern to guarantee
+     * restoration on ALL exit paths (including error returns).
+     */
     reasoning_engine_config_t saved_config = engine->config;
     engine->config = effective_config;
 
     /* ── Step 0: Initialize chain ── */
-    reasoning_chain_init(chain);
+    /* FIX #6: Guard against double-init memory leak. Callers like
+     * brain_ti_reason() already call reasoning_chain_init() before passing
+     * the chain. The init here would leak the first allocation because
+     * reasoning_chain_init() does memset + nimcp_calloc. Only init if
+     * the chain hasn't been initialized yet. */
+    if (chain->steps == NULL) {
+        reasoning_chain_init(chain);
+    }
     chain->start_time_us = nimcp_time_get_us();
 
     NIMCP_LOGGING_INFO("reasoning_chain: beginning reasoning for query: "
@@ -2662,13 +2681,23 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
 
         chain->end_time_us = nimcp_time_get_us();
         engine->stats.total_queries++;
-        engine->stats.successful_queries++;
+        /* FIX #7: Only increment successful_queries on success */
+        if (result == 0) {
+            engine->stats.successful_queries++;
+        }
         engine->stats.total_steps += chain->num_steps;
 
         if (portia_budget.confidence_boost > 0.0f) {
             chain->overall_confidence += portia_budget.confidence_boost;
             if (chain->overall_confidence > 1.0f)
                 chain->overall_confidence = 1.0f;
+        }
+
+        /* FIX #9: Apply mesh evidence for convergent path, matching
+         * the concurrent and sequential paths which both apply mesh
+         * evidence after their pipeline completes. */
+        if (mesh_result.mesh_available) {
+            reasoning_mesh_apply_evidence(chain, &mesh_result);
         }
 
         float n = (float)engine->stats.total_queries;
@@ -2700,7 +2729,10 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         /* Update statistics (same as sequential path) */
         chain->end_time_us = nimcp_time_get_us();
         engine->stats.total_queries++;
-        engine->stats.successful_queries++;
+        /* FIX #7: Only increment successful_queries on success */
+        if (result == 0) {
+            engine->stats.successful_queries++;
+        }
         engine->stats.total_steps += chain->num_steps;
 
         /* Apply Portia confidence boost to compensate for shed phases */
@@ -3030,6 +3062,26 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
 
     /* Store query in working memory */
     store_query_in_wm(engine, query);
+
+    /* ── Portia budget check ──
+     * WHY: Domain-restricted reasoning was dispatching directly without
+     *      consulting Portia's resource budget, unlike the main reasoning path.
+     * HOW: Check if Portia says to skip reasoning entirely under severe
+     *      resource pressure, returning an empty chain gracefully.
+     */
+    if (reasoning_portia_should_skip()) {
+        reasoning_chain_init(chain);
+        chain->start_time_us = nimcp_time_get_us();
+        chain->end_time_us = chain->start_time_us;
+        chain->overall_confidence = 0.0f;
+        chain->is_complete = true;
+        snprintf(chain->conclusion, REASONING_CHAIN_CONCLUSION_LEN,
+                 "Domain reasoning skipped: system resources critically exhausted");
+        engine->stats.total_queries++;
+        NIMCP_LOGGING_INFO("reasoning_chain: domain-restricted reasoning skipped "
+                           "(Portia: severe resource pressure)");
+        return 0;
+    }
 
     /* Convergent dispatch for domain-restricted reasoning */
     if (engine->config.enable_convergent_reasoning && engine->thread_pool) {

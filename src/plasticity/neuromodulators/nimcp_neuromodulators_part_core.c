@@ -98,7 +98,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
         vesicle_modulation = (expected_molecules > 0.0F) ? (molecules_released / expected_molecules) : 0.0F;
 
         // Clamp modulation to [0, 2] (can facilitate up to 2x)
-        vesicle_modulation = clamp(vesicle_modulation, 0.0F, 2.0F);
+        vesicle_modulation = nimcp_clampf(vesicle_modulation, 0.0F, 2.0F);
     }
 
     // ===========================================================================
@@ -204,7 +204,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
          */
 
         // Normalize RPE to [-1, +1] range for encoding
-        float td_error = clamp(rpe, -1.0F, 1.0F);
+        float td_error = nimcp_clampf(rpe, -1.0F, 1.0F);
 
         // Get current time (will use last_update_time, or 0 if first call)
         uint64_t current_time = system->last_update_time;
@@ -226,7 +226,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
 
         // Normalize to [0, 1] range for compatibility with existing code
         // Convert from µM to normalized: 1 µM (peak burst) → 1.0
-        system->concentrations[NEUROMOD_DOPAMINE] = clamp(da_concentration * 1000.0F, 0.0F, 1.0F);
+        system->concentrations[NEUROMOD_DOPAMINE] = nimcp_clampf(da_concentration * 1000.0F, 0.0F, 1.0F);
 
     } else {
         /* WHAT: Legacy simple concentration model (fallback)
@@ -236,7 +236,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
 
         if (system->use_metabolic_pathways) {
             // Use metabolic concentration even in legacy mode
-            system->concentrations[NEUROMOD_DOPAMINE] = clamp(metabolic_concentration * 1000.0F,
+            system->concentrations[NEUROMOD_DOPAMINE] = nimcp_clampf(metabolic_concentration * 1000.0F,
                                                               MIN_CONCENTRATION,
                                                               MAX_CONCENTRATION);
         } else {
@@ -244,7 +244,7 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
             float dopamine_change = system->reward_dopamine_gain * rpe * vesicle_modulation *
                                    grief_dopamine_factor * joy_dopamine_factor;
             float new_dopamine = system->concentrations[NEUROMOD_DOPAMINE] + dopamine_change;
-            system->concentrations[NEUROMOD_DOPAMINE] = clamp(new_dopamine,
+            system->concentrations[NEUROMOD_DOPAMINE] = nimcp_clampf(new_dopamine,
                                                               MIN_CONCENTRATION,
                                                               MAX_CONCENTRATION);
         }
@@ -315,7 +315,7 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
                              grief_serotonin_factor * joy_serotonin_factor;
 
     float new_serotonin = system->concentrations[NEUROMOD_SEROTONIN] + serotonin_release;
-    system->concentrations[NEUROMOD_SEROTONIN] = clamp(new_serotonin,
+    system->concentrations[NEUROMOD_SEROTONIN] = nimcp_clampf(new_serotonin,
                                                        MIN_CONCENTRATION,
                                                        MAX_CONCENTRATION);
 
@@ -356,7 +356,7 @@ float neuromodulator_release_acetylcholine(neuromodulator_system_t system, float
     float ach_release = system->salience_acetylcholine_gain * salience;
 
     float new_ach = system->concentrations[NEUROMOD_ACETYLCHOLINE] + ach_release;
-    system->concentrations[NEUROMOD_ACETYLCHOLINE] = clamp(new_ach,
+    system->concentrations[NEUROMOD_ACETYLCHOLINE] = nimcp_clampf(new_ach,
                                                            MIN_CONCENTRATION,
                                                            MAX_CONCENTRATION);
 
@@ -427,7 +427,7 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
     float ne_release = system->threat_norepinephrine_gain * arousal_signal * grief_norepinephrine_factor * medulla_arousal_factor;
 
     float new_ne = system->concentrations[NEUROMOD_NOREPINEPHRINE] + ne_release;
-    system->concentrations[NEUROMOD_NOREPINEPHRINE] = clamp(new_ne,
+    system->concentrations[NEUROMOD_NOREPINEPHRINE] = nimcp_clampf(new_ne,
                                                             MIN_CONCENTRATION,
                                                             MAX_CONCENTRATION);
 
@@ -514,7 +514,7 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
     /* WHAT: Clamp multiplier to reasonable range [0, 2]
      * WHY:  Prevent runaway plasticity or complete suppression
      */
-    modulation_effects_set_learning_rate_multiplier(effects, clamp(lr_mult, 0.0F, 2.0F));
+    modulation_effects_set_learning_rate_multiplier(effects, nimcp_clampf(lr_mult, 0.0F, 2.0F));
 
     /* WHAT: Compute synaptic transmission gain
      * WHY:  Attention modulates signal amplification
@@ -531,7 +531,7 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
         ne * alpha_dens * 0.3F -
         serotonin * ser_dens * 0.2F;
 
-    modulation_effects_set_transmission_gain(effects, clamp(t_gain, 0.1F, 2.0F));
+    modulation_effects_set_transmission_gain(effects, nimcp_clampf(t_gain, 0.1F, 2.0F));
 
     /* WHAT: Compute excitability shift (threshold modulation)
      * WHY:  Arousal changes firing threshold
@@ -547,7 +547,7 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
         -ne * alpha_dens * 0.3F +       // Negative = lower threshold
         serotonin * ser_dens * 0.2F;    // Positive = raise threshold
 
-    modulation_effects_set_excitability_shift(effects, clamp(e_shift, -0.5F, 0.5F));
+    modulation_effects_set_excitability_shift(effects, nimcp_clampf(e_shift, -0.5F, 0.5F));
 
     /* WHAT: Compute attention weight
      * WHY:  Determines importance for working memory / consolidation
@@ -559,7 +559,7 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
         ach * nic_dens * 0.7F +
         ne * alpha_dens * 0.3F;
 
-    modulation_effects_set_attention_weight(effects, clamp(att_weight, 0.0F, 1.0F));
+    modulation_effects_set_attention_weight(effects, nimcp_clampf(att_weight, 0.0F, 1.0F));
 
     return true;
 }

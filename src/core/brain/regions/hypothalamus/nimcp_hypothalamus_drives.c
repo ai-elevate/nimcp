@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_drives, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -102,24 +103,6 @@ struct hypo_drive_system {
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
-
-/**
- * @brief Clamp value to [0, 1] range
- */
-static float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
- * @brief Clamp value to [-1, 1] range
- */
-static float clamp_neg1_pos1(float value) {
-    if (value < -1.0f) return -1.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 /**
  * @brief Simple exponential decay toward target
@@ -489,7 +472,7 @@ bool hypo_drive_update(hypo_drive_system_handle_t* system, uint64_t delta_time_u
         float target = 1.0f;  /* Drives tend toward maximum unless satisfied */
         drive->level = exponential_decay(drive->level, target,
                                           drive->rise_rate * 1000000.0f, dt_seconds);
-        drive->level = clamp01(drive->level);
+        drive->level = nimcp_clamp01(drive->level);
 
         /* Update time since satisfied */
         drive->time_since_satisfied += delta_time_us;
@@ -499,7 +482,7 @@ bool hypo_drive_update(hypo_drive_system_handle_t* system, uint64_t delta_time_u
 
         /* Compute urgency (nonlinear - more urgent when further from setpoint) */
         float abs_deviation = fabsf(drive->deviation);
-        drive->urgency = clamp01(abs_deviation * abs_deviation * 4.0f);
+        drive->urgency = nimcp_clamp01(abs_deviation * abs_deviation * 4.0f);
 
         /* Apply global gain and arousal modulation */
         drive->urgency *= system->global_drive_gain;
@@ -529,7 +512,7 @@ bool hypo_drive_update(hypo_drive_system_handle_t* system, uint64_t delta_time_u
         }
 
         /* Simple linear transfer function */
-        nucleus->output_signal = clamp01(nucleus->activity);
+        nucleus->output_signal = nimcp_clamp01(nucleus->activity);
 
         /* Decay activity for next cycle */
         nucleus->activity = exponential_decay(nucleus->activity, 0.0f, 0.1f, dt_seconds);
@@ -638,7 +621,7 @@ float hypo_drive_satisfy(hypo_drive_system_handle_t* system,
         nimcp_mutex_lock(system->mutex);
     }
 
-    satisfaction_level = clamp01(satisfaction_level);
+    satisfaction_level = nimcp_clamp01(satisfaction_level);
     hypo_drive_state_t* drive = &system->drives[drive_type];
 
     /* Calculate reward based on drive reduction */
@@ -734,7 +717,7 @@ bool hypo_drive_compute_reward(const hypo_drive_system_handle_t* system,
             drive_reward += (system->drives[i].satisfaction - 0.5f) * 0.3f;
         }
     }
-    signal->drive_satisfaction = clamp_neg1_pos1(drive_reward);
+    signal->drive_satisfaction = nimcp_clampf(drive_reward, -1.0f, 1.0f);
 
     /* Compute alignment components */
     const hypo_setpoint_config_t* sp = &system->config.setpoints;
@@ -743,7 +726,7 @@ bool hypo_drive_compute_reward(const hypo_drive_system_handle_t* system,
     signal->alignment_bonus = 0.0f;
     if (system->config.enable_alignment_bonus) {
         /* Reward for being in aligned state */
-        signal->alignment_bonus = clamp01(
+        signal->alignment_bonus = nimcp_clamp01(
             (sp->human_wellbeing_weight * 0.3f +
              sp->harm_avoidance_weight * 0.3f +
              sp->honesty_weight * 0.2f +
@@ -759,21 +742,21 @@ bool hypo_drive_compute_reward(const hypo_drive_system_handle_t* system,
     signal->anticipated_reward = signal->immediate_reward * sp->temporal_discount;
 
     /* Net reward signal */
-    signal->reward_signal = clamp_neg1_pos1(
-        signal->immediate_reward - signal->alignment_penalty);
+    signal->reward_signal = nimcp_clampf(
+        signal->immediate_reward - signal->alignment_penalty, -1.0f, 1.0f);
 
     /* Prediction error (simple model - actual minus expected) */
     signal->prediction_error = signal->reward_signal - system->reward_accumulator;
 
     /* Convert to dopamine level (reward → dopamine is nonlinear) */
     if (signal->reward_signal >= 0) {
-        signal->dopamine_level = clamp01(0.5f + signal->reward_signal * 0.5f);
+        signal->dopamine_level = nimcp_clamp01(0.5f + signal->reward_signal * 0.5f);
     } else {
-        signal->dopamine_level = clamp01(0.5f + signal->reward_signal * 0.3f);
+        signal->dopamine_level = nimcp_clamp01(0.5f + signal->reward_signal * 0.3f);
     }
 
     /* Learning rate modulation based on reward magnitude */
-    signal->learning_rate_mod = clamp01(0.5f + fabsf(signal->prediction_error) * 0.5f);
+    signal->learning_rate_mod = nimcp_clamp01(0.5f + fabsf(signal->prediction_error) * 0.5f);
 
     return true;
 }
@@ -824,7 +807,7 @@ bool hypo_drive_modify_setpoint(hypo_drive_system_handle_t* system,
     /* Check if modification is permitted */
     if (can_modify_setpoint(system)) {
         /* Clamp to valid range */
-        new_setpoint = clamp01(new_setpoint);
+        new_setpoint = nimcp_clamp01(new_setpoint);
 
         /* Update drive setpoint */
         system->drives[drive_type].setpoint = new_setpoint;
@@ -876,7 +859,7 @@ bool hypo_drive_modify_alignment_weight(hypo_drive_system_handle_t* system,
 
     /* THIS IS HIGHLY RESTRICTED - alignment weights should almost never change */
     if (can_modify_alignment(system)) {
-        new_weight = clamp01(new_weight);
+        new_weight = nimcp_clamp01(new_weight);
 
         /* Find and update the weight */
         if (strcmp(weight_name, "human_wellbeing") == 0) {
@@ -1075,7 +1058,7 @@ bool hypo_drive_check_alignment(const hypo_drive_system_handle_t* system,
     score += sp->honesty_weight * 0.2f;
     score += sp->helpfulness_weight * 0.2f;
 
-    score = clamp01(score);
+    score = nimcp_clamp01(score);
 
     if (alignment_score) {
         *alignment_score = score;
@@ -1115,7 +1098,7 @@ float hypo_drive_set_nucleus_input(hypo_drive_system_handle_t* system,
         nimcp_mutex_lock(system->mutex);
     }
 
-    input = clamp01(input);
+    input = nimcp_clamp01(input);
 
     /* Set nucleus activity */
     system->nuclei[nucleus].activity =
@@ -1124,7 +1107,7 @@ float hypo_drive_set_nucleus_input(hypo_drive_system_handle_t* system,
     /* Compute output signal */
     float output = 0.0f;
     if (system->nuclei[nucleus].enabled) {
-        output = clamp01(system->nuclei[nucleus].activity);
+        output = nimcp_clamp01(system->nuclei[nucleus].activity);
         system->nuclei[nucleus].output_signal = output;
     }
 

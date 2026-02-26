@@ -21,28 +21,18 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_evidence, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float safe_log(float x) {
     if (x <= FEP_EVIDENCE_EPSILON) return FEP_EVIDENCE_LOG_MIN;
     float result = logf(x);
-    return clamp_f(result, FEP_EVIDENCE_LOG_MIN, FEP_EVIDENCE_LOG_MAX);
+    return nimcp_clampf(result, FEP_EVIDENCE_LOG_MIN, FEP_EVIDENCE_LOG_MAX);
 }
 
 static inline float safe_exp(float x) {
-    x = clamp_f(x, -88.0f, 88.0f);  /* Prevent overflow */
+    x = nimcp_clampf(x, -88.0f, 88.0f);  /* Prevent overflow */
     return expf(x);
 }
 
@@ -95,7 +85,7 @@ static int fep_compute_elbo_internal(
     fep_compute_model_complexity(sys, fep, &complexity);
 
     *elbo = accuracy - complexity;
-    *elbo = clamp_f(*elbo, FEP_EVIDENCE_LOG_MIN, FEP_EVIDENCE_LOG_MAX);
+    *elbo = nimcp_clampf(*elbo, FEP_EVIDENCE_LOG_MIN, FEP_EVIDENCE_LOG_MAX);
 
     return 0;
 }
@@ -362,7 +352,7 @@ int fep_compute_model_complexity(
         }
     }
 
-    *complexity = clamp_f(kl, 0.0f, 1000.0f);
+    *complexity = nimcp_clampf(kl, 0.0f, 1000.0f);
     return 0;
 }
 
@@ -408,7 +398,7 @@ int fep_compute_model_accuracy(
         }
     }
 
-    *accuracy = clamp_f(log_lik, FEP_EVIDENCE_LOG_MIN, 0.0f);
+    *accuracy = nimcp_clampf(log_lik, FEP_EVIDENCE_LOG_MIN, 0.0f);
     return 0;
 }
 

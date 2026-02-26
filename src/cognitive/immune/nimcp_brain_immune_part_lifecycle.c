@@ -156,7 +156,7 @@ int brain_immune_initiate_inflammation(
 
     /* Capture callback and data under mutex to prevent race condition */
     brain_immune_inflammation_cb_t inflammation_callback = system->on_inflammation;
-    void* callback_user_data = system->callback_user_data;
+    void* callback_user_data = system->on_inflammation_user_data;
     brain_inflammation_site_t site_copy = *site;  /* Copy for safe callback invocation */
     bool enable_logging = system->config.enable_logging;
 

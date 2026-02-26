@@ -18,6 +18,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neurovascular)
 
@@ -43,16 +44,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neurovascular)
 #define HRF_GAMMA2_SHAPE    16.0f       /* Second gamma shape */
 #define HRF_GAMMA2_SCALE    1.0f        /* Second gamma scale */
 #define HRF_GAMMA2_RATIO    0.167f      /* Undershoot ratio */
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Gamma function approximation (Stirling's approximation for integer args)
@@ -408,7 +399,7 @@ nimcp_nvc_error_t nimcp_nvc_set_activity(
         return NVC_ERR_NULL_PTR;
     }
 
-    unit->neural_activity = clampf(activity, 0.0f, 1.0f);
+    unit->neural_activity = nimcp_clampf(activity, 0.0f, 1.0f);
 
     /* Record in history */
     unit->activity_history[unit->history_index] = unit->neural_activity;
@@ -432,7 +423,7 @@ nimcp_nvc_error_t nimcp_nvc_apply_stimulus(
     }
 
     /* Just set activity for now - duration handled by update loop */
-    unit->neural_activity = clampf(amplitude, 0.0f, 1.0f);
+    unit->neural_activity = nimcp_clampf(amplitude, 0.0f, 1.0f);
     unit->time_since_activation = 0.0f;
 
     (void)duration;  /* Duration would be handled externally */
@@ -449,7 +440,7 @@ nimcp_nvc_error_t nimcp_nvc_set_vasoactive(
         return NVC_ERR_NULL_PTR;
     }
 
-    level = clampf(level, 0.0f, 10.0f);
+    level = nimcp_clampf(level, 0.0f, 10.0f);
 
     switch (mechanism) {
         case NVC_MECHANISM_NO:
@@ -745,7 +736,7 @@ nimcp_nvc_error_t nimcp_nvc_update_unit(
 
     /* Calculate target CBF */
     float cbf_increase = 1.0f + hrf_response * (system->config.max_cbf_increase - 1.0f);
-    unit->cbf_target = unit->cbf_baseline * clampf(cbf_increase, 0.5f,
+    unit->cbf_target = unit->cbf_baseline * nimcp_clampf(cbf_increase, 0.5f,
                                                    system->config.max_cbf_increase);
 
     /* Smooth CBF transition (time constant ~2s) */
@@ -755,20 +746,20 @@ nimcp_nvc_error_t nimcp_nvc_update_unit(
     /* CBV follows CBF with Grubb's exponent */
     float f_ratio = unit->cbf / unit->cbf_baseline;
     float v_ratio = powf(f_ratio, system->config.alpha_grubb);
-    unit->cbv = unit->cbv_baseline * clampf(v_ratio, 0.8f, system->config.max_cbv_increase);
+    unit->cbv = unit->cbv_baseline * nimcp_clampf(v_ratio, 0.8f, system->config.max_cbv_increase);
 
     /* Update OEF (inverse relationship with CBF for constant CMRO2) */
     if (f_ratio > 0.0f) {
         /* Assume CMRO2 increases slightly with activity */
         float cmro2_ratio = 1.0f + unit->neural_activity * 0.2f;
         unit->oef = system->config.baseline_oef * cmro2_ratio / f_ratio;
-        unit->oef = clampf(unit->oef, 0.1f, 0.8f);
+        unit->oef = nimcp_clampf(unit->oef, 0.1f, 0.8f);
     }
 
     /* Update vessel state */
     unit->vessel_diameter = sqrtf(v_ratio);  /* Diameter from volume */
     unit->vessel_tone = 1.0f - (f_ratio - 1.0f) / (system->config.max_cbf_increase - 1.0f);
-    unit->vessel_tone = clampf(unit->vessel_tone, 0.0f, 1.0f);
+    unit->vessel_tone = nimcp_clampf(unit->vessel_tone, 0.0f, 1.0f);
 
     /* Calculate BOLD signal */
     float old_bold = unit->bold.signal;

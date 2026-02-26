@@ -26,6 +26,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_executive_bridge)
 //=============================================================================
@@ -130,15 +131,6 @@ struct emotion_executive_bridge {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current timestamp in milliseconds
@@ -413,21 +405,21 @@ int emotion_executive_on_decision(
     float expectation_effect = outcome->expectation_violation * 0.2f;
 
     /* Positive outcome boosts valence, negative decreases */
-    bridge->current_state.valence = clamp_float(
+    bridge->current_state.valence = nimcp_clampf(
         bridge->current_state.valence + outcome_effect + expectation_effect,
         -1.0f, 1.0f
     );
 
     /* Unexpected outcomes increase arousal */
     float arousal_change = (float)fabs(outcome->expectation_violation) * 0.2f;
-    bridge->current_state.arousal = clamp_float(
+    bridge->current_state.arousal = nimcp_clampf(
         bridge->current_state.arousal + arousal_change,
         0.0f, 1.0f
     );
 
     /* Success increases dominance, failure decreases */
     float dominance_change = outcome->success ? 0.1f : -0.1f;
-    bridge->current_state.dominance = clamp_float(
+    bridge->current_state.dominance = nimcp_clampf(
         bridge->current_state.dominance + dominance_change,
         0.0f, 1.0f
     );
@@ -499,9 +491,9 @@ int emotion_executive_regulate_emotion(
     }
 
     /* Clamp all values to valid ranges */
-    bridge->current_state.valence = clamp_float(bridge->current_state.valence, -1.0f, 1.0f);
-    bridge->current_state.arousal = clamp_float(bridge->current_state.arousal, 0.0f, 1.0f);
-    bridge->current_state.dominance = clamp_float(bridge->current_state.dominance, 0.0f, 1.0f);
+    bridge->current_state.valence = nimcp_clampf(bridge->current_state.valence, -1.0f, 1.0f);
+    bridge->current_state.arousal = nimcp_clampf(bridge->current_state.arousal, 0.0f, 1.0f);
+    bridge->current_state.dominance = nimcp_clampf(bridge->current_state.dominance, 0.0f, 1.0f);
 
     /* Update statistics */
     bridge->stats.regulations_applied++;

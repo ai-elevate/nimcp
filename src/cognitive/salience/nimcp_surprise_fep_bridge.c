@@ -36,6 +36,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_fep_bridge_health_agent = NULL;
@@ -115,16 +116,6 @@ struct surprise_fep_bridge {
 
     bool initialized;
 };
-
-/* ============================================================================
- * Helpers
- * ============================================================================ */
-
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
 
 /* ============================================================================
  * Lifecycle API
@@ -285,7 +276,7 @@ int surprise_fep_forward_pe(
         return 0;
     }
 
-    float pe = clamp_f(prediction_error, 0.0f, 1.0f);
+    float pe = nimcp_clampf(prediction_error, 0.0f, 1.0f);
 
     /* Threshold check */
     if (pe < bridge->config.pe_threshold) {
@@ -373,7 +364,7 @@ int surprise_fep_modulate_precision(surprise_fep_bridge_t* bridge) {
 
     /* Compute precision boost: base + surprise * gain */
     float boost = 1.0f + surprise_level * bridge->config.precision_gain;
-    boost = clamp_f(boost, bridge->config.precision_floor,
+    boost = nimcp_clampf(boost, bridge->config.precision_floor,
                     bridge->config.precision_ceiling);
 
     bridge->effects.current_precision_boost = boost;
@@ -417,7 +408,7 @@ int surprise_fep_bridge_update(surprise_fep_bridge_t* bridge, float dt_seconds) 
     if (bridge->config.enable_precision_modulation && bridge->amplifier) {
         float surprise_level = surprise_amplifier_get_current_level(bridge->amplifier);
         float boost = 1.0f + surprise_level * bridge->config.precision_gain;
-        boost = clamp_f(boost, bridge->config.precision_floor,
+        boost = nimcp_clampf(boost, bridge->config.precision_floor,
                         bridge->config.precision_ceiling);
         bridge->effects.current_precision_boost = boost;
         bridge->effects.integrated_surprise = surprise_level;

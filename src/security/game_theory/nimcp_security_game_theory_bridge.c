@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_game_theory_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -49,15 +50,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_game_theory_bridge, MESH_ADAPTER_CATEGORY_
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current timestamp in milliseconds
@@ -784,7 +776,7 @@ int security_gt_detect_manipulation(
     }
 
     /* Compute overall manipulation score */
-    float sensitivity = clamp_float(bridge->config.manipulation_sensitivity, 0.0f, 1.0f);
+    float sensitivity = nimcp_clampf(bridge->config.manipulation_sensitivity, 0.0f, 1.0f);
     float threshold = 1.0f - sensitivity;
 
     result->timing_anomaly_score = timing_score;
@@ -942,7 +934,7 @@ int security_gt_form_defensive_coalition(
 
     /* Compute coalition strength (simplified: based on size) */
     float strength = (float)popcount(coalition) / (float)SECURITY_GT_MAX_PLAYERS;
-    *strength_out = clamp_float(strength, 0.0f, 1.0f);
+    *strength_out = nimcp_clampf(strength, 0.0f, 1.0f);
 
     /* Update effects */
     bridge->gt_effects.defense_coalitions_formed++;
@@ -978,7 +970,7 @@ int security_gt_bridge_update(
 
     /* Update threat level based on recent manipulation */
     if (bridge->state.manipulation_events > 0) {
-        bridge->security_effects.threat_level = clamp_float(
+        bridge->security_effects.threat_level = nimcp_clampf(
             bridge->state.current_manipulation_risk, 0.0f, 1.0f);
     } else {
         /* Decay threat level over time */
@@ -1013,11 +1005,11 @@ int security_gt_apply_security_effects(
     BRIDGE_LOCK(bridge);
 
     /* Apply security sensitivity scaling */
-    float sensitivity = clamp_float(bridge->config.security_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.security_sensitivity, 0.5f, 2.0f);
 
     /* Scale threat level by sensitivity */
     bridge->security_effects.threat_level *= sensitivity;
-    bridge->security_effects.threat_level = clamp_float(
+    bridge->security_effects.threat_level = nimcp_clampf(
         bridge->security_effects.threat_level, 0.0f, 1.0f);
 
     /* Update validation active state */
@@ -1043,11 +1035,11 @@ int security_gt_apply_gt_effects(
     BRIDGE_LOCK(bridge);
 
     /* Apply game theory sensitivity scaling */
-    float sensitivity = clamp_float(bridge->config.game_theory_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.game_theory_sensitivity, 0.5f, 2.0f);
 
     /* Scale defense effectiveness by sensitivity */
     bridge->gt_effects.defense_effectiveness *= sensitivity;
-    bridge->gt_effects.defense_effectiveness = clamp_float(
+    bridge->gt_effects.defense_effectiveness = nimcp_clampf(
         bridge->gt_effects.defense_effectiveness, 0.0f, 1.0f);
 
     /* Compute expected loss reduction based on defense strategies */
@@ -1058,7 +1050,7 @@ int security_gt_apply_gt_effects(
 
     /* Compute security resource allocation */
     float threat = bridge->security_effects.threat_level;
-    bridge->gt_effects.security_resource_allocation = clamp_float(threat, 0.1f, 0.9f);
+    bridge->gt_effects.security_resource_allocation = nimcp_clampf(threat, 0.1f, 0.9f);
 
     BRIDGE_UNLOCK(bridge);
 

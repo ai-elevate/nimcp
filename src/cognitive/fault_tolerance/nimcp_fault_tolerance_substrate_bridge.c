@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fault_tolerance_substrate_bridge)
 //=============================================================================
@@ -195,16 +196,16 @@ int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* 
 
     if (bridge->config.enable_atp_modulation) {
         /* Detection sensitivity requires stable ATP for continuous monitoring */
-        bridge->effects.detection_sensitivity = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.detection_sensitivity = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Redundancy maintenance is ATP-intensive */
-        bridge->effects.redundancy_capacity = nimcp_clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.redundancy_capacity = nimcp_clampf(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Recovery speed decreases with fatigue */
-        bridge->effects.recovery_speed = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.recovery_speed = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Monitoring depth narrows under metabolic stress */
-        bridge->effects.monitoring_depth = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.monitoring_depth = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.detection_sensitivity +

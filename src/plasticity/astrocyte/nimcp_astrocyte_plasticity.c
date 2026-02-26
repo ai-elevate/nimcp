@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(astrocyte_plasticity)
 
@@ -47,15 +48,6 @@ struct astrocyte_plasticity_struct {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Exponential decay
@@ -87,7 +79,7 @@ static float compute_d_serine_factor(float d_serine_level) {
      * Clamp normalized to [0, 1] to ensure factor stays in [0.6, 1.5] */
     float normalized = (d_serine_level - ASTROCYTE_D_SERINE_LTP_THRESHOLD) /
                        (1.0f - ASTROCYTE_D_SERINE_LTP_THRESHOLD);
-    normalized = clamp_f(normalized, 0.0f, 1.0f);
+    normalized = nimcp_clampf(normalized, 0.0f, 1.0f);
     return 0.6f + 0.9f * normalized;  /* Range: 0.6 - 1.5 */
 }
 
@@ -99,7 +91,7 @@ static float compute_d_serine_factor(float d_serine_level) {
  * HOW:  Inverse relationship: time = base_time / uptake_rate
  */
 static float compute_glu_clearance_time(float uptake_rate) {
-    float clamped_uptake = clamp_f(uptake_rate, 0.1f, 1.0f);
+    float clamped_uptake = nimcp_clampf(uptake_rate, 0.1f, 1.0f);
     return ASTROCYTE_GLU_UPTAKE_TIME_MS / clamped_uptake;
 }
 
@@ -300,7 +292,7 @@ int astrocyte_plasticity_update(
         state->d_serine_level += d_serine_production * dt_s;
         state->d_serine_level = exp_decay(state->d_serine_level,
             astro->config.d_serine_release_time_ms, delta_ms);
-        state->d_serine_level = clamp_f(state->d_serine_level, 0.0f, 1.5f);
+        state->d_serine_level = nimcp_clampf(state->d_serine_level, 0.0f, 1.5f);
     }
 
     /* Glutamate uptake modulation based on reactive state */
@@ -327,8 +319,8 @@ int astrocyte_plasticity_update(
         state->adenosine_level += atp_to_adenosine;
         state->adenosine_level = exp_decay(state->adenosine_level, 2000.0f, delta_ms);
 
-        state->atp_release_level = clamp_f(state->atp_release_level, 0.0f, 1.0f);
-        state->adenosine_level = clamp_f(state->adenosine_level, 0.0f, 1.0f);
+        state->atp_release_level = nimcp_clampf(state->atp_release_level, 0.0f, 1.0f);
+        state->adenosine_level = nimcp_clampf(state->adenosine_level, 0.0f, 1.0f);
     }
 
     /* Calcium wave propagation */
@@ -359,7 +351,7 @@ static int trigger_calcium_wave_unlocked(
 
     astrocyte_state_t* state = &astro->states[source_id];
     state->calcium_wave_active = true;
-    state->calcium_wave_amplitude = clamp_f(amplitude, 0.0f, 1.0f);
+    state->calcium_wave_amplitude = nimcp_clampf(amplitude, 0.0f, 1.0f);
     state->calcium_current += amplitude * 0.5f;  /* Boost calcium */
 
     astro->calcium_waves_triggered++;
@@ -402,27 +394,27 @@ int astrocyte_plasticity_release_gliotransmitter(
     nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
-    float clamped_amount = clamp_f(amount, 0.0f, 1.0f);
+    float clamped_amount = nimcp_clampf(amount, 0.0f, 1.0f);
 
     /* Update appropriate gliotransmitter level */
     switch (type) {
         case GLIOTRANSMITTER_D_SERINE:
             if (astro->config.enable_d_serine_modulation) {
-                state->d_serine_level = clamp_f(
+                state->d_serine_level = nimcp_clampf(
                     state->d_serine_level + clamped_amount, 0.0f, 1.5f);
             }
             break;
 
         case GLIOTRANSMITTER_ATP:
             if (astro->config.enable_atp_signaling) {
-                state->atp_release_level = clamp_f(
+                state->atp_release_level = nimcp_clampf(
                     state->atp_release_level + clamped_amount, 0.0f, 1.0f);
             }
             break;
 
         case GLIOTRANSMITTER_ADENOSINE:
             if (astro->config.enable_atp_signaling) {
-                state->adenosine_level = clamp_f(
+                state->adenosine_level = nimcp_clampf(
                     state->adenosine_level + clamped_amount, 0.0f, 1.0f);
             }
             break;
@@ -482,7 +474,7 @@ int astrocyte_plasticity_get_effects(
     effects->glutamate_clearance_time =
         compute_glu_clearance_time(state->glutamate_uptake_rate);
     effects->spillover_factor =
-        clamp_f(1.0f - state->glutamate_uptake_rate, 0.0f, 0.5f);
+        nimcp_clampf(1.0f - state->glutamate_uptake_rate, 0.0f, 0.5f);
     effects->epsc_duration_factor =
         1.0f + effects->spillover_factor * 0.5f;
 
@@ -586,7 +578,7 @@ int astrocyte_plasticity_notify_glutamate_release(
     /* Glutamate activates mGluRs, triggers calcium */
     float calcium_increase = glutamate_amount * 0.3f;
     state->calcium_current += calcium_increase;
-    state->calcium_current = clamp_f(state->calcium_current, 0.0f, 2.0f);
+    state->calcium_current = nimcp_clampf(state->calcium_current, 0.0f, 2.0f);
 
     /* High calcium can trigger wave - use unlocked version since we hold mutex */
     if (state->calcium_current > astro->config.ca_wave_trigger_threshold) {
@@ -618,7 +610,7 @@ int astrocyte_plasticity_notify_ltp_induction(
 
     /* Increase D-serine release to support further LTP */
     if (astro->config.enable_d_serine_modulation) {
-        state->d_serine_level = clamp_f(state->d_serine_level + 0.2f, 0.0f, 1.5f);
+        state->d_serine_level = nimcp_clampf(state->d_serine_level + 0.2f, 0.0f, 1.5f);
     }
 
     /* Trigger calcium wave for network coordination - use unlocked version since we hold mutex */
@@ -650,7 +642,7 @@ int astrocyte_plasticity_set_reactive_state(
     nimcp_platform_mutex_lock(astro->mutex);
 
     astrocyte_state_t* state = &astro->states[astrocyte_id];
-    float clamped_intensity = clamp_f(intensity, 0.0f, 1.0f);
+    float clamped_intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
 
     state->reactive_state = state_type;
 

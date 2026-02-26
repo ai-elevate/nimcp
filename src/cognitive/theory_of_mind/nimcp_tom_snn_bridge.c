@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(tom_snn_bridge)
 //=============================================================================
@@ -118,16 +119,6 @@ struct tom_snn_bridge {
     /* Statistics */
     tom_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -423,7 +414,7 @@ int tom_snn_encode_context(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -500,7 +491,7 @@ int tom_snn_encode_belief(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[TOM_DIM_COUNT] = {0};
-    dims[TOM_DIM_BELIEF_STATE] = clamp_f(other_belief, 0.0f, 1.0f);
+    dims[TOM_DIM_BELIEF_STATE] = nimcp_clampf(other_belief, 0.0f, 1.0f);
 
     /* Detect false belief (discrepancy between self and other belief) */
     float belief_discrepancy = fabsf(self_belief - other_belief);
@@ -534,9 +525,9 @@ int tom_snn_encode_intention(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[TOM_DIM_COUNT] = {0};
-    dims[TOM_DIM_INTENTION] = clamp_f(intention_strength, 0.0f, 1.0f);
-    dims[TOM_DIM_DESIRE_STATE] = clamp_f(goal_alignment, 0.0f, 1.0f);
-    dims[TOM_DIM_SOCIAL_CONTEXT] = clamp_f(action_predictability, 0.0f, 1.0f);
+    dims[TOM_DIM_INTENTION] = nimcp_clampf(intention_strength, 0.0f, 1.0f);
+    dims[TOM_DIM_DESIRE_STATE] = nimcp_clampf(goal_alignment, 0.0f, 1.0f);
+    dims[TOM_DIM_SOCIAL_CONTEXT] = nimcp_clampf(action_predictability, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -560,9 +551,9 @@ int tom_snn_encode_empathy(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[TOM_DIM_COUNT] = {0};
-    dims[TOM_DIM_EMOTION_INFERENCE] = clamp_f(emotional_resonance, 0.0f, 1.0f);
-    dims[TOM_DIM_EMPATHIC_ACCURACY] = clamp_f(cognitive_empathy, 0.0f, 1.0f);
-    dims[TOM_DIM_MENTAL_SIMULATION] = clamp_f((emotional_resonance + cognitive_empathy) / 2.0f, 0.0f, 1.0f);
+    dims[TOM_DIM_EMOTION_INFERENCE] = nimcp_clampf(emotional_resonance, 0.0f, 1.0f);
+    dims[TOM_DIM_EMPATHIC_ACCURACY] = nimcp_clampf(cognitive_empathy, 0.0f, 1.0f);
+    dims[TOM_DIM_MENTAL_SIMULATION] = nimcp_clampf((emotional_resonance + cognitive_empathy) / 2.0f, 0.0f, 1.0f);
 
     bridge->empathy_signal = (emotional_resonance + cognitive_empathy) / 2.0f;
 
@@ -636,16 +627,16 @@ int tom_snn_simulate(tom_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_inference.belief_state = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_inference.desire_state = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_inference.intention_clarity = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_inference.perspective_alignment = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_inference.empathic_accuracy = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_inference.social_context_match = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
-    bridge->last_inference.deception_confidence = clamp_f(bridge->output_buffer[6], 0.0f, 1.0f);
-    bridge->last_inference.shared_attention_strength = clamp_f(bridge->output_buffer[7], 0.0f, 1.0f);
-    bridge->last_inference.empathic_accuracy = clamp_f(bridge->output_buffer[8], 0.0f, 1.0f);
-    bridge->last_inference.mental_simulation_depth = clamp_f(bridge->output_buffer[9], 0.0f, 1.0f);
+    bridge->last_inference.belief_state = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_inference.desire_state = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_inference.intention_clarity = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_inference.perspective_alignment = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_inference.empathic_accuracy = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_inference.social_context_match = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_inference.deception_confidence = nimcp_clampf(bridge->output_buffer[6], 0.0f, 1.0f);
+    bridge->last_inference.shared_attention_strength = nimcp_clampf(bridge->output_buffer[7], 0.0f, 1.0f);
+    bridge->last_inference.empathic_accuracy = nimcp_clampf(bridge->output_buffer[8], 0.0f, 1.0f);
+    bridge->last_inference.mental_simulation_depth = nimcp_clampf(bridge->output_buffer[9], 0.0f, 1.0f);
 
     /* Compute overall confidence */
     float sum = 0.0f;
@@ -658,7 +649,7 @@ int tom_snn_simulate(tom_snn_bridge_t* bridge, float duration_ms) {
 
         sum += bridge->output_buffer[i];
     }
-    bridge->last_inference.confidence = clamp_f(sum / 6.0f, 0.0f, 1.0f);
+    bridge->last_inference.confidence = nimcp_clampf(sum / 6.0f, 0.0f, 1.0f);
 
     /* Check deception threshold */
     if (bridge->last_inference.deception_confidence > bridge->config.deception_threshold) {

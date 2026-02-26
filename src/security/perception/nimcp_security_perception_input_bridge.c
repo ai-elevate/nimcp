@@ -29,6 +29,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_perception_input_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -67,15 +68,6 @@ static const char* s_state_names[] = {
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Check if a float is valid (not NaN or Inf)
@@ -594,7 +586,7 @@ int security_perception_detect_audio_anomaly(
         float clip_score = clipping * 5.0f;
         float peak_score = (peak > 0.99f) ? 0.5f : 0.0f;
 
-        *anomaly_score = clamp_float(dc_score + clip_score + peak_score, 0.0f, 1.0f);
+        *anomaly_score = nimcp_clampf(dc_score + clip_score + peak_score, 0.0f, 1.0f);
         *confidence = 0.6f;
 
         bridge->percept_to_sec.audio_anomaly_score = *anomaly_score;
@@ -651,7 +643,7 @@ int security_perception_validate_visual_input(
 
     /* Compute contrast (simplified) */
     float contrast = sqrtf(variance) / 128.0f;
-    bridge->percept_to_sec.visual_contrast = clamp_float(contrast, 0.0f, 1.0f);
+    bridge->percept_to_sec.visual_contrast = nimcp_clampf(contrast, 0.0f, 1.0f);
 
     /* Check for statistical anomalies */
     if (saturation_ratio > 0.5f) {
@@ -746,7 +738,7 @@ int security_perception_detect_visual_anomaly(
             pattern_score = 0.6f;
         }
 
-        *anomaly_score = clamp_float(sat_score + var_score + pattern_score, 0.0f, 1.0f);
+        *anomaly_score = nimcp_clampf(sat_score + var_score + pattern_score, 0.0f, 1.0f);
         *confidence = 0.6f;
 
         bridge->percept_to_sec.visual_anomaly_score = *anomaly_score;
@@ -767,7 +759,7 @@ static void security_perception_gate_input_unlocked(
     sec_input_gate_action_t* action,
     float* attenuation
 ) {
-    threat_score = clamp_float(threat_score, 0.0f, 1.0f);
+    threat_score = nimcp_clampf(threat_score, 0.0f, 1.0f);
 
     /* Determine gating action based on threat score */
     if (threat_score < 0.3f) {

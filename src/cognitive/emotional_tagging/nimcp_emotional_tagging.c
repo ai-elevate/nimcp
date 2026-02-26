@@ -29,6 +29,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(emotional_tagging, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -42,20 +43,6 @@ BRIDGE_BOILERPLATE(emotional_tagging, MESH_ADAPTER_CATEGORY_COGNITIVE)
 //=============================================================================
 // Helper Functions (Internal, <50 lines each)
 //=============================================================================
-
-/**
- * @brief Clamp float to range [min, max]
- *
- * WHAT: Restrict value to valid range
- * WHY:  Prevent invalid emotional coordinates
- * HOW:  Standard clamping algorithm
- */
-static inline float clamp(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute absolute value
@@ -197,8 +184,8 @@ emotional_tag_t emotional_tag_create(
     emotional_tag_t tag;
 
     // Clamp to valid ranges
-    tag.valence = clamp(valence, -1.0f, 1.0f);
-    tag.arousal = clamp(arousal, 0.0f, 1.0f);
+    tag.valence = nimcp_clampf(valence, -1.0f, 1.0f);
+    tag.arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
     tag.timestamp_ms = timestamp_ms;
 
     // Classify emotion category
@@ -418,7 +405,7 @@ emotional_tag_t emotional_tag_from_cognitive_state(
     valence = (confidence - 0.5f) * 2.0f;
 
     // Map uncertainty to arousal: high uncertainty = high arousal
-    arousal = clamp(uncertainty * 1.2f, 0.0f, 1.0f);
+    arousal = nimcp_clampf(uncertainty * 1.2f, 0.0f, 1.0f);
 
     // Novelty adds positive valence and arousal (curiosity)
     if (novelty > 0.5f) {
@@ -429,7 +416,7 @@ emotional_tag_t emotional_tag_from_cognitive_state(
     // Ethical violation → strong negative valence + high arousal
     if (!ethical_approved) {
         valence = -0.8f;  // Strong negative
-        arousal = clamp(arousal + 0.3f, 0.0f, 1.0f);  // Increase arousal
+        arousal = nimcp_clampf(arousal + 0.3f, 0.0f, 1.0f);  // Increase arousal
     }
 
     // Create tag with computed values
@@ -482,8 +469,8 @@ static void apply_neuromodulator_emotion_modulation(float* valence,
     *arousal *= serotonin_mult;
 
     // Clamp to valid ranges
-    *valence = clamp(*valence, -1.0f, 1.0f);
-    *arousal = clamp(*arousal, 0.0f, 1.0f);
+    *valence = nimcp_clampf(*valence, -1.0f, 1.0f);
+    *arousal = nimcp_clampf(*arousal, 0.0f, 1.0f);
 }
 
 /**
@@ -517,7 +504,7 @@ emotional_tag_t emotional_tag_from_brain_state(
 
 
     float valence = (confidence - 0.5f) * 2.0f;
-    float arousal = clamp(uncertainty * 1.2f, 0.0f, 1.0f);
+    float arousal = nimcp_clampf(uncertainty * 1.2f, 0.0f, 1.0f);
 
     // Novelty boosts
     if (novelty > 0.5f) {
@@ -528,7 +515,7 @@ emotional_tag_t emotional_tag_from_brain_state(
     // Ethical violation
     if (!ethical_approved) {
         valence = -0.8f;
-        arousal = clamp(arousal + 0.3f, 0.0f, 1.0f);
+        arousal = nimcp_clampf(arousal + 0.3f, 0.0f, 1.0f);
     }
 
     // Apply neuromodulator modulation
@@ -594,9 +581,9 @@ void emotional_tag_clamp(emotional_tag_t* tag)
     emotional_tagging_heartbeat("emotional_ta_emotional_tag_clamp", 0.0f);
 
 
-    tag->valence = clamp(tag->valence, -1.0f, 1.0f);
-    tag->arousal = clamp(tag->arousal, 0.0f, 1.0f);
-    tag->intensity = clamp(tag->intensity, 0.0f, 1.0f);
+    tag->valence = nimcp_clampf(tag->valence, -1.0f, 1.0f);
+    tag->arousal = nimcp_clampf(tag->arousal, 0.0f, 1.0f);
+    tag->intensity = nimcp_clampf(tag->intensity, 0.0f, 1.0f);
 
     // Recompute category and intensity after clamping
     tag->category = emotional_tag_classify(tag);
@@ -694,7 +681,7 @@ void emotional_modulate_arousal(emotional_tag_t* tag, float arousal_delta)
 
 
     tag->arousal += arousal_delta;
-    tag->arousal = clamp(tag->arousal, 0.0f, 1.0f);
+    tag->arousal = nimcp_clampf(tag->arousal, 0.0f, 1.0f);
 
     // WHAT: Recompute derived fields
     // WHY:  Arousal change may change category and intensity

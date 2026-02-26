@@ -15,6 +15,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(bg_model_based, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -71,16 +72,6 @@ struct bg_model_based {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /* ============================================================================
  * LIFECYCLE IMPLEMENTATION
@@ -644,7 +635,7 @@ int bg_mb_update_arbitration(bg_model_based_t* mb,
         mb->arbitration.model_free_weight = mb->arbitration.mf_reliability / total;
     }
 
-    mb->arbitration.model_based_weight = clamp_f(mb->arbitration.model_based_weight, 0.1f, 0.9f);
+    mb->arbitration.model_based_weight = nimcp_clampf(mb->arbitration.model_based_weight, 0.1f, 0.9f);
     mb->arbitration.model_free_weight = 1.0f - mb->arbitration.model_based_weight;
 
     mb->stats.avg_mb_weight = mb->arbitration.model_based_weight;
@@ -763,5 +754,5 @@ float bg_mb_get_model_accuracy(const bg_model_based_t* mb) {
     if (!mb) return 0.0f;
 
     /* Estimate accuracy from reliability */
-    return clamp_f(mb->arbitration.mb_reliability, 0.0f, 1.0f);
+    return nimcp_clampf(mb->arbitration.mb_reliability, 0.0f, 1.0f);
 }

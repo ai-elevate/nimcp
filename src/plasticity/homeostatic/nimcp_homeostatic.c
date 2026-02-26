@@ -41,6 +41,7 @@
 
 #define LOG_MODULE "plasticity_homeostatic"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(homeostatic)
 
@@ -88,18 +89,6 @@ struct homeostatic_controller_struct {
 //=============================================================================
 // Inline Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range [min, max]
- *
- * WHAT: Branchless clamp using fminf/fmaxf
- * WHY:  Faster than if-else, no branch misprediction
- *
- * COMPLEXITY: O(1)
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    return fminf(fmaxf(value, min_val), max_val);
-}
 
 /**
  * @brief Safe division with epsilon guard
@@ -272,7 +261,7 @@ synaptic_scaling_state_t synaptic_scaling_state_init(float initial_rate) {
      * WHY:  Factory method ensures valid initial state
      */
     synaptic_scaling_state_t state = {
-        .average_rate = clamp_f(initial_rate, MIN_RATE, MAX_RATE),
+        .average_rate = nimcp_clampf(initial_rate, MIN_RATE, MAX_RATE),
         .scaling_factor = 1.0F,
         .rate_integral = 0.0F,
         .spike_count = 0,
@@ -306,7 +295,7 @@ void synaptic_scaling_update_rate(synaptic_scaling_state_t* state,
     state->average_rate += decay * (instantaneous - state->average_rate);
 
     /* Clamp to valid range */
-    state->average_rate = clamp_f(state->average_rate, MIN_RATE, MAX_RATE);
+    state->average_rate = nimcp_clampf(state->average_rate, MIN_RATE, MAX_RATE);
 
     /* Update spike count */
     if (spike_occurred) {
@@ -338,7 +327,7 @@ float synaptic_scaling_compute_factor(const synaptic_scaling_state_t* state,
     float factor = powf(ratio, params->scaling_exponent);
 
     /* Clamp to valid range */
-    return clamp_f(factor, params->min_scaling_factor, params->max_scaling_factor);
+    return nimcp_clampf(factor, params->min_scaling_factor, params->max_scaling_factor);
 }
 
 void synaptic_scaling_apply(float* weights,
@@ -360,7 +349,7 @@ void synaptic_scaling_apply(float* weights,
     /* Apply scaling to each weight */
     for (uint32_t i = 0; i < num_weights; i++) {
         float scaled = weights[i] * scaling_factor;
-        weights[i] = clamp_f(scaled, HOMEOSTATIC_MIN_WEIGHT, HOMEOSTATIC_MAX_WEIGHT);
+        weights[i] = nimcp_clampf(scaled, HOMEOSTATIC_MIN_WEIGHT, HOMEOSTATIC_MAX_WEIGHT);
     }
 }
 
@@ -382,7 +371,7 @@ void synaptic_scaling_apply_soft_bounds(float* weights,
     if (scaling_factor <= 0.0F) return;
 
     /* Clamp strength */
-    soft_bound_strength = clamp_f(soft_bound_strength, 0.0F, 1.0F);
+    soft_bound_strength = nimcp_clampf(soft_bound_strength, 0.0F, 1.0F);
 
     /* Apply scaling with soft bounds */
     for (uint32_t i = 0; i < num_weights; i++) {
@@ -390,7 +379,7 @@ void synaptic_scaling_apply_soft_bounds(float* weights,
         float sb = soft_bound_factor(w, soft_bound_strength);
         float effective_factor = 1.0F + sb * (scaling_factor - 1.0F);
         float scaled = w * effective_factor;
-        weights[i] = clamp_f(scaled, HOMEOSTATIC_MIN_WEIGHT, HOMEOSTATIC_MAX_WEIGHT);
+        weights[i] = nimcp_clampf(scaled, HOMEOSTATIC_MIN_WEIGHT, HOMEOSTATIC_MAX_WEIGHT);
     }
 }
 
@@ -405,7 +394,7 @@ intrinsic_plasticity_state_t intrinsic_plasticity_state_init(float initial_thres
      */
     intrinsic_plasticity_state_t state = {
         .threshold = initial_threshold,
-        .gain = clamp_f(initial_gain, 0.1F, 10.0F),
+        .gain = nimcp_clampf(initial_gain, 0.1F, 10.0F),
         .average_rate = 0.0F,
         .average_input = 0.0F,
         .last_update_time = 0,
@@ -441,7 +430,7 @@ void intrinsic_plasticity_update_threshold(intrinsic_plasticity_state_t* state,
 
     /* Update threshold */
     state->threshold += delta_theta;
-    state->threshold = clamp_f(state->threshold, params->min_threshold, params->max_threshold);
+    state->threshold = nimcp_clampf(state->threshold, params->min_threshold, params->max_threshold);
 
     /* Update average rate */
     float rate_decay = decay_factor(dt, 1000.0F);  /* 1 sec averaging */
@@ -484,7 +473,7 @@ void intrinsic_plasticity_update_gain(intrinsic_plasticity_state_t* state,
 
     /* Update gain */
     state->gain += delta_gain;
-    state->gain = clamp_f(state->gain, params->min_gain, params->max_gain);
+    state->gain = nimcp_clampf(state->gain, params->min_gain, params->max_gain);
 
     /* Update average input */
     float input_decay = decay_factor(dt, 1000.0F);
@@ -520,7 +509,7 @@ metaplasticity_state_t metaplasticity_state_init(float initial_theta) {
      * WHY:  Factory method ensures valid initial state
      */
     metaplasticity_state_t state = {
-        .theta = clamp_f(initial_theta, 0.01F, 1.0F),
+        .theta = nimcp_clampf(initial_theta, 0.01F, 1.0F),
         .activity_squared_avg = initial_theta,
         .activity_avg = sqrtf(initial_theta),
         .plasticity_rate = 1.0F
@@ -554,7 +543,7 @@ void metaplasticity_update_theta(metaplasticity_state_t* state,
 
     /* Update theta toward activity average */
     state->theta = state->activity_squared_avg;
-    state->theta = clamp_f(state->theta, params->min_theta, params->max_theta);
+    state->theta = nimcp_clampf(state->theta, params->min_theta, params->max_theta);
 
     /* Update activity average */
     float act_decay = decay_factor(dt, params->activity_tau);
@@ -770,7 +759,7 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
             /* Compute scaling factor with modulated target */
             float base_factor = safe_divide(modulated_target, ss->average_rate);
             float factor = powf(base_factor, controller->config.scaling_params.scaling_exponent);
-            factor = clamp_f(factor, controller->config.scaling_params.min_scaling_factor,
+            factor = nimcp_clampf(factor, controller->config.scaling_params.min_scaling_factor,
                            controller->config.scaling_params.max_scaling_factor);
 
             /* Apply sleep state modulation (Tononi's SHY) */

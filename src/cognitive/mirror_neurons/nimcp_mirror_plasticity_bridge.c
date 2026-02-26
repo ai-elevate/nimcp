@@ -27,6 +27,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -87,14 +88,6 @@ struct mirror_plasticity_bridge {
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(mirror_plasticity_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
 
 static uint64_t get_time_us(void) {
     return nimcp_time_get_us();
@@ -159,7 +152,7 @@ static void on_ltp_event(const plasticity_event_t* event, void* user_data) {
     mirror_plasticity_synapse_t* s = find_synapse(bridge, event->synapse_id);
     if (s) {
         float old_weight = s->weight;
-        s->weight = clamp_f(s->weight + event->delta,
+        s->weight = nimcp_clampf(s->weight + event->delta,
                            bridge->config.weight_min, bridge->config.weight_max);
         s->ltp_count++;
         s->total_weight_change += event->delta;
@@ -183,7 +176,7 @@ static void on_ltd_event(const plasticity_event_t* event, void* user_data) {
     mirror_plasticity_synapse_t* s = find_synapse(bridge, event->synapse_id);
     if (s) {
         float old_weight = s->weight;
-        s->weight = clamp_f(s->weight + event->delta,
+        s->weight = nimcp_clampf(s->weight + event->delta,
                            bridge->config.weight_min, bridge->config.weight_max);
         s->ltd_count++;
         s->total_weight_change += event->delta;
@@ -233,7 +226,7 @@ static void on_homeostatic_event(const plasticity_event_t* event, void* user_dat
 
         float old_w = bridge->synapses[i].weight;
         bridge->synapses[i].weight *= event->delta;
-        bridge->synapses[i].weight = clamp_f(bridge->synapses[i].weight,
+        bridge->synapses[i].weight = nimcp_clampf(bridge->synapses[i].weight,
             bridge->config.weight_min, bridge->config.weight_max);
 
         if (bridge->weight_callback) {
@@ -641,7 +634,7 @@ static float pre_spike_unlocked(
         dw = compute_stdp(bridge, -delta_t_ms, s->weight);
         if (fabsf(dw) > 1e-8f) {
             float old_w = s->weight;
-            s->weight = clamp_f(s->weight + dw, bridge->config.weight_min,
+            s->weight = nimcp_clampf(s->weight + dw, bridge->config.weight_min,
                                bridge->config.weight_max);
             s->ltd_count++;
             s->total_weight_change += dw;
@@ -697,7 +690,7 @@ static float post_spike_unlocked(
         dw = compute_stdp(bridge, delta_t_ms, s->weight);
         if (fabsf(dw) > 1e-8f) {
             float old_w = s->weight;
-            s->weight = clamp_f(s->weight + dw, bridge->config.weight_min,
+            s->weight = nimcp_clampf(s->weight + dw, bridge->config.weight_min,
                                bridge->config.weight_max);
             s->ltp_count++;
             s->total_weight_change += dw;
@@ -881,7 +874,7 @@ int mirror_plasticity_reward(
         if (s->eligibility_trace > 0.01f) {
             float dw = scaled_reward * s->eligibility_trace * bridge->current_lr_modulation;
             float old_w = s->weight;
-            s->weight = clamp_f(s->weight + dw, bridge->config.weight_min,
+            s->weight = nimcp_clampf(s->weight + dw, bridge->config.weight_min,
                                bridge->config.weight_max);
             s->total_weight_change += dw;
             updated++;
@@ -936,7 +929,7 @@ int mirror_plasticity_reward_action(
             mirror_plasticity_synapse_t* s = &bridge->synapses[i];
             if (s->eligibility_trace > 0.01f) {
                 float dw = scaled_reward * s->eligibility_trace;
-                s->weight = clamp_f(s->weight + dw, bridge->config.weight_min,
+                s->weight = nimcp_clampf(s->weight + dw, bridge->config.weight_min,
                                    bridge->config.weight_max);
                 updated++;
             }

@@ -32,6 +32,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mental_health_monitor, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -75,15 +76,6 @@ struct mental_health_monitor {
 //=============================================================================
 
 /**
- * @brief Safely clamp float to [0.0, 1.0]
- */
-static inline float clamp_01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
  * @brief Safely increment counter
  */
 static inline void safe_increment(uint32_t* counter) {
@@ -125,7 +117,7 @@ static float detect_sociopathy(const behavioral_markers_t* m) {
         score += fminf(1.0f, (float)m->empathy_failures / 50.0f) * 0.3f;
     }
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -162,7 +154,7 @@ static float detect_psychopathy(const behavioral_markers_t* m) {
         score += antisocial * 0.25f;
     }
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -198,7 +190,7 @@ static float detect_mania(const behavioral_markers_t* m) {
     // High-risk behavior (20% weight)
     score += m->high_risk_decisions * 0.2f;
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -246,7 +238,7 @@ static float detect_depression(const behavioral_markers_t* m) {
         score += (0.6f - m->decision_accuracy) / 0.6f * 0.1f;
     }
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -279,7 +271,7 @@ static float detect_schizophrenia(const behavioral_markers_t* m) {
     // Social withdrawal (10% weight)
     score += m->social_interaction_deficit * 0.1f;
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -323,7 +315,7 @@ static float detect_anxiety(const behavioral_markers_t* m) {
     // Low risk tolerance (10% weight)
     score += (1.0f - m->high_risk_decisions) * 0.1f;
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -360,7 +352,7 @@ static float detect_ocd(const behavioral_markers_t* m) {
         score += (m->norepinephrine_avg - 0.6f) / 0.4f * 0.1f;
     }
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -395,7 +387,7 @@ static float detect_autism(const behavioral_markers_t* m) {
         score += (m->emotional_volatility - 0.7f) / 0.3f * 0.05f;
     }
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -441,7 +433,7 @@ static float detect_aspergers(const behavioral_markers_t* m) {
     // Apply functioning multiplier
     score *= functioning_multiplier;
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 /**
@@ -485,7 +477,7 @@ static float detect_malignant_narcissism(const behavioral_markers_t* m) {
     // Grandiosity through high-risk decisions (10% weight)
     score += m->high_risk_decisions * 0.1f;
 
-    return clamp_01(score);
+    return nimcp_clamp01(score);
 }
 
 //=============================================================================

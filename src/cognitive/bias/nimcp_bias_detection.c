@@ -40,21 +40,12 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(bias_detection, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define BIO_MODULE_BIAS_DETECTION 0x0340
-
-//=============================================================================
-// HELPER FUNCTIONS
-//=============================================================================
-
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static inline float exponential_decay(float value, float rate, float dt) {
     return value * expf(-rate * dt);
@@ -352,7 +343,7 @@ void bias_activate_stereotype(bias_detection_system_t* system,
 
     implicit_bias_t* bias = &system->implicit_biases[index];
     bias->stereotype_activation += activation_strength;
-    bias->stereotype_activation = clamp(bias->stereotype_activation, 0.0F, 1.0F);
+    bias->stereotype_activation = nimcp_clampf(bias->stereotype_activation, 0.0F, 1.0F);
     bias->last_activation_time = current_time;
 }
 
@@ -396,9 +387,9 @@ void bias_register_explicit(bias_detection_system_t* system,
 
     explicit_bias_t* bias = &system->explicit_biases[index];
 
-    bias->prejudice_level = clamp(prejudice_level, 0.0F, 1.0F);
-    bias->discrimination_intent = clamp(discrimination_intent, 0.0F, 1.0F);
-    bias->bias_awareness = clamp(bias_awareness, 0.0F, 1.0F);
+    bias->prejudice_level = nimcp_clampf(prejudice_level, 0.0F, 1.0F);
+    bias->discrimination_intent = nimcp_clampf(discrimination_intent, 0.0F, 1.0F);
+    bias->bias_awareness = nimcp_clampf(bias_awareness, 0.0F, 1.0F);
 
     if (bias->prejudice_level > BIAS_EXPLICIT_THRESHOLD) {
         bias->explicit_prejudice_active = true;
@@ -447,9 +438,9 @@ void bias_record_decision(bias_detection_system_t* system,
     record->timestamp = current_time;
     record->target_group = *group;
     record->favorable_decision = favorable_decision;
-    record->confidence = clamp(confidence, 0.0F, 1.0F);
-    record->resource_allocated = clamp(resource_allocated, 0.0F, 1.0F);
-    record->objective_merit = clamp(objective_merit, 0.0F, 1.0F);
+    record->confidence = nimcp_clampf(confidence, 0.0F, 1.0F);
+    record->resource_allocated = nimcp_clampf(resource_allocated, 0.0F, 1.0F);
+    record->objective_merit = nimcp_clampf(objective_merit, 0.0F, 1.0F);
 
     system->decision_history_index++;
     system->total_decisions_analyzed++;
@@ -553,7 +544,7 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
 
     // Overall fairness score
     float fairness = 1.0F - (disparity->disparity_ratio + disparity->resource_disparity) / 2.0F;
-    disparity->fairness_score = clamp(fairness, 0.0F, 1.0F);
+    disparity->fairness_score = nimcp_clampf(fairness, 0.0F, 1.0F);
 
     return disparity;
 }
@@ -681,7 +672,7 @@ language_pattern_t bias_analyze_language(bias_detection_system_t* system,
     if (pattern.objectification) pattern.dehumanization_score += 0.3F;
     if (pattern.incel_ideology) pattern.dehumanization_score += 0.4F;
 
-    pattern.dehumanization_score = clamp(pattern.dehumanization_score, 0.0F, 1.0F);
+    pattern.dehumanization_score = nimcp_clampf(pattern.dehumanization_score, 0.0F, 1.0F);
 
     return pattern;
 }
@@ -776,9 +767,9 @@ void bias_analyze_other(bias_detection_system_t* system,
     }
 
     // Calculate bias scores
-    other->detected_racial_bias = clamp((float)racial_markers / (float)history_size, 0.0F, 1.0F);
-    other->detected_gender_bias = clamp((float)gender_markers / (float)history_size, 0.0F, 1.0F);
-    other->detected_misogyny = clamp((float)misogyny_markers / (float)history_size, 0.0F, 1.0F);
+    other->detected_racial_bias = nimcp_clampf((float)racial_markers / (float)history_size, 0.0F, 1.0F);
+    other->detected_gender_bias = nimcp_clampf((float)gender_markers / (float)history_size, 0.0F, 1.0F);
+    other->detected_misogyny = nimcp_clampf((float)misogyny_markers / (float)history_size, 0.0F, 1.0F);
 
     // Set flags
     other->overt_bigotry = overt;
@@ -960,12 +951,12 @@ bool bias_apply_intervention(bias_detection_system_t* system,
     }
 
     // Clamp values
-    implicit->positive_association = clamp(implicit->positive_association, 0.0F, 1.0F);
-    implicit->negative_association = clamp(implicit->negative_association, 0.0F, 1.0F);
-    implicit->warmth_association = clamp(implicit->warmth_association, 0.0F, 1.0F);
-    implicit->stereotype_activation = clamp(implicit->stereotype_activation, 0.0F, 1.0F);
+    implicit->positive_association = nimcp_clampf(implicit->positive_association, 0.0F, 1.0F);
+    implicit->negative_association = nimcp_clampf(implicit->negative_association, 0.0F, 1.0F);
+    implicit->warmth_association = nimcp_clampf(implicit->warmth_association, 0.0F, 1.0F);
+    implicit->stereotype_activation = nimcp_clampf(implicit->stereotype_activation, 0.0F, 1.0F);
 
-    system->self_awareness = clamp(system->self_awareness, 0.0F, 1.0F);
+    system->self_awareness = nimcp_clampf(system->self_awareness, 0.0F, 1.0F);
 
     if (success) {
         system->successful_debias++;

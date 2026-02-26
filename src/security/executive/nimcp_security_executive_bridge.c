@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_executive_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -44,15 +45,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(security_executive_bridge, MESH_ADAPTER_CATEGORY_SE
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current timestamp in milliseconds
@@ -890,7 +882,7 @@ int security_executive_apply_security_effects(
      * - Signal rate limiting state
      */
 
-    float sensitivity = clamp_float(bridge->config.security_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.security_sensitivity, 0.5f, 2.0f);
 
     /* Scale effects by sensitivity */
     bridge->security_effects.resource_utilization *= sensitivity;
@@ -920,7 +912,7 @@ int security_executive_apply_executive_effects(
     /* Update active task count in effects */
     bridge->executive_effects.active_task_count = bridge->state.active_tasks;
 
-    float sensitivity = clamp_float(bridge->config.executive_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.executive_sensitivity, 0.5f, 2.0f);
     (void)sensitivity;  /* Used for scaling in full implementation */
 
     BRIDGE_UNLOCK(bridge);

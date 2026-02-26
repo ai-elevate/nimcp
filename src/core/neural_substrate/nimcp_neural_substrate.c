@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neural_substrate)
 
@@ -45,15 +46,6 @@ static float compute_imagination_capacity_modifier(const neural_substrate_t* sub
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute Q10 temperature effect
@@ -94,7 +86,7 @@ static void update_physical_capacity(substrate_physical_state_t* physical) {
     } else if (physical->temperature > SUBSTRATE_HYPERTHERMIA_THRESHOLD) {
         temp_factor = 1.0f - (physical->temperature - SUBSTRATE_HYPERTHERMIA_THRESHOLD) / 5.0f;
     }
-    temp_factor = clamp_f(temp_factor, 0.1f, 1.0f);
+    temp_factor = nimcp_clampf(temp_factor, 0.1f, 1.0f);
 
     /* Weighted average including temperature */
     physical->physical_capacity =
@@ -117,41 +109,41 @@ static void compute_modulation(neural_substrate_t* substrate) {
     float temp_q10_firing = compute_q10_factor(temp, SUBSTRATE_Q10_FIRING,
                                                 SUBSTRATE_NORMAL_TEMPERATURE);
     substrate->modulation.firing_rate_mod =
-        metabolic * physical * clamp_f(temp_q10_firing, 0.5f, 1.5f);
+        metabolic * physical * nimcp_clampf(temp_q10_firing, 0.5f, 1.5f);
 
     /* Transmission efficiency */
     float temp_q10_trans = compute_q10_factor(temp, SUBSTRATE_Q10_TRANSMISSION,
                                                SUBSTRATE_NORMAL_TEMPERATURE);
     substrate->modulation.transmission_efficiency =
         metabolic * substrate->physical.membrane_integrity *
-        clamp_f(temp_q10_trans, 0.5f, 1.2f);
+        nimcp_clampf(temp_q10_trans, 0.5f, 1.2f);
 
     /* Conduction velocity */
     float temp_q10_cond = compute_q10_factor(temp, SUBSTRATE_Q10_CONDUCTION,
                                               SUBSTRATE_NORMAL_TEMPERATURE);
     substrate->modulation.conduction_velocity =
-        physical * clamp_f(temp_q10_cond, 0.6f, 1.4f);
+        physical * nimcp_clampf(temp_q10_cond, 0.6f, 1.4f);
 
     /* Plasticity capacity */
     float temp_q10_plast = compute_q10_factor(temp, SUBSTRATE_Q10_PLASTICITY,
                                                SUBSTRATE_NORMAL_TEMPERATURE);
     substrate->modulation.plasticity_capacity =
-        metabolic * physical * clamp_f(temp_q10_plast, 0.5f, 1.3f);
+        metabolic * physical * nimcp_clampf(temp_q10_plast, 0.5f, 1.3f);
 
     /* Overall capacity */
     substrate->modulation.overall_capacity = (metabolic + physical) / 2.0f;
 
     /* Clamp all values */
     substrate->modulation.firing_rate_mod =
-        clamp_f(substrate->modulation.firing_rate_mod, 0.0f, 1.5f);
+        nimcp_clampf(substrate->modulation.firing_rate_mod, 0.0f, 1.5f);
     substrate->modulation.transmission_efficiency =
-        clamp_f(substrate->modulation.transmission_efficiency, 0.0f, 1.0f);
+        nimcp_clampf(substrate->modulation.transmission_efficiency, 0.0f, 1.0f);
     substrate->modulation.conduction_velocity =
-        clamp_f(substrate->modulation.conduction_velocity, 0.5f, 1.5f);
+        nimcp_clampf(substrate->modulation.conduction_velocity, 0.5f, 1.5f);
     substrate->modulation.plasticity_capacity =
-        clamp_f(substrate->modulation.plasticity_capacity, 0.0f, 1.0f);
+        nimcp_clampf(substrate->modulation.plasticity_capacity, 0.0f, 1.0f);
     substrate->modulation.overall_capacity =
-        clamp_f(substrate->modulation.overall_capacity, 0.0f, 1.0f);
+        nimcp_clampf(substrate->modulation.overall_capacity, 0.0f, 1.0f);
 }
 
 /**
@@ -370,7 +362,7 @@ int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
 
         /* Clamp */
         substrate->metabolic.atp_level =
-            clamp_f(substrate->metabolic.atp_level, 0.0f, 1.0f);
+            nimcp_clampf(substrate->metabolic.atp_level, 0.0f, 1.0f);
 
         /* Slow glucose/O2 recovery toward normal */
         substrate->metabolic.glucose_level +=
@@ -389,7 +381,7 @@ int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
         substrate->physical.ion_balance +=
             (SUBSTRATE_NORMAL_ION_BALANCE - substrate->physical.ion_balance) * ion_recovery;
         substrate->physical.ion_balance =
-            clamp_f(substrate->physical.ion_balance, 0.0f, 1.0f);
+            nimcp_clampf(substrate->physical.ion_balance, 0.0f, 1.0f);
 
         /* Update pump activity based on ATP */
         substrate->physical.na_k_pump_activity = substrate->metabolic.atp_level * 0.95f;
@@ -400,7 +392,7 @@ int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
     substrate->physical.membrane_integrity +=
         (SUBSTRATE_NORMAL_MEMBRANE - substrate->physical.membrane_integrity) * membrane_repair;
     substrate->physical.membrane_integrity =
-        clamp_f(substrate->physical.membrane_integrity, 0.0f, 1.0f);
+        nimcp_clampf(substrate->physical.membrane_integrity, 0.0f, 1.0f);
 
     /* Temperature drift toward normal */
     if (substrate->config.enable_temperature_effects) {
@@ -468,7 +460,7 @@ int substrate_record_spikes(neural_substrate_t* substrate, uint32_t neuron_count
 
     float cost = substrate->config.cost_per_spike * neuron_count;
     substrate->metabolic.atp_level -= cost;
-    substrate->metabolic.atp_level = clamp_f(substrate->metabolic.atp_level, 0.0f, 1.0f);
+    substrate->metabolic.atp_level = nimcp_clampf(substrate->metabolic.atp_level, 0.0f, 1.0f);
 
     substrate->stats.spikes_processed += neuron_count;
     substrate->stats.total_atp_consumed += cost;
@@ -498,7 +490,7 @@ int substrate_record_transmissions(neural_substrate_t* substrate, uint32_t trans
 
     float cost = substrate->config.cost_per_transmission * transmission_count;
     substrate->metabolic.atp_level -= cost;
-    substrate->metabolic.atp_level = clamp_f(substrate->metabolic.atp_level, 0.0f, 1.0f);
+    substrate->metabolic.atp_level = nimcp_clampf(substrate->metabolic.atp_level, 0.0f, 1.0f);
 
     substrate->stats.transmissions_processed += transmission_count;
     substrate->stats.total_atp_consumed += cost;
@@ -521,7 +513,7 @@ int substrate_set_atp(neural_substrate_t* substrate, float atp_level) {
     }
 
     nimcp_platform_mutex_lock(substrate->mutex);
-    substrate->metabolic.atp_level = clamp_f(atp_level, 0.0f, 1.0f);
+    substrate->metabolic.atp_level = nimcp_clampf(atp_level, 0.0f, 1.0f);
     update_metabolic_capacity(&substrate->metabolic);
     compute_modulation(substrate);
     nimcp_platform_mutex_unlock(substrate->mutex);
@@ -536,7 +528,7 @@ int substrate_set_oxygen(neural_substrate_t* substrate, float o2_sat) {
     }
 
     nimcp_platform_mutex_lock(substrate->mutex);
-    substrate->metabolic.oxygen_saturation = clamp_f(o2_sat, 0.0f, 1.0f);
+    substrate->metabolic.oxygen_saturation = nimcp_clampf(o2_sat, 0.0f, 1.0f);
     update_metabolic_capacity(&substrate->metabolic);
     compute_modulation(substrate);
     nimcp_platform_mutex_unlock(substrate->mutex);
@@ -551,7 +543,7 @@ int substrate_set_glucose(neural_substrate_t* substrate, float glucose) {
     }
 
     nimcp_platform_mutex_lock(substrate->mutex);
-    substrate->metabolic.glucose_level = clamp_f(glucose, 0.0f, 1.0f);
+    substrate->metabolic.glucose_level = nimcp_clampf(glucose, 0.0f, 1.0f);
     update_metabolic_capacity(&substrate->metabolic);
     compute_modulation(substrate);
     nimcp_platform_mutex_unlock(substrate->mutex);
@@ -566,7 +558,7 @@ int substrate_set_temperature(neural_substrate_t* substrate, float temperature) 
     }
 
     nimcp_platform_mutex_lock(substrate->mutex);
-    substrate->physical.temperature = clamp_f(temperature, 20.0f, 45.0f);
+    substrate->physical.temperature = nimcp_clampf(temperature, 20.0f, 45.0f);
     update_physical_capacity(&substrate->physical);
     compute_modulation(substrate);
     nimcp_platform_mutex_unlock(substrate->mutex);
@@ -581,7 +573,7 @@ int substrate_set_membrane_integrity(neural_substrate_t* substrate, float integr
     }
 
     nimcp_platform_mutex_lock(substrate->mutex);
-    substrate->physical.membrane_integrity = clamp_f(integrity, 0.0f, 1.0f);
+    substrate->physical.membrane_integrity = nimcp_clampf(integrity, 0.0f, 1.0f);
     update_physical_capacity(&substrate->physical);
     compute_modulation(substrate);
     nimcp_platform_mutex_unlock(substrate->mutex);
@@ -596,7 +588,7 @@ int substrate_set_ion_balance(neural_substrate_t* substrate, float balance) {
     }
 
     nimcp_platform_mutex_lock(substrate->mutex);
-    substrate->physical.ion_balance = clamp_f(balance, 0.0f, 1.0f);
+    substrate->physical.ion_balance = nimcp_clampf(balance, 0.0f, 1.0f);
     update_physical_capacity(&substrate->physical);
     compute_modulation(substrate);
     nimcp_platform_mutex_unlock(substrate->mutex);
@@ -799,7 +791,7 @@ static float compute_imagination_capacity_modifier(const neural_substrate_t* sub
      */
     float capacity_mod = atp * (1.0f - fatigue * 0.5f);
 
-    return clamp_f(capacity_mod, 0.1f, 1.0f);
+    return nimcp_clampf(capacity_mod, 0.1f, 1.0f);
 }
 
 int neural_substrate_send_imagination_capacity(neural_substrate_t* substrate) {

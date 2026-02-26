@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -80,16 +81,16 @@ static void compute_v1_effects(occipital_substrate_bridge_t* bridge,
     /* V1 contrast sensitivity: Highest ATP dependency */
     float atp_factor = atp * atp_sens * v1_atp_w;
     float fatigue_factor = (1.0f - fatigue * fatigue_sens * v1_fat_w);
-    bridge->effects.v1_contrast_sensitivity = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v1_contrast_sensitivity = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
 
     /* V1 orientation selectivity: Slightly less ATP dependent */
     atp_factor = atp * atp_sens * (v1_atp_w * 0.9f);
-    bridge->effects.v1_orientation_selectivity = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v1_orientation_selectivity = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
 
     /* V1 spatial frequency: Affected by both, moderate sensitivity */
     atp_factor = atp * atp_sens * (v1_atp_w * 0.85f);
     fatigue_factor = (1.0f - fatigue * fatigue_sens * (v1_fat_w * 0.9f));
-    bridge->effects.v1_spatial_frequency = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v1_spatial_frequency = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
 }
 
 /**
@@ -109,9 +110,9 @@ static void compute_v2_effects(occipital_substrate_bridge_t* bridge,
     float atp_factor = atp * atp_sens * v2_atp_w;
     float fatigue_factor = (1.0f - fatigue * fatigue_sens * v2_fat_w);
 
-    bridge->effects.v2_contour_integration = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
-    bridge->effects.v2_texture_processing = nimcp_clamp_f(atp_factor * fatigue_factor * 0.95f, min_cap, 1.0f);
-    bridge->effects.v2_figure_ground = nimcp_clamp_f(atp_factor * fatigue_factor * 0.9f, min_cap, 1.0f);
+    bridge->effects.v2_contour_integration = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v2_texture_processing = nimcp_clampf(atp_factor * fatigue_factor * 0.95f, min_cap, 1.0f);
+    bridge->effects.v2_figure_ground = nimcp_clampf(atp_factor * fatigue_factor * 0.9f, min_cap, 1.0f);
 }
 
 /**
@@ -131,7 +132,7 @@ static void compute_v3_effects(occipital_substrate_bridge_t* bridge,
     float atp_factor = atp * atp_sens * v3_atp_w;
     float fatigue_factor = (1.0f - fatigue * fatigue_sens * v3_fat_w);
 
-    bridge->effects.v3_dynamic_form = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v3_dynamic_form = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
 }
 
 /**
@@ -152,13 +153,13 @@ static void compute_v4_effects(occipital_substrate_bridge_t* bridge,
 
     /* Color constancy is particularly fatigue-sensitive */
     float color_fatigue = (1.0f - fatigue * fatigue_sens * v4_fat_w * 1.2f);
-    bridge->effects.v4_color_constancy = nimcp_clamp_f(atp_factor * color_fatigue, min_cap, 1.0f);
+    bridge->effects.v4_color_constancy = nimcp_clampf(atp_factor * color_fatigue, min_cap, 1.0f);
 
-    bridge->effects.v4_complex_form = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v4_complex_form = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
 
     /* Object recognition uses ventral stream fatigue weight */
     float obj_fatigue = (1.0f - fatigue * fatigue_sens * ventral_fat_w);
-    bridge->effects.v4_object_recognition = nimcp_clamp_f(atp_factor * obj_fatigue, min_cap, 1.0f);
+    bridge->effects.v4_object_recognition = nimcp_clampf(atp_factor * obj_fatigue, min_cap, 1.0f);
 }
 
 /**
@@ -177,18 +178,18 @@ static void compute_v5_effects(occipital_substrate_bridge_t* bridge,
     float atp_factor = atp * atp_sens * v5_atp_w;
     float fatigue_factor = (1.0f - fatigue * fatigue_sens * v5_fat_w);
 
-    bridge->effects.v5_motion_direction = nimcp_clamp_f(atp_factor * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v5_motion_direction = nimcp_clampf(atp_factor * fatigue_factor, min_cap, 1.0f);
 
     /* Optic flow integration uses dorsal stream weight */
     float optic_atp = atp * atp_sens * dorsal_atp_w;
-    bridge->effects.v5_optic_flow = nimcp_clamp_f(optic_atp * fatigue_factor, min_cap, 1.0f);
+    bridge->effects.v5_optic_flow = nimcp_clampf(optic_atp * fatigue_factor, min_cap, 1.0f);
 
     /* Speed tuning is slightly less sensitive */
-    bridge->effects.v5_speed_tuning = nimcp_clamp_f(atp_factor * fatigue_factor * 0.95f, min_cap, 1.0f);
+    bridge->effects.v5_speed_tuning = nimcp_clampf(atp_factor * fatigue_factor * 0.95f, min_cap, 1.0f);
 
     /* Motion coherence is most fatigue-sensitive in V5 */
     float coherence_fatigue = (1.0f - fatigue * fatigue_sens * v5_fat_w * 1.3f);
-    bridge->effects.v5_motion_coherence = nimcp_clamp_f(atp_factor * coherence_fatigue, min_cap, 1.0f);
+    bridge->effects.v5_motion_coherence = nimcp_clampf(atp_factor * coherence_fatigue, min_cap, 1.0f);
 }
 
 /**
@@ -211,17 +212,17 @@ static void compute_layer_effects(occipital_substrate_bridge_t* bridge,
     /* Layer 4: Highest ATP dependency (receives thalamic input) */
     float layer4_atp = atp * atp_sens * 1.3f;
     float layer4_fatigue = (1.0f - fatigue * fatigue_sens * 0.7f);
-    bridge->effects.layer_4_gain = nimcp_clamp_f(layer4_atp * layer4_fatigue, min_cap, 1.0f);
+    bridge->effects.layer_4_gain = nimcp_clampf(layer4_atp * layer4_fatigue, min_cap, 1.0f);
 
     /* Layers 2/3: Lateral processing, moderate ATP, higher fatigue sensitivity */
     float layer23_atp = atp * atp_sens * 1.0f;
     float layer23_fatigue = (1.0f - fatigue * fatigue_sens * 1.2f);
-    bridge->effects.layer_23_gain = nimcp_clamp_f(layer23_atp * layer23_fatigue, min_cap, 1.0f);
+    bridge->effects.layer_23_gain = nimcp_clampf(layer23_atp * layer23_fatigue, min_cap, 1.0f);
 
     /* Layers 5/6: Output and feedback, lower ATP dependency */
     float layer56_atp = atp * atp_sens * 0.9f;
     float layer56_fatigue = (1.0f - fatigue * fatigue_sens * 1.0f);
-    bridge->effects.layer_56_gain = nimcp_clamp_f(layer56_atp * layer56_fatigue, min_cap, 1.0f);
+    bridge->effects.layer_56_gain = nimcp_clampf(layer56_atp * layer56_fatigue, min_cap, 1.0f);
 }
 
 /**
@@ -236,12 +237,12 @@ static void compute_global_effects(occipital_substrate_bridge_t* bridge,
     /* Attention capacity: Affected by both ATP and fatigue */
     float attention_atp = atp * atp_sens * 1.0f;
     float attention_fatigue = (1.0f - fatigue * fatigue_sens * 1.1f);
-    bridge->effects.attention_capacity = nimcp_clamp_f(attention_atp * attention_fatigue, min_cap, 1.0f);
+    bridge->effects.attention_capacity = nimcp_clampf(attention_atp * attention_fatigue, min_cap, 1.0f);
 
     /* Processing speed: More affected by fatigue than ATP */
     float speed_atp = atp * atp_sens * 0.8f;
     float speed_fatigue = (1.0f - fatigue * fatigue_sens * 1.4f);
-    bridge->effects.processing_speed = nimcp_clamp_f(speed_atp * speed_fatigue * 0.9f + 0.1f, min_cap, 1.0f);
+    bridge->effects.processing_speed = nimcp_clampf(speed_atp * speed_fatigue * 0.9f + 0.1f, min_cap, 1.0f);
 
     /* Overall capacity: Weighted average of all areas */
     float v1_avg = (bridge->effects.v1_contrast_sensitivity +

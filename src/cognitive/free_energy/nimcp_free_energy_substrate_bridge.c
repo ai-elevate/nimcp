@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(free_energy_substrate_bridge)
 //=============================================================================
@@ -165,16 +166,16 @@ int free_energy_substrate_bridge_update(free_energy_substrate_bridge_t* bridge) 
 
     if (bridge->config.enable_atp_modulation) {
         /* Precision weighting requires stable neural resources */
-        bridge->effects.precision_weighting = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.precision_weighting = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Active inference is computationally demanding */
-        bridge->effects.active_inference = nimcp_clamp_f(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.active_inference = nimcp_clampf(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Prediction depth decreases with fatigue */
-        bridge->effects.prediction_depth = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.prediction_depth = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Model complexity simplifies under metabolic stress */
-        bridge->effects.model_complexity = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.model_complexity = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.precision_weighting +

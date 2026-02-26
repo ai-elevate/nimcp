@@ -12,19 +12,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(reward_prediction_error, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Internal Helpers
- *===========================================================================*/
-
-static float clampf(float x, float lo, float hi) {
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
 
 /*=============================================================================
  * Lifecycle API
@@ -155,7 +145,7 @@ int nimcp_rpe_compute(
     }
 
     /* Map to DA response */
-    result->da_response = clampf(rpe, -1.0f, 1.0f);
+    result->da_response = nimcp_clampf(rpe, -1.0f, 1.0f);
 
     /* Update system state */
     system->current_rpe = rpe;
@@ -413,7 +403,7 @@ int nimcp_rpe_update_cue_learning(
         if (cue->eligibility > 0.001f) {
             float error = actual_reward - cue->predictive_value;
             cue->predictive_value += alpha * error * cue->eligibility;
-            cue->predictive_value = clampf(cue->predictive_value, -10.0f, 10.0f);
+            cue->predictive_value = nimcp_clampf(cue->predictive_value, -10.0f, 10.0f);
         }
     }
 

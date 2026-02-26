@@ -21,6 +21,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lgss_autonomic_gate, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -91,15 +92,6 @@ static bool validate_hormone(autonomic_hormone_t hormone) {
  */
 static bool validate_vital(autonomic_vital_t vital) {
     return vital >= 0 && vital < VITAL_COUNT;
-}
-
-/**
- * @brief Clamp a value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -419,7 +411,7 @@ autonomic_release_result_t autonomic_gate_release_hormone(
     }
 
     /* Clamp to limits */
-    float clamped_level = clamp_float(new_level, limits->min_level, limits->max_level);
+    float clamped_level = nimcp_clampf(new_level, limits->min_level, limits->max_level);
     if (clamped_level != new_level) {
         actual_amount = clamped_level - current_level;
         if (result == AUTONOMIC_RELEASE_SUCCESS) {
@@ -682,7 +674,7 @@ nimcp_result_t autonomic_gate_trigger_homeostasis(autonomic_gate_t* gate) {
             }
 
             float old_level = current;
-            float new_level = clamp_float(current + correction,
+            float new_level = nimcp_clampf(current + correction,
                                           limits->min_level, limits->max_level);
 
             gate->hormone_levels[i] = new_level;

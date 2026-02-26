@@ -25,6 +25,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(working_memory_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -389,7 +390,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
         capacity_factor = 1.0f - (1.0f - capacity_factor) * bridge->config.atp_sensitivity;
 
         /* Clamp to valid range */
-        bridge->effects.capacity_factor = nimcp_clamp_f(capacity_factor, 0.0f, 1.0f);
+        bridge->effects.capacity_factor = nimcp_clampf(capacity_factor, 0.0f, 1.0f);
     } else {
         bridge->effects.capacity_factor = 1.0f;
     }
@@ -416,7 +417,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
         float decay_mod = 1.0f + (temp_factor - 1.0f) * bridge->config.temperature_sensitivity;
 
         /* Clamp to reasonable range [0.5 - 2.0] */
-        bridge->effects.decay_rate_mod = nimcp_clamp_f(decay_mod, 0.5f, 2.0f);
+        bridge->effects.decay_rate_mod = nimcp_clampf(decay_mod, 0.5f, 2.0f);
     } else {
         bridge->effects.decay_rate_mod = 1.0f;
     }
@@ -431,7 +432,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
      * ======================================================================== */
     if (bridge->config.enable_refresh_modulation) {
         /* ATP directly affects refresh efficiency */
-        bridge->effects.refresh_efficiency = nimcp_clamp_f(
+        bridge->effects.refresh_efficiency = nimcp_clampf(
             metabolic.atp_level,
             0.2f,  /* Minimum refresh efficiency */
             1.0f   /* Maximum refresh efficiency */
@@ -452,7 +453,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
     bridge->effects.encoding_strength = (
         metabolic.metabolic_capacity + physical.physical_capacity
     ) / 2.0f;
-    bridge->effects.encoding_strength = nimcp_clamp_f(
+    bridge->effects.encoding_strength = nimcp_clampf(
         bridge->effects.encoding_strength,
         0.0f,
         1.0f

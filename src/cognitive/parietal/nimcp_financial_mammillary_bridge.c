@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_mammillary_health_agent = NULL;
@@ -211,16 +212,6 @@ static int mammillary_kg_publish(financial_mammillary_bridge_t* bridge,
         return 0;
     }
     return 0;
-}
-
-//=============================================================================
-// Utility Functions
-//=============================================================================
-
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
 }
 
 static float mammillary_randf(uint64_t* state) {
@@ -465,7 +456,7 @@ static float compute_trace_importance(const financial_mammillary_bridge_t* bridg
     if (health_mod < 0.3f) health_mod = 0.3f;
     importance *= health_mod;
 
-    return clampf(importance, 0.0f, 1.0f);
+    return nimcp_clampf(importance, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -809,9 +800,9 @@ int financial_mammillary_bridge_query_similar(
         }
 
         /* Memory strength bonus */
-        similarity *= (0.8f + 0.2f * clampf(t->consolidation_strength, 0.0f, 1.0f));
+        similarity *= (0.8f + 0.2f * nimcp_clampf(t->consolidation_strength, 0.0f, 1.0f));
 
-        scores[i].similarity = clampf(similarity, 0.0f, 1.0f);
+        scores[i].similarity = nimcp_clampf(similarity, 0.0f, 1.0f);
 
         /* Relevance = similarity * importance */
         scores[i].relevance = scores[i].similarity * t->importance;
@@ -916,7 +907,7 @@ int financial_mammillary_bridge_set_inflammation(financial_mammillary_bridge_t* 
             "financial_mammillary_bridge_set_inflammation: bridge is NULL");
         return FIN_MAMMILLARY_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_MAMMILLARY_ERR_OK;
 }
 
@@ -928,7 +919,7 @@ int financial_mammillary_bridge_set_fatigue(financial_mammillary_bridge_t* bridg
             "financial_mammillary_bridge_set_fatigue: bridge is NULL");
         return FIN_MAMMILLARY_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_MAMMILLARY_ERR_OK;
 }
 

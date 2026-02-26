@@ -39,6 +39,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(personality, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -166,24 +167,6 @@ static inline float random_gaussian(float mean, float stddev) {
 }
 
 /**
- * @brief Clamp float to [0, 1]
- *
- * WHAT: Constrain value to unit interval
- * WHY:  Trait values must be in [0, 1]
- * HOW:  Min/max clamping
- *
- * @param value Input value
- * @return Clamped value in [0, 1]
- *
- * COMPLEXITY: O(1)
- */
-static float clamp_01(float value) {
-    if (value < 0.0F) return 0.0F;
-    if (value > 1.0F) return 1.0F;
-    return value;
-}
-
-/**
  * @brief Sample gender identity randomly
  *
  * WHAT: Random gender based on probabilities
@@ -299,11 +282,11 @@ personality_profile_t personality_generate_random(
     float stddev = config ? config->trait_stddev : 0.15F;
 
     personality_traits_t traits;
-    traits.openness = clamp_01(random_gaussian(mean, stddev));
-    traits.conscientiousness = clamp_01(random_gaussian(mean, stddev));
-    traits.extraversion = clamp_01(random_gaussian(mean, stddev));
-    traits.agreeableness = clamp_01(random_gaussian(mean, stddev));
-    traits.neuroticism = clamp_01(random_gaussian(mean, stddev));
+    traits.openness = nimcp_clamp01(random_gaussian(mean, stddev));
+    traits.conscientiousness = nimcp_clamp01(random_gaussian(mean, stddev));
+    traits.extraversion = nimcp_clamp01(random_gaussian(mean, stddev));
+    traits.agreeableness = nimcp_clamp01(random_gaussian(mean, stddev));
+    traits.neuroticism = nimcp_clamp01(random_gaussian(mean, stddev));
 
     // Generate identity
     identity_profile_t identity;
@@ -312,8 +295,8 @@ personality_profile_t personality_generate_random(
     identity.gender = sample_gender(config);
     identity.sexuality = sample_sexuality();
 
-    identity.gender_certainty = clamp_01(random_gaussian(0.9F, 0.1F));
-    identity.sexuality_certainty = clamp_01(random_gaussian(0.8F, 0.15F));
+    identity.gender_certainty = nimcp_clamp01(random_gaussian(0.9F, 0.1F));
+    identity.sexuality_certainty = nimcp_clamp01(random_gaussian(0.8F, 0.15F));
 
     identity.gender_is_core_identity = (random_uniform() > 0.5F);
     identity.sexuality_is_core_identity = (random_uniform() > 0.3F);
@@ -356,18 +339,18 @@ personality_profile_t personality_create_custom(
     memset(&profile, 0, sizeof(personality_profile_t));
 
     // Copy and validate traits
-    profile.traits.openness = clamp_01(traits->openness);
-    profile.traits.conscientiousness = clamp_01(traits->conscientiousness);
-    profile.traits.extraversion = clamp_01(traits->extraversion);
-    profile.traits.agreeableness = clamp_01(traits->agreeableness);
-    profile.traits.neuroticism = clamp_01(traits->neuroticism);
+    profile.traits.openness = nimcp_clamp01(traits->openness);
+    profile.traits.conscientiousness = nimcp_clamp01(traits->conscientiousness);
+    profile.traits.extraversion = nimcp_clamp01(traits->extraversion);
+    profile.traits.agreeableness = nimcp_clamp01(traits->agreeableness);
+    profile.traits.neuroticism = nimcp_clamp01(traits->neuroticism);
 
     // Copy identity
     memcpy(&profile.identity, identity, sizeof(identity_profile_t));
 
     // Clamp certainties
-    profile.identity.gender_certainty = clamp_01(identity->gender_certainty);
-    profile.identity.sexuality_certainty = clamp_01(identity->sexuality_certainty);
+    profile.identity.gender_certainty = nimcp_clamp01(identity->gender_certainty);
+    profile.identity.sexuality_certainty = nimcp_clamp01(identity->sexuality_certainty);
 
     profile.created_timestamp_ms = nimcp_time_monotonic_ms();
     profile.seed = 0;

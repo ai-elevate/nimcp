@@ -35,6 +35,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_attention_bridge)
 //=============================================================================
@@ -144,15 +145,6 @@ static uint64_t get_timestamp_us(void) {
 }
 
 /**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * @brief Update running average
  */
 static void update_running_average(float* sum, uint32_t* count, float* avg, float new_value) {
@@ -207,7 +199,7 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
                 /* Parse prediction payload: [prediction, confidence, location] */
                 const float* data = (const float*)event->payload;
                 float prediction = data[0];
-                float confidence = clamp_float(data[1], 0.0f, 1.0f);
+                float confidence = nimcp_clampf(data[1], 0.0f, 1.0f);
                 uint64_t location = 0;
                 if (event->payload_size >= sizeof(float) * 2 + sizeof(uint64_t)) {
                     location = *(const uint64_t*)(data + 2);
@@ -234,7 +226,7 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
                 const uint64_t* ids = (const uint64_t*)event->payload;
                 uint64_t new_focus = ids[0];
                 uint64_t old_focus = ids[1];
-                float urgency = clamp_float((float)event->priority / 3.0f, 0.0f, 1.0f);
+                float urgency = nimcp_clampf((float)event->priority / 3.0f, 0.0f, 1.0f);
 
                 int result = callback(old_focus, new_focus, urgency, cb_data);
 
@@ -704,7 +696,7 @@ int predictive_attention_publish_prediction_error(
     nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Clamp error to valid range */
-    error = clamp_float(error, 0.0f, 1.0f);
+    error = nimcp_clampf(error, 0.0f, 1.0f);
 
     /* Create payload */
     struct {
@@ -778,7 +770,7 @@ int predictive_attention_request_attention_to_error(
 
     payload.focus_id = error_data->error_location;
     payload.old_focus = 0;  /* Unknown previous focus */
-    payload.urgency = clamp_float(error_data->error_magnitude, 0.0f, 1.0f);
+    payload.urgency = nimcp_clampf(error_data->error_magnitude, 0.0f, 1.0f);
     payload.timestamp = get_timestamp_us();
 
     /* Create event data */

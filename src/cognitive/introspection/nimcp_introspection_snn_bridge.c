@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(introspection_snn_bridge)
 //=============================================================================
@@ -118,16 +119,6 @@ struct introspection_snn_bridge {
     /* Phase 8: Instance-level health agent */
     nimcp_health_agent_t* health_agent;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -417,7 +408,7 @@ int introspection_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -518,8 +509,8 @@ int introspection_snn_encode_pattern(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[INTROSPECTION_DIM_COUNT] = {0};
-    dims[INTROSPECTION_DIM_PATTERN_MATCH] = clamp_f(pattern_strength, 0.0f, 1.0f);
-    dims[INTROSPECTION_DIM_ATTENTION_FOCUS] = clamp_f((float)pattern_count / 10.0f, 0.0f, 1.0f);
+    dims[INTROSPECTION_DIM_PATTERN_MATCH] = nimcp_clampf(pattern_strength, 0.0f, 1.0f);
+    dims[INTROSPECTION_DIM_ATTENTION_FOCUS] = nimcp_clampf((float)pattern_count / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -543,8 +534,8 @@ int introspection_snn_encode_error(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[INTROSPECTION_DIM_COUNT] = {0};
-    dims[INTROSPECTION_DIM_ERROR_SIGNAL] = clamp_f(error_magnitude, 0.0f, 1.0f);
-    dims[INTROSPECTION_DIM_CONFLICT] = clamp_f(error_magnitude * 0.5f, 0.0f, 1.0f);
+    dims[INTROSPECTION_DIM_ERROR_SIGNAL] = nimcp_clampf(error_magnitude, 0.0f, 1.0f);
+    dims[INTROSPECTION_DIM_CONFLICT] = nimcp_clampf(error_magnitude * 0.5f, 0.0f, 1.0f);
 
     bridge->error_signal = error_magnitude;
 
@@ -629,11 +620,11 @@ int introspection_snn_simulate(introspection_snn_bridge_t* bridge, float duratio
     }
 
     /* Decode outputs */
-    bridge->last_insight.certainty_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_insight.uncertainty_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_insight.confidence = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_insight.alertness = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_insight.metacognition_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_insight.certainty_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_insight.uncertainty_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_insight.confidence = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_insight.alertness = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_insight.metacognition_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check uncertainty threshold */
     if (bridge->last_insight.uncertainty_level > bridge->config.uncertainty_threshold) {

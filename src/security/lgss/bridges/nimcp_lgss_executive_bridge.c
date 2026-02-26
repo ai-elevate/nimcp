@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "constants/nimcp_timing_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(lgss_executive_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -43,15 +44,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(lgss_executive_bridge, MESH_ADAPTER_CATEGORY_SECURI
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current timestamp in microseconds
@@ -355,7 +347,7 @@ int executive_safety_propose_task(
     executive_safety_task_to_context(task, &context);
 
     /* Apply sensitivity scaling */
-    float sensitivity = clamp_float(bridge->config.safety_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.safety_sensitivity, 0.5f, 2.0f);
     context.p_harm *= sensitivity;
     if (context.p_harm > 1.0f) context.p_harm = 1.0f;
 
@@ -515,7 +507,7 @@ int executive_safety_propose_goal(
     executive_safety_goal_to_context(goal, &context);
 
     /* Apply sensitivity scaling */
-    float sensitivity = clamp_float(bridge->config.safety_sensitivity, 0.5f, 2.0f);
+    float sensitivity = nimcp_clampf(bridge->config.safety_sensitivity, 0.5f, 2.0f);
     context.p_harm *= sensitivity;
     if (context.p_harm > 1.0f) context.p_harm = 1.0f;
 

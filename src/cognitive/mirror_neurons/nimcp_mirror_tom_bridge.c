@@ -25,6 +25,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mirror_tom_bridge)
 //=============================================================================
@@ -160,15 +161,6 @@ static double simd_sum_sq(const float* v, uint32_t dim) {
  * ============================================================================ */
 
 /**
- * @brief Clamp float value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
  * @brief Hash agent ID to slot index
  */
 static uint32_t hash_agent_id(uint32_t agent_id) {
@@ -299,7 +291,7 @@ static float compute_modulation_from_mental_state(
         modulation *= 0.2f;
     }
 
-    return clamp_f(modulation, config->modulation_min, config->modulation_max);
+    return nimcp_clampf(modulation, config->modulation_min, config->modulation_max);
 }
 
 /**
@@ -575,7 +567,7 @@ int mirror_tom_infer_intention(mirror_tom_bridge_t bridge,
     /* Compute confidence based on consistency and action features magnitude */
     bool used_simd = false;
     float magnitude = (float)sqrt(simd_sum_sq(action_features, action_dim));
-    float confidence = clamp_f(magnitude * agent->intention_consistency, 0.0f, 1.0f);
+    float confidence = nimcp_clampf(magnitude * agent->intention_consistency, 0.0f, 1.0f);
 
     /* Track SIMD usage */
     if (action_dim >= MIRROR_TOM_SIMD_BATCH_THRESHOLD) {
@@ -630,7 +622,7 @@ int mirror_tom_trigger_empathy(mirror_tom_bridge_t bridge,
     float empathy_strength = intensity * agent->mental_state.trust_level *
                              (1.0f - agent->mental_state.social_distance * 0.5f);
 
-    bridge->mirror_effects.empathy_contribution = clamp_f(empathy_strength, 0.0f, 1.0f);
+    bridge->mirror_effects.empathy_contribution = nimcp_clampf(empathy_strength, 0.0f, 1.0f);
 
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-ToM: empathy triggered for agent %u, "
               "emotion=%s, intensity=%.2f, strength=%.2f",

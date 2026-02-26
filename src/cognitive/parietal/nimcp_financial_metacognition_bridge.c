@@ -38,6 +38,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_metacog)
 
@@ -115,16 +116,6 @@ struct financial_metacognition_bridge {
     /* Training state */
     bool training_active;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline float fabsf_safe(float v) {
     return v < 0.0f ? -v : v;
@@ -539,7 +530,7 @@ int financial_metacognition_bridge_record_outcome(
     /* Search for matching decision by timestamp */
     for (uint32_t i = 0; i < bridge->history_count; i++) {
         if (bridge->history[i].timestamp_ms == timestamp_ms) {
-            bridge->history[i].actual_outcome = clampf(actual_outcome, -1.0f, 1.0f);
+            bridge->history[i].actual_outcome = nimcp_clampf(actual_outcome, -1.0f, 1.0f);
             bridge->history[i].resolved = true;
             return FIN_METACOG_ERR_OK;
         }
@@ -633,7 +624,7 @@ static float detect_confirmation_bias(financial_metacognition_bridge_t* bridge) 
     float streak_factor = (float)max_streak / (float)window;
     float contradict_factor = (float)contradicting_outcomes / (float)window;
 
-    return clampf(streak_factor * 0.5f + contradict_factor * 0.5f, 0.0f, 1.0f);
+    return nimcp_clampf(streak_factor * 0.5f + contradict_factor * 0.5f, 0.0f, 1.0f);
 }
 
 /**
@@ -671,7 +662,7 @@ static float detect_anchoring_bias(financial_metacognition_bridge_t* bridge) {
         }
     }
 
-    return clampf((float)near_anchor / (float)(window - 1), 0.0f, 1.0f);
+    return nimcp_clampf((float)near_anchor / (float)(window - 1), 0.0f, 1.0f);
 }
 
 /**
@@ -723,7 +714,7 @@ static float detect_recency_bias(financial_metacognition_bridge_t* bridge) {
 
     /* Higher score if recent accuracy >> older accuracy */
     float diff = recent_rate - older_rate;
-    return clampf(diff + 0.5f, 0.0f, 1.0f);  /* Center around 0.5 */
+    return nimcp_clampf(diff + 0.5f, 0.0f, 1.0f);  /* Center around 0.5 */
 }
 
 /**
@@ -766,7 +757,7 @@ static float detect_overconfidence_bias(financial_metacognition_bridge_t* bridge
 
     /* Overconfidence: confidence >> accuracy */
     float diff = avg_confidence - avg_accuracy;
-    return clampf(diff + 0.5f, 0.0f, 1.0f);
+    return nimcp_clampf(diff + 0.5f, 0.0f, 1.0f);
 }
 
 /**
@@ -818,7 +809,7 @@ static float detect_loss_aversion(financial_metacognition_bridge_t* bridge) {
         (float)after_gain_aggressive / (float)after_gain_total : 0.5f;
 
     /* Higher score = more loss aversion */
-    return clampf((after_loss_rate - (1.0f - after_gain_rate)) * 0.5f + 0.5f, 0.0f, 1.0f);
+    return nimcp_clampf((after_loss_rate - (1.0f - after_gain_rate)) * 0.5f + 0.5f, 0.0f, 1.0f);
 }
 
 /**
@@ -855,7 +846,7 @@ static float detect_herding(financial_metacognition_bridge_t* bridge) {
                              positive_predictions : negative_predictions);
     float imbalance = max_side / (float)window;
 
-    return clampf((imbalance - 0.5f) * 2.0f, 0.0f, 1.0f);
+    return nimcp_clampf((imbalance - 0.5f) * 2.0f, 0.0f, 1.0f);
 }
 
 /**
@@ -910,7 +901,7 @@ static float detect_gambler_fallacy(financial_metacognition_bridge_t* bridge) {
 
     if (streak_situations == 0) return 0.0f;
 
-    return clampf((float)reversal_predictions / (float)streak_situations, 0.0f, 1.0f);
+    return nimcp_clampf((float)reversal_predictions / (float)streak_situations, 0.0f, 1.0f);
 }
 
 /**
@@ -965,7 +956,7 @@ static float detect_sunk_cost(financial_metacognition_bridge_t* bridge) {
 
     if (total_sequences == 0) return 0.0f;
 
-    return clampf((float)sunk_cost_patterns / (float)total_sequences, 0.0f, 1.0f);
+    return nimcp_clampf((float)sunk_cost_patterns / (float)total_sequences, 0.0f, 1.0f);
 }
 
 /**
@@ -1009,7 +1000,7 @@ static float detect_availability(financial_metacognition_bridge_t* bridge) {
 
     if (dramatic_count == 0) return 0.0f;
 
-    return clampf((float)follow_dramatic / (float)dramatic_count, 0.0f, 1.0f);
+    return nimcp_clampf((float)follow_dramatic / (float)dramatic_count, 0.0f, 1.0f);
 }
 
 /**
@@ -1055,7 +1046,7 @@ static float detect_hindsight(financial_metacognition_bridge_t* bridge) {
 
     /* Hindsight: confidence increases over time without accuracy improvement */
     float diff = late_avg - early_avg;
-    return clampf(diff + 0.5f, 0.0f, 1.0f);
+    return nimcp_clampf(diff + 0.5f, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -1528,12 +1519,12 @@ int financial_metacognition_bridge_assess(
         avg_bias_strength /= (float)assessment->bias_count;
     }
 
-    assessment->metacognitive_accuracy = clampf(
+    assessment->metacognitive_accuracy = nimcp_clampf(
         (assessment->confidence.calibration_score + (1.0f - avg_bias_strength)) / 2.0f,
         0.0f, 1.0f);
 
     /* Self-awareness score: higher if fewer biases and better calibration */
-    assessment->self_awareness_score = clampf(
+    assessment->self_awareness_score = nimcp_clampf(
         (1.0f - (float)assessment->bias_count / (float)FIN_BIAS_COUNT) *
         assessment->confidence.calibration_score,
         0.0f, 1.0f);

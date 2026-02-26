@@ -116,7 +116,7 @@ bool neuromodulator_set_level(neuromodulator_system_t system, neuromodulator_typ
      * WHY:  Biological constraint - concentrations cannot be negative
      *       and receptors saturate at high levels
      */
-    system->concentrations[type] = clamp(level, MIN_CONCENTRATION, MAX_CONCENTRATION);
+    system->concentrations[type] = nimcp_clampf(level, MIN_CONCENTRATION, MAX_CONCENTRATION);
 
     return true;
 }
@@ -164,7 +164,7 @@ float neuromodulator_get_learning_weight(neuromodulator_system_t system,
         0.2F * (1.0F - serotonin_effect) +    // Inhibition suppresses learning
         0.2F * ne_effect;                     // Arousal enhances consolidation
 
-    return clamp(weight, 0.0F, 1.0F);
+    return nimcp_clampf(weight, 0.0F, 1.0F);
 }
 
 
@@ -209,7 +209,7 @@ bool neuromodulator_get_stats(neuromodulator_system_t system, neuromodulator_sta
      */
     if (system->stats.rpe_count > 0) {
         float avg_rpe_error = system->stats.reward_prediction_error_sum / system->stats.rpe_count;
-        stats->reward_prediction_accuracy = 1.0F - clamp(avg_rpe_error, 0.0F, 1.0F);
+        stats->reward_prediction_accuracy = 1.0F - nimcp_clampf(avg_rpe_error, 0.0F, 1.0F);
     } else {
         stats->reward_prediction_accuracy = 0.5F;  // Unknown
     }

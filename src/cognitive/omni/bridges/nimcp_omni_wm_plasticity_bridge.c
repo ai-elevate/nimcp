@@ -48,6 +48,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wm_plasticity_bridge)
 //=============================================================================
@@ -185,44 +186,7 @@ static nimcp_error_t process_spike_sequences(omni_wm_plasticity_bridge_t* bridge
 static nimcp_error_t update_snn_prediction(omni_wm_plasticity_bridge_t* bridge);
 
 static uint64_t get_current_time_us(void);
-static float clamp_float(float value, float min_val, float max_val);
-
-/* Bio-async handlers */
-static nimcp_error_t handle_stdp_event(const void* msg, size_t msg_size,
-                                        nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_spike_seq(const void* msg, size_t msg_size,
-                                       nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_bcm_threshold(const void* msg, size_t msg_size,
-                                           nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_eligibility(const void* msg, size_t msg_size,
-                                         nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_pe_feedback(const void* msg, size_t msg_size,
-                                         nimcp_bio_promise_t promise, void* user_data);
-static nimcp_error_t handle_stp_state(const void* msg, size_t msg_size,
-                                       nimcp_bio_promise_t promise, void* user_data);
-
-/* ============================================================================
- * Internal Helper Functions
- * ============================================================================ */
-
-/**
- * @brief Get current time in microseconds
- */
-static uint64_t get_current_time_us(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
+static float nimcp_clampf(float value, float min_val, float max_val);
 /**
  * @brief Allocate STDP event buffer
  */
@@ -392,7 +356,7 @@ static nimcp_error_t update_plasticity_to_wm_effects(omni_wm_plasticity_bridge_t
     effects->spike_sequence_count = bridge->spike_seq_count;
 
     /* Compute aggregate signals */
-    effects->plasticity_activity_level = clamp_float(
+    effects->plasticity_activity_level = nimcp_clampf(
         (float)bridge->stdp_event_count / (float)bridge->stdp_event_capacity, 0.0f, 1.0f);
     effects->learning_signal_strength = fabsf(bridge->accumulated_delta_norm);
 
@@ -417,11 +381,11 @@ static nimcp_error_t update_wm_to_plasticity_effects(omni_wm_plasticity_bridge_t
     effects->prediction_available = bridge->snn_prediction_valid;
 
     /* Compute confidence (placeholder - would come from actual WM state) */
-    effects->wm_confidence = 1.0f - clamp_float(effects->combined_pe, 0.0f, 1.0f);
+    effects->wm_confidence = 1.0f - nimcp_clampf(effects->combined_pe, 0.0f, 1.0f);
     effects->wm_uncertainty = effects->combined_pe;
 
     /* Set training priority based on PE */
-    effects->training_priority = clamp_float(effects->combined_pe * 2.0f, 0.0f, 1.0f);
+    effects->training_priority = nimcp_clampf(effects->combined_pe * 2.0f, 0.0f, 1.0f);
     effects->consolidation_mode = false; /* Would be set by external signal */
 
     return NIMCP_SUCCESS;
@@ -454,7 +418,7 @@ static nimcp_error_t compute_stdp_modulation(omni_wm_plasticity_bridge_t* bridge
     /* Compute modulation based on PE magnitude */
     float pe_normalized = (combined_pe - bridge->config.pe_threshold_low) /
                           (bridge->config.pe_threshold_high - bridge->config.pe_threshold_low);
-    pe_normalized = clamp_float(pe_normalized, 0.0f, 1.0f);
+    pe_normalized = nimcp_clampf(pe_normalized, 0.0f, 1.0f);
 
     /* A+ modulation: increase with PE for more LTP when surprised */
     float a_plus_range = bridge->config.a_plus_modulation_range - 1.0f;
@@ -480,9 +444,9 @@ static nimcp_error_t compute_stdp_modulation(omni_wm_plasticity_bridge_t* bridge
     }
 
     /* Clamp modulation factors */
-    mod->a_plus_modulation = clamp_float(mod->a_plus_modulation,
+    mod->a_plus_modulation = nimcp_clampf(mod->a_plus_modulation,
                                           MIN_MODULATION_FACTOR, MAX_MODULATION_FACTOR);
-    mod->a_minus_modulation = clamp_float(mod->a_minus_modulation,
+    mod->a_minus_modulation = nimcp_clampf(mod->a_minus_modulation,
                                            MIN_MODULATION_FACTOR, MAX_MODULATION_FACTOR);
 
     mod->timestamp_us = get_current_time_us();
@@ -1303,7 +1267,7 @@ nimcp_error_t omni_wm_plasticity_bridge_set_prediction_error(
     bridge->current_modulation.forward_pe = forward_pe;
     bridge->current_modulation.backward_pe = backward_pe;
     bridge->current_modulation.lateral_pe = lateral_pe;
-    bridge->current_modulation.precision = clamp_float(precision, 0.0f, 1.0f);
+    bridge->current_modulation.precision = nimcp_clampf(precision, 0.0f, 1.0f);
 
     /* Compute combined PE (weighted by precision) */
     float weight_forward = 0.5f;
@@ -1550,9 +1514,9 @@ nimcp_error_t omni_wm_plasticity_bridge_update_stp_state(
     /* Update plasticity state
      * Facilitation/depression can exceed 1.0 (multiplicative factors),
      * utilization is bounded [0, 1] */
-    bridge->current_plasticity_state.stp_facilitation = clamp_float(facilitation, 0.0f, 10.0f);
-    bridge->current_plasticity_state.stp_depression = clamp_float(depression, 0.0f, 10.0f);
-    bridge->current_plasticity_state.stp_avg_utilization = clamp_float(utilization, 0.0f, 1.0f);
+    bridge->current_plasticity_state.stp_facilitation = nimcp_clampf(facilitation, 0.0f, 10.0f);
+    bridge->current_plasticity_state.stp_depression = nimcp_clampf(depression, 0.0f, 10.0f);
+    bridge->current_plasticity_state.stp_avg_utilization = nimcp_clampf(utilization, 0.0f, 1.0f);
 
     /* Update effects */
     bridge->plasticity_to_wm.stp_facilitation_factor = bridge->current_plasticity_state.stp_facilitation;
@@ -1602,7 +1566,7 @@ nimcp_error_t omni_wm_plasticity_bridge_get_plasticity_state(
 
     /* Compute stability and momentum */
     bridge->current_plasticity_state.synaptic_stability =
-        1.0f - clamp_float(bridge->accumulated_delta_norm, 0.0f, 1.0f);
+        1.0f - nimcp_clampf(bridge->accumulated_delta_norm, 0.0f, 1.0f);
     bridge->current_plasticity_state.learning_momentum = bridge->accumulated_delta_norm;
 
     /* Copy to output */

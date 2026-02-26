@@ -20,6 +20,7 @@
 
 #define LOG_MODULE "LANG_TEMPORAL"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_temporal_bridge)
 
@@ -95,16 +96,6 @@ struct language_temporal_bridge {
     /* Statistics */
     language_temporal_stats_t stats;
 };
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static inline float clamp01(float x) {
-    if (x < 0.0f) return 0.0f;
-    if (x > 1.0f) return 1.0f;
-    return x;
-}
 
 /**
  * @brief Find concept in cache
@@ -740,7 +731,7 @@ int language_temporal_apply_priming(
         return -1;
     }
 
-    strength = clamp01(strength);
+    strength = nimcp_clamp01(strength);
 
     /* Apply priming in temporal */
     if (!temporal_apply_priming(bridge->temporal, concept_id, strength)) {

@@ -24,6 +24,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(calcium_immune_bridge)
 
@@ -33,17 +34,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(calcium_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Map inflammation level to clearance efficiency factor
@@ -226,7 +216,7 @@ int calcium_immune_apply_cytokine_effects(calcium_immune_bridge_t* bridge) {
     influx_mod *= bridge->cytokine_effects.ifn_gamma_influx_impairment;
     influx_mod *= bridge->cytokine_effects.il10_influx_restoration;
 
-    bridge->cytokine_effects.total_influx_modulation = clamp_f(influx_mod, 0.1f, 2.0f);
+    bridge->cytokine_effects.total_influx_modulation = nimcp_clampf(influx_mod, 0.1f, 2.0f);
     bridge->cytokine_effects.total_clearance_modulation = 1.0f;
     bridge->cytokine_effects.total_buffer_modulation = 1.0f;
 
@@ -287,7 +277,7 @@ float calcium_immune_get_effective_influx(const calcium_immune_bridge_t* bridge)
     influx_factor *= (1.0f - bridge->inflammation_state.nmda_sensitivity_reduction);
 
     nimcp_mutex_unlock(mtx);
-    return clamp_f(influx_factor, 0.1f, 2.0f);
+    return nimcp_clampf(influx_factor, 0.1f, 2.0f);
 }
 
 int calcium_immune_get_modulation_state(
@@ -340,7 +330,7 @@ int calcium_immune_restore_dynamics(
         return -1;
     }
 
-    recovery_factor = clamp_f(recovery_factor, 0.0f, 1.0f);
+    recovery_factor = nimcp_clampf(recovery_factor, 0.0f, 1.0f);
 
     nimcp_mutex_t* mtx = (nimcp_mutex_t*)bridge->base.mutex;
     nimcp_mutex_lock(mtx);
@@ -415,7 +405,7 @@ int calcium_immune_detect_instability(calcium_immune_bridge_t* bridge) {
     if (bridge->instability_state.synaptic_failure_detected) severity += 0.3f;
     if (bridge->instability_state.oscillatory_instability) severity += 0.2f;
 
-    bridge->instability_state.instability_severity = clamp_f(severity, 0.0f, 1.0f);
+    bridge->instability_state.instability_severity = nimcp_clampf(severity, 0.0f, 1.0f);
 
     /* Healthy dynamics if no instabilities */
     bridge->instability_state.healthy_dynamics =

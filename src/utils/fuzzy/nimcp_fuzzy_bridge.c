@@ -24,6 +24,7 @@
 // Health Agent Integration (Phase 8)
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/math/nimcp_math_helpers.h"
 struct nimcp_health_agent;
 typedef struct nimcp_health_agent nimcp_health_agent_t;
 extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
@@ -51,16 +52,6 @@ static void set_error(const char* fmt, ...) {
     va_start(args, fmt);
     vsnprintf(tls_fuzzy_bridge_error, sizeof(tls_fuzzy_bridge_error), fmt, args);
     va_end(args);
-}
-
-//=============================================================================
-// Helpers
-//=============================================================================
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 //=============================================================================
@@ -400,7 +391,7 @@ int fuzzy_bridge_to_spike_population(fuzzy_bridge_t* bridge,
     float range = rate_max - rate_min;
 
     for (uint32_t i = 0; i < count; i++) {
-        float mu = clampf(memberships[i], 0.0f, 1.0f);
+        float mu = nimcp_clampf(memberships[i], 0.0f, 1.0f);
         out_rates[i] = rate_min + mu * range;
     }
 
@@ -427,7 +418,7 @@ int fuzzy_bridge_from_spike_population(fuzzy_bridge_t* bridge,
         if (range < FUZZY_PRECISION) {
             out_memberships[i] = 0.5f;
         } else {
-            out_memberships[i] = clampf((rates[i] - rate_min) / range, 0.0f, 1.0f);
+            out_memberships[i] = nimcp_clampf((rates[i] - rate_min) / range, 0.0f, 1.0f);
         }
     }
 
@@ -494,7 +485,7 @@ int fuzzy_bridge_plasticity_rate(fuzzy_bridge_t* bridge,
     /* Simple fuzzy rule: high performance + high stability -> low plasticity
      * low performance + low stability -> high plasticity */
     float need_change = 1.0f - (performance_score * 0.6f + stability_score * 0.4f);
-    need_change = clampf(need_change, 0.0f, 1.0f);
+    need_change = nimcp_clampf(need_change, 0.0f, 1.0f);
 
     float rate_min = bridge->config.plasticity_rate_min;
     float rate_max = bridge->config.plasticity_rate_max;
@@ -502,7 +493,7 @@ int fuzzy_bridge_plasticity_rate(fuzzy_bridge_t* bridge,
 
     /* Modulate by inflammation (high inflammation -> higher plasticity) */
     float infl_boost = bridge->inflammation_level * bridge->config.inflammation_sensitivity;
-    *out_rate = clampf(*out_rate * (1.0f + infl_boost), rate_min, rate_max);
+    *out_rate = nimcp_clampf(*out_rate * (1.0f + infl_boost), rate_min, rate_max);
 
     bridge->stats.plasticity_rate_computations++;
     return FUZZY_BRIDGE_ERR_OK;
@@ -598,9 +589,9 @@ int fuzzy_bridge_training_lr_schedule(fuzzy_bridge_t* bridge,
     /* Combine: high early + improving -> keep LR; late or worsening -> reduce */
     lr_mult = 0.1f + 0.9f * fuzzy_tnorm(early_degree, improving, FUZZY_TNORM_ALGEBRAIC_PRODUCT);
     lr_mult -= 0.5f * worsening;
-    lr_mult = clampf(lr_mult, 0.01f, 1.5f);
+    lr_mult = nimcp_clampf(lr_mult, 0.01f, 1.5f);
 
-    *out_lr = clampf(base_lr * lr_mult, bridge->config.training_lr_min,
+    *out_lr = nimcp_clampf(base_lr * lr_mult, bridge->config.training_lr_min,
                       bridge->config.training_lr_max);
 
     bridge->stats.training_lr_schedules++;
@@ -623,7 +614,7 @@ int fuzzy_bridge_training_convergence(fuzzy_bridge_t* bridge,
         fuzzy_inference_result_t result;
         int rc = fuzzy_inference_evaluate(bridge->convergence_fis, inputs, 2, &result);
         if (rc == 0 && result.num_outputs > 0) {
-            *out_convergence = clampf(result.crisp_outputs[0], 0.0f, 1.0f);
+            *out_convergence = nimcp_clampf(result.crisp_outputs[0], 0.0f, 1.0f);
         } else {
             /* Fallback */
             *out_convergence = (fabsf(loss_delta) < 0.001f && gradient_norm < 0.01f) ? 0.9f : 0.1f;
@@ -740,7 +731,7 @@ int fuzzy_bridge_set_inflammation(fuzzy_bridge_t* bridge, float level) {
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_bridge_set_inflammation: NULL bridge");
         return FUZZY_BRIDGE_ERR_NULL;
     }
-    bridge->inflammation_level = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation_level = nimcp_clampf(level, 0.0f, 1.0f);
     return FUZZY_BRIDGE_ERR_OK;
 }
 
@@ -750,7 +741,7 @@ int fuzzy_bridge_set_fatigue(fuzzy_bridge_t* bridge, float level) {
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "fuzzy_bridge_set_fatigue: NULL bridge");
         return FUZZY_BRIDGE_ERR_NULL;
     }
-    bridge->fatigue_level = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue_level = nimcp_clampf(level, 0.0f, 1.0f);
     return FUZZY_BRIDGE_ERR_OK;
 }
 

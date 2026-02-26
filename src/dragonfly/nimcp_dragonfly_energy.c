@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_energy)
 
@@ -29,12 +30,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clamp_f(float v, float min, float max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
 }
 
 //=============================================================================
@@ -222,8 +217,8 @@ static void update_time_estimates(dragonfly_energy_t energy) {
         energy->budget.time_to_depletion_s = INFINITY;
     }
 
-    energy->budget.time_to_critical_s = clamp_f(energy->budget.time_to_critical_s, 0.0f, 3600.0f);
-    energy->budget.time_to_depletion_s = clamp_f(energy->budget.time_to_depletion_s, 0.0f, 3600.0f);
+    energy->budget.time_to_critical_s = nimcp_clampf(energy->budget.time_to_critical_s, 0.0f, 3600.0f);
+    energy->budget.time_to_depletion_s = nimcp_clampf(energy->budget.time_to_depletion_s, 0.0f, 3600.0f);
 }
 
 //=============================================================================
@@ -337,7 +332,7 @@ int dragonfly_energy_update(
     }
 
     /* Clamp energy */
-    energy->budget.current_energy_j = clamp_f(energy->budget.current_energy_j,
+    energy->budget.current_energy_j = nimcp_clampf(energy->budget.current_energy_j,
                                                0.0f, energy->config.max_energy_j);
 
     /* Update state */
@@ -368,7 +363,7 @@ int dragonfly_energy_spend(
     energy->budget.energy_spent_j += amount_j;
     energy->stats.total_energy_spent_j += amount_j;
 
-    energy->budget.current_energy_j = clamp_f(energy->budget.current_energy_j,
+    energy->budget.current_energy_j = nimcp_clampf(energy->budget.current_energy_j,
                                                0.0f, energy->config.max_energy_j);
     energy->budget.state = compute_energy_state(energy);
     update_time_estimates(energy);
@@ -393,7 +388,7 @@ int dragonfly_energy_gain(
     energy->budget.energy_gained_j += amount_j;
     energy->stats.total_energy_gained_j += amount_j;
 
-    energy->budget.current_energy_j = clamp_f(energy->budget.current_energy_j,
+    energy->budget.current_energy_j = nimcp_clampf(energy->budget.current_energy_j,
                                                0.0f, energy->config.max_energy_j);
     energy->budget.state = compute_energy_state(energy);
     update_time_estimates(energy);
@@ -432,7 +427,7 @@ int dragonfly_energy_capture_prey(
                             (energy->stats.pursuits_attempted + 1);
     energy->stats.pursuits_attempted++;
 
-    energy->budget.current_energy_j = clamp_f(energy->budget.current_energy_j,
+    energy->budget.current_energy_j = nimcp_clampf(energy->budget.current_energy_j,
                                                0.0f, energy->config.max_energy_j);
     energy->budget.state = compute_energy_state(energy);
     update_time_estimates(energy);

@@ -41,6 +41,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(curiosity_enhanced, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -128,15 +129,6 @@ static uint64_t get_time_ms(void) {
 }
 
 /**
- * @brief Clamp float to range
- */
-static float clampf(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
-
-/**
  * @brief Simple string hash
  */
 static uint64_t hash_string(const char* str) {
@@ -190,14 +182,14 @@ static void boredom_update(curiosity_enhanced_system_t* sys, float dt_ms) {
     } else {
         state->monotony_level -= config->monotony_decay_rate * 2.0f * dt_ms / 1000.0f;
     }
-    state->monotony_level = clampf(state->monotony_level, 0.0f, 1.0f);
+    state->monotony_level = nimcp_clampf(state->monotony_level, 0.0f, 1.0f);
 
     /* Check understimulation timeout */
     float understim_factor = 0.0f;
     if (time_since_novelty > config->understimulation_timeout_ms) {
         understim_factor = (time_since_novelty - config->understimulation_timeout_ms) /
                           config->understimulation_timeout_ms;
-        understim_factor = clampf(understim_factor, 0.0f, 1.0f);
+        understim_factor = nimcp_clampf(understim_factor, 0.0f, 1.0f);
     }
 
     /* Combine factors for boredom */
@@ -217,7 +209,7 @@ static void boredom_update(curiosity_enhanced_system_t* sys, float dt_ms) {
     if (state->is_bored) {
         state->novelty_seeking_boost = 1.0f + (boredom_level - state->boredom_threshold) *
                                        config->novelty_boost_factor;
-        state->novelty_seeking_boost = clampf(state->novelty_seeking_boost,
+        state->novelty_seeking_boost = nimcp_clampf(state->novelty_seeking_boost,
                                               1.0f, BOREDOM_NOVELTY_SEEK_BOOST);
     } else {
         state->novelty_seeking_boost = 1.0f;
@@ -340,7 +332,7 @@ static float interest_compute_satiation(const curiosity_topic_interest_t* intere
 
     /* Satiation based on exposure count */
     float satiation = 1.0f - expf(-(float)interest->exposure_count / 10.0f);
-    return clampf(satiation, 0.0f, 1.0f);
+    return nimcp_clampf(satiation, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -479,8 +471,8 @@ static void anxiety_balance_update(curiosity_enhanced_system_t* sys, float dt_ms
         } else {
             state->approach_tendency -= resolution_rate;
         }
-        state->approach_tendency = clampf(state->approach_tendency, 0.0f, 1.0f);
-        state->avoidance_tendency = clampf(state->avoidance_tendency, 0.0f, 1.0f);
+        state->approach_tendency = nimcp_clampf(state->approach_tendency, 0.0f, 1.0f);
+        state->avoidance_tendency = nimcp_clampf(state->avoidance_tendency, 0.0f, 1.0f);
     }
 }
 
@@ -544,7 +536,7 @@ static void social_update(curiosity_enhanced_system_t* sys, float dt_ms) {
 
     /* Decay gossip interest */
     state->gossip_interest -= config->gossip_decay_rate * dt_ms / 1000.0f;
-    state->gossip_interest = clampf(state->gossip_interest, 0.1f, 1.0f);
+    state->gossip_interest = nimcp_clampf(state->gossip_interest, 0.1f, 1.0f);
 
     /* Decay social interest in targets */
     uint64_t now = get_time_ms();
@@ -584,7 +576,7 @@ static void meta_update(curiosity_enhanced_system_t* sys, float dt_ms) {
 
     /* Grow meta-awareness over time */
     state->self_awareness_of_interests += config->meta_awareness_growth_rate * dt_ms / 1000.0f;
-    state->self_awareness_of_interests = clampf(state->self_awareness_of_interests, 0.0f, 1.0f);
+    state->self_awareness_of_interests = nimcp_clampf(state->self_awareness_of_interests, 0.0f, 1.0f);
 
     /* Check for automatic introspection */
     uint64_t now = get_time_ms();
@@ -621,7 +613,7 @@ static void contagion_update(curiosity_enhanced_system_t* sys, float dt_ms) {
 
     /* Decay accumulated contagion */
     state->accumulated_contagion -= config->contagion_decay_rate * dt_ms / 1000.0f;
-    state->accumulated_contagion = clampf(state->accumulated_contagion, 0.0f, 1.0f);
+    state->accumulated_contagion = nimcp_clampf(state->accumulated_contagion, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -644,7 +636,7 @@ static void surprise_update(curiosity_enhanced_system_t* sys, float dt_ms) {
 
     /* Decay surprise effects */
     state->surprise_magnitude -= config->surprise_decay_rate * dt_ms / 1000.0f;
-    state->surprise_magnitude = clampf(state->surprise_magnitude, 0.0f, 1.0f);
+    state->surprise_magnitude = nimcp_clampf(state->surprise_magnitude, 0.0f, 1.0f);
 
     /* Update learning rate boost */
     if (state->surprise_magnitude > config->surprise_threshold) {
@@ -663,7 +655,7 @@ static float surprise_report(curiosity_enhanced_system_t* sys,
     const curiosity_surprise_config_t* config = &sys->config.surprise;
 
     state->prediction_error = prediction_error;
-    state->surprise_magnitude = clampf(prediction_error, 0.0f, 1.0f);
+    state->surprise_magnitude = nimcp_clampf(prediction_error, 0.0f, 1.0f);
     state->last_surprise_ms = get_time_ms();
     state->surprise_count++;
 
@@ -676,7 +668,7 @@ static float surprise_report(curiosity_enhanced_system_t* sys,
     if (state->surprise_magnitude > config->surprise_threshold) {
         float excess = state->surprise_magnitude - config->surprise_threshold;
         state->learning_rate_boost = 1.0f + excess * (config->max_lr_boost - 1.0f);
-        state->learning_rate_boost = clampf(state->learning_rate_boost, 1.0f, config->max_lr_boost);
+        state->learning_rate_boost = nimcp_clampf(state->learning_rate_boost, 1.0f, config->max_lr_boost);
 
         state->memory_consolidation_priority = state->surprise_magnitude;
         state->attention_capture_strength = state->surprise_magnitude * 1.5f;
@@ -714,8 +706,8 @@ static void fatigue_update(curiosity_enhanced_system_t* sys, float dt_ms) {
         state->cognitive_depletion -= config->base_recovery_rate * dt_ms / 1000.0f;
         state->total_rest_ms += (uint64_t)dt_ms;
 
-        state->exploration_fatigue = clampf(state->exploration_fatigue, 0.0f, 1.0f);
-        state->cognitive_depletion = clampf(state->cognitive_depletion, 0.0f, 1.0f);
+        state->exploration_fatigue = nimcp_clampf(state->exploration_fatigue, 0.0f, 1.0f);
+        state->cognitive_depletion = nimcp_clampf(state->cognitive_depletion, 0.0f, 1.0f);
 
         /* Check if recovered enough */
         if (state->exploration_fatigue < 0.2f) {
@@ -727,8 +719,8 @@ static void fatigue_update(curiosity_enhanced_system_t* sys, float dt_ms) {
         state->cognitive_depletion += config->fatigue_accumulation_rate * 0.5f * dt_ms / 1000.0f;
         state->total_exploration_ms += (uint64_t)dt_ms;
 
-        state->exploration_fatigue = clampf(state->exploration_fatigue, 0.0f, 1.0f);
-        state->cognitive_depletion = clampf(state->cognitive_depletion, 0.0f, 1.0f);
+        state->exploration_fatigue = nimcp_clampf(state->exploration_fatigue, 0.0f, 1.0f);
+        state->cognitive_depletion = nimcp_clampf(state->cognitive_depletion, 0.0f, 1.0f);
 
         /* Check if rest is needed */
         state->needs_rest = state->exploration_fatigue > state->rest_threshold;
@@ -799,8 +791,8 @@ static void compute_aggregates(curiosity_enhanced_system_t* sys) {
     /* Combine all factors for overall drive */
     float boredom_factor = state->boredom.is_bored ?
                           state->boredom.novelty_seeking_boost : 1.0f;
-    float anxiety_factor = clampf(1.0f - state->anxiety_balance.avoidance_tendency, 0.2f, 1.0f);
-    float fatigue_factor = clampf(1.0f - state->fatigue.exploration_fatigue, 0.1f, 1.0f);
+    float anxiety_factor = nimcp_clampf(1.0f - state->anxiety_balance.avoidance_tendency, 0.2f, 1.0f);
+    float fatigue_factor = nimcp_clampf(1.0f - state->fatigue.exploration_fatigue, 0.1f, 1.0f);
     float surprise_factor = state->surprise.learning_rate_boost;
 
     /* Get base curiosity from dominant type */
@@ -809,7 +801,7 @@ static void compute_aggregates(curiosity_enhanced_system_t* sys) {
     /* Combine */
     state->overall_curiosity_drive = type_intensity * boredom_factor * anxiety_factor *
                                      fatigue_factor * (0.5f + surprise_factor * 0.5f);
-    state->overall_curiosity_drive = clampf(state->overall_curiosity_drive, 0.0f, 1.0f);
+    state->overall_curiosity_drive = nimcp_clampf(state->overall_curiosity_drive, 0.0f, 1.0f);
 
     state->effective_exploration_rate = state->overall_curiosity_drive;
     if (state->fatigue.is_resting) {
@@ -1174,7 +1166,7 @@ int curiosity_enhanced_record_exposure(
     interest->exposure_count++;
     interest->last_exposure_ms = get_time_ms();
     interest->satiation_level += learning_value * 0.1f;
-    interest->satiation_level = clampf(interest->satiation_level, 0.0f, 1.0f);
+    interest->satiation_level = nimcp_clampf(interest->satiation_level, 0.0f, 1.0f);
 
     if (interest->satiation_level > system->config.interest.satiation_threshold) {
         system->stats.interest_satiation_events++;
@@ -1259,7 +1251,7 @@ int curiosity_enhanced_set_type_intensity(
     NIMCP_CHECK_THROW(type >= 0 && type < CURIOSITY_TYPE_COUNT, NIMCP_ERROR_INVALID, "invalid curiosity type");
 
     nimcp_platform_mutex_lock(system->mutex);
-    system->state.types.type_intensities[type] = clampf(intensity, 0.0f, 1.0f);
+    system->state.types.type_intensities[type] = nimcp_clampf(intensity, 0.0f, 1.0f);
     nimcp_platform_mutex_unlock(system->mutex);
 
     return 0;
@@ -1371,7 +1363,7 @@ int curiosity_enhanced_report_conflict_resolution(
     }
 
     system->state.anxiety_balance.resolution_bias =
-        clampf(system->state.anxiety_balance.resolution_bias, 0.0f, 1.0f);
+        nimcp_clampf(system->state.anxiety_balance.resolution_bias, 0.0f, 1.0f);
     system->state.anxiety_balance.in_conflict = false;
 
     nimcp_platform_mutex_unlock(system->mutex);
@@ -1450,7 +1442,7 @@ int curiosity_enhanced_record_social_interaction(
         t->last_interaction_ms = get_time_ms();
         t->information_value = info_gained;
         t->social_interest += info_gained * 0.1f;
-        t->social_interest = clampf(t->social_interest, 0.0f, 1.0f);
+        t->social_interest = nimcp_clampf(t->social_interest, 0.0f, 1.0f);
     }
 
     system->stats.social_curiosity_events++;
@@ -1486,12 +1478,12 @@ int curiosity_enhanced_introspect(
     system->state.meta.last_introspection_ms = get_time_ms();
     system->state.meta.introspection_depth += 0.1f;
     system->state.meta.introspection_depth =
-        clampf(system->state.meta.introspection_depth, 0.0f, 1.0f);
+        nimcp_clampf(system->state.meta.introspection_depth, 0.0f, 1.0f);
 
     /* Update self-awareness based on introspection */
     system->state.meta.self_awareness_of_interests += 0.05f;
     system->state.meta.self_awareness_of_interests =
-        clampf(system->state.meta.self_awareness_of_interests, 0.0f, 1.0f);
+        nimcp_clampf(system->state.meta.self_awareness_of_interests, 0.0f, 1.0f);
 
     system->stats.introspection_events++;
 
@@ -1579,7 +1571,7 @@ bool curiosity_enhanced_observe_curiosity(
     }
 
     state->accumulated_contagion += strength;
-    state->accumulated_contagion = clampf(state->accumulated_contagion, 0.0f, 1.0f);
+    state->accumulated_contagion = nimcp_clampf(state->accumulated_contagion, 0.0f, 1.0f);
     state->total_contagion_events++;
 
     /* Adopt curiosity if strong enough */
@@ -1619,7 +1611,7 @@ int curiosity_enhanced_set_contagion_susceptibility(
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
-    system->state.contagion.contagion_susceptibility = clampf(susceptibility, 0.0f, 1.0f);
+    system->state.contagion.contagion_susceptibility = nimcp_clampf(susceptibility, 0.0f, 1.0f);
     nimcp_platform_mutex_unlock(system->mutex);
 
     return 0;
@@ -1781,7 +1773,7 @@ int curiosity_enhanced_explore_counterfactual(
 
     /* Simulate learning outcome */
     float outcome = counterfactual->learning_value * (1.0f - counterfactual->exploration_cost);
-    outcome = clampf(outcome, 0.0f, 1.0f);
+    outcome = nimcp_clampf(outcome, 0.0f, 1.0f);
 
     if (learning_outcome) {
         *learning_outcome = outcome;
@@ -2222,7 +2214,7 @@ int curiosity_enhanced_estimate_uncertainty(
         }
 
         float sample = qmc_gaussian(&system->qmc_seed, base_interest, noise_scale * 0.2f);
-        sample = clampf(sample, 0.0f, 1.0f);
+        sample = nimcp_clampf(sample, 0.0f, 1.0f);
         samples[i] = sample;
         sum += sample;
         sum_sq += sample * sample;
@@ -2237,8 +2229,8 @@ int curiosity_enhanced_estimate_uncertainty(
     /* 95% confidence interval */
     result->confidence_95_lower = result->mean_interest - 1.96f * result->std_error;
     result->confidence_95_upper = result->mean_interest + 1.96f * result->std_error;
-    result->confidence_95_lower = clampf(result->confidence_95_lower, 0.0f, 1.0f);
-    result->confidence_95_upper = clampf(result->confidence_95_upper, 0.0f, 1.0f);
+    result->confidence_95_lower = nimcp_clampf(result->confidence_95_lower, 0.0f, 1.0f);
+    result->confidence_95_upper = nimcp_clampf(result->confidence_95_upper, 0.0f, 1.0f);
 
     /* Decompose uncertainty */
     result->epistemic_uncertainty = noise_scale * 0.5f;  /* Reducible with more data */
@@ -2499,7 +2491,7 @@ int curiosity_enhanced_compute_empowerment(
     /* Normalize empowerment to [0, 1] */
     if (result->channel_capacity > 0.0f) {
         result->empowerment_normalized = result->empowerment / result->channel_capacity;
-        result->empowerment_normalized = clampf(result->empowerment_normalized, 0.0f, 1.0f);
+        result->empowerment_normalized = nimcp_clampf(result->empowerment_normalized, 0.0f, 1.0f);
     }
 
     nimcp_free(state_counts);
@@ -2657,7 +2649,7 @@ float curiosity_enhanced_get_exploration_bonus(
         float log_total = logf((float)(total + 1));
         bonus = sqrtf(2.0f * log_total / (float)(visits + 1));
         bonus *= system->qmc_config.exploration_bonus;
-        bonus = clampf(bonus, 0.0f, system->qmc_config.exploration_bonus);
+        bonus = nimcp_clampf(bonus, 0.0f, system->qmc_config.exploration_bonus);
     }
 
     system->qmc_stats.total_exploration_bonus += bonus;
@@ -2679,8 +2671,8 @@ float curiosity_enhanced_update_interest_mc(
     curiosity_enhanced_heartbeat("curiosity_en_update_interest_mc", 0.0f);
 
 
-    observed_interest = clampf(observed_interest, 0.0f, 1.0f);
-    observation_noise = clampf(observation_noise, 0.01f, 1.0f);
+    observed_interest = nimcp_clampf(observed_interest, 0.0f, 1.0f);
+    observation_noise = nimcp_clampf(observation_noise, 0.01f, 1.0f);
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -2697,7 +2689,7 @@ float curiosity_enhanced_update_interest_mc(
     float posterior_var = 1.0f / (1.0f / prior_var + 1.0f / likelihood_var);
     float posterior_mean = posterior_var * (prior_mean / prior_var + observed_interest / likelihood_var);
 
-    posterior_mean = clampf(posterior_mean, 0.0f, 1.0f);
+    posterior_mean = nimcp_clampf(posterior_mean, 0.0f, 1.0f);
 
     /* Update entry */
     if (entry) {
@@ -2747,7 +2739,7 @@ float curiosity_enhanced_estimate_info_gain_qmc(
 
     /* Convert to bits */
     info_gain /= logf(2.0f);
-    info_gain = clampf(info_gain, 0.0f, 5.0f);
+    info_gain = nimcp_clampf(info_gain, 0.0f, 5.0f);
 
     nimcp_platform_mutex_unlock(system->mutex);
 

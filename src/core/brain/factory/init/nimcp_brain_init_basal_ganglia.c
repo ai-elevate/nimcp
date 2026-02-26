@@ -289,7 +289,7 @@ int nimcp_brain_bg_select_action(brain_t brain,
                                   const float* cortical_input,
                                   uint32_t* selected_action) {
     if (!brain || !cortical_input || !selected_action) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_step: required parameter is NULL (brain, cortical_input, selected_action)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_select_action: required parameter is NULL (brain, cortical_input, selected_action)");
         return -1;
     }
 
@@ -318,7 +318,7 @@ int nimcp_brain_bg_process_reward(brain_t brain,
                                    float reward,
                                    float predicted_reward) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_step: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_process_reward: brain is NULL");
         return -1;
     }
 
@@ -514,14 +514,14 @@ int nimcp_brain_bg_get_training_stats(brain_t brain, bgtr_bridge_stats_t* stats)
 int nimcp_brain_bg_connect_training_context(brain_t brain,
                                              nimcp_training_context_t* training) {
     if (!brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_get_training_stats: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_connect_training_context: brain is NULL");
         return -1;
     }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_get_training_stats: required parameter is NULL (b->basal_ganglia_enabled, b->basal_ganglia)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_connect_training_context: BG not enabled or NULL");
         return -1;
     }
 

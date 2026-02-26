@@ -34,6 +34,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(fin_resonance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -142,16 +143,6 @@ struct financial_resonance_bridge {
     /* RNG state for trace IDs */
     uint64_t rng_state;
 };
-
-//=============================================================================
-// Helper: Clamp float to [lo, hi]
-//=============================================================================
-
-static inline float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
 
 //=============================================================================
 // Helper: Wrap phase to [0, 2*pi)
@@ -540,7 +531,7 @@ int financial_resonance_bridge_encode_market(
 
     /* Compute global phase from momentum + RSI */
     float norm_rsi = state->rsi / 100.0f;
-    float norm_momentum = clampf(state->momentum / 0.1f, -1.0f, 1.0f);
+    float norm_momentum = nimcp_clampf(state->momentum / 0.1f, -1.0f, 1.0f);
     float global_phase = (float)M_PI * (norm_rsi + (norm_momentum + 1.0f) / 2.0f);
     out_query->phase = wrap_phase(global_phase);
 
@@ -667,7 +658,7 @@ int financial_resonance_bridge_compute_similarity(
     /* 2. Phase coherence score */
     float phase_diff_global = phase_diff(query1->phase, query2->phase);
     out_result->phase_score = 1.0f - phase_diff_global / (float)M_PI;
-    out_result->phase_score = clampf(out_result->phase_score, 0.0f, 1.0f);
+    out_result->phase_score = nimcp_clampf(out_result->phase_score, 0.0f, 1.0f);
 
     /* 3. Oscillator phase similarity (mean cosine similarity) */
     uint32_t min_osc = (query1->num_oscillators < query2->num_oscillators)
@@ -728,7 +719,7 @@ int financial_resonance_bridge_compute_similarity(
         bridge->config.quaternion_weight * out_result->quaternion_score +
         bridge->config.kuramoto_weight * out_result->kuramoto_score;
 
-    out_result->combined_score = clampf(out_result->combined_score, 0.0f, 1.0f);
+    out_result->combined_score = nimcp_clampf(out_result->combined_score, 0.0f, 1.0f);
 
     /* Update running average */
     bridge->stats.similarity_queries++;
@@ -1187,7 +1178,7 @@ int financial_resonance_bridge_set_inflammation(
             "financial_resonance_bridge_set_inflammation: bridge is NULL");
         return FIN_RESONANCE_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_RESONANCE_ERR_OK;
 }
 
@@ -1200,7 +1191,7 @@ int financial_resonance_bridge_set_fatigue(
             "financial_resonance_bridge_set_fatigue: bridge is NULL");
         return FIN_RESONANCE_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_RESONANCE_ERR_OK;
 }
 

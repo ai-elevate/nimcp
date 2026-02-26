@@ -27,6 +27,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(parietal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -183,12 +184,6 @@ static _Thread_local char g_parietal_error[NIMCP_ERROR_BUFFER_SIZE] = {0};
 static void set_parietal_error(const char* msg) {
     strncpy(g_parietal_error, msg, sizeof(g_parietal_error) - 1);
     g_parietal_error[sizeof(g_parietal_error) - 1] = '\0';
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 static uint64_t get_time_us(void) {
@@ -723,7 +718,7 @@ void parietal_destroy(parietal_lobe_t* parietal) {
 int parietal_attach_to_brain(parietal_lobe_t* parietal, brain_module_t* brain,
                               uint32_t num_neurons) {
     if (!parietal || !brain) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_destroy: required parameter is NULL (parietal, brain)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_to_brain: required parameter is NULL (parietal, brain)");
         return -1;
     }
 
@@ -1783,7 +1778,7 @@ int parietal_set_inflammation(parietal_lobe_t* parietal, float level) {
     parietal_heartbeat("parietal_set_inflammation", 0.0f);
 
 
-    level = clamp01(level);
+    level = nimcp_clamp01(level);
 
     nimcp_mutex_lock(parietal->lock);
 
@@ -1834,7 +1829,7 @@ int parietal_set_fatigue(parietal_lobe_t* parietal, float level) {
     parietal_heartbeat("parietal_set_fatigue", 0.0f);
 
 
-    level = clamp01(level);
+    level = nimcp_clamp01(level);
 
     nimcp_mutex_lock(parietal->lock);
 

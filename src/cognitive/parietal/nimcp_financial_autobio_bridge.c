@@ -46,6 +46,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_autobio_bridge_health_agent = NULL;
@@ -181,16 +182,6 @@ static const char* state_names[] = {
     "degraded",
     "error"
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 /**
  * @brief Publish message through KG wiring
@@ -795,7 +786,7 @@ int financial_autobio_bridge_get_lessons(
             lesson->associated_emotion = (fin_emotion_type_t)i;
             lesson->episode_count = counts[i];
             lesson->avg_outcome = outcome_sums[i] / (float)counts[i];
-            lesson->confidence = clampf((float)counts[i] / 20.0f, 0.0f, 1.0f);
+            lesson->confidence = nimcp_clampf((float)counts[i] / 20.0f, 0.0f, 1.0f);
 
             /* Generate lesson text based on emotion and outcome */
             const char* emo_name = emotion_names[i];

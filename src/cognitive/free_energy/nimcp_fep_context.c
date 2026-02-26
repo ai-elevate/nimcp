@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_context_instance, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -61,18 +62,8 @@ struct fep_context_system {
     nimcp_mutex_t* mutex;
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
 static inline float safe_exp(float x) {
-    x = clamp_f(x, -88.0f, 88.0f);
+    x = nimcp_clampf(x, -88.0f, 88.0f);
     return expf(x);
 }
 
@@ -711,7 +702,7 @@ int fep_context_blend(
         return -1;
     }
 
-    blend_factor = clamp_f(blend_factor, 0.0f, 1.0f);
+    blend_factor = nimcp_clampf(blend_factor, 0.0f, 1.0f);
 
     /* Blend and apply to FEP level 0 */
     if (fep->num_levels > 0) {

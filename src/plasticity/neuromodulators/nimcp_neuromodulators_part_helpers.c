@@ -7,20 +7,6 @@
 // Helper Functions - Inline for Performance
 //=============================================================================
 
-/**
- * WHAT: Clamp value to [min, max] range
- * WHY:  Branchless implementation using fminf/fmaxf (faster than if/else)
- * COMPLEXITY: O(1), typically compiles to min/max instructions
- *
- * @param value Value to clamp
- * @param min Minimum value
- * @param max Maximum value
- * @return Clamped value
- */
-static inline float clamp(float value, float min, float max) {
-    return fmaxf(min, fminf(max, value));
-}
-
 
 /**
  * WHAT: Exponential decay formula

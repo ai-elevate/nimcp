@@ -39,6 +39,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(imagination_reasoning_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -119,15 +120,6 @@ static uint64_t get_timestamp_us(void) {
         return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
     }
     return 0;
-}
-
-/**
- * @brief Clamp float value to range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -1250,7 +1242,7 @@ int imagination_reasoning_generate_scenario(
     scenario_out->type = type;
     scenario_out->plausibility = 0.5f;  /* Default */
     scenario_out->relevance = 0.5f;     /* Default */
-    scenario_out->complexity = clamp_float(complexity, 0.0f, 1.0f);
+    scenario_out->complexity = nimcp_clampf(complexity, 0.0f, 1.0f);
     scenario_out->creation_time = get_timestamp_us();
 
     /* Track scenario */

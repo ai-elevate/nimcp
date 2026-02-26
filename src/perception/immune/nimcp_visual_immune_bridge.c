@@ -19,6 +19,7 @@
 #include <math.h>
 #include <pthread.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(visual_immune_bridge)
 
@@ -30,19 +31,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(visual_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute sickness behavior level from immune system
@@ -71,7 +59,7 @@ static float compute_sickness_behavior(const brain_immune_system_t* immune) {
         }
     }
 
-    return clamp_f(sickness, 0.0f, 1.0f);
+    return nimcp_clampf(sickness, 0.0f, 1.0f);
 }
 
 /**
@@ -315,7 +303,7 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
     /* Chronic inflammation has worse effects */
     float chronic_multiplier = is_chronic ? 1.5f : 1.0f;
     float impairment = base_impairment * chronic_multiplier;
-    impairment = clamp_f(impairment, 0.0f, INFLAMMATION_MAX_VISUAL_IMPAIRMENT);
+    impairment = nimcp_clampf(impairment, 0.0f, INFLAMMATION_MAX_VISUAL_IMPAIRMENT);
 
     bridge->inflammation_state.processing_speed_reduction = impairment * 0.6f;
     bridge->inflammation_state.visual_acuity_loss = impairment * 0.5f;
@@ -326,7 +314,7 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
         bridge->inflammation_state.tunnel_vision_severity =
             (impairment - 0.3f) / 0.5f; /* Normalize to [0-1] */
         bridge->inflammation_state.tunnel_vision_severity =
-            clamp_f(bridge->inflammation_state.tunnel_vision_severity, 0.0f, 1.0f);
+            nimcp_clampf(bridge->inflammation_state.tunnel_vision_severity, 0.0f, 1.0f);
     } else {
         bridge->inflammation_state.tunnel_vision_severity = 0.0f;
     }
@@ -402,11 +390,11 @@ int visual_immune_modulate_neurotransmitters(visual_immune_bridge_t* bridge) {
 
     /* Inflammation reduces acetylcholine (attention impairment) */
     float ach_reduction = inflammation_to_visual_factor(level) * 0.4f;
-    float new_ach_tonic = clamp_f(0.5f - ach_reduction, 0.1f, 1.0f);
+    float new_ach_tonic = nimcp_clampf(0.5f - ach_reduction, 0.1f, 1.0f);
 
     /* Inflammation increases norepinephrine (stress/arousal) */
     float ne_increase = inflammation_to_visual_factor(level) * 0.3f;
-    float new_ne_tonic = clamp_f(0.3f + ne_increase, 0.0f, 0.8f);
+    float new_ne_tonic = nimcp_clampf(0.3f + ne_increase, 0.0f, 0.8f);
 
     /* Set visual cortex neuromodulator levels */
     /* 0=dopamine, 1=acetylcholine, 2=norepinephrine */
@@ -451,7 +439,7 @@ int visual_immune_trigger_from_threat(
 
         for (size_t i = 0; i < epitope_len; i++) {
             /* Quantize float feature to uint8 */
-            epitope[i] = (uint8_t)(clamp_f(threat_features[i], 0.0f, 1.0f) * 255.0f);
+            epitope[i] = (uint8_t)(nimcp_clampf(threat_features[i], 0.0f, 1.0f) * 255.0f);
         }
 
         /* Present antigen to immune system */
@@ -540,7 +528,7 @@ int visual_immune_trigger_from_visual_stress(visual_immune_bridge_t* bridge) {
 
     /* Chronic stress (>1 hour) triggers inflammation */
     if (stress_duration >= 3600.0f) {
-        float chronic_level = clamp_f(stress_duration / 86400.0f, 0.0f, 1.0f);
+        float chronic_level = nimcp_clampf(stress_duration / 86400.0f, 0.0f, 1.0f);
         bridge->visual_trigger.chronic_overstimulation = chronic_level;
 
         /* Create stress epitope */
@@ -651,7 +639,7 @@ float visual_immune_get_processing_speed_factor(const visual_immune_bridge_t* br
     factor *= (1.0f - bridge->sickness_effects.processing_speed_reduction);
     factor *= (1.0f - bridge->inflammation_state.processing_speed_reduction);
 
-    return clamp_f(factor, 0.1f, 1.0f); /* Minimum 10% speed */
+    return nimcp_clampf(factor, 0.1f, 1.0f); /* Minimum 10% speed */
 }
 
 float visual_immune_get_accuracy_factor(const visual_immune_bridge_t* bridge) {
@@ -664,7 +652,7 @@ float visual_immune_get_accuracy_factor(const visual_immune_bridge_t* bridge) {
     float factor = bridge->cytokine_effects.total_accuracy_factor;
     factor *= (1.0f - bridge->inflammation_state.visual_acuity_loss);
 
-    return clamp_f(factor, 0.2f, 1.0f); /* Minimum 20% accuracy */
+    return nimcp_clampf(factor, 0.2f, 1.0f); /* Minimum 20% accuracy */
 }
 
 float visual_immune_get_attention_capacity(const visual_immune_bridge_t* bridge) {
@@ -677,7 +665,7 @@ float visual_immune_get_attention_capacity(const visual_immune_bridge_t* bridge)
     float capacity = bridge->cytokine_effects.total_attention_factor;
     capacity *= (1.0f - bridge->inflammation_state.tunnel_vision_severity * 0.5f);
 
-    return clamp_f(capacity, 0.2f, 1.0f); /* Minimum 20% capacity */
+    return nimcp_clampf(capacity, 0.2f, 1.0f); /* Minimum 20% capacity */
 }
 
 float visual_immune_get_threat_salience_boost(const visual_immune_bridge_t* bridge) {
@@ -692,7 +680,7 @@ float visual_immune_get_threat_salience_boost(const visual_immune_bridge_t* brid
     boost += bridge->sickness_effects.attention_to_threats_boost;
     boost += bridge->inflammation_state.tunnel_vision_severity * 0.3f;
 
-    return clamp_f(boost, 1.0f, 2.0f); /* Up to 2x threat salience */
+    return nimcp_clampf(boost, 1.0f, 2.0f); /* Up to 2x threat salience */
 }
 
 /* ============================================================================

@@ -17,19 +17,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vta, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Internal Helpers
- *===========================================================================*/
-
-static float clampf(float x, float lo, float hi) {
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
 
 static void update_neuron_pool(nimcp_vta_system_t* vta, float dt) {
     nimcp_vta_neuron_pool_t* neurons = &vta->neurons;
@@ -84,12 +74,12 @@ static void update_neuron_pool(nimcp_vta_system_t* vta, float dt) {
 
     /* Add input modulation */
     target_rate *= (1.0f + net_input);
-    target_rate = clampf(target_rate, 0.0f, VTA_PHASIC_MAX_RATE);
+    target_rate = nimcp_clampf(target_rate, 0.0f, VTA_PHASIC_MAX_RATE);
 
     /* Smooth rate change */
     float rate_change = (target_rate - neurons->firing_rate) / rate_tau * dt;
     neurons->firing_rate += rate_change;
-    neurons->firing_rate = clampf(neurons->firing_rate, 0.0f, VTA_PHASIC_MAX_RATE);
+    neurons->firing_rate = nimcp_clampf(neurons->firing_rate, 0.0f, VTA_PHASIC_MAX_RATE);
 
     /* Decay inputs */
     float input_decay = expf(-dt / 50.0f);
@@ -113,7 +103,7 @@ static void update_da_dynamics(nimcp_vta_system_t* vta, float dt) {
     float da_decay = vta->da_concentration * (dt / vta->config.da_decay_tau);
 
     vta->da_concentration += da_release - da_decay;
-    vta->da_concentration = clampf(vta->da_concentration, 0.0f, 1000.0f);
+    vta->da_concentration = nimcp_clampf(vta->da_concentration, 0.0f, 1000.0f);
 
     vta->metrics.total_da_released += da_release;
 }
@@ -128,7 +118,7 @@ static void update_projections(nimcp_vta_system_t* vta, float dt) {
         float decay_rate = proj->da_delivered * (dt / 200.0f);
 
         proj->da_delivered += delivery_rate * dt - decay_rate;
-        proj->da_delivered = clampf(proj->da_delivered, 0.0f, 500.0f);
+        proj->da_delivered = nimcp_clampf(proj->da_delivered, 0.0f, 500.0f);
 
         /* Update receptor activation (simplified Hill equation) */
         float da = proj->da_delivered;
@@ -188,15 +178,15 @@ static void update_motivation(nimcp_vta_system_t* vta, float dt) {
 
     /* Wanting driven by DA relative to baseline */
     float da_ratio = vta->da_concentration / VTA_DEFAULT_DA_BASELINE;
-    float wanting_target = clampf(da_ratio - 0.5f, 0.0f, 1.0f);
+    float wanting_target = nimcp_clampf(da_ratio - 0.5f, 0.0f, 1.0f);
 
     /* Smooth update */
     float tau = 100.0f;
     mot->wanting += (wanting_target - mot->wanting) * (dt / tau);
-    mot->wanting = clampf(mot->wanting, 0.0f, 1.0f);
+    mot->wanting = nimcp_clampf(mot->wanting, 0.0f, 1.0f);
 
     /* Effort willingness scales with DA */
-    mot->effort_willingness = clampf(da_ratio * 0.5f, 0.0f, 1.0f);
+    mot->effort_willingness = nimcp_clampf(da_ratio * 0.5f, 0.0f, 1.0f);
 }
 
 /*=============================================================================
@@ -411,8 +401,8 @@ nimcp_vta_error_t nimcp_vta_modulate_motivation(
 
     /* Motivation = DA-driven wanting * goal value */
     float base_motivation = vta->motivation.wanting;
-    *motivation = base_motivation * clampf(goal_value, 0.0f, 2.0f);
-    *motivation = clampf(*motivation, 0.0f, 1.0f);
+    *motivation = base_motivation * nimcp_clampf(goal_value, 0.0f, 2.0f);
+    *motivation = nimcp_clampf(*motivation, 0.0f, 1.0f);
 
     return VTA_OK;
 }
@@ -473,7 +463,7 @@ nimcp_vta_error_t nimcp_vta_apply_excitation(nimcp_vta_system_t* vta, float stre
         return vta ? VTA_ERROR_NOT_INITIALIZED : VTA_ERROR_NULL;
     }
 
-    vta->neurons.excitatory_input += clampf(strength, 0.0f, 2.0f);
+    vta->neurons.excitatory_input += nimcp_clampf(strength, 0.0f, 2.0f);
     return VTA_OK;
 }
 
@@ -482,7 +472,7 @@ nimcp_vta_error_t nimcp_vta_apply_inhibition(nimcp_vta_system_t* vta, float stre
         return vta ? VTA_ERROR_NOT_INITIALIZED : VTA_ERROR_NULL;
     }
 
-    vta->neurons.inhibitory_input += clampf(strength, 0.0f, 2.0f);
+    vta->neurons.inhibitory_input += nimcp_clampf(strength, 0.0f, 2.0f);
     return VTA_OK;
 }
 
@@ -607,7 +597,7 @@ nimcp_vta_error_t nimcp_vta_add_projection(
     nimcp_vta_projection_t* proj = &vta->projections[vta->num_projections];
     proj->id = vta->num_projections;
     proj->target = target;
-    proj->weight = clampf(weight, 0.0f, 1.0f);
+    proj->weight = nimcp_clampf(weight, 0.0f, 1.0f);
     proj->enabled = true;
 
     if (name) {

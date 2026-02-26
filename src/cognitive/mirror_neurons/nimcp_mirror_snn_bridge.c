@@ -29,6 +29,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(mirror_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -102,14 +103,6 @@ struct mirror_snn_bridge {
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(mirror_snn_bridge)
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
 
 static uint64_t get_time_us(void) {
     return nimcp_time_get_us();
@@ -785,7 +778,7 @@ int mirror_snn_get_recognized_action(
     }
 
     *action_id = best_action;
-    *confidence = clamp_f(best_conf, 0.0f, 1.0f);
+    *confidence = nimcp_clampf(best_conf, 0.0f, 1.0f);
 
     /* Update action state */
     if (best_action < MIRROR_SNN_MAX_ACTIONS) {
@@ -844,7 +837,7 @@ int mirror_snn_get_action_confidences(
 
         /* Normalize: rate/max_rate then apply gain and clamp */
         float normalized = confidences[i] / max_rate;
-        normalized = clamp_f(normalized * bridge->config.confidence_gain, 0.0f, 1.0f);
+        normalized = nimcp_clampf(normalized * bridge->config.confidence_gain, 0.0f, 1.0f);
         confidences[i] = normalized;
         if (confidences[i] > bridge->config.decoding_threshold) count++;
     }

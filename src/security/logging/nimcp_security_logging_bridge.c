@@ -35,6 +35,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_logging_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -144,15 +145,6 @@ static uint32_t get_thread_id(void) {
 #else
     return (uint32_t)pthread_self();
 #endif
-}
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -1458,7 +1450,7 @@ int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
         if (pattern) {
             pattern->last_seen_ns = security_log_current_time_ns();
             pattern->occurrence_count++;
-            pattern->confidence = clampf(
+            pattern->confidence = nimcp_clampf(
                 (float)category_counts[SECURITY_LOG_CAT_ACCESS] / 10.0f,
                 0.0f, 1.0f);
             patterns_found++;
@@ -1492,7 +1484,7 @@ int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
         if (pattern) {
             pattern->last_seen_ns = security_log_current_time_ns();
             pattern->occurrence_count++;
-            pattern->confidence = clampf(
+            pattern->confidence = nimcp_clampf(
                 (float)category_counts[SECURITY_LOG_CAT_RATE_LIMIT] / 20.0f,
                 0.0f, 1.0f);
             patterns_found++;
@@ -1531,7 +1523,7 @@ int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
             pattern->severity_avg = (float)(NIMCP_THREAT_HIGH * threat_counts[NIMCP_THREAT_HIGH] +
                                             NIMCP_THREAT_CRITICAL * threat_counts[NIMCP_THREAT_CRITICAL]) /
                                    (float)high_count;
-            pattern->confidence = clampf((float)high_count / 5.0f, 0.0f, 1.0f);
+            pattern->confidence = nimcp_clampf((float)high_count / 5.0f, 0.0f, 1.0f);
             patterns_found++;
         }
     }
@@ -1554,7 +1546,7 @@ int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
 
     /* Update logging effects */
     bridge->logging_effects.patterns_detected = patterns_found;
-    bridge->logging_effects.threat_trend_score = clampf(
+    bridge->logging_effects.threat_trend_score = nimcp_clampf(
         (float)(threat_counts[NIMCP_THREAT_HIGH] + threat_counts[NIMCP_THREAT_CRITICAL]) / 10.0f,
         0.0f, 1.0f);
     bridge->logging_effects.escalation_recommended =

@@ -47,6 +47,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_emotion_bridge_health_agent = NULL;
@@ -208,16 +209,6 @@ static const char* state_names[] = {
     "error"
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float maxf(float a, float b) {
     return (a > b) ? a : b;
 }
@@ -245,22 +236,22 @@ static int bridge_kg_publish(financial_emotion_bridge_t* bridge, const char* msg
  */
 static void update_compound_emotions(fin_emotion_state_t* state) {
     /* Greed = joy + anticipation */
-    state->greed = clampf((state->joy + state->anticipation) / 2.0f, 0.0f, 1.0f);
+    state->greed = nimcp_clampf((state->joy + state->anticipation) / 2.0f, 0.0f, 1.0f);
 
     /* Panic = fear + surprise */
-    state->panic = clampf((state->fear + state->surprise) / 2.0f, 0.0f, 1.0f);
+    state->panic = nimcp_clampf((state->fear + state->surprise) / 2.0f, 0.0f, 1.0f);
 
     /* FOMO = fear + anticipation (with emphasis on fear of missing) */
-    state->fomo = clampf((state->fear * 0.6f + state->anticipation * 0.4f), 0.0f, 1.0f);
+    state->fomo = nimcp_clampf((state->fear * 0.6f + state->anticipation * 0.4f), 0.0f, 1.0f);
 
     /* Euphoria = joy + surprise */
-    state->euphoria = clampf((state->joy + state->surprise) / 2.0f, 0.0f, 1.0f);
+    state->euphoria = nimcp_clampf((state->joy + state->surprise) / 2.0f, 0.0f, 1.0f);
 
     /* Anxiety = fear + anticipation (worried anticipation) */
-    state->anxiety = clampf((state->fear * 0.7f + state->anticipation * 0.3f), 0.0f, 1.0f);
+    state->anxiety = nimcp_clampf((state->fear * 0.7f + state->anticipation * 0.3f), 0.0f, 1.0f);
 
     /* Regret = sadness + anger */
-    state->regret = clampf((state->sadness + state->anger) / 2.0f, 0.0f, 1.0f);
+    state->regret = nimcp_clampf((state->sadness + state->anger) / 2.0f, 0.0f, 1.0f);
 }
 
 /**
@@ -279,95 +270,95 @@ static void apply_event_appraisal(
         case FIN_MKT_EVENT_PRICE_INCREASE:
             if (event->magnitude > 0) {
                 /* Long position: joy, trust increase */
-                state->joy = clampf(state->joy + delta * 0.5f, 0.0f, 1.0f);
-                state->trust = clampf(state->trust + delta * 0.3f, 0.0f, 1.0f);
-                state->anticipation = clampf(state->anticipation + delta * 0.2f, 0.0f, 1.0f);
+                state->joy = nimcp_clampf(state->joy + delta * 0.5f, 0.0f, 1.0f);
+                state->trust = nimcp_clampf(state->trust + delta * 0.3f, 0.0f, 1.0f);
+                state->anticipation = nimcp_clampf(state->anticipation + delta * 0.2f, 0.0f, 1.0f);
             } else {
                 /* Short position: fear, sadness increase */
-                state->fear = clampf(state->fear + delta * 0.4f, 0.0f, 1.0f);
-                state->sadness = clampf(state->sadness + delta * 0.3f, 0.0f, 1.0f);
+                state->fear = nimcp_clampf(state->fear + delta * 0.4f, 0.0f, 1.0f);
+                state->sadness = nimcp_clampf(state->sadness + delta * 0.3f, 0.0f, 1.0f);
             }
-            state->surprise = clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_PRICE_DECREASE:
             if (event->magnitude < 0) {
                 /* Long position loss: fear, sadness, anger */
-                state->fear = clampf(state->fear + delta * 0.5f, 0.0f, 1.0f);
-                state->sadness = clampf(state->sadness + delta * 0.3f, 0.0f, 1.0f);
-                state->anger = clampf(state->anger + delta * 0.2f, 0.0f, 1.0f);
+                state->fear = nimcp_clampf(state->fear + delta * 0.5f, 0.0f, 1.0f);
+                state->sadness = nimcp_clampf(state->sadness + delta * 0.3f, 0.0f, 1.0f);
+                state->anger = nimcp_clampf(state->anger + delta * 0.2f, 0.0f, 1.0f);
             } else {
                 /* Short position gain: joy */
-                state->joy = clampf(state->joy + delta * 0.4f, 0.0f, 1.0f);
+                state->joy = nimcp_clampf(state->joy + delta * 0.4f, 0.0f, 1.0f);
             }
-            state->surprise = clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_VOLUME_SPIKE:
             /* Increased anticipation and surprise */
-            state->anticipation = clampf(state->anticipation + delta * 0.4f, 0.0f, 1.0f);
-            state->surprise = clampf(state->surprise + surprise * delta * 0.6f, 0.0f, 1.0f);
-            state->fear = clampf(state->fear + delta * 0.2f, 0.0f, 1.0f);
+            state->anticipation = nimcp_clampf(state->anticipation + delta * 0.4f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + surprise * delta * 0.6f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear + delta * 0.2f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_VOLATILITY_SPIKE:
             /* Fear and anticipation increase significantly */
-            state->fear = clampf(state->fear + delta * 0.5f, 0.0f, 1.0f);
-            state->anticipation = clampf(state->anticipation + delta * 0.3f, 0.0f, 1.0f);
-            state->surprise = clampf(state->surprise + surprise * delta * 0.4f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear + delta * 0.5f, 0.0f, 1.0f);
+            state->anticipation = nimcp_clampf(state->anticipation + delta * 0.3f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + surprise * delta * 0.4f, 0.0f, 1.0f);
             /* Trust decreases */
-            state->trust = clampf(state->trust - delta * 0.2f, 0.0f, 1.0f);
+            state->trust = nimcp_clampf(state->trust - delta * 0.2f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_STOP_LOSS_HIT:
             /* Strong negative emotions */
-            state->sadness = clampf(state->sadness + delta * 0.6f, 0.0f, 1.0f);
-            state->anger = clampf(state->anger + delta * 0.4f, 0.0f, 1.0f);
-            state->fear = clampf(state->fear + delta * 0.3f, 0.0f, 1.0f);
-            state->disgust = clampf(state->disgust + delta * 0.2f, 0.0f, 1.0f);
+            state->sadness = nimcp_clampf(state->sadness + delta * 0.6f, 0.0f, 1.0f);
+            state->anger = nimcp_clampf(state->anger + delta * 0.4f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear + delta * 0.3f, 0.0f, 1.0f);
+            state->disgust = nimcp_clampf(state->disgust + delta * 0.2f, 0.0f, 1.0f);
             /* Trust and joy decrease */
-            state->trust = clampf(state->trust - delta * 0.4f, 0.0f, 1.0f);
-            state->joy = clampf(state->joy - delta * 0.5f, 0.0f, 1.0f);
+            state->trust = nimcp_clampf(state->trust - delta * 0.4f, 0.0f, 1.0f);
+            state->joy = nimcp_clampf(state->joy - delta * 0.5f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_PROFIT_TARGET_HIT:
             /* Strong positive emotions */
-            state->joy = clampf(state->joy + delta * 0.7f, 0.0f, 1.0f);
-            state->trust = clampf(state->trust + delta * 0.4f, 0.0f, 1.0f);
-            state->anticipation = clampf(state->anticipation + delta * 0.3f, 0.0f, 1.0f);
+            state->joy = nimcp_clampf(state->joy + delta * 0.7f, 0.0f, 1.0f);
+            state->trust = nimcp_clampf(state->trust + delta * 0.4f, 0.0f, 1.0f);
+            state->anticipation = nimcp_clampf(state->anticipation + delta * 0.3f, 0.0f, 1.0f);
             /* Fear and sadness decrease */
-            state->fear = clampf(state->fear - delta * 0.3f, 0.0f, 1.0f);
-            state->sadness = clampf(state->sadness - delta * 0.3f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear - delta * 0.3f, 0.0f, 1.0f);
+            state->sadness = nimcp_clampf(state->sadness - delta * 0.3f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_NEWS_POSITIVE:
-            state->joy = clampf(state->joy + delta * 0.4f, 0.0f, 1.0f);
-            state->trust = clampf(state->trust + delta * 0.3f, 0.0f, 1.0f);
-            state->anticipation = clampf(state->anticipation + delta * 0.4f, 0.0f, 1.0f);
-            state->surprise = clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
+            state->joy = nimcp_clampf(state->joy + delta * 0.4f, 0.0f, 1.0f);
+            state->trust = nimcp_clampf(state->trust + delta * 0.3f, 0.0f, 1.0f);
+            state->anticipation = nimcp_clampf(state->anticipation + delta * 0.4f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_NEWS_NEGATIVE:
-            state->fear = clampf(state->fear + delta * 0.4f, 0.0f, 1.0f);
-            state->sadness = clampf(state->sadness + delta * 0.3f, 0.0f, 1.0f);
-            state->anger = clampf(state->anger + delta * 0.2f, 0.0f, 1.0f);
-            state->surprise = clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
-            state->trust = clampf(state->trust - delta * 0.3f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear + delta * 0.4f, 0.0f, 1.0f);
+            state->sadness = nimcp_clampf(state->sadness + delta * 0.3f, 0.0f, 1.0f);
+            state->anger = nimcp_clampf(state->anger + delta * 0.2f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + surprise * delta * 0.5f, 0.0f, 1.0f);
+            state->trust = nimcp_clampf(state->trust - delta * 0.3f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_REGIME_CHANGE:
             /* High surprise and anticipation, moderate fear */
-            state->surprise = clampf(state->surprise + delta * 0.7f, 0.0f, 1.0f);
-            state->anticipation = clampf(state->anticipation + delta * 0.5f, 0.0f, 1.0f);
-            state->fear = clampf(state->fear + delta * 0.3f, 0.0f, 1.0f);
+            state->surprise = nimcp_clampf(state->surprise + delta * 0.7f, 0.0f, 1.0f);
+            state->anticipation = nimcp_clampf(state->anticipation + delta * 0.5f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear + delta * 0.3f, 0.0f, 1.0f);
             break;
 
         case FIN_MKT_EVENT_MISSED_OPPORTUNITY:
             /* FOMO trigger: fear, anticipation, regret components */
-            state->fear = clampf(state->fear + delta * 0.4f, 0.0f, 1.0f);
-            state->anticipation = clampf(state->anticipation + delta * 0.5f, 0.0f, 1.0f);
-            state->sadness = clampf(state->sadness + delta * 0.4f, 0.0f, 1.0f);
-            state->anger = clampf(state->anger + delta * 0.2f, 0.0f, 1.0f);
+            state->fear = nimcp_clampf(state->fear + delta * 0.4f, 0.0f, 1.0f);
+            state->anticipation = nimcp_clampf(state->anticipation + delta * 0.5f, 0.0f, 1.0f);
+            state->sadness = nimcp_clampf(state->sadness + delta * 0.4f, 0.0f, 1.0f);
+            state->anger = nimcp_clampf(state->anger + delta * 0.2f, 0.0f, 1.0f);
             break;
 
         default:
@@ -375,19 +366,19 @@ static void apply_event_appraisal(
     }
 
     /* Update appraisal dimensions based on event */
-    state->relevance = clampf(state->relevance + mag * 0.3f, 0.0f, 1.0f);
+    state->relevance = nimcp_clampf(state->relevance + mag * 0.3f, 0.0f, 1.0f);
 
     /* Certainty decreases with surprise, increases with expected outcomes */
     if (surprise > 0.5f) {
-        state->certainty = clampf(state->certainty - surprise * 0.2f, 0.0f, 1.0f);
+        state->certainty = nimcp_clampf(state->certainty - surprise * 0.2f, 0.0f, 1.0f);
     }
 
     /* Control decreases with volatility and unexpected events */
     if (event->event_type == FIN_MKT_EVENT_VOLATILITY_SPIKE ||
         event->event_type == FIN_MKT_EVENT_STOP_LOSS_HIT) {
-        state->control = clampf(state->control - delta * 0.3f, 0.0f, 1.0f);
+        state->control = nimcp_clampf(state->control - delta * 0.3f, 0.0f, 1.0f);
     } else if (event->event_type == FIN_MKT_EVENT_PROFIT_TARGET_HIT) {
-        state->control = clampf(state->control + delta * 0.2f, 0.0f, 1.0f);
+        state->control = nimcp_clampf(state->control + delta * 0.2f, 0.0f, 1.0f);
     }
 }
 
@@ -592,7 +583,7 @@ int financial_emotion_bridge_update(
     uint64_t elapsed = now - bridge->last_update_ms;
     if (elapsed > 0 && bridge->config.decay_rate > 0.0f) {
         float decay = 1.0f - bridge->config.decay_rate * (float)elapsed / 1000.0f;
-        decay = clampf(decay, 0.0f, 1.0f);
+        decay = nimcp_clampf(decay, 0.0f, 1.0f);
 
         fin_emotion_state_t* s = &bridge->current_state;
         s->joy *= decay;
@@ -733,7 +724,7 @@ int financial_emotion_bridge_decay(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = 1.0f - bridge->config.decay_rate * (float)elapsed_ms / 1000.0f;
-    decay = clampf(decay, 0.0f, 1.0f);
+    decay = nimcp_clampf(decay, 0.0f, 1.0f);
 
     fin_emotion_state_t* s = &bridge->current_state;
 
@@ -834,13 +825,13 @@ int financial_emotion_bridge_modulate_decision(
     }
 
     /* Clamp all values to configured limits */
-    modulation->risk_tolerance_scale = clampf(modulation->risk_tolerance_scale,
+    modulation->risk_tolerance_scale = nimcp_clampf(modulation->risk_tolerance_scale,
                                                bridge->config.min_risk_scale,
                                                bridge->config.max_risk_scale);
-    modulation->position_size_scale = clampf(modulation->position_size_scale, 0.1f, 2.0f);
-    modulation->stop_loss_scale = clampf(modulation->stop_loss_scale, 0.5f, 2.0f);
-    modulation->take_profit_scale = clampf(modulation->take_profit_scale, 0.5f, 2.0f);
-    modulation->urgency_dampening = clampf(modulation->urgency_dampening, 0.0f, 1.0f);
+    modulation->position_size_scale = nimcp_clampf(modulation->position_size_scale, 0.1f, 2.0f);
+    modulation->stop_loss_scale = nimcp_clampf(modulation->stop_loss_scale, 0.5f, 2.0f);
+    modulation->take_profit_scale = nimcp_clampf(modulation->take_profit_scale, 0.5f, 2.0f);
+    modulation->urgency_dampening = nimcp_clampf(modulation->urgency_dampening, 0.0f, 1.0f);
 
     /* Determine if pause should be suggested */
     if (bridge->config.enable_pause_suggestion) {
@@ -922,7 +913,7 @@ int financial_emotion_bridge_detect_bias(
         if (severity > detection->severity) {
             detection->bias = FIN_BIAS_PANIC_SELLING;
             detection->severity = severity;
-            detection->confidence = clampf(severity + (1.0f - s->control) * 0.3f, 0.0f, 1.0f);
+            detection->confidence = nimcp_clampf(severity + (1.0f - s->control) * 0.3f, 0.0f, 1.0f);
             detection->action_recommended = true;
             snprintf(detection->description, sizeof(detection->description),
                      "Panic selling risk detected (panic=%.0f%%, fear=%.0f%%, control=%.0f%%). "
@@ -936,7 +927,7 @@ int financial_emotion_bridge_detect_bias(
         if (s->fomo > detection->severity) {
             detection->bias = FIN_BIAS_FOMO;
             detection->severity = s->fomo;
-            detection->confidence = clampf(s->fomo + s->anticipation * 0.2f, 0.0f, 1.0f);
+            detection->confidence = nimcp_clampf(s->fomo + s->anticipation * 0.2f, 0.0f, 1.0f);
             detection->action_recommended = true;
             snprintf(detection->description, sizeof(detection->description),
                      "FOMO detected (%.0f%%). Fear of missing out can lead to poor entry timing. "
@@ -951,7 +942,7 @@ int financial_emotion_bridge_detect_bias(
         if (severity > detection->severity) {
             detection->bias = FIN_BIAS_GREED_OVERTRADING;
             detection->severity = severity;
-            detection->confidence = clampf(severity, 0.0f, 1.0f);
+            detection->confidence = nimcp_clampf(severity, 0.0f, 1.0f);
             detection->action_recommended = true;
             snprintf(detection->description, sizeof(detection->description),
                      "Greed-driven overtrading risk (greed=%.0f%%, anticipation=%.0f%%). "
@@ -966,7 +957,7 @@ int financial_emotion_bridge_detect_bias(
         if (severity > detection->severity) {
             detection->bias = FIN_BIAS_LOSS_AVERSION;
             detection->severity = severity;
-            detection->confidence = clampf(severity, 0.0f, 1.0f);
+            detection->confidence = nimcp_clampf(severity, 0.0f, 1.0f);
             detection->action_recommended = s->fear > 0.6f;
             snprintf(detection->description, sizeof(detection->description),
                      "Loss aversion detected (fear=%.0f%%, sadness=%.0f%%). "
@@ -981,7 +972,7 @@ int financial_emotion_bridge_detect_bias(
         if (overconfidence > detection->severity) {
             detection->bias = FIN_BIAS_OVERCONFIDENCE;
             detection->severity = overconfidence;
-            detection->confidence = clampf(overconfidence, 0.0f, 1.0f);
+            detection->confidence = nimcp_clampf(overconfidence, 0.0f, 1.0f);
             detection->action_recommended = overconfidence > 0.8f;
             snprintf(detection->description, sizeof(detection->description),
                      "Overconfidence detected (trust=%.0f%%, joy=%.0f%%, euphoria=%.0f%%). "
@@ -996,7 +987,7 @@ int financial_emotion_bridge_detect_bias(
         if (severity > detection->severity) {
             detection->bias = FIN_BIAS_REVENGE_TRADING;
             detection->severity = severity;
-            detection->confidence = clampf(severity + 0.1f, 0.0f, 1.0f);
+            detection->confidence = nimcp_clampf(severity + 0.1f, 0.0f, 1.0f);
             detection->action_recommended = true;
             snprintf(detection->description, sizeof(detection->description),
                      "Revenge trading risk (anger=%.0f%%, regret=%.0f%%). "

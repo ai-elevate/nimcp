@@ -29,6 +29,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(game_theory_executive_fep_bridge)
 //=============================================================================
@@ -127,16 +128,6 @@ struct gt_exec_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -167,9 +158,9 @@ static void compute_free_energy(gt_exec_fep_bridge_t* bridge) {
     const gt_exec_fep_config_t* cfg = &bridge->config;
 
     /* Clamp input metrics */
-    m->decision_quality = clamp_f(m->decision_quality, 0.0f, 1.0f);
-    m->executive_alignment = clamp_f(m->executive_alignment, 0.0f, 1.0f);
-    m->action_coherence = clamp_f(m->action_coherence, 0.0f, 1.0f);
+    m->decision_quality = nimcp_clampf(m->decision_quality, 0.0f, 1.0f);
+    m->executive_alignment = nimcp_clampf(m->executive_alignment, 0.0f, 1.0f);
+    m->action_coherence = nimcp_clampf(m->action_coherence, 0.0f, 1.0f);
 
     /* Decision quality contribution:
      * Low quality decisions = high prediction error about optimal action */
@@ -189,7 +180,7 @@ static void compute_free_energy(gt_exec_fep_bridge_t* bridge) {
                       m->alignment_contribution +
                       m->coherence_contribution) * cfg->free_energy_weight;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* Executive aligned check */
     m->exec_aligned = (m->executive_alignment >= (1.0f - cfg->alignment_epsilon));
@@ -200,7 +191,7 @@ static void compute_free_energy(gt_exec_fep_bridge_t* bridge) {
                                    (1.0f - m->action_coherence) * 0.2f);
 
     /* Apply decay to smooth transitions */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_prediction_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -212,14 +203,14 @@ static void compute_free_energy(gt_exec_fep_bridge_t* bridge) {
     float alignment_change = fabsf(m->executive_alignment - bridge->prev_executive_alignment);
     float coherence_change = fabsf(m->action_coherence - bridge->prev_action_coherence);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.3f + decision_change * 0.3f +
          alignment_change * 0.2f + coherence_change * 0.2f),
         0.0f, 1.0f
     );
 
     /* Entropy: based on decision uncertainty */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         (1.0f - m->decision_quality) * 0.6f + (1.0f - m->action_coherence) * 0.4f,
         0.0f, 1.0f
     );
@@ -641,7 +632,7 @@ int gt_exec_fep_update_callback(void* handle) {
                 float follow_rate = (float)gt_exec_stats.recommendations_followed /
                                    (float)gt_exec_stats.recommendations_made;
                 /* Higher follow rate with good outcomes = higher quality */
-                bridge->metrics.decision_quality = clamp_f(
+                bridge->metrics.decision_quality = nimcp_clampf(
                     gt_exec_stats.recommendation_accuracy * 0.6f + follow_rate * 0.4f,
                     0.0f, 1.0f
                 );
@@ -652,7 +643,7 @@ int gt_exec_fep_update_callback(void* handle) {
                 float override_rate = (float)gt_exec_stats.executive_overrides /
                                      (float)gt_exec_stats.strategic_decisions;
                 /* Lower override rate = higher alignment */
-                bridge->metrics.executive_alignment = clamp_f(
+                bridge->metrics.executive_alignment = nimcp_clampf(
                     1.0f - override_rate,
                     0.0f, 1.0f
                 );
@@ -663,7 +654,7 @@ int gt_exec_fep_update_callback(void* handle) {
                 float utility_ratio = gt_exec_stats.avg_realized_utility /
                                      gt_exec_stats.avg_expected_utility;
                 /* Realized close to expected = high coherence */
-                bridge->metrics.action_coherence = clamp_f(
+                bridge->metrics.action_coherence = nimcp_clampf(
                     utility_ratio,
                     0.0f, 1.0f
                 );
@@ -755,7 +746,7 @@ int gt_exec_fep_bridge_update_decision_quality(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.decision_quality = clamp_f(quality, 0.0f, 1.0f);
+    bridge->metrics.decision_quality = nimcp_clampf(quality, 0.0f, 1.0f);
     bridge->stats.decision_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -776,7 +767,7 @@ int gt_exec_fep_bridge_update_executive_alignment(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.executive_alignment = clamp_f(alignment, 0.0f, 1.0f);
+    bridge->metrics.executive_alignment = nimcp_clampf(alignment, 0.0f, 1.0f);
     bridge->stats.alignment_checks++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -797,7 +788,7 @@ int gt_exec_fep_bridge_update_action_coherence(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.action_coherence = clamp_f(coherence, 0.0f, 1.0f);
+    bridge->metrics.action_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
@@ -835,7 +826,7 @@ int gt_exec_fep_bridge_notify_recommendation_result(
 
     /* Adjust decision quality based on outcome */
     float quality_delta = outcome_utility - 0.5f;  /* Centered around 0.5 */
-    bridge->metrics.decision_quality = clamp_f(
+    bridge->metrics.decision_quality = nimcp_clampf(
         bridge->metrics.decision_quality + quality_delta * 0.1f,
         0.0f, 1.0f
     );

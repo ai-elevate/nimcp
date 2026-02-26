@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(spatial_reasoning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -96,12 +97,6 @@ static uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
 }
 
 static void update_effective_rotation_rate(spatial_reasoning_t* sr) {
@@ -459,7 +454,7 @@ float quaternion_angle_between(quaternion_t a, quaternion_t b) {
 
 
     float dot = a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
-    dot = clamp01(fabsf(dot));  /* Handle numerical issues */
+    dot = nimcp_clamp01(fabsf(dot));  /* Handle numerical issues */
 
     return 2.0f * acosf(dot) * RAD_TO_DEG;
 }
@@ -1222,7 +1217,7 @@ int spatial_attention_update(spatial_attention_t* attention, float decay_rate) {
     spatial_reasoning_heartbeat("spatial_reas_spatial_attention_up", 0.0f);
 
 
-    decay_rate = clamp01(decay_rate);
+    decay_rate = nimcp_clamp01(decay_rate);
 
     for (uint32_t i = 0; i < attention->grid_width * attention->grid_height; i++) {
         attention->weights[i] *= (1.0f - decay_rate);
@@ -1246,7 +1241,7 @@ int spatial_set_inflammation(spatial_reasoning_t* sr, float level) {
 
 
     nimcp_mutex_lock(sr->lock);
-    sr->inflammation_level = clamp01(level);
+    sr->inflammation_level = nimcp_clamp01(level);
     update_effective_rotation_rate(sr);
     nimcp_mutex_unlock(sr->lock);
 
@@ -1264,7 +1259,7 @@ int spatial_set_fatigue(spatial_reasoning_t* sr, float level) {
 
 
     nimcp_mutex_lock(sr->lock);
-    sr->fatigue_level = clamp01(level);
+    sr->fatigue_level = nimcp_clamp01(level);
     update_effective_rotation_rate(sr);
     nimcp_mutex_unlock(sr->lock);
 

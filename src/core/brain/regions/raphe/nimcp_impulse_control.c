@@ -12,19 +12,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(impulse_control, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float lerp(float a, float b, float t) {
     return a + t * (b - a);
@@ -134,7 +124,7 @@ int nimcp_impulse_update(nimcp_impulse_system_t* system, float ht_level, float d
     /* Higher 5-HT -> stronger inhibition (better impulse control) */
     float inhibition_target = system->config.baseline_inhibition +
                               (ht_ratio - 1.0f) * system->config.ht_inhibition_gain;
-    inhibition_target = clamp_f(inhibition_target, 0.1f, 0.95f);
+    inhibition_target = nimcp_clampf(inhibition_target, 0.1f, 0.95f);
 
     /* Smooth transition */
     float alpha = 1.0f - expf(-dt_sec * 0.5f);
@@ -145,14 +135,14 @@ int nimcp_impulse_update(nimcp_impulse_system_t* system, float ht_level, float d
     /* Higher 5-HT -> more patience (can wait longer) */
     float patience_target = system->config.baseline_patience +
                            (ht_ratio - 1.0f) * system->config.ht_patience_gain;
-    patience_target = clamp_f(patience_target, 0.1f, 0.95f);
+    patience_target = nimcp_clampf(patience_target, 0.1f, 0.95f);
     system->patience = lerp(system->patience, patience_target, alpha);
 
     /* 3. Update risk aversion */
     /* Higher 5-HT -> more risk averse */
     float risk_target = system->config.baseline_risk_aversion +
                        (ht_ratio - 1.0f) * 0.4f;
-    risk_target = clamp_f(risk_target, 0.1f, 0.9f);
+    risk_target = nimcp_clampf(risk_target, 0.1f, 0.9f);
     system->risk_aversion = lerp(system->risk_aversion, risk_target, alpha);
 
     /* 4. Update impulsivity (inverse of inhibition) */
@@ -180,7 +170,7 @@ int nimcp_impulse_evaluate(nimcp_impulse_system_t* system,
 
     /* Accumulate urgency */
     system->accumulated_urgency += action_urgency * 0.1f;
-    system->accumulated_urgency = clamp_f(system->accumulated_urgency, 0.0f, 1.0f);
+    system->accumulated_urgency = nimcp_clampf(system->accumulated_urgency, 0.0f, 1.0f);
 
     /* Compute action value (reward minus risk-adjusted penalty) */
     float risk_penalty = action_risk * system->risk_aversion;
@@ -253,7 +243,7 @@ int nimcp_impulse_compute_inhibition(nimcp_impulse_system_t* system,
     float net_inhibition = system->inhibition_strength - impulse_strength;
 
     /* Positive = inhibition wins, Negative = impulse breaks through */
-    *inhibition_output = clamp_f(net_inhibition, -1.0f, 1.0f);
+    *inhibition_output = nimcp_clampf(net_inhibition, -1.0f, 1.0f);
 
     return 0;
 }

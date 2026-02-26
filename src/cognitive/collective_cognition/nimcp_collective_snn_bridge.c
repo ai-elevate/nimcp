@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(collective_snn_bridge)
 //=============================================================================
@@ -121,16 +122,6 @@ struct collective_snn_bridge {
     /* Phase 8: Instance-level health agent */
     nimcp_health_agent_t* health_agent;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -423,7 +414,7 @@ int collective_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -493,8 +484,8 @@ int collective_snn_encode_swarm(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[COLLECTIVE_DIM_COUNT] = {0};
-    dims[COLLECTIVE_DIM_SWARM_COHERENCE] = clamp_f(coherence, 0.0f, 1.0f);
-    dims[COLLECTIVE_DIM_GROUP_SYNC] = clamp_f(sync, 0.0f, 1.0f);
+    dims[COLLECTIVE_DIM_SWARM_COHERENCE] = nimcp_clampf(coherence, 0.0f, 1.0f);
+    dims[COLLECTIVE_DIM_GROUP_SYNC] = nimcp_clampf(sync, 0.0f, 1.0f);
     dims[COLLECTIVE_DIM_ROLE_COORDINATION] = (coherence + sync) / 2.0f;
 
     bridge->sync_signal = sync;
@@ -521,8 +512,8 @@ int collective_snn_encode_decision(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[COLLECTIVE_DIM_COUNT] = {0};
-    dims[COLLECTIVE_DIM_CONSENSUS_LEVEL] = clamp_f(consensus, 0.0f, 1.0f);
-    dims[COLLECTIVE_DIM_DISTRIBUTED_DECISION] = clamp_f((float)participant_count / 10.0f, 0.0f, 1.0f);
+    dims[COLLECTIVE_DIM_CONSENSUS_LEVEL] = nimcp_clampf(consensus, 0.0f, 1.0f);
+    dims[COLLECTIVE_DIM_DISTRIBUTED_DECISION] = nimcp_clampf((float)participant_count / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -546,8 +537,8 @@ int collective_snn_encode_intention(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[COLLECTIVE_DIM_COUNT] = {0};
-    dims[COLLECTIVE_DIM_SHARED_INTENTION] = clamp_f(intention, 0.0f, 1.0f);
-    dims[COLLECTIVE_DIM_JOINT_ATTENTION] = clamp_f(intention * 0.8f, 0.0f, 1.0f);
+    dims[COLLECTIVE_DIM_SHARED_INTENTION] = nimcp_clampf(intention, 0.0f, 1.0f);
+    dims[COLLECTIVE_DIM_JOINT_ATTENTION] = nimcp_clampf(intention * 0.8f, 0.0f, 1.0f);
 
     bridge->emergence_signal = intention;
 
@@ -632,12 +623,12 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
     }
 
     /* Decode outputs */
-    bridge->last_drive.swarm_coherence = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_drive.group_sync_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_drive.shared_intention = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_drive.coordination_drive = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_drive.coordination_magnitude = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_drive.emergence_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_drive.swarm_coherence = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_drive.group_sync_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_drive.shared_intention = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_drive.coordination_drive = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_drive.coordination_magnitude = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_drive.emergence_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check sync threshold */
     if (bridge->last_drive.group_sync_level > bridge->config.sync_threshold) {

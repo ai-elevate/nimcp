@@ -10,6 +10,7 @@
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hypothalamus_substrate_bridge)
 
@@ -136,9 +137,9 @@ int hypothalamus_substrate_bridge_update(hypothalamus_substrate_bridge_t* bridge
      * and hunger signaling quality.
      */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.homeostatic_drive = nimcp_clamp_f(
+        bridge->effects.homeostatic_drive = nimcp_clampf(
             atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.hunger_signal = nimcp_clamp_f(
+        bridge->effects.hunger_signal = nimcp_clampf(
             atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
@@ -147,9 +148,9 @@ int hypothalamus_substrate_bridge_update(hypothalamus_substrate_bridge_t* bridge
      * and stress response regulation.
      */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.circadian_strength = nimcp_clamp_f(
+        bridge->effects.circadian_strength = nimcp_clampf(
             metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.stress_response = nimcp_clamp_f(
+        bridge->effects.stress_response = nimcp_clampf(
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 

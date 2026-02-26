@@ -35,6 +35,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_consolidation)
 
@@ -125,16 +126,6 @@ struct financial_consolidation_bridge {
     fin_consolidation_strengthen_callback_t strengthen_callback;
     void* strengthen_callback_data;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 /* ============================================================================
  * KG Wiring Message Types
@@ -761,7 +752,7 @@ int financial_consolidation_bridge_register_pattern(
 
     pattern->pattern_id = bridge->next_pattern_id++;
     pattern->type = type;
-    pattern->strength = clampf(initial_strength, 0.0f, 1.0f);
+    pattern->strength = nimcp_clampf(initial_strength, 0.0f, 1.0f);
     pattern->enabled = true;
 
     bridge->num_patterns++;
@@ -969,7 +960,7 @@ int financial_consolidation_bridge_replay(
             pattern->replay_count++;
             float boost = bridge->config.strengthen_rate * 0.1f;  /* Smaller boost for replay */
             float old_strength = pattern->strength;
-            pattern->strength = clampf(pattern->strength + boost, 0.0f, 1.0f);
+            pattern->strength = nimcp_clampf(pattern->strength + boost, 0.0f, 1.0f);
 
             replayed++;
             bridge->stats.replays++;
@@ -1095,7 +1086,7 @@ int financial_consolidation_bridge_prune_losers(
                               pattern, sizeof(*pattern));
         } else if (should_weaken) {
             /* Weaken but don't prune */
-            pattern->strength = clampf(
+            pattern->strength = nimcp_clampf(
                 pattern->strength - bridge->config.weaken_rate, 0.0f, 1.0f);
         }
 
@@ -1188,12 +1179,12 @@ int financial_consolidation_bridge_strengthen_winners(
             float pf_bonus = 0.0f;
             if (pattern->profit_factor > 1.5f) {
                 pf_bonus = (pattern->profit_factor - 1.0f) * 0.02f;
-                pf_bonus = clampf(pf_bonus, 0.0f, 0.1f);
+                pf_bonus = nimcp_clampf(pf_bonus, 0.0f, 0.1f);
             }
 
             float total_boost = base_boost + win_rate_bonus + pf_bonus;
             float old_strength = pattern->strength;
-            pattern->strength = clampf(pattern->strength + total_boost, 0.0f, 1.0f);
+            pattern->strength = nimcp_clampf(pattern->strength + total_boost, 0.0f, 1.0f);
 
             strengthened++;
             bridge->stats.strengthenings++;

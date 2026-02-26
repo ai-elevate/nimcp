@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(jepa_snn_bridge)
 //=============================================================================
@@ -120,16 +121,6 @@ struct jepa_snn_bridge {
     /* Phase 8: Instance-level health agent */
     nimcp_health_agent_t* health_agent;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -411,7 +402,7 @@ int jepa_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -478,8 +469,8 @@ int jepa_snn_encode_latent(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[JEPA_DIM_COUNT] = {0};
-    dims[JEPA_DIM_LATENT_CONTEXT] = clamp_f(context, 0.0f, 1.0f);
-    dims[JEPA_DIM_LATENT_TARGET] = clamp_f(target, 0.0f, 1.0f);
+    dims[JEPA_DIM_LATENT_CONTEXT] = nimcp_clampf(context, 0.0f, 1.0f);
+    dims[JEPA_DIM_LATENT_TARGET] = nimcp_clampf(target, 0.0f, 1.0f);
     dims[JEPA_DIM_CONTEXT_EMBEDDING] = (context + target) / 2.0f;
 
     bridge->context_signal = context;
@@ -503,8 +494,8 @@ int jepa_snn_encode_prediction_error(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[JEPA_DIM_COUNT] = {0};
-    dims[JEPA_DIM_PREDICTION_ERROR] = clamp_f(error_magnitude, 0.0f, 1.0f);
-    dims[JEPA_DIM_SELF_SUPERVISED] = clamp_f((float)error_dimension / 10.0f, 0.0f, 1.0f);
+    dims[JEPA_DIM_PREDICTION_ERROR] = nimcp_clampf(error_magnitude, 0.0f, 1.0f);
+    dims[JEPA_DIM_SELF_SUPERVISED] = nimcp_clampf((float)error_dimension / 10.0f, 0.0f, 1.0f);
 
     bridge->error_signal = error_magnitude;
 
@@ -527,8 +518,8 @@ int jepa_snn_encode_context(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[JEPA_DIM_COUNT] = {0};
-    dims[JEPA_DIM_CONTEXT_EMBEDDING] = clamp_f(context_strength, 0.0f, 1.0f);
-    dims[JEPA_DIM_TEMPORAL_CONTEXT] = clamp_f(context_strength * 0.8f, 0.0f, 1.0f);
+    dims[JEPA_DIM_CONTEXT_EMBEDDING] = nimcp_clampf(context_strength, 0.0f, 1.0f);
+    dims[JEPA_DIM_TEMPORAL_CONTEXT] = nimcp_clampf(context_strength * 0.8f, 0.0f, 1.0f);
 
     bridge->context_signal = context_strength;
 
@@ -607,12 +598,12 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_prediction.context_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_prediction.target_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_prediction.prediction_error = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_prediction.prediction_confidence = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_prediction.multimodal_integration = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_prediction.self_supervised_signal = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_prediction.context_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_prediction.target_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_prediction.prediction_error = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_prediction.prediction_confidence = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_prediction.multimodal_integration = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_prediction.self_supervised_signal = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check prediction error threshold */
     if (bridge->last_prediction.prediction_error > bridge->config.prediction_error_threshold) {

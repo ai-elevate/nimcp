@@ -10,6 +10,7 @@
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(brainstem_substrate_bridge)
 
@@ -136,9 +137,9 @@ int brainstem_substrate_bridge_update(brainstem_substrate_bridge_t* bridge) {
      * and autonomic balance.
      */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.arousal_level = nimcp_clamp_f(
+        bridge->effects.arousal_level = nimcp_clampf(
             atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.autonomic_balance = nimcp_clamp_f(
+        bridge->effects.autonomic_balance = nimcp_clampf(
             atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
@@ -147,9 +148,9 @@ int brainstem_substrate_bridge_update(brainstem_substrate_bridge_t* bridge) {
      * and reflex speed.
      */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.vital_stability = nimcp_clamp_f(
+        bridge->effects.vital_stability = nimcp_clampf(
             metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.reflex_speed = nimcp_clamp_f(
+        bridge->effects.reflex_speed = nimcp_clampf(
             metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 

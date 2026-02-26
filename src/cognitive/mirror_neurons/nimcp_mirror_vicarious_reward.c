@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_vicarious_reward, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -54,14 +55,6 @@ struct vicarious_reward_system {
     /** Bio-async */
     bool bio_async_registered;
 };
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static inline float clamp_f(float v, float lo, float hi) {
-    return (v < lo) ? lo : (v > hi) ? hi : v;
-}
 
 static inline float lerp_f(float a, float b, float t) {
     return a + t * (b - a);
@@ -459,7 +452,7 @@ bool vicarious_reward_process(
         system->stats.sympathetic_responses++;
     }
 
-    result->vicarious_reward = clamp_f(modulated_reward, -1.0f, 1.0f);
+    result->vicarious_reward = nimcp_clampf(modulated_reward, -1.0f, 1.0f);
     result->response_intensity = fabsf(modulated_reward);
 
     /* Compute prediction error */
@@ -467,10 +460,10 @@ bool vicarious_reward_process(
 
     /* Compute dopamine delta */
     float rpe_scaled = result->reward_prediction_error * system->config.vicarious_gain;
-    result->dopamine_delta = clamp_f(rpe_scaled, -0.5f, 0.5f);
+    result->dopamine_delta = nimcp_clampf(rpe_scaled, -0.5f, 0.5f);
 
     /* Update dopamine state */
-    system->current_dopamine = clamp_f(
+    system->current_dopamine = nimcp_clampf(
         system->baseline_dopamine + result->dopamine_delta,
         0.0f, 1.0f
     );
@@ -481,7 +474,7 @@ bool vicarious_reward_process(
     if (assoc) {
         float lr = system->config.learning_rate * observation->observation_confidence;
         assoc->expected_reward += lr * result->reward_prediction_error;
-        assoc->expected_reward = clamp_f(assoc->expected_reward, -1.0f, 1.0f);
+        assoc->expected_reward = nimcp_clampf(assoc->expected_reward, -1.0f, 1.0f);
 
         /* Update probability estimate */
         float prob_target = (raw_reward > 0.1f) ? 1.0f : 0.0f;
@@ -504,7 +497,7 @@ bool vicarious_reward_process(
     /* Compute imitation likelihood */
     if (result->vicarious_reward > system->config.imitation_threshold) {
         result->should_imitate = true;
-        result->imitation_likelihood = clamp_f(
+        result->imitation_likelihood = nimcp_clampf(
             result->vicarious_reward +
             agent->familiarity * system->config.imitation_familiar_bonus,
             0.0f, 1.0f
@@ -705,7 +698,7 @@ void vicarious_reward_update_familiarity(
     nimcp_mutex_lock(system->mutex);
     vicarious_agent_state_t* agent = find_or_create_agent(system, agent_id);
     if (agent) {
-        agent->familiarity = clamp_f(agent->familiarity + delta, 0.0f, 1.0f);
+        agent->familiarity = nimcp_clampf(agent->familiarity + delta, 0.0f, 1.0f);
     }
     nimcp_mutex_unlock(system->mutex);
 }
@@ -853,8 +846,8 @@ void vicarious_reward_inject_direct(
     nimcp_mutex_lock(system->mutex);
 
     /* Direct reward has full effect */
-    float dopamine_change = clamp_f(direct_reward, -0.5f, 0.5f);
-    system->current_dopamine = clamp_f(
+    float dopamine_change = nimcp_clampf(direct_reward, -0.5f, 0.5f);
+    system->current_dopamine = nimcp_clampf(
         system->current_dopamine + dopamine_change,
         0.0f, 1.0f
     );

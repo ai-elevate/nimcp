@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_training_fep_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -115,15 +116,6 @@ static security_train_severity_t free_energy_to_severity(
 }
 
 /**
- * @brief Clamp float to range
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
  * @brief Find data source index by name
  */
 static int find_source_index(
@@ -166,7 +158,7 @@ static nimcp_error_t bio_message_handler(
 
     /* Increase vigilance on receiving any security message */
     bridge->state.system_precision *= 1.1f;
-    bridge->state.system_precision = clamp_float(
+    bridge->state.system_precision = nimcp_clampf(
         bridge->state.system_precision,
         SECURITY_TRAIN_FEP_MIN_PRECISION,
         SECURITY_TRAIN_FEP_MAX_PRECISION
@@ -452,19 +444,19 @@ int security_train_fep_compute_effects(security_train_fep_bridge_t* bridge) {
     float threshold_scale = 1.0f;
     if (bridge->config.enable_precision_modulation) {
         threshold_scale = 1.0f / (bridge->state.system_precision + 0.01f);
-        threshold_scale = clamp_float(threshold_scale, 0.5f, 2.0f);
+        threshold_scale = nimcp_clampf(threshold_scale, 0.5f, 2.0f);
     }
     bridge->fep_effects.detection_threshold_scale = threshold_scale;
 
     /* Compute detection sensitivity from precision */
-    bridge->fep_effects.detection_sensitivity = clamp_float(
+    bridge->fep_effects.detection_sensitivity = nimcp_clampf(
         bridge->state.system_precision / SECURITY_TRAIN_FEP_MAX_PRECISION,
         0.0f, 1.0f
     );
 
     /* Compute action urgency */
     float urgency = current_fe / bridge->config.attack_fe_threshold;
-    bridge->fep_effects.action_urgency = clamp_float(urgency, 0.0f, 1.0f);
+    bridge->fep_effects.action_urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
 
     /* Store FEP metrics */
     bridge->fep_effects.current_free_energy = current_fe;
@@ -479,7 +471,7 @@ int security_train_fep_compute_effects(security_train_fep_bridge_t* bridge) {
 
     /* Compute detection confidence (inverse of uncertainty) */
     float uncertainty = 1.0f / (bridge->state.system_precision + 0.1f);
-    bridge->fep_effects.detection_confidence = 1.0f - clamp_float(uncertainty, 0.0f, 0.9f);
+    bridge->fep_effects.detection_confidence = 1.0f - nimcp_clampf(uncertainty, 0.0f, 0.9f);
 
     /* Active defense policy evaluation (if enabled) */
     if (bridge->config.enable_active_defense) {
@@ -616,7 +608,7 @@ int security_train_fep_update_from_poisoning(
                    0.3f * bridge->security_effects.avg_gradient_anomaly +
                    0.15f * bridge->security_effects.avg_extraction_score +
                    0.15f * bridge->security_effects.avg_backdoor_score;
-    bridge->security_effects.current_threat_level = clamp_float(threat, 0.0f, 1.0f);
+    bridge->security_effects.current_threat_level = nimcp_clampf(threat, 0.0f, 1.0f);
 
     /* Update baseline with slow adaptation */
     bridge->state.poisoning_baseline =
@@ -694,7 +686,7 @@ int security_train_fep_update_from_gradient_anomaly(
 
     /* Update gradient stability */
     bridge->security_effects.gradient_stability =
-        1.0f - clamp_float(anomaly_score, 0.0f, 1.0f);
+        1.0f - nimcp_clampf(anomaly_score, 0.0f, 1.0f);
 
     /* Update baseline */
     bridge->state.gradient_baseline =
@@ -939,7 +931,7 @@ int security_train_fep_report_action(
             } else {
                 /* Failed action - increase precision for future */
                 bridge->state.system_precision *= 1.1f;
-                bridge->state.system_precision = clamp_float(
+                bridge->state.system_precision = nimcp_clampf(
                     bridge->state.system_precision,
                     SECURITY_TRAIN_FEP_MIN_PRECISION,
                     SECURITY_TRAIN_FEP_MAX_PRECISION
@@ -969,7 +961,7 @@ int security_train_fep_report_false_positive(
     /* Reduce system precision to prevent future FPs */
     float reduction = 0.95f;
     bridge->state.system_precision *= reduction;
-    bridge->state.system_precision = clamp_float(
+    bridge->state.system_precision = nimcp_clampf(
         bridge->state.system_precision,
         SECURITY_TRAIN_FEP_MIN_PRECISION,
         SECURITY_TRAIN_FEP_MAX_PRECISION

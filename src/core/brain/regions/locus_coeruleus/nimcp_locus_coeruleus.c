@@ -15,19 +15,9 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(locus_coeruleus, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static float exponential_decay(float value, float tau, float dt) {
     if (tau <= 0.0f) return value;
@@ -236,7 +226,7 @@ nimcp_lc_error_t nimcp_lc_add_projection(
         strncpy(proj->target_name, name, sizeof(proj->target_name) - 1);
     }
 
-    proj->strength = clamp_f(strength, 0.0f, 1.0f);
+    proj->strength = nimcp_clampf(strength, 0.0f, 1.0f);
     proj->ne_sensitivity = 1.0f;
     proj->current_ne = 0.0f;
 
@@ -326,9 +316,9 @@ nimcp_lc_error_t nimcp_lc_set_projection_params(
         return LC_ERR_NULL_PTR;
     }
 
-    projection->ne_sensitivity = clamp_f(sensitivity, 0.0f, 5.0f);
-    projection->conduction_delay_ms = clamp_f(delay, 0.0f, 500.0f);
-    projection->uptake_rate = clamp_f(uptake_rate, 0.0f, 1.0f);
+    projection->ne_sensitivity = nimcp_clampf(sensitivity, 0.0f, 5.0f);
+    projection->conduction_delay_ms = nimcp_clampf(delay, 0.0f, 500.0f);
+    projection->uptake_rate = nimcp_clampf(uptake_rate, 0.0f, 1.0f);
 
     return LC_OK;
 }
@@ -378,7 +368,7 @@ static void update_neuron_pool(nimcp_lc_system_t* lc, float dt) {
 
     /* Modulate by input */
     target_rate *= (1.0f + net_input);
-    target_rate = clamp_f(target_rate, 0.0f, LC_PHASIC_MAX_HZ);
+    target_rate = nimcp_clampf(target_rate, 0.0f, LC_PHASIC_MAX_HZ);
 
     /* Smooth firing rate change */
     float rate_tau = 50.0f;
@@ -387,7 +377,7 @@ static void update_neuron_pool(nimcp_lc_system_t* lc, float dt) {
 
     /* Compute spike probability */
     neurons->spike_probability = neurons->firing_rate * dt / 1000.0f;
-    neurons->spike_probability = clamp_f(neurons->spike_probability, 0.0f, 1.0f);
+    neurons->spike_probability = nimcp_clampf(neurons->spike_probability, 0.0f, 1.0f);
 
     /* Generate spikes (simplified) */
     neurons->spikes_this_update = (uint32_t)(neurons->spike_probability * neurons->num_neurons);
@@ -401,7 +391,7 @@ static void update_neuron_pool(nimcp_lc_system_t* lc, float dt) {
     float fatigue_rate = 0.0001f * neurons->firing_rate;
     float fatigue_recovery = 0.01f;
     neurons->fatigue += dt * (fatigue_rate - fatigue_recovery * neurons->fatigue);
-    neurons->fatigue = clamp_f(neurons->fatigue, 0.0f, 1.0f);
+    neurons->fatigue = nimcp_clampf(neurons->fatigue, 0.0f, 1.0f);
 
     /* Reset inputs for next cycle */
     neurons->excitatory_input *= 0.9f;
@@ -423,7 +413,7 @@ static void update_ne_dynamics(nimcp_lc_system_t* lc, float dt) {
     lc->ne_concentration -= clearance;
 
     /* Clamp to valid range */
-    lc->ne_concentration = clamp_f(lc->ne_concentration, 0.0f, lc->config.ne_max_nm);
+    lc->ne_concentration = nimcp_clampf(lc->ne_concentration, 0.0f, lc->config.ne_max_nm);
 
     /* Update autoreceptor feedback based on NE level */
     float normalized_ne = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
@@ -455,7 +445,7 @@ static void update_projections(nimcp_lc_system_t* lc, float dt) {
         /* Apply uptake */
         float uptake = proj->current_ne * proj->uptake_rate * dt;
         proj->current_ne -= uptake;
-        proj->current_ne = clamp_f(proj->current_ne, 0.0f, LC_NE_MAX_NM);
+        proj->current_ne = nimcp_clampf(proj->current_ne, 0.0f, LC_NE_MAX_NM);
 
         /* Invoke callback if configured */
         if (lc->config.on_release && proj->current_ne > 0.1f) {
@@ -479,7 +469,7 @@ static void update_arousal_state(nimcp_lc_system_t* lc, float dt) {
     } else {
         target_arousal = 1.0f - (normalized_ne - 3.0f) * 0.1f;
     }
-    target_arousal = clamp_f(target_arousal, 0.0f, 1.0f);
+    target_arousal = nimcp_clampf(target_arousal, 0.0f, 1.0f);
 
     /* Smooth arousal change */
     float arousal_tau = 500.0f;
@@ -490,14 +480,14 @@ static void update_arousal_state(nimcp_lc_system_t* lc, float dt) {
     float alert_tau = 200.0f;
     alpha = 1.0f - expf(-dt / alert_tau);
     float target_alert = lc->arousal_level * (1.0f + lc->novelty_signal);
-    target_alert = clamp_f(target_alert, 0.0f, 1.0f);
+    target_alert = nimcp_clampf(target_alert, 0.0f, 1.0f);
     lc->alertness += alpha * (target_alert - lc->alertness);
 
     /* Update vigilance (decays without sustained input) */
     float vig_decay = lc->config.vigilance_decay_rate * dt;
     float vig_boost = lc->arousal_level * 0.001f * dt;
     lc->vigilance += vig_boost - vig_decay;
-    lc->vigilance = clamp_f(lc->vigilance, 0.0f, 1.0f);
+    lc->vigilance = nimcp_clampf(lc->vigilance, 0.0f, 1.0f);
 
     /* Update metrics */
     lc->metrics.mean_arousal = (lc->metrics.mean_arousal * lc->update_count + lc->arousal_level) /
@@ -679,7 +669,7 @@ nimcp_lc_error_t nimcp_lc_detect_novelty(
 
     /* Apply surprise gain */
     novelty *= lc->config.surprise_gain;
-    novelty = clamp_f(novelty, 0.0f, 1.0f);
+    novelty = nimcp_clampf(novelty, 0.0f, 1.0f);
 
     /* Store in history */
     lc->input_history[lc->history_index] = input_magnitude;
@@ -727,7 +717,7 @@ nimcp_lc_error_t nimcp_lc_modulate_arousal(nimcp_lc_system_t* lc, float target_a
         return LC_ERR_NOT_INITIALIZED;
     }
 
-    target_arousal = clamp_f(target_arousal, 0.0f, 1.0f);
+    target_arousal = nimcp_clampf(target_arousal, 0.0f, 1.0f);
 
     /* Convert target arousal to NE level */
     /* Higher arousal requires more NE */
@@ -737,7 +727,7 @@ nimcp_lc_error_t nimcp_lc_modulate_arousal(nimcp_lc_system_t* lc, float target_a
     float ne_ratio = (fabsf(lc->config.ne_baseline_nm) > 1e-10f) ?
         target_ne / lc->config.ne_baseline_nm : 1.0f;
     lc->tonic_firing_rate = lc->config.tonic_rate_hz * ne_ratio;
-    lc->tonic_firing_rate = clamp_f(lc->tonic_firing_rate, 0.1f, lc->config.phasic_rate_hz * 0.5f);
+    lc->tonic_firing_rate = nimcp_clampf(lc->tonic_firing_rate, 0.1f, lc->config.phasic_rate_hz * 0.5f);
 
     return LC_OK;
 }
@@ -834,8 +824,8 @@ nimcp_lc_error_t nimcp_lc_trigger_burst(
         return LC_ERR_NOT_INITIALIZED;
     }
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
-    duration = clamp_f(duration, 10.0f, 1000.0f);
+    intensity = nimcp_clampf(intensity, 0.0f, 1.0f);
+    duration = nimcp_clampf(duration, 10.0f, 1000.0f);
 
     /* Set phasic mode with specified intensity */
     lc->phasic_firing_rate = lc->config.phasic_rate_hz * intensity;
@@ -874,7 +864,7 @@ nimcp_lc_error_t nimcp_lc_apply_excitation(nimcp_lc_system_t* lc, float input) {
         return LC_ERR_NOT_INITIALIZED;
     }
 
-    input = clamp_f(input, 0.0f, 1.0f);
+    input = nimcp_clampf(input, 0.0f, 1.0f);
     lc->neurons.excitatory_input += input;
 
     return LC_OK;
@@ -889,7 +879,7 @@ nimcp_lc_error_t nimcp_lc_apply_inhibition(nimcp_lc_system_t* lc, float input) {
         return LC_ERR_NOT_INITIALIZED;
     }
 
-    input = clamp_f(input, 0.0f, 1.0f);
+    input = nimcp_clampf(input, 0.0f, 1.0f);
     lc->neurons.inhibitory_input += input;
 
     return LC_OK;
@@ -904,7 +894,7 @@ nimcp_lc_error_t nimcp_lc_signal_stress(nimcp_lc_system_t* lc, float stress_leve
         return LC_ERR_NOT_INITIALIZED;
     }
 
-    stress_level = clamp_f(stress_level, 0.0f, 1.0f);
+    stress_level = nimcp_clampf(stress_level, 0.0f, 1.0f);
 
     /* Stress increases excitation */
     lc->neurons.excitatory_input += stress_level * 0.5f;
@@ -977,7 +967,7 @@ nimcp_lc_error_t nimcp_lc_get_gain_modulation(
             float optimal = 2.0f;
             float gain_val = 1.0f + 0.5f * (1.0f - fabsf(normalized_ne - optimal) / optimal);
             gain_val *= lc->projections[i].gain_modulation;
-            gain_val = clamp_f(gain_val, 0.5f, 2.5f);
+            gain_val = nimcp_clampf(gain_val, 0.5f, 2.5f);
 
             *gain = gain_val;
             return LC_OK;

@@ -14,6 +14,7 @@
 #include <math.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(glial_substrate_bridge)
 
@@ -36,15 +37,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(glial_substrate_bridge)
 static float compute_q10_factor(float current_temp, float base_temp, float q10) {
     float delta_temp = current_temp - base_temp;
     return powf(q10, delta_temp / 10.0f);
-}
-
-/**
- * @brief Clamp value to range [min, max]
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /* ============================================================================
@@ -327,7 +319,7 @@ int glial_substrate_update_astrocyte_effects(glial_substrate_bridge_t* bridge) {
         bridge->astro_effects.atp_modulation = 1.0f;
     }
     bridge->astro_effects.atp_modulation *= bridge->config.atp_sensitivity;
-    bridge->astro_effects.atp_modulation = clamp(bridge->astro_effects.atp_modulation, 0.0f, 1.0f);
+    bridge->astro_effects.atp_modulation = nimcp_clampf(bridge->astro_effects.atp_modulation, 0.0f, 1.0f);
 
     /* Calcium wave propagation affected by ATP */
     bridge->astro_effects.calcium_wave_factor = bridge->astro_effects.atp_modulation;
@@ -353,7 +345,7 @@ int glial_substrate_update_astrocyte_effects(glial_substrate_bridge_t* bridge) {
         bridge->astro_effects.o2_modulation = 1.0f;
     }
     bridge->astro_effects.o2_modulation *= bridge->config.oxygen_sensitivity;
-    bridge->astro_effects.o2_modulation = clamp(bridge->astro_effects.o2_modulation, 0.0f, 1.0f);
+    bridge->astro_effects.o2_modulation = nimcp_clampf(bridge->astro_effects.o2_modulation, 0.0f, 1.0f);
 
     bridge->stats.astrocyte_modulations++;
 
@@ -385,7 +377,7 @@ int glial_substrate_update_oligodendrocyte_effects(glial_substrate_bridge_t* bri
         bridge->oligo_effects.atp_modulation = 1.0f;
     }
     bridge->oligo_effects.atp_modulation *= bridge->config.atp_sensitivity;
-    bridge->oligo_effects.atp_modulation = clamp(bridge->oligo_effects.atp_modulation, 0.0f, 1.0f);
+    bridge->oligo_effects.atp_modulation = nimcp_clampf(bridge->oligo_effects.atp_modulation, 0.0f, 1.0f);
 
     /* Myelin production and g-ratio optimization affected by ATP */
     bridge->oligo_effects.myelin_production_rate = bridge->oligo_effects.atp_modulation;
@@ -411,7 +403,7 @@ int glial_substrate_update_oligodendrocyte_effects(glial_substrate_bridge_t* bri
         bridge->oligo_effects.o2_modulation = 1.0f;
     }
     bridge->oligo_effects.o2_modulation *= bridge->config.oxygen_sensitivity;
-    bridge->oligo_effects.o2_modulation = clamp(bridge->oligo_effects.o2_modulation, 0.0f, 1.0f);
+    bridge->oligo_effects.o2_modulation = nimcp_clampf(bridge->oligo_effects.o2_modulation, 0.0f, 1.0f);
 
     bridge->stats.oligo_modulations++;
 
@@ -443,7 +435,7 @@ int glial_substrate_update_microglia_effects(glial_substrate_bridge_t* bridge) {
         bridge->micro_effects.atp_modulation = 1.0f;
     }
     bridge->micro_effects.atp_modulation *= bridge->config.atp_sensitivity;
-    bridge->micro_effects.atp_modulation = clamp(bridge->micro_effects.atp_modulation, 0.0f, 1.0f);
+    bridge->micro_effects.atp_modulation = nimcp_clampf(bridge->micro_effects.atp_modulation, 0.0f, 1.0f);
 
     /* Surveillance radius and pruning affected by ATP */
     bridge->micro_effects.surveillance_radius = bridge->micro_effects.atp_modulation;
@@ -680,14 +672,14 @@ int glial_substrate_apply_glial_support(glial_substrate_bridge_t* bridge) {
     bridge->glial_support.total_atp_support = total_support;
 
     /* Convert to metabolic boost (normalized 0-1) */
-    float boost = clamp(total_support, 0.0f, 0.3f); /* Cap at 30% boost */
+    float boost = nimcp_clampf(total_support, 0.0f, 0.3f); /* Cap at 30% boost */
     bridge->glial_support.total_metabolic_boost = boost;
 
     /* Apply to substrate */
     substrate_metabolic_state_t metabolic;
     substrate_get_metabolic_state(bridge->substrate, &metabolic);
 
-    float new_atp = clamp(metabolic.atp_level + boost, 0.0f, 1.0f);
+    float new_atp = nimcp_clampf(metabolic.atp_level + boost, 0.0f, 1.0f);
     substrate_set_atp(bridge->substrate, new_atp);
 
     /* Track max support */

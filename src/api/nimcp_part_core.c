@@ -42,12 +42,12 @@ nimcp_status_t nimcp_brain_learn_example(
         /* Validate features array (external input data) */
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
-            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_BBB_REJECTED);
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
         }
 
         /* Validate label string (external string input) */
         if (!bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
-            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_BBB_REJECTED);
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_INVALID);
         }
         LOG_DEBUG("BBB validation passed");
     }
@@ -57,7 +57,7 @@ nimcp_status_t nimcp_brain_learn_example(
     float loss = brain_learn_example(brain->internal_brain, features, num_features, label, confidence);
 
     /* brain_learn_example returns -1.0f on error, >= 0.0f on success */
-    NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR_LEARNING_FAILED,
+    NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR,
                           "Brain learning failed for label");
 
     /* Store loss for retrieval via nimcp_brain_get_last_loss() */
@@ -126,7 +126,7 @@ nimcp_status_t nimcp_brain_predict(
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
 
     if (!decision) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Brain prediction failed");
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "Brain prediction failed");
     }
 
     /* P1-48: Use NIMCP_MAX_LABEL_SIZE instead of hardcoded 63 */
@@ -172,7 +172,7 @@ nimcp_status_t nimcp_brain_predict_fast(
     float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
     if (!output) {
         set_error("Failed to allocate output buffer");
-        return NIMCP_ERROR_NO_MEMORY;
+        return NIMCP_ERROR_MEMORY;
     }
 
     // Forward pass using the full adaptive network path (spike encoding + thresholding)
@@ -330,8 +330,8 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
         return NULL;
     }
 
-    // Allocate new handle
-    nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    // Allocate new handle (calloc to zero-init last_loss/last_gradient_norm)
+    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
     if (!handle) {
         set_error("Failed to allocate brain handle");
         brain_destroy(restored_brain);
@@ -693,8 +693,8 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
         return NULL;
     }
 
-    // Allocate handle
-    nimcp_brain_t clone_handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
+    // Allocate handle (calloc to zero-init last_loss/last_gradient_norm)
+    nimcp_brain_t clone_handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
     if (!clone_handle) {
         set_error("Failed to allocate brain handle for COW clone");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clone_handle is NULL");
@@ -1454,7 +1454,7 @@ nimcp_status_t nimcp_brain_unregister_callback(
 
     // Unregister from internal manager
     if (!tcb_unregister(state->callbacks, callback_id)) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Failed to unregister callback");
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "Failed to unregister callback");
     }
 
     set_error("No error");

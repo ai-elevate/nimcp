@@ -23,6 +23,7 @@
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lip_reading)
 
@@ -243,12 +244,6 @@ static double get_timestamp_ms_precise(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
-}
-
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 static int argmax_float(const float* arr, int len) {
@@ -871,11 +866,11 @@ bool lip_reading_extract_features(
 
     if (upper_count > 0) {
         upper_brightness /= upper_count;
-        features->upper_teeth_visible = clamp_float((upper_brightness - 100) / 155.0f, 0, 1);
+        features->upper_teeth_visible = nimcp_clampf((upper_brightness - 100) / 155.0f, 0, 1);
     }
     if (lower_count > 0) {
         lower_brightness /= lower_count;
-        features->lower_teeth_visible = clamp_float((lower_brightness - 100) / 155.0f, 0, 1);
+        features->lower_teeth_visible = nimcp_clampf((lower_brightness - 100) / 155.0f, 0, 1);
     }
 
     features->teeth_gap = features->lip_height * 0.3f *
@@ -896,12 +891,12 @@ bool lip_reading_extract_features(
     if (tongue_count > 0) {
         tongue_region_brightness /= tongue_count;
         /* Tongue is typically darker (pink/red) than teeth (white) */
-        features->tongue_visible = clamp_float(
+        features->tongue_visible = nimcp_clampf(
             (120 - tongue_region_brightness) / 80.0f, 0, 1);
     }
 
     /* Estimate lip protrusion from aspect ratio changes */
-    features->lip_protrusion = clamp_float(
+    features->lip_protrusion = nimcp_clampf(
         1.0f - features->lip_aspect_ratio / 2.0f, 0, 1);
 
     /* Calculate normalized luminance */
@@ -1017,11 +1012,11 @@ bool lip_reading_classify_viseme(
                             features->teeth_gap / 10.0f * 0.2f;
 
     /* ALVEOLAR: Mouth slightly open, tongue tip up (less visible) */
-    scores[VISEME_ALVEOLAR] = clamp_float(features->lip_height / 10.0f, 0, 1) * 0.3f +
+    scores[VISEME_ALVEOLAR] = nimcp_clampf(features->lip_height / 10.0f, 0, 1) * 0.3f +
                               (1.0f - features->tongue_visible) * 0.2f;
 
     /* VELAR: Mouth open, no tongue visible */
-    scores[VISEME_VELAR] = clamp_float(features->lip_height / 15.0f, 0, 1) * 0.4f +
+    scores[VISEME_VELAR] = nimcp_clampf(features->lip_height / 15.0f, 0, 1) * 0.4f +
                            (1.0f - features->tongue_visible) * 0.3f;
 
     /* ROUNDED_CLOSE: Lips rounded, small aperture */
@@ -1043,7 +1038,7 @@ bool lip_reading_classify_viseme(
     }
 
     /* UNROUNDED_OPEN: Mouth wide open */
-    scores[VISEME_UNROUNDED_OPEN] = clamp_float(features->lip_height / 25.0f, 0, 1) * 0.5f +
+    scores[VISEME_UNROUNDED_OPEN] = nimcp_clampf(features->lip_height / 25.0f, 0, 1) * 0.5f +
                                      features->lip_area / 500.0f * 0.3f;
 
     /* SILENCE: Mouth closed, no movement */
@@ -1365,7 +1360,7 @@ bool lip_reading_integrate_audiovisual(
 
     /* Adjust auditory reliability for SNR */
     /* SNR in dB: negative = noise dominates, positive = signal dominates */
-    float snr_factor = clamp_float((auditory_snr + 10.0f) / 30.0f, 0.1f, 1.0f);
+    float snr_factor = nimcp_clampf((auditory_snr + 10.0f) / 30.0f, 0.1f, 1.0f);
     result->reliability_auditory *= snr_factor;
 
     /* Compute optimal weights (MLE) */

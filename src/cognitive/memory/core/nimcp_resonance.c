@@ -30,6 +30,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(resonance, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -63,15 +64,6 @@ static void set_error(const char* format, ...) {
  */
 static void clear_error(void) {
     s_last_error[0] = '\0';
-}
-
-/**
- * @brief Clamp float to [0, 1] range
- */
-static inline float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
 }
 
 /**
@@ -269,7 +261,7 @@ float resonance_quaternion_similarity(nimcp_quaternion_t q1, nimcp_quaternion_t 
     // Geodesic is in [0, pi], normalize to [0, 1] and invert for similarity
     float similarity = 1.0f - (geodesic / M_PI);
 
-    return clamp01(similarity);
+    return nimcp_clamp01(similarity);
 }
 
 float resonance_kuramoto_coherence(
@@ -305,7 +297,7 @@ float resonance_kuramoto_coherence(
     uint32_t diff = (module1 > module2) ? (module1 - module2) : (module2 - module1);
     float coherence = 1.0f / (1.0f + 0.1f * (float)diff);
 
-    return clamp01(coherence);
+    return nimcp_clamp01(coherence);
 }
 
 //=============================================================================
@@ -378,7 +370,7 @@ bool resonance_compute(
                     result->kuramoto_component;
 
     // Clamp total to [0, 1] for safety
-    result->total = clamp01(result->total);
+    result->total = nimcp_clamp01(result->total);
 
     // Check threshold
     result->above_threshold = (result->total >= cfg.threshold);
@@ -688,14 +680,14 @@ float resonance_modulate(float base_score, float pink_sample, float depth) {
     resonance_heartbeat("resonance_modulate", 0.0f);
 
 
-    base_score = clamp01(base_score);
-    depth = clamp01(depth);
+    base_score = nimcp_clamp01(base_score);
+    depth = nimcp_clamp01(depth);
 
     // Modulation: base * (1 + depth * pink_sample)
     // Pink sample is in [-1, +1], so modulation range is [1-depth, 1+depth]
     float modulated = base_score * (1.0f + depth * pink_sample);
 
-    return clamp01(modulated);
+    return nimcp_clamp01(modulated);
 }
 
 bool resonance_modulate_batch(
@@ -714,7 +706,7 @@ bool resonance_modulate_batch(
     resonance_heartbeat("resonance_modulate_batch", 0.0f);
 
 
-    depth = clamp01(depth);
+    depth = nimcp_clamp01(depth);
 
     // Vectorizable loop
     for (size_t i = 0; i < count; i++) {
@@ -724,7 +716,7 @@ bool resonance_modulate_batch(
                              (float)(i + 1) / (float)count);
         }
 
-        scores[i] = clamp01(scores[i] * (1.0f + depth * pink_buffer[i]));
+        scores[i] = nimcp_clamp01(scores[i] * (1.0f + depth * pink_buffer[i]));
     }
 
     clear_error();

@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(vestibular, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -79,15 +80,6 @@ static void set_error(vestibular_processor_t* p, vestibular_error_t error) {
         p->status = VESTIBULAR_STATUS_ERROR;
         LOG_ERROR("[%s] Error: %d", VESTIBULAR_LOG_MODULE, error);
     }
-}
-
-/**
- * @brief Clamp value to range
- */
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -502,12 +494,12 @@ bool vestibular_set_vor_gain(vestibular_processor_t* p,
 
     if (per_axis) {
         for (int i = 0; i < 3; i++) {
-            p->vor.gain[i] = clamp_f(gain[i],
+            p->vor.gain[i] = nimcp_clampf(gain[i],
                                      VESTIBULAR_MIN_VOR_GAIN,
                                      VESTIBULAR_MAX_VOR_GAIN);
         }
     } else {
-        float g = clamp_f(gain[0], VESTIBULAR_MIN_VOR_GAIN, VESTIBULAR_MAX_VOR_GAIN);
+        float g = nimcp_clampf(gain[0], VESTIBULAR_MIN_VOR_GAIN, VESTIBULAR_MAX_VOR_GAIN);
         for (int i = 0; i < 3; i++) {
             p->vor.gain[i] = g;
         }
@@ -574,7 +566,7 @@ bool vestibular_report_retinal_slip(vestibular_processor_t* p,
             /* Adapt gain in this axis */
             float sign = (direction[i] * p->vor.head_velocity[i] > 0) ? 1.0f : -1.0f;
             p->vor.gain[i] += adapt_rate * sign;
-            p->vor.gain[i] = clamp_f(p->vor.gain[i],
+            p->vor.gain[i] = nimcp_clampf(p->vor.gain[i],
                                      VESTIBULAR_MIN_VOR_GAIN,
                                      VESTIBULAR_MAX_VOR_GAIN);
         }
@@ -686,7 +678,7 @@ bool vestibular_apply_cerebellar_modulation(vestibular_processor_t* p,
     modulation = 1.0f + (modulation - 1.0f) * p->config.cerebellar_weight;
 
     /* Clamp modulation to reasonable range */
-    modulation = clamp_f(modulation, 0.0f, 2.0f);
+    modulation = nimcp_clampf(modulation, 0.0f, 2.0f);
 
     p->nuclei[nucleus].cerebellar_modulation = modulation;
 

@@ -29,6 +29,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(imagination_reasoning_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -82,16 +83,6 @@ struct imag_reason_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -122,9 +113,9 @@ static void compute_free_energy(imag_reason_fep_bridge_t* bridge) {
     const imag_reason_fep_config_t* cfg = &bridge->config;
 
     /* Clamp input metrics */
-    m->scenario_quality = clamp_f(m->scenario_quality, 0.0f, 1.0f);
-    m->reasoning_coherence = clamp_f(m->reasoning_coherence, 0.0f, 1.0f);
-    m->counterfactual_validity = clamp_f(m->counterfactual_validity, 0.0f, 1.0f);
+    m->scenario_quality = nimcp_clampf(m->scenario_quality, 0.0f, 1.0f);
+    m->reasoning_coherence = nimcp_clampf(m->reasoning_coherence, 0.0f, 1.0f);
+    m->counterfactual_validity = nimcp_clampf(m->counterfactual_validity, 0.0f, 1.0f);
 
     /* Scenario quality contribution:
      * Low quality = high prediction error about scene plausibility */
@@ -145,7 +136,7 @@ static void compute_free_energy(imag_reason_fep_bridge_t* bridge) {
                       m->coherence_contribution +
                       m->counterfactual_contribution) * cfg->free_energy_weight;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* Coherence check */
     m->is_coherent = (m->reasoning_coherence >= (1.0f - cfg->coherence_epsilon));
@@ -156,7 +147,7 @@ static void compute_free_energy(imag_reason_fep_bridge_t* bridge) {
                                    (1.0f - m->counterfactual_validity) * 0.30f);
 
     /* Apply decay to smooth transitions */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_prediction_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -168,14 +159,14 @@ static void compute_free_energy(imag_reason_fep_bridge_t* bridge) {
     float coherence_change = fabsf(m->reasoning_coherence - bridge->prev_reasoning_coherence);
     float cf_change = fabsf(m->counterfactual_validity - bridge->prev_counterfactual_validity);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.25f + scenario_change * 0.25f +
          coherence_change * 0.25f + cf_change * 0.25f),
         0.0f, 1.0f
     );
 
     /* Entropy: based on scenario diversity and creative novelty */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         m->creative_novelty * 0.6f + (1.0f - m->scenario_quality) * 0.4f,
         0.0f, 1.0f
     );
@@ -595,14 +586,14 @@ int imag_reason_fep_update_callback(void* handle) {
             bridge->stats.scenario_evaluations++;
 
             /* Estimate scenario quality from plausibility */
-            bridge->metrics.scenario_quality = clamp_f(
+            bridge->metrics.scenario_quality = nimcp_clampf(
                 ir_stats.avg_plausibility,
                 0.0f, 1.0f
             );
 
             /* Estimate reasoning coherence from confidence metrics */
             if (ir_stats.counterfactual_queries > 0) {
-                bridge->metrics.reasoning_coherence = clamp_f(
+                bridge->metrics.reasoning_coherence = nimcp_clampf(
                     ir_stats.avg_counterfactual_confidence,
                     0.0f, 1.0f
                 );
@@ -613,7 +604,7 @@ int imag_reason_fep_update_callback(void* handle) {
             if (ir_stats.scenarios_analyzed > 0) {
                 float accept_rate = (float)ir_stats.scenarios_accepted /
                                    (float)ir_stats.scenarios_analyzed;
-                bridge->metrics.counterfactual_validity = clamp_f(
+                bridge->metrics.counterfactual_validity = nimcp_clampf(
                     accept_rate,
                     0.0f, 1.0f
                 );
@@ -621,7 +612,7 @@ int imag_reason_fep_update_callback(void* handle) {
             }
 
             /* Track creative novelty from inference metrics */
-            bridge->metrics.creative_novelty = clamp_f(
+            bridge->metrics.creative_novelty = nimcp_clampf(
                 ir_stats.avg_creative_novelty,
                 0.0f, 1.0f
             );
@@ -711,7 +702,7 @@ int imag_reason_fep_bridge_update_scenario_quality(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.scenario_quality = clamp_f(quality, 0.0f, 1.0f);
+    bridge->metrics.scenario_quality = nimcp_clampf(quality, 0.0f, 1.0f);
     bridge->stats.scenario_evaluations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -732,7 +723,7 @@ int imag_reason_fep_bridge_update_reasoning_coherence(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.reasoning_coherence = clamp_f(coherence, 0.0f, 1.0f);
+    bridge->metrics.reasoning_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
     bridge->stats.coherence_checks++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -753,7 +744,7 @@ int imag_reason_fep_bridge_update_counterfactual_validity(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.counterfactual_validity = clamp_f(validity, 0.0f, 1.0f);
+    bridge->metrics.counterfactual_validity = nimcp_clampf(validity, 0.0f, 1.0f);
     bridge->stats.counterfactual_analyses++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -774,7 +765,7 @@ int imag_reason_fep_bridge_update_creative_novelty(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.creative_novelty = clamp_f(novelty, 0.0f, 1.0f);
+    bridge->metrics.creative_novelty = nimcp_clampf(novelty, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;

@@ -268,7 +268,7 @@ bool global_workspace_set_ignition_threshold(
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Clamp to valid range
-    new_threshold = clamp_float(new_threshold,
+    new_threshold = nimcp_clampf(new_threshold,
                                  GLOBAL_WORKSPACE_MIN_IGNITION_THRESHOLD,
                                  GLOBAL_WORKSPACE_MAX_IGNITION_THRESHOLD);
 
@@ -310,7 +310,7 @@ bool global_workspace_set_module_priority(
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Clamp to valid range
-    priority = clamp_float(priority, 0.0F, 1.0F);
+    priority = nimcp_clampf(priority, 0.0F, 1.0F);
 
     ws->config.module_priorities[module] = priority;
     return true;

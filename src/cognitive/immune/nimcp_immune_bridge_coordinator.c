@@ -417,7 +417,8 @@ int immune_bridge_coordinator_register_bridge(
 
     /* Set fields */
     entry->bridge_id = coordinator->next_bridge_id++;
-    entry->bridge_name = name;
+    strncpy(entry->bridge_name, name ? name : "", sizeof(entry->bridge_name) - 1);
+    entry->bridge_name[sizeof(entry->bridge_name) - 1] = '\0';
     entry->category = category;
     entry->handle = handle;
     entry->update_fn = update_fn;

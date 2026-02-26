@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_neural_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(epistemic_snn_bridge)
 //=============================================================================
@@ -147,16 +148,6 @@ struct epistemic_snn_bridge {
     // Simulation time
     uint64_t sim_time_us;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static void reset_neuron(epistemic_neuron_t* neuron) {
     neuron->membrane_potential = 0.0f;
@@ -440,9 +431,9 @@ int epistemic_snn_encode_evidence(
 
     bridge->state = EPISTEMIC_SNN_STATE_ENCODING;
 
-    bridge->current_evidence_quality = clamp(evidence_quality, 0.0f, 1.0f);
-    bridge->current_plausibility = clamp(plausibility, 0.0f, 1.0f);
-    bridge->current_source_reliability = clamp(source_reliability, 0.0f, 1.0f);
+    bridge->current_evidence_quality = nimcp_clampf(evidence_quality, 0.0f, 1.0f);
+    bridge->current_plausibility = nimcp_clampf(plausibility, 0.0f, 1.0f);
+    bridge->current_source_reliability = nimcp_clampf(source_reliability, 0.0f, 1.0f);
 
     // Encode into evidence neurons using rate coding
     float evidence_input = bridge->current_evidence_quality * bridge->config.evidence_gain;
@@ -761,10 +752,10 @@ int epistemic_snn_decode_assessment(
     float combined_reliability = bridge->current_source_reliability * 0.6f + reliability_activity * 0.4f;
 
     // Epistemic quality: weighted combination of evidence and reliability, reduced by bias
-    output->epistemic_quality = clamp(combined_evidence * combined_reliability * 1.2f - bias_activity * 0.3f, 0.0f, 1.0f);
-    output->evidence_strength = clamp(combined_evidence, 0.0f, 1.0f);
-    output->source_reliability = clamp(combined_reliability, 0.0f, 1.0f);
-    output->bias_magnitude = clamp(bias_activity, 0.0f, 1.0f);
+    output->epistemic_quality = nimcp_clampf(combined_evidence * combined_reliability * 1.2f - bias_activity * 0.3f, 0.0f, 1.0f);
+    output->evidence_strength = nimcp_clampf(combined_evidence, 0.0f, 1.0f);
+    output->source_reliability = nimcp_clampf(combined_reliability, 0.0f, 1.0f);
+    output->bias_magnitude = nimcp_clampf(bias_activity, 0.0f, 1.0f);
 
     // Compute uncertainty from variance in output membrane potentials using statistics module
     float variance = 0.0f;
@@ -784,7 +775,7 @@ int epistemic_snn_decode_assessment(
         }
     }
     // Higher variance means less certainty; also factor in evidence quality
-    output->uncertainty = clamp(1.0f - output->epistemic_quality + sqrtf(variance), 0.0f, 1.0f);
+    output->uncertainty = nimcp_clampf(1.0f - output->epistemic_quality + sqrtf(variance), 0.0f, 1.0f);
 
     // Bias detection
     output->bias_detected = (output->bias_magnitude > bridge->config.bias_detection_threshold);
@@ -806,7 +797,7 @@ int epistemic_snn_decode_assessment(
                 high_bias_count++;
             }
         }
-        output->conspiracy_likelihood = clamp((float)high_bias_count / 3.0f, 0.0f, 1.0f);
+        output->conspiracy_likelihood = nimcp_clampf((float)high_bias_count / 3.0f, 0.0f, 1.0f);
         output->conspiracy_detected = (output->conspiracy_likelihood > 0.7f);
         if (output->conspiracy_detected) {
             bridge->stats.conspiracy_detections++;
@@ -909,7 +900,7 @@ int epistemic_snn_register_source(
 
         if (!bridge->sources[i].active) {
             bridge->sources[i].source_id = source_id;
-            bridge->sources[i].reliability = clamp(initial_reliability, 0.0f, 1.0f);
+            bridge->sources[i].reliability = nimcp_clampf(initial_reliability, 0.0f, 1.0f);
             bridge->sources[i].confidence = 0.5f;
             bridge->sources[i].evaluation_count = 0;
             bridge->sources[i].correct_count = 0;

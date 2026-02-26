@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_epistemic_fep_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -88,20 +89,6 @@ static const char* g_detection_names[SEC_EPIST_FEP_DETECT_COUNT] = {
 static uint64_t get_timestamp_ms(void)
 {
     return nimcp_time_monotonic_us() / 1000;
-}
-
-/**
- * @brief Clamp float to range
- *
- * WHAT: Restrict value to [min, max] range
- * WHY:  Ensure valid parameter bounds
- * HOW:  Simple comparison-based clamping
- */
-static float clamp_float(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -601,7 +588,7 @@ int sec_epist_fep_compute_effects(sec_epist_fep_bridge_t* bridge)
 
     /* Compute corruption score (normalized FE) */
     float corruption_score = current_fe / (bridge->config.attack_fe_threshold + FEP_EPSILON);
-    corruption_score = clamp_float(corruption_score, 0.0f, 1.0f);
+    corruption_score = nimcp_clampf(corruption_score, 0.0f, 1.0f);
     bridge->fep_effects.fep_corruption_score = corruption_score;
 
     /* Compute belief integrity (inverse of corruption) */
@@ -609,12 +596,12 @@ int sec_epist_fep_compute_effects(sec_epist_fep_bridge_t* bridge)
 
     /* Compute evidence chain score from prediction error */
     float evidence_score = 1.0f - (pred_error / (bridge->config.surprise_threshold + FEP_EPSILON));
-    evidence_score = clamp_float(evidence_score, 0.0f, 1.0f);
+    evidence_score = nimcp_clampf(evidence_score, 0.0f, 1.0f);
     bridge->fep_effects.evidence_chain_score = evidence_score;
 
     /* Compute surprise score */
     bridge->fep_effects.surprise_score = surprise / (bridge->config.surprise_threshold + FEP_EPSILON);
-    bridge->fep_effects.surprise_score = clamp_float(bridge->fep_effects.surprise_score, 0.0f, 1.0f);
+    bridge->fep_effects.surprise_score = nimcp_clampf(bridge->fep_effects.surprise_score, 0.0f, 1.0f);
 
     /* Compute confidence surprise (how unexpected are confidence changes) */
     /* This would integrate with epistemic bridge confidence history */
@@ -674,7 +661,7 @@ int sec_epist_fep_compute_effects(sec_epist_fep_bridge_t* bridge)
         /* Compute confidence in selected action */
         if (best_action != SEC_EPIST_FEP_ACTION_NONE) {
             action_confidence = (current_fe - best_efe) / (current_fe + FEP_EPSILON);
-            action_confidence = clamp_float(action_confidence, 0.0f, 1.0f);
+            action_confidence = nimcp_clampf(action_confidence, 0.0f, 1.0f);
         }
 
         bridge->fep_effects.recommended_action = best_action;
@@ -847,7 +834,7 @@ int sec_epist_fep_apply_precision_modulation(sec_epist_fep_bridge_t* bridge)
     }
 
     /* Clamp target precision */
-    target_precision = clamp_float(target_precision,
+    target_precision = nimcp_clampf(target_precision,
                                     SEC_EPIST_FEP_MIN_PRECISION,
                                     SEC_EPIST_FEP_MAX_PRECISION);
 
@@ -907,7 +894,7 @@ int sec_epist_fep_verify_belief(
 
     /* Compute combined corruption score */
     float fep_score = current_fe / (bridge->config.attack_fe_threshold + FEP_EPSILON);
-    fep_score = clamp_float(fep_score, 0.0f, 1.0f);
+    fep_score = nimcp_clampf(fep_score, 0.0f, 1.0f);
 
     float epist_score = 0.0f;
     if (!verified) {
@@ -950,7 +937,7 @@ int sec_epist_fep_verify_belief(
 
     /* Compute confidence */
     result->confidence = 1.0f - (pred_error / (bridge->config.surprise_threshold + FEP_EPSILON));
-    result->confidence = clamp_float(result->confidence, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(result->confidence, 0.0f, 1.0f);
 
     /* Classify integrity */
     result->integrity = classify_integrity(current_fe, &bridge->config);
@@ -1056,7 +1043,7 @@ int sec_epist_fep_validate_evidence(
 
     /* FEP-enhanced scoring */
     float fep_score = pred_error / (bridge->config.surprise_threshold + FEP_EPSILON);
-    fep_score = clamp_float(fep_score, 0.0f, 1.0f);
+    fep_score = nimcp_clampf(fep_score, 0.0f, 1.0f);
 
     if (bridge->config.use_fep_scoring) {
         result->corruption_score = 0.35f * fep_score + 0.65f * epist_score;
@@ -1065,7 +1052,7 @@ int sec_epist_fep_validate_evidence(
     }
 
     result->confidence = 1.0f - fep_score * 0.5f;
-    result->confidence = clamp_float(result->confidence, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(result->confidence, 0.0f, 1.0f);
 
     result->integrity = classify_integrity(current_fe, &bridge->config);
     result->requires_action = (result->integrity >= SEC_EPIST_FEP_INTEGRITY_SUSPICIOUS) ||
@@ -1274,7 +1261,7 @@ int sec_epist_fep_report_restoration(
         /* Increase precision slightly on success */
         if (bridge->config.enable_online_learning) {
             bridge->state.current_precision *= 1.02f;
-            bridge->state.current_precision = clamp_float(
+            bridge->state.current_precision = nimcp_clampf(
                 bridge->state.current_precision,
                 SEC_EPIST_FEP_MIN_PRECISION,
                 SEC_EPIST_FEP_MAX_PRECISION);
@@ -1283,7 +1270,7 @@ int sec_epist_fep_report_restoration(
         /* Decrease precision on failure */
         if (bridge->config.enable_online_learning) {
             bridge->state.current_precision *= 0.95f;
-            bridge->state.current_precision = clamp_float(
+            bridge->state.current_precision = nimcp_clampf(
                 bridge->state.current_precision,
                 SEC_EPIST_FEP_MIN_PRECISION,
                 SEC_EPIST_FEP_MAX_PRECISION);

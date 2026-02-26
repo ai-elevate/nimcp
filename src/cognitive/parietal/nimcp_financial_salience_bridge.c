@@ -47,6 +47,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_salience_bridge_health_agent = NULL;
@@ -197,16 +198,6 @@ static const char* state_names[] = {
     "error"
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float maxf(float a, float b) {
     return (a > b) ? a : b;
 }
@@ -319,7 +310,7 @@ static float calculate_novelty(financial_salience_bridge_t* bridge, const fin_ma
     float vol_dev = fabsf(event->volume_ratio - bridge->ema_volume_ratio);
 
     /* Normalize deviations (assuming typical deviations are small) */
-    float novelty = clampf((mag_dev * 2.0f + vol_dev * 0.5f) / 2.5f, 0.0f, 1.0f);
+    float novelty = nimcp_clampf((mag_dev * 2.0f + vol_dev * 0.5f) / 2.5f, 0.0f, 1.0f);
 
     return novelty;
 }
@@ -355,11 +346,11 @@ static float calculate_surprise(const fin_market_event_t* event) {
 
     /* Modulate by magnitude */
     float magnitude_factor = minf(fabsf(event->magnitude) * 2.0f, 1.0f);
-    float volume_factor = clampf((event->volume_ratio - 1.0f) / 3.0f, 0.0f, 1.0f);
+    float volume_factor = nimcp_clampf((event->volume_ratio - 1.0f) / 3.0f, 0.0f, 1.0f);
 
     float surprise = base_surprise + (1.0f - base_surprise) * 0.5f * (magnitude_factor + volume_factor);
 
-    return clampf(surprise, 0.0f, 1.0f);
+    return nimcp_clampf(surprise, 0.0f, 1.0f);
 }
 
 /**
@@ -401,10 +392,10 @@ static float calculate_urgency(const fin_market_event_t* event, uint64_t current
     }
 
     /* Modulate by price change magnitude (larger moves = more urgent) */
-    float price_factor = clampf(fabsf(event->price_change_pct) / 5.0f, 0.0f, 1.0f);
+    float price_factor = nimcp_clampf(fabsf(event->price_change_pct) / 5.0f, 0.0f, 1.0f);
     float urgency = base_urgency + (1.0f - base_urgency) * 0.3f * price_factor;
 
-    return clampf(urgency, 0.0f, 1.0f);
+    return nimcp_clampf(urgency, 0.0f, 1.0f);
 }
 
 /**
@@ -415,12 +406,12 @@ static float calculate_relevance(financial_salience_bridge_t* bridge, const fin_
     float symbol_relevance = get_symbol_relevance(bridge, event->symbol);
 
     /* Modulate by event magnitude (larger events are more relevant even if not tracked) */
-    float magnitude_relevance = clampf(fabsf(event->magnitude), 0.0f, 0.5f);
+    float magnitude_relevance = nimcp_clampf(fabsf(event->magnitude), 0.0f, 0.5f);
 
     /* Combine symbol tracking with magnitude */
     float relevance = maxf(symbol_relevance, magnitude_relevance);
 
-    return clampf(relevance, 0.0f, 1.0f);
+    return nimcp_clampf(relevance, 0.0f, 1.0f);
 }
 
 /**
@@ -698,7 +689,7 @@ int financial_salience_bridge_evaluate(
                       bridge->normalized_weights.urgency_weight * score->urgency +
                       bridge->normalized_weights.relevance_weight * score->relevance;
 
-    score->combined = clampf(score->combined, 0.0f, 1.0f);
+    score->combined = nimcp_clampf(score->combined, 0.0f, 1.0f);
 
     /* Update EMA for future novelty calculations */
     update_ema(bridge, event);
@@ -856,7 +847,7 @@ int financial_salience_bridge_set_symbol_relevance(
     /* Find existing entry or create new */
     symbol_relevance_entry_t* entry = find_symbol_entry(bridge, symbol);
     if (entry) {
-        entry->relevance = clampf(relevance, 0.0f, 1.0f);
+        entry->relevance = nimcp_clampf(relevance, 0.0f, 1.0f);
         if (relevance <= 0.0f) {
             entry->active = false;  /* Remove if relevance is zero */
         }
@@ -866,7 +857,7 @@ int financial_salience_bridge_set_symbol_relevance(
             if (!bridge->symbol_relevance[i].active) {
                 strncpy(bridge->symbol_relevance[i].symbol, symbol, FIN_SALIENCE_MAX_SYMBOL - 1);
                 bridge->symbol_relevance[i].symbol[FIN_SALIENCE_MAX_SYMBOL - 1] = '\0';
-                bridge->symbol_relevance[i].relevance = clampf(relevance, 0.0f, 1.0f);
+                bridge->symbol_relevance[i].relevance = nimcp_clampf(relevance, 0.0f, 1.0f);
                 bridge->symbol_relevance[i].active = true;
                 break;
             }

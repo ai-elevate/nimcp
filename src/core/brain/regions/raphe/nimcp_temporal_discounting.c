@@ -21,19 +21,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(temporal_discounting, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float lerp(float a, float b, float t) {
     return a + t * (b - a);
@@ -148,7 +138,7 @@ int nimcp_temporal_update(nimcp_temporal_system_t* system, float ht_level, float
     /* Lower 5-HT -> higher k -> more impulsive (more discounting) */
     float k_adjustment = (1.0f - ht_ratio) * system->config.ht_discount_gain;
     float k_target = system->config.baseline_k + k_adjustment;
-    k_target = clamp_f(k_target, system->config.min_k, system->config.max_k);
+    k_target = nimcp_clampf(k_target, system->config.min_k, system->config.max_k);
 
     /* Smooth transition */
     float alpha = 1.0f - expf(-dt_sec * 0.2f);
@@ -158,14 +148,14 @@ int nimcp_temporal_update(nimcp_temporal_system_t* system, float ht_level, float
     /* Higher 5-HT -> more future-oriented */
     float orientation_target = system->config.baseline_orientation +
                                (ht_ratio - 1.0f) * system->config.ht_orientation_gain;
-    orientation_target = clamp_f(orientation_target, 0.1f, 0.9f);
+    orientation_target = nimcp_clampf(orientation_target, 0.1f, 0.9f);
     system->future_orientation = lerp(system->future_orientation,
                                        orientation_target, alpha);
 
     /* 3. Update delay tolerance */
     /* Based on both 5-HT and future orientation */
     float tolerance_target = (ht_ratio + system->future_orientation) / 2.0f;
-    tolerance_target = clamp_f(tolerance_target, 0.1f, 0.9f);
+    tolerance_target = nimcp_clampf(tolerance_target, 0.1f, 0.9f);
     system->delay_tolerance = lerp(system->delay_tolerance, tolerance_target, alpha);
 
     /* 4. Update running average k */

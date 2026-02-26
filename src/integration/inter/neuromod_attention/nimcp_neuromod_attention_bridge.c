@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuromod_attention_bridge)
 
@@ -39,16 +40,6 @@ struct neuromod_attention_bridge_struct {
     neuromod_attention_stats_t stats;
     bool connected;
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static uint64_t get_timestamp_us(void) {
     struct timespec ts;
@@ -143,7 +134,7 @@ int neuromod_attention_apply_ne_gain(neuromod_attention_bridge_t* bridge,
         return -1;
     }
 
-    ne_level = clamp(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_clampf(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
 
     /* Compute attention gain based on NE level
@@ -159,7 +150,7 @@ int neuromod_attention_apply_ne_gain(neuromod_attention_bridge_t* bridge,
         float base_gain = NE_ATTENTION_GAIN_BASELINE;
         float max_boost = (NE_ATTENTION_GAIN_MAX - base_gain) * bridge->config.ne_gain_coupling;
         float gain_boost = max_boost * (1.0f - distance_from_optimal / optimal_ne);
-        bridge->state.attention_gain = base_gain + clamp(gain_boost, 0.0f, max_boost);
+        bridge->state.attention_gain = base_gain + nimcp_clampf(gain_boost, 0.0f, max_boost);
     } else {
         /* Linear relationship */
         bridge->state.attention_gain = NE_ATTENTION_GAIN_BASELINE +
@@ -183,7 +174,7 @@ int neuromod_attention_apply_phasic_shift(neuromod_attention_bridge_t* bridge,
         return -1;
     }
 
-    ne_burst = clamp(ne_burst, 0.0f, 1.0f);
+    ne_burst = nimcp_clampf(ne_burst, 0.0f, 1.0f);
 
     bool triggered = ne_burst >= bridge->config.ne_phasic_shift_threshold;
 
@@ -209,7 +200,7 @@ int neuromod_attention_apply_da_salience(neuromod_attention_bridge_t* bridge,
         return 0;
     }
 
-    da_level = clamp(da_level, 0.0f, 1.0f);
+    da_level = nimcp_clampf(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
 
     /* DA boosts salience of reward-predictive stimuli */
@@ -233,7 +224,7 @@ int neuromod_attention_apply_ht_patience(neuromod_attention_bridge_t* bridge,
         return 0;
     }
 
-    ht_level = clamp(ht_level, 0.0f, 1.0f);
+    ht_level = nimcp_clampf(ht_level, 0.0f, 1.0f);
     bridge->state.ht_level = ht_level;
 
     /* 5-HT increases sustained attention capacity and patience */
@@ -257,7 +248,7 @@ int neuromod_attention_apply_hab_aversion(neuromod_attention_bridge_t* bridge,
         return 0;
     }
 
-    hab_level = clamp(hab_level, 0.0f, 1.0f);
+    hab_level = nimcp_clampf(hab_level, 0.0f, 1.0f);
     bridge->state.hab_level = hab_level;
 
     /* Habenula activity triggers attention withdrawal from aversive stimuli */
@@ -286,7 +277,7 @@ int neuromod_attention_report_novelty(neuromod_attention_bridge_t* bridge,
         return -1;
     }
 
-    novelty_score = clamp(novelty_score, 0.0f, 1.0f);
+    novelty_score = nimcp_clampf(novelty_score, 0.0f, 1.0f);
     bridge->state.novelty_signal = novelty_score;
 
     /* Novelty triggers LC phasic burst */
@@ -310,7 +301,7 @@ int neuromod_attention_report_reward_feature(neuromod_attention_bridge_t* bridge
         return -1;
     }
 
-    reward_value = clamp(reward_value, 0.0f, 1.0f);
+    reward_value = nimcp_clampf(reward_value, 0.0f, 1.0f);
     bridge->state.reward_signal = reward_value;
 
     /* Reward features activate VTA */
@@ -334,7 +325,7 @@ int neuromod_attention_report_conflict(neuromod_attention_bridge_t* bridge,
         return -1;
     }
 
-    conflict_level = clamp(conflict_level, 0.0f, 1.0f);
+    conflict_level = nimcp_clampf(conflict_level, 0.0f, 1.0f);
     bridge->state.conflict_signal = conflict_level;
 
     /* Conflict increases arousal demand (NE/DA) */
@@ -378,7 +369,7 @@ int neuromod_attention_compute_modulation(neuromod_attention_bridge_t* bridge,
     if (bridge->state.vigilance_level > 0.4f && bridge->state.aversion_level > 0.4f) {
         coherence -= 0.2f;
     }
-    bridge->state.bridge_coherence = clamp(coherence, 0.0f, 1.0f);
+    bridge->state.bridge_coherence = nimcp_clampf(coherence, 0.0f, 1.0f);
 
     bridge->state.last_update_us = get_timestamp_us();
     bridge->stats.bottom_up_messages += 4;

@@ -82,6 +82,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(salience_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -90,17 +91,6 @@ BRIDGE_BOILERPLATE(salience_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Get current time in milliseconds
@@ -446,15 +436,15 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
     /* Compute salience components from PE */
 
     /* 1. Surprise: Normalized prediction error */
-    float surprise = clamp_f(avg_pe / 10.0f, 0.0f, 1.0f);
+    float surprise = nimcp_clampf(avg_pe / 10.0f, 0.0f, 1.0f);
 
     /* 2. Urgency: Precision-weighted PE (high precision errors demand attention) */
-    float urgency = clamp_f(avg_precision * avg_pe / 10.0f, 0.0f, 1.0f);
+    float urgency = nimcp_clampf(avg_precision * avg_pe / 10.0f, 0.0f, 1.0f);
 
     /* 3. Novelty: Large PE with low running average (unexpected events) */
     float expected_pe = bridge->state.avg_prediction_error;
     float novelty = (expected_pe > 0.01f) ?
-        clamp_f((avg_pe - expected_pe) / expected_pe, 0.0f, 1.0f) : 0.0f;
+        nimcp_clampf((avg_pe - expected_pe) / expected_pe, 0.0f, 1.0f) : 0.0f;
 
     /* Combine into overall salience (weighted average) */
     float salience =

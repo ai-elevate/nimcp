@@ -30,6 +30,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(rcog_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -144,16 +145,6 @@ struct rcog_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -184,7 +175,7 @@ static void compute_free_energy(
     float max_depth = (float)cfg->max_depth_norm;
     if (max_depth < 1.0f) max_depth = 1.0f;
 
-    m->normalized_depth = clamp_f(
+    m->normalized_depth = nimcp_clampf(
         (float)engine_stats->max_depth_reached / max_depth,
         0.0f, 1.0f
     );
@@ -194,7 +185,7 @@ static void compute_free_energy(
 
     /* Decomposition success rate */
     if (engine_stats->subtasks_created > 0) {
-        m->decomp_success_rate = clamp_f(
+        m->decomp_success_rate = nimcp_clampf(
             (float)engine_stats->subtasks_completed /
             (float)engine_stats->subtasks_created,
             0.0f, 1.0f
@@ -211,7 +202,7 @@ static void compute_free_energy(
     m->decomp_contribution = (1.0f - m->decomp_success_rate) * cfg->decomp_weight;
 
     /* Refinement progress from average confidence and refinement steps */
-    m->refinement_progress = clamp_f(engine_stats->avg_confidence, 0.0f, 1.0f);
+    m->refinement_progress = nimcp_clampf(engine_stats->avg_confidence, 0.0f, 1.0f);
     m->refinement_steps = (uint32_t)engine_stats->avg_refinement_steps;
 
     /* Confidence delta for convergence detection */
@@ -229,7 +220,7 @@ static void compute_free_energy(
                      m->decomp_contribution +
                      m->refine_contribution;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* Prediction error: difference from expected state */
     float expected_success = 0.9f;  /* Expect high success rate */
@@ -238,7 +229,7 @@ static void compute_free_energy(
     float expected_progress = 0.8f;  /* Expect good progress */
     float progress_error = fabsf(m->refinement_progress - expected_progress);
 
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         (success_error + progress_error) / 2.0f * bridge->config.error_decay_rate +
         bridge->prev_prediction_error * (1.0f - bridge->config.error_decay_rate),
         0.0f, 1.0f
@@ -249,7 +240,7 @@ static void compute_free_energy(
     float depth_change = fabsf(m->normalized_depth - bridge->prev_depth);
     float success_change = fabsf(m->decomp_success_rate - bridge->prev_success_rate);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.4f + depth_change * 0.3f + success_change * 0.3f),
         0.0f, 1.0f
     );
@@ -257,7 +248,7 @@ static void compute_free_energy(
     /* Entropy: state uncertainty based on active processing */
     float active_ratio = (engine_stats->active_goals > 0) ? 0.5f : 0.0f;
     float pending_ratio = (engine_stats->pending_goals > 0) ? 0.3f : 0.0f;
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         active_ratio + pending_ratio + (1.0f - m->refinement_progress) * 0.2f,
         0.0f, 1.0f
     );

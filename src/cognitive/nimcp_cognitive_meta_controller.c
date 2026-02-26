@@ -21,6 +21,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(cognitive_meta_controller, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -29,17 +30,6 @@ BRIDGE_BOILERPLATE(cognitive_meta_controller, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float value to range
- * WHY:  Ensure values stay within valid bounds
- * HOW:  Min/max comparison
- */
-static inline float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Validate configuration
@@ -645,8 +635,8 @@ uint32_t meta_controller_request_wm_slot(
     cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
 
 
-    priority = clamp_float(priority, 0.0f, 1.0f);
-    salience = clamp_float(salience, 0.0f, 1.0f);
+    priority = nimcp_clampf(priority, 0.0f, 1.0f);
+    salience = nimcp_clampf(salience, 0.0f, 1.0f);
 
     nimcp_platform_mutex_lock(controller->mutex);
 
@@ -703,8 +693,8 @@ uint32_t meta_controller_request_attention(
     cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
 
 
-    salience = clamp_float(salience, 0.0f, 1.0f);
-    urgency = clamp_float(urgency, 0.0f, 1.0f);
+    salience = nimcp_clampf(salience, 0.0f, 1.0f);
+    urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
 
     nimcp_platform_mutex_lock(controller->mutex);
 
@@ -755,8 +745,8 @@ float meta_controller_request_learning_rate(
     cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
 
 
-    uncertainty = clamp_float(uncertainty, 0.0f, 1.0f);
-    confidence = clamp_float(confidence, 0.0f, 1.0f);
+    uncertainty = nimcp_clampf(uncertainty, 0.0f, 1.0f);
+    confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     /* Base learning rate */
     float lr = controller->config.base_learning_rate;
@@ -780,7 +770,7 @@ float meta_controller_request_learning_rate(
     }
 
     /* Clamp to valid range */
-    lr = clamp_float(lr, META_CONTROLLER_LR_MIN, META_CONTROLLER_LR_MAX);
+    lr = nimcp_clampf(lr, META_CONTROLLER_LR_MIN, META_CONTROLLER_LR_MAX);
 
     /* Update module stats */
     if (requester < META_CONTROLLER_MAX_MODULES) {
@@ -835,7 +825,7 @@ bool meta_controller_request_workspace_access(
     }
 
     float weighted_strength = strength * module_weight;
-    weighted_strength = clamp_float(weighted_strength, 0.0f, 1.0f);
+    weighted_strength = nimcp_clampf(weighted_strength, 0.0f, 1.0f);
 
     /* Forward to global workspace */
     bool granted = global_workspace_compete(
@@ -1277,7 +1267,7 @@ int meta_controller_set_module_weight(
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
     NIMCP_CHECK_THROW(module < META_CONTROLLER_MAX_MODULES, NIMCP_ERROR_INVALID_PARAM, "invalid module id: %d", module);
 
-    weight = clamp_float(weight, 0.0f, 1.0f);
+    weight = nimcp_clampf(weight, 0.0f, 1.0f);
     controller->config.module_weights[module] = weight;
 
     return NIMCP_SUCCESS;

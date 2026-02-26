@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sleep_wake_substrate_bridge)
 //=============================================================================
@@ -141,13 +142,13 @@ int sleep_wake_substrate_bridge_update(sleep_wake_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP depletion increases sleep pressure */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.arousal_level = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.recovery_rate = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.arousal_level = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.recovery_rate = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Fatigue directly drives sleep pressure */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.sleep_pressure = nimcp_clamp_f((1.0f - metabolic_cap) * bridge->config.fatigue_sensitivity, 0.0f, 1.0f);
-        bridge->effects.circadian_phase = nimcp_clamp_f((1.0f - (1.0f - metabolic_cap) * 0.3f), 0.5f, 1.0f);
+        bridge->effects.sleep_pressure = nimcp_clampf((1.0f - metabolic_cap) * bridge->config.fatigue_sensitivity, 0.0f, 1.0f);
+        bridge->effects.circadian_phase = nimcp_clampf((1.0f - (1.0f - metabolic_cap) * 0.3f), 0.5f, 1.0f);
     }
     bridge->effects.overall_capacity = bridge->effects.arousal_level;
     bridge->update_count++;

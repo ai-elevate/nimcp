@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gw_snn_bridge)
 //=============================================================================
@@ -118,16 +119,6 @@ struct gw_snn_bridge {
     /* Statistics */
     gw_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -418,7 +409,7 @@ int gw_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -492,7 +483,7 @@ int gw_snn_encode_broadcast(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[GW_DIM_COUNT] = {0};
-    dims[GW_DIM_BROADCAST] = clamp_f(broadcast_strength, 0.0f, 1.0f);
+    dims[GW_DIM_BROADCAST] = nimcp_clampf(broadcast_strength, 0.0f, 1.0f);
     dims[GW_DIM_CONSCIOUS_CONTENT] = broadcast_strength * 0.8f;
 
     bridge->broadcast_signal = broadcast_strength;
@@ -529,8 +520,8 @@ int gw_snn_encode_competition(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[GW_DIM_COUNT] = {0};
-    dims[GW_DIM_COMPETITION] = clamp_f(competition_strength, 0.0f, 1.0f);
-    dims[GW_DIM_COALITION_STRENGTH] = clamp_f((float)num_competitors / 10.0f, 0.0f, 1.0f);
+    dims[GW_DIM_COMPETITION] = nimcp_clampf(competition_strength, 0.0f, 1.0f);
+    dims[GW_DIM_COALITION_STRENGTH] = nimcp_clampf((float)num_competitors / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -554,8 +545,8 @@ int gw_snn_encode_ignition(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[GW_DIM_COUNT] = {0};
-    dims[GW_DIM_IGNITION] = clamp_f(ignition_strength, 0.0f, 1.0f);
-    dims[GW_DIM_ACCESS_CONSCIOUSNESS] = clamp_f(ignition_strength * 0.9f, 0.0f, 1.0f);
+    dims[GW_DIM_IGNITION] = nimcp_clampf(ignition_strength, 0.0f, 1.0f);
+    dims[GW_DIM_ACCESS_CONSCIOUSNESS] = nimcp_clampf(ignition_strength * 0.9f, 0.0f, 1.0f);
 
     bridge->ignition_signal = ignition_strength;
 
@@ -639,12 +630,12 @@ int gw_snn_simulate(gw_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_access.broadcast_strength = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_access.ignition_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_access.competition_result = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_access.integration_score = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_access.binding_strength = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_access.access_consciousness = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_access.broadcast_strength = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_access.ignition_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_access.competition_result = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_access.integration_score = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_access.binding_strength = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_access.access_consciousness = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check ignition threshold */
     if (bridge->last_access.ignition_level > bridge->config.ignition_threshold) {

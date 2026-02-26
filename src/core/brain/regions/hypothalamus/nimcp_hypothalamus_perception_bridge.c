@@ -31,6 +31,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_perception_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -103,22 +104,6 @@ struct hypo_perception_bridge {
     hypo_perception_bridge_stats_t stats;
     uint64_t creation_time_us;
 };
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
-
-static float clamp_range(float v, float min_v, float max_v) {
-    if (v < min_v) return min_v;
-    if (v > max_v) return max_v;
-    return v;
-}
 
 /**
  * @brief Map stimulus category to corresponding drive
@@ -438,7 +423,7 @@ int hypo_perception_bridge_compute_modulation(hypo_perception_bridge_t* bridge) 
      * Low arousal = reduced sensitivity (drowsy state)
      * High arousal = heightened sensitivity (alert state)
      */
-    float arousal = clamp_01(bridge->external_arousal);
+    float arousal = nimcp_clamp01(bridge->external_arousal);
     mod->arousal_level = arousal;
 
     /* Linear interpolation between min and max gain */
@@ -467,7 +452,7 @@ int hypo_perception_bridge_compute_modulation(hypo_perception_bridge_t* bridge) 
         if (cat < HYPO_STIM_COUNT) {
             /* Salience boost proportional to urgency */
             float boost = 1.0f + urgency * cfg->drive_salience_weight;
-            mod->category_salience[cat] = clamp_range(boost, 1.0f, 2.0f);
+            mod->category_salience[cat] = nimcp_clampf(boost, 1.0f, 2.0f);
         }
     }
 
@@ -480,13 +465,13 @@ int hypo_perception_bridge_compute_modulation(hypo_perception_bridge_t* bridge) 
 
     /* Threat salience boosted by effective safety level */
     if (effective_safety > 0.3f) {
-        mod->category_salience[HYPO_STIM_THREAT] = clamp_range(
+        mod->category_salience[HYPO_STIM_THREAT] = nimcp_clampf(
             1.0f + effective_safety * cfg->drive_salience_weight, 1.0f, 2.0f);
     }
 
     /* Pain stimuli also get boosted when safety is high */
     if (effective_safety > 0.3f) {
-        mod->category_salience[HYPO_STIM_PAIN] = clamp_range(
+        mod->category_salience[HYPO_STIM_PAIN] = nimcp_clampf(
             1.0f + effective_safety * 1.5f, 1.0f, 2.5f);
     }
 
@@ -580,7 +565,7 @@ int hypo_perception_bridge_set_arousal(
 
     }
 
-    bridge->external_arousal = clamp_01(arousal);
+    bridge->external_arousal = nimcp_clamp01(arousal);
     return 0;
 }
 
@@ -620,13 +605,13 @@ int hypo_perception_bridge_process_detection(
 
     /* Boost anticipation based on detection confidence and intensity */
     float anticipation_boost = detection->confidence * detection->intensity * 0.5f;
-    bridge->anticipation[relevant_drive] = clamp_01(
+    bridge->anticipation[relevant_drive] = nimcp_clamp01(
         bridge->anticipation[relevant_drive] + anticipation_boost
     );
 
     /* Threat detection gets immediate safety drive boost */
     if (detection->is_threat) {
-        bridge->anticipation[HYPO_DRIVE_SAFETY] = clamp_01(
+        bridge->anticipation[HYPO_DRIVE_SAFETY] = nimcp_clamp01(
             bridge->anticipation[HYPO_DRIVE_SAFETY] + 0.3f
         );
         nimcp_log(LOG_LEVEL_DEBUG,
@@ -662,7 +647,7 @@ int hypo_perception_bridge_process_interoceptive(
     }
     if (!bridge->interoception_enabled) return 0;
 
-    float clamped_intensity = clamp_01(intensity);
+    float clamped_intensity = nimcp_clamp01(intensity);
 
     /* Calculate prediction error (deviation from expected) */
     float expected = bridge->interoceptive.signals[signal_type];
@@ -675,7 +660,7 @@ int hypo_perception_bridge_process_interoceptive(
     /* Compute salience based on intensity and prediction error */
     float salience = clamped_intensity * 0.5f + prediction_error * 0.5f;
     salience *= bridge->interoceptive_accuracy;
-    bridge->interoceptive.salience[signal_type] = clamp_01(salience);
+    bridge->interoceptive.salience[signal_type] = nimcp_clamp01(salience);
 
     bridge->interoceptive.timestamp_us = nimcp_time_get_us();
     bridge->stats.interoceptive_signals++;
@@ -684,7 +669,7 @@ int hypo_perception_bridge_process_interoceptive(
     hypo_drive_type_t drive = intero_to_drive(signal_type);
     if (drive < HYPO_DRIVE_COUNT && clamped_intensity > 0.5f) {
         /* Strong interoceptive signal boosts drive anticipation */
-        bridge->anticipation[drive] = clamp_01(
+        bridge->anticipation[drive] = nimcp_clamp01(
             bridge->anticipation[drive] + clamped_intensity * 0.2f
         );
     }
@@ -717,7 +702,7 @@ int hypo_perception_bridge_set_interoceptive_accuracy(
 
     }
 
-    bridge->interoceptive_accuracy = clamp_01(accuracy);
+    bridge->interoceptive_accuracy = nimcp_clamp01(accuracy);
     bridge->interoceptive.global_interoceptive_accuracy = bridge->interoceptive_accuracy;
     return 0;
 }
@@ -737,13 +722,13 @@ int hypo_perception_bridge_process_olfactory(
     }
     if (!bridge->chemosensory_enabled) return 0;
 
-    float clamped_intensity = clamp_01(intensity);
+    float clamped_intensity = nimcp_clamp01(intensity);
 
     /* Apply hunger modulation to food odors */
     float modulated_intensity = clamped_intensity;
     if (odor_type == HYPO_OLFACT_FOOD_PLEASANT) {
         modulated_intensity *= bridge->chemosensory.hunger_modulation;
-        modulated_intensity = clamp_01(modulated_intensity);
+        modulated_intensity = nimcp_clamp01(modulated_intensity);
         if (clamped_intensity > 0.3f) {
             bridge->chemosensory.food_detected = true;
         }
@@ -754,7 +739,7 @@ int hypo_perception_bridge_process_olfactory(
     } else if (odor_type == HYPO_OLFACT_DANGER) {
         /* Danger odors boost safety anticipation */
         if (clamped_intensity > 0.3f) {
-            bridge->anticipation[HYPO_DRIVE_SAFETY] = clamp_01(
+            bridge->anticipation[HYPO_DRIVE_SAFETY] = nimcp_clamp01(
                 bridge->anticipation[HYPO_DRIVE_SAFETY] + clamped_intensity * 0.3f
             );
         }
@@ -778,7 +763,7 @@ int hypo_perception_bridge_process_gustatory(
     }
     if (!bridge->chemosensory_enabled) return 0;
 
-    float clamped_intensity = clamp_01(intensity);
+    float clamped_intensity = nimcp_clamp01(intensity);
 
     /* Apply drive modulation to specific tastes */
     float modulated_intensity = clamped_intensity;
@@ -789,7 +774,7 @@ int hypo_perception_bridge_process_gustatory(
         case HYPO_GUST_FAT:
             /* Hunger boosts rewarding tastes */
             modulated_intensity *= bridge->chemosensory.hunger_modulation;
-            modulated_intensity = clamp_01(modulated_intensity);
+            modulated_intensity = nimcp_clamp01(modulated_intensity);
             if (clamped_intensity > 0.3f) {
                 bridge->chemosensory.food_detected = true;
             }
@@ -798,7 +783,7 @@ int hypo_perception_bridge_process_gustatory(
         case HYPO_GUST_SALTY:
             /* Thirst boosts salt taste */
             modulated_intensity *= bridge->chemosensory.thirst_modulation;
-            modulated_intensity = clamp_01(modulated_intensity);
+            modulated_intensity = nimcp_clamp01(modulated_intensity);
             break;
 
         case HYPO_GUST_BITTER:
@@ -848,8 +833,8 @@ int hypo_perception_bridge_generate_prediction(
     }
     if (!bridge->predictive_coding_enabled) return 0;
 
-    bridge->predictive.predictions[pred_type] = clamp_01(probability);
-    bridge->predictive.precision[pred_type] = clamp_01(precision);
+    bridge->predictive.predictions[pred_type] = nimcp_clamp01(probability);
+    bridge->predictive.precision[pred_type] = nimcp_clamp01(precision);
     bridge->predictive.timestamp_us = nimcp_time_get_us();
     bridge->stats.predictions_generated++;
 
@@ -867,7 +852,7 @@ int hypo_perception_bridge_update_prediction_error(
     }
     if (!bridge->predictive_coding_enabled) return 0;
 
-    float clamped_actual = clamp_01(actual_value);
+    float clamped_actual = nimcp_clamp01(actual_value);
     float predicted = bridge->predictive.predictions[pred_type];
     float precision = bridge->predictive.precision[pred_type];
 
@@ -946,7 +931,7 @@ int hypo_perception_bridge_set_stress_for_pain(
     }
     if (!bridge->pain_modulation_enabled) return 0;
 
-    float clamped_stress = clamp_01(stress_level);
+    float clamped_stress = nimcp_clamp01(stress_level);
     bridge->pain.stress_level = clamped_stress;
     bridge->pain.in_chronic_stress = is_chronic;
     bridge->pain.in_acute_stress = !is_chronic && (clamped_stress > 0.3f);
@@ -955,13 +940,13 @@ int hypo_perception_bridge_set_stress_for_pain(
         /* Acute stress → stress-induced analgesia */
         bridge->pain.analgesia_level = clamped_stress * bridge->acute_stress_analgesia;
         bridge->pain.hyperalgesia_level = 0.0f;
-        bridge->pain.pain_sensitivity = clamp_range(
+        bridge->pain.pain_sensitivity = nimcp_clampf(
             1.0f - bridge->pain.analgesia_level, 0.5f, 1.0f);
     } else if (bridge->pain.in_chronic_stress) {
         /* Chronic stress → hyperalgesia */
         bridge->pain.hyperalgesia_level = clamped_stress * bridge->chronic_stress_hyperalgesia;
         bridge->pain.analgesia_level = 0.0f;
-        bridge->pain.pain_sensitivity = clamp_range(
+        bridge->pain.pain_sensitivity = nimcp_clampf(
             1.0f + bridge->pain.hyperalgesia_level, 1.0f, 2.0f);
     } else {
         bridge->pain.analgesia_level = 0.0f;
@@ -983,7 +968,7 @@ int hypo_perception_bridge_modulate_pain(
         return -1;
     }
 
-    float clamped_raw = clamp_01(raw_pain);
+    float clamped_raw = nimcp_clamp01(raw_pain);
 
     if (!bridge->pain_modulation_enabled) {
         *modulated_pain = clamped_raw;
@@ -996,7 +981,7 @@ int hypo_perception_bridge_modulate_pain(
     /* Apply endorphin-based analgesia */
     modulated *= (1.0f - bridge->pain.endorphin_level * 0.5f);
 
-    *modulated_pain = clamp_01(modulated);
+    *modulated_pain = nimcp_clamp01(modulated);
     bridge->stats.pain_stimuli_modulated++;
 
     /* Update average in stats */
@@ -1033,8 +1018,8 @@ int hypo_perception_bridge_release_endorphins(
 
     }
 
-    float new_level = bridge->pain.endorphin_level + clamp_01(amount);
-    bridge->pain.endorphin_level = clamp_01(new_level);
+    float new_level = bridge->pain.endorphin_level + nimcp_clamp01(amount);
+    bridge->pain.endorphin_level = nimcp_clamp01(new_level);
     bridge->pain.timestamp_us = nimcp_time_get_us();
 
     return 0;
@@ -1130,7 +1115,7 @@ int hypo_perception_bridge_check_sleep_gate(
         return 0;
     }
 
-    float clamped_intensity = clamp_01(stimulus_intensity);
+    float clamped_intensity = nimcp_clamp01(stimulus_intensity);
     float threshold = bridge->sleep_gating.arousal_threshold;
 
     /* Threat stimuli have lower threshold (bypass) */
@@ -1189,11 +1174,11 @@ int hypo_perception_bridge_set_core_temperature(
 
     }
 
-    bridge->thermal.core_temperature = clamp_01(temperature);
+    bridge->thermal.core_temperature = nimcp_clamp01(temperature);
 
     /* Compute thermal discomfort */
     float deviation = fabsf(temperature - bridge->thermal_setpoint);
-    bridge->thermal.thermal_discomfort = clamp_01(deviation / bridge->thermal_tolerance);
+    bridge->thermal.thermal_discomfort = nimcp_clamp01(deviation / bridge->thermal_tolerance);
 
     /* Compute seeking motivations */
     if (temperature < bridge->thermal_setpoint - bridge->thermal_tolerance) {
@@ -1231,7 +1216,7 @@ int hypo_perception_bridge_set_ambient_temperature(
 
     }
 
-    bridge->thermal.ambient_temperature = clamp_01(temperature);
+    bridge->thermal.ambient_temperature = nimcp_clamp01(temperature);
     bridge->thermal.timestamp_us = nimcp_time_get_us();
 
     return 0;
@@ -1266,7 +1251,7 @@ int hypo_perception_bridge_compute_thermal_salience(
 
     /* Thermal salience boost = 1.0 to 3.0 based on discomfort */
     float salience = 1.0f + bridge->thermal.thermal_discomfort * 2.0f;
-    bridge->thermal.thermal_salience_boost = clamp_range(salience, 1.0f, 3.0f);
+    bridge->thermal.thermal_salience_boost = nimcp_clampf(salience, 1.0f, 3.0f);
     *boost = bridge->thermal.thermal_salience_boost;
 
     return 0;
@@ -1449,7 +1434,7 @@ int hypo_perception_bridge_update(
     /* Decay endorphins over time */
     if (bridge->pain.endorphin_level > 0.0f) {
         float decay = 0.001f * (delta_us / 1000.0f);  /* Slow decay */
-        bridge->pain.endorphin_level = clamp_01(
+        bridge->pain.endorphin_level = nimcp_clamp01(
             bridge->pain.endorphin_level - decay);
     }
 

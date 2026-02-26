@@ -22,6 +22,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stdp_immune_bridge)
 
@@ -32,19 +33,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(stdp_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get inflammation duration
@@ -281,7 +269,7 @@ int stdp_immune_apply_cytokine_effects(stdp_immune_bridge_t* bridge) {
     effects->total_ltd_modulation = 1.0f;
 
     /* Learning rate affected by overall cytokine state */
-    effects->learning_rate_factor = clamp_f(effects->total_ltp_modulation, 0.1f, 1.5f);
+    effects->learning_rate_factor = nimcp_clampf(effects->total_ltp_modulation, 0.1f, 1.5f);
 
     /* Timing window narrowing from inflammation */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -321,17 +309,17 @@ int stdp_immune_apply_inflammation_effects(stdp_immune_bridge_t* bridge) {
 
     /* LTP capacity reduction based on inflammation level */
     float inflammation_intensity = (float)state->current_level / (float)INFLAMMATION_STORM;
-    state->ltp_capacity_reduction = clamp_f(inflammation_intensity * 0.6f, 0.0f, 0.9f);
+    state->ltp_capacity_reduction = nimcp_clampf(inflammation_intensity * 0.6f, 0.0f, 0.9f);
 
     /* LTD enhancement (inflammation makes synapses more prone to depression) */
-    state->ltd_enhancement = clamp_f(inflammation_intensity * 0.3f, 0.0f, 0.5f);
+    state->ltd_enhancement = nimcp_clampf(inflammation_intensity * 0.3f, 0.0f, 0.5f);
 
     /* Timing window narrowing */
     state->timing_window_narrowing = 1.0f - inflammation_to_tau_factor(state->current_level);
 
     /* Chronic inflammation effects */
     if (state->is_chronic) {
-        float duration_factor = clamp_f(
+        float duration_factor = nimcp_clampf(
             state->inflammation_duration_sec / (CHRONIC_INFLAMMATION_THRESHOLD_SEC * 2.0f),
             0.0f, 1.0f
         );
@@ -359,7 +347,7 @@ float stdp_immune_get_effective_learning_rate(
     /* Multiplicative (effects compound) */
     float total_factor = cytokine_factor * inflammation_factor;
 
-    return base_lr * clamp_f(total_factor, 0.0f, 1.0f);
+    return base_lr * nimcp_clampf(total_factor, 0.0f, 1.0f);
 }
 
 int stdp_immune_get_modulation_state(
@@ -445,7 +433,7 @@ int stdp_immune_restore_plasticity(
         return -1;
 
     }
-    recovery_factor = clamp_f(recovery_factor, 0.0f, 1.0f);
+    recovery_factor = nimcp_clampf(recovery_factor, 0.0f, 1.0f);
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 

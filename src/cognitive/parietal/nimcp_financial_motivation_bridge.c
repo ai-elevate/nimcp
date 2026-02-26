@@ -38,6 +38,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fin_motivation)
 
@@ -100,16 +101,6 @@ struct financial_motivation_bridge {
     float cumulative_prediction_error; /**< Running average PE */
     uint32_t outcome_count;         /**< Number of outcomes processed */
 };
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
 
 static inline float sigmoidf(float x) {
     return 1.0f / (1.0f + expf(-x));
@@ -501,7 +492,7 @@ int financial_motivation_bridge_evaluate(
     float novelty_signal = opportunity->novelty;
     float urgency_signal = opportunity->urgency;
     float risk_avoidance = 1.0f - opportunity->risk_level * bridge->config.risk_aversion;
-    risk_avoidance = clampf(risk_avoidance, 0.0f, 1.0f);
+    risk_avoidance = nimcp_clampf(risk_avoidance, 0.0f, 1.0f);
 
     float wanting = bridge->config.wanting_sensitivity * (
         0.4f * return_signal +
@@ -511,21 +502,21 @@ int financial_motivation_bridge_evaluate(
 
     /* Adjust for baseline (adaptation level) */
     wanting = wanting - bridge->baseline_wanting + 0.5f;
-    wanting = clampf(wanting, -1.0f, 1.0f);
+    wanting = nimcp_clampf(wanting, -1.0f, 1.0f);
 
     /* Compute LIKING (hedonic value)
      * This is the anticipated hedonic experience, not actual consumption
      * Based on expected return and risk-adjusted confidence
      */
     float liking = return_signal * risk_avoidance;
-    liking = clampf(liking, -1.0f, 1.0f);
+    liking = nimcp_clampf(liking, -1.0f, 1.0f);
 
     /* Compute LEARNING (prediction error signal)
      * Use recent prediction error as the learning signal
      * In real usage, this updates when outcomes are received
      */
     float learning = bridge->recent_prediction_error;
-    learning = clampf(learning, -1.0f, 1.0f);
+    learning = nimcp_clampf(learning, -1.0f, 1.0f);
 
     out_signal->wanting = wanting;
     out_signal->liking = liking;
@@ -578,7 +569,7 @@ int financial_motivation_bridge_detect_fomo(
 
     /* FOMO = wanting exceeds rational baseline */
     float wanting_excess = signal->wanting - rational_wanting;
-    wanting_excess = clampf(wanting_excess, -1.0f, 1.0f);
+    wanting_excess = nimcp_clampf(wanting_excess, -1.0f, 1.0f);
 
     /* Component biases */
     float urgency_bias = opportunity->urgency * bridge->config.urgency_weight;
@@ -678,16 +669,16 @@ int financial_motivation_bridge_rational_value(
      * where p = win probability, q = loss probability, b = win/loss ratio
      * Use expected return and risk to estimate
      */
-    float win_prob = clampf(0.5f + opportunity->expected_return * 2.0f, 0.1f, 0.9f);
+    float win_prob = nimcp_clampf(0.5f + opportunity->expected_return * 2.0f, 0.1f, 0.9f);
     float loss_prob = 1.0f - win_prob;
     float win_loss_ratio = 1.0f / (opportunity->risk_level + 0.1f);
     float kelly = (win_prob * win_loss_ratio - loss_prob) / win_loss_ratio;
-    kelly = clampf(kelly, 0.0f, 0.25f);  /* Cap at 25% */
+    kelly = nimcp_clampf(kelly, 0.0f, 0.25f);  /* Cap at 25% */
 
     /* Confidence based on information quality
      * Lower novelty = more information = higher confidence
      */
-    float confidence = clampf(1.0f - opportunity->novelty * 0.5f, 0.3f, 0.95f);
+    float confidence = nimcp_clampf(1.0f - opportunity->novelty * 0.5f, 0.3f, 0.95f);
 
     out_rational->expected_value = expected_value;
     out_rational->opportunity_cost = opportunity_cost;
@@ -830,7 +821,7 @@ int financial_motivation_bridge_process_outcome(
      */
     bridge->baseline_wanting +=
         bridge->config.learning_rate * prediction_error;
-    bridge->baseline_wanting = clampf(bridge->baseline_wanting, 0.0f, 1.0f);
+    bridge->baseline_wanting = nimcp_clampf(bridge->baseline_wanting, 0.0f, 1.0f);
 
     /* KG messaging */
     bridge_kg_publish(bridge, KG_MSG_FIN_MOTIVATION_OUTCOME,

@@ -35,6 +35,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(counterfactual, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -110,24 +111,6 @@ static void clear_error(void) {
 }
 
 /**
- * @brief Clamp float to [0, 1] range
- */
-static inline float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
- * @brief Clamp float to [-1, 1] range
- */
-static inline float clamp_pm1(float value) {
-    if (value < -1.0f) return -1.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
-
-/**
  * @brief Fast absolute value for floats
  */
 static inline float fabsf_fast(float x) {
@@ -168,7 +151,7 @@ static float compute_recency_mutability(uint64_t event_time_ms, uint64_t current
 
     // Exponential decay: mutability = exp(-0.1 * age_days)
     float mutability = expf(-0.1f * age_days);
-    return clamp01(mutability);
+    return nimcp_clamp01(mutability);
 }
 
 /**
@@ -182,7 +165,7 @@ static float compute_exceptionality(const pr_memory_node_t* memory) {
 
     nimcp_quaternion_t state = pr_memory_node_get_state(memory);
     // Salience (y component) serves as exceptionality proxy
-    return clamp01(state.y);
+    return nimcp_clamp01(state.y);
 }
 
 /**
@@ -217,7 +200,7 @@ static float compute_controllability(mutation_type_t type, const pr_memory_node_
             base = 0.5f;
     }
 
-    return clamp01(base);
+    return nimcp_clamp01(base);
 }
 
 /**
@@ -291,7 +274,7 @@ static float predict_outcome_valence(
 
     // Scale by a factor and add to actual valence
     float predicted = actual_valence + strength_diff * 0.5f;
-    return clamp_pm1(predicted);
+    return nimcp_clampf(predicted, -1.0f, 1.0f);
 }
 
 /**
@@ -327,7 +310,7 @@ static float estimate_outcome_probability(
         probability += 0.1f;
     }
 
-    return clamp01(probability);
+    return nimcp_clamp01(probability);
 }
 
 /**
@@ -361,8 +344,8 @@ static void compute_affect_internal(counterfactual_t* cf, float controllability)
     }
 
     // Clamp intensities
-    cf->regret_intensity = clamp01(cf->regret_intensity);
-    cf->relief_intensity = clamp01(cf->relief_intensity);
+    cf->regret_intensity = nimcp_clamp01(cf->regret_intensity);
+    cf->relief_intensity = nimcp_clamp01(cf->relief_intensity);
 }
 
 //=============================================================================
@@ -678,10 +661,10 @@ bool counterfactual_analyze(
     analysis->person_mutability = 0.3f * recency;
 
     // Clamp mutabilities
-    analysis->action_mutability = clamp01(analysis->action_mutability);
-    analysis->event_mutability = clamp01(analysis->event_mutability);
-    analysis->timing_mutability = clamp01(analysis->timing_mutability);
-    analysis->person_mutability = clamp01(analysis->person_mutability);
+    analysis->action_mutability = nimcp_clamp01(analysis->action_mutability);
+    analysis->event_mutability = nimcp_clamp01(analysis->event_mutability);
+    analysis->timing_mutability = nimcp_clamp01(analysis->timing_mutability);
+    analysis->person_mutability = nimcp_clamp01(analysis->person_mutability);
 
     // Overall mutability is weighted average
     analysis->overall_mutability = (
@@ -1042,18 +1025,18 @@ bool counterfactual_mutate_timing(
     float timing_effect = 0.0f;
     if (time_delta < 0) {
         // Earlier: often better
-        timing_effect = 0.1f * clamp01((float)(-time_delta) / 3600000.0f);  // Scale by hours
+        timing_effect = 0.1f * nimcp_clamp01((float)(-time_delta) / 3600000.0f);  // Scale by hours
     } else {
         // Later: often worse
-        timing_effect = -0.05f * clamp01((float)time_delta / 3600000.0f);
+        timing_effect = -0.05f * nimcp_clamp01((float)time_delta / 3600000.0f);
     }
 
     result->alternate_outcome = result->mutated_element;
-    result->outcome_valence = clamp_pm1(actual_valence + timing_effect);
+    result->outcome_valence = nimcp_clampf(actual_valence + timing_effect, -1.0f, 1.0f);
     result->affect_change = result->outcome_valence - actual_valence;
 
     // Timing changes have moderate probability
-    result->outcome_probability = 0.5f + 0.2f * clamp01(fabsf_fast(timing_effect) * 5.0f);
+    result->outcome_probability = 0.5f + 0.2f * nimcp_clamp01(fabsf_fast(timing_effect) * 5.0f);
 
     result->is_controllable = true;
     float recency = compute_recency_mutability(memory->created_time_ms, result->created_time_ms);
@@ -1264,7 +1247,7 @@ bool counterfactual_update_causal_model(
     float new_value = CAUSAL_LEARNING_RATE * strength +
                       (1.0f - CAUSAL_LEARNING_RATE) * old_value;
 
-    system->causal_matrix[cause_idx * system->causal_dim + effect_idx] = clamp01(new_value);
+    system->causal_matrix[cause_idx * system->causal_dim + effect_idx] = nimcp_clamp01(new_value);
 
     system->stats.causal_links_learned++;
 
@@ -1356,7 +1339,7 @@ bool counterfactual_get_most_mutable(
     }
 
     if (mutability) {
-        *mutability = clamp01(max_mut);
+        *mutability = nimcp_clamp01(max_mut);
     }
 
     if (type) {
@@ -1415,7 +1398,7 @@ float counterfactual_compute_mutability(
     float mutability = base * weight * recency *
                        (0.5f + 0.5f * exceptionality);
 
-    return clamp01(mutability);
+    return nimcp_clamp01(mutability);
 }
 
 //=============================================================================

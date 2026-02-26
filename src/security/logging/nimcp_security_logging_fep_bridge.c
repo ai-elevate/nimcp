@@ -26,6 +26,7 @@
 #include <math.h>
 #include <ctype.h>
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(security_logging_fep_bridge, MESH_ADAPTER_CATEGORY_SECURITY)
 
@@ -180,20 +181,6 @@ static const char* g_inject_type_names[SEC_LOG_FEP_INJECT_COUNT] = {
 static uint64_t get_timestamp_ms(void)
 {
     return nimcp_time_monotonic_us() / 1000;
-}
-
-/**
- * @brief Clamp float to range
- *
- * WHAT: Restrict value to [min, max] range
- * WHY:  Ensure valid parameter bounds
- * HOW:  Simple comparison-based clamping
- */
-static float clamp_float(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -889,7 +876,7 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
 
     /* Compute anomaly score (normalized FE) */
     float anomaly_score = current_fe / (bridge->config.attack_fe_threshold + FEP_EPSILON);
-    anomaly_score = clamp_float(anomaly_score, 0.0f, 1.0f);
+    anomaly_score = nimcp_clampf(anomaly_score, 0.0f, 1.0f);
     bridge->fep_effects.fep_anomaly_score = anomaly_score;
 
     /* Compute log integrity (inverse of anomaly) */
@@ -898,18 +885,18 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
     /* Compute temporal integrity from prediction error */
     float temporal_score = 1.0f - (pred_error / (bridge->config.surprise_threshold + FEP_EPSILON)) *
                                    bridge->config.timestamp_weight;
-    temporal_score = clamp_float(temporal_score, 0.0f, 1.0f);
+    temporal_score = nimcp_clampf(temporal_score, 0.0f, 1.0f);
     bridge->fep_effects.temporal_integrity_score = temporal_score;
 
     /* Compute sequence integrity */
     bridge->fep_effects.sequence_integrity_score =
         1.0f - (bridge->sec_effects.sequence_gaps / (float)(bridge->state.entries_analyzed + 1));
     bridge->fep_effects.sequence_integrity_score =
-        clamp_float(bridge->fep_effects.sequence_integrity_score, 0.0f, 1.0f);
+        nimcp_clampf(bridge->fep_effects.sequence_integrity_score, 0.0f, 1.0f);
 
     /* Compute surprise scores */
     bridge->fep_effects.surprise_score = surprise / (bridge->config.surprise_threshold + FEP_EPSILON);
-    bridge->fep_effects.surprise_score = clamp_float(bridge->fep_effects.surprise_score, 0.0f, 1.0f);
+    bridge->fep_effects.surprise_score = nimcp_clampf(bridge->fep_effects.surprise_score, 0.0f, 1.0f);
     bridge->fep_effects.temporal_surprise = bridge->fep_effects.surprise_score *
                                              bridge->config.timestamp_weight;
     bridge->fep_effects.content_surprise = bridge->fep_effects.surprise_score *
@@ -968,7 +955,7 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
         /* Compute confidence in selected action */
         if (best_action != SEC_LOG_FEP_ACTION_NONE) {
             action_confidence = (current_fe - best_efe) / (current_fe + FEP_EPSILON);
-            action_confidence = clamp_float(action_confidence, 0.0f, 1.0f);
+            action_confidence = nimcp_clampf(action_confidence, 0.0f, 1.0f);
         }
 
         bridge->fep_effects.recommended_action = best_action;
@@ -1102,7 +1089,7 @@ int sec_log_fep_analyze_entry(
 
     /* Compute FEP-based score */
     float fep_score = current_fe / (bridge->config.attack_fe_threshold + FEP_EPSILON);
-    fep_score = clamp_float(fep_score, 0.0f, 1.0f);
+    fep_score = nimcp_clampf(fep_score, 0.0f, 1.0f);
 
     /* Combine scores */
     if (bridge->config.use_fep_scoring) {
@@ -1113,7 +1100,7 @@ int sec_log_fep_analyze_entry(
 
     result->detection_type = detection;
     result->confidence = 1.0f - (pred_error / (bridge->config.surprise_threshold + FEP_EPSILON));
-    result->confidence = clamp_float(result->confidence, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(result->confidence, 0.0f, 1.0f);
 
     /* Classify integrity */
     result->integrity = classify_integrity(current_fe, &bridge->config);
@@ -1238,7 +1225,7 @@ int sec_log_fep_detect_deletion(
 
     if (gap > 0 && gap < UINT32_MAX - 100) {
         result->detection_type = SEC_LOG_FEP_DETECT_DELETION;
-        result->anomaly_score = clamp_float((float)gap / 100.0f, 0.3f, 1.0f);
+        result->anomaly_score = nimcp_clampf((float)gap / 100.0f, 0.3f, 1.0f);
         result->confidence = 0.85f;
 
         bridge->sec_effects.deletions_detected += gap;
@@ -1539,7 +1526,7 @@ int sec_log_fep_apply_precision_modulation(sec_log_fep_bridge_t* bridge)
     }
 
     /* Clamp target precision */
-    target_precision = clamp_float(target_precision,
+    target_precision = nimcp_clampf(target_precision,
                                     SEC_LOG_FEP_MIN_PRECISION,
                                     SEC_LOG_FEP_MAX_PRECISION);
 
@@ -1749,7 +1736,7 @@ int sec_log_fep_report_protection(
 
         if (bridge->config.enable_online_learning) {
             bridge->state.current_precision *= 1.02f;
-            bridge->state.current_precision = clamp_float(
+            bridge->state.current_precision = nimcp_clampf(
                 bridge->state.current_precision,
                 SEC_LOG_FEP_MIN_PRECISION,
                 SEC_LOG_FEP_MAX_PRECISION);
@@ -1757,7 +1744,7 @@ int sec_log_fep_report_protection(
     } else {
         if (bridge->config.enable_online_learning) {
             bridge->state.current_precision *= 0.95f;
-            bridge->state.current_precision = clamp_float(
+            bridge->state.current_precision = nimcp_clampf(
                 bridge->state.current_precision,
                 SEC_LOG_FEP_MIN_PRECISION,
                 SEC_LOG_FEP_MAX_PRECISION);

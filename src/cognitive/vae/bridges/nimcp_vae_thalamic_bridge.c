@@ -22,6 +22,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Module Constants
@@ -42,13 +43,6 @@ static uint64_t get_timestamp_us(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float val, float min_val, float max_val)
-{
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
 }
 
 /**
@@ -108,7 +102,7 @@ static float compute_gate(const vae_thalamic_bridge_t* bridge,
         gate *= 1.5f; /* Amplify during burst */
     }
 
-    return clampf(gate, 0.0f, 1.0f);
+    return nimcp_clampf(gate, 0.0f, 1.0f);
 }
 
 /**
@@ -148,7 +142,7 @@ static void update_nucleus_state(vae_thalamic_bridge_t* bridge,
 
     /* Update attention with decay */
     ns->current_attention *= (1.0f - bridge->config.attention.attention_decay);
-    ns->current_attention = clampf(ns->current_attention,
+    ns->current_attention = nimcp_clampf(ns->current_attention,
                                    bridge->config.attention.attention_min,
                                    bridge->config.attention.attention_max);
 
@@ -638,7 +632,7 @@ int vae_thalamic_set_attention(vae_thalamic_bridge_t* bridge,
     if (nucleus >= VAE_THAL_NUC_COUNT) return NIMCP_ERROR_VAE_THAL_INVALID_NUC;
 
     bridge->thalamic_state.nuclei[nucleus].current_attention =
-        clampf(attention_level,
+        nimcp_clampf(attention_level,
                bridge->config.attention.attention_min,
                bridge->config.attention.attention_max);
 
@@ -650,7 +644,7 @@ int vae_thalamic_set_global_attention(vae_thalamic_bridge_t* bridge,
 {
     if (!bridge) return NIMCP_ERROR_VAE_THAL_NULL;
 
-    attention_level = clampf(attention_level,
+    attention_level = nimcp_clampf(attention_level,
                             bridge->config.attention.attention_min,
                             bridge->config.attention.attention_max);
 
@@ -683,7 +677,7 @@ int vae_thalamic_update_attention_from_pulvinar(vae_thalamic_bridge_t* bridge)
         float current = bridge->thalamic_state.nuclei[n].current_attention;
         float modulated = current * (0.5f + 0.5f * pulv_activity);
         bridge->thalamic_state.nuclei[n].current_attention =
-            clampf(modulated,
+            nimcp_clampf(modulated,
                    bridge->config.attention.attention_min,
                    bridge->config.attention.attention_max);
     }

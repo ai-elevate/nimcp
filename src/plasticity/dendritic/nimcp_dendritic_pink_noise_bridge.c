@@ -18,6 +18,7 @@
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dendritic_pink_noise_bridge)
 
@@ -28,19 +29,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(dendritic_pink_noise_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent invalid parameter values
- * HOW:  Standard clamping
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute combined noise scaling
@@ -222,11 +210,11 @@ int dendritic_pink_noise_update_modulation(dendritic_pink_noise_bridge_t* bridge
 
     /* Extract state variables (normalized to [0-1]) */
     bridge->dendritic_modulation.activity_level =
-        clamp_f(stats.mean_voltage / 50.0f, 0.0f, 1.0f);  // Assume 50mV max
+        nimcp_clampf(stats.mean_voltage / 50.0f, 0.0f, 1.0f);  // Assume 50mV max
     bridge->dendritic_modulation.nmda_activation =
-        clamp_f(stats.nmda_activations / 100.0f, 0.0f, 1.0f);  // Normalize
+        nimcp_clampf(stats.nmda_activations / 100.0f, 0.0f, 1.0f);  // Normalize
     bridge->dendritic_modulation.calcium_level =
-        clamp_f(stats.max_calcium / 10.0f, 0.0f, 1.0f);  // Assume 10μM max
+        nimcp_clampf(stats.max_calcium / 10.0f, 0.0f, 1.0f);  // Assume 10μM max
 
     /* Compute activity-dependent noise scaling */
     if (bridge->config.enable_activity_modulation) {
@@ -234,7 +222,7 @@ int dendritic_pink_noise_update_modulation(dendritic_pink_noise_bridge_t* bridge
         bridge->dendritic_modulation.activity_noise_scale =
             1.0f + bridge->config.activity_noise_gain * activity;
         bridge->dendritic_modulation.activity_noise_scale =
-            clamp_f(bridge->dendritic_modulation.activity_noise_scale, 0.1f, 1.0f);
+            nimcp_clampf(bridge->dendritic_modulation.activity_noise_scale, 0.1f, 1.0f);
     } else {
         bridge->dendritic_modulation.activity_noise_scale = 1.0f;
     }
@@ -391,7 +379,7 @@ int dendritic_pink_noise_apply_nmda_noise(
     float noise_factor = 1.0f + noise_sample *
                         bridge->config.nmda_noise_amplitude *
                         bridge->noise_effects.effective_amplitude;
-    noise_factor = clamp_f(noise_factor, 0.0f, 2.0f);  // Prevent negative/excessive
+    noise_factor = nimcp_clampf(noise_factor, 0.0f, 2.0f);  // Prevent negative/excessive
 
     *noisy_conductance_out = base_conductance * noise_factor;
 
@@ -448,7 +436,7 @@ int dendritic_pink_noise_apply_synapse_noise(
     float noise_factor = 1.0f + noise_sample *
                         bridge->config.synapse_noise_amplitude *
                         bridge->noise_effects.effective_amplitude;
-    noise_factor = clamp_f(noise_factor, 0.5f, 1.5f);  // ±50% variation max
+    noise_factor = nimcp_clampf(noise_factor, 0.5f, 1.5f);  // ±50% variation max
 
     *noisy_weight_out = base_weight * noise_factor;
 
@@ -505,7 +493,7 @@ int dendritic_pink_noise_apply_calcium_noise(
     float noise_factor = 1.0f + noise_sample *
                         bridge->config.calcium_noise_amplitude *
                         bridge->noise_effects.effective_amplitude;
-    noise_factor = clamp_f(noise_factor, 0.3f, 1.7f);  // Wide variation for Ca²⁺
+    noise_factor = nimcp_clampf(noise_factor, 0.3f, 1.7f);  // Wide variation for Ca²⁺
 
     *noisy_influx_out = base_influx * noise_factor;
 

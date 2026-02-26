@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(game_theory_snn_bridge)
 //=============================================================================
@@ -119,16 +120,6 @@ struct game_theory_snn_bridge {
     /* Statistics */
     game_theory_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -419,7 +410,7 @@ int game_theory_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -499,8 +490,8 @@ int game_theory_snn_encode_payoff(
     }
     float avg_payoff = (num_actions > 0) ? (sum_payoff / num_actions) : 0.0f;
 
-    dims[GT_DIM_PAYOFF_EXPECTATION] = clamp_f(avg_payoff, 0.0f, 1.0f);
-    dims[GT_DIM_RISK_TOLERANCE] = clamp_f(max_payoff - avg_payoff, 0.0f, 1.0f);
+    dims[GT_DIM_PAYOFF_EXPECTATION] = nimcp_clampf(avg_payoff, 0.0f, 1.0f);
+    dims[GT_DIM_RISK_TOLERANCE] = nimcp_clampf(max_payoff - avg_payoff, 0.0f, 1.0f);
 
     bridge->payoff_signal = avg_payoff;
 
@@ -526,8 +517,8 @@ int game_theory_snn_encode_opponent(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[GT_DIM_COUNT] = {0};
-    dims[GT_DIM_OPPONENT_MODEL] = clamp_f(opponent_strategy, 0.0f, 1.0f);
-    dims[GT_DIM_TRUST] = clamp_f(confidence, 0.0f, 1.0f);
+    dims[GT_DIM_OPPONENT_MODEL] = nimcp_clampf(opponent_strategy, 0.0f, 1.0f);
+    dims[GT_DIM_TRUST] = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -551,8 +542,8 @@ int game_theory_snn_encode_cooperation(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[GT_DIM_COUNT] = {0};
-    dims[GT_DIM_COOPERATION] = clamp_f(cooperation, 0.0f, 1.0f);
-    dims[GT_DIM_DEFECTION] = clamp_f(defection, 0.0f, 1.0f);
+    dims[GT_DIM_COOPERATION] = nimcp_clampf(cooperation, 0.0f, 1.0f);
+    dims[GT_DIM_DEFECTION] = nimcp_clampf(defection, 0.0f, 1.0f);
     dims[GT_DIM_RECIPROCITY] = (cooperation + (1.0f - defection)) / 2.0f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -625,12 +616,12 @@ int game_theory_snn_simulate(game_theory_snn_bridge_t* bridge, float duration_ms
     }
 
     /* Decode outputs */
-    bridge->last_decision.cooperation_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_decision.defection_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_decision.payoff_expectation = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_decision.equilibrium_distance = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_decision.trust_level = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_decision.fairness_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_decision.cooperation_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_decision.defection_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_decision.payoff_expectation = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_decision.equilibrium_distance = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_decision.trust_level = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_decision.fairness_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check equilibrium threshold */
     if (bridge->last_decision.equilibrium_distance < bridge->config.equilibrium_threshold) {

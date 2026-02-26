@@ -43,6 +43,7 @@
 #include <pthread.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cortical_training_bridge)
 
@@ -130,19 +131,6 @@ struct cortical_training_bridge {
  *============================================================================*/
 
 /**
- * @brief Clamp float value to range
- *
- * WHAT: Limits value between min and max
- * WHY:  Prevent extreme modulation factors
- * HOW:  Returns min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * @brief Extract cortical state from modules
  *
  * WHAT: Queries all connected cortical modules for current state
@@ -226,7 +214,7 @@ static float compute_lr_modulation(
         } else if (fe > bridge->config.fe_high_threshold) {
             /* High free energy → boost learning (surprise = opportunity) */
             float boost = 1.0f + (fe - bridge->config.fe_high_threshold) * 0.01f;
-            boost = clamp_f(boost, 1.0f, 1.1f);
+            boost = nimcp_clampf(boost, 1.0f, 1.1f);
             lr_factor *= boost * bridge->config.predictive_strength;
         } else {
             /* Normal free energy → maintain LR */
@@ -244,12 +232,12 @@ static float compute_lr_modulation(
         } else if (burst_rate > CORTICAL_TRAINING_BURST_RATE_HIGH_THRESHOLD) {
             /* High burst rate → stable predictions → boost LR slightly */
             float boost = 1.0f + (burst_rate - CORTICAL_TRAINING_BURST_RATE_HIGH_THRESHOLD) * 0.5f;
-            boost = clamp_f(boost, 1.0f, 1.15f);
+            boost = nimcp_clampf(boost, 1.0f, 1.15f);
             lr_factor *= boost * bridge->config.dendritic_strength;
         } else if (burst_rate < CORTICAL_TRAINING_BURST_RATE_LOW_THRESHOLD) {
             /* Low burst rate → unstable → reduce LR */
             float reduction = 1.0f - (CORTICAL_TRAINING_BURST_RATE_LOW_THRESHOLD - burst_rate) * 0.5f;
-            reduction = clamp_f(reduction, 0.7f, 1.0f);
+            reduction = nimcp_clampf(reduction, 0.7f, 1.0f);
             lr_factor *= reduction;
         }
     }
@@ -271,7 +259,7 @@ static float compute_lr_modulation(
     }
 
     /* Clamp to safety bounds */
-    return clamp_f(lr_factor, CORTICAL_LR_FACTOR_MIN, CORTICAL_LR_FACTOR_MAX);
+    return nimcp_clampf(lr_factor, CORTICAL_LR_FACTOR_MIN, CORTICAL_LR_FACTOR_MAX);
 }
 
 /**
@@ -307,7 +295,7 @@ static float compute_gradient_confidence(
     }
 
     /* Clamp to configured bounds */
-    return clamp_f(confidence,
+    return nimcp_clampf(confidence,
                    bridge->config.gradient_min_confidence,
                    bridge->config.gradient_max_confidence);
 }
@@ -377,7 +365,7 @@ static int sync_to_cognitive(cortical_training_bridge_t* bridge) {
 
     /* Map free energy to epistemic uncertainty (normalized to [0,1]) */
     float fe_normalized = bridge->cortical_effects.free_energy / 20.0f;  /* Assume max FE ~20 */
-    fe_normalized = clamp_f(fe_normalized, 0.0f, 1.0f);
+    fe_normalized = nimcp_clampf(fe_normalized, 0.0f, 1.0f);
 
     /* Update cognitive training effects with cortical-derived uncertainty */
     cognitive_training_effects_t cog_effects;

@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ephaptic_quantum_bridge)
 
@@ -41,15 +42,6 @@ typedef struct {
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static float clamp_f(float v, float min_val, float max_val) {
-    if (v < min_val) return min_val;
-    if (v > max_val) return max_val;
-    return v;
-}
 
 /**
  * @brief Compute Kuramoto order parameter from phases
@@ -91,11 +83,11 @@ static void apply_params_to_system(
     const ephaptic_coherence_config_t* config
 ) {
     system->config.kuramoto_coupling =
-        clamp_f(params[0], config->coupling_min, config->coupling_max);
+        nimcp_clampf(params[0], config->coupling_min, config->coupling_max);
     system->config.sync_threshold =
-        clamp_f(params[1], config->sync_threshold_min, config->sync_threshold_max);
+        nimcp_clampf(params[1], config->sync_threshold_min, config->sync_threshold_max);
     system->config.field_decay_constant =
-        clamp_f(params[2], config->field_decay_min, config->field_decay_max);
+        nimcp_clampf(params[2], config->field_decay_min, config->field_decay_max);
 }
 
 /**

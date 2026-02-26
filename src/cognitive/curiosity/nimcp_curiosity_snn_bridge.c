@@ -25,6 +25,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(curiosity_snn_bridge)
 //=============================================================================
@@ -119,16 +120,6 @@ struct curiosity_snn_bridge {
     /* Statistics */
     curiosity_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -418,7 +409,7 @@ int curiosity_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -488,8 +479,8 @@ int curiosity_snn_encode_novelty(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
-    dims[CURIOSITY_DIM_NOVELTY] = clamp_f(novelty, 0.0f, 1.0f);
-    dims[CURIOSITY_DIM_SURPRISE] = clamp_f(surprise, 0.0f, 1.0f);
+    dims[CURIOSITY_DIM_NOVELTY] = nimcp_clampf(novelty, 0.0f, 1.0f);
+    dims[CURIOSITY_DIM_SURPRISE] = nimcp_clampf(surprise, 0.0f, 1.0f);
     dims[CURIOSITY_DIM_EXPLORATION] = (novelty + surprise) / 2.0f;
 
     bridge->novelty_signal = novelty;
@@ -516,8 +507,8 @@ int curiosity_snn_encode_knowledge_gap(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
-    dims[CURIOSITY_DIM_KNOWLEDGE_GAP] = clamp_f(gap_size, 0.0f, 1.0f);
-    dims[CURIOSITY_DIM_SEEKING] = clamp_f((float)gap_count / 10.0f, 0.0f, 1.0f);
+    dims[CURIOSITY_DIM_KNOWLEDGE_GAP] = nimcp_clampf(gap_size, 0.0f, 1.0f);
+    dims[CURIOSITY_DIM_SEEKING] = nimcp_clampf((float)gap_count / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -541,8 +532,8 @@ int curiosity_snn_encode_info_gain(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
-    dims[CURIOSITY_DIM_INFORMATION_GAIN] = clamp_f(info_gain, 0.0f, 1.0f);
-    dims[CURIOSITY_DIM_INTEREST] = clamp_f(info_gain * 0.8f, 0.0f, 1.0f);
+    dims[CURIOSITY_DIM_INFORMATION_GAIN] = nimcp_clampf(info_gain, 0.0f, 1.0f);
+    dims[CURIOSITY_DIM_INTEREST] = nimcp_clampf(info_gain * 0.8f, 0.0f, 1.0f);
 
     bridge->information_signal = info_gain;
 
@@ -627,12 +618,12 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_drive.novelty_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_drive.surprise_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_drive.information_gain = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_drive.exploration_drive = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_drive.interest_magnitude = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_drive.seeking_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_drive.novelty_level = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_drive.surprise_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_drive.information_gain = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_drive.exploration_drive = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_drive.interest_magnitude = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_drive.seeking_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check novelty threshold */
     if (bridge->last_drive.novelty_level > bridge->config.novelty_threshold) {

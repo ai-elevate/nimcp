@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(predictive_immune_substrate_bridge)
 //=============================================================================
@@ -195,16 +196,16 @@ int predictive_immune_substrate_bridge_update(predictive_immune_substrate_bridge
 
     if (bridge->config.enable_atp_modulation) {
         /* Prediction accuracy requires stable prefrontal resources */
-        bridge->effects.prediction_accuracy = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.prediction_accuracy = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Immune precision is ATP-dependent */
-        bridge->effects.immune_precision = nimcp_clamp_f(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.immune_precision = nimcp_clampf(atp * 0.95f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Cytokine sensitivity decreases with fatigue */
-        bridge->effects.cytokine_sensitivity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.cytokine_sensitivity = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Integration capacity is vulnerable to metabolic stress */
-        bridge->effects.integration_capacity = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.integration_capacity = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.prediction_accuracy +

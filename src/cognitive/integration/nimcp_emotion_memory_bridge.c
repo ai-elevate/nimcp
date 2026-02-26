@@ -33,6 +33,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(emotion_memory_bridge)
 //=============================================================================
@@ -207,20 +208,6 @@ static uint64_t get_timestamp_ms(void) {
 }
 
 /**
- * @brief Clamp a float value to a range
- *
- * @param value Value to clamp
- * @param min Minimum value
- * @param max Maximum value
- * @return Clamped value
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-/**
  * @brief Update running averages in stats (unlocked version)
  *
  * WHAT: Update average valence/arousal statistics
@@ -364,8 +351,8 @@ int emotion_memory_tag_memory(
     emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_tag_m", 0.0f);
 
 
-    valence = clamp_float(valence, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
-    arousal = clamp_float(arousal, EMOTION_MEMORY_AROUSAL_MIN, EMOTION_MEMORY_AROUSAL_MAX);
+    valence = nimcp_clampf(valence, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
+    arousal = nimcp_clampf(arousal, EMOTION_MEMORY_AROUSAL_MIN, EMOTION_MEMORY_AROUSAL_MAX);
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -448,7 +435,7 @@ int emotion_memory_modulate_consolidation(
     emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_modul", 0.0f);
 
 
-    emotional_intensity = clamp_float(emotional_intensity, 0.0f, 1.0f);
+    emotional_intensity = nimcp_clampf(emotional_intensity, 0.0f, 1.0f);
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -513,10 +500,10 @@ int emotion_memory_on_retrieval(
     emotion_out->arousal = tag->arousal * bridge->config.valence_sensitivity;
 
     /* Clamp output values */
-    emotion_out->valence = clamp_float(emotion_out->valence,
+    emotion_out->valence = nimcp_clampf(emotion_out->valence,
                                        EMOTION_MEMORY_VALENCE_MIN,
                                        EMOTION_MEMORY_VALENCE_MAX);
-    emotion_out->arousal = clamp_float(emotion_out->arousal,
+    emotion_out->arousal = nimcp_clampf(emotion_out->arousal,
                                        EMOTION_MEMORY_AROUSAL_MIN,
                                        EMOTION_MEMORY_AROUSAL_MAX);
 
@@ -554,8 +541,8 @@ int emotion_memory_get_emotional_memories(
     emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_get_e", 0.0f);
 
 
-    valence_min = clamp_float(valence_min, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
-    valence_max = clamp_float(valence_max, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
+    valence_min = nimcp_clampf(valence_min, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
+    valence_max = nimcp_clampf(valence_max, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
 
     /* Ensure min <= max */
     if (valence_min > valence_max) {

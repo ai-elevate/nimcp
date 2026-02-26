@@ -20,6 +20,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dragonfly_prediction)
 
@@ -39,10 +40,6 @@ static inline uint64_t get_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline float clampf(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
 }
 
 static inline float vec3_length(const float v[3]) {
@@ -534,7 +531,7 @@ int dragonfly_predictor_update(
     if (accel_mag > pred->config.jink_accel_threshold) {
         pred->evasion.maneuver_count++;
         pred->evasion.last_maneuver_us = start_us;
-        pred->evasion.maneuver_intensity = clampf(
+        pred->evasion.maneuver_intensity = nimcp_clampf(
             accel_mag / (pred->config.jink_accel_threshold * 2.0f), 0.0f, 1.0f);
     }
 

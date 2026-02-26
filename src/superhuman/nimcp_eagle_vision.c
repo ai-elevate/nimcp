@@ -31,6 +31,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(eagle_vision)
 
@@ -109,17 +110,6 @@ struct eagle_vision_system {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow
- * HOW:  Return min/max if out of bounds
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Get current time in milliseconds
@@ -359,8 +349,8 @@ static void update_target_prediction(internal_target_t* t) {
     t->prediction_y = t->target.position.y + t->target.motion.velocity_y;
 
     /* Clamp to valid range */
-    t->prediction_x = clamp_f(t->prediction_x, 0.0f, 1.0f);
-    t->prediction_y = clamp_f(t->prediction_y, 0.0f, 1.0f);
+    t->prediction_x = nimcp_clampf(t->prediction_x, 0.0f, 1.0f);
+    t->prediction_y = nimcp_clampf(t->prediction_y, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -609,7 +599,7 @@ int eagle_vision_set_acuity(eagle_vision_system_t* system, float acuity) {
         return EAGLE_VISION_ERROR_NULL_POINTER;
     }
 
-    acuity = clamp_f(acuity, EAGLE_VISION_MIN_ACUITY, EAGLE_VISION_MAX_ACUITY);
+    acuity = nimcp_clampf(acuity, EAGLE_VISION_MIN_ACUITY, EAGLE_VISION_MAX_ACUITY);
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -637,8 +627,8 @@ int eagle_vision_set_gaze(eagle_vision_system_t* system,
     }
 
     /* Clamp point to valid range */
-    point.x = clamp_f(point.x, 0.0f, 1.0f);
-    point.y = clamp_f(point.y, 0.0f, 1.0f);
+    point.x = nimcp_clampf(point.x, 0.0f, 1.0f);
+    point.y = nimcp_clampf(point.y, 0.0f, 1.0f);
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -836,7 +826,7 @@ int eagle_vision_detect_motion(eagle_vision_system_t* system,
 
                 mv->magnitude = diff;
                 mv->direction = atan2f(mv->velocity_y, mv->velocity_x);
-                mv->confidence = clamp_f(diff / (motion_threshold * 4.0f), 0.0f, 1.0f);
+                mv->confidence = nimcp_clampf(diff / (motion_threshold * 4.0f), 0.0f, 1.0f);
 
                 (*num_vectors)++;
                 motion_count++;
@@ -985,7 +975,7 @@ int eagle_vision_detect_patterns(eagle_vision_system_t* system,
                 eagle_pattern_result_t* p = &patterns[*num_patterns];
 
                 p->pattern_id = *num_patterns + 1;
-                p->match_confidence = clamp_f(variance, 0.0f, 1.0f);
+                p->match_confidence = nimcp_clampf(variance, 0.0f, 1.0f);
                 p->location.x = norm_x;
                 p->location.y = norm_y;
                 p->scale = 1.0f / acuity;
@@ -1065,7 +1055,7 @@ int eagle_vision_track_targets(eagle_vision_system_t* system,
             if (match) {
                 /* Update existing target */
                 match->target.position = mv->position;
-                match->target.confidence = clamp_f(match->target.confidence + 0.1f, 0.0f, 1.0f);
+                match->target.confidence = nimcp_clampf(match->target.confidence + 0.1f, 0.0f, 1.0f);
                 match->target.motion = *mv;
                 match->target.is_moving = true;
                 match->target.frames_tracked++;
@@ -1145,7 +1135,7 @@ int eagle_vision_estimate_distance(eagle_vision_system_t* system,
     }
 
     *distance = size_factor * motion_factor;
-    *distance = clamp_f(*distance, 0.1f, 100.0f);
+    *distance = nimcp_clampf(*distance, 0.1f, 100.0f);
 
     return EAGLE_VISION_SUCCESS;
 }

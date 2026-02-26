@@ -36,6 +36,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(game_theory_executive_bridge)
 //=============================================================================
@@ -142,15 +143,6 @@ static uint64_t get_timestamp_ms(void) {
         return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
     }
     return 0;
-}
-
-/**
- * @brief Clamp a float value to a range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -768,7 +760,7 @@ int game_theory_executive_get_recommendation(
     float avg_utility = total_utility / (float)bridge->current_num_actions;
     float confidence = 0.5f;
     if (avg_utility > 0.0f) {
-        confidence = clamp_float(best_utility / (avg_utility * 2.0f), 0.0f, 1.0f);
+        confidence = nimcp_clampf(best_utility / (avg_utility * 2.0f), 0.0f, 1.0f);
     }
 
     /* Estimate risk level (inverse of outcome variance) */
@@ -785,7 +777,7 @@ int game_theory_executive_get_recommendation(
         variance += diff * diff;
     }
     variance /= (float)bridge->current_num_outcomes;
-    float risk_level = clamp_float(variance / 10.0f, 0.0f, 1.0f);
+    float risk_level = nimcp_clampf(variance / 10.0f, 0.0f, 1.0f);
 
     /* Determine strategy type */
     gt_strategy_type_t strategy_type = GT_STRATEGY_DOMINANT;
@@ -797,7 +789,7 @@ int game_theory_executive_get_recommendation(
     static _Atomic uint64_t rec_id_counter = 0;
     recommendation_out->recommendation_id = atomic_fetch_add(&rec_id_counter, 1) + 1;
     recommendation_out->strategy_type = strategy_type;
-    recommendation_out->expected_utility = clamp_float(best_utility, 0.0f, 1.0f);
+    recommendation_out->expected_utility = nimcp_clampf(best_utility, 0.0f, 1.0f);
     recommendation_out->confidence = confidence;
     recommendation_out->risk_level = risk_level;
     recommendation_out->action_index = best_action;
@@ -985,10 +977,10 @@ int game_theory_executive_request_risk_assessment(
         variance /= (float)bridge->current_num_outcomes;
 
         /* Strategic risk based on variance */
-        assessment->strategic_risk = clamp_float(variance / 5.0f, 0.0f, 1.0f);
+        assessment->strategic_risk = nimcp_clampf(variance / 5.0f, 0.0f, 1.0f);
 
         /* Execution risk (simplified - based on action complexity) */
-        assessment->execution_risk = clamp_float(
+        assessment->execution_risk = nimcp_clampf(
             (float)action_id / (float)bridge->current_num_actions, 0.0f, 0.5f);
 
         /* Opportunity cost (best alternative - this action's expected value) */
@@ -1017,10 +1009,10 @@ int game_theory_executive_request_risk_assessment(
                 best_value = value;
             }
         }
-        assessment->opportunity_cost = clamp_float(best_value - mean, 0.0f, 1.0f);
+        assessment->opportunity_cost = nimcp_clampf(best_value - mean, 0.0f, 1.0f);
 
         /* Overall risk */
-        assessment->overall_risk = clamp_float(
+        assessment->overall_risk = nimcp_clampf(
             0.4f * assessment->strategic_risk +
             0.3f * assessment->execution_risk +
             0.3f * assessment->opportunity_cost,
@@ -1219,7 +1211,7 @@ int game_theory_executive_update_opponent_model(
         model->cooperation_tendency =
             model->cooperation_tendency * 0.9f;
     }
-    model->cooperation_tendency = clamp_float(
+    model->cooperation_tendency = nimcp_clampf(
         model->cooperation_tendency, 0.0f, 1.0f);
 
     model->last_update = get_timestamp_ms();

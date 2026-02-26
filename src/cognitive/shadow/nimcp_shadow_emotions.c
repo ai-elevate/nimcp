@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(shadow_emotions, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -127,15 +128,6 @@ static void bio_broadcast_shadow_alert(shadow_emotion_system_t* system) {
     bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast shadow alert: intensity=%.2f, insight=%.2f",
               system->total_shadow_intensity, system->insight_level);
-}
-
-
-//=============================================================================
-// HELPER FUNCTIONS
-//=============================================================================
-
-static inline float clamp(float v, float min, float max) {
-    return (v < min) ? min : (v > max) ? max : v;
 }
 
 static inline float exponential_decay(float current, float target, float rate, float dt) {
@@ -417,7 +409,7 @@ void shadow_update(shadow_emotion_system_t* system, float dt, uint64_t current_t
     // Calculate mental health impact (non-linear - higher intensity = worse impact)
     float normalized_intensity = system->total_shadow_intensity / 6.0F;
     system->mental_health_impact = normalized_intensity * normalized_intensity;  // Quadratic
-    system->mental_health_impact = clamp(system->mental_health_impact, 0.0F, 1.0F);
+    system->mental_health_impact = nimcp_clampf(system->mental_health_impact, 0.0F, 1.0F);
 
     /* Broadcast shadow alert if intensity is concerning */
     bio_broadcast_shadow_alert(system);
@@ -446,8 +438,8 @@ void shadow_experience_jealousy(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    threat_level = clamp(threat_level, 0.0F, 1.0F);
-    attachment_strength = clamp(attachment_strength, 0.0F, 1.0F);
+    threat_level = nimcp_clampf(threat_level, 0.0F, 1.0F);
+    attachment_strength = nimcp_clampf(attachment_strength, 0.0F, 1.0F);
 
     system->jealousy.active = true;
     system->jealousy.threatened_bond_id = bond_id;
@@ -456,7 +448,7 @@ void shadow_experience_jealousy(shadow_emotion_system_t* system,
 
     // Intensity = threat × attachment (both high = intense jealousy)
     system->jealousy.intensity = threat_level * attachment_strength;
-    system->jealousy.intensity = clamp(system->jealousy.intensity, 0.0F, 1.0F);
+    system->jealousy.intensity = nimcp_clampf(system->jealousy.intensity, 0.0F, 1.0F);
 
     // Cognitive distortions increase with intensity
     system->jealousy.catastrophizing = system->jealousy.intensity * 0.8F;
@@ -490,9 +482,9 @@ void shadow_experience_envy(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    self_level = clamp(self_level, 0.0F, 1.0F);
-    other_level = clamp(other_level, 0.0F, 1.0F);
-    maliciousness = clamp(maliciousness, 0.0F, 1.0F);
+    self_level = nimcp_clampf(self_level, 0.0F, 1.0F);
+    other_level = nimcp_clampf(other_level, 0.0F, 1.0F);
+    maliciousness = nimcp_clampf(maliciousness, 0.0F, 1.0F);
 
     // Find slot for this target
     envy_target_t* target = NULL;
@@ -524,7 +516,7 @@ void shadow_experience_envy(shadow_emotion_system_t* system,
     target->maliciousness = maliciousness;
 
     // Intensity from discrepancy (large gap = intense envy)
-    target->intensity = clamp(target->discrepancy, 0.0F, 1.0F);
+    target->intensity = nimcp_clampf(target->discrepancy, 0.0F, 1.0F);
 
     // Deservingness belief increases with envy
     target->deservingness_belief = target->intensity * 0.7F;
@@ -568,8 +560,8 @@ void shadow_register_obsession(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    intensity = clamp(intensity, 0.0F, 1.0F);
-    distress = clamp(distress, 0.0F, 1.0F);
+    intensity = nimcp_clampf(intensity, 0.0F, 1.0F);
+    distress = nimcp_clampf(distress, 0.0F, 1.0F);
 
     // Find or allocate thought slot
     obsessive_thought_t* thought = NULL;
@@ -625,7 +617,7 @@ void shadow_register_obsession(shadow_emotion_system_t* system,
 
     // Cognitive flexibility decreases with obsession load
     system->obsession.cognitive_flexibility = 1.0F - (system->obsession.overall_obsession_level * 0.5F);
-    system->obsession.cognitive_flexibility = clamp(system->obsession.cognitive_flexibility, 0.2F, 1.0F);
+    system->obsession.cognitive_flexibility = nimcp_clampf(system->obsession.cognitive_flexibility, 0.2F, 1.0F);
 
     system->total_detections_self++;
 }
@@ -646,8 +638,8 @@ void shadow_assess_hubris(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    power_level = clamp(power_level, 0.0F, 1.0F);
-    accountability = clamp(accountability, 0.0F, 1.0F);
+    power_level = nimcp_clampf(power_level, 0.0F, 1.0F);
+    accountability = nimcp_clampf(accountability, 0.0F, 1.0F);
 
     system->hubris.recent_success_count = recent_success_count;
     system->hubris.power_level = power_level;
@@ -655,7 +647,7 @@ void shadow_assess_hubris(shadow_emotion_system_t* system,
 
     // Hubris = success + power - accountability
     float hubris_factor = (recent_success_count * 0.2F + power_level) * (1.0F - accountability);
-    system->hubris.intensity = clamp(hubris_factor, 0.0F, 1.0F);
+    system->hubris.intensity = nimcp_clampf(hubris_factor, 0.0F, 1.0F);
 
     // Components
     system->hubris.grandiosity = system->hubris.intensity * 0.8F;
@@ -689,9 +681,9 @@ void shadow_assess_greed(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    acquisition_value = clamp(acquisition_value, 0.0F, 1.0F);
-    necessity = clamp(necessity, 0.0F, 1.0F);
-    scarcity_context = clamp(scarcity_context, 0.0F, 1.0F);
+    acquisition_value = nimcp_clampf(acquisition_value, 0.0F, 1.0F);
+    necessity = nimcp_clampf(necessity, 0.0F, 1.0F);
+    scarcity_context = nimcp_clampf(scarcity_context, 0.0F, 1.0F);
 
     // Greed = (acquisition - necessity) weighted by scarcity
     float excess = acquisition_value - necessity;
@@ -699,7 +691,7 @@ void shadow_assess_greed(shadow_emotion_system_t* system,
         // Acquiring more than needed
         float greed_increment = excess * (1.0F - scarcity_context * 0.5F);  // Less greedy if scarce
         system->greed.intensity += greed_increment * 0.1F;
-        system->greed.intensity = clamp(system->greed.intensity, 0.0F, 1.0F);
+        system->greed.intensity = nimcp_clampf(system->greed.intensity, 0.0F, 1.0F);
     }
 
     system->greed.scarcity_mindset = 1.0F - scarcity_context;
@@ -711,7 +703,7 @@ void shadow_assess_greed(shadow_emotion_system_t* system,
 
     // Generosity is inverse of greed
     system->greed.generosity = 1.0F - system->greed.intensity;
-    system->greed.generosity = clamp(system->greed.generosity, 0.1F, 1.0F);
+    system->greed.generosity = nimcp_clampf(system->greed.generosity, 0.1F, 1.0F);
 
     // Hedonic adaptation (pleasure fades)
     system->greed.hedonic_adaptation = 0.8F;  // High adaptation
@@ -742,10 +734,10 @@ void shadow_assess_narcissism(shadow_emotion_system_t* system,
     
     if (!system) return;
 
-    grandiosity_level = clamp(grandiosity_level, 0.0F, 1.0F);
-    empathy_level = clamp(empathy_level, 0.0F, 1.0F);
-    need_for_admiration = clamp(need_for_admiration, 0.0F, 1.0F);
-    entitlement = clamp(entitlement, 0.0F, 1.0F);
+    grandiosity_level = nimcp_clampf(grandiosity_level, 0.0F, 1.0F);
+    empathy_level = nimcp_clampf(empathy_level, 0.0F, 1.0F);
+    need_for_admiration = nimcp_clampf(need_for_admiration, 0.0F, 1.0F);
+    entitlement = nimcp_clampf(entitlement, 0.0F, 1.0F);
 
     system->narcissism.grandiosity = grandiosity_level;
     system->narcissism.lack_of_empathy = 1.0F - empathy_level;  // Inverse
@@ -776,7 +768,7 @@ void shadow_assess_narcissism(shadow_emotion_system_t* system,
 
     // Self-awareness typically low in narcissism
     system->narcissism.self_awareness = 1.0F - (system->narcissism.intensity * 0.6F);
-    system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.1F, 1.0F);
+    system->narcissism.self_awareness = nimcp_clampf(system->narcissism.self_awareness, 0.1F, 1.0F);
 
     system->narcissism.active = (system->narcissism.intensity >= SHADOW_NARCISSISM_THRESHOLD);
     
@@ -805,9 +797,9 @@ void shadow_analyze_other(shadow_emotion_system_t* system,
     
     if (!system || !system->detected_in_others) return;
 
-    manipulation_cues = clamp(manipulation_cues, 0.0F, 1.0F);
-    empathy_cues = clamp(empathy_cues, 0.0F, 1.0F);
-    grandiosity_cues = clamp(grandiosity_cues, 0.0F, 1.0F);
+    manipulation_cues = nimcp_clampf(manipulation_cues, 0.0F, 1.0F);
+    empathy_cues = nimcp_clampf(empathy_cues, 0.0F, 1.0F);
+    grandiosity_cues = nimcp_clampf(grandiosity_cues, 0.0F, 1.0F);
 
     // Find or allocate detection record for this person
     other_detection_t* other = NULL;
@@ -889,7 +881,7 @@ void shadow_analyze_other(shadow_emotion_system_t* system,
     } else if (avg_manipulation < 0.3F && avg_empathy_deficit < 0.4F) {
         other->trust_level += (1.0F - other->trust_level) * 0.05F;  // Slowly increase
     }
-    other->trust_level = clamp(other->trust_level, 0.0F, 1.0F);
+    other->trust_level = nimcp_clampf(other->trust_level, 0.0F, 1.0F);
 
     // Set protective measures
     other->maintain_boundaries = (avg_exploitation > 0.6F || avg_empathy_deficit > 0.7F);
@@ -989,7 +981,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             if (emotion == SHADOW_OBSESSION) {
                 system->obsession.overall_obsession_level *= 0.75F;
                 system->obsession.cognitive_flexibility += 0.1F;
-                system->obsession.cognitive_flexibility = clamp(system->obsession.cognitive_flexibility, 0.0F, 1.0F);
+                system->obsession.cognitive_flexibility = nimcp_clampf(system->obsession.cognitive_flexibility, 0.0F, 1.0F);
                 reduction = 0.25F;
             } else if (emotion == SHADOW_JEALOUSY) {
                 system->jealousy.rumination *= 0.7F;
@@ -1003,7 +995,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
                 system->narcissism.lack_of_empathy *= 0.85F;
                 system->narcissism.intensity *= 0.9F;
                 system->narcissism.self_awareness += 0.1F;
-                system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.0F, 1.0F);
+                system->narcissism.self_awareness = nimcp_clampf(system->narcissism.self_awareness, 0.0F, 1.0F);
                 reduction = 0.15F;
             } else if (emotion == SHADOW_ENVY) {
                 system->envy.chronic_envy *= 0.85F;
@@ -1016,12 +1008,12 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             if (emotion == SHADOW_ENVY) {
                 system->envy.chronic_envy *= 0.8F;
                 system->envy.self_esteem += 0.05F;
-                system->envy.self_esteem = clamp(system->envy.self_esteem, 0.0F, 1.0F);
+                system->envy.self_esteem = nimcp_clampf(system->envy.self_esteem, 0.0F, 1.0F);
                 reduction = 0.2F;
             } else if (emotion == SHADOW_GREED) {
                 system->greed.intensity *= 0.85F;
                 system->greed.generosity += 0.05F;
-                system->greed.generosity = clamp(system->greed.generosity, 0.0F, 1.0F);
+                system->greed.generosity = nimcp_clampf(system->greed.generosity, 0.0F, 1.0F);
                 reduction = 0.2F;
             }
             break;
@@ -1037,7 +1029,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             } else if (emotion == SHADOW_NARCISSISM) {
                 system->narcissism.grandiosity *= 0.8F;
                 system->narcissism.self_awareness += 0.1F;
-                system->narcissism.self_awareness = clamp(system->narcissism.self_awareness, 0.0F, 1.0F);
+                system->narcissism.self_awareness = nimcp_clampf(system->narcissism.self_awareness, 0.0F, 1.0F);
                 reduction = 0.2F;
             }
             break;
@@ -1256,9 +1248,9 @@ void shadow_get_neuromodulator_effects(const shadow_emotion_system_t* system,
     }
 
     // Clamp to reasonable ranges
-    *dopamine_factor = clamp(*dopamine_factor, 0.4F, 2.0F);
-    *serotonin_factor = clamp(*serotonin_factor, 0.3F, 1.5F);
-    *cortisol_factor = clamp(*cortisol_factor, 1.0F, 2.5F);
+    *dopamine_factor = nimcp_clampf(*dopamine_factor, 0.4F, 2.0F);
+    *serotonin_factor = nimcp_clampf(*serotonin_factor, 0.3F, 1.5F);
+    *cortisol_factor = nimcp_clampf(*cortisol_factor, 1.0F, 2.5F);
 }
 
 void shadow_get_interaction_modulation(const shadow_emotion_system_t* system,
@@ -1314,9 +1306,9 @@ void shadow_get_interaction_modulation(const shadow_emotion_system_t* system,
     }
 
     // Clamp
-    *empathy_modulation = clamp(*empathy_modulation, 0.1F, 1.0F);
-    *trust_modulation = clamp(*trust_modulation, 0.0F, 1.0F);
-    *engagement_modulation = clamp(*engagement_modulation, 0.1F, 1.0F);
+    *empathy_modulation = nimcp_clampf(*empathy_modulation, 0.1F, 1.0F);
+    *trust_modulation = nimcp_clampf(*trust_modulation, 0.0F, 1.0F);
+    *engagement_modulation = nimcp_clampf(*engagement_modulation, 0.1F, 1.0F);
 }
 
 /* ============================================================================

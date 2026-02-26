@@ -1590,6 +1590,9 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
         // Apply weight update with meta-plasticity
         float new_weight = out_h->weight + delta_w * syn->meta_plasticity;
 
+        // Guard against NaN/Inf from numerical instability
+        if (!isfinite(new_weight)) new_weight = 0.0f;
+
         // Apply weight constraints
         new_weight =
             fmaxf(network->config.min_weight, fminf(network->config.max_weight, new_weight));
@@ -1602,7 +1605,9 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
         }
 
         // Update synaptic strength
-        out_h->strength = fminf(out_h->strength * (1.0F + delta_w), MAX_SYNAPTIC_STRENGTH);
+        float new_strength = fminf(out_h->strength * (1.0F + delta_w), MAX_SYNAPTIC_STRENGTH);
+        if (!isfinite(new_strength)) new_strength = 1.0f;
+        out_h->strength = new_strength;
         syn->strength = out_h->strength;  // Keep metadata in sync
     }
 
@@ -1705,6 +1710,9 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // HOW: Add weighted delta to current weight
         float new_weight = out_h->weight + delta_w * syn->meta_plasticity;
 
+        // Guard against NaN/Inf from numerical instability
+        if (!isfinite(new_weight)) new_weight = 0.0f;
+
         // WHAT: Clamp weight to configured bounds
         // WHY: Prevent weights from growing unbounded
         // HOW: Apply min/max constraints from network config
@@ -1729,7 +1737,7 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
             bcm_params_t bcm_params = bcm_params_cortical();
 
             // Compute time delta in seconds
-            float dt = (float)(timestamp - syn->last_active) / 1000000.0F;  // µs to seconds
+            float dt = (float)(timestamp - syn->last_active) / 1000.0F;  // ms (timesteps) to seconds
 
             // Use synaptic trace as pre-synaptic activity measure
             float pre_activity = syn->trace;
@@ -1812,8 +1820,8 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
         }
     }
 
-    // Iterate over all neurons in the network
-    for (uint32_t neuron_id = 0; neuron_id < network->config.num_neurons; neuron_id++) {
+    // Iterate over all neurons in the network (use num_neurons to include dynamically-added)
+    for (uint32_t neuron_id = 0; neuron_id < network->num_neurons; neuron_id++) {
         neuron_t* neuron = &network->neurons[neuron_id];
 
         // Step 1: Apply STDP if enabled for this neuron
@@ -1869,6 +1877,12 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 
                 // Sync metadata weight back to handle
                 out_h->weight = syn->weight;
+
+                // Guard against NaN/Inf from numerical instability
+                if (!isfinite(out_h->weight)) {
+                    out_h->weight = old_weight;
+                    syn->weight = old_weight;
+                }
 
                 // ===================================================================
                 // BIOLOGICAL SECURITY: Validate weight change (Phase 11)
@@ -2100,6 +2114,7 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
  */
 static float compute_homeostatic_factor(neuron_t* neuron, float current_activity)
 {
+    if (neuron->homeostatic.target_activity < 1e-6f) return 1.0f;
     float activity_ratio = current_activity / neuron->homeostatic.target_activity;
     float time_scale = neuron->homeostatic.time_scale;
 
@@ -2714,7 +2729,7 @@ void neural_network_reset(neural_network_t network)
 
         // Reset neuron state
         neuron->state = neuron->rest_potential;
-        neuron->threshold = -55.0F;
+        neuron->threshold = 0.5F;  // Normalized threshold (matches neural_network_add_neuron default)
         neuron->adaptation = 0.0F;
         neuron->calcium_concentration = 0.0F;
         neuron->avg_activity = 0.0F;

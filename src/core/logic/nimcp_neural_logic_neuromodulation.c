@@ -33,6 +33,7 @@
 
 #define LOG_MODULE "neural_logic_neuromodulation"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neural_logic_neuromodulation)
 
@@ -42,19 +43,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neural_logic_neuromodulation)
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to [0,1] range
- *
- * WHAT: Ensure neuromodulator levels are valid
- * WHY:  Prevent out-of-range values from causing incorrect modulation
- * HOW:  Return max(0, min(1, value))
- */
-static float clamp_01(float value) {
-    if (value < 0.0F) return 0.0F;
-    if (value > 1.0F) return 1.0F;
-    return value;
-}
 
 /**
  * @brief Read dopamine and acetylcholine levels from brain
@@ -87,8 +75,8 @@ static void read_neuromodulator_levels(
     *ach_level = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
 
     // Clamp to valid range
-    *da_level = clamp_01(*da_level);
-    *ach_level = clamp_01(*ach_level);
+    *da_level = nimcp_clamp01(*da_level);
+    *ach_level = nimcp_clamp01(*ach_level);
 }
 
 /**
@@ -135,7 +123,7 @@ bool apply_dopamine_modulation(
     if (da_level < 0.0F || da_level > 1.0F) {
         LOG_WARNING("apply_dopamine_modulation: da_level %.3f out of range, clamping to [0,1]",
                     da_level);
-        da_level = clamp_01(da_level);
+        da_level = nimcp_clamp01(da_level);
     }
 
     // WHAT: Read current gate state
@@ -196,7 +184,7 @@ bool apply_acetylcholine_modulation(
     if (ach_level < 0.0F || ach_level > 1.0F) {
         LOG_WARNING("apply_acetylcholine_modulation: ach_level %.3f out of range, clamping to [0,1]",
                     ach_level);
-        ach_level = clamp_01(ach_level);
+        ach_level = nimcp_clamp01(ach_level);
     }
 
     // WHAT: Read current gate state

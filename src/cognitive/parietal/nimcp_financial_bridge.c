@@ -39,6 +39,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_timing_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_bridge_health_agent = NULL;
@@ -139,16 +140,6 @@ static int bridge_kg_publish(financial_bridge_t* bridge, const char* msg_type,
         return 0;
     }
     return 0;
-}
-
-//=============================================================================
-// Helper: Clamp float to [0, 1]
-//=============================================================================
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 //=============================================================================
@@ -384,9 +375,9 @@ int financial_bridge_fuzzy_score(financial_bridge_t* bridge,
     fin_bridge_heartbeat("fin_bridge_fuzzy_score", 0.0f);
 
     /* Compute normalized risk inputs */
-    float leverage_risk     = clampf(action->leverage_ratio / 20.0f, 0.0f, 1.0f);
-    float concentration_risk = clampf(action->concentration, 0.0f, 1.0f);
-    float magnitude_risk    = clampf(action->magnitude / 1e6f, 0.0f, 1.0f);
+    float leverage_risk     = nimcp_clampf(action->leverage_ratio / 20.0f, 0.0f, 1.0f);
+    float concentration_risk = nimcp_clampf(action->concentration, 0.0f, 1.0f);
+    float magnitude_risk    = nimcp_clampf(action->magnitude / 1e6f, 0.0f, 1.0f);
     float consent_risk      = action->has_client_consent ? 0.0f : 0.5f;
 
     /* Weighted combination */
@@ -395,9 +386,9 @@ int financial_bridge_fuzzy_score(financial_bridge_t* bridge,
                      + 0.25f * magnitude_risk
                      + 0.20f * consent_risk;
 
-    risk_score = clampf(risk_score, 0.0f, 1.0f);
+    risk_score = nimcp_clampf(risk_score, 0.0f, 1.0f);
     float safety_score = 1.0f - risk_score;
-    safety_score = clampf(safety_score, 0.0f, 1.0f);
+    safety_score = nimcp_clampf(safety_score, 0.0f, 1.0f);
 
     if (out_safety_score) *out_safety_score = safety_score;
     if (out_risk_score)   *out_risk_score   = risk_score;
@@ -547,7 +538,7 @@ int financial_bridge_validate_action(financial_bridge_t* bridge,
         if (action->client_age > 70 && action->leverage_ratio > 2.0f) {
             ethics_score -= 0.2f;
         }
-        ethics_score = clampf(ethics_score, 0.0f, 1.0f);
+        ethics_score = nimcp_clampf(ethics_score, 0.0f, 1.0f);
         out_report->ethics_score = ethics_score;
 
         if (ethics_score < 0.3f) {
@@ -644,12 +635,12 @@ int financial_bridge_get_risk_drive(financial_bridge_t* bridge,
          * This gives appetite=1.0 at arousal=0.5, appetite=0.0 at arousal=0 or 1 */
         float deviation = arousal - 0.5f;
         float appetite = 1.0f - 4.0f * deviation * deviation;
-        appetite = clampf(appetite, 0.0f, 1.0f);
+        appetite = nimcp_clampf(appetite, 0.0f, 1.0f);
 
         /* Modulate by inflammation and fatigue */
         appetite *= (1.0f - bridge->inflammation * bridge->config.inflammation_sensitivity);
         appetite *= (1.0f - bridge->fatigue * bridge->config.fatigue_sensitivity);
-        appetite = clampf(appetite, 0.0f, 1.0f);
+        appetite = nimcp_clampf(appetite, 0.0f, 1.0f);
 
         bridge->current_risk_appetite = appetite;
         *out_risk_appetite = appetite;
@@ -704,8 +695,8 @@ int financial_bridge_get_execution_timing(financial_bridge_t* bridge,
     fin_bridge_heartbeat("fin_bridge_exec_timing", 0.0f);
 
     memset(out_timing, 0, sizeof(fin_execution_timing_t));
-    urgency   = clampf(urgency, 0.0f, 1.0f);
-    precision = clampf(precision, 0.0f, 1.0f);
+    urgency   = nimcp_clampf(urgency, 0.0f, 1.0f);
+    precision = nimcp_clampf(precision, 0.0f, 1.0f);
 
     out_timing->execution_urgency      = urgency;
     out_timing->precision_requirement  = precision;
@@ -779,9 +770,9 @@ int financial_bridge_update_autonomic(financial_bridge_t* bridge,
     }
     fin_bridge_heartbeat("fin_bridge_update_auto", 0.0f);
 
-    portfolio_volatility = clampf(portfolio_volatility, 0.0f, 1.0f);
-    drawdown             = clampf(drawdown, 0.0f, 1.0f);
-    liquidity_ratio      = clampf(liquidity_ratio, 0.0f, 1.0f);
+    portfolio_volatility = nimcp_clampf(portfolio_volatility, 0.0f, 1.0f);
+    drawdown             = nimcp_clampf(drawdown, 0.0f, 1.0f);
+    liquidity_ratio      = nimcp_clampf(liquidity_ratio, 0.0f, 1.0f);
 
     /* Map portfolio metrics to autonomic state */
     bridge->autonomic.volatility_pressure = portfolio_volatility;
@@ -791,7 +782,7 @@ int financial_bridge_update_autonomic(financial_bridge_t* bridge,
     bridge->autonomic.portfolio_heartrate = 60.0f + 140.0f * portfolio_volatility;
 
     /* Stress level is a combination of volatility and drawdown */
-    bridge->autonomic.stress_level = clampf(
+    bridge->autonomic.stress_level = nimcp_clampf(
         0.5f * portfolio_volatility + 0.5f * drawdown, 0.0f, 1.0f);
 
     /* Panic detection: severe drawdown combined with high volatility */
@@ -887,7 +878,7 @@ int financial_bridge_set_inflammation(financial_bridge_t* bridge, float level) {
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_bridge_set_inflammation: bridge is NULL");
         return FIN_BRIDGE_ERR_NULL;
     }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_BRIDGE_ERR_OK;
 }
 
@@ -897,7 +888,7 @@ int financial_bridge_set_fatigue(financial_bridge_t* bridge, float level) {
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_bridge_set_fatigue: bridge is NULL");
         return FIN_BRIDGE_ERR_NULL;
     }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_BRIDGE_ERR_OK;
 }
 

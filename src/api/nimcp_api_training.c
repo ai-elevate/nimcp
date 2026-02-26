@@ -52,17 +52,10 @@ extern void set_error(const char* fmt, ...);
 #include <string.h>
 
 //=============================================================================
-// Internal Type Definitions
+// Canonical Type Definitions (from shared header)
 //=============================================================================
 
-/**
- * @brief Internal brain handle structure (mirrors definition in nimcp.c)
- *
- * WHY: Training API needs access to internal_brain field
- */
-struct nimcp_brain_handle {
-    brain_t internal_brain;
-};
+#include "api/nimcp_api_internal.h"  /* Canonical handle struct definitions */
 
 //=============================================================================
 // External References (from nimcp.c)
@@ -72,114 +65,11 @@ struct nimcp_brain_handle {
 extern void set_error(const char* fmt, ...);
 extern const char* nimcp_get_error(void);
 
-//=============================================================================
-// Training Pipeline State Management
-//=============================================================================
-
-/**
- * @brief Internal structure to track training configuration IDs
- *
- * Stored in brain handle to track created loss/optimizer/scheduler IDs
- */
-typedef struct {
-    uint32_t loss_id;
-    uint32_t optimizer_id;
-    uint32_t scheduler_id;
-    uint32_t gradmgr_id;
-    bool configured;
-    uint32_t step_count;
-    tcb_context_t* callbacks;         /**< Training callback manager */
-    bool callbacks_enabled;           /**< Whether to fire callbacks */
-    backprop_ctx_t* backprop;         /**< Backpropagation context for weight gradients */
-
-    /* Rubric tracking */
-    bool rubric_enabled;
-    uint32_t rubric_interval;
-    float rubric_min_score;
-    bool rubric_stop_on_threshold;
-    float* rubric_validation_features;       /**< User-provided validation features (owned) */
-    uint32_t rubric_validation_num_features;
-    uint64_t rubric_eval_count;
-    double rubric_score_sum;
-    float rubric_min_observed;
-    float rubric_max_observed;
-    nimcp_rubric_t rubric_last;
-} training_pipeline_state_t;
-
-// Global map from brain handle to training state (simple approach for now)
-// In production, this would be stored in the brain handle struct
-#define MAX_TRAINING_STATES 64
-static struct {
-    nimcp_brain_t brain;
-    training_pipeline_state_t state;
-} g_training_states[MAX_TRAINING_STATES] = {0};
-
-// Mutex to protect training states array (thread safety)
-static nimcp_mutex_t g_training_states_mutex = NIMCP_MUTEX_INITIALIZER;
-
-static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
-    nimcp_mutex_lock(&g_training_states_mutex);
-
-    // Find existing state
-    for (int i = 0; i < MAX_TRAINING_STATES; i++) {
-        if (g_training_states[i].brain == brain) {
-            nimcp_mutex_unlock(&g_training_states_mutex);
-            return &g_training_states[i].state;
-        }
-    }
-    // Create new state
-    for (int i = 0; i < MAX_TRAINING_STATES; i++) {
-        if (g_training_states[i].brain == NULL) {
-            g_training_states[i].brain = brain;
-            memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
-            nimcp_mutex_unlock(&g_training_states_mutex);
-            return &g_training_states[i].state;
-        }
-    }
-    nimcp_mutex_unlock(&g_training_states_mutex);
-    return NULL;  // No space
-}
-
-static void clear_training_state(nimcp_brain_t brain) {
-    nimcp_mutex_lock(&g_training_states_mutex);
-    for (int i = 0; i < MAX_TRAINING_STATES; i++) {
-        if (g_training_states[i].brain == brain) {
-            // Destroy callback manager if present
-            if (g_training_states[i].state.callbacks) {
-                tcb_destroy(g_training_states[i].state.callbacks);
-                g_training_states[i].state.callbacks = NULL;
-            }
-            // Destroy backprop context if present
-            if (g_training_states[i].state.backprop) {
-                backprop_destroy(g_training_states[i].state.backprop);
-                g_training_states[i].state.backprop = NULL;
-            }
-            // Free rubric validation features if present
-            if (g_training_states[i].state.rubric_validation_features) {
-                nimcp_free(g_training_states[i].state.rubric_validation_features);
-                g_training_states[i].state.rubric_validation_features = NULL;
-            }
-            g_training_states[i].brain = NULL;
-            memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
-            nimcp_mutex_unlock(&g_training_states_mutex);
-            return;
-        }
-    }
-    nimcp_mutex_unlock(&g_training_states_mutex);
-}
-
-/**
- * @brief Cleanup training state for a brain being destroyed
- *
- * This function MUST be called during nimcp_brain_destroy to free
- * training pipeline resources and prevent memory leaks.
- *
- * @param brain Brain handle being destroyed
- */
-void nimcp_api_training_cleanup_brain(nimcp_brain_t brain) {
-    if (!brain) return;
-    clear_training_state(brain);
-}
+// NOTE: This file is NOT compiled into the library (only nimcp.c is compiled).
+// It exists as an alternative/reference implementation. The authoritative
+// training_pipeline_state_t, g_training_states[], get_training_state(),
+// clear_training_state(), and nimcp_api_training_cleanup_brain() are defined
+// in nimcp.c via #included nimcp_part_helpers.c and nimcp_part_lifecycle.c.
 
 //=============================================================================
 // Training Configuration API

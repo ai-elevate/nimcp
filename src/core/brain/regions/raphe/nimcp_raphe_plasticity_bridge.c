@@ -22,6 +22,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(raphe_plasticity_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -44,7 +45,6 @@ struct nimcp_raphe_plasticity_bridge {
     nimcp_raphe_plasticity_stats_t stats;
 };
 
-static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 static nimcp_raphe_plasticity_synapse_t* find_synapse(nimcp_raphe_plasticity_bridge_t* b, uint32_t id) {
     for (uint32_t i = 0; i < b->synapse_count; i++) if (b->synapses[i].synapse_id == id) return &b->synapses[i];
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
@@ -210,8 +210,8 @@ int nimcp_raphe_plasticity_set_ht_state(nimcp_raphe_plasticity_bridge_t* b, floa
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_plasticity_set_ht_state: b is NULL");
         return -1;
     }
-    b->state.ht.serotonin_level = clamp(ht, 0.0f, 100.0f);
-    b->state.ht.mood_valence = clamp(mood, -1.0f, 1.0f);
+    b->state.ht.serotonin_level = nimcp_clampf(ht, 0.0f, 100.0f);
+    b->state.ht.mood_valence = nimcp_clampf(mood, -1.0f, 1.0f);
     float n = ht / 100.0f;
     b->current_modulation.lr_multiplier = b->config.ht_lr_multiplier_min +
         (b->config.ht_lr_multiplier_max - b->config.ht_lr_multiplier_min) * n;

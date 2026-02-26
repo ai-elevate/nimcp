@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(source_memory, MESH_ADAPTER_CATEGORY_MEMORY)
 
@@ -117,15 +118,6 @@ static uint64_t get_current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -309,7 +301,7 @@ static float compute_reality_score(
         score = 0.5f;
     }
 
-    return clamp_float(score, 0.0f, 1.0f);
+    return nimcp_clampf(score, 0.0f, 1.0f);
 }
 
 /**
@@ -969,7 +961,7 @@ NIMCP_EXPORT source_error_t source_memory_reality_monitor(
         feature_consistency = 0.5f;
     }
 
-    result->confidence = clamp_float(feature_consistency, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(feature_consistency, 0.0f, 1.0f);
 
     // Update entry's reality status
     entry->entry.reality_status = result->status;
@@ -992,16 +984,16 @@ NIMCP_EXPORT source_error_t source_memory_update_reality_features(
 
     // Update features (NaN means keep current)
     if (!isnan(perceptual)) {
-        entry->entry.source.perceptual_vividness = clamp_float(perceptual, 0.0f, 1.0f);
+        entry->entry.source.perceptual_vividness = nimcp_clampf(perceptual, 0.0f, 1.0f);
     }
     if (!isnan(contextual)) {
-        entry->entry.source.contextual_detail = clamp_float(contextual, 0.0f, 1.0f);
+        entry->entry.source.contextual_detail = nimcp_clampf(contextual, 0.0f, 1.0f);
     }
     if (!isnan(cognitive)) {
-        entry->entry.source.cognitive_operations = clamp_float(cognitive, 0.0f, 1.0f);
+        entry->entry.source.cognitive_operations = nimcp_clampf(cognitive, 0.0f, 1.0f);
     }
     if (!isnan(semantic)) {
-        entry->entry.source.semantic_detail = clamp_float(semantic, 0.0f, 1.0f);
+        entry->entry.source.semantic_detail = nimcp_clampf(semantic, 0.0f, 1.0f);
     }
 
     // Update reality status
@@ -1059,7 +1051,7 @@ NIMCP_EXPORT source_error_t source_memory_compute_false_memory_risk(
                        risk->temporal_risk * weights[4] +
                        risk->source_amnesia_risk * weights[5];
 
-    risk->total_risk = clamp_float(risk->total_risk, 0.0f, 1.0f);
+    risk->total_risk = nimcp_clampf(risk->total_risk, 0.0f, 1.0f);
 
     // Determine if high risk
     risk->is_high_risk = risk->total_risk >= sm->config.false_memory_threshold;
@@ -1110,13 +1102,13 @@ NIMCP_EXPORT source_error_t source_memory_update_risk_indicators(
 
     // Update indicators (NaN means keep current)
     if (!isnan(schema_consistency)) {
-        entry->entry.schema_consistency = clamp_float(schema_consistency, 0.0f, 1.0f);
+        entry->entry.schema_consistency = nimcp_clampf(schema_consistency, 0.0f, 1.0f);
     }
     if (!isnan(suggestion_exposure)) {
-        entry->entry.suggestion_exposure = clamp_float(suggestion_exposure, 0.0f, 1.0f);
+        entry->entry.suggestion_exposure = nimcp_clampf(suggestion_exposure, 0.0f, 1.0f);
     }
     if (!isnan(emotional_intensity)) {
-        entry->entry.emotional_intensity = clamp_float(emotional_intensity, 0.0f, 1.0f);
+        entry->entry.emotional_intensity = nimcp_clampf(emotional_intensity, 0.0f, 1.0f);
     }
 
     return SOURCE_SUCCESS;
@@ -1186,11 +1178,11 @@ NIMCP_EXPORT float source_memory_update_credibility(
     agent_hash_entry_t* agent = find_agent(sm, agent_id);
     if (!agent) return -1.0f;
 
-    agent->record.credibility = clamp_float(
+    agent->record.credibility = nimcp_clampf(
         agent->record.credibility + delta, 0.0f, 1.0f);
 
     // Update trend
-    agent->record.credibility_trend = clamp_float(
+    agent->record.credibility_trend = nimcp_clampf(
         agent->record.credibility_trend + delta * 0.5f, -1.0f, 1.0f);
 
     return agent->record.credibility;
@@ -1230,7 +1222,7 @@ NIMCP_EXPORT source_error_t source_memory_register_agent(
     if (name) {
         strncpy(record.name, name, SOURCE_MAX_AGENT_NAME_LEN - 1);
     }
-    record.credibility = clamp_float(initial_credibility, 0.0f, 1.0f);
+    record.credibility = nimcp_clampf(initial_credibility, 0.0f, 1.0f);
     record.total_memories = 0;
     record.verified_correct = 0;
     record.verified_incorrect = 0;
@@ -1290,14 +1282,14 @@ NIMCP_EXPORT source_error_t source_memory_verify_source(
 
     // Update confidence based on verification
     if (correct) {
-        entry->entry.source_confidence = clamp_float(
+        entry->entry.source_confidence = nimcp_clampf(
             entry->entry.source_confidence + 0.1f, 0.0f, 1.0f);
-        entry->entry.content_confidence = clamp_float(
+        entry->entry.content_confidence = nimcp_clampf(
             entry->entry.content_confidence + 0.1f, 0.0f, 1.0f);
     } else {
-        entry->entry.source_confidence = clamp_float(
+        entry->entry.source_confidence = nimcp_clampf(
             entry->entry.source_confidence - 0.2f, 0.0f, 1.0f);
-        entry->entry.content_confidence = clamp_float(
+        entry->entry.content_confidence = nimcp_clampf(
             entry->entry.content_confidence - 0.3f, 0.0f, 1.0f);
         entry->entry.marked_suspicious = true;
     }
@@ -1436,7 +1428,7 @@ NIMCP_EXPORT source_error_t source_memory_detect_misattribution(
         score += confidence_gap * 0.25f;
     }
 
-    *misattribution_score = clamp_float(score, 0.0f, 1.0f);
+    *misattribution_score = nimcp_clampf(score, 0.0f, 1.0f);
 
     return SOURCE_SUCCESS;
 }
@@ -1683,7 +1675,7 @@ NIMCP_EXPORT float source_memory_consolidate_source(
     source_hash_entry_t* entry = find_entry(sm, memory_id);
     if (!entry) return -1.0f;
 
-    entry->entry.source_confidence = clamp_float(
+    entry->entry.source_confidence = nimcp_clampf(
         entry->entry.source_confidence + reinforcement, 0.0f, 1.0f);
 
     return entry->entry.source_confidence;
@@ -1706,7 +1698,7 @@ NIMCP_EXPORT source_error_t source_memory_bind_context(
 
     // Copy context signature
     entry->entry.source.location_context = *context_signature;
-    entry->entry.source.location_confidence = clamp_float(context_confidence, 0.0f, 1.0f);
+    entry->entry.source.location_confidence = nimcp_clampf(context_confidence, 0.0f, 1.0f);
 
     return SOURCE_SUCCESS;
 }

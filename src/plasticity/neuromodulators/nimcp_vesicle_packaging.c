@@ -28,6 +28,7 @@
 
 #define LOG_MODULE "plasticity_vesicle_packaging"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(vesicle_packaging)
 
@@ -49,15 +50,6 @@ static inline float random_uniform(void) {
     static __thread uint32_t seed = 123456789;
     seed = (NIMCP_LCG_MULTIPLIER * seed + NIMCP_LCG_INCREMENT) & 0x7fffffff;
     return (float)seed / (float)0x7fffffff;
-}
-
-/**
- * @brief Clamp value to range [min, max]
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 // ============================================================================
@@ -277,7 +269,7 @@ void vesicle_pool_update_facilitation(vesicle_pool_state_t* pool, float dt) {
                           (1.0F + pool->facilitation_gain * pool->calcium_residual);
 
     // Clamp to [0, 1]
-    pool->facilitated_pr = clamp(pool->facilitated_pr, 0.0F, 1.0F);
+    pool->facilitated_pr = nimcp_clampf(pool->facilitated_pr, 0.0F, 1.0F);
 }
 
 // ============================================================================
@@ -452,7 +444,7 @@ void vesicle_pool_apply_botulinum(vesicle_pool_state_t* pool, float blockade) {
     // HOW:  Reduce release probability to near-zero
 
     // Clamp blockade to [0, 1]
-    blockade = clamp(blockade, 0.0F, 1.0F);
+    blockade = nimcp_clampf(blockade, 0.0F, 1.0F);
 
     // Reduce Pr: 1.0 blockade = 99% reduction (leave 1% residual)
     pool->release_probability *= (1.0F - 0.99F * blockade);
@@ -478,7 +470,7 @@ void vesicle_pool_apply_amphetamine(vesicle_pool_state_t* pool, float depletion)
     // HOW:  Rapidly deplete RRP and recycling pools
 
     // Clamp depletion to [0, 1]
-    depletion = clamp(depletion, 0.0F, 1.0F);
+    depletion = nimcp_clampf(depletion, 0.0F, 1.0F);
 
     // Deplete RRP to 10% of current
     pool->readily_releasable_pool = (uint32_t)((1.0F - 0.9F * depletion) * pool->readily_releasable_pool);
@@ -505,13 +497,13 @@ void vesicle_pool_apply_4ap(vesicle_pool_state_t* pool, float potentiation) {
     // HOW:  Increase release probability
 
     // Clamp potentiation to [1, 3] (up to 3x increase)
-    potentiation = clamp(potentiation, 1.0F, 3.0F);
+    potentiation = nimcp_clampf(potentiation, 1.0F, 3.0F);
 
     // Increase Pr
     pool->release_probability *= potentiation;
     pool->facilitated_pr *= potentiation;
 
     // Clamp to [0, 1]
-    pool->release_probability = clamp(pool->release_probability, 0.0F, 1.0F);
-    pool->facilitated_pr = clamp(pool->facilitated_pr, 0.0F, 1.0F);
+    pool->release_probability = nimcp_clampf(pool->release_probability, 0.0F, 1.0F);
+    pool->facilitated_pr = nimcp_clampf(pool->facilitated_pr, 0.0F, 1.0F);
 }

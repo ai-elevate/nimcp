@@ -12,19 +12,9 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(serotonin_release, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/*=============================================================================
- * Helper Functions
- *===========================================================================*/
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float michaelis_menten(float concentration, float vmax, float km) {
     return (vmax * concentration) / (km + concentration);
@@ -162,7 +152,7 @@ int nimcp_ht_release_update(nimcp_ht_release_system_t* system,
 
     /* 2. Compute release efficacy (reduced by autoreceptor feedback) */
     system->release_efficacy = 1.0f - system->autoreceptor.feedback_strength;
-    system->release_efficacy = clamp_f(system->release_efficacy, 0.1f, 1.0f);
+    system->release_efficacy = nimcp_clampf(system->release_efficacy, 0.1f, 1.0f);
 
     /* 3. Compute release (slower than DA/NE) */
     float effective_release_prob = system->config.release_probability *
@@ -173,7 +163,7 @@ int nimcp_ht_release_update(nimcp_ht_release_system_t* system,
     float ht_per_event = 2.0f;  /* nM per release event */
 
     float release_amount = release_events * ht_per_event;
-    release_amount = clamp_f(release_amount, 0.0f,
+    release_amount = nimcp_clampf(release_amount, 0.0f,
                             system->concentrations.vesicular * 0.01f);
 
     /* Transfer from vesicular to synaptic */
@@ -261,13 +251,13 @@ int nimcp_ht_release_update(nimcp_ht_release_system_t* system,
     system->vesicles.reserve += recycled;
 
     /* Clamp concentrations */
-    system->concentrations.synaptic = clamp_f(
+    system->concentrations.synaptic = nimcp_clampf(
         system->concentrations.synaptic, 0.0f, HT_MAX_CONCENTRATION);
-    system->concentrations.extrasynaptic = clamp_f(
+    system->concentrations.extrasynaptic = nimcp_clampf(
         system->concentrations.extrasynaptic, 0.0f, HT_MAX_CONCENTRATION);
-    system->concentrations.cytosolic = clamp_f(
+    system->concentrations.cytosolic = nimcp_clampf(
         system->concentrations.cytosolic, 0.0f, 500.0f);
-    system->concentrations.vesicular = clamp_f(
+    system->concentrations.vesicular = nimcp_clampf(
         system->concentrations.vesicular, 0.0f, 5000.0f);
 
     return 0;
@@ -394,7 +384,7 @@ int nimcp_ht_set_sert_inhibition(nimcp_ht_release_system_t* system,
         return -1;
     }
 
-    system->transporter.inhibition = clamp_f(inhibition, 0.0f, 1.0f);
+    system->transporter.inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
     return 0;
 }
 

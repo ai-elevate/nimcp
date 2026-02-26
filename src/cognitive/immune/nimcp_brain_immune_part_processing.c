@@ -245,7 +245,12 @@ int brain_immune_handle_bft_trust_recovery(
         return -1;
     }
 
-    /* Find B cells associated with this node */
+    /* Collect B cell IDs to transition under lock, then process outside lock.
+     * This avoids unlock/relock race where b_cells array can change between
+     * unlock and relock, invalidating the loop index. */
+    uint32_t ids_to_transition[BRAIN_IMMUNE_MAX_B_CELLS];
+    uint32_t transition_count = 0;
+
     nimcp_mutex_lock(system->mutex);
     for (size_t i = 0; i < system->b_cell_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -260,15 +265,18 @@ int brain_immune_handle_bft_trust_recovery(
             brain_antigen_t* antigen = find_antigen_by_id(system, system->b_cells[i].bound_antigen_id);
             if (antigen && antigen->source_node_id == node_id &&
                 antigen->source == ANTIGEN_SOURCE_BFT) {
-                /* Convert to memory B cell */
-                uint32_t b_cell_id = system->b_cells[i].id;
-                nimcp_mutex_unlock(system->mutex);
-                brain_immune_b_cell_to_memory(system, b_cell_id);
-                nimcp_mutex_lock(system->mutex);
+                if (transition_count < BRAIN_IMMUNE_MAX_B_CELLS) {
+                    ids_to_transition[transition_count++] = system->b_cells[i].id;
+                }
             }
         }
     }
     nimcp_mutex_unlock(system->mutex);
+
+    /* Process transitions outside lock (function handles its own locking) */
+    for (uint32_t i = 0; i < transition_count; i++) {
+        brain_immune_b_cell_to_memory(system, ids_to_transition[i]);
+    }
 
     /* Release anti-inflammatory cytokine IL-10 (recovery signal) */
     uint32_t cytokine_id = 0;

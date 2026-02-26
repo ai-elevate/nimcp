@@ -23,6 +23,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(metabolic_modulation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -83,7 +84,7 @@ float metabolic_compute_atp_effect(
 
 
     float value = atp_level * effect_multiplier * sensitivity;
-    return nimcp_clamp_f(value, min_capacity, 1.0f);
+    return nimcp_clampf(value, min_capacity, 1.0f);
 }
 
 float metabolic_compute_fatigue_effect(
@@ -97,7 +98,7 @@ float metabolic_compute_fatigue_effect(
 
 
     float value = metabolic_capacity * effect_multiplier * sensitivity;
-    return nimcp_clamp_f(value, min_capacity, 1.0f);
+    return nimcp_clampf(value, min_capacity, 1.0f);
 }
 
 void metabolic_effects_init_full(metabolic_effects_t* effects) {
@@ -449,7 +450,7 @@ int metabolic_effects_tensor_init_full(metabolic_effects_tensor_t* effects) {
  */
 static float compute_clamped_effect(float input_val, float sensitivity, float mult, float min_cap) {
     float value = input_val * mult * sensitivity;
-    return nimcp_clamp_f(value, min_cap, 1.0f);
+    return nimcp_clampf(value, min_cap, 1.0f);
 }
 
 int metabolic_compute_effects_tensor(

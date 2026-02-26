@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(calcium_dynamics)
 
@@ -52,17 +53,6 @@ struct calcium_dynamics_struct {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Deferred callback entry for threshold crossings
@@ -364,7 +354,7 @@ int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
     calcium->state.last_buffering = 0.0f;
 
     /* Clamp to valid range */
-    ca = clamp_f(ca, CALCIUM_MIN_CONCENTRATION, calcium->config.max_concentration);
+    ca = nimcp_clampf(ca, CALCIUM_MIN_CONCENTRATION, calcium->config.max_concentration);
 
     /* Decay NMDA influx (clear for next update) */
     calcium->state.last_influx = 0.0f;
@@ -424,7 +414,7 @@ int calcium_trigger_nmda_influx(
 
     }
 
-    nmda_activation = clamp_f(nmda_activation, 0.0f, 1.0f);
+    nmda_activation = nimcp_clampf(nmda_activation, 0.0f, 1.0f);
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
@@ -458,7 +448,7 @@ int calcium_set_concentration(calcium_dynamics_t calcium, float concentration) {
     nimcp_platform_mutex_lock(calcium->mutex);
 
     calcium->state.ca_concentration_prev = calcium->state.ca_concentration;
-    calcium->state.ca_concentration = clamp_f(
+    calcium->state.ca_concentration = nimcp_clampf(
         concentration,
         CALCIUM_MIN_CONCENTRATION,
         calcium->config.max_concentration
@@ -838,7 +828,7 @@ float calcium_omega_function(
     float normalized = (ca_concentration - threshold_ltd) / range;
 
     /* Clamp to prevent extreme values */
-    normalized = clamp_f(normalized, -2.0f, 3.0f);
+    normalized = nimcp_clampf(normalized, -2.0f, 3.0f);
 
     /* Apply power function */
     float omega = omega_max * powf(fabsf(normalized), power);

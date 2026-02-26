@@ -37,6 +37,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(microglia)
 
@@ -432,16 +433,6 @@ static int32_t find_synapse_index(const microglia_t* mg, uint32_t synapse_id)
         }
     }
     return -1;  /* Not found - normal search miss */
-}
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 /**
@@ -854,7 +845,7 @@ void microglia_track_synapse_activity(microglia_t* mg, uint32_t synapse_id,
 {
     if (!mg) return;
 
-    activity = clamp_f(activity, 0.0F, 10.0F);
+    activity = nimcp_clampf(activity, 0.0F, 10.0F);
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -935,7 +926,7 @@ void microglia_set_synapse_centrality(microglia_t* mg, uint32_t synapse_id,
 {
     if (!mg) return;
 
-    centrality = clamp_f(centrality, 0.0F, 1.0F);
+    centrality = nimcp_clampf(centrality, 0.0F, 1.0F);
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -996,13 +987,13 @@ void microglia_update_state_dynamics(microglia_t* mg, float dt)
 
     // Clamp values
     mg->state_variables[STATE_IDX_INFLAMMATION] =
-        clamp_f(mg->state_variables[STATE_IDX_INFLAMMATION], 0.0F, 1.0F);
+        nimcp_clampf(mg->state_variables[STATE_IDX_INFLAMMATION], 0.0F, 1.0F);
     mg->state_variables[STATE_IDX_ACTIVATION] =
-        clamp_f(mg->state_variables[STATE_IDX_ACTIVATION], 0.0F, 1.0F);
+        nimcp_clampf(mg->state_variables[STATE_IDX_ACTIVATION], 0.0F, 1.0F);
     mg->state_variables[STATE_IDX_PROCESS] =
-        clamp_f(mg->state_variables[STATE_IDX_PROCESS], 0.0F, 1.0F);
+        nimcp_clampf(mg->state_variables[STATE_IDX_PROCESS], 0.0F, 1.0F);
     mg->state_variables[STATE_IDX_ENERGY] =
-        clamp_f(mg->state_variables[STATE_IDX_ENERGY], 0.0F, 1.0F);
+        nimcp_clampf(mg->state_variables[STATE_IDX_ENERGY], 0.0F, 1.0F);
 
     // Update derived values
     mg->process_extension = mg->state_variables[STATE_IDX_PROCESS];
@@ -1022,7 +1013,7 @@ void microglia_set_inflammation(microglia_t* mg, float inflammation)
     if (!mg) return;
 
     nimcp_spinlock_lock(&mg->lock);
-    mg->inflammation_level = clamp_f(inflammation, 0.0F, 1.0F);
+    mg->inflammation_level = nimcp_clampf(inflammation, 0.0F, 1.0F);
     nimcp_spinlock_unlock(&mg->lock);
 
     // Publish inflammation via NOREPINEPHRINE (alerting) channel
@@ -1171,7 +1162,7 @@ void microglia_update_cytokines(microglia_t* mg, float dt)
         mg->cytokines.production_rates[i] = production[i];
         float dC = production[i] - NIMCP_CYTOKINE_DECAY_RATE * mg->cytokines.concentrations[i];
         mg->cytokines.concentrations[i] += dC * dt;
-        mg->cytokines.concentrations[i] = clamp_f(mg->cytokines.concentrations[i],
+        mg->cytokines.concentrations[i] = nimcp_clampf(mg->cytokines.concentrations[i],
                                                    0.0F, NIMCP_CYTOKINE_MAX_CONCENTRATION);
     }
 
@@ -1191,7 +1182,7 @@ void microglia_add_cytokine(microglia_t* mg, cytokine_type_t type, float amount)
     if (!mg || type >= NIMCP_CYTOKINE_COUNT) return;
 
     nimcp_spinlock_lock(&mg->lock);
-    mg->cytokines.concentrations[type] = clamp_f(
+    mg->cytokines.concentrations[type] = nimcp_clampf(
         mg->cytokines.concentrations[type] + amount,
         0.0F, NIMCP_CYTOKINE_MAX_CONCENTRATION);
     nimcp_spinlock_unlock(&mg->lock);

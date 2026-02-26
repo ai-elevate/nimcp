@@ -39,6 +39,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(autobiographical_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -46,17 +47,6 @@ BRIDGE_BOILERPLATE(autobiographical_fep_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float value to range
- * WHY:  Prevent overflow/underflow in numerical computations
- * HOW:  Return min/max if out of bounds, else return value
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Get current time in milliseconds
@@ -85,7 +75,7 @@ static float compute_memory_importance(float surprise_level, float threshold) {
     float k = 2.0f;  /* Steepness parameter */
     float importance = 1.0f / (1.0f + expf(-k * (normalized - 1.0f)));
 
-    return clamp_f(importance, 0.0f, 1.0f);
+    return nimcp_clampf(importance, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -329,8 +319,8 @@ int autobiographical_fep_encode_surprising_episode(autobiographical_fep_bridge_t
 
     /* Emotional tags: High surprise = arousal, valence depends on context */
     memory.valence = VALENCE_NEUTRAL;  /* Can be refined with context */
-    memory.emotional_intensity = clamp_f(surprise / 10.0f, 0.0f, 1.0f);
-    memory.arousal = clamp_f(surprise / 10.0f, 0.0f, 1.0f);
+    memory.emotional_intensity = nimcp_clampf(surprise / 10.0f, 0.0f, 1.0f);
+    memory.arousal = nimcp_clampf(surprise / 10.0f, 0.0f, 1.0f);
 
     /* Self-relevance */
     memory.importance = importance;
@@ -338,7 +328,7 @@ int autobiographical_fep_encode_surprising_episode(autobiographical_fep_bridge_t
     memory.identity_defining = (importance > 0.8f);  /* Very high PE can be identity-defining */
 
     /* Memory dynamics */
-    memory.memory_strength = clamp_f(surprise / 10.0f, 0.0f, 1.0f);
+    memory.memory_strength = nimcp_clampf(surprise / 10.0f, 0.0f, 1.0f);
     memory.certainty = 1.0f;  /* High certainty - we experienced this */
     memory.is_core_memory = memory.identity_defining;
 

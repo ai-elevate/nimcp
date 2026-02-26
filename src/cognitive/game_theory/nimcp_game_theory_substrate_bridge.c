@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(game_theory_substrate_bridge)
 //=============================================================================
@@ -169,16 +170,16 @@ int game_theory_substrate_bridge_update(game_theory_substrate_bridge_t* bridge) 
 
     if (bridge->config.enable_atp_modulation) {
         /* Strategy depth requires sustained cognitive resources */
-        bridge->effects.strategy_depth = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.strategy_depth = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Equilibrium search is computationally intensive */
-        bridge->effects.equilibrium_search = nimcp_clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.equilibrium_search = nimcp_clampf(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Opponent modeling degrades with fatigue (ToM capacity) */
-        bridge->effects.opponent_modeling = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.opponent_modeling = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Fairness consideration is vulnerable to fatigue (utilitarian bias increases) */
-        bridge->effects.fairness_consideration = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.fairness_consideration = nimcp_clampf(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.strategy_depth +

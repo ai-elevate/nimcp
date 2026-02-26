@@ -35,6 +35,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Custom set_health_agent API (instance-level, not global) - don't use BRIDGE_BOILERPLATE */
 static nimcp_health_agent_t* g_vae_decoder_health_agent = NULL;
@@ -48,16 +49,6 @@ static inline void vae_decoder_heartbeat(const char* op, float progress) {
 }
 
 #define LOG_MODULE "VAE_DECODER"
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 static inline bool is_nan_f(float value) {
     return value != value;

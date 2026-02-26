@@ -19,6 +19,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metabolic_immune_bridge)
 
@@ -28,15 +29,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(metabolic_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get current inflammation level
@@ -250,7 +242,7 @@ int metabolic_immune_apply_cytokine_effects(metabolic_immune_bridge_t* bridge) {
 
     /* Cost multiplier (1.0 + burden) */
     effects->total_cost_multiplier = 1.0f + effects->total_baseline_increase;
-    effects->total_cost_multiplier = clamp_f(effects->total_cost_multiplier, 0.5f, 3.0f);
+    effects->total_cost_multiplier = nimcp_clampf(effects->total_cost_multiplier, 0.5f, 3.0f);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;

@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(claustrum, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -49,15 +50,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(claustrum, MESH_ADAPTER_CATEGORY_COGNITIVE)
 /*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
-
-/**
- * @brief Clamp value to [0, 1] range
- */
-static inline float clamp01(float value) {
-    if (value < 0.0f) return 0.0f;
-    if (value > 1.0f) return 1.0f;
-    return value;
-}
 
 /**
  * @brief Simple exponential decay toward target
@@ -167,7 +159,7 @@ static float compute_modality_coherence(const nimcp_claustrum_modality_input_t* 
     float activity_similarity = 1.0f - fabsf(m1->activity_level - m2->activity_level);
 
     /* Combined coherence */
-    return clamp01(0.5f * phase_coherence + 0.5f * activity_similarity);
+    return nimcp_clamp01(0.5f * phase_coherence + 0.5f * activity_similarity);
 }
 
 /**
@@ -748,7 +740,7 @@ nimcp_claustrum_error_t nimcp_claustrum_update_modality(
     }
 
     /* Update state */
-    mod->activity_level = clamp01(activity);
+    mod->activity_level = nimcp_clamp01(activity);
     mod->active = (activity > 0.05f);
     mod->timestamp_us = get_time_us();
 
@@ -763,7 +755,7 @@ nimcp_claustrum_error_t nimcp_claustrum_update_modality(
     if (mod->active && mod->salience < 0.01f) {
         /* Default salience based on activity */
         mod->salience = mod->activity_level * claustrum->config.salience_gain;
-        mod->salience = clamp01(mod->salience);
+        mod->salience = nimcp_clamp01(mod->salience);
     }
 
     /* Update metrics */
@@ -782,7 +774,7 @@ nimcp_claustrum_error_t nimcp_claustrum_set_modality_salience(
     if (!claustrum->initialized) return CLAUSTRUM_ERR_NOT_INITIALIZED;
     if (modality >= CLAUSTRUM_MODALITY_COUNT) return CLAUSTRUM_ERR_INVALID_PARAM;
 
-    claustrum->modalities[modality].salience = clamp01(salience);
+    claustrum->modalities[modality].salience = nimcp_clamp01(salience);
     return CLAUSTRUM_OK;
 }
 
@@ -977,12 +969,12 @@ nimcp_claustrum_error_t nimcp_claustrum_synchronize(nimcp_claustrum_t* claustrum
 
                 /* Update coherence */
                 float normalized_diff = fabsf(phase_diff) / PI;
-                claustrum->modalities[i].coherence = clamp01(1.0f - normalized_diff);
+                claustrum->modalities[i].coherence = nimcp_clamp01(1.0f - normalized_diff);
             }
         }
 
         /* Boost global coherence */
-        claustrum->oscillator.global_coherence = clamp01(
+        claustrum->oscillator.global_coherence = nimcp_clamp01(
             claustrum->oscillator.global_coherence + 0.1f);
     }
 
@@ -1010,7 +1002,7 @@ nimcp_claustrum_error_t nimcp_claustrum_set_gamma(
     if (!claustrum->initialized) return CLAUSTRUM_ERR_NOT_INITIALIZED;
 
     claustrum->oscillator.gamma_frequency = frequency;
-    claustrum->oscillator.gamma_amplitude = clamp01(amplitude);
+    claustrum->oscillator.gamma_amplitude = nimcp_clamp01(amplitude);
     return CLAUSTRUM_OK;
 }
 
@@ -1023,7 +1015,7 @@ nimcp_claustrum_error_t nimcp_claustrum_set_alpha(
     if (!claustrum->initialized) return CLAUSTRUM_ERR_NOT_INITIALIZED;
 
     claustrum->oscillator.alpha_frequency = frequency;
-    claustrum->oscillator.alpha_amplitude = clamp01(amplitude);
+    claustrum->oscillator.alpha_amplitude = nimcp_clamp01(amplitude);
     return CLAUSTRUM_OK;
 }
 
@@ -1080,7 +1072,7 @@ nimcp_claustrum_error_t nimcp_claustrum_set_attention_bias(
     if (!claustrum->initialized) return CLAUSTRUM_ERR_NOT_INITIALIZED;
     if (region >= CLAUSTRUM_REGION_COUNT) return CLAUSTRUM_ERR_INVALID_PARAM;
 
-    claustrum->cortical_links[region].attention_bias = clamp01(bias);
+    claustrum->cortical_links[region].attention_bias = nimcp_clamp01(bias);
     return CLAUSTRUM_OK;
 }
 
@@ -1276,7 +1268,7 @@ nimcp_claustrum_error_t nimcp_claustrum_update_cortical_region(
     if (!claustrum->initialized) return CLAUSTRUM_ERR_NOT_INITIALIZED;
     if (region >= CLAUSTRUM_REGION_COUNT) return CLAUSTRUM_ERR_INVALID_PARAM;
 
-    claustrum->cortical_links[region].activity = clamp01(activity);
+    claustrum->cortical_links[region].activity = nimcp_clamp01(activity);
     claustrum->cortical_links[region].receiving = true;
     return CLAUSTRUM_OK;
 }
@@ -1304,8 +1296,8 @@ nimcp_claustrum_error_t nimcp_claustrum_set_cortical_link_strength(
     if (!claustrum->initialized) return CLAUSTRUM_ERR_NOT_INITIALIZED;
     if (region >= CLAUSTRUM_REGION_COUNT) return CLAUSTRUM_ERR_INVALID_PARAM;
 
-    claustrum->cortical_links[region].forward_strength = clamp01(forward_strength);
-    claustrum->cortical_links[region].backward_strength = clamp01(backward_strength);
+    claustrum->cortical_links[region].forward_strength = nimcp_clamp01(forward_strength);
+    claustrum->cortical_links[region].backward_strength = nimcp_clamp01(backward_strength);
     return CLAUSTRUM_OK;
 }
 

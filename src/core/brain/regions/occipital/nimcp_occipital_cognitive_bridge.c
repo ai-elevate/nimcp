@@ -28,6 +28,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_cognitive_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -617,7 +618,7 @@ int occipital_cognitive_bridge_update(occipital_cognitive_bridge_t* bridge) {
         bridge->current_modulation.spatial_focus_y *
         bridge->current_modulation.spatial_focus_y
     );
-    bridge->effects.attention_focus = nimcp_clamp_f(attention_focus, 0.0f, 1.0f);
+    bridge->effects.attention_focus = nimcp_clampf(attention_focus, 0.0f, 1.0f);
 
     /* Calculate cognitive load */
     float total_activity = 0.0f;

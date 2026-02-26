@@ -29,6 +29,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(game_theory_fep_bridge)
 //=============================================================================
@@ -127,16 +128,6 @@ struct gt_fep_bridge {
     void* metrics_user_data;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
 }
@@ -167,9 +158,9 @@ static void compute_free_energy(gt_fep_bridge_t* bridge) {
     const gt_fep_config_t* cfg = &bridge->config;
 
     /* Clamp input metrics */
-    m->strategy_uncertainty = clamp_f(m->strategy_uncertainty, 0.0f, 1.0f);
-    m->opponent_prediction_error = clamp_f(m->opponent_prediction_error, 0.0f, 1.0f);
-    m->nash_distance = clamp_f(m->nash_distance, 0.0f, 1.0f);
+    m->strategy_uncertainty = nimcp_clampf(m->strategy_uncertainty, 0.0f, 1.0f);
+    m->opponent_prediction_error = nimcp_clampf(m->opponent_prediction_error, 0.0f, 1.0f);
+    m->nash_distance = nimcp_clampf(m->nash_distance, 0.0f, 1.0f);
 
     /* Strategy uncertainty contribution:
      * High uncertainty about which strategy is optimal = prediction error */
@@ -190,7 +181,7 @@ static void compute_free_energy(gt_fep_bridge_t* bridge) {
                       m->opponent_contribution +
                       m->nash_contribution) * cfg->free_energy_weight;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_clampf(total_fe, 0.0f, cfg->max_free_energy);
 
     /* At Nash equilibrium check */
     m->at_nash_equilibrium = (m->nash_distance < cfg->nash_epsilon);
@@ -201,7 +192,7 @@ static void compute_free_energy(gt_fep_bridge_t* bridge) {
                                    m->nash_distance * 0.2f);
 
     /* Apply decay to smooth transitions */
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_clampf(
         new_prediction_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -213,7 +204,7 @@ static void compute_free_energy(gt_fep_bridge_t* bridge) {
     float opponent_change = fabsf(m->opponent_prediction_error - bridge->prev_opponent_error);
     float nash_change = fabsf(m->nash_distance - bridge->prev_nash_distance);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_clampf(
         (fe_change * 0.3f + strategy_change * 0.3f +
          opponent_change * 0.2f + nash_change * 0.2f),
         0.0f, 1.0f
@@ -222,7 +213,7 @@ static void compute_free_energy(gt_fep_bridge_t* bridge) {
     /* Entropy: based on strategy type
      * Mixed strategies have higher entropy than pure strategies
      * Approximate based on uncertainty */
-    m->entropy = clamp_f(
+    m->entropy = nimcp_clampf(
         m->strategy_uncertainty * 0.7f + m->opponent_prediction_error * 0.3f,
         0.0f, 1.0f
     );
@@ -636,7 +627,7 @@ int gt_fep_update_callback(void* handle) {
             /* Estimate strategy uncertainty from convergence metrics */
             if (gt_stats.avg_convergence_iterations > 0) {
                 /* More iterations to converge = higher uncertainty */
-                bridge->metrics.strategy_uncertainty = clamp_f(
+                bridge->metrics.strategy_uncertainty = nimcp_clampf(
                     gt_stats.avg_convergence_iterations / 100.0f,
                     0.0f, 1.0f
                 );
@@ -647,7 +638,7 @@ int gt_fep_update_callback(void* handle) {
                 float equilibrium_rate = (float)gt_stats.equilibria_found /
                                         (float)gt_stats.games_played;
                 /* Higher equilibrium finding rate = closer to Nash */
-                bridge->metrics.nash_distance = clamp_f(
+                bridge->metrics.nash_distance = nimcp_clampf(
                     1.0f - equilibrium_rate,
                     0.0f, 1.0f
                 );
@@ -659,7 +650,7 @@ int gt_fep_update_callback(void* handle) {
                 float success_rate = (float)gt_stats.bargaining_successes /
                     (float)(gt_stats.bargaining_successes + gt_stats.bargaining_failures);
                 /* Lower success rate = higher prediction error */
-                bridge->metrics.opponent_prediction_error = clamp_f(
+                bridge->metrics.opponent_prediction_error = nimcp_clampf(
                     1.0f - success_rate,
                     0.0f, 1.0f
                 );
@@ -747,7 +738,7 @@ int gt_fep_bridge_update_strategy_uncertainty(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.strategy_uncertainty = clamp_f(uncertainty, 0.0f, 1.0f);
+    bridge->metrics.strategy_uncertainty = nimcp_clampf(uncertainty, 0.0f, 1.0f);
     bridge->stats.strategy_computations++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -768,7 +759,7 @@ int gt_fep_bridge_update_opponent_error(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.opponent_prediction_error = clamp_f(error, 0.0f, 1.0f);
+    bridge->metrics.opponent_prediction_error = nimcp_clampf(error, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
@@ -788,7 +779,7 @@ int gt_fep_bridge_update_nash_distance(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->metrics.nash_distance = clamp_f(distance, 0.0f, 1.0f);
+    bridge->metrics.nash_distance = nimcp_clampf(distance, 0.0f, 1.0f);
     bridge->stats.nash_equilibrium_checks++;
     nimcp_mutex_unlock(bridge->base.mutex);
 

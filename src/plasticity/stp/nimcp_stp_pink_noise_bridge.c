@@ -29,6 +29,7 @@
 #include <stddef.h>  /* for NULL */
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(stp_pink_noise_bridge)
 
@@ -39,19 +40,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(stp_pink_noise_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent numerical instability
- * HOW:  Standard clamping
- */
-static inline float clamp(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Initialize noise generator configuration
@@ -294,7 +282,7 @@ float stp_pink_noise_modulate_u(stp_pink_noise_bridge_t* bridge) {
     float modulation = 1.0f + scaled_amplitude * noise_value;
 
     // Clamp to configured range
-    modulation = clamp(modulation, bridge->config.u_min_factor,
+    modulation = nimcp_clampf(modulation, bridge->config.u_min_factor,
                       bridge->config.u_max_factor);
 
     bridge->noise_effects.effective_u_factor = modulation;
@@ -333,7 +321,7 @@ float stp_pink_noise_modulate_tau_d(stp_pink_noise_bridge_t* bridge) {
     float modulation = 1.0f + scaled_amplitude * noise_value;
 
     // Clamp to configured range
-    modulation = clamp(modulation, bridge->config.tau_min_factor,
+    modulation = nimcp_clampf(modulation, bridge->config.tau_min_factor,
                       bridge->config.tau_max_factor);
 
     bridge->noise_effects.effective_tau_d_factor = modulation;
@@ -366,7 +354,7 @@ float stp_pink_noise_modulate_tau_f(stp_pink_noise_bridge_t* bridge) {
     float modulation = 1.0f + scaled_amplitude * noise_value;
 
     // Clamp to configured range
-    modulation = clamp(modulation, bridge->config.tau_min_factor,
+    modulation = nimcp_clampf(modulation, bridge->config.tau_min_factor,
                       bridge->config.tau_max_factor);
 
     bridge->noise_effects.effective_tau_f_factor = modulation;
@@ -391,7 +379,7 @@ float stp_pink_noise_get_effective_u(
     float effective_u = base_u * bridge->noise_effects.effective_u_factor;
 
     // Clamp to valid release probability range [0, 1]
-    return clamp(effective_u, 0.0f, 1.0f);
+    return nimcp_clampf(effective_u, 0.0f, 1.0f);
 }
 
 /**
@@ -462,7 +450,7 @@ float stp_pink_noise_scale_by_activity(
     scaling = 1.0f + (scaling - 1.0f) * bridge->config.state_sensitivity;
 
     // Clamp to configured range
-    scaling = clamp(scaling, bridge->config.state_scaling_min,
+    scaling = nimcp_clampf(scaling, bridge->config.state_scaling_min,
                    bridge->config.state_scaling_max);
 
     bridge->noise_effects.current_state_scaling = scaling;

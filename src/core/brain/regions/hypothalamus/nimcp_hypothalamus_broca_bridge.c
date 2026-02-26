@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_broca_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -52,22 +53,6 @@ struct hypo_broca_bridge {
     bio_module_context_t bio_ctx;
 };
 
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
-
-static float clamp_range(float v, float min_v, float max_v) {
-    if (v < min_v) return min_v;
-    if (v > max_v) return max_v;
-    return v;
-}
-
 /**
  * @brief Compute fluency based on Yerkes-Dodson inverted-U
  *
@@ -83,7 +68,7 @@ static float compute_fluency_curve(float cortisol, float optimal) {
     float normalized_dist = (max_distance > 0.0f) ? (distance / max_distance) : 0.0f;
 
     float fluency = 1.0f - (normalized_dist * normalized_dist);
-    return clamp_01(fluency);
+    return nimcp_clamp01(fluency);
 }
 
 /*=============================================================================
@@ -196,7 +181,7 @@ int hypo_broca_bridge_set_arousal(hypo_broca_bridge_t* bridge, float arousal) {
 
     }
 
-    bridge->arousal = clamp_01(arousal);
+    bridge->arousal = nimcp_clamp01(arousal);
     return 0;
 }
 
@@ -232,10 +217,10 @@ int hypo_broca_bridge_compute_modulation(hypo_broca_bridge_t* bridge) {
         base_fluency *= (1.0f - stress->cortisol_chronic * cfg->chronic_impairment);
     }
 
-    mod->fluency_level = clamp_01(base_fluency);
+    mod->fluency_level = nimcp_clamp01(base_fluency);
 
     /* Hesitation probability inverse of fluency */
-    mod->hesitation_probability = clamp_01(0.05f + (1.0f - mod->fluency_level) * 0.3f);
+    mod->hesitation_probability = nimcp_clamp01(0.05f + (1.0f - mod->fluency_level) * 0.3f);
 
     /* Word-finding delay from chronic stress */
     mod->word_finding_delay = stress->cortisol_chronic * cfg->chronic_impairment;
@@ -250,22 +235,22 @@ int hypo_broca_bridge_compute_modulation(hypo_broca_bridge_t* bridge) {
 
     /* Rate: 0.7 at low arousal, 1.5 at high arousal, 1.0 at 0.5 */
     mod->rate_multiplier = 0.7f + arousal * cfg->arousal_rate_weight * 1.6f;
-    mod->rate_multiplier = clamp_range(mod->rate_multiplier, 0.5f, 2.0f);
+    mod->rate_multiplier = nimcp_clampf(mod->rate_multiplier, 0.5f, 2.0f);
 
     /* Volume similar mapping */
     mod->volume_multiplier = 0.7f + arousal * cfg->arousal_volume_weight * 2.0f;
-    mod->volume_multiplier = clamp_range(mod->volume_multiplier, 0.5f, 2.0f);
+    mod->volume_multiplier = nimcp_clampf(mod->volume_multiplier, 0.5f, 2.0f);
 
     /* Prosody variation decreases with extreme stress */
     if (stress->acute_stress > 0.7f) {
-        mod->prosody_variation = clamp_01(0.5f - (stress->acute_stress - 0.7f));
+        mod->prosody_variation = nimcp_clamp01(0.5f - (stress->acute_stress - 0.7f));
     } else {
         mod->prosody_variation = 0.5f + arousal * 0.3f;
     }
 
     /* Pitch rises with stress */
     mod->pitch_baseline = (stress->acute_stress - 0.3f) * 0.5f;
-    mod->pitch_baseline = clamp_range(mod->pitch_baseline, -0.3f, 0.5f);
+    mod->pitch_baseline = nimcp_clampf(mod->pitch_baseline, -0.3f, 0.5f);
 
     /*
      * SOCIAL DRIVE → INITIATION:
@@ -276,7 +261,7 @@ int hypo_broca_bridge_compute_modulation(hypo_broca_bridge_t* bridge) {
     float social_urgency = drive_state.drives[HYPO_DRIVE_SOCIAL].urgency;
 
     mod->initiation_threshold = 0.5f - (social_urgency * cfg->social_initiation_weight * 0.4f);
-    mod->initiation_threshold = clamp_range(mod->initiation_threshold, 0.1f, 0.9f);
+    mod->initiation_threshold = nimcp_clampf(mod->initiation_threshold, 0.1f, 0.9f);
 
     mod->urgency_to_speak = social_urgency * cfg->social_initiation_weight;
 

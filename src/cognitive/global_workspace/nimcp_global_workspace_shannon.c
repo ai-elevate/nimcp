@@ -45,6 +45,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(global_workspace_shannon, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -232,19 +233,6 @@ static subscriber_shannon_state_t* find_subscriber(
         }
     }
     return NULL;  /* Not found is normal */
-}
-
-/**
- * @brief Clamp float to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Ensure valid parameter ranges
- * HOW:  Simple comparison
- */
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
 }
 
 //=============================================================================
@@ -578,7 +566,7 @@ bool global_workspace_compete_with_info(
     }
 
     /* Clamp to valid range */
-    competition_strength = clamp_float(competition_strength, 0.0F, 1.0F);
+    competition_strength = nimcp_clampf(competition_strength, 0.0F, 1.0F);
 
     /* Call standard competition */
     bool won = global_workspace_compete(workspace, module, content,
@@ -896,7 +884,7 @@ bool global_workspace_set_broadcast_rate(
         return false;
     }
 
-    rate_multiplier = clamp_float(rate_multiplier,
+    rate_multiplier = nimcp_clampf(rate_multiplier,
                                    state->config.min_broadcast_rate,
                                    state->config.max_broadcast_rate);
 

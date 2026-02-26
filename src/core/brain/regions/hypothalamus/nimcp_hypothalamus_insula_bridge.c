@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_insula_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -48,22 +49,6 @@ struct hypo_insula_bridge {
     bool bio_registered;
     bio_module_context_t bio_ctx;
 };
-
-/*=============================================================================
- * HELPER FUNCTIONS
- *===========================================================================*/
-
-static float clamp_01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
-
-static float clamp_range(float v, float min_v, float max_v) {
-    if (v < min_v) return min_v;
-    if (v > max_v) return max_v;
-    return v;
-}
 
 /*=============================================================================
  * LIFECYCLE
@@ -288,7 +273,7 @@ int hypo_insula_bridge_compute_attention(hypo_insula_bridge_t* bridge) {
     for (int i = 0; i < HYPO_DRIVE_COUNT; i++) {
         total_urgency += drive_state.drives[i].urgency;
     }
-    att->overall_salience = clamp_01(total_urgency / (float)HYPO_DRIVE_COUNT);
+    att->overall_salience = nimcp_clamp01(total_urgency / (float)HYPO_DRIVE_COUNT);
 
     /* Survival mode if any critical drive is urgent */
     att->survival_mode = (safety_urgency > 0.7f) ||
@@ -298,10 +283,10 @@ int hypo_insula_bridge_compute_attention(hypo_insula_bridge_t* bridge) {
     if (att->survival_mode) {
         /* Amplify all channels in survival mode */
         for (int i = 0; i < HYPO_INTERO_COUNT; i++) {
-            att->channel_gains[i] = clamp_range(
+            att->channel_gains[i] = nimcp_clampf(
                 att->channel_gains[i] * 1.5f, 1.0f, max_gain);
         }
-        att->overall_salience = clamp_01(att->overall_salience * 1.5f);
+        att->overall_salience = nimcp_clamp01(att->overall_salience * 1.5f);
     }
 
     return 0;

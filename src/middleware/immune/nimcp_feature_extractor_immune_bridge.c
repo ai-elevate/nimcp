@@ -21,6 +21,7 @@
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(feature_extractor_immune_bridge)
 
@@ -30,19 +31,6 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(feature_extractor_immune_bridge)
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent overflow/underflow
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Get max inflammation level from immune system
@@ -274,7 +262,7 @@ int feature_immune_apply_cytokine_effects(feature_immune_bridge_t* bridge) {
 
     /* Precision factor is 1.0 minus reduction */
     bridge->cytokine_effects.total_precision_factor =
-        clamp_f(1.0f - total_reduction, 0.0f, 1.0f);
+        nimcp_clampf(1.0f - total_reduction, 0.0f, 1.0f);
 
     /* Noise amplification is inverse of precision */
     bridge->cytokine_effects.noise_amplification = total_reduction;
@@ -404,14 +392,14 @@ int feature_immune_trigger_from_anomalies(
     if (features->fano_factor > FEATURE_FANO_THREAT_THRESHOLD) {
         bridge->immune_trigger.fano_anomaly = true;
         bridge->immune_trigger.fano_severity =
-            clamp_f((features->fano_factor - FEATURE_FANO_THREAT_THRESHOLD) / 3.0f, 0.0f, 1.0f);
+            nimcp_clampf((features->fano_factor - FEATURE_FANO_THREAT_THRESHOLD) / 3.0f, 0.0f, 1.0f);
     }
 
     /* Check ISI CV anomaly */
     if (features->isi_cv > FEATURE_ISI_CV_THREAT_THRESHOLD) {
         bridge->immune_trigger.isi_cv_anomaly = true;
         bridge->immune_trigger.isi_cv_severity =
-            clamp_f((features->isi_cv - FEATURE_ISI_CV_THREAT_THRESHOLD) / 2.0f, 0.0f, 1.0f);
+            nimcp_clampf((features->isi_cv - FEATURE_ISI_CV_THREAT_THRESHOLD) / 2.0f, 0.0f, 1.0f);
     }
 
     /* Check synchrony anomaly */
@@ -469,8 +457,8 @@ int feature_immune_trigger_from_anomalies(
         /* Create epitope from feature anomaly pattern */
         memset(epitope, 0, BRAIN_IMMUNE_EPITOPE_SIZE);
         epitope[0] = (uint8_t)(features->burst_index * 255);
-        epitope[1] = (uint8_t)(clamp_f(features->fano_factor / 10.0f, 0.0f, 1.0f) * 255);
-        epitope[2] = (uint8_t)(clamp_f(features->isi_cv / 5.0f, 0.0f, 1.0f) * 255);
+        epitope[1] = (uint8_t)(nimcp_clampf(features->fano_factor / 10.0f, 0.0f, 1.0f) * 255);
+        epitope[2] = (uint8_t)(nimcp_clampf(features->isi_cv / 5.0f, 0.0f, 1.0f) * 255);
         epitope[3] = (uint8_t)(features->synchrony_index * 255);
         epitope[4] = (uint8_t)(features->spike_entropy * 255);
         epitope[5] = (uint8_t)(features->gamma_power * 255);

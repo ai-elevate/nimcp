@@ -20,6 +20,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(mirror_habituation, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -48,14 +49,6 @@ struct habituation_system {
     /** Bio-async */
     bool bio_async_registered;
 };
-
-//=============================================================================
-// Internal Helpers
-//=============================================================================
-
-static inline float clamp_f(float v, float lo, float hi) {
-    return (v < lo) ? lo : (v > hi) ? hi : v;
-}
 
 /**
  * @brief Compute feature similarity
@@ -384,7 +377,7 @@ bool habituation_process(
         }
 
         rec->habituation_level += rate * (1.0f - rec->habituation_level);
-        rec->habituation_level = clamp_f(rec->habituation_level, 0.0f, 1.0f - target);
+        rec->habituation_level = nimcp_clampf(rec->habituation_level, 0.0f, 1.0f - target);
 
         /* Update state */
         if (rec->habituation_level > 0.8f) {
@@ -406,12 +399,12 @@ bool habituation_process(
     /* Apply global arousal modulation */
     base_gain *= system->global_arousal;
 
-    rec->response_gain = clamp_f(base_gain, system->config.asymptote, 1.5f);
+    rec->response_gain = nimcp_clampf(base_gain, system->config.asymptote, 1.5f);
     result->response_gain = rec->response_gain;
 
     /* Compute novelty */
     result->novelty = is_new ? 1.0f : (1.0f - similarity) + (1.0f - rec->habituation_level) * 0.5f;
-    result->novelty = clamp_f(result->novelty, 0.0f, 1.0f);
+    result->novelty = nimcp_clampf(result->novelty, 0.0f, 1.0f);
 
     result->state = rec->state;
 
@@ -604,7 +597,7 @@ float habituation_stimulus_similarity(
             );
     }
 
-    return clamp_f(similarity, 0.0f, 1.0f);
+    return nimcp_clampf(similarity, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -733,7 +726,7 @@ void habituation_update_recovery(
         /* Spontaneous recovery */
         if (rec->habituation_level > 0.0f) {
             rec->habituation_level -= recovery_amount;
-            rec->habituation_level = clamp_f(rec->habituation_level, 0.0f, 1.0f);
+            rec->habituation_level = nimcp_clampf(rec->habituation_level, 0.0f, 1.0f);
             rec->response_gain = 1.0f - rec->habituation_level;
 
             if (rec->state == HABITUATION_STATE_HABITUATED &&
@@ -860,7 +853,7 @@ void habituation_simd_update(
 
         float rate = habituation_rate * intensities[i];
         habituation_levels[i] += rate * (1.0f - habituation_levels[i]);
-        habituation_levels[i] = clamp_f(habituation_levels[i], 0.0f, 1.0f - asymptote);
+        habituation_levels[i] = nimcp_clampf(habituation_levels[i], 0.0f, 1.0f - asymptote);
     }
 }
 

@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(emotional_tagging_substrate_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -111,13 +112,13 @@ int emotional_tagging_substrate_bridge_update(emotional_tagging_substrate_bridge
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables tagging strength and consolidation */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.tagging_strength = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.consolidation_quality = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.tagging_strength = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.consolidation_quality = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables specificity and retrieval */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.tag_specificity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.retrieval_accuracy = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.tag_specificity = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.retrieval_accuracy = nimcp_clampf(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.tagging_strength + bridge->effects.tag_specificity +
                                         bridge->effects.consolidation_quality + bridge->effects.retrieval_accuracy) / 4.0f;

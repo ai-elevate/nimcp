@@ -28,6 +28,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(ensemble_uncertainty_pink_noise_bridge)
 //=============================================================================
@@ -79,17 +80,6 @@ static inline void ensemble_uncertainty_pink_noise_bridge_heartbeat_instance(
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * WHAT: Clamp value to range
- * WHY:  Ensure values stay within valid bounds
- * HOW:  Return min/max if out of range, otherwise return value
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * WHAT: Exponential moving average update
@@ -733,10 +723,10 @@ int ensemble_pink_adapt_noise(ensemble_pink_bridge_t* bridge) {
     float new_alpha = bridge->config.base_alpha + alpha_modifier;
 
     // Clamp to valid ranges
-    new_amplitude = clamp_f(new_amplitude,
+    new_amplitude = nimcp_clampf(new_amplitude,
                             bridge->config.amplitude_min,
                             bridge->config.amplitude_max);
-    new_alpha = clamp_f(new_alpha, 0.0f, 2.0f);
+    new_alpha = nimcp_clampf(new_alpha, 0.0f, 2.0f);
 
     bridge->effects.effective_amplitude = new_amplitude;
     bridge->effects.effective_alpha = new_alpha;

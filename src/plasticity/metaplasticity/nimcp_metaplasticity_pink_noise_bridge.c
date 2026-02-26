@@ -12,17 +12,12 @@
 #include <math.h>
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(metaplasticity_pink_noise_bridge)
 
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(meta_pink_noise_bridge)
-
-static float clamp_value(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 meta_pink_noise_bridge_t* meta_pink_noise_create(const meta_pink_noise_config_t* config) {
     meta_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(meta_pink_noise_bridge_t));
@@ -122,13 +117,13 @@ int meta_pink_noise_update(meta_pink_noise_bridge_t* bridge) {
     bridge->noisy_baseline_tau = base_tau * (1.0f + amp * bridge->tau_noise);
     bridge->noisy_history_tau = base_hist_tau * (1.0f + amp * bridge->tau_noise);
 
-    bridge->noisy_theta_baseline = clamp_value(bridge->noisy_theta_baseline,
+    bridge->noisy_theta_baseline = nimcp_clampf(bridge->noisy_theta_baseline,
         bridge->config.theta_min, bridge->config.theta_max);
-    bridge->noisy_theta_effective = clamp_value(bridge->noisy_theta_effective,
+    bridge->noisy_theta_effective = nimcp_clampf(bridge->noisy_theta_effective,
         bridge->config.theta_min, bridge->config.theta_max);
-    bridge->noisy_baseline_tau = clamp_value(bridge->noisy_baseline_tau,
+    bridge->noisy_baseline_tau = nimcp_clampf(bridge->noisy_baseline_tau,
         bridge->config.tau_min, bridge->config.tau_max);
-    bridge->noisy_history_tau = clamp_value(bridge->noisy_history_tau,
+    bridge->noisy_history_tau = nimcp_clampf(bridge->noisy_history_tau,
         bridge->config.tau_min, bridge->config.tau_max);
 
     bridge->samples_generated++;

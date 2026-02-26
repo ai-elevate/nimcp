@@ -19,22 +19,12 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(hypothalamus_hippocampus_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 #define LOG_MODULE "HYPOTHALAMUS_HIPPOCAMPUS_BRIDGE"
-
-
-/*=============================================================================
- * INTERNAL HELPERS
- *===========================================================================*/
-
-static float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 /**
  * @brief Memory category names
@@ -255,7 +245,7 @@ hypo_hipp_encoding_priority_t hypo_hipp_bridge_compute_encoding_priority(
     for (int d = 0; d < HYPO_DRIVE_COUNT; d++) {
         hypo_memory_category_t cat = hypo_drive_to_memory_cat[d];
         float contribution = urgencies[d] * bridge->config.encoding_scale;
-        priority.priorities[cat] = clamp_f(
+        priority.priorities[cat] = nimcp_clampf(
             priority.priorities[cat] + contribution, 0.0f, 1.0f);
     }
 
@@ -271,7 +261,7 @@ hypo_hipp_encoding_priority_t hypo_hipp_bridge_compute_encoding_priority(
         total_urgency += urgencies[d];
     }
     float avg_urgency = total_urgency / HYPO_DRIVE_COUNT;
-    priority.emotional_valence = clamp_f(
+    priority.emotional_valence = nimcp_clampf(
         (0.5f - avg_urgency) * 2.0f * bridge->config.valence_scale,
         -1.0f, 1.0f);
 
@@ -307,7 +297,7 @@ hypo_hipp_consolidation_signal_t hypo_hipp_bridge_compute_consolidation(
 
     /* Combine with sleep pressure */
     signal.sleep_pressure_high = (sleep_pressure > 0.6f);
-    signal.consolidation_urgency = clamp_f(
+    signal.consolidation_urgency = nimcp_clampf(
         0.3f * phase_urgency + 0.7f * sleep_pressure, 0.0f, 1.0f);
 
     /* Determine priority categories based on drive urgencies */
@@ -432,7 +422,7 @@ float hypo_hipp_bridge_process_retrieval(
 
             /* Accumulate influence */
             bridge->memory_drive_influence[affected_drive] += influence;
-            bridge->memory_drive_influence[affected_drive] = clamp_f(
+            bridge->memory_drive_influence[affected_drive] = nimcp_clampf(
                 bridge->memory_drive_influence[affected_drive], 0.0f, 1.0f);
 
             /* Apply to drives through nucleus input */
@@ -494,7 +484,7 @@ float hypo_hipp_bridge_process_replay(
             reward_prediction *= 1.5f;
         }
 
-        reward_prediction = clamp_f(reward_prediction, -1.0f, 1.0f);
+        reward_prediction = nimcp_clampf(reward_prediction, -1.0f, 1.0f);
 
         /* This reward prediction could be sent to SNc/VTA for DA modulation */
         /* For now, we just track it */
@@ -661,7 +651,7 @@ float hypo_hipp_bridge_strengthen_association(
         if (bridge->associations[i].drive == drive &&
             bridge->associations[i].memory_id == memory_id) {
             bridge->associations[i].association_strength += delta;
-            bridge->associations[i].association_strength = clamp_f(
+            bridge->associations[i].association_strength = nimcp_clampf(
                 bridge->associations[i].association_strength, 0.0f, 1.0f);
             bridge->associations[i].last_activation_us = nimcp_time_now_us();
             new_strength = bridge->associations[i].association_strength;

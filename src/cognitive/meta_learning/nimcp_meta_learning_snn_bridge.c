@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(meta_learning_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -73,16 +74,6 @@ struct meta_learning_snn_bridge {
     /* Statistics */
     meta_learning_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -374,7 +365,7 @@ int meta_learning_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -447,8 +438,8 @@ int meta_learning_snn_encode_learning_rate(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[META_DIM_COUNT] = {0};
-    dims[META_DIM_LEARNING_RATE] = clamp_f(current_rate, 0.0f, 1.0f);
-    dims[META_DIM_ADAPTATION_SPEED] = clamp_f(fabsf(target_rate - current_rate), 0.0f, 1.0f);
+    dims[META_DIM_LEARNING_RATE] = nimcp_clampf(current_rate, 0.0f, 1.0f);
+    dims[META_DIM_ADAPTATION_SPEED] = nimcp_clampf(fabsf(target_rate - current_rate), 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -472,9 +463,9 @@ int meta_learning_snn_encode_task_similarity(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[META_DIM_COUNT] = {0};
-    dims[META_DIM_TASK_SIMILARITY] = clamp_f(similarity, 0.0f, 1.0f);
-    dims[META_DIM_TRANSFER] = clamp_f(similarity * 0.8f, 0.0f, 1.0f);
-    dims[META_DIM_PRIOR_KNOWLEDGE] = clamp_f(similarity * 0.6f, 0.0f, 1.0f);
+    dims[META_DIM_TASK_SIMILARITY] = nimcp_clampf(similarity, 0.0f, 1.0f);
+    dims[META_DIM_TRANSFER] = nimcp_clampf(similarity * 0.8f, 0.0f, 1.0f);
+    dims[META_DIM_PRIOR_KNOWLEDGE] = nimcp_clampf(similarity * 0.6f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -498,8 +489,8 @@ int meta_learning_snn_encode_transfer(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[META_DIM_COUNT] = {0};
-    dims[META_DIM_TRANSFER] = clamp_f(transfer_potential, 0.0f, 1.0f);
-    dims[META_DIM_GENERALIZATION] = clamp_f(transfer_potential * 0.7f, 0.0f, 1.0f);
+    dims[META_DIM_TRANSFER] = nimcp_clampf(transfer_potential, 0.0f, 1.0f);
+    dims[META_DIM_GENERALIZATION] = nimcp_clampf(transfer_potential * 0.7f, 0.0f, 1.0f);
 
     bridge->transfer_signal = transfer_potential;
 

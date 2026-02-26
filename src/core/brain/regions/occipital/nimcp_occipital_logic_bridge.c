@@ -33,6 +33,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(occipital_logic_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -239,7 +240,7 @@ static void ground_unary_predicates(occipital_logic_bridge_t* bridge,
         pred.type = PRED_IS_MOVING;
         float velocity = sqrtf(obj->velocity_x * obj->velocity_x +
                                obj->velocity_y * obj->velocity_y);
-        pred.truth_value = nimcp_clamp_f(velocity * 5.0f, 0.0f, 1.0f);
+        pred.truth_value = nimcp_clampf(velocity * 5.0f, 0.0f, 1.0f);
         add_predicate(bridge, &pred);
     }
 
@@ -306,12 +307,12 @@ static void ground_binary_predicates(occipital_logic_bridge_t* bridge,
     if (fabsf(dy) > threshold && fabsf(dy) > fabsf(dx)) {
         if (dy > 0) {
             pred.type = PRED_ABOVE;
-            pred.confidence = nimcp_clamp_f(fabsf(dy) * 2.0f, 0.5f, 1.0f);
+            pred.confidence = nimcp_clampf(fabsf(dy) * 2.0f, 0.5f, 1.0f);
             pred.truth_value = pred.confidence;
             add_predicate(bridge, &pred);
         } else {
             pred.type = PRED_BELOW;
-            pred.confidence = nimcp_clamp_f(fabsf(dy) * 2.0f, 0.5f, 1.0f);
+            pred.confidence = nimcp_clampf(fabsf(dy) * 2.0f, 0.5f, 1.0f);
             pred.truth_value = pred.confidence;
             add_predicate(bridge, &pred);
         }
@@ -321,12 +322,12 @@ static void ground_binary_predicates(occipital_logic_bridge_t* bridge,
     if (fabsf(dx) > threshold && fabsf(dx) > fabsf(dy)) {
         if (dx > 0) {
             pred.type = PRED_LEFT_OF;
-            pred.confidence = nimcp_clamp_f(fabsf(dx) * 2.0f, 0.5f, 1.0f);
+            pred.confidence = nimcp_clampf(fabsf(dx) * 2.0f, 0.5f, 1.0f);
             pred.truth_value = pred.confidence;
             add_predicate(bridge, &pred);
         } else {
             pred.type = PRED_RIGHT_OF;
-            pred.confidence = nimcp_clamp_f(fabsf(dx) * 2.0f, 0.5f, 1.0f);
+            pred.confidence = nimcp_clampf(fabsf(dx) * 2.0f, 0.5f, 1.0f);
             pred.truth_value = pred.confidence;
             add_predicate(bridge, &pred);
         }
@@ -387,7 +388,7 @@ static void ground_binary_predicates(occipital_logic_bridge_t* bridge,
         if (area_a > area_b * 1.2f) {
             pred.type = PRED_OCCLUDES;
             float overlap_area = overlap_x * overlap_y;
-            pred.confidence = nimcp_clamp_f(overlap_area / (area_b + 0.01f), 0.0f, 1.0f);
+            pred.confidence = nimcp_clampf(overlap_area / (area_b + 0.01f), 0.0f, 1.0f);
             pred.truth_value = pred.confidence;
             add_predicate(bridge, &pred);
         }
@@ -410,7 +411,7 @@ static void ground_scene_predicates(occipital_logic_bridge_t* bridge) {
     /* SCENE_CROWDED */
     if (bridge->object_count > 5) {
         pred.type = PRED_SCENE_CROWDED;
-        pred.confidence = nimcp_clamp_f((float)bridge->object_count / 10.0f, 0.0f, 1.0f);
+        pred.confidence = nimcp_clampf((float)bridge->object_count / 10.0f, 0.0f, 1.0f);
         pred.truth_value = pred.confidence;
         add_predicate(bridge, &pred);
     }

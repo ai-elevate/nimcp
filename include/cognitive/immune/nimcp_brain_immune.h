@@ -701,13 +701,18 @@ struct brain_immune_system {
     NimcpSwarmImmuneSystem* swarm_immune;  /**< Swarm immune system */
     bio_module_context_t bio_context;      /**< Bio-async context */
 
-    /* Callbacks */
+    /* Callbacks (per-callback user_data to avoid last-writer-wins) */
     brain_immune_antigen_cb_t on_antigen;
+    void* on_antigen_user_data;
     brain_immune_neutralize_cb_t on_neutralize;
+    void* on_neutralize_user_data;
     brain_immune_cytokine_cb_t on_cytokine;
+    void* on_cytokine_user_data;
     brain_immune_inflammation_cb_t on_inflammation;
+    void* on_inflammation_user_data;
     brain_immune_kill_cb_t on_kill;
-    void* callback_user_data;
+    void* on_kill_user_data;
+    void* callback_user_data;              /**< Legacy/shared (used by tick system) */
 
     /* Statistics */
     brain_immune_stats_t stats;

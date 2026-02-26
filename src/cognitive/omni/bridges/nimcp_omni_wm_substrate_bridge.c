@@ -46,6 +46,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(omni_wm_substrate_bridge)
 //=============================================================================
@@ -184,15 +185,6 @@ static uint64_t get_current_time_us(void) {
 }
 
 /**
- * @brief Clamp float value to range
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
  * @brief Update metabolic availability from substrate
  *
  * WHAT: Read current metabolic state from neural substrate
@@ -236,13 +228,13 @@ static nimcp_error_t update_metabolic_availability(omni_wm_substrate_bridge_t* b
     );
 
     /* Computational capacity: primarily ATP and O2 dependent */
-    avail->computational_capacity = clampf(
+    avail->computational_capacity = nimcp_clampf(
         avail->atp_level * 0.6f + avail->oxygen_saturation * 0.4f,
         0.0f, 1.0f
     );
 
     /* Learning capacity: requires all three resources */
-    avail->learning_capacity = clampf(
+    avail->learning_capacity = nimcp_clampf(
         avail->metabolic_capacity *
         (avail->glucose_level > bridge->config.glucose_learning_threshold ? 1.0f : 0.5f),
         0.0f, 1.0f
@@ -316,7 +308,7 @@ static nimcp_error_t compute_substrate_to_wm_effects(omni_wm_substrate_bridge_t*
     /* Compute horizon scaling */
     if (cfg->adaptive_horizon) {
         /* Scale horizon by ATP availability */
-        effects->horizon_scale = clampf(
+        effects->horizon_scale = nimcp_clampf(
             avail->atp_level / cfg->atp_training_threshold,
             0.0f, 1.0f
         );
@@ -340,7 +332,7 @@ static nimcp_error_t compute_substrate_to_wm_effects(omni_wm_substrate_bridge_t*
         /* Rate depends on O2 and temperature */
         float o2_scale = 1.0f;
         if (cfg->enable_o2_modulation) {
-            o2_scale = clampf(
+            o2_scale = nimcp_clampf(
                 avail->oxygen_saturation / cfg->o2_critical_threshold,
                 0.0f, 1.0f
             );
@@ -377,7 +369,7 @@ static nimcp_error_t compute_substrate_to_wm_effects(omni_wm_substrate_bridge_t*
 
     /* Compute learning rate scaling */
     if (cfg->enable_glucose_modulation) {
-        effects->learning_rate_scale = clampf(
+        effects->learning_rate_scale = nimcp_clampf(
             avail->glucose_level / cfg->glucose_learning_threshold,
             0.0f, 1.0f
         );
@@ -408,7 +400,7 @@ static nimcp_error_t compute_substrate_to_wm_effects(omni_wm_substrate_bridge_t*
 
     /* Update interval scaling: slow down updates under stress */
     effects->update_interval_scale = 1.0f / (effects->compute_rate_scale + 0.01f);
-    effects->update_interval_scale = clampf(effects->update_interval_scale, 1.0f, 10.0f);
+    effects->update_interval_scale = nimcp_clampf(effects->update_interval_scale, 1.0f, 10.0f);
 
     /* Prediction confidence modulation: lower confidence under stress */
     effects->prediction_confidence_mod = avail->metabolic_capacity;
@@ -1224,7 +1216,7 @@ nimcp_error_t omni_wm_substrate_bridge_report_predictions(
     /* Update demand based on activity */
     float activity = (float)num_predictions * (float)horizon /
                       ((float)bridge->config.max_horizon * 100.0f);
-    bridge->wm_effects.demand.prediction_demand = clampf(activity, 0.0f, 1.0f);
+    bridge->wm_effects.demand.prediction_demand = nimcp_clampf(activity, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1247,7 +1239,7 @@ nimcp_error_t omni_wm_substrate_bridge_report_training(
 
     /* Update demand */
     float activity = (float)num_steps / 100.0f;
-    bridge->wm_effects.demand.training_demand = clampf(activity, 0.0f, 1.0f);
+    bridge->wm_effects.demand.training_demand = nimcp_clampf(activity, 0.0f, 1.0f);
     bridge->wm_effects.demand.training_active = (num_steps > 0);
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1272,7 +1264,7 @@ nimcp_error_t omni_wm_substrate_bridge_report_rollouts(
 
     /* Update demand */
     float activity = (float)total_steps / ((float)bridge->config.max_horizon * 10.0f);
-    bridge->wm_effects.demand.rollout_demand = clampf(activity, 0.0f, 1.0f);
+    bridge->wm_effects.demand.rollout_demand = nimcp_clampf(activity, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1673,5 +1665,5 @@ float omni_wm_substrate_compute_q10_factor(
     float factor = powf(q10, exponent);
 
     /* Clamp to reasonable range */
-    return clampf(factor, 0.1f, 10.0f);
+    return nimcp_clampf(factor, 0.1f, 10.0f);
 }

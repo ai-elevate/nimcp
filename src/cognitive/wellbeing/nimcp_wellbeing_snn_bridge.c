@@ -24,6 +24,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(wellbeing_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -73,16 +74,6 @@ struct wellbeing_snn_bridge {
     /* Statistics */
     wellbeing_snn_stats_t stats;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -379,7 +370,7 @@ int wellbeing_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -470,8 +461,8 @@ int wellbeing_snn_encode_hedonic(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[WELLBEING_DIM_COUNT] = {0};
-    dims[WELLBEING_DIM_HEDONIC] = clamp_f(pleasure - pain * 0.5f, 0.0f, 1.0f);
-    dims[WELLBEING_DIM_STRESS] = clamp_f(pain, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_HEDONIC] = nimcp_clampf(pleasure - pain * 0.5f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_STRESS] = nimcp_clampf(pain, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -496,9 +487,9 @@ int wellbeing_snn_encode_eudaimonic(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[WELLBEING_DIM_COUNT] = {0};
-    dims[WELLBEING_DIM_EUDAIMONIC] = clamp_f((meaning + purpose + growth) / 3.0f, 0.0f, 1.0f);
-    dims[WELLBEING_DIM_AUTONOMY] = clamp_f(purpose * 0.8f, 0.0f, 1.0f);
-    dims[WELLBEING_DIM_COMPETENCE] = clamp_f(growth * 0.9f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_EUDAIMONIC] = nimcp_clampf((meaning + purpose + growth) / 3.0f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_AUTONOMY] = nimcp_clampf(purpose * 0.8f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_COMPETENCE] = nimcp_clampf(growth * 0.9f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -522,15 +513,15 @@ int wellbeing_snn_encode_stress(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[WELLBEING_DIM_COUNT] = {0};
-    float adjusted_stress = clamp_f(stress_level, 0.0f, 1.0f);
+    float adjusted_stress = nimcp_clampf(stress_level, 0.0f, 1.0f);
     if (chronic) {
         adjusted_stress *= 1.3f;
-        adjusted_stress = clamp_f(adjusted_stress, 0.0f, 1.0f);
+        adjusted_stress = nimcp_clampf(adjusted_stress, 0.0f, 1.0f);
     }
 
     dims[WELLBEING_DIM_STRESS] = adjusted_stress;
     dims[WELLBEING_DIM_VITALITY] = 1.0f - adjusted_stress * 0.5f;
-    dims[WELLBEING_DIM_RESILIENCE] = clamp_f(1.0f - adjusted_stress * 0.3f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_RESILIENCE] = nimcp_clampf(1.0f - adjusted_stress * 0.3f, 0.0f, 1.0f);
 
     bridge->stress_signal = adjusted_stress;
 
@@ -568,8 +559,8 @@ int wellbeing_snn_encode_social(
 
     float dims[WELLBEING_DIM_COUNT] = {0};
     float social = (belongingness + support) / 2.0f - loneliness * 0.5f;
-    dims[WELLBEING_DIM_SOCIAL_CONNECTION] = clamp_f(social, 0.0f, 1.0f);
-    dims[WELLBEING_DIM_HEDONIC] = clamp_f(belongingness * 0.3f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_SOCIAL_CONNECTION] = nimcp_clampf(social, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_HEDONIC] = nimcp_clampf(belongingness * 0.3f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -641,12 +632,12 @@ int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_assessment.hedonic_tone = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_assessment.eudaimonic_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_assessment.vitality_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_assessment.resilience_score = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_assessment.social_connection = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_assessment.stress_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_assessment.hedonic_tone = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_assessment.eudaimonic_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_assessment.vitality_level = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_assessment.resilience_score = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_assessment.social_connection = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_assessment.stress_level = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Calculate flourishing as weighted combination */
     float flourishing = (bridge->last_assessment.hedonic_tone * 0.2f +
@@ -655,7 +646,7 @@ int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
                         bridge->last_assessment.resilience_score * 0.2f +
                         bridge->last_assessment.social_connection * 0.2f) *
                         (1.0f - bridge->last_assessment.stress_level * 0.3f);
-    bridge->last_assessment.flourishing_score = clamp_f(flourishing, 0.0f, 1.0f);
+    bridge->last_assessment.flourishing_score = nimcp_clampf(flourishing, 0.0f, 1.0f);
 
     /* Check balance */
     bridge->last_assessment.balance_achieved = bridge->balance_signal > bridge->config.balance_threshold;

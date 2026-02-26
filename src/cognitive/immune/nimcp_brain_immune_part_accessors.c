@@ -75,7 +75,7 @@ int brain_immune_set_antigen_callback(
 
     nimcp_mutex_lock(system->mutex);
     system->on_antigen = callback;
-    system->callback_user_data = user_data;
+    system->on_antigen_user_data = user_data;
     nimcp_mutex_unlock(system->mutex);
 
     return 0;
@@ -99,7 +99,7 @@ int brain_immune_set_neutralize_callback(
 
     nimcp_mutex_lock(system->mutex);
     system->on_neutralize = callback;
-    system->callback_user_data = user_data;
+    system->on_neutralize_user_data = user_data;
     nimcp_mutex_unlock(system->mutex);
 
     return 0;
@@ -123,7 +123,7 @@ int brain_immune_set_cytokine_callback(
 
     nimcp_mutex_lock(system->mutex);
     system->on_cytokine = callback;
-    system->callback_user_data = user_data;
+    system->on_cytokine_user_data = user_data;
     nimcp_mutex_unlock(system->mutex);
 
     return 0;
@@ -147,7 +147,7 @@ int brain_immune_set_inflammation_callback(
 
     nimcp_mutex_lock(system->mutex);
     system->on_inflammation = callback;
-    system->callback_user_data = user_data;
+    system->on_inflammation_user_data = user_data;
     nimcp_mutex_unlock(system->mutex);
 
     return 0;
@@ -171,7 +171,7 @@ int brain_immune_set_kill_callback(
 
     nimcp_mutex_lock(system->mutex);
     system->on_kill = callback;
-    system->callback_user_data = user_data;
+    system->on_kill_user_data = user_data;
     nimcp_mutex_unlock(system->mutex);
 
     return 0;

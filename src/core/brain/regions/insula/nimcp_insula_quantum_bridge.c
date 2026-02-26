@@ -21,6 +21,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(insula_quantum_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -66,12 +67,6 @@ static uint32_t quantum_rand(uint32_t* state) {
 
 static float quantum_randf(uint32_t* state) {
     return (float)quantum_rand(state) / 32767.0f;
-}
-
-static float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
 }
 
 /*=============================================================================
@@ -342,7 +337,7 @@ int insula_quantum_correct_intero_noise(
         float signal = noisy_signals[i];
 
         /* Clamp extreme values */
-        signal = clamp_f(signal, 0.0f, 1.0f);
+        signal = nimcp_clampf(signal, 0.0f, 1.0f);
 
         /* Apply soft thresholding for noise reduction */
         if (fabsf(signal - 0.5f) < tolerance) {
@@ -491,7 +486,7 @@ int insula_quantum_apply_emotional_interference(
 
         /* Apply interference to amplitude */
         hypotheses[i].amplitude += interference * 0.1f;
-        hypotheses[i].amplitude = clamp_f(hypotheses[i].amplitude, 0.0f, 1.0f);
+        hypotheses[i].amplitude = nimcp_clampf(hypotheses[i].amplitude, 0.0f, 1.0f);
 
         /* Recalculate probability */
         hypotheses[i].probability = hypotheses[i].amplitude * hypotheses[i].amplitude;
@@ -633,10 +628,10 @@ int insula_quantum_evaluate_social(
     float noise = (quantum_randf(&bridge->rng_state) - 0.5f) * 0.1f;
 
     /* Estimate trust based on cues */
-    *trust_estimate = clamp_f(avg_cue + noise, 0.0f, 1.0f);
+    *trust_estimate = nimcp_clampf(avg_cue + noise, 0.0f, 1.0f);
 
     /* Estimate fairness */
-    *fairness_estimate = clamp_f(avg_cue + noise * 0.5f, 0.0f, 1.0f);
+    *fairness_estimate = nimcp_clampf(avg_cue + noise * 0.5f, 0.0f, 1.0f);
 
     return 0;
 }
@@ -674,7 +669,7 @@ int insula_quantum_optimize_homeostasis(
     for (uint32_t i = 0; i < action_dim && i < state_dim; i++) {
         /* Simple proportional control */
         float error = target_state[i] - current_state[i];
-        optimal_action[i] = clamp_f(error * 0.5f, -1.0f, 1.0f);
+        optimal_action[i] = nimcp_clampf(error * 0.5f, -1.0f, 1.0f);
     }
 
     /* Fill remaining action dimensions with zeros */

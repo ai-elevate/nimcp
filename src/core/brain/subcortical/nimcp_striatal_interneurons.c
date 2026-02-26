@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(striatal_interneurons, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -65,16 +66,6 @@ struct striatal_interneurons {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 /* ============================================================================
  * LIFECYCLE IMPLEMENTATION
@@ -255,7 +246,7 @@ int sint_set_cortical_input(striatal_interneurons_t* sint,
     }
     mean /= (float)size;
 
-    sint->cortical_input_level = clamp_f(mean, 0.0f, 1.0f);
+    sint->cortical_input_level = nimcp_clampf(mean, 0.0f, 1.0f);
 
     /* Distribute to FSI units */
     for (uint32_t i = 0; i < sint->num_fsi; i++) {
@@ -275,7 +266,7 @@ int sint_set_dopamine(striatal_interneurons_t* sint, float dopamine) {
     }
 
     nimcp_mutex_lock(sint->mutex);
-    sint->dopamine_level = clamp_f(dopamine, 0.0f, 1.0f);
+    sint->dopamine_level = nimcp_clampf(dopamine, 0.0f, 1.0f);
     nimcp_mutex_unlock(sint->mutex);
     return 0;
 }
@@ -288,7 +279,7 @@ int sint_signal_salience(striatal_interneurons_t* sint, float salience) {
 
     nimcp_mutex_lock(sint->mutex);
 
-    sint->salience_level = clamp_f(salience, 0.0f, 1.0f);
+    sint->salience_level = nimcp_clampf(salience, 0.0f, 1.0f);
 
     /* Check if salience triggers TAN pause */
     if (salience > sint->config.tan_pause_threshold) {
@@ -313,7 +304,7 @@ int sint_set_thalamic_input(striatal_interneurons_t* sint, float input) {
     }
 
     nimcp_mutex_lock(sint->mutex);
-    sint->thalamic_input = clamp_f(input, 0.0f, 1.0f);
+    sint->thalamic_input = nimcp_clampf(input, 0.0f, 1.0f);
     nimcp_mutex_unlock(sint->mutex);
     return 0;
 }
@@ -338,7 +329,7 @@ int sint_step(striatal_interneurons_t* sint, float dt_ms) {
         /* Update activation */
         float target_act = sint->cortical_input_level * sint->config.fsi_cortical_weight;
         fsi->activation += (target_act - fsi->activation) * 0.1f * dt_ms / 10.0f;
-        fsi->activation = clamp_f(fsi->activation, 0.0f, 1.0f);
+        fsi->activation = nimcp_clampf(fsi->activation, 0.0f, 1.0f);
 
         /* Compute firing rate */
         if (fsi->activation > SINT_FSI_THRESHOLD) {
@@ -451,7 +442,7 @@ int sint_step(striatal_interneurons_t* sint, float dt_ms) {
         uint32_t ngf_idx = m % sint->num_ngf;
         inhibition += sint->ngf_units[ngf_idx].gaba_volume;
 
-        sint->msn_inhibition[m] = clamp_f(inhibition, 0.0f, 1.0f);
+        sint->msn_inhibition[m] = nimcp_clampf(inhibition, 0.0f, 1.0f);
     }
 
     /* Compute WTA winner if enabled */
@@ -567,7 +558,7 @@ int sint_apply_fsi_lateral_inhibition(striatal_interneurons_t* sint) {
     for (uint32_t i = 0; i < sint->num_fsi; i++) {
         float inhibition = mean * sint->config.fsi_lateral_inhibition;
         sint->fsi_units[i].activation -= inhibition;
-        sint->fsi_units[i].activation = clamp_f(sint->fsi_units[i].activation, 0.0f, 1.0f);
+        sint->fsi_units[i].activation = nimcp_clampf(sint->fsi_units[i].activation, 0.0f, 1.0f);
     }
 
     nimcp_mutex_unlock(sint->mutex);

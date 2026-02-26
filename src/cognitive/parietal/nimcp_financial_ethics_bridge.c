@@ -46,6 +46,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_financial_ethics_bridge_health_agent = NULL;
@@ -181,16 +182,6 @@ static const char* state_names[] = {
     "error"
 };
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
-}
-
 static inline float maxf(float a, float b) {
     return (a > b) ? a : b;
 }
@@ -255,7 +246,7 @@ static float compute_base_harm(
 
     (void)config;  /* Config may be used for future harm tuning */
 
-    return clampf(harm, 0.0f, 1.0f);
+    return nimcp_clampf(harm, 0.0f, 1.0f);
 }
 
 /**
@@ -378,7 +369,7 @@ static float compute_reciprocity(
     /* Large position sizes can be more harmful */
     reciprocity -= minf(action->position_size / 20000000.0f, 0.2f);
 
-    return clampf(reciprocity, 0.0f, 1.0f);
+    return nimcp_clampf(reciprocity, 0.0f, 1.0f);
 }
 
 /**
@@ -403,7 +394,7 @@ static float compute_empathy_internal(
         empathy = maxf(empathy, 0.6f);
     }
 
-    return clampf(empathy, 0.0f, 1.0f);
+    return nimcp_clampf(empathy, 0.0f, 1.0f);
 }
 
 /* ============================================================================

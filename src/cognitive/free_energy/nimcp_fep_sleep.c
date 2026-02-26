@@ -22,19 +22,9 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "utils/thread/nimcp_thread_rand.h"
 #include "constants/nimcp_learning_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fep_sleep, MESH_ADAPTER_CATEGORY_COGNITIVE)
-
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static uint64_t get_time_ms(void) {
     struct timespec ts;
@@ -493,7 +483,7 @@ int fep_sleep_apply_downscaling(
 
     nimcp_platform_mutex_lock(sys->mutex);
 
-    factor = clamp_f(factor, 0.5f, 1.0f);
+    factor = nimcp_clampf(factor, 0.5f, 1.0f);
 
     /* Apply synaptic downscaling to all FEP levels */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
@@ -773,7 +763,7 @@ int fep_sleep_on_prediction_error(fep_sleep_system_t* sys, float prediction_erro
     sys->pressure.sleep_pressure += pressure_contribution;
 
     /* Clamp pressure to bounds */
-    sys->pressure.sleep_pressure = clamp_f(
+    sys->pressure.sleep_pressure = nimcp_clampf(
         sys->pressure.sleep_pressure,
         FEP_SLEEP_MIN_PRESSURE,
         FEP_SLEEP_MAX_PRESSURE
@@ -820,7 +810,7 @@ int fep_sleep_on_uncertainty(fep_sleep_system_t* sys, float uncertainty) {
     if (uncertainty > 0.5f) {
         float pressure_contribution = (uncertainty - 0.5f) * FEP_SLEEP_UNCERTAINTY_PRESSURE;
         sys->pressure.sleep_pressure += pressure_contribution;
-        sys->pressure.sleep_pressure = clamp_f(
+        sys->pressure.sleep_pressure = nimcp_clampf(
             sys->pressure.sleep_pressure,
             FEP_SLEEP_MIN_PRESSURE,
             FEP_SLEEP_MAX_PRESSURE
@@ -851,13 +841,13 @@ int fep_sleep_on_convergence(fep_sleep_system_t* sys, bool converged, float conv
     nimcp_platform_mutex_lock(sys->mutex);
 
     sys->pressure.model_converged = converged;
-    sys->pressure.convergence_quality = clamp_f(convergence_quality, 0.0f, 1.0f);
+    sys->pressure.convergence_quality = nimcp_clampf(convergence_quality, 0.0f, 1.0f);
 
     /* Good convergence is a good time for sleep (consolidation) */
     if (converged && convergence_quality > 0.8f) {
         /* Slight boost to sleep pressure - good time to consolidate */
         sys->pressure.sleep_pressure += 0.05f;
-        sys->pressure.sleep_pressure = clamp_f(
+        sys->pressure.sleep_pressure = nimcp_clampf(
             sys->pressure.sleep_pressure,
             FEP_SLEEP_MIN_PRESSURE,
             FEP_SLEEP_MAX_PRESSURE
@@ -959,7 +949,7 @@ int fep_sleep_update_pressure(fep_sleep_system_t* sys, uint64_t delta_ms) {
         /* Approximately ~0.001 per ms = 3.6% per hour */
         float time_pressure = (float)delta_ms * FEP_SLEEP_PRESSURE_DECAY;
         sys->pressure.sleep_pressure += time_pressure;
-        sys->pressure.sleep_pressure = clamp_f(
+        sys->pressure.sleep_pressure = nimcp_clampf(
             sys->pressure.sleep_pressure,
             FEP_SLEEP_MIN_PRESSURE,
             FEP_SLEEP_MAX_PRESSURE

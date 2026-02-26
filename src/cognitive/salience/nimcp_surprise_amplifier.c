@@ -49,6 +49,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_surprise_amplifier_health_agent = NULL;
@@ -78,17 +79,6 @@ static inline void surprise_amplifier_heartbeat_instance(
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow in surprise magnitude
- * HOW:  Return min if below, max if above, value otherwise
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * WHAT: Get current time in nanoseconds
@@ -263,7 +253,7 @@ static int surprise_amplifier_process_event_unlocked(
 
     /* Amplify: apply weight and gain */
     float amplified = raw_magnitude * weight * amp->config.amplification_gain;
-    float magnitude = clamp_f(amplified, 0.0f, 1.0f);
+    float magnitude = nimcp_clampf(amplified, 0.0f, 1.0f);
 
     /* Check threshold */
     if (magnitude < amp->config.base_threshold) {
@@ -799,7 +789,7 @@ int surprise_amplifier_on_prediction_error(surprise_amplifier_t* amp,
     surprise_amplifier_heartbeat("on_prediction_error", 0.0f);
 
     /* Normalize prediction error to [0,1] range */
-    float normalized = clamp_f(prediction_error, 0.0f, 1.0f);
+    float normalized = nimcp_clampf(prediction_error, 0.0f, 1.0f);
 
     nimcp_mutex_lock(amp->mutex);
     int result = surprise_amplifier_process_event_unlocked(
@@ -838,7 +828,7 @@ int surprise_amplifier_on_agent_conflict(surprise_amplifier_t* amp,
      * This models the biological ACC conflict monitoring signal.
      */
     float conflict_strength = min_confidence * divergence * (1.0f - confidence_gap * 0.5f);
-    float normalized = clamp_f(conflict_strength, 0.0f, 1.0f);
+    float normalized = nimcp_clampf(conflict_strength, 0.0f, 1.0f);
 
     nimcp_mutex_lock(amp->mutex);
     int result = surprise_amplifier_process_event_unlocked(
@@ -871,7 +861,7 @@ int surprise_amplifier_on_hypothesis_invalidated(surprise_amplifier_t* amp,
 
     /* Magnitude proportional to confidence drop */
     float confidence_drop = prior_confidence - posterior_confidence;
-    float normalized = clamp_f(confidence_drop, 0.0f, 1.0f);
+    float normalized = nimcp_clampf(confidence_drop, 0.0f, 1.0f);
 
     nimcp_mutex_lock(amp->mutex);
     int result = surprise_amplifier_process_event_unlocked(
@@ -900,7 +890,7 @@ int surprise_amplifier_on_novelty(surprise_amplifier_t* amp,
 
     surprise_amplifier_heartbeat("on_novelty", 0.0f);
 
-    float normalized = clamp_f(novelty_score, 0.0f, 1.0f);
+    float normalized = nimcp_clampf(novelty_score, 0.0f, 1.0f);
 
     nimcp_mutex_lock(amp->mutex);
     int result = surprise_amplifier_process_event_unlocked(
@@ -924,7 +914,7 @@ int surprise_amplifier_on_bayesian_surprise(surprise_amplifier_t* amp,
     surprise_amplifier_heartbeat("on_bayesian_surprise", 0.0f);
 
     /* KL divergence can be > 1, normalize with sigmoid-like mapping */
-    float normalized = clamp_f(kl_divergence / (1.0f + kl_divergence), 0.0f, 1.0f);
+    float normalized = nimcp_clampf(kl_divergence / (1.0f + kl_divergence), 0.0f, 1.0f);
 
     nimcp_mutex_lock(amp->mutex);
     int result = surprise_amplifier_process_event_unlocked(

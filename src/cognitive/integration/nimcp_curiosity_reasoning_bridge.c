@@ -30,6 +30,7 @@
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(curiosity_reasoning_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -77,17 +78,6 @@ struct curiosity_reasoning_bridge {
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-/**
- * WHAT: Clamp float to range
- * WHY:  Prevent numerical overflow/underflow
- * HOW:  Return min/max if out of bounds
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * WHAT: Find topic by ID
@@ -279,7 +269,7 @@ int curiosity_reasoning_drive_exploration(
     curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
 
 
-    curiosity_level = clamp_f(curiosity_level,
+    curiosity_level = nimcp_clampf(curiosity_level,
                                CURIOSITY_REASONING_MIN_LEVEL,
                                CURIOSITY_REASONING_MAX_LEVEL);
 
@@ -303,7 +293,7 @@ int curiosity_reasoning_drive_exploration(
     topic->exploration_priority = curiosity_level * bridge->config.exploration_bias;
 
     /* Clamp to valid range */
-    topic->exploration_priority = clamp_f(topic->exploration_priority,
+    topic->exploration_priority = nimcp_clampf(topic->exploration_priority,
                                            CURIOSITY_REASONING_MIN_LEVEL,
                                            CURIOSITY_REASONING_MAX_LEVEL);
 
@@ -335,7 +325,7 @@ int curiosity_reasoning_share_uncertainty(
     curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
 
 
-    uncertainty_level = clamp_f(uncertainty_level,
+    uncertainty_level = nimcp_clampf(uncertainty_level,
                                  CURIOSITY_REASONING_MIN_LEVEL,
                                  CURIOSITY_REASONING_MAX_LEVEL);
 
@@ -357,7 +347,7 @@ int curiosity_reasoning_share_uncertainty(
     topic->exploration_priority += uncertainty_level * bridge->config.uncertainty_weight;
 
     /* Clamp to valid range */
-    topic->exploration_priority = clamp_f(topic->exploration_priority,
+    topic->exploration_priority = nimcp_clampf(topic->exploration_priority,
                                            CURIOSITY_REASONING_MIN_LEVEL,
                                            CURIOSITY_REASONING_MAX_LEVEL);
 
@@ -387,7 +377,7 @@ int curiosity_reasoning_on_novel_conclusion(
     curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
 
 
-    novelty_score = clamp_f(novelty_score,
+    novelty_score = nimcp_clampf(novelty_score,
                              CURIOSITY_REASONING_MIN_LEVEL,
                              CURIOSITY_REASONING_MAX_LEVEL);
 
@@ -403,7 +393,7 @@ int curiosity_reasoning_on_novel_conclusion(
             if (bridge->topics[i].active) {
                 /* Boost curiosity based on novelty */
                 bridge->topics[i].curiosity_level += novelty_score * CURIOSITY_BOOST_FACTOR;
-                bridge->topics[i].curiosity_level = clamp_f(
+                bridge->topics[i].curiosity_level = nimcp_clampf(
                     bridge->topics[i].curiosity_level,
                     CURIOSITY_REASONING_MIN_LEVEL,
                     CURIOSITY_REASONING_MAX_LEVEL);
@@ -412,7 +402,7 @@ int curiosity_reasoning_on_novel_conclusion(
                 bridge->topics[i].exploration_priority =
                     bridge->topics[i].curiosity_level * bridge->config.exploration_bias +
                     bridge->topics[i].uncertainty_level * bridge->config.uncertainty_weight;
-                bridge->topics[i].exploration_priority = clamp_f(
+                bridge->topics[i].exploration_priority = nimcp_clampf(
                     bridge->topics[i].exploration_priority,
                     CURIOSITY_REASONING_MIN_LEVEL,
                     CURIOSITY_REASONING_MAX_LEVEL);

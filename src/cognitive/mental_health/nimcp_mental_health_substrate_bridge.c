@@ -19,6 +19,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(mental_health_substrate_bridge)
 //=============================================================================
@@ -157,13 +158,13 @@ int mental_health_substrate_bridge_update(mental_health_substrate_bridge_t* brid
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP fundamentally underpins mental health and resilience */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.resilience_level = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.wellbeing_level = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.resilience_level = nimcp_clampf(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.wellbeing_level = nimcp_clampf(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables coping and stability */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.coping_capacity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.emotional_stability = nimcp_clamp_f(metabolic_cap * 0.95f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.coping_capacity = nimcp_clampf(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.emotional_stability = nimcp_clampf(metabolic_cap * 0.95f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.resilience_level + bridge->effects.coping_capacity +
                                         bridge->effects.emotional_stability + bridge->effects.wellbeing_level) / 4.0f;

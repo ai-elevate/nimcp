@@ -26,6 +26,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(rcog_snn_bridge, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -137,16 +138,6 @@ struct rcog_snn_bridge {
     /* Phase 8: Instance-level health agent */
     nimcp_health_agent_t* health_agent;
 };
-
-//=============================================================================
-// Helper Functions
-//=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -440,7 +431,7 @@ int rcog_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_clampf(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -512,13 +503,13 @@ int rcog_snn_encode_depth(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    float normalized_depth = clamp_f(depth / (float)max_depth, 0.0f, 1.0f);
+    float normalized_depth = nimcp_clampf(depth / (float)max_depth, 0.0f, 1.0f);
     float dims[RCOG_DIM_COUNT] = {0};
     dims[RCOG_DIM_RECURSION_DEPTH] = normalized_depth;
     /* Higher depth correlates with working memory load */
     dims[RCOG_DIM_WORKING_MEMORY_LOAD] = normalized_depth * 0.8f;
     /* Meta-cognitive awareness increases with depth */
-    dims[RCOG_DIM_META_COGNITIVE_LEVEL] = clamp_f(normalized_depth * 1.2f, 0.0f, 1.0f);
+    dims[RCOG_DIM_META_COGNITIVE_LEVEL] = nimcp_clampf(normalized_depth * 1.2f, 0.0f, 1.0f);
 
     bridge->depth_signal = normalized_depth;
 
@@ -544,8 +535,8 @@ int rcog_snn_encode_meta_cognitive(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[RCOG_DIM_COUNT] = {0};
-    dims[RCOG_DIM_META_COGNITIVE_LEVEL] = clamp_f(awareness, 0.0f, 1.0f);
-    dims[RCOG_DIM_AGGREGATION_CONFIDENCE] = clamp_f(confidence, 0.0f, 1.0f);
+    dims[RCOG_DIM_META_COGNITIVE_LEVEL] = nimcp_clampf(awareness, 0.0f, 1.0f);
+    dims[RCOG_DIM_AGGREGATION_CONFIDENCE] = nimcp_clampf(confidence, 0.0f, 1.0f);
     dims[RCOG_DIM_ATTENTION_FOCUS] = (awareness + confidence) / 2.0f;
 
     bridge->meta_cognitive_signal = awareness;
@@ -572,10 +563,10 @@ int rcog_snn_encode_self_reference(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[RCOG_DIM_COUNT] = {0};
-    dims[RCOG_DIM_SELF_REFERENCE] = clamp_f(intensity, 0.0f, 1.0f);
+    dims[RCOG_DIM_SELF_REFERENCE] = nimcp_clampf(intensity, 0.0f, 1.0f);
     /* Loop depth affects meta-cognitive level */
-    float loop_factor = clamp_f((float)loop_depth / 5.0f, 0.0f, 1.0f);
-    dims[RCOG_DIM_META_COGNITIVE_LEVEL] = clamp_f(intensity * 0.5f + loop_factor * 0.5f, 0.0f, 1.0f);
+    float loop_factor = nimcp_clampf((float)loop_depth / 5.0f, 0.0f, 1.0f);
+    dims[RCOG_DIM_META_COGNITIVE_LEVEL] = nimcp_clampf(intensity * 0.5f + loop_factor * 0.5f, 0.0f, 1.0f);
 
     bridge->self_reference_signal = intensity;
 
@@ -608,7 +599,7 @@ int rcog_snn_encode_hierarchy(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    float normalized_level = clamp_f((float)level / (float)total_levels, 0.0f, 1.0f);
+    float normalized_level = nimcp_clampf((float)level / (float)total_levels, 0.0f, 1.0f);
     float dims[RCOG_DIM_COUNT] = {0};
     dims[RCOG_DIM_HIERARCHICAL_POSITION] = normalized_level;
     /* Decomposition progress correlates with level */
@@ -684,12 +675,12 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs into cognitive state */
-    bridge->last_cognitive_state.recursion_depth = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_cognitive_state.meta_cognitive_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_cognitive_state.self_reference_intensity = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_cognitive_state.hierarchical_position = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_cognitive_state.problem_complexity = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_cognitive_state.decomposition_progress = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_cognitive_state.recursion_depth = nimcp_clampf(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_cognitive_state.meta_cognitive_level = nimcp_clampf(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_cognitive_state.self_reference_intensity = nimcp_clampf(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_cognitive_state.hierarchical_position = nimcp_clampf(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_cognitive_state.problem_complexity = nimcp_clampf(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_cognitive_state.decomposition_progress = nimcp_clampf(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check for deep recursion */
     if (bridge->last_cognitive_state.recursion_depth > bridge->config.depth_threshold) {

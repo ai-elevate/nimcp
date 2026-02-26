@@ -30,6 +30,7 @@
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_dimension_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Custom health agent: using pre-existing implementation from header */
 static nimcp_health_agent_t* g_financial_investment_health_agent = NULL;
@@ -235,22 +236,6 @@ static void investment_present_antigen(financial_investment_eng_t* eng,
         brain_immune_present_antigen(eng->immune, 0, sig, strlen((char*)sig),
                                       severity, 0, &antigen_id);
     }
-}
-
-//=============================================================================
-// Utility helpers
-//=============================================================================
-
-static float clamp01(float v) {
-    if (v < 0.0f) return 0.0f;
-    if (v > 1.0f) return 1.0f;
-    return v;
-}
-
-static float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 /**
@@ -755,7 +740,7 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
 
         /* Inflammation increases perceived risk */
         float inflam_boost = 1.0f + fin->inflammation * fin->config.inflammation_sensitivity * 0.3f;
-        out_metrics->fuzzy_risk_grade = clamp01(
+        out_metrics->fuzzy_risk_grade = nimcp_clamp01(
             (vol_risk * 0.4f + dd_risk * 0.35f + var_risk * 0.25f) * inflam_boost);
 
         /* Fuzzy diversification quality */
@@ -765,7 +750,7 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
         fuzzy_mf_t conc_mf = fuzzy_mf_z_shaped(0.1f, 0.5f);
         float conc_score = fuzzy_mf_evaluate(&conc_mf, hhi);
 
-        out_metrics->fuzzy_diversification_quality = clamp01(
+        out_metrics->fuzzy_diversification_quality = nimcp_clamp01(
             div_score * 0.6f + conc_score * 0.4f);
     }
 
@@ -991,8 +976,8 @@ int financial_investment_price_option(financial_investment_eng_t* fin,
             float u1 = (float)((seed >> 33) + 1) / (float)(1ULL << 31);
             seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
             float u2 = (float)((seed >> 33) + 1) / (float)(1ULL << 31);
-            u1 = clampf(u1, 1e-7f, 1.0f - 1e-7f);
-            u2 = clampf(u2, 1e-7f, 1.0f - 1e-7f);
+            u1 = nimcp_clampf(u1, 1e-7f, 1.0f - 1e-7f);
+            u2 = nimcp_clampf(u2, 1e-7f, 1.0f - 1e-7f);
             float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * PI_VAL * u2);
 
             float st = spot * expf(drift + diffusion * z);
@@ -1020,8 +1005,8 @@ int financial_investment_price_option(financial_investment_eng_t* fin,
             float u1 = (float)((seed >> 33) + 1) / (float)(1ULL << 31);
             seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
             float u2 = (float)((seed >> 33) + 1) / (float)(1ULL << 31);
-            u1 = clampf(u1, 1e-7f, 1.0f - 1e-7f);
-            u2 = clampf(u2, 1e-7f, 1.0f - 1e-7f);
+            u1 = nimcp_clampf(u1, 1e-7f, 1.0f - 1e-7f);
+            u2 = nimcp_clampf(u2, 1e-7f, 1.0f - 1e-7f);
             float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * PI_VAL * u2);
 
             float st_up = (spot + ds) * expf(drift + diffusion * z);
@@ -1218,7 +1203,7 @@ float financial_investment_implied_vol(float market_price,
         }
 
         vol -= diff / vega;
-        vol = clampf(vol, 0.001f, 5.0f);
+        vol = nimcp_clampf(vol, 0.001f, 5.0f);
     }
 
     return vol;
@@ -1365,7 +1350,7 @@ int financial_investment_comparables(financial_investment_eng_t* fin,
     var /= (float)peer_count;
     float cv = (fabsf(mean) > EPSILON) ? sqrtf(var) / fabsf(mean) : 1.0f;
 
-    out_result->confidence = clamp01(1.0f - cv * 0.5f);
+    out_result->confidence = nimcp_clamp01(1.0f - cv * 0.5f);
     out_result->margin_of_safety = 0.0f;
     out_result->upside_potential = 0.0f;
 
@@ -1440,7 +1425,7 @@ static int optimize_mean_variance(const financial_investment_eng_t* fin,
             }
             out_result->optimal_weights[i] += lr * grad;
             /* Clamp weights */
-            out_result->optimal_weights[i] = clampf(
+            out_result->optimal_weights[i] = nimcp_clampf(
                 out_result->optimal_weights[i],
                 fin->config.min_weight,
                 fin->config.max_weight);
@@ -1526,8 +1511,8 @@ static int optimize_risk_parity(const financial_investment_eng_t* fin,
 
             /* Adjust weight: decrease if risk contribution too high */
             float adj = 1.0f - 0.5f * diff / (target_rc + EPSILON);
-            out_result->optimal_weights[i] *= clampf(adj, 0.5f, 2.0f);
-            out_result->optimal_weights[i] = clampf(
+            out_result->optimal_weights[i] *= nimcp_clampf(adj, 0.5f, 2.0f);
+            out_result->optimal_weights[i] = nimcp_clampf(
                 out_result->optimal_weights[i],
                 fin->config.min_weight + EPSILON,
                 fin->config.max_weight);
@@ -1723,7 +1708,7 @@ int financial_investment_optimize(financial_investment_eng_t* fin,
         fuzzy_mf_t conv_mf = fuzzy_mf_gaussian(0.0f, 0.3f);
         float conv_degree = fuzzy_mf_evaluate(&conv_mf, progress);
         /* Faster convergence = higher convergence degree */
-        out_result->convergence_degree = clamp01(conv_degree);
+        out_result->convergence_degree = nimcp_clamp01(conv_degree);
     } else if (out_result->converged) {
         out_result->convergence_degree = 1.0f;
     }
@@ -1997,7 +1982,7 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
         ss_total += diff * diff;
     }
     out_result->r_squared = (ss_total > EPSILON) ? 1.0f - ss_residual / ss_total : 0.0f;
-    out_result->r_squared = clamp01(out_result->r_squared);
+    out_result->r_squared = nimcp_clamp01(out_result->r_squared);
 
     /* Store factor returns (means) */
     for (uint32_t k = 0; k < K; k++) {
@@ -2075,7 +2060,7 @@ int financial_investment_set_inflammation(financial_investment_eng_t* fin, float
         return FIN_ERR_NULL;
     }
     financial_investment_heartbeat("fin_set_inflammation", 0.0f);
-    fin->inflammation = clamp01(level);
+    fin->inflammation = nimcp_clamp01(level);
     return FIN_ERR_OK;
 }
 
@@ -2086,7 +2071,7 @@ int financial_investment_set_fatigue(financial_investment_eng_t* fin, float leve
         return FIN_ERR_NULL;
     }
     financial_investment_heartbeat("fin_set_fatigue", 0.0f);
-    fin->fatigue = clamp01(level);
+    fin->fatigue = nimcp_clamp01(level);
     return FIN_ERR_OK;
 }
 

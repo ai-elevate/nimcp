@@ -36,6 +36,7 @@
 
 #define LOG_MODULE "plasticity_dendritic"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(dendritic)
 
@@ -78,13 +79,6 @@ struct dendritic_tree_struct {
 //=============================================================================
 // Inline Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    return fminf(fmaxf(value, min_val), max_val);
-}
 
 /**
  * @brief Safe division with epsilon guard
@@ -275,7 +269,7 @@ float nmda_compute_block(float voltage, const nmda_params_t* params) {
     float voltage_term = expf(-params->voltage_slope * voltage);
     float block = 1.0F / (1.0F + mg_term * voltage_term);
 
-    return clamp_f(block, 0.0F, 1.0F);
+    return nimcp_clampf(block, 0.0F, 1.0F);
 }
 
 void nmda_update_kinetics(dendritic_nmda_state_t* state,
@@ -305,7 +299,7 @@ void nmda_update_kinetics(dendritic_nmda_state_t* state,
     }
 
     /* Clamp glutamate to [0,1] */
-    glutamate = clamp_f(glutamate, 0.0F, 1.0F);
+    glutamate = nimcp_clampf(glutamate, 0.0F, 1.0F);
 
     /* Update active state */
     state->active = (glutamate > 0.1F);
@@ -320,7 +314,7 @@ void nmda_update_kinetics(dendritic_nmda_state_t* state,
 
     /* Update gating variable */
     state->s += rise_term - decay_term;
-    state->s = clamp_f(state->s, 0.0F, 1.0F);
+    state->s = nimcp_clampf(state->s, 0.0F, 1.0F);
 
     /* Track rising component separately for dual-exponential */
     state->s_rise += rise_decay * (glutamate - state->s_rise);
@@ -486,7 +480,7 @@ void compartment_integrate(compartment_state_t* state,
     state->voltage += dv;
 
     /* Clamp voltage to physiological range */
-    state->voltage = clamp_f(state->voltage, -100.0F, 50.0F);
+    state->voltage = nimcp_clampf(state->voltage, -100.0F, 50.0F);
 
     /* Decay calcium */
     float ca_decay = decay_factor(dt, CALCIUM_DECAY_TAU);
@@ -552,7 +546,7 @@ float compartment_supralinear_factor(float total_input,
     float boost = 1.0F + supralinearity_factor * excess;
 
     /* Clamp to reasonable range */
-    return clamp_f(boost, 1.0F, 3.0F);
+    return nimcp_clampf(boost, 1.0F, 3.0F);
 }
 
 //=============================================================================

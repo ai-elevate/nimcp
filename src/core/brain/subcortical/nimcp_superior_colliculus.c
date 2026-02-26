@@ -13,6 +13,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE_MESH_ONLY(superior_colliculus, MESH_ADAPTER_CATEGORY_SUBCORTICAL)
 
@@ -61,16 +62,6 @@ struct superior_colliculus {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
-
-/* ============================================================================
- * HELPER FUNCTIONS
- * ============================================================================ */
-
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 static float compute_distance(sc_position_t a, sc_position_t b) {
     float dx = b.x - a.x;
@@ -322,11 +313,11 @@ int sc_set_snr_disinhibition(superior_colliculus_t* sc,
     int map_x = (int)((target->x + SC_MAX_SACCADE_DEG) / (2.0f * SC_MAX_SACCADE_DEG) * sc->map_width);
     int map_y = (int)((target->y + SC_MAX_SACCADE_DEG) / (2.0f * SC_MAX_SACCADE_DEG) * sc->map_height);
 
-    map_x = (int)clamp_f((float)map_x, 0, (float)(sc->map_width - 1));
-    map_y = (int)clamp_f((float)map_y, 0, (float)(sc->map_height - 1));
+    map_x = (int)nimcp_clampf((float)map_x, 0, (float)(sc->map_width - 1));
+    map_y = (int)nimcp_clampf((float)map_y, 0, (float)(sc->map_height - 1));
 
     uint32_t idx = (uint32_t)(map_y * sc->map_width + map_x);
-    sc->snr_input[idx] = 1.0f - clamp_f(disinhibition, 0.0f, 1.0f);
+    sc->snr_input[idx] = 1.0f - nimcp_clampf(disinhibition, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(sc->mutex);
     return 0;
@@ -464,7 +455,7 @@ int sc_strengthen_fixation(superior_colliculus_t* sc, float strength) {
     }
 
     nimcp_mutex_lock(sc->mutex);
-    sc->fixation_strength = clamp_f(strength, 0.0f, 1.0f);
+    sc->fixation_strength = nimcp_clampf(strength, 0.0f, 1.0f);
     nimcp_mutex_unlock(sc->mutex);
     return 0;
 }
@@ -511,7 +502,7 @@ int sc_step(superior_colliculus_t* sc, float dt_ms) {
         float visual = sc->superficial_map[i];
         float disinhibition = 1.0f - sc->snr_input[i] * sc->config.snr_gain;
         sc->intermediate_map[i] += visual * disinhibition * 0.1f;
-        sc->intermediate_map[i] = clamp_f(sc->intermediate_map[i], 0.0f, 1.0f);
+        sc->intermediate_map[i] = nimcp_clampf(sc->intermediate_map[i], 0.0f, 1.0f);
     }
 
     /* Find peak in motor map */
