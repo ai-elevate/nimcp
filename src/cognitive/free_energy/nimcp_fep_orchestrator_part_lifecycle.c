@@ -43,9 +43,12 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
     orchestrator->next_bridge_id = 1;
     orchestrator->bio_async_connected = false;
     orchestrator->immune_connected = false;
-    
+
     /* Initialize statistics */
     memset(&orchestrator->stats, 0, sizeof(fep_orchestrator_stats_t));
+
+    /* Initialize continuous scheduling metrics to zero (calm state) */
+    memset(&orchestrator->fep_metrics, 0, sizeof(fep_scheduling_metrics_t));
     
     if (orchestrator->config.enable_logging) {
         NIMCP_LOGGING_INFO("FEP orchestrator created: max_bridges=%u", 

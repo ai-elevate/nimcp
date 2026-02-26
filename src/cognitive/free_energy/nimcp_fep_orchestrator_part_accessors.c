@@ -62,6 +62,13 @@ int fep_orchestrator_default_config(fep_orchestrator_config_t* config) {
     config->categories[FEP_BRIDGE_CATEGORY_JEPA].enabled = true;
     config->categories[FEP_BRIDGE_CATEGORY_JEPA].update_interval_ms = FEP_UPDATE_INTERVAL_JEPA;
 
+    /* Continuous scheduling defaults (disabled by default for backward compat) */
+    config->continuous_schedule.enabled = false;
+    config->continuous_schedule.min_interval_ms = FEP_CONTINUOUS_MIN_INTERVAL_MS;
+    config->continuous_schedule.max_interval_ms = FEP_CONTINUOUS_MAX_INTERVAL_MS;
+    config->continuous_schedule.decay_rate = FEP_CONTINUOUS_DECAY_RATE;
+    config->continuous_schedule.fe_scale = FEP_CONTINUOUS_FE_SCALE;
+
     return 0;
 }
 

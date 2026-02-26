@@ -53,6 +53,7 @@ static const char* STATE_NAMES[] = {
 static fep_bridge_entry_t* find_bridge_by_id( fep_orchestrator_t* orchestrator, uint32_t bridge_id );
 static bool category_needs_update( const fep_orchestrator_t* orchestrator, fep_bridge_category_t category, uint64_t current_time_ms );
 static int update_single_bridge( fep_orchestrator_t* orchestrator, fep_bridge_entry_t* entry, uint64_t current_time_ms );
+static float get_effective_interval_ms( const fep_orchestrator_t* orchestrator, fep_bridge_category_t category );
 
 //=============================================================================
 // SRP Split: Function implementations organized by responsibility

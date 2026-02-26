@@ -161,7 +161,7 @@ extern "C" {
 #define FEP_ORCHESTRATOR_DEFAULT_UPDATE_MS   50     /**< Default update interval */
 #define FEP_ORCHESTRATOR_MODULE_NAME         "fep_orchestrator"
 
-/* Default update intervals per category (milliseconds) */
+/* Default update intervals per category (milliseconds) — used as fallback baselines */
 #define FEP_UPDATE_INTERVAL_PERCEPTION       10     /**< Fast: Perception bridges */
 #define FEP_UPDATE_INTERVAL_ASYNC            10     /**< Fast: Async bridges */
 #define FEP_UPDATE_INTERVAL_SECURITY         20     /**< Fast: Security bridges */
@@ -172,6 +172,12 @@ extern "C" {
 #define FEP_UPDATE_INTERVAL_GLIAL            100    /**< Medium: Glial bridges */
 #define FEP_UPDATE_INTERVAL_PLASTICITY       1000   /**< Slow: Plasticity bridges */
 #define FEP_UPDATE_INTERVAL_JEPA             25     /**< Medium-fast: JEPA bridges */
+
+/* Continuous scheduling defaults */
+#define FEP_CONTINUOUS_MIN_INTERVAL_MS       5.0f   /**< Absolute minimum interval */
+#define FEP_CONTINUOUS_MAX_INTERVAL_MS       2000.0f /**< Absolute maximum interval */
+#define FEP_CONTINUOUS_DECAY_RATE            3.0f   /**< Exponential decay rate for prediction error */
+#define FEP_CONTINUOUS_FE_SCALE              2.0f   /**< Scaling factor for free energy sigmoid */
 
 /* ============================================================================
  * Forward Declarations
@@ -266,12 +272,46 @@ typedef struct {
  * ============================================================================ */
 
 /**
+ * @brief Continuous scheduling parameters
+ *
+ * WHAT: Parameters for computing update intervals from FEP metrics
+ * WHY:  Replace discrete fixed intervals with smooth curves driven by
+ *       prediction error, free energy, and surprise — higher urgency
+ *       (more prediction error / free energy) produces shorter intervals
+ * HOW:  interval = min + (max - min) * exp(-decay_rate * prediction_error)
+ *                  * 1 / (1 + fe_scale * free_energy)
+ */
+typedef struct {
+    bool enabled;                          /**< Enable continuous scheduling (false = fixed) */
+    float min_interval_ms;                 /**< Absolute minimum interval floor */
+    float max_interval_ms;                 /**< Maximum interval when system is calm */
+    float decay_rate;                      /**< Exponential decay rate for prediction error */
+    float fe_scale;                        /**< Scaling factor for free energy sigmoid term */
+} fep_continuous_schedule_config_t;
+
+/**
+ * @brief Current FEP metrics used to drive continuous scheduling
+ *
+ * WHAT: Snapshot of FEP state metrics for scheduling computation
+ * WHY:  Decouples metric source from scheduling — callers provide metrics,
+ *       orchestrator computes intervals
+ * HOW:  Updated each cycle via fep_orchestrator_set_fep_metrics() or
+ *       automatically from connected FEP system
+ */
+typedef struct {
+    float prediction_error;                /**< Current prediction error magnitude (>= 0) */
+    float free_energy;                     /**< Current variational free energy (>= 0) */
+    float surprise;                        /**< Current surprise -ln p(o) (>= 0) */
+} fep_scheduling_metrics_t;
+
+/**
  * @brief Per-category configuration
  */
 typedef struct {
     bool enabled;                          /**< Enable this category */
-    uint64_t update_interval_ms;           /**< Update interval (milliseconds) */
+    uint64_t update_interval_ms;           /**< Update interval — fixed fallback (milliseconds) */
     uint64_t last_update_time;             /**< Last category update (milliseconds) */
+    float continuous_interval_ms;          /**< Current continuously-computed interval */
 } fep_category_config_t;
 
 /**
@@ -295,6 +335,9 @@ typedef struct {
     /* Performance tuning */
     uint32_t max_updates_per_cycle;        /**< Max bridges to update per cycle (0=all) */
     float update_time_budget_ms;           /**< Max time per update cycle (0=unlimited) */
+
+    /* Continuous scheduling */
+    fep_continuous_schedule_config_t continuous_schedule; /**< Continuous scheduling params */
 } fep_orchestrator_config_t;
 
 /* ============================================================================
@@ -361,6 +404,9 @@ struct fep_orchestrator {
 
     /* Statistics */
     fep_orchestrator_stats_t stats;
+
+    /* Continuous scheduling state */
+    fep_scheduling_metrics_t fep_metrics;  /**< Current FEP metrics for scheduling */
 
     /* Timing */
     uint64_t start_time;                   /**< Orchestrator start time (ms) */
@@ -678,6 +724,82 @@ int fep_orchestrator_get_category_config(
     fep_bridge_category_t category,
     fep_category_config_t* config
 );
+
+/* ============================================================================
+ * Continuous Scheduling API
+ * ============================================================================ */
+
+/**
+ * @brief Compute update interval from FEP metrics
+ *
+ * WHAT: Derive a continuous update interval from prediction error, free energy,
+ *       and surprise using smooth mathematical functions
+ * WHY:  Replaces discrete category-based intervals with adaptive scheduling
+ *       that responds to the system's actual cognitive state
+ * HOW:  Uses exponential decay for prediction error urgency and a sigmoid
+ *       for free energy modulation:
+ *
+ *       base = max_interval * exp(-decay_rate * prediction_error)
+ *       interval = base / (1 + fe_scale * free_energy)
+ *       result = clamp(interval, min_interval, max_interval)
+ *
+ *       High prediction error → short interval (urgent updates)
+ *       High free energy → shorter interval (model needs refinement)
+ *       Low surprise + low error → long interval (system is calm)
+ *
+ * @param prediction_error  Current prediction error magnitude (>= 0)
+ * @param free_energy       Current variational free energy (>= 0)
+ * @param schedule_config   Continuous scheduling parameters
+ * @param interval_ms       Output: computed interval in milliseconds
+ * @return 0 on success, -1 on error
+ */
+int fep_compute_update_interval(
+    float prediction_error,
+    float free_energy,
+    const fep_continuous_schedule_config_t* schedule_config,
+    float* interval_ms
+);
+
+/**
+ * @brief Set FEP metrics for continuous scheduling
+ *
+ * WHAT: Provide current FEP state metrics to the orchestrator
+ * WHY:  Drives continuous scheduling — intervals adapt to cognitive state
+ * HOW:  Stores metrics and recomputes all category intervals
+ *
+ * @param orchestrator Orchestrator
+ * @param metrics      Current FEP metrics
+ * @return 0 on success, -1 on error
+ */
+int fep_orchestrator_set_fep_metrics(
+    fep_orchestrator_t* orchestrator,
+    const fep_scheduling_metrics_t* metrics
+);
+
+/**
+ * @brief Get current FEP scheduling metrics
+ *
+ * @param orchestrator Orchestrator
+ * @param metrics      Output metrics
+ * @return 0 on success, -1 on error
+ */
+int fep_orchestrator_get_fep_metrics(
+    const fep_orchestrator_t* orchestrator,
+    fep_scheduling_metrics_t* metrics
+);
+
+/**
+ * @brief Derive discrete category label from continuous interval
+ *
+ * WHAT: Map a continuous interval to a discrete category name for logging
+ * WHY:  Backward compatibility — existing log parsers expect category labels
+ * HOW:  Threshold-based mapping:
+ *       <= 15ms → "fast", <= 75ms → "medium", > 75ms → "slow"
+ *
+ * @param interval_ms  Continuous interval in milliseconds
+ * @return Human-readable scheduling tier label
+ */
+const char* fep_scheduling_tier_label(float interval_ms);
 
 /* ============================================================================
  * Integration API
