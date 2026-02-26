@@ -321,6 +321,9 @@ struct adaptive_network_struct {
     // Frozen network (Phase GPU-INF)
     // WHY: Disable learning and lock weights for inference-only mode
     bool frozen;
+
+    // Gradient norm tracking
+    float last_grad_norm;  /**< L2 norm of gradients from most recent learn step */
 };
 
 //=============================================================================
@@ -1871,6 +1874,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             //      - Only neurons with active synapses get updated
             //      - O(synapses) per layer, not O(neurons²)
             {
+                float grad_norm_sq = 0.0f;  // Accumulate squared gradients for L2 norm
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
@@ -1950,6 +1954,9 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 if (weight_delta > 0.1f) weight_delta = 0.1f;
                                 if (weight_delta < -0.1f) weight_delta = -0.1f;
 
+                                // Accumulate squared gradient for L2 norm
+                                grad_norm_sq += weight_delta * weight_delta;
+
                                 in_syn->weight += weight_delta;
 
                                 // Update outgoing synapse copy
@@ -1970,8 +1977,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 }
                             }
 
-                            // Bias update
-                            cur_n->bias += layer_lr * dj;
+                            // Bias update (also accumulate for gradient norm)
+                            float bias_delta = layer_lr * dj;
+                            grad_norm_sq += bias_delta * bias_delta;
+                            cur_n->bias += bias_delta;
                         }
 
                         // Apply activation derivative to prev-layer deltas
@@ -2015,6 +2024,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     free_hot_buffer(delta_cur);
                     free_hot_buffer(delta_prev);
                 }
+                // Store gradient L2 norm on the network
+                network->last_grad_norm = sqrtf(grad_norm_sq);
             }
             break;
 
@@ -2065,6 +2076,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
             // Phase 2: Full backpropagation through all layers (same as supervised)
             {
+                float grad_norm_sq = 0.0f;  // Accumulate squared gradients for L2 norm
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
@@ -2134,6 +2146,9 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 if (weight_delta > 0.1f) weight_delta = 0.1f;
                                 if (weight_delta < -0.1f) weight_delta = -0.1f;
 
+                                // Accumulate squared gradient for L2 norm
+                                grad_norm_sq += weight_delta * weight_delta;
+
                                 in_syn->weight += weight_delta;
 
                                 for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
@@ -2151,7 +2166,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 }
                             }
 
-                            cur_n->bias += layer_lr * dj;
+                            // Bias update (also accumulate for gradient norm)
+                            float bias_delta = layer_lr * dj;
+                            grad_norm_sq += bias_delta * bias_delta;
+                            cur_n->bias += bias_delta;
                         }
 
                         if (layer > 1) {
@@ -2212,6 +2230,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                             0.3f);  // Moderate inhibition strength
                     }
                 }
+                // Store gradient L2 norm on the network
+                network->last_grad_norm = sqrtf(grad_norm_sq);
             }
             break;
     }
@@ -3222,6 +3242,12 @@ bool adaptive_network_is_frozen(adaptive_network_t network)
 {
     if (!network) return false;
     return network->frozen;
+}
+
+float adaptive_network_get_last_grad_norm(adaptive_network_t network)
+{
+    if (!network) return 0.0f;
+    return network->last_grad_norm;
 }
 
 /**

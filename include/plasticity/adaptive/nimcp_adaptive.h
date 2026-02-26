@@ -645,6 +645,13 @@ void adaptive_network_freeze(adaptive_network_t network);
  */
 bool adaptive_network_is_frozen(adaptive_network_t network);
 
+/**
+ * @brief Get the gradient L2 norm from the most recent learn step
+ * @param network Adaptive network
+ * @return Gradient L2 norm, or 0.0 if network is NULL
+ */
+float adaptive_network_get_last_grad_norm(adaptive_network_t network);
+
 #ifdef __cplusplus
 }
 #endif

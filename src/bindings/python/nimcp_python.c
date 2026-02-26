@@ -78,6 +78,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "cognitive/training/nimcp_training_integration.h"
+#include "middleware/training/nimcp_training_convergent_decision.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -304,6 +305,20 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     /* Return actual loss from the C learning engine */
     float loss = nimcp_brain_get_last_loss(self->brain);
     return PyFloat_FromDouble((double)loss);
+}
+
+/**
+ * WHAT: Get gradient L2 norm from most recent learn() call
+ * WHY:  Training diagnostics — detect vanishing/exploding gradients
+ * HOW:  Call nimcp_brain_get_last_gradient_norm()
+ */
+static PyObject* Brain_get_last_gradient_norm(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float norm = nimcp_brain_get_last_gradient_norm(self->brain);
+    return PyFloat_FromDouble((double)norm);
 }
 
 /**
@@ -910,6 +925,10 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     SET("cow_shared_bytes",       PyLong_FromSize_t(probe.cow_shared_bytes));
     SET("cow_private_bytes",      PyLong_FromSize_t(probe.cow_private_bytes));
     SET("gpu_available",          PyBool_FromLong(probe.gpu_available));
+
+    // Training metrics overlaid from brain handle (not in probe struct)
+    SET("last_loss",              PyFloat_FromDouble(nimcp_brain_get_last_loss(self->brain)));
+    SET("last_gradient_norm",     PyFloat_FromDouble(nimcp_brain_get_last_gradient_norm(self->brain)));
 
 #undef SET
 
@@ -2315,6 +2334,118 @@ static PyObject* Brain_enable_multi_network(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Run full training decision cycle: observe, diagnose, simulate, decide
+ * WHY:  Combines Layer 1 (convergent), Layer 2 (causal DAG), Layer 3 (abductive)
+ *       into a single call for the training pipeline
+ * HOW:  Calls brain_ti_compute_decision_cycle, returns dict with all fields
+ */
+static PyObject* Brain_ti_compute_decision_cycle(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    float loss_current, loss_previous, grad_norm, grad_norm_previous;
+    float loss_volatility, gradient_variance, current_lr, current_batch;
+
+    if (!PyArg_ParseTuple(args, "ffffffff",
+            &loss_current, &loss_previous,
+            &grad_norm, &grad_norm_previous,
+            &loss_volatility, &gradient_variance,
+            &current_lr, &current_batch)) {
+        return NULL;
+    }
+
+    brain_ti_training_metrics_t metrics = {
+        .loss_current = loss_current,
+        .loss_previous = loss_previous,
+        .grad_norm = grad_norm,
+        .grad_norm_previous = grad_norm_previous,
+        .loss_volatility = loss_volatility,
+        .gradient_variance = gradient_variance,
+        .current_lr = current_lr,
+        .current_batch = current_batch,
+    };
+
+    brain_ti_decision_cycle_result_t result;
+    int rc = brain_ti_compute_decision_cycle(self->brain->internal_brain,
+                                              &metrics, &result);
+    if (rc != 0) {
+        /* Return safe defaults on error */
+        PyObject* d = PyDict_New();
+        if (!d) return PyErr_NoMemory();
+        PyDict_SetItemString(d, "consensus_action",
+                             PyLong_FromLong(TRAINING_EVIDENCE_CONTINUE));
+        PyDict_SetItemString(d, "lr_factor", PyFloat_FromDouble(1.0));
+        PyDict_SetItemString(d, "batch_factor", PyFloat_FromDouble(1.0));
+        PyDict_SetItemString(d, "grad_clip_factor", PyFloat_FromDouble(1.0));
+        PyDict_SetItemString(d, "urgency", PyFloat_FromDouble(0.0));
+        PyDict_SetItemString(d, "converged", Py_False);
+        Py_INCREF(Py_False);
+        PyDict_SetItemString(d, "num_contributors", PyLong_FromLong(0));
+        PyDict_SetItemString(d, "primary_diagnosis", PyUnicode_FromString(""));
+        PyDict_SetItemString(d, "diagnosis_plausibility", PyFloat_FromDouble(0.0));
+        PyDict_SetItemString(d, "recommend_pause", Py_False);
+        Py_INCREF(Py_False);
+        PyDict_SetItemString(d, "recommend_rollback", Py_False);
+        Py_INCREF(Py_False);
+        PyDict_SetItemString(d, "causal_explanation", PyUnicode_FromString(""));
+        PyDict_SetItemString(d, "causal_confidence", PyFloat_FromDouble(0.0));
+        PyDict_SetItemString(d, "lr_change_beneficial", Py_False);
+        Py_INCREF(Py_False);
+        return d;
+    }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+
+    /* Convergent decision (Layer 1) */
+    PyDict_SetItemString(d, "consensus_action",
+                         PyLong_FromLong(result.consensus_action));
+    PyDict_SetItemString(d, "lr_factor",
+                         PyFloat_FromDouble(result.lr_factor));
+    PyDict_SetItemString(d, "batch_factor",
+                         PyFloat_FromDouble(result.batch_factor));
+    PyDict_SetItemString(d, "grad_clip_factor",
+                         PyFloat_FromDouble(result.grad_clip_factor));
+    PyDict_SetItemString(d, "urgency",
+                         PyFloat_FromDouble(result.urgency));
+
+    PyObject* converged_val = result.converged ? Py_True : Py_False;
+    Py_INCREF(converged_val);
+    PyDict_SetItemString(d, "converged", converged_val);
+
+    PyDict_SetItemString(d, "num_contributors",
+                         PyLong_FromUnsignedLong(result.num_contributors));
+
+    /* Diagnosis (Layer 3) */
+    PyDict_SetItemString(d, "primary_diagnosis",
+                         PyUnicode_FromString(result.primary_diagnosis));
+    PyDict_SetItemString(d, "diagnosis_plausibility",
+                         PyFloat_FromDouble(result.diagnosis_plausibility));
+
+    PyObject* pause_val = result.recommend_pause ? Py_True : Py_False;
+    Py_INCREF(pause_val);
+    PyDict_SetItemString(d, "recommend_pause", pause_val);
+
+    PyObject* rollback_val = result.recommend_rollback ? Py_True : Py_False;
+    Py_INCREF(rollback_val);
+    PyDict_SetItemString(d, "recommend_rollback", rollback_val);
+
+    /* Causal reasoning (Layer 2) */
+    PyDict_SetItemString(d, "causal_explanation",
+                         PyUnicode_FromString(result.causal_explanation));
+    PyDict_SetItemString(d, "causal_confidence",
+                         PyFloat_FromDouble(result.causal_confidence));
+
+    PyObject* beneficial_val = result.lr_change_beneficial ? Py_True : Py_False;
+    Py_INCREF(beneficial_val);
+    PyDict_SetItemString(d, "lr_change_beneficial", beneficial_val);
+
+    return d;
+}
+
+/**
  * @brief Check if brain is frozen
  */
 static PyObject* Brain_get_is_frozen(BrainObject* self, void* closure) {
@@ -2368,6 +2499,8 @@ static PyMethodDef Brain_methods[] = {
     // Training metrics
     {"get_accuracy", (PyCFunction)Brain_get_accuracy, METH_NOARGS,
      "Get running label-match accuracy (EMA): get_accuracy() -> float"},
+    {"get_last_gradient_norm", (PyCFunction)Brain_get_last_gradient_norm, METH_NOARGS,
+     "Get gradient L2 norm from most recent learn() call: get_last_gradient_norm() -> float"},
 
     // Probe
     {"probe", (PyCFunction)Brain_probe, METH_NOARGS,
@@ -2486,6 +2619,10 @@ static PyMethodDef Brain_methods[] = {
      "Get mesh reasoning channel participant count"},
     {"ti_mesh_get_coherence", Brain_ti_mesh_get_coherence, METH_NOARGS,
      "Get mesh reasoning channel coherence [0,1]"},
+
+    // Decision cycle orchestrator (Layer 1 + 2 + 3)
+    {"ti_compute_decision_cycle", (PyCFunction)Brain_ti_compute_decision_cycle, METH_VARARGS,
+     "Run full training decision cycle: ti_compute_decision_cycle(loss_cur, loss_prev, grad_norm, grad_norm_prev, loss_vol, grad_var, lr, batch) -> dict"},
 
     {NULL}
 };

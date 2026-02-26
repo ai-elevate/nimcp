@@ -646,6 +646,72 @@ float brain_ti_compute_unified_batch(brain_t brain, float base_batch);
  */
 float brain_ti_compute_unified_clip(brain_t brain, float base_clip);
 
+/*=============================================================================
+ * DECISION CYCLE ORCHESTRATOR
+ *
+ * Combines Layer 1 (convergent decisions), Layer 2 (causal DAG), and
+ * Layer 3 (abductive diagnosis) into a single observe → diagnose →
+ * simulate → decide pipeline.
+ *===========================================================================*/
+
+#include "middleware/training/nimcp_training_convergent_decision.h"
+#include "middleware/training/nimcp_training_diagnosis.h"
+
+/**
+ * @brief Training metrics snapshot for the decision cycle
+ */
+typedef struct {
+    float loss_current;
+    float loss_previous;
+    float grad_norm;
+    float grad_norm_previous;
+    float loss_volatility;
+    float gradient_variance;
+    float current_lr;
+    float current_batch;
+} brain_ti_training_metrics_t;
+
+/**
+ * @brief Full decision cycle result combining diagnosis + causal reasoning + convergent consensus
+ */
+typedef struct {
+    /* Convergent decision (Layer 1) */
+    training_evidence_type_t consensus_action;
+    float lr_factor;
+    float batch_factor;
+    float grad_clip_factor;
+    float urgency;
+    bool converged;
+    uint32_t num_contributors;
+
+    /* Diagnosis (Layer 3) */
+    char primary_diagnosis[256];
+    float diagnosis_plausibility;
+    bool recommend_pause;
+    bool recommend_rollback;
+
+    /* Causal reasoning (Layer 2) */
+    char causal_explanation[256];
+    float causal_confidence;
+    bool lr_change_beneficial;
+} brain_ti_decision_cycle_result_t;
+
+/**
+ * @brief Run full training decision cycle: observe → diagnose → simulate → decide
+ *
+ * Combines Layer 1 (convergent decisions), Layer 2 (causal DAG), and Layer 3
+ * (abductive diagnosis) into a single decision pipeline.
+ *
+ * @param brain Brain handle (for reading arousal, inflammation, etc.)
+ * @param metrics Current training metrics snapshot
+ * @param result Output decision cycle result
+ * @return 0 on success, -1 on error
+ */
+int brain_ti_compute_decision_cycle(
+    brain_t brain,
+    const brain_ti_training_metrics_t* metrics,
+    brain_ti_decision_cycle_result_t* result);
+
 #ifdef __cplusplus
 }
 #endif

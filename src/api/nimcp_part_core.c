@@ -63,6 +63,13 @@ nimcp_status_t nimcp_brain_learn_example(
     /* Store loss for retrieval via nimcp_brain_get_last_loss() */
     brain->last_loss = loss;
 
+    /* Store gradient norm from the adaptive network */
+    if (brain->internal_brain && brain->internal_brain->network) {
+        brain->last_gradient_norm = adaptive_network_get_last_grad_norm(brain->internal_brain->network);
+    } else {
+        brain->last_gradient_norm = 0.0f;
+    }
+
     set_error("No error");
     LOG_DEBUG("Learning example completed successfully (loss=%.6f)", loss);
     return NIMCP_OK;
@@ -73,6 +80,13 @@ float nimcp_brain_get_last_loss(nimcp_brain_t brain)
 {
     if (!brain) return -1.0F;
     return brain->last_loss;
+}
+
+
+float nimcp_brain_get_last_gradient_norm(nimcp_brain_t brain)
+{
+    if (!brain) return -1.0f;
+    return brain->last_gradient_norm;
 }
 
 

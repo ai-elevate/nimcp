@@ -264,6 +264,14 @@ nimcp_status_t nimcp_brain_learn_example(
 float nimcp_brain_get_last_loss(nimcp_brain_t brain);
 
 /**
+ * @brief Get the gradient L2 norm from the most recent learn() call
+ *
+ * @param brain Brain handle
+ * @return Gradient norm (>= 0.0), or -1.0 if brain is NULL
+ */
+float nimcp_brain_get_last_gradient_norm(nimcp_brain_t brain);
+
+/**
  * @brief Get running label-match accuracy (EMA)
  *
  * @param brain Brain handle

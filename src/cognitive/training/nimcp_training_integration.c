@@ -827,3 +827,237 @@ float brain_ti_compute_unified_clip(brain_t brain, float base_clip) {
     brain_ti_compute_modulation_state(brain, &s);
     return base_clip * s.final_clip_factor;
 }
+
+/*=============================================================================
+ * DECISION CYCLE ORCHESTRATOR
+ *
+ * Combines Layer 1 (convergent decisions), Layer 2 (causal DAG), and
+ * Layer 3 (abductive diagnosis) into a single observe → diagnose →
+ * simulate → decide pipeline.
+ *===========================================================================*/
+
+#include "middleware/training/nimcp_training_convergent_decision.h"
+#include "middleware/training/nimcp_training_diagnosis.h"
+#include "middleware/training/nimcp_training_causal_model.h"
+
+int brain_ti_compute_decision_cycle(
+    brain_t brain,
+    const brain_ti_training_metrics_t* metrics,
+    brain_ti_decision_cycle_result_t* result)
+{
+    if (!metrics || !result) { return -1; }
+    memset(result, 0, sizeof(*result));
+    result->lr_factor = 1.0f;
+    result->batch_factor = 1.0f;
+    result->grad_clip_factor = 1.0f;
+
+    /* Get brain state */
+    float arousal_level = 0.5f;
+    float inflammation_level = 0.0f;
+    float resource_pressure = 0.0f;
+    if (brain) {
+        arousal_level = brain_ti_get_arousal(brain);
+        /* Get inflammation and resource pressure from modulation state */
+        brain_ti_modulation_state_t mod_state;
+        if (brain_ti_compute_modulation_state(brain, &mod_state) == 0) {
+            inflammation_level = 1.0f - mod_state.inflammation_learning_factor; /* inverse */
+            resource_pressure = 1.0f - mod_state.portia_compute_budget; /* inverse */
+        }
+    }
+
+    /* --- Layer 3: Abductive Diagnosis --- */
+    training_diagnoser_t* diag = training_diagnoser_create();
+    training_diagnosis_t diagnosis;
+    memset(&diagnosis, 0, sizeof(diagnosis));
+    diagnosis.recommended_lr_factor = 1.0f;
+
+    if (diag) {
+        training_diagnoser_observe_from_metrics(diag,
+            metrics->loss_current, metrics->loss_previous,
+            metrics->grad_norm, metrics->grad_norm_previous,
+            metrics->loss_volatility, metrics->gradient_variance,
+            metrics->current_lr, metrics->current_batch,
+            arousal_level, inflammation_level, resource_pressure);
+
+        training_diagnoser_diagnose(diag, &diagnosis);
+        training_diagnoser_destroy(diag);
+    }
+
+    /* Copy diagnosis results */
+    snprintf(result->primary_diagnosis, sizeof(result->primary_diagnosis),
+             "%s", diagnosis.primary_cause);
+    result->diagnosis_plausibility = diagnosis.primary_plausibility;
+    result->recommend_pause = diagnosis.recommend_pause;
+    result->recommend_rollback = diagnosis.recommend_rollback;
+
+    /* --- Layer 2: Causal Simulation --- */
+    training_causal_model_t* causal = training_causal_model_create();
+    training_intervention_result_t causal_result;
+    memset(&causal_result, 0, sizeof(causal_result));
+
+    if (causal) {
+        /* Feed current observations */
+        training_causal_observation_t obs = {
+            .learning_rate = metrics->current_lr,
+            .batch_size = metrics->current_batch,
+            .gradient_norm = metrics->grad_norm,
+            .loss_current = metrics->loss_current,
+            .loss_volatility = metrics->loss_volatility,
+            .gradient_variance = metrics->gradient_variance,
+            .arousal_level = arousal_level,
+            .inflammation_level = inflammation_level,
+            .resource_pressure = resource_pressure,
+        };
+        training_causal_model_observe(causal, &obs);
+
+        /* If diagnosis recommends LR reduction, simulate it */
+        if (diagnosis.recommend_reduce_lr && diagnosis.recommended_lr_factor < 1.0f) {
+            float proposed_lr = metrics->current_lr * diagnosis.recommended_lr_factor;
+            training_causal_model_query_lr_intervention(causal, proposed_lr, &causal_result);
+        } else {
+            /* Default: query current LR effect */
+            training_causal_model_query_lr_intervention(causal, metrics->current_lr, &causal_result);
+        }
+
+        training_causal_model_destroy(causal);
+    }
+
+    snprintf(result->causal_explanation, sizeof(result->causal_explanation),
+             "%s", causal_result.explanation);
+    result->causal_confidence = causal_result.confidence;
+    result->lr_change_beneficial = causal_result.is_beneficial;
+
+    /* --- Layer 1: Convergent Decision --- */
+    training_convergent_session_t* session = training_convergent_session_create(NULL);
+    if (session) {
+        /* Submit evidence from diagnosis */
+        if (diagnosis.num_observations > 0) {
+            training_evidence_t diag_ev = {
+                .source_name = "diagnosis",
+                .type = diagnosis.recommend_pause ? TRAINING_EVIDENCE_PAUSE :
+                        diagnosis.recommend_rollback ? TRAINING_EVIDENCE_ROLLBACK :
+                        diagnosis.recommend_reduce_lr ? TRAINING_EVIDENCE_LR_MODULATION :
+                        TRAINING_EVIDENCE_CONTINUE,
+                .lr_factor = diagnosis.recommended_lr_factor,
+                .batch_factor = diagnosis.recommend_increase_batch ? 1.5f : 1.0f,
+                .grad_clip_factor = diagnosis.recommend_tighter_clip ? 0.5f : 1.0f,
+                .urgency = diagnosis.recommend_rollback ? 0.95f :
+                          diagnosis.recommend_pause ? 0.8f : 0.3f,
+                .confidence = diagnosis.primary_plausibility,
+            };
+            training_convergent_submit_evidence(session, &diag_ev);
+        }
+
+        /* Submit evidence from causal model */
+        if (causal_result.confidence > 0.0f) {
+            training_evidence_t causal_ev = {
+                .source_name = "causal_model",
+                .type = causal_result.is_beneficial ? TRAINING_EVIDENCE_LR_MODULATION :
+                        TRAINING_EVIDENCE_CONTINUE,
+                .lr_factor = diagnosis.recommended_lr_factor,
+                .batch_factor = 1.0f,
+                .grad_clip_factor = 1.0f,
+                .urgency = 0.3f,
+                .confidence = causal_result.confidence,
+            };
+            training_convergent_submit_evidence(session, &causal_ev);
+        }
+
+        /* Submit evidence from brain subsystems via modulation state */
+        if (brain) {
+            brain_ti_modulation_state_t mod;
+            if (brain_ti_compute_modulation_state(brain, &mod) == 0) {
+                /* Arousal evidence */
+                training_evidence_t arousal_ev = {
+                    .source_name = "arousal",
+                    .type = TRAINING_EVIDENCE_CONTINUE,
+                    .lr_factor = mod.arousal_cognitive_gain,
+                    .batch_factor = 1.0f,
+                    .grad_clip_factor = 1.0f,
+                    .urgency = 0.1f,
+                    .confidence = 0.8f,
+                };
+                training_convergent_submit_evidence(session, &arousal_ev);
+
+                /* Instability evidence */
+                training_evidence_t instability_ev = {
+                    .source_name = "instability",
+                    .type = mod.instability_lr_scale < 0.5f ?
+                            TRAINING_EVIDENCE_PAUSE : TRAINING_EVIDENCE_CONTINUE,
+                    .lr_factor = mod.instability_lr_scale,
+                    .batch_factor = mod.instability_batch_scale,
+                    .grad_clip_factor = mod.instability_clip_factor,
+                    .urgency = mod.instability_lr_scale < 0.3f ? 0.9f : 0.2f,
+                    .confidence = 0.9f,
+                };
+                training_convergent_submit_evidence(session, &instability_ev);
+
+                /* Inflammation evidence */
+                training_evidence_t inflam_ev = {
+                    .source_name = "inflammation",
+                    .type = mod.inflammation_learning_factor < 0.3f ?
+                            TRAINING_EVIDENCE_PAUSE : TRAINING_EVIDENCE_CONTINUE,
+                    .lr_factor = mod.inflammation_learning_factor,
+                    .batch_factor = 1.0f,
+                    .grad_clip_factor = 1.0f,
+                    .urgency = mod.inflammation_learning_factor < 0.3f ? 0.7f : 0.1f,
+                    .confidence = 0.85f,
+                };
+                training_convergent_submit_evidence(session, &inflam_ev);
+
+                /* Portia resource evidence */
+                training_evidence_t portia_ev = {
+                    .source_name = "portia",
+                    .type = TRAINING_EVIDENCE_CONTINUE,
+                    .lr_factor = mod.portia_learning_gate,
+                    .batch_factor = mod.portia_compute_budget,
+                    .grad_clip_factor = 1.0f,
+                    .urgency = mod.portia_compute_budget < 0.2f ? 0.6f : 0.1f,
+                    .confidence = 0.85f,
+                };
+                training_convergent_submit_evidence(session, &portia_ev);
+
+                /* Stress/capacity evidence */
+                training_evidence_t stress_ev = {
+                    .source_name = "stress",
+                    .type = mod.stress_level > 0.8f ?
+                            TRAINING_EVIDENCE_PAUSE : TRAINING_EVIDENCE_CONTINUE,
+                    .lr_factor = 1.0f - 0.3f * mod.stress_level,
+                    .batch_factor = 1.0f,
+                    .grad_clip_factor = 1.0f,
+                    .urgency = mod.stress_level > 0.8f ? 0.7f : 0.1f,
+                    .confidence = 0.7f,
+                };
+                training_convergent_submit_evidence(session, &stress_ev);
+            }
+        }
+
+        /* Compute decision */
+        training_convergent_decision_t decision;
+        memset(&decision, 0, sizeof(decision));
+        if (training_convergent_compute_decision(session, &decision) == 0) {
+            result->consensus_action = decision.consensus_action;
+            result->lr_factor = decision.lr_factor;
+            result->batch_factor = decision.batch_factor;
+            result->grad_clip_factor = decision.grad_clip_factor;
+            result->urgency = decision.urgency;
+            result->converged = decision.converged;
+            result->num_contributors = decision.num_contributors;
+        }
+
+        training_convergent_session_destroy(session);
+    }
+
+    NIMCP_LOGGING_DEBUG("training_integration: decision cycle complete — "
+                        "action=%d lr=%.4f batch=%.4f clip=%.4f "
+                        "urgency=%.2f converged=%s diag='%.60s' "
+                        "causal='%.60s'",
+                        (int)result->consensus_action,
+                        result->lr_factor, result->batch_factor,
+                        result->grad_clip_factor, result->urgency,
+                        result->converged ? "YES" : "NO",
+                        result->primary_diagnosis,
+                        result->causal_explanation);
+
+    return 0;
+}
