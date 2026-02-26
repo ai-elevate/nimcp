@@ -41,6 +41,8 @@
 #include "cognitive/reasoning/nimcp_backward_chaining.h"
 #include "cognitive/reasoning/nimcp_forward_chaining.h"
 #include "cognitive/reasoning/nimcp_reasoning_portia_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_hypo_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -2397,6 +2399,29 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
                            budget_summary, phases_shed);
     }
 
+    /* ── Hypothalamus motivational modulation ──
+     *
+     * Query the brain's hypothalamus for circadian alertness, stress,
+     * and autonomic state. This modulates reasoning depth based on the
+     * brain's COGNITIVE state, layered on top of Portia's HARDWARE budget.
+     * The hypothalamus can only tighten, never loosen the config.
+     */
+    reasoning_hypo_modulation_t hypo_mod = reasoning_hypo_compute_modulation(engine->brain);
+    reasoning_hypo_apply_modulation(&effective_config, &hypo_mod);
+
+    if (hypo_mod.hypothalamus_available) {
+        char hypo_summary[256];
+        reasoning_hypo_modulation_summary(&hypo_mod, hypo_summary, sizeof(hypo_summary));
+        NIMCP_LOGGING_INFO("reasoning_chain: %s", hypo_summary);
+    }
+
+    /* --- Mesh evidence gathering (distributed consensus) --- */
+    reasoning_mesh_result_t mesh_result = reasoning_mesh_gather_evidence(
+        engine->brain, query, REASONING_MESH_DEFAULT_TIMEOUT_MS);
+    if (mesh_result.mesh_available) {
+        reasoning_mesh_apply_consensus(&effective_config, &mesh_result);
+    }
+
     /* Temporarily swap in the effective config for this query */
     reasoning_engine_config_t saved_config = engine->config;
     engine->config = effective_config;
@@ -2437,6 +2462,11 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
             chain->overall_confidence += portia_budget.confidence_boost;
             if (chain->overall_confidence > 1.0f)
                 chain->overall_confidence = 1.0f;
+        }
+
+        /* Add mesh evidence as additional reasoning steps */
+        if (mesh_result.mesh_available) {
+            reasoning_mesh_apply_evidence(chain, &mesh_result);
         }
 
         float n = (float)engine->stats.total_queries;
@@ -2595,6 +2625,11 @@ finalize:
         chain->overall_confidence += portia_budget.confidence_boost;
         if (chain->overall_confidence > 1.0f)
             chain->overall_confidence = 1.0f;
+    }
+
+    /* Add mesh evidence as additional reasoning steps */
+    if (mesh_result.mesh_available) {
+        reasoning_mesh_apply_evidence(chain, &mesh_result);
     }
 
     /* ── Update statistics ── */

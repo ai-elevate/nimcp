@@ -78,6 +78,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "cognitive/training/nimcp_training_integration.h"
+#include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -1687,6 +1688,75 @@ static PyObject* Brain_ti_get_reasoning_phases_disabled(BrainObject* self, PyObj
 }
 
 /**
+ * WHAT: Get cognitive capacity from hypothalamus
+ */
+static PyObject* Brain_ti_get_cognitive_capacity(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float capacity = brain_ti_get_cognitive_capacity(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)capacity);
+}
+
+/**
+ * WHAT: Get urgency mode from hypothalamus
+ */
+static PyObject* Brain_ti_get_urgency_mode(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int mode = brain_ti_get_urgency_mode(self->brain->internal_brain);
+    return PyLong_FromLong(mode);
+}
+
+/**
+ * WHAT: Get stress level from hypothalamus
+ */
+static PyObject* Brain_ti_get_stress_level(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float stress = brain_ti_get_stress_level(self->brain->internal_brain);
+    return PyFloat_FromDouble((double)stress);
+}
+
+/**
+ * WHAT: Check if mesh network is available for reasoning
+ * WHY:  Mesh provides distributed consensus evidence for reasoning queries
+ * HOW:  Calls brain_ti_mesh_is_available(), returns bool
+ */
+static PyObject* Brain_ti_mesh_is_available(PyObject* self, PyObject* args) {
+    (void)self; (void)args;
+    bool avail = brain_ti_mesh_is_available();
+    return PyBool_FromLong(avail);
+}
+
+/**
+ * WHAT: Get mesh reasoning channel participant count
+ * WHY:  More participants = stronger consensus evidence
+ * HOW:  Calls brain_ti_mesh_get_participant_count(), returns uint32
+ */
+static PyObject* Brain_ti_mesh_get_participant_count(PyObject* self, PyObject* args) {
+    (void)self; (void)args;
+    uint32_t count = brain_ti_mesh_get_participant_count();
+    return PyLong_FromUnsignedLong(count);
+}
+
+/**
+ * WHAT: Get mesh reasoning channel coherence
+ * WHY:  High coherence means mesh participants agree, low means disagreement
+ * HOW:  Calls brain_ti_mesh_get_coherence(), returns float [0,1]
+ */
+static PyObject* Brain_ti_mesh_get_coherence(PyObject* self, PyObject* args) {
+    (void)self; (void)args;
+    float coherence = brain_ti_mesh_get_coherence();
+    return PyFloat_FromDouble((double)coherence);
+}
+
+/**
  * WHAT: Pre-compute and cache community structure for consolidation replay
  * WHY:  Louvain community detection is O(N log N), takes hours on 2M neurons.
  *       Caching allows consolidation to use community-aware prioritization
@@ -2326,6 +2396,18 @@ static PyMethodDef Brain_methods[] = {
      "Get Portia degradation level affecting reasoning (0-4)"},
     {"ti_get_reasoning_phases_disabled", (PyCFunction)Brain_ti_get_reasoning_phases_disabled, METH_NOARGS,
      "Get number of reasoning phases currently disabled by Portia"},
+    {"ti_get_cognitive_capacity", (PyCFunction)Brain_ti_get_cognitive_capacity, METH_NOARGS,
+     "Get cognitive capacity from hypothalamus (0.0-1.0)"},
+    {"ti_get_urgency_mode", (PyCFunction)Brain_ti_get_urgency_mode, METH_NOARGS,
+     "Get urgency mode from hypothalamus (0=relaxed, 3=fight-or-flight)"},
+    {"ti_get_stress_level", (PyCFunction)Brain_ti_get_stress_level, METH_NOARGS,
+     "Get stress level from hypothalamus (0.0-1.0)"},
+    {"ti_mesh_is_available", Brain_ti_mesh_is_available, METH_NOARGS,
+     "Check if mesh network is available for reasoning"},
+    {"ti_mesh_get_participant_count", Brain_ti_mesh_get_participant_count, METH_NOARGS,
+     "Get mesh reasoning channel participant count"},
+    {"ti_mesh_get_coherence", Brain_ti_mesh_get_coherence, METH_NOARGS,
+     "Get mesh reasoning channel coherence [0,1]"},
 
     {NULL}
 };

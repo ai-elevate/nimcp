@@ -111,3 +111,79 @@ gtest_discover_tests(regression_portia_reasoning_bridge_test
         LABELS "regression;reasoning;portia-bridge"
         TIMEOUT 300
 )
+
+# =============================================================================
+# Hypothalamus-Reasoning Bridge Regression Tests
+# =============================================================================
+# WHAT: Regression tests for the Hypothalamus-Reasoning bridge
+# WHY:  Guard against NULL dereference, buffer overflow in summary,
+#       capacity invariant violations, steps floor, and never-loosen semantics
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(regression_hypo_reasoning_bridge_test
+    test_reasoning_hypo_bridge_regression.cpp
+)
+
+target_link_libraries(regression_hypo_reasoning_bridge_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_hypo_reasoning_bridge_test
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_hypo_reasoning_bridge_test PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_hypo_reasoning_bridge_test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;reasoning;hypo-bridge"
+        TIMEOUT 300
+)
+
+# =============================================================================
+# Mesh-Reasoning Bridge Regression Tests
+# =============================================================================
+# WHAT: Regression tests for the Mesh-Reasoning bridge
+# WHY:  Guard against NULL dereference, buffer overflow in summary,
+#       consensus threshold capping, evidence count accuracy, and TI consistency
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(regression_mesh_reasoning_bridge_test
+    test_reasoning_mesh_bridge_regression.cpp
+)
+
+target_link_libraries(regression_mesh_reasoning_bridge_test
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_mesh_reasoning_bridge_test
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_mesh_reasoning_bridge_test PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_mesh_reasoning_bridge_test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;reasoning;mesh-bridge"
+        TIMEOUT 300
+)

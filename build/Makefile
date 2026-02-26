@@ -8609,6 +8609,32 @@ e2e_test_portia_reasoning_bridge/fast:
 .PHONY : e2e_test_portia_reasoning_bridge/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_hypo_reasoning_bridge
+
+# Build rule for target.
+e2e_test_hypo_reasoning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_hypo_reasoning_bridge
+.PHONY : e2e_test_hypo_reasoning_bridge
+
+# fast build rule for target.
+e2e_test_hypo_reasoning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_hypo_reasoning_bridge.dir/build.make test/e2e/CMakeFiles/e2e_test_hypo_reasoning_bridge.dir/build
+.PHONY : e2e_test_hypo_reasoning_bridge/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mesh_reasoning_bridge
+
+# Build rule for target.
+e2e_test_mesh_reasoning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mesh_reasoning_bridge
+.PHONY : e2e_test_mesh_reasoning_bridge
+
+# fast build rule for target.
+e2e_test_mesh_reasoning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_mesh_reasoning_bridge.dir/build.make test/e2e/CMakeFiles/e2e_test_mesh_reasoning_bridge.dir/build
+.PHONY : e2e_test_mesh_reasoning_bridge/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_training_integration
 
 # Build rule for target.
@@ -14262,6 +14288,32 @@ unit_cognitive_test_reasoning_portia_bridge: cmake_check_build_system
 unit_cognitive_test_reasoning_portia_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_portia_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_portia_bridge.dir/build
 .PHONY : unit_cognitive_test_reasoning_portia_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_hypo_bridge
+
+# Build rule for target.
+unit_cognitive_test_reasoning_hypo_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_hypo_bridge
+.PHONY : unit_cognitive_test_reasoning_hypo_bridge
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_hypo_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_hypo_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_hypo_bridge.dir/build
+.PHONY : unit_cognitive_test_reasoning_hypo_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_mesh_bridge
+
+# Build rule for target.
+unit_cognitive_test_reasoning_mesh_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_mesh_bridge
+.PHONY : unit_cognitive_test_reasoning_mesh_bridge
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_mesh_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_mesh_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_mesh_bridge.dir/build
+.PHONY : unit_cognitive_test_reasoning_mesh_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_global_workspace_immune
@@ -27641,6 +27693,32 @@ regression_portia_reasoning_bridge_test/fast:
 .PHONY : regression_portia_reasoning_bridge_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_hypo_reasoning_bridge_test
+
+# Build rule for target.
+regression_hypo_reasoning_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_hypo_reasoning_bridge_test
+.PHONY : regression_hypo_reasoning_bridge_test
+
+# fast build rule for target.
+regression_hypo_reasoning_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/reasoning_generation/CMakeFiles/regression_hypo_reasoning_bridge_test.dir/build.make test/regression/reasoning_generation/CMakeFiles/regression_hypo_reasoning_bridge_test.dir/build
+.PHONY : regression_hypo_reasoning_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_mesh_reasoning_bridge_test
+
+# Build rule for target.
+regression_mesh_reasoning_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_mesh_reasoning_bridge_test
+.PHONY : regression_mesh_reasoning_bridge_test
+
+# fast build rule for target.
+regression_mesh_reasoning_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/reasoning_generation/CMakeFiles/regression_mesh_reasoning_bridge_test.dir/build.make test/regression/reasoning_generation/CMakeFiles/regression_mesh_reasoning_bridge_test.dir/build
+.PHONY : regression_mesh_reasoning_bridge_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -35922,6 +36000,32 @@ integration_reasoning_test_portia_bridge/fast:
 .PHONY : integration_reasoning_test_portia_bridge/fast
 
 #=============================================================================
+# Target rules for targets named integration_reasoning_test_hypo_bridge
+
+# Build rule for target.
+integration_reasoning_test_hypo_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_hypo_bridge
+.PHONY : integration_reasoning_test_hypo_bridge
+
+# fast build rule for target.
+integration_reasoning_test_hypo_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_hypo_bridge.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_hypo_bridge.dir/build
+.PHONY : integration_reasoning_test_hypo_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_mesh_bridge
+
+# Build rule for target.
+integration_reasoning_test_mesh_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_mesh_bridge
+.PHONY : integration_reasoning_test_mesh_bridge
+
+# fast build rule for target.
+integration_reasoning_test_mesh_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_mesh_bridge.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_mesh_bridge.dir/build
+.PHONY : integration_reasoning_test_mesh_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_generation_test_pipeline
 
 # Build rule for target.
@@ -40600,6 +40704,7 @@ help:
 	@echo "... e2e_test_hemispheric_all"
 	@echo "... e2e_test_hippocampus_pipeline"
 	@echo "... e2e_test_hypo_fep_cognitive_pipeline"
+	@echo "... e2e_test_hypo_reasoning_bridge"
 	@echo "... e2e_test_hypothalamus_alignment_pipeline"
 	@echo "... e2e_test_hypothalamus_exception_pipeline"
 	@echo "... e2e_test_hypothalamus_internal_bus_pipeline"
@@ -40635,6 +40740,7 @@ help:
 	@echo "... e2e_test_mesh_cycle_coordinator"
 	@echo "... e2e_test_mesh_enhanced_routing"
 	@echo "... e2e_test_mesh_kg_routing_bridge"
+	@echo "... e2e_test_mesh_reasoning_bridge"
 	@echo "... e2e_test_meta_learning_snn_plasticity_pipeline"
 	@echo "... e2e_test_metabolic_processing"
 	@echo "... e2e_test_mirror_empathy_pipeline"
@@ -41182,6 +41288,8 @@ help:
 	@echo "... integration_python_c"
 	@echo "... integration_quantum_bridges"
 	@echo "... integration_quantum_mcts_fep"
+	@echo "... integration_reasoning_test_hypo_bridge"
+	@echo "... integration_reasoning_test_mesh_bridge"
 	@echo "... integration_reasoning_test_portia_bridge"
 	@echo "... integration_reasoning_test_reasoning_brain"
 	@echo "... integration_reasoning_test_symbolic_logic"
@@ -41567,6 +41675,7 @@ help:
 	@echo "... regression_heartbeat_B26_emotion_cluster_bridges"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_hemispheric_memory_opt"
+	@echo "... regression_hypo_reasoning_bridge_test"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
 	@echo "... regression_information_test_shannon_backward_compat"
@@ -41584,6 +41693,7 @@ help:
 	@echo "... regression_language_pathway"
 	@echo "... regression_lateralization_regression"
 	@echo "... regression_lc_math_regression"
+	@echo "... regression_mesh_reasoning_bridge_test"
 	@echo "... regression_microglia_performance"
 	@echo "... regression_middleware_bio_async"
 	@echo "... regression_middleware_buffering_circular_buffer"
@@ -42408,6 +42518,8 @@ help:
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
 	@echo "... unit_cognitive_test_reasoning_chain"
+	@echo "... unit_cognitive_test_reasoning_hypo_bridge"
+	@echo "... unit_cognitive_test_reasoning_mesh_bridge"
 	@echo "... unit_cognitive_test_reasoning_portia_bridge"
 	@echo "... unit_cognitive_test_reasoning_symbolic_logic"
 	@echo "... unit_cognitive_test_remorse_regret"

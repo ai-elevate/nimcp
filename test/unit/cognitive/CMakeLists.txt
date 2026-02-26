@@ -215,6 +215,61 @@ gtest_discover_tests(unit_cognitive_test_reasoning_portia_bridge
         TIMEOUT 60
 )
 
+# Reasoning Chain - Hypothalamus Bridge Unit Tests
+add_executable(unit_cognitive_test_reasoning_hypo_bridge
+    test_reasoning_hypo_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_hypo_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_hypo_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_hypo_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_hypo_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning;hypo-bridge"
+        TIMEOUT 60
+)
+
+# Reasoning Chain - Mesh Bridge Unit Tests
+add_executable(unit_cognitive_test_reasoning_mesh_bridge
+    test_reasoning_mesh_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_mesh_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_mesh_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_mesh_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_mesh_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-mesh-bridge"
+        TIMEOUT 90
+)
+
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
 

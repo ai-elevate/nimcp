@@ -468,6 +468,69 @@ int brain_ti_get_reasoning_degradation(void);
  */
 int brain_ti_get_reasoning_phases_disabled(void);
 
+/*=============================================================================
+ * HYPOTHALAMUS-REASONING MOTIVATIONAL MODULATION
+ *
+ * Wraps the hypothalamus-reasoning bridge for the training pipeline.
+ * Allows training to query cognitive state before running reasoning.
+ *===========================================================================*/
+
+/**
+ * @brief Get current cognitive capacity from hypothalamus
+ *
+ * WHAT: Query brain's hypothalamus for alertness, fatigue, stress
+ * WHY:  Training can skip reasoning when cognitive capacity is too low
+ * HOW:  Delegates to reasoning_hypo_compute_modulation()
+ *
+ * @param brain Brain instance (NULL returns 1.0 = full capacity)
+ * @return Cognitive capacity [0,1], or 1.0 if hypothalamus unavailable
+ */
+float brain_ti_get_cognitive_capacity(brain_t brain);
+
+/**
+ * @brief Get current urgency mode from hypothalamus
+ *
+ * WHAT: Query autonomic state for fight-or-flight / alert / normal / relaxed
+ * WHY:  Training can adjust reasoning strategy based on urgency
+ * HOW:  Delegates to reasoning_hypo_compute_modulation()
+ *
+ * @param brain Brain instance (NULL returns 1 = NORMAL)
+ * @return Urgency mode 0-3 (RELAXED to FIGHT_OR_FLIGHT), or 1 if unavailable
+ */
+int brain_ti_get_urgency_mode(brain_t brain);
+
+/**
+ * @brief Get current stress level from hypothalamus
+ *
+ * WHAT: Query HPA axis cortisol level
+ * WHY:  High stress reduces reasoning quality; training may want to defer
+ * HOW:  Delegates to reasoning_hypo_compute_modulation()
+ *
+ * @param brain Brain instance (NULL returns 0.0)
+ * @return Stress level [0,1], or 0.0 if hypothalamus unavailable
+ */
+float brain_ti_get_stress_level(brain_t brain);
+
+/* ---- Mesh bridge wrappers (reasoning-mesh distributed consensus) ---- */
+
+/**
+ * @brief Check if mesh network is available for reasoning
+ * @return true if mesh is initialized and reasoning channel exists
+ */
+bool brain_ti_mesh_is_available(void);
+
+/**
+ * @brief Get mesh channel participant count for reasoning
+ * @return Number of participants in reasoning mesh channel, or 0 if unavailable
+ */
+uint32_t brain_ti_mesh_get_participant_count(void);
+
+/**
+ * @brief Get mesh channel coherence for reasoning
+ * @return Channel coherence [0,1], or 0.0 if unavailable
+ */
+float brain_ti_mesh_get_coherence(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -111,3 +111,79 @@ gtest_discover_tests(integration_reasoning_test_portia_bridge
         LABELS "integration;reasoning;portia-bridge"
         TIMEOUT 180
 )
+
+# =============================================================================
+# NIMCP Reasoning Chain - Hypothalamus Bridge Integration Tests
+# =============================================================================
+# WHAT: Integration tests for the Hypo-Reasoning bridge with a live brain
+# WHY:  Verify that modulation computation/application correctly adapts the
+#       reasoning engine configuration when connected to a real brain
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(integration_reasoning_test_hypo_bridge
+    test_reasoning_hypo_bridge_integration.cpp
+)
+
+target_link_libraries(integration_reasoning_test_hypo_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_reasoning_test_hypo_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_reasoning_test_hypo_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_reasoning_test_hypo_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;reasoning;hypo-bridge"
+        TIMEOUT 180
+)
+
+# =============================================================================
+# NIMCP Reasoning Chain - Mesh Bridge Integration Tests
+# =============================================================================
+# WHAT: Integration tests for the Mesh-Reasoning bridge with a live brain
+# WHY:  Verify that evidence gathering/application correctly adapts the
+#       reasoning engine configuration when connected to a real brain
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(integration_reasoning_test_mesh_bridge
+    test_reasoning_mesh_bridge_integration.cpp
+)
+
+target_link_libraries(integration_reasoning_test_mesh_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_reasoning_test_mesh_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_reasoning_test_mesh_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_reasoning_test_mesh_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;reasoning;mesh-bridge"
+        TIMEOUT 180
+)

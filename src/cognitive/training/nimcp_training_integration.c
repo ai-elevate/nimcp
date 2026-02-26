@@ -27,6 +27,8 @@
 #include "cognitive/reasoning/nimcp_knowledge_base_interface.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "cognitive/reasoning/nimcp_reasoning_portia_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_hypo_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -583,4 +585,41 @@ int brain_ti_get_reasoning_phases_disabled(void) {
     reasoning_budget_t budget = reasoning_portia_compute_budget();
     reasoning_engine_config_t config = reasoning_engine_default_config();
     return reasoning_portia_apply_budget(&config, &budget);
+}
+
+/*=============================================================================
+ * HYPOTHALAMUS-REASONING MOTIVATIONAL MODULATION
+ *===========================================================================*/
+
+float brain_ti_get_cognitive_capacity(brain_t brain) {
+    reasoning_hypo_modulation_t mod = reasoning_hypo_compute_modulation(brain);
+    return mod.cognitive_capacity;
+}
+
+int brain_ti_get_urgency_mode(brain_t brain) {
+    reasoning_hypo_modulation_t mod = reasoning_hypo_compute_modulation(brain);
+    return (int)mod.urgency_mode;
+}
+
+float brain_ti_get_stress_level(brain_t brain) {
+    reasoning_hypo_modulation_t mod = reasoning_hypo_compute_modulation(brain);
+    return mod.stress_level;
+}
+
+/* ---- Mesh bridge wrappers ---- */
+
+bool brain_ti_mesh_is_available(void) {
+    return reasoning_mesh_is_available();
+}
+
+uint32_t brain_ti_mesh_get_participant_count(void) {
+    uint32_t count = 0;
+    reasoning_mesh_get_channel_stats(&count, NULL);
+    return count;
+}
+
+float brain_ti_mesh_get_coherence(void) {
+    float coherence = 0.0f;
+    reasoning_mesh_get_channel_stats(NULL, &coherence);
+    return coherence;
 }

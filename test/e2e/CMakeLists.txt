@@ -3088,6 +3088,22 @@ add_e2e_test(e2e_test_portia_reasoning_bridge
 )
 
 # =============================================================================
+# Hypothalamus-Reasoning Bridge E2E Test (Motivational Modulation Pipeline)
+# =============================================================================
+add_e2e_test(e2e_test_hypo_reasoning_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_hypo_bridge_e2e.cpp
+)
+
+# =============================================================================
+# Mesh-Reasoning Bridge E2E Test (Distributed Evidence Pipeline)
+# =============================================================================
+add_e2e_test(e2e_test_mesh_reasoning_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_mesh_bridge_e2e.cpp
+)
+
+# =============================================================================
 # Training Integration E2E Test (Hub + Brain Training Pipeline)
 # =============================================================================
 # WHAT: E2E tests for training integration hub and brain training context
