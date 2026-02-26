@@ -46,6 +46,7 @@
 
 #include <string.h>
 #include <math.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /* ============================================================================
  * Forward Declarations — External APIs (weak dependency)
@@ -140,11 +141,6 @@ static inline void engine_heartbeat_instance(
 /** Validate engine pointer and magic */
 static inline bool engine_valid(const inner_dialogue_engine_t* engine) {
     return engine && engine->magic == INNER_DIALOGUE_MAGIC;
-}
-
-/** Clamp float to range */
-static inline float clamp_f(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
 }
 
 /** Get microsecond timestamp */
@@ -517,7 +513,7 @@ static bool query_cycle_coordinator_health(const inner_dialogue_engine_t* engine
     }
 
     /* Modulate urgency: more degraded cycles → higher urgency → faster convergence */
-    *urgency_boost = clamp_f(degraded_ratio * 0.5f + stalled_ratio * 0.3f, 0.0f, 0.5f);
+    *urgency_boost = nimcp_clampf(degraded_ratio * 0.5f + stalled_ratio * 0.3f, 0.0f, 0.5f);
 
     if (*urgency_boost > 0.01f) {
         NIMCP_LOGGING_DEBUG("inner_dialogue: cycle health urgency boost=%.3f "
@@ -897,7 +893,7 @@ int inner_dialogue_engine_step(inner_dialogue_engine_t* engine,
     ctx.topic = engine->topic;
     ctx.last_turn = inner_dialogue_turn_history_get_latest(engine->history);
     ctx.history = engine->history;
-    ctx.urgency = clamp_f(engine->config.urgency + cycle_urgency_boost, 0.0f, 1.0f);
+    ctx.urgency = nimcp_clampf(engine->config.urgency + cycle_urgency_boost, 0.0f, 1.0f);
     ctx.emotional_temperature = engine->last_analysis.emotional_temperature;
 
     /* 3. Select perspective */

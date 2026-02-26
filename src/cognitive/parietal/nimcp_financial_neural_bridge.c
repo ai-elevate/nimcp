@@ -27,6 +27,7 @@
 #include "constants/nimcp_learning_constants.h"
 #include "constants/nimcp_threshold_constants.h"
 #include "constants/nimcp_math_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 /* Health agent: using pre-existing custom implementation */
 static nimcp_health_agent_t* g_fin_neural_health_agent = NULL;
@@ -251,13 +252,6 @@ static float s_shaped(float low, float high, float x) {
     if (range < 1e-8f) return 0.5f;
     float t = (x - low) / range;
     return t * t * (3.0f - 2.0f * t);
-}
-
-/** Clamp a float to [lo, hi] */
-static float clampf(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
 }
 
 //=============================================================================
@@ -822,7 +816,7 @@ int financial_neural_bridge_decode_spikes(
     } else {
         *out_confidence = 0.0f;
     }
-    *out_confidence = clampf(*out_confidence, 0.0f, 1.0f);
+    *out_confidence = nimcp_clampf(*out_confidence, 0.0f, 1.0f);
 
     return FIN_NEURAL_ERR_OK;
 }
@@ -847,7 +841,7 @@ int financial_neural_bridge_compute_fuzzy_reward(
      *   loss:       s_shaped(0.05, 0.20, -trade_return) */
     out_reward->fuzzy_profitable_degree = s_shaped(0.05f, 0.20f, trade_return);
     out_reward->fuzzy_neutral_degree =
-        clampf(1.0f - fabsf(trade_return) / 0.1f, 0.0f, 1.0f);
+        nimcp_clampf(1.0f - fabsf(trade_return) / 0.1f, 0.0f, 1.0f);
     out_reward->fuzzy_loss_degree = s_shaped(0.05f, 0.20f, -trade_return);
 
     /* reward_magnitude = profitable - loss, range [-1, 1] */
@@ -1012,7 +1006,7 @@ int financial_neural_bridge_lnn_predict(
     out_prediction->predicted_volatility = predicted_vol;
     out_prediction->predicted_direction = (predicted_return > 0.0f) ? 1.0f :
                                           (predicted_return < 0.0f) ? -1.0f : 0.0f;
-    out_prediction->confidence = clampf(confidence, 0.0f, 1.0f);
+    out_prediction->confidence = nimcp_clampf(confidence, 0.0f, 1.0f);
 
     /* Copy state vector */
     out_prediction->state_dim = dim;
@@ -1032,7 +1026,7 @@ int financial_neural_bridge_lnn_predict(
         float trend = (dim > 0) ? bridge->lnn_state[0] : 0.0f;
         regime->bull_degree = s_shaped(0.0f, 0.05f, trend);
         regime->bear_degree = s_shaped(0.0f, 0.05f, -trend);
-        regime->sideways_degree = clampf(1.0f - fabsf(trend) / 0.02f, 0.0f, 1.0f);
+        regime->sideways_degree = nimcp_clampf(1.0f - fabsf(trend) / 0.02f, 0.0f, 1.0f);
 
         /* Use state[1] (vol component) for high_vol */
         float vol_state = (dim > 1) ? fabsf(bridge->lnn_state[1]) : 0.0f;
@@ -1133,12 +1127,12 @@ int financial_neural_bridge_adapt_risk_params(
     bridge->state = FIN_NEURAL_STATE_ADAPTING;
 
     /* Performance score: normalized Sharpe ratio */
-    float performance_score = clampf(sharpe_ratio / 3.0f, -1.0f, 1.0f);
+    float performance_score = nimcp_clampf(sharpe_ratio / 3.0f, -1.0f, 1.0f);
     /* Map to [0, 1] for plasticity computation */
     float perf_01 = (performance_score + 1.0f) / 2.0f;
 
     /* Stability score: 1 - volatility_trend (stable = high) */
-    float stability_score = clampf(1.0f - volatility_trend, 0.0f, 1.0f);
+    float stability_score = nimcp_clampf(1.0f - volatility_trend, 0.0f, 1.0f);
 
     /* Plasticity rate = base_rate * (1 + performance * 0.5) * (stability * 0.8 + 0.2) */
     float base_rate = bridge->config.plasticity_base_rate;
@@ -1155,10 +1149,10 @@ int financial_neural_bridge_adapt_risk_params(
 
     /* Adapted risk tolerance = base * (1 + plasticity_rate * (performance - 0.5)) */
     float adapted_risk_tolerance = 1.0f * (1.0f + plasticity_rate * (perf_01 - 0.5f));
-    adapted_risk_tolerance = clampf(adapted_risk_tolerance, 0.2f, 3.0f);
+    adapted_risk_tolerance = nimcp_clampf(adapted_risk_tolerance, 0.2f, 3.0f);
 
     /* Adapted position size scale = clamp(1.0 + 0.2 * (sharpe - 1.0), 0.5, 2.0) */
-    float adapted_position_size = clampf(1.0f + 0.2f * (sharpe_ratio - 1.0f), 0.5f, 2.0f);
+    float adapted_position_size = nimcp_clampf(1.0f + 0.2f * (sharpe_ratio - 1.0f), 0.5f, 2.0f);
 
     /* Adapted stop loss distance = base * (1 + 0.1 * volatility_trend) */
     float adapted_stop_loss = 1.0f * (1.0f + 0.1f * volatility_trend);
@@ -1587,7 +1581,7 @@ int financial_neural_bridge_train_step(
 
     /* Update convergence degree: how close to converged
      * convergence = 1 - loss (clamped, with smoothing) */
-    float target_conv = clampf(1.0f - bridge->current_loss, 0.0f, 1.0f);
+    float target_conv = nimcp_clampf(1.0f - bridge->current_loss, 0.0f, 1.0f);
     /* Exponential moving average for smoothing */
     float alpha = 0.1f;
     bridge->convergence_degree =
@@ -1634,7 +1628,7 @@ int financial_neural_bridge_set_inflammation(financial_neural_bridge_t* bridge,
                                               float level)
 {
     if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_set_inflammation: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
-    bridge->inflammation = clampf(level, 0.0f, 1.0f);
+    bridge->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_NEURAL_ERR_OK;
 }
 
@@ -1642,7 +1636,7 @@ int financial_neural_bridge_set_fatigue(financial_neural_bridge_t* bridge,
                                          float level)
 {
     if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_set_fatigue: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
-    bridge->fatigue = clampf(level, 0.0f, 1.0f);
+    bridge->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_NEURAL_ERR_OK;
 }
 

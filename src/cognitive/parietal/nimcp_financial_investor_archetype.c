@@ -37,6 +37,7 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_threshold_constants.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 BRIDGE_BOILERPLATE(fin_arch, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -249,13 +250,6 @@ static float mf_triangular(float a, float b, float c, float x) {
 static float mf_gaussian(float center, float sigma, float x) {
     float d = (x - center) / sigma;
     return expf(-0.5f * d * d);
-}
-
-/** Clamp value to [lo, hi] */
-static float clampf(float v, float lo, float hi) {
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 /** Sigmoid function: 1 / (1 + exp(-k*(x - mid))) */
@@ -716,9 +710,9 @@ static void eval_margin_of_safety(const fin_heuristic_input_t* input,
     }
 
     float margin = (intrinsic - price) / intrinsic;
-    result->crisp_score = clampf(margin, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(margin, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(0.15f, 0.40f, margin);
-    result->confidence = clampf(0.5f + margin, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(0.5f + margin, 0.0f, 1.0f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Margin of safety: %.1f%% (intrinsic=%.2f, price=%.2f)",
              margin * 100.0f, intrinsic, price);
@@ -736,9 +730,9 @@ static void eval_economic_moat(const fin_heuristic_input_t* input,
                       0.25f * input->switching_cost +
                       0.20f * input->brand_strength;
 
-    result->crisp_score = clampf(composite, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(composite, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(0.4f, 0.7f, composite);
-    result->confidence = clampf(composite, 0.3f, 0.95f);
+    result->confidence = nimcp_clampf(composite, 0.3f, 0.95f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Economic moat composite: %.3f (wide=%s)",
              composite, result->fuzzy_membership > 0.5f ? "yes" : "no");
@@ -775,7 +769,7 @@ static void eval_peg_ratio(const fin_heuristic_input_t* input,
         return;
     }
 
-    result->crisp_score = clampf(1.0f - clampf(peg - 1.0f, -1.0f, 1.0f), 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(1.0f - nimcp_clampf(peg - 1.0f, -1.0f, 1.0f), 0.0f, 1.0f);
     result->fuzzy_membership = mf_z_shaped(0.5f, 1.0f, peg);
     result->confidence = (peg < 2.0f) ? 0.7f : 0.4f;
     snprintf(result->explanation, sizeof(result->explanation),
@@ -793,9 +787,9 @@ static void eval_reflexivity(const fin_heuristic_input_t* input,
                            input->sentiment_divergence *
                            input->volume_trend);
 
-    result->crisp_score = clampf(strength, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(strength, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(0.3f, 0.8f, strength);
-    result->confidence = clampf(0.3f + strength * 0.5f, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(0.3f + strength * 0.5f, 0.0f, 1.0f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Reflexivity strength: %.3f (momentum=%.2f, divergence=%.2f)",
              strength, input->price_momentum, input->sentiment_divergence);
@@ -808,7 +802,7 @@ static void eval_maximum_pessimism(const fin_heuristic_input_t* input,
     result->type = FIN_HEURISTIC_MAXIMUM_PESSIMISM;
 
     float fgi = input->fear_greed_index;
-    result->crisp_score = clampf(1.0f - fgi / 100.0f, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(1.0f - fgi / 100.0f, 0.0f, 1.0f);
     result->fuzzy_membership = mf_z_shaped(10.0f, 25.0f, fgi);
     result->confidence = (fgi < 20.0f) ? 0.8f : 0.4f;
     snprintf(result->explanation, sizeof(result->explanation),
@@ -857,9 +851,9 @@ static void eval_risk_parity(const fin_heuristic_input_t* input,
     float max_entropy = logf((float)n);
     float balance_ratio = (max_entropy > 0.0f) ? entropy / max_entropy : 0.0f;
 
-    result->crisp_score = clampf(balance_ratio, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(balance_ratio, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(0.6f, 0.9f, balance_ratio);
-    result->confidence = clampf(balance_ratio, 0.3f, 0.9f);
+    result->confidence = nimcp_clampf(balance_ratio, 0.3f, 0.9f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Risk parity balance: %.3f (entropy=%.3f / max=%.3f)",
              balance_ratio, entropy, max_entropy);
@@ -872,9 +866,9 @@ static void eval_statistical_edge(const fin_heuristic_input_t* input,
     result->type = FIN_HEURISTIC_STATISTICAL_EDGE;
 
     float abs_z = fabsf(input->z_score);
-    result->crisp_score = clampf(abs_z / 3.0f, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(abs_z / 3.0f, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(1.5f, 3.0f, abs_z);
-    result->confidence = clampf(0.3f + abs_z * 0.2f, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(0.3f + abs_z * 0.2f, 0.0f, 1.0f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Z-score: %.3f (|z|=%.3f, edge=%s)",
              input->z_score, abs_z,
@@ -891,9 +885,9 @@ static void eval_scuttlebutt(const fin_heuristic_input_t* input,
                          input->rd_effectiveness +
                          input->competitive_position) / 3.0f;
 
-    result->crisp_score = clampf(avg_quality, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(avg_quality, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(0.5f, 0.8f, avg_quality);
-    result->confidence = clampf(avg_quality, 0.3f, 0.9f);
+    result->confidence = nimcp_clampf(avg_quality, 0.3f, 0.9f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Scuttlebutt quality: %.3f (mgmt=%.2f, R&D=%.2f, comp=%.2f)",
              avg_quality, input->management_quality,
@@ -912,7 +906,7 @@ static void eval_fifteen_point_checklist(const fin_heuristic_input_t* input,
     uint32_t valid_count = 0;
 
     for (uint32_t i = 0; i < FIN_ARCH_FISHER_CHECKLIST_SIZE; i++) {
-        float score = clampf(input->fisher_checklist_scores[i], 0.0f, 1.0f);
+        float score = nimcp_clampf(input->fisher_checklist_scores[i], 0.0f, 1.0f);
         product *= score;
         if (score < min_score) min_score = score;
         if (score > 0.0f) valid_count++;
@@ -941,7 +935,7 @@ static void eval_pivotal_point(const fin_heuristic_input_t* input,
     float distance = fabsf(price - pivot);
     result->crisp_score = 1.0f / (1.0f + distance / tolerance);
     result->fuzzy_membership = mf_gaussian(pivot, tolerance, price);
-    result->confidence = clampf(result->crisp_score * input->breakout_confirmation,
+    result->confidence = nimcp_clampf(result->crisp_score * input->breakout_confirmation,
                                 0.0f, 1.0f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Pivot: price=%.2f, pivot=%.2f, distance=%.2f (near=%s)",
@@ -971,7 +965,7 @@ static void eval_pyramiding(const fin_heuristic_input_t* input,
     }
 
     result->fuzzy_membership = mf_s_shaped(0.02f, 0.08f, profit_pct);
-    result->confidence = clampf(0.4f + profit_pct * 5.0f, 0.0f, 0.9f);
+    result->confidence = nimcp_clampf(0.4f + profit_pct * 5.0f, 0.0f, 0.9f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Unrealized profit: %.2f%% (pyramid=%s)",
              profit_pct * 100.0f,
@@ -985,7 +979,7 @@ static void eval_inversion(const fin_heuristic_input_t* input,
     result->type = FIN_HEURISTIC_INVERSION;
 
     /* Compute risk score from leverage and concentration */
-    float risk_score = clampf(
+    float risk_score = nimcp_clampf(
         0.4f * input->leverage_ratio +
         0.6f * input->position_concentration,
         0.0f, 1.0f);
@@ -1019,7 +1013,7 @@ static void eval_mental_model_convergence(const fin_heuristic_input_t* input,
     /* Average activation */
     float sum = 0.0f;
     for (uint32_t i = 0; i < count && i < FIN_ARCH_MAX_MENTAL_MODELS; i++) {
-        sum += clampf(input->mental_model_activations[i], 0.0f, 1.0f);
+        sum += nimcp_clampf(input->mental_model_activations[i], 0.0f, 1.0f);
     }
     float avg = sum / (float)count;
     result->crisp_score = avg;
@@ -1027,14 +1021,14 @@ static void eval_mental_model_convergence(const fin_heuristic_input_t* input,
     /* Bounded sum aggregation for fuzzy membership */
     float bounded_sum = 0.0f;
     for (uint32_t i = 0; i < count && i < FIN_ARCH_MAX_MENTAL_MODELS; i++) {
-        bounded_sum += clampf(input->mental_model_activations[i], 0.0f, 1.0f);
+        bounded_sum += nimcp_clampf(input->mental_model_activations[i], 0.0f, 1.0f);
     }
-    bounded_sum = clampf(bounded_sum / (float)count, 0.0f, 1.0f);
+    bounded_sum = nimcp_clampf(bounded_sum / (float)count, 0.0f, 1.0f);
     result->fuzzy_membership = bounded_sum;
 
     /* Lollapalooza effect: if convergence > 0.85, extra boost */
     bool lollapalooza = (result->fuzzy_membership > 0.85f);
-    result->confidence = lollapalooza ? 0.95f : clampf(avg, 0.3f, 0.85f);
+    result->confidence = lollapalooza ? 0.95f : nimcp_clampf(avg, 0.3f, 0.85f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Mental models: %u converging at %.3f%s",
              count, avg, lollapalooza ? " [LOLLAPALOOZA]" : "");
@@ -1046,10 +1040,10 @@ static void eval_contrarian_sentiment(const fin_heuristic_input_t* input,
 {
     result->type = FIN_HEURISTIC_CONTRARIAN_SENTIMENT;
 
-    float consensus = clampf(input->market_consensus_strength, 0.0f, 1.0f);
+    float consensus = nimcp_clampf(input->market_consensus_strength, 0.0f, 1.0f);
     result->crisp_score = 1.0f - consensus;
     result->fuzzy_membership = 1.0f - consensus; /* standard complement */
-    result->confidence = clampf(fabsf(consensus - 0.5f) * 2.0f, 0.0f, 1.0f);
+    result->confidence = nimcp_clampf(fabsf(consensus - 0.5f) * 2.0f, 0.0f, 1.0f);
     snprintf(result->explanation, sizeof(result->explanation),
              "Consensus: %.3f (contrarian=%.3f)",
              consensus, result->crisp_score);
@@ -1062,7 +1056,7 @@ static void eval_earnings_growth(const fin_heuristic_input_t* input,
     result->type = FIN_HEURISTIC_EARNINGS_GROWTH;
 
     float growth_rate = input->earnings_growth_rate;
-    result->crisp_score = clampf(growth_rate / 0.30f, 0.0f, 1.0f);
+    result->crisp_score = nimcp_clampf(growth_rate / 0.30f, 0.0f, 1.0f);
     result->fuzzy_membership = mf_s_shaped(0.10f, 0.25f, growth_rate);
     result->confidence = (growth_rate > 0.05f) ? 0.7f : 0.3f;
     snprintf(result->explanation, sizeof(result->explanation),
@@ -1305,15 +1299,15 @@ int financial_investor_archetype_evaluate(
     /* Apply inflammation/fatigue modulation */
     if (arch->config.inflammation_sensitivity > 0.0f && arch->inflammation > 0.0f) {
         float damping = 1.0f - arch->inflammation * arch->config.inflammation_sensitivity * 0.3f;
-        aggregate *= clampf(damping, 0.5f, 1.0f);
+        aggregate *= nimcp_clampf(damping, 0.5f, 1.0f);
     }
     if (arch->config.fatigue_sensitivity > 0.0f && arch->fatigue > 0.0f) {
         /* Fatigue pushes toward hold (0.5) */
         float pull = arch->fatigue * arch->config.fatigue_sensitivity * 0.4f;
-        aggregate = aggregate + (0.5f - aggregate) * clampf(pull, 0.0f, 0.8f);
+        aggregate = aggregate + (0.5f - aggregate) * nimcp_clampf(pull, 0.0f, 0.8f);
     }
 
-    aggregate = clampf(aggregate, 0.0f, 1.0f);
+    aggregate = nimcp_clampf(aggregate, 0.0f, 1.0f);
 
     /* Map to decision */
     out_decision->decision = map_aggregate_to_decision(aggregate);
@@ -1349,7 +1343,7 @@ int financial_investor_archetype_evaluate(
     /* Position sizing based on conviction and risk tolerance */
     out_decision->position_size_pct = out_decision->conviction *
         profile->risk_tolerance * profile->concentration_preference * 100.0f;
-    out_decision->position_size_pct = clampf(out_decision->position_size_pct,
+    out_decision->position_size_pct = nimcp_clampf(out_decision->position_size_pct,
                                               0.0f, 100.0f);
 
     /* Stop-loss and take-profit based on risk tolerance */
@@ -1646,7 +1640,7 @@ int financial_investor_archetype_select(
 
     /* Clamp suitability scores */
     for (uint32_t i = 0; i < FIN_ARCH_COUNT; i++) {
-        out_suitability->suitability[i] = clampf(out_suitability->suitability[i],
+        out_suitability->suitability[i] = nimcp_clampf(out_suitability->suitability[i],
                                                    0.0f, 1.0f);
     }
 
@@ -1670,7 +1664,7 @@ int financial_investor_archetype_select(
         }
     }
     if (best > 0.0f && second_best >= 0.0f) {
-        out_suitability->selection_confidence = clampf(
+        out_suitability->selection_confidence = nimcp_clampf(
             (best - second_best) / best, 0.0f, 1.0f);
     } else {
         out_suitability->selection_confidence = 0.5f;
@@ -1697,10 +1691,10 @@ int financial_investor_archetype_apply_emotion(
 
     fin_arch_heartbeat_instance(arch->health_agent, "apply_emotion", 0.0f);
 
-    float fear = clampf(emotion->fear_level * arch->config.fear_sensitivity, 0.0f, 1.0f);
-    float greed_val = clampf(emotion->greed_level * arch->config.greed_sensitivity, 0.0f, 1.0f);
-    float stress = clampf(emotion->stress_level * arch->config.stress_sensitivity, 0.0f, 1.0f);
-    float arousal = clampf(emotion->arousal_level, 0.0f, 1.0f);
+    float fear = nimcp_clampf(emotion->fear_level * arch->config.fear_sensitivity, 0.0f, 1.0f);
+    float greed_val = nimcp_clampf(emotion->greed_level * arch->config.greed_sensitivity, 0.0f, 1.0f);
+    float stress = nimcp_clampf(emotion->stress_level * arch->config.stress_sensitivity, 0.0f, 1.0f);
+    float arousal = nimcp_clampf(emotion->arousal_level, 0.0f, 1.0f);
 
     /* Fear: reduces position size; position_scale = 1.0 - fear * 0.5 */
     float position_scale = 1.0f - fear * 0.5f;
@@ -1718,7 +1712,7 @@ int financial_investor_archetype_apply_emotion(
     float horizon_adjustment = -arousal * 0.5f; /* negative = shorter */
 
     /* Emotional bias = (greed - fear) scaled to [-1, 1] */
-    float emotional_bias = clampf(greed_val - fear, -1.0f, 1.0f);
+    float emotional_bias = nimcp_clampf(greed_val - fear, -1.0f, 1.0f);
 
     /* Store emotional state in decision */
     inout_decision->emotional_state.fear_level = emotion->fear_level;
@@ -1733,18 +1727,18 @@ int financial_investor_archetype_apply_emotion(
 
     /* Apply modulations to decision */
     inout_decision->position_size_pct *= position_scale;
-    inout_decision->conviction *= clampf(conviction_adj, 0.2f, 1.0f);
+    inout_decision->conviction *= nimcp_clampf(conviction_adj, 0.2f, 1.0f);
 
     /* Conservatism widens stop-loss and tightens take-profit */
     inout_decision->stop_loss_pct *= (1.0f + conservatism * 0.3f);
     inout_decision->take_profit_pct *= (1.0f - conservatism * 0.2f);
 
     /* Clamp final values */
-    inout_decision->position_size_pct = clampf(inout_decision->position_size_pct,
+    inout_decision->position_size_pct = nimcp_clampf(inout_decision->position_size_pct,
                                                 0.0f, 100.0f);
-    inout_decision->conviction = clampf(inout_decision->conviction, 0.0f, 1.0f);
-    inout_decision->stop_loss_pct = clampf(inout_decision->stop_loss_pct, 0.5f, 50.0f);
-    inout_decision->take_profit_pct = clampf(inout_decision->take_profit_pct, 1.0f, 100.0f);
+    inout_decision->conviction = nimcp_clampf(inout_decision->conviction, 0.0f, 1.0f);
+    inout_decision->stop_loss_pct = nimcp_clampf(inout_decision->stop_loss_pct, 0.5f, 50.0f);
+    inout_decision->take_profit_pct = nimcp_clampf(inout_decision->take_profit_pct, 1.0f, 100.0f);
 
     fin_arch_heartbeat_instance(arch->health_agent, "apply_emotion", 1.0f);
     return FIN_ARCH_ERR_OK;
@@ -1766,7 +1760,7 @@ int financial_investor_archetype_compute_emotion(
     memset(out_emotion, 0, sizeof(*out_emotion));
 
     /* Derive fear from market crisis/bear and sentiment fear */
-    out_emotion->fear_level = clampf(
+    out_emotion->fear_level = nimcp_clampf(
         0.3f * market->crisis_degree +
         0.2f * market->bear_degree +
         0.3f * sentiment->extreme_fear_degree +
@@ -1774,18 +1768,18 @@ int financial_investor_archetype_compute_emotion(
         0.0f, 1.0f);
 
     /* Derive greed from bull market and greed sentiment */
-    out_emotion->greed_level = clampf(
+    out_emotion->greed_level = nimcp_clampf(
         0.3f * market->bull_degree +
         0.3f * sentiment->extreme_greed_degree +
         0.25f * sentiment->greed_degree +
         0.15f * (1.0f - market->crisis_degree),
         0.0f, 1.0f);
 
-    out_emotion->stress_level = clampf(stress_level, 0.0f, 1.0f);
-    out_emotion->arousal_level = clampf(arousal_level, 0.0f, 1.0f);
+    out_emotion->stress_level = nimcp_clampf(stress_level, 0.0f, 1.0f);
+    out_emotion->arousal_level = nimcp_clampf(arousal_level, 0.0f, 1.0f);
 
     /* Confidence from market stability and low fear */
-    out_emotion->confidence_level = clampf(
+    out_emotion->confidence_level = nimcp_clampf(
         0.3f * market->bull_degree +
         0.2f * market->sideways_degree +
         0.2f * sentiment->neutral_degree +
@@ -1798,10 +1792,10 @@ int financial_investor_archetype_compute_emotion(
     float greed_val = out_emotion->greed_level * arch->config.greed_sensitivity;
     float stress = out_emotion->stress_level * arch->config.stress_sensitivity;
 
-    out_emotion->fuzzy_position_scale = 1.0f - clampf(fear, 0.0f, 1.0f) * 0.5f;
-    out_emotion->fuzzy_conservatism = sigmoidf(5.0f, 0.5f, clampf(stress, 0.0f, 1.0f));
-    out_emotion->fuzzy_horizon_adjustment = -clampf(out_emotion->arousal_level, 0.0f, 1.0f) * 0.5f;
-    out_emotion->emotional_bias = clampf(greed_val - fear, -1.0f, 1.0f);
+    out_emotion->fuzzy_position_scale = 1.0f - nimcp_clampf(fear, 0.0f, 1.0f) * 0.5f;
+    out_emotion->fuzzy_conservatism = sigmoidf(5.0f, 0.5f, nimcp_clampf(stress, 0.0f, 1.0f));
+    out_emotion->fuzzy_horizon_adjustment = -nimcp_clampf(out_emotion->arousal_level, 0.0f, 1.0f) * 0.5f;
+    out_emotion->emotional_bias = nimcp_clampf(greed_val - fear, -1.0f, 1.0f);
 
     fin_arch_heartbeat_instance(arch->health_agent, "compute_emotion", 1.0f);
     return FIN_ARCH_ERR_OK;
@@ -1881,15 +1875,15 @@ int financial_investor_archetype_self_reflect(
          * higher prediction error = lower calibration
          */
         float actual = r->was_correct ? 1.0f : 0.0f;
-        float predicted_conf = clampf(1.0f - fabsf(r->prediction_error), 0.0f, 1.0f);
+        float predicted_conf = nimcp_clampf(1.0f - fabsf(r->prediction_error), 0.0f, 1.0f);
         calibration_sum += fabsf(predicted_conf - actual);
     }
 
     *out_accuracy = (float)correct / (float)total;
     *out_calibration = 1.0f - (calibration_sum / (float)total);
 
-    *out_accuracy = clampf(*out_accuracy, 0.0f, 1.0f);
-    *out_calibration = clampf(*out_calibration, 0.0f, 1.0f);
+    *out_accuracy = nimcp_clampf(*out_accuracy, 0.0f, 1.0f);
+    *out_calibration = nimcp_clampf(*out_calibration, 0.0f, 1.0f);
 
     fin_arch_heartbeat_instance(arch->health_agent, "self_reflect", 1.0f);
     return FIN_ARCH_ERR_OK;
@@ -1903,7 +1897,7 @@ int financial_investor_archetype_set_inflammation(
     financial_investor_archetype_t* arch, float level)
 {
     if (!arch) { set_error("NULL archetype"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_investor_archetype_set_inflammation: arch is NULL"); return FIN_ARCH_ERR_NULL; }
-    arch->inflammation = clampf(level, 0.0f, 1.0f);
+    arch->inflammation = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_ARCH_ERR_OK;
 }
 
@@ -1911,7 +1905,7 @@ int financial_investor_archetype_set_fatigue(
     financial_investor_archetype_t* arch, float level)
 {
     if (!arch) { set_error("NULL archetype"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_investor_archetype_set_fatigue: arch is NULL"); return FIN_ARCH_ERR_NULL; }
-    arch->fatigue = clampf(level, 0.0f, 1.0f);
+    arch->fatigue = nimcp_clampf(level, 0.0f, 1.0f);
     return FIN_ARCH_ERR_OK;
 }
 

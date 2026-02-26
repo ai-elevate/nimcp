@@ -35,6 +35,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include "utils/math/nimcp_math_helpers.h"
 
 /*=============================================================================
  * MODULE LOGGING
@@ -96,7 +97,6 @@ static void update_gene_expression(second_messenger_state_t* state, float dt_ms,
                                    const second_messenger_config_t* config);
 static void update_integration_state(second_messenger_state_t* state);
 static float hill_function(float x, float k, float n);
-static float clamp_f(float val, float min_val, float max_val);
 static nimcp_result_t bio_message_handler(const void* msg, size_t msg_size,
                                           nimcp_bio_promise_t response_promise,
                                           void* user_data);
@@ -572,7 +572,7 @@ nimcp_result_t second_messenger_activate_gs(
 
     /* Gs activation increases adenylyl cyclase activity */
     float ac_increase = occupancy * 0.2F; /* Scale factor */
-    state->camp.adenylyl_cyclase_activity = clamp_f(
+    state->camp.adenylyl_cyclase_activity = nimcp_clampf(
         state->camp.adenylyl_cyclase_activity + ac_increase, 0.0F, 1.0F
     );
 
@@ -618,7 +618,7 @@ nimcp_result_t second_messenger_activate_gi(
 
     /* Gi activation decreases adenylyl cyclase activity */
     float ac_decrease = occupancy * 0.15F;
-    state->camp.adenylyl_cyclase_activity = clamp_f(
+    state->camp.adenylyl_cyclase_activity = nimcp_clampf(
         state->camp.adenylyl_cyclase_activity - ac_decrease, 0.0F, 1.0F
     );
 
@@ -664,7 +664,7 @@ nimcp_result_t second_messenger_activate_gq(
 
     /* Gq activation increases phospholipase C activity */
     float plc_increase = occupancy * 0.25F;
-    state->ip3_dag.phospholipase_c_activity = clamp_f(
+    state->ip3_dag.phospholipase_c_activity = nimcp_clampf(
         state->ip3_dag.phospholipase_c_activity + plc_increase, 0.0F, 1.0F
     );
 
@@ -824,7 +824,7 @@ nimcp_result_t second_messenger_inject_calcium(
     second_messenger_state_t* state = &system->states[neuron_id];
 
     /* Add calcium to cytoplasmic pool */
-    state->calcium.ca_cytoplasmic = clamp_f(
+    state->calcium.ca_cytoplasmic = nimcp_clampf(
         state->calcium.ca_cytoplasmic + ca_nm,
         SM_CA_BASELINE_NM,
         SM_CA_MAX_NM
@@ -913,7 +913,7 @@ nimcp_result_t second_messenger_get_effects(
     effects->stdp_window_modulation = 1.0F + 0.5F * camkii; /* Wider window */
 
     /* Clamp LTP threshold modulation */
-    effects->ltp_threshold_modulation = clamp_f(effects->ltp_threshold_modulation, 0.5F, 1.0F);
+    effects->ltp_threshold_modulation = nimcp_clampf(effects->ltp_threshold_modulation, 0.5F, 1.0F);
 
     /* LTD threshold: opposite direction from LTP */
     effects->ltd_threshold_modulation = 1.0F + 0.2F * (pka + camkii);
@@ -1279,7 +1279,7 @@ static void update_camp_pathway(second_messenger_state_t* state, float dt_ms) {
 
     /* Update cAMP concentration (Euler integration) */
     float dcAMP = (camp_synthesis - camp_degradation) * (dt_ms / 1000.0F);
-    camp->camp_concentration = clamp_f(
+    camp->camp_concentration = nimcp_clampf(
         camp->camp_concentration + dcAMP,
         SM_CAMP_BASELINE_UM,
         SM_CAMP_MAX_UM
@@ -1294,7 +1294,7 @@ static void update_camp_pathway(second_messenger_state_t* state, float dt_ms) {
 
     /* AC decay back to baseline */
     float ac_decay = (camp->adenylyl_cyclase_activity - 0.1F) * dt_ms / SM_TAU_CAMP_SYNTHESIS;
-    camp->adenylyl_cyclase_activity = clamp_f(
+    camp->adenylyl_cyclase_activity = nimcp_clampf(
         camp->adenylyl_cyclase_activity - ac_decay, 0.0F, 1.0F
     );
 }
@@ -1313,7 +1313,7 @@ static void update_ip3_dag_pathway(second_messenger_state_t* state, float dt_ms)
 
     /* Update IP3 concentration */
     float dIP3 = (ip3_synthesis - ip3_degradation) * (dt_ms / 1000.0F);
-    ip3dag->ip3_concentration = clamp_f(
+    ip3dag->ip3_concentration = nimcp_clampf(
         ip3dag->ip3_concentration + dIP3,
         SM_IP3_BASELINE_UM,
         SM_IP3_MAX_UM
@@ -1324,7 +1324,7 @@ static void update_ip3_dag_pathway(second_messenger_state_t* state, float dt_ms)
     float dag_degradation = ip3dag->dag_concentration * 0.1F;
 
     float dDAG = (dag_synthesis - dag_degradation) * (dt_ms / 1000.0F);
-    ip3dag->dag_concentration = clamp_f(
+    ip3dag->dag_concentration = nimcp_clampf(
         ip3dag->dag_concentration + dDAG,
         SM_DAG_BASELINE,
         SM_DAG_MAX
@@ -1341,7 +1341,7 @@ static void update_ip3_dag_pathway(second_messenger_state_t* state, float dt_ms)
 
     /* PLC decay back to baseline */
     float plc_decay = (ip3dag->phospholipase_c_activity - 0.05F) * dt_ms / SM_TAU_IP3_SYNTHESIS;
-    ip3dag->phospholipase_c_activity = clamp_f(
+    ip3dag->phospholipase_c_activity = nimcp_clampf(
         ip3dag->phospholipase_c_activity - plc_decay, 0.0F, 1.0F
     );
 }
@@ -1362,7 +1362,7 @@ static void update_calcium_signaling(second_messenger_state_t* state, float dt_m
 
     /* Update cytoplasmic calcium */
     float dCa = (ca_release - ca_reuptake) * (dt_ms / 1000.0F);
-    ca->ca_cytoplasmic = clamp_f(
+    ca->ca_cytoplasmic = nimcp_clampf(
         ca->ca_cytoplasmic + dCa,
         SM_CA_BASELINE_NM,
         SM_CA_MAX_NM
@@ -1370,31 +1370,31 @@ static void update_calcium_signaling(second_messenger_state_t* state, float dt_m
 
     /* Update ER store (inverse of release) */
     float dER = (-ca_release * 0.01F + ca_reuptake * 0.01F) * (dt_ms / 1000.0F);
-    ca->ca_er_store = clamp_f(ca->ca_er_store + dER, 0.0F, 1.0F);
+    ca->ca_er_store = nimcp_clampf(ca->ca_er_store + dER, 0.0F, 1.0F);
 
     /* Calmodulin activation */
     float ca_norm = (ca->ca_cytoplasmic - SM_CA_BASELINE_NM) /
                     (SM_CA_MAX_NM - SM_CA_BASELINE_NM);
-    ca_norm = clamp_f(ca_norm, 0.0F, 1.0F);
+    ca_norm = nimcp_clampf(ca_norm, 0.0F, 1.0F);
     float cam_target = hill_function(ca_norm, 0.3F, 4.0F);  /* Cooperative binding */
 
     float dCaM = (cam_target - ca->calmodulin_activation) * dt_ms / SM_TAU_CALMODULIN;
-    ca->calmodulin_activation = clamp_f(ca->calmodulin_activation + dCaM, 0.0F, 1.0F);
+    ca->calmodulin_activation = nimcp_clampf(ca->calmodulin_activation + dCaM, 0.0F, 1.0F);
 
     /* CaMKII activation */
     float camkii_target = hill_function(ca->calmodulin_activation, 0.5F, SM_HILL_CAMKII);
 
     /* CaMKII autophosphorylation provides positive feedback */
     float autop_contribution = ca->camkii_autophosphorylation * 0.3F;
-    camkii_target = clamp_f(camkii_target + autop_contribution, 0.0F, 1.0F);
+    camkii_target = nimcp_clampf(camkii_target + autop_contribution, 0.0F, 1.0F);
 
     float dCaMKII = (camkii_target - ca->camkii_activity) * dt_ms / SM_TAU_CAMKII;
-    ca->camkii_activity = clamp_f(ca->camkii_activity + dCaMKII, 0.0F, 1.0F);
+    ca->camkii_activity = nimcp_clampf(ca->camkii_activity + dCaMKII, 0.0F, 1.0F);
 
     /* Autophosphorylation (bistable switch) */
     if (ca->camkii_activity > 0.6F) {
         float autop_rate = 0.01F * (ca->camkii_activity - 0.6F);
-        ca->camkii_autophosphorylation = clamp_f(
+        ca->camkii_autophosphorylation = nimcp_clampf(
             ca->camkii_autophosphorylation + autop_rate * (dt_ms / 1000.0F),
             0.0F, 1.0F
         );
@@ -1419,7 +1419,7 @@ static void update_gene_expression(second_messenger_state_t* state, float dt_ms,
     /* CREB phosphorylation (slow dynamics) */
     float creb_target = hill_function(kinase_input, config->creb_phosphorylation_threshold, 2.0F);
     float dCREB = (creb_target - ge->creb_phosphorylation) * dt_ms / SM_TAU_CREB_PHOS;
-    ge->creb_phosphorylation = clamp_f(ge->creb_phosphorylation + dCREB, 0.0F, 1.0F);
+    ge->creb_phosphorylation = nimcp_clampf(ge->creb_phosphorylation + dCREB, 0.0F, 1.0F);
 
     /* CREB transcriptional activity (slightly delayed from phosphorylation) */
     float creb_delay = 0.01F;  /* Small delay factor */
@@ -1431,27 +1431,27 @@ static void update_gene_expression(second_messenger_state_t* state, float dt_ms,
                                dt_ms / SM_TAU_IEG_EXPRESSION;
 
         /* c-Fos: fastest IEG */
-        ge->ieg_levels[IEG_CFOS] = clamp_f(
+        ge->ieg_levels[IEG_CFOS] = nimcp_clampf(
             ge->ieg_levels[IEG_CFOS] + induction_rate * 1.2F, 0.0F, 1.0F
         );
 
         /* Arc: slower, critical for plasticity */
-        ge->ieg_levels[IEG_ARC] = clamp_f(
+        ge->ieg_levels[IEG_ARC] = nimcp_clampf(
             ge->ieg_levels[IEG_ARC] + induction_rate * 0.8F, 0.0F, 1.0F
         );
 
         /* BDNF: slowest, but most important for late-LTP */
-        ge->ieg_levels[IEG_BDNF] = clamp_f(
+        ge->ieg_levels[IEG_BDNF] = nimcp_clampf(
             ge->ieg_levels[IEG_BDNF] + induction_rate * 0.5F, 0.0F, 1.0F
         );
 
         /* Egr-1: memory consolidation */
-        ge->ieg_levels[IEG_EGR1] = clamp_f(
+        ge->ieg_levels[IEG_EGR1] = nimcp_clampf(
             ge->ieg_levels[IEG_EGR1] + induction_rate * 0.7F, 0.0F, 1.0F
         );
 
         /* Homer1a: mGluR modulation */
-        ge->ieg_levels[IEG_HOMER1A] = clamp_f(
+        ge->ieg_levels[IEG_HOMER1A] = nimcp_clampf(
             ge->ieg_levels[IEG_HOMER1A] + induction_rate * 0.6F, 0.0F, 1.0F
         );
     }
@@ -1480,13 +1480,13 @@ static void update_integration_state(second_messenger_state_t* state) {
     /* Range: 0.5 (very enhanced) to 1.5 (suppressed) */
     state->plasticity_modulation = 1.0F - 0.5F * state->total_kinase_activity +
                                    0.2F * state->gene_expr.ieg_levels[IEG_ARC];
-    state->plasticity_modulation = clamp_f(state->plasticity_modulation, 0.5F, 1.5F);
+    state->plasticity_modulation = nimcp_clampf(state->plasticity_modulation, 0.5F, 1.5F);
 
     /* Excitability modulation: PKA increases, PKC can decrease */
     state->excitability_modulation = 1.0F +
                                      0.1F * state->camp.pka_activity -
                                      0.05F * state->ip3_dag.pkc_activity;
-    state->excitability_modulation = clamp_f(state->excitability_modulation, 0.8F, 1.2F);
+    state->excitability_modulation = nimcp_clampf(state->excitability_modulation, 0.8F, 1.2F);
 }
 
 /**
@@ -1501,11 +1501,3 @@ static float hill_function(float x, float k, float n) {
     return xn / (xn + kn);
 }
 
-/**
- * @brief Clamp float to range
- */
-static float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
