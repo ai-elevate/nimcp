@@ -138,6 +138,132 @@ class SchoolProgressBoard:
 
 
 # ---------------------------------------------------------------------------
+# Metacognitive Training Strategy
+# ---------------------------------------------------------------------------
+
+class TrainingMetacognition:
+    """Metacognitive controller for training strategy adaptation.
+
+    WHAT: Assesses training quality per domain and adapts resource allocation
+    WHY:  Fixed instructor scheduling wastes resources on mastered domains
+          and under-invests in struggling domains
+    HOW:  Per-domain EMA tracking of accuracy, loss trend, and stall detection
+    """
+
+    def __init__(self, logger):
+        self.logger = logger
+        self._domain_stats: Dict[str, dict] = {}  # domain -> {ema_accuracy, ema_loss, stall_count, ...}
+        self._assessment_count = 0
+        self._reallocation_count = 0
+
+    def update(self, domain: str, accuracy: float, loss: float, examples: int):
+        """Update per-domain statistics with latest instructor report."""
+        if domain not in self._domain_stats:
+            self._domain_stats[domain] = {
+                'ema_accuracy': accuracy,
+                'ema_loss': loss,
+                'prev_accuracy': accuracy,
+                'stall_count': 0,
+                'total_examples': 0,
+                'assessments': 0,
+                'priority': 1.0,  # 1.0 = normal, >1 = needs more attention
+                'mastered': False,
+            }
+
+        stats = self._domain_stats[domain]
+        alpha = 0.1  # EMA smoothing
+        stats['ema_accuracy'] = alpha * accuracy + (1 - alpha) * stats['ema_accuracy']
+        stats['ema_loss'] = alpha * loss + (1 - alpha) * stats['ema_loss']
+        stats['total_examples'] += examples
+        stats['assessments'] += 1
+
+        # Stall detection: accuracy not improving over multiple assessments
+        if abs(stats['ema_accuracy'] - stats['prev_accuracy']) < 0.005:
+            stats['stall_count'] += 1
+        else:
+            stats['stall_count'] = 0
+        stats['prev_accuracy'] = stats['ema_accuracy']
+
+        # Mastery detection
+        if stats['ema_accuracy'] > 0.85 and stats['assessments'] > 10:
+            stats['mastered'] = True
+
+    def assess(self) -> Dict[str, dict]:
+        """Run metacognitive assessment across all domains.
+
+        Returns dict of domain -> {priority, status, recommendation}
+        """
+        self._assessment_count += 1
+        results = {}
+
+        for domain, stats in self._domain_stats.items():
+            if stats['mastered']:
+                priority = 0.3  # Reduce attention to mastered domains
+                status = 'mastered'
+                recommendation = 'reduce_slots'
+            elif stats['stall_count'] > 5:
+                priority = 2.0  # Double attention to stalled domains
+                status = 'stalled'
+                recommendation = 'increase_slots_and_diagnose'
+            elif stats['ema_accuracy'] < 0.3 and stats['assessments'] > 5:
+                priority = 1.8  # High attention to struggling domains
+                status = 'struggling'
+                recommendation = 'increase_slots'
+            elif stats['ema_accuracy'] > 0.7:
+                priority = 0.8  # Slightly reduce near-mastery domains
+                status = 'progressing_well'
+                recommendation = 'maintain'
+            else:
+                priority = 1.0
+                status = 'learning'
+                recommendation = 'maintain'
+
+            stats['priority'] = priority
+            results[domain] = {
+                'priority': priority,
+                'status': status,
+                'recommendation': recommendation,
+                'ema_accuracy': stats['ema_accuracy'],
+                'ema_loss': stats['ema_loss'],
+                'stall_count': stats['stall_count'],
+                'total_examples': stats['total_examples'],
+            }
+
+        return results
+
+    def get_priority_ranking(self) -> List[tuple]:
+        """Return domains sorted by priority (highest first)."""
+        return sorted(
+            [(d, s['priority']) for d, s in self._domain_stats.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+    def get_stalled_domains(self) -> List[str]:
+        """Return list of domains that appear stalled."""
+        return [d for d, s in self._domain_stats.items() if s['stall_count'] > 5]
+
+    def get_mastered_domains(self) -> List[str]:
+        """Return list of domains that appear mastered."""
+        return [d for d, s in self._domain_stats.items() if s['mastered']]
+
+    def format_dashboard(self) -> str:
+        """Format metacognitive assessment as dashboard string."""
+        lines = ["\n[Metacognition] Domain Assessment:"]
+        lines.append(f"  {'Domain':20s} {'Status':15s} {'Priority':>8s} {'Accuracy':>10s} {'Stall':>6s}")
+        lines.append("  " + "-" * 65)
+        for domain, stats in sorted(self._domain_stats.items()):
+            status = 'mastered' if stats['mastered'] else (
+                'stalled' if stats['stall_count'] > 5 else 'learning'
+            )
+            lines.append(
+                f"  {domain:20s} {status:15s} {stats['priority']:8.2f} "
+                f"{stats['ema_accuracy']:10.4f} {stats['stall_count']:6d}"
+            )
+        return '\n'.join(lines)
+
+
+# ---------------------------------------------------------------------------
 # School Coordinator
 # ---------------------------------------------------------------------------
 
@@ -156,6 +282,7 @@ class School:
         self.school_queue: queue.Queue = queue.Queue(maxsize=1000)
         self.cross_domain_queue: queue.Queue = queue.Queue(maxsize=500)
         self.board = SchoolProgressBoard()
+        self.metacognition = TrainingMetacognition(self.logger)
 
         self.instructors: List[InstructorAgent] = []
         self._start_time = 0.0
@@ -233,6 +360,7 @@ class School:
         self._last_recess = self._start_time
         self._last_report = self._start_time
         self._last_checkpoint = self._start_time
+        self._last_metacog = self._start_time
 
         # Open school-level log
         self._open_school_log()
@@ -269,7 +397,7 @@ class School:
                 time.sleep(self.config.startup_stagger_s)
 
     def _rotate_batches(self):
-        """Retire finished instructors and start replacements."""
+        """Retire finished instructors and start replacements (priority-aware)."""
         max_conc = self.config.max_concurrent_instructors
         # Remove finished threads from active list
         still_active = []
@@ -280,12 +408,24 @@ class School:
                 still_active.append(agent)
         self._active_instructors = still_active
 
+        # Sort pending by metacognitive priority (highest first)
+        if self._pending_instructors and self._domain_stats_available():
+            self._pending_instructors.sort(
+                key=lambda a: self.metacognition._domain_stats.get(
+                    a.config.domain, {}).get('priority', 1.0),
+                reverse=True
+            )
+
         # Start new instructors to fill vacant slots
         slots = max_conc - len(self._active_instructors)
         if slots > 0 and self._pending_instructors:
             self.logger.log(f"  [School] {slots} slot(s) free, "
                             f"{len(self._pending_instructors)} pending — starting next batch")
             self._start_next_batch(slots)
+
+    def _domain_stats_available(self):
+        """Check if metacognition has accumulated any domain stats."""
+        return bool(self.metacognition._domain_stats)
 
     def _check_config_reload(self):
         """Check if foundation_datasets_config.json has changed on disk.
@@ -406,6 +546,20 @@ class School:
             # Drain instructor reports
             self._drain_reports()
 
+            # Metacognitive assessment every 60s
+            if now - self._last_metacog >= 60.0:
+                assessment = self.metacognition.assess()
+                if assessment:
+                    self.logger.log(self.metacognition.format_dashboard())
+                    stalled = self.metacognition.get_stalled_domains()
+                    if stalled:
+                        self.logger.log(f"[Metacognition] STALLED domains: {stalled}")
+                        self.logger.log(f"[Metacognition] Recommendation: increase instructor slots for stalled domains")
+                    mastered = self.metacognition.get_mastered_domains()
+                    if mastered:
+                        self.logger.log(f"[Metacognition] MASTERED domains: {mastered}")
+                self._last_metacog = now
+
             # Recess (consolidation)
             if now - self._last_recess >= self.config.recess_interval_s:
                 self._call_recess()
@@ -438,6 +592,14 @@ class School:
 
             domain = report.get("domain", "unknown")
             self.board.update_instructor(domain, report)
+
+            # Feed into metacognitive tracker
+            self.metacognition.update(
+                domain,
+                report.get("accuracy", 0.0),
+                report.get("loss", 1.0),
+                report.get("total_examples", 0),
+            )
 
             # Log to school-level JSONL
             if self._school_log_file:
