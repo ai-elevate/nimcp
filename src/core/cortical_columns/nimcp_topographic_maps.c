@@ -489,7 +489,7 @@ void topographic_map_input_to_cortex(
                 if (map->config.cortical_dims > 1 && map->config.input_dims > 1) {
                     out[1] = map->transform_offset_y +
                         (in[1] - map->config.input_range[2]) * map->transform_scale_y;
-                } else {
+                } else if (map->config.cortical_dims > 1) {
                     out[1] = 0.0F;
                 }
                 break;

@@ -622,8 +622,8 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt)
                                                   MIN_CONCENTRATION, MAX_CONCENTRATION);
     }
 
-    // Update moving averages
-    float alpha = 0.01f;
+    // Update moving averages (alpha = 1/STATS_WINDOW_SIZE for EMA)
+    float alpha = 1.0f / (float)STATS_WINDOW_SIZE;
     for (int i = 0; i < NEUROMOD_COUNT; i++) {
         system->stats.moving_averages[i] =
             (1.0f - alpha) * system->stats.moving_averages[i] +

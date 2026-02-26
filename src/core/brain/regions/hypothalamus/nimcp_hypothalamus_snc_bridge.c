@@ -263,7 +263,12 @@ hypo_da_signal_type_t hypo_snc_bridge_get_signal_type(
         return HYPO_DA_SIGNAL_TONIC;
     }
 
-    return bridge->dopamine.channels[channel].type;
+    /* Cast away const to acquire mutex — reads must be synchronized */
+    hypo_snc_bridge_t* mutable_bridge = (hypo_snc_bridge_t*)bridge;
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
+    hypo_da_signal_type_t type = bridge->dopamine.channels[channel].type;
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
+    return type;
 }
 
 float hypo_snc_bridge_get_global_dopamine(const hypo_snc_bridge_t* bridge) {
@@ -454,12 +459,14 @@ nimcp_error_t hypo_snc_bridge_broadcast_dopamine(hypo_snc_bridge_t* bridge) {
     msg.header.target_module = 0;  /* Broadcast */
     msg.header.flags = BIO_MSG_FLAG_BROADCAST;
 
-    /* Pack dopamine levels into payload */
+    /* Pack dopamine levels into payload — lock to get consistent snapshot */
+    nimcp_mutex_lock(bridge->base.mutex);
     for (int i = 0; i < HYPO_DA_CHANNEL_COUNT; i++) {
         msg.dopamine_levels[i] = bridge->dopamine.channels[i].level;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
 
-    /* Send via bio-router */
+    /* Send via bio-router (outside lock — broadcast may block) */
     return bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
 }
 

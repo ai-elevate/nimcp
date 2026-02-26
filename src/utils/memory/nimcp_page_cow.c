@@ -326,6 +326,13 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
         return false;
     }
 
+    // Bounds check source_page_idx before using it to index region->pages[].
+    // In signal handler context, corrupted data could cause an out-of-bounds read.
+    if (vpage->source_page_idx >= region->num_pages) {
+        spinlock_release(&view->spinlock);
+        return false;
+    }
+
     // Allocate private page
     void* private_page = mmap(NULL, PAGE_COW_PAGE_SIZE,
                               PROT_READ | PROT_WRITE,
@@ -540,10 +547,23 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
     region->stats.shared_pages = region->num_pages;
     region->stats.memory_used_bytes = region->size + region->num_pages * sizeof(page_entry_t);
 
-    // Register region
+    // Register region in global table for signal handler lookup.
+    // If the table is full, destroy the region and fail — an unregistered
+    // region's views would never have their COW faults handled by the
+    // SIGSEGV handler, leading to unrecoverable crashes on write.
     spinlock_acquire(&g_page_cow.lock);
     if (g_page_cow.region_count < PAGE_COW_MAX_REGIONS) {
         g_page_cow.regions[g_page_cow.region_count++] = region;
+    } else {
+        spinlock_release(&g_page_cow.lock);
+        nimcp_free(region->pages);
+        munmap(region->base_data, region->size);
+        region->magic = 0;
+        nimcp_free(region);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
+                              "page_cow_region_create: region table full (%d max)",
+                              PAGE_COW_MAX_REGIONS);
+        return NULL;
     }
     spinlock_release(&g_page_cow.lock);
 
@@ -892,10 +912,14 @@ NIMCP_EXPORT size_t page_cow_view_make_range_private(
     if (!view || view->magic != PAGE_VIEW_MAGIC) return 0;
     if (start_page >= view->num_pages) return 0;
 
-    size_t end_page = start_page + num_pages;
-    if (end_page > view->num_pages) {
-        end_page = view->num_pages;
+    // Clamp num_pages to avoid integer overflow in start_page + num_pages.
+    // Since start_page < view->num_pages, the maximum valid num_pages is
+    // view->num_pages - start_page, which cannot overflow.
+    size_t max_pages = view->num_pages - start_page;
+    if (num_pages > max_pages) {
+        num_pages = max_pages;
     }
+    size_t end_page = start_page + num_pages;
 
     size_t made_private = 0;
     for (size_t i = start_page; i < end_page; i++) {

@@ -2682,12 +2682,6 @@ static uint64_t hash_uint64(uint64_t key) {
     // FNV-1a hash
     uint64_t h = 14695981039346656037ULL;
     for (int i = 0; i < 8; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && 8 > 256) {
-            social_memory_heartbeat("social_memor_loop",
-                             (float)(i + 1) / (float)8);
-        }
-
         h ^= (key >> (i * 8)) & 0xFF;
         h *= 1099511628211ULL;
     }
@@ -2719,7 +2713,7 @@ static episode_entry_t* find_episode_entry(social_memory_internal_t* mem, uint64
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_episode_entry: validation failed");
+    /* Not found is a normal condition — no error throw */
     return NULL;
 }
 

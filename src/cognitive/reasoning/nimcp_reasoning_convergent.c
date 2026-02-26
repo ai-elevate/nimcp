@@ -43,6 +43,9 @@
 
 #define LOG_MODULE "reasoning_convergent"
 
+/** Maximum net modulation magnitude applied to confidence (clamped to +/- this value) */
+#define MODULATION_CLAMP_MAX 0.3f
+
 /*=============================================================================
  * FORWARD DECLARATIONS — phase functions from nimcp_reasoning_chain.c
  *
@@ -291,9 +294,9 @@ float reasoning_accumulator_apply_modulation(evidence_accumulator_t* acc)
 
     float net = acc->total_positive_modulation + acc->total_negative_modulation;
 
-    /* Clamp net modulation to ±0.3 */
-    if (net > 0.3f) net = 0.3f;
-    if (net < -0.3f) net = -0.3f;
+    /* Clamp net modulation to ±MODULATION_CLAMP_MAX */
+    if (net > MODULATION_CLAMP_MAX) net = MODULATION_CLAMP_MAX;
+    if (net < -MODULATION_CLAMP_MAX) net = -MODULATION_CLAMP_MAX;
 
     acc->current_confidence += net;
     if (acc->current_confidence > 1.0f) acc->current_confidence = 1.0f;
@@ -1207,10 +1210,15 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
                     contrib->result_confidence = 0.0f;
             }
 
-            reasoning_accumulator_submit_evidence(
+            int submit_rc = reasoning_accumulator_submit_evidence(
                 &session->accumulator, chain, contrib);
             reasoning_chain_cleanup(&contrib->local_chain);
-            evidence_submitted++;
+            if (submit_rc == 0) {
+                evidence_submitted++;
+            } else {
+                NIMCP_LOGGING_WARN("convergent: failed to submit evidence "
+                                   "from %s", contrib->module_name);
+            }
         } else if (contrib->role == REASONING_ROLE_CONFIDENCE_MODULATOR) {
             reasoning_accumulator_submit_modulation(
                 &session->accumulator, contrib->confidence_delta);
@@ -1226,7 +1234,7 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     /* ── Phase 6: Apply net Tier 2 modulation (clamped ±0.3) ── */
     float net_modulation = reasoning_accumulator_apply_modulation(
         &session->accumulator);
-    if (net_modulation != 0.0f) {
+    if (fabsf(net_modulation) > 1e-6f) {
         NIMCP_LOGGING_DEBUG("convergent: net modulation = %.4f",
                             (double)net_modulation);
     }

@@ -749,7 +749,7 @@ brain_decision_t* copy_decision(brain_decision_t* source)
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!copy) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision: failed to allocate decision copy");
 
         return NULL;
 
@@ -840,7 +840,7 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!copy) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision_deep: failed to allocate decision copy");
 
         return NULL;
 
@@ -873,7 +873,7 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
             if (copy->output_vector)
                 nimcp_free(copy->output_vector);
             nimcp_free(copy);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_decision_deep: validation failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision_deep: failed to allocate active_neuron_ids");
             return NULL;
         }
         memcpy(copy->active_neuron_ids, source->active_neuron_ids,

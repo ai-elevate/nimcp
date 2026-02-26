@@ -131,6 +131,11 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
     ctx->num_layers = num_layers;
 
     /* Allocate activation records for each layer */
+    if (num_layers > SIZE_MAX / sizeof(layer_activation_t)) {
+        nimcp_free(ctx);
+        LOG_ERROR("Layer count overflow: %u layers", num_layers);
+        return NULL;
+    }
     ctx->activations = nimcp_malloc(num_layers * sizeof(layer_activation_t));
     if (!ctx->activations) {
         nimcp_free(ctx);
@@ -153,6 +158,11 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
 
         ctx->activations[l].size = layer_size;
 
+        if (layer_size > SIZE_MAX / sizeof(float)) {
+            backprop_destroy(ctx);
+            LOG_ERROR("Layer %u size overflow: %u", l, layer_size);
+            return NULL;
+        }
         ctx->activations[l].pre_activation = nimcp_malloc(layer_size * sizeof(float));
         ctx->activations[l].post_activation = nimcp_malloc(layer_size * sizeof(float));
 
@@ -186,6 +196,11 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
 
     /* Allocate gradient buffers */
     if (ctx->total_weights > 0) {
+        if (ctx->total_weights > SIZE_MAX / sizeof(float)) {
+            backprop_destroy(ctx);
+            LOG_ERROR("Weight count overflow: %zu", ctx->total_weights);
+            return NULL;
+        }
         ctx->weight_gradients = nimcp_malloc(ctx->total_weights * sizeof(float));
         if (!ctx->weight_gradients) {
             backprop_destroy(ctx);
@@ -197,6 +212,11 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
     }
 
     if (ctx->total_neurons > 0) {
+        if (ctx->total_neurons > SIZE_MAX / sizeof(float)) {
+            backprop_destroy(ctx);
+            LOG_ERROR("Neuron count overflow: %zu", ctx->total_neurons);
+            return NULL;
+        }
         ctx->bias_gradients = nimcp_malloc(ctx->total_neurons * sizeof(float));
         if (!ctx->bias_gradients) {
             backprop_destroy(ctx);
@@ -392,9 +412,13 @@ bool backprop_backward(backprop_ctx_t* ctx,
         memset(layer_deltas[l], 0, layer_size * sizeof(float));
     }
 
-    /* Clear gradient buffers */
-    memset(ctx->weight_gradients, 0, ctx->total_weights * sizeof(float));
-    memset(ctx->bias_gradients, 0, ctx->total_neurons * sizeof(float));
+    /* Clear gradient buffers (guard NULL: buffers are NULL when total_* is 0) */
+    if (ctx->weight_gradients) {
+        memset(ctx->weight_gradients, 0, ctx->total_weights * sizeof(float));
+    }
+    if (ctx->bias_gradients) {
+        memset(ctx->bias_gradients, 0, ctx->total_neurons * sizeof(float));
+    }
 
     /* === STEP 1: Compute output layer delta === */
     uint32_t out_layer = num_layers - 1;

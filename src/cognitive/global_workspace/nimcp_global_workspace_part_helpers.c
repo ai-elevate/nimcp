@@ -141,6 +141,11 @@ static bool resolve_winner_take_all(
 
         // Prune if decayed below minimum
         if (decayed_strength < GLOBAL_WORKSPACE_MIN_IGNITION_THRESHOLD) {
+            // Free content buffer before deactivating to prevent leak
+            if (workspace->competitors[i].content) {
+                nimcp_free(workspace->competitors[i].content);
+                workspace->competitors[i].content = NULL;
+            }
             workspace->competitors[i].is_active = false;
             workspace->num_active_competitors--;
             continue;
@@ -206,6 +211,11 @@ static bool resolve_priority_based(
         );
 
         if (decayed_strength < GLOBAL_WORKSPACE_MIN_IGNITION_THRESHOLD) {
+            // Free content buffer before deactivating to prevent leak
+            if (workspace->competitors[i].content) {
+                nimcp_free(workspace->competitors[i].content);
+                workspace->competitors[i].content = NULL;
+            }
             workspace->competitors[i].is_active = false;
             workspace->num_active_competitors--;
             continue;
@@ -282,6 +292,11 @@ static bool resolve_round_robin(
         );
 
         if (decayed_strength < GLOBAL_WORKSPACE_MIN_IGNITION_THRESHOLD) {
+            // Free content buffer before deactivating to prevent leak
+            if (workspace->competitors[idx].content) {
+                nimcp_free(workspace->competitors[idx].content);
+                workspace->competitors[idx].content = NULL;
+            }
             workspace->competitors[idx].is_active = false;
             workspace->num_active_competitors--;
             continue;

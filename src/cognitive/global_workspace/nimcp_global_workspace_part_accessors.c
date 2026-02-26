@@ -295,9 +295,15 @@ float global_workspace_get_ignition_threshold(const global_workspace_t* workspac
     global_workspace_heartbeat("global_works_get_ignition_thresho", 0.0f);
 
 
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
-    return ws->config.ignition_threshold;
+    /* Cast away const for mutex — consistent with other accessor patterns */
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    /* Thread-safe read with mutex — matches set_ignition_threshold */
+    nimcp_platform_mutex_lock(&ws->mutex);
+    float result = ws->config.ignition_threshold;
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 

@@ -26,6 +26,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_router_immune_bridge)
 
 #define LOG_MODULE "BIO_ROUTER_IMMUNE_BRIDGE"
 
+/* BUG-28 fix: Named constant for byzantine behavior severity (was magic number 9) */
+#define ROUTER_BYZANTINE_SEVERITY  9  /**< Byzantine behavior antigen severity */
+
 
 /* ============================================================================
  * Helper Functions
@@ -527,9 +530,11 @@ int router_immune_quarantine_node(
 
     bridge->nodes_quarantined++;
 
+    /* BUG-27 fix: duration_ms is uint64_t; %lu is 32-bit on some platforms.
+     * Cast to unsigned long long to match %llu for portable formatting. */
     LOG_MODULE_INFO("router_immune_bridge",
-                  "Quarantined node %u for %lu ms (trust: %.2f)",
-              node_id, duration_ms, trust_score);
+                  "Quarantined node %u for %llu ms (trust: %.2f)",
+              node_id, (unsigned long long)duration_ms, trust_score);
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
@@ -795,7 +800,7 @@ int router_immune_present_byzantine(
         ANTIGEN_SOURCE_BFT,  /* Byzantine is BFT source */
         behavior_signature,
         sig_len,
-        9,  /* Byzantine behavior is severity 9 */
+        ROUTER_BYZANTINE_SEVERITY,
         node_id,
         &antigen_id
     );
@@ -828,7 +833,12 @@ int router_immune_bridge_update(
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
-    uint64_t current_time = bridge->total_updates * delta_ms;  /* Simplified time tracking */
+    /* BUG-22 fix: Use real monotonic time instead of total_updates * delta_ms.
+     * Cytokine release_time and quarantine_start are stored as real monotonic ms
+     * (nimcp_platform_time_monotonic_us() / 1000), so the expiration check must
+     * use the same time source. The old approximation caused cytokines and
+     * quarantines to never expire correctly when update calls were irregular. */
+    uint64_t current_time = nimcp_platform_time_monotonic_us() / 1000;
 
     /* Update routing statistics under the lock (use _unlocked variant) */
     router_immune_update_stats_unlocked(bridge);

@@ -71,6 +71,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 #define SPARSITY_ADAPT_INCREASE 1.01f
 #define SPARSITY_ADAPT_DECREASE 0.99f
 #define SPARSITY_EMA_WEIGHT 0.1f
+#define OUTPUT_LR_BOOST 10.0f  /* Output layer LR multiplier for classification */
+#define LATERAL_INHIBITION_STRENGTH 0.3f  /* Strength for output layer lateral inhibition */
 
 // WHAT: Helper macros for checked file I/O (cert-err33-c compliance)
 // WHY:  fwrite/fread return values must be checked to detect I/O errors
@@ -513,6 +515,11 @@ static void update_statistics(adaptive_neuron_state_t* state, float activation)
         return;
 
     // Welford's online algorithm for mean and variance
+    // Guard against uint32_t overflow: if sample_count would wrap to 0,
+    // division by zero occurs. Cap at UINT32_MAX - 1.
+    if (state->sample_count >= UINT32_MAX - 1) {
+        return;  // Saturate — statistics are well-converged at this point
+    }
     state->sample_count++;
     float delta = activation - state->activation_mean;
     state->activation_mean += delta / state->sample_count;
@@ -1741,6 +1748,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     if (!network || !example)
         return -1.0F;
 
+    // Guard: target_size==0 would cause division by zero in MSE computation
+    if (example->target_size == 0 || !example->target)
+        return -1.0F;
+
     // Frozen network rejects learning
     if (network->frozen)
         return 0.0F;
@@ -1796,7 +1807,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 uint32_t output_size = layer_sizes[num_layers - 1];
 
                 // Output layer learning rate (boosted for classification)
-                float output_lr = learning_rate * 10.0f;
+                float output_lr = learning_rate * OUTPUT_LR_BOOST;
 
                 for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
                     float error_j = example->target[j] - output[j];
@@ -1873,7 +1884,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     switch (mode) {
         case LEARN_MODE_SUPERVISED:
         case LEARN_MODE_DISTILLATION:
-            // Mean squared error
+            // Mean squared error (target_size > 0 guaranteed by top-level guard)
             for (uint32_t i = 0; i < example->target_size; i++) {
                 float error = output[i] - example->target[i];
                 loss += error * error;
@@ -2102,7 +2113,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // - BCM prevents weight saturation via sliding threshold
             // =================================================================
 
-            // Phase 1: MSE loss computation (same as supervised)
+            // Phase 1: MSE loss computation (same as supervised, target_size > 0 guaranteed)
             for (uint32_t i = 0; i < example->target_size; i++) {
                 float error = output[i] - example->target[i];
                 loss += error * error;
@@ -2115,8 +2126,12 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    // Compute layer offsets
-                    uint32_t layer_offsets[num_layers];
+                    // BUG-10 fix (HYBRID): Replace VLA with heap allocation to avoid
+                    // stack overflow for networks with many layers (matches SUPERVISED fix)
+                    uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
+                    if (!layer_offsets) {
+                        break;
+                    }
                     layer_offsets[0] = 0;
                     for (uint32_t l = 1; l < num_layers; l++)
                         layer_offsets[l] = layer_offsets[l-1] + layer_sizes[l-1];
@@ -2134,6 +2149,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     if (!delta_cur || !delta_prev) {
                         if (delta_cur) free_hot_buffer(delta_cur);
                         if (delta_prev) free_hot_buffer(delta_prev);
+                        nimcp_free(layer_offsets);
                         break;
                     }
 
@@ -2264,8 +2280,10 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                         neural_network_apply_lateral_inhibition(
                             network->base_network,
                             output_offset, output_size,
-                            0.3f);  // Moderate inhibition strength
+                            LATERAL_INHIBITION_STRENGTH);
                     }
+
+                    nimcp_free(layer_offsets);  /* BUG-10 fix: free heap-allocated layer_offsets */
                 }
                 // Store gradient L2 norm on the network
                 network->last_grad_norm = sqrtf(grad_norm_sq);
@@ -2287,13 +2305,18 @@ float adaptive_network_learn_batch(adaptive_network_t network, const training_ex
         return -1.0F;
 
     float total_loss = 0.0F;
+    uint32_t successful = 0;
 
     for (uint32_t i = 0; i < num_examples; i++) {
         float loss = adaptive_network_learn(network, &examples[i], mode, learning_rate);
-        total_loss += loss;
+        if (loss >= 0.0F) {
+            total_loss += loss;
+            successful++;
+        }
+        /* Skip examples that return -1.0f (error) to avoid corrupting average */
     }
 
-    return total_loss / num_examples;
+    return (successful > 0) ? (total_loss / successful) : -1.0F;
 }
 
 float adaptive_network_distill(adaptive_network_t network, const float* input, uint32_t input_size,

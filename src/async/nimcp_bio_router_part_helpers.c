@@ -472,10 +472,21 @@ static int bio_router_kg_dispatch_internal(
 
     int dispatched = 0;
 
-    /* Dispatch to each handler module */
+    /* Dispatch to each handler module.
+     * BUG-21 fix: Collect target inbox pointers under modules_mutex, then release
+     * the lock BEFORE calling bio_msg_queue_enqueue. This prevents deadlock when
+     * timeout_ms > 0 (blocking enqueue holds modules_mutex, starving all other
+     * module operations). Same pattern as BUG-10 fix in bio_router_send. */
+    uint32_t handler_count = handlers->count;
+
+    /* Collect targets under lock */
+    bio_msg_queue_t* target_inboxes[handler_count];
+    bio_module_entry_t* target_entries[handler_count];
+    uint32_t target_count = 0;
+
     nimcp_platform_mutex_lock(&g_router->modules_mutex);
 
-    for (uint32_t i = 0; i < handlers->count; i++) {
+    for (uint32_t i = 0; i < handler_count; i++) {
         brain_kg_node_id_t handler_node = handlers->handlers[i];
 
         /* Find module by KG node ID
@@ -493,20 +504,25 @@ static int bio_router_kg_dispatch_internal(
             continue;
         }
 
-        /* Enqueue to target inbox */
-        nimcp_error_t enq_result = bio_msg_queue_enqueue(&target->inbox,
-                                                          msg, msg_size,
-                                                          NULL, timeout_ms);
-        if (enq_result == NIMCP_SUCCESS) {
-            atomic_fetch_add(&target->messages_received, 1);
-            dispatched++;
-        } else {
-            LOG_DEBUG("KG dispatch: failed to enqueue to module %u", target->module_id);
-        }
+        target_inboxes[target_count] = &target->inbox;
+        target_entries[target_count] = target;
+        target_count++;
     }
 
     nimcp_platform_mutex_unlock(&g_router->modules_mutex);
-    uint32_t handler_count = handlers->count;
+
+    /* Enqueue to each target OUTSIDE the modules_mutex lock */
+    for (uint32_t i = 0; i < target_count; i++) {
+        nimcp_error_t enq_result = bio_msg_queue_enqueue(target_inboxes[i],
+                                                          msg, msg_size,
+                                                          NULL, timeout_ms);
+        if (enq_result == NIMCP_SUCCESS) {
+            atomic_fetch_add(&target_entries[i]->messages_received, 1);
+            dispatched++;
+        } else {
+            LOG_DEBUG("KG dispatch: failed to enqueue to module %u", target_entries[i]->module_id);
+        }
+    }
     brain_kg_handler_list_destroy(handlers);
 
     LOG_DEBUG("KG dispatch: delivered to %d/%u handlers", dispatched, handler_count);

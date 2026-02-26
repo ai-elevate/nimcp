@@ -62,11 +62,7 @@
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "utils/logging/nimcp_logging.h"
 
-// === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
-#include "async/nimcp_bio_async.h"
-#include "async/nimcp_bio_router.h"
-#include "async/nimcp_bio_messages.h"
-#include "utils/logging/nimcp_logging.h"
+// === UNIFIED MEMORY INTEGRATION ===
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -2230,8 +2226,10 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
         total_variance += activity_diff * activity_diff;
     }
 
-    // Update network stability measure
-    network->network_stability = expf(-total_variance / network->num_neurons);
+    // Update network stability measure (guard against div-by-zero)
+    if (network->num_neurons > 0) {
+        network->network_stability = expf(-total_variance / (float)network->num_neurons);
+    }
     network->last_maintenance = timestamp;
 }
 
@@ -2299,8 +2297,9 @@ static void update_synaptic_traces(neural_network_t network, neuron_t* neuron, u
         synapse_t* syn = NEURON_OUT_META(network, neuron, i);
         if (!syn) continue;
 
-        // Compute time since last update
-        float dt = (float) (timestamp - syn->last_active);
+        // Compute time since last update (guard against timestamp wraparound)
+        float dt = (timestamp > syn->last_active) ?
+                   (float)(timestamp - syn->last_active) : 0.0f;
 
         // Exponential decay of trace
         if (dt > 0) {
@@ -2316,8 +2315,9 @@ static void update_synaptic_traces(neural_network_t network, neuron_t* neuron, u
  */
 static void update_calcium_dynamics(neuron_t* neuron, uint64_t timestamp)
 {
-    // Compute time since last update
-    float dt = (float) (timestamp - neuron->last_update);
+    // Compute time since last update (guard against timestamp wraparound)
+    float dt = (timestamp > neuron->last_update) ?
+               (float)(timestamp - neuron->last_update) : 1.0f;
 
     // Exponential decay of calcium concentration
     if (dt > 0) {
@@ -2424,10 +2424,7 @@ uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestam
             continue;
         }
 
-        // Compute membrane potential
-        float potential = compute_membrane_potential(neuron, network);
-
-        // Update neuron state
+        // Update neuron state (membrane potential computed inside)
         if (neural_network_update_neuron(network, i, 0.0f, timestamp)) {
             active_neurons++;
         }
@@ -2993,11 +2990,23 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
     neuron->spike_history_index = 0;
     neuron->spike_history_count = 0;
     neuron->spike_history = (spike_record_t*)nimcp_calloc(spike_cap, sizeof(spike_record_t));
+    if (!neuron->spike_history) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate spike history for new neuron %u", new_id);
+        neuron->spike_history_capacity = 0;
+    }
 
     // Allocate activity history buffer
     uint32_t activity_cap = resolve_activity_history_capacity(&network->config);
     neuron->activity_history_capacity = activity_cap;
     neuron->activity_history = (float*)nimcp_calloc(activity_cap, sizeof(float));
+    if (!neuron->activity_history) {
+        LOG_ERROR(LOG_MODULE, "Failed to allocate activity history for new neuron %u", new_id);
+        neuron->activity_history_capacity = 0;
+    }
+
+    // Initialize sparse synapse storage for new neuron
+    sparse_synapse_storage_init(&neuron->outgoing);
+    sparse_synapse_storage_init(&neuron->incoming);
 
     network->num_neurons++;
     return new_id;
@@ -3194,6 +3203,7 @@ void neural_network_get_weight_statistics(neural_network_t network, uint32_t neu
 
     neuron_t* neuron = &network->neurons[neuron_id];
     float sum = 0.0F, sum_sq = 0.0F;
+    uint32_t valid_count = 0;
 
     for (uint32_t i = 0; i < NEURON_OUT_COUNT(neuron); i++) {
         synapse_handle_t* wh = NEURON_OUT_HANDLE(neuron, i);
@@ -3201,12 +3211,12 @@ void neural_network_get_weight_statistics(neural_network_t network, uint32_t neu
         float w = wh->weight;
         sum += w;
         sum_sq += w * w;
+        valid_count++;
     }
 
-    uint32_t n_syn = NEURON_OUT_COUNT(neuron);
-    if (n_syn > 0) {
-        *mean = sum / n_syn;
-        float variance = (sum_sq / n_syn) - (*mean * *mean);
+    if (valid_count > 0) {
+        *mean = sum / (float)valid_count;
+        float variance = (sum_sq / (float)valid_count) - (*mean * *mean);
         *std_dev = sqrtf(fmaxf(0.0F, variance));
     } else {
         *mean = 0.0F;

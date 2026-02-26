@@ -662,19 +662,24 @@ static void hash_query_to_cue(const char* query, uint32_t* cue_neurons,
     {
         uint32_t word_hash = 65599;
         uint32_t word_count = 0;
+        bool in_word = false;
         for (uint32_t i = 0; i < len; i++) {
-            if (query[i] == ' ' || query[i] == '\0') {
-                if (word_count > 0 && count < max_cues) {
+            if (query[i] == ' ') {
+                if (in_word && count < max_cues) {
                     cue_neurons[count++] = word_hash ^ (word_count * 2654435761u);
+                    word_count++;
                 }
                 word_hash = 65599;
-                word_count++;
+                in_word = false;
             } else {
                 word_hash = word_hash * 37 + (uint32_t)(unsigned char)query[i];
+                in_word = true;
             }
         }
-        /* Capture last word */
-        if (word_count > 0 && count < max_cues) {
+        /* FIX: Capture last word — the old code checked word_count > 0
+         * which missed single-word queries (no spaces → word_count stayed 0).
+         * Now we check in_word to capture any trailing word. */
+        if (in_word && count < max_cues) {
             cue_neurons[count++] = word_hash ^ (word_count * 2654435761u);
         }
     }
@@ -734,35 +739,41 @@ static const char* classify_query_type(const char* query)
     /* Skip leading whitespace */
     while (*query == ' ') query++;
 
-    /* Check first word against question types */
-    if (strncmp(query, "what", 4) == 0 || strncmp(query, "What", 4) == 0 ||
-        strncmp(query, "WHAT", 4) == 0) {
+    /* Helper: check if char after keyword is a word boundary */
+    #define IS_WORD_BOUNDARY(c) ((c) == '\0' || (c) == ' ' || (c) == '?' || (c) == ',')
+
+    /* Check first word against question types (with word boundary check
+     * to avoid misclassifying e.g. "whatever" as "factual") */
+    if ((strncmp(query, "what", 4) == 0 || strncmp(query, "What", 4) == 0 ||
+         strncmp(query, "WHAT", 4) == 0) && IS_WORD_BOUNDARY(query[4])) {
         return "factual";
     }
-    if (strncmp(query, "why", 3) == 0 || strncmp(query, "Why", 3) == 0 ||
-        strncmp(query, "WHY", 3) == 0) {
+    if ((strncmp(query, "why", 3) == 0 || strncmp(query, "Why", 3) == 0 ||
+         strncmp(query, "WHY", 3) == 0) && IS_WORD_BOUNDARY(query[3])) {
         return "causal";
     }
-    if (strncmp(query, "how", 3) == 0 || strncmp(query, "How", 3) == 0 ||
-        strncmp(query, "HOW", 3) == 0) {
+    if ((strncmp(query, "how", 3) == 0 || strncmp(query, "How", 3) == 0 ||
+         strncmp(query, "HOW", 3) == 0) && IS_WORD_BOUNDARY(query[3])) {
         return "procedural";
     }
-    if (strncmp(query, "when", 4) == 0 || strncmp(query, "When", 4) == 0 ||
-        strncmp(query, "WHEN", 4) == 0) {
+    if ((strncmp(query, "when", 4) == 0 || strncmp(query, "When", 4) == 0 ||
+         strncmp(query, "WHEN", 4) == 0) && IS_WORD_BOUNDARY(query[4])) {
         return "temporal";
     }
-    if (strncmp(query, "where", 5) == 0 || strncmp(query, "Where", 5) == 0 ||
-        strncmp(query, "WHERE", 5) == 0) {
+    if ((strncmp(query, "where", 5) == 0 || strncmp(query, "Where", 5) == 0 ||
+         strncmp(query, "WHERE", 5) == 0) && IS_WORD_BOUNDARY(query[5])) {
         return "spatial";
     }
-    if (strncmp(query, "which", 5) == 0 || strncmp(query, "Which", 5) == 0 ||
-        strncmp(query, "WHICH", 5) == 0) {
+    if ((strncmp(query, "which", 5) == 0 || strncmp(query, "Which", 5) == 0 ||
+         strncmp(query, "WHICH", 5) == 0) && IS_WORD_BOUNDARY(query[5])) {
         return "selective";
     }
-    if (strncmp(query, "who", 3) == 0 || strncmp(query, "Who", 3) == 0 ||
-        strncmp(query, "WHO", 3) == 0) {
+    if ((strncmp(query, "who", 3) == 0 || strncmp(query, "Who", 3) == 0 ||
+         strncmp(query, "WHO", 3) == 0) && IS_WORD_BOUNDARY(query[3])) {
         return "identity";
     }
+
+    #undef IS_WORD_BOUNDARY
 
     return "declarative";
 }
@@ -839,18 +850,21 @@ static void format_conclusion(char* buffer, uint32_t buffer_size,
         evidence_summary = "limited evidence available";
     }
 
-    snprintf(buffer, buffer_size,
-             "Reasoning about %s query: \"%.*s%s\" - "
-             "Concluded with %s (%.1f%%) based on %u evidence sources, "
-             "%s.",
-             query_type,
-             (int)(strlen(query) > 80 ? 80 : strlen(query)),
-             query,
-             strlen(query) > 80 ? "..." : "",
-             confidence_label,
-             confidence * 100.0f,
-             evidence_count,
-             evidence_summary);
+    {
+        size_t qlen = strlen(query);
+        snprintf(buffer, buffer_size,
+                 "Reasoning about %s query: \"%.*s%s\" - "
+                 "Concluded with %s (%.1f%%) based on %u evidence sources, "
+                 "%s.",
+                 query_type,
+                 (int)(qlen > 80 ? 80 : qlen),
+                 query,
+                 qlen > 80 ? "..." : "",
+                 confidence_label,
+                 (double)(confidence * 100.0f),
+                 evidence_count,
+                 evidence_summary);
+    }
 }
 
 /*=============================================================================
@@ -2195,7 +2209,9 @@ static float phase_synthesis(reasoning_engine_t* engine, const char* query,
              uncertainty_score,
              chain->has_uncertainty_flag ? "flagged for uncertainty" : "complete");
 
-    reasoning_chain_add_step(chain, &step);
+    if (reasoning_chain_add_step(chain, &step) != 0) {
+        NIMCP_LOGGING_WARN("reasoning_chain: failed to add synthesis step (OOM)");
+    }
 
     /* Finalize chain */
     chain->overall_confidence = overall_confidence;
@@ -2249,7 +2265,7 @@ static void store_query_in_wm(reasoning_engine_t* engine, const char* query)
     }
 
     /* Normalize to [0, 1] range */
-    for (int i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; i++) {
         if (wm_item[i] > 1.0f) {
             wm_item[i] = wm_item[i] / (1.0f + wm_item[i]);  /* Soft saturation */
         }
@@ -2407,6 +2423,13 @@ static int reasoning_engine_reason_concurrent(reasoning_engine_t* engine,
                                               .query_type = query_type, .domain = domain,
                                               .result_confidence = 0.0f };
 
+    /* FIX: Declare confidence variables before any goto to avoid reading
+     * indeterminate values if concurrent_finalize is reached from an
+     * early step-limit check (goto past initializer is UB to read). */
+    float recall_confidence = 0.0f;
+    float knowledge_confidence = 0.0f;
+    float symbolic_query_confidence = 0.0f;
+
     /* Submit all 4 evidence-gathering phases to the thread pool */
     nimcp_pool_submit(engine->thread_pool, task_recall, &ctx_recall);
     nimcp_pool_submit(engine->thread_pool, task_knowledge, &ctx_knowledge);
@@ -2424,9 +2447,9 @@ static int reasoning_engine_reason_concurrent(reasoning_engine_t* engine,
                         ctx_symbolic.result_confidence);
 
     /* Merge thread-local chains into main chain (single-threaded, no contention) */
-    float recall_confidence = ctx_recall.result_confidence;
-    float knowledge_confidence = ctx_knowledge.result_confidence;
-    float symbolic_query_confidence = ctx_symbolic.result_confidence;
+    recall_confidence = ctx_recall.result_confidence;
+    knowledge_confidence = ctx_knowledge.result_confidence;
+    symbolic_query_confidence = ctx_symbolic.result_confidence;
 
     merge_chains(chain, &ctx_recall.local_chain);
     merge_chains(chain, &ctx_knowledge.local_chain);
@@ -2556,7 +2579,9 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         chain->is_complete = true;
         snprintf(chain->conclusion, REASONING_CHAIN_CONCLUSION_LEN,
                  "Reasoning skipped: system resources critically exhausted");
-        engine->stats.total_queries++;
+        /* FIX: Use atomic increment — this path runs before reason_mutex is
+         * acquired, so concurrent reason() calls could race on stats. */
+        __atomic_fetch_add(&engine->stats.total_queries, 1, __ATOMIC_RELAXED);
         return 0;
     }
 
@@ -2688,7 +2713,9 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
                  resource_budget.max_contributors,
                  resource_budget.max_steps,
                  resource_budget.convergence_threshold);
-        reasoning_chain_add_step(chain, &mc_step);
+        if (reasoning_chain_add_step(chain, &mc_step) != 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: failed to add metacognitive step");
+        }
 
         /* Portia SEVERE overrides: force minimal resources */
         if (portia_budget.source_degradation >= PORTIA_DEGRADATION_SEVERE) {

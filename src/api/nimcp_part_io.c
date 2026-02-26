@@ -42,7 +42,7 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
     if (!handle->internal_brain) {
         set_error("Failed to load brain from file");
         nimcp_free(handle);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_load: handle->internal_brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_brain_load: brain_load failed for given filepath");
         return NULL;
     }
 
@@ -72,8 +72,7 @@ nimcp_status_t nimcp_brain_snapshot_save(
     );
 
     if (!success) {
-        set_error("Failed to save snapshot");
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_IO, "Failed to save snapshot");
     }
 
     set_error("No error");

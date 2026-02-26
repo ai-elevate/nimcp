@@ -215,11 +215,31 @@ bool brain_decide_parallel_pre_forward(
         args[i].ctx = ctx;
     }
 
-    nimcp_pool_submit(pool, stage_wellbeing_task,  &args[0]);
-    nimcp_pool_submit(pool, stage_engram_recall_task, &args[1]);
-    nimcp_pool_submit(pool, stage_sleep_task,      &args[2]);
-    nimcp_pool_submit(pool, stage_curiosity_task,  &args[3]);
-    nimcp_pool_submit(pool, stage_predictive_task, &args[4]);
+    bool all_submitted = true;
+    if (nimcp_pool_submit(pool, stage_wellbeing_task,     &args[0]) != NIMCP_SUCCESS) {
+        ctx->wellbeing_done = true;  // Mark done so caller doesn't hang
+        all_submitted = false;
+    }
+    if (nimcp_pool_submit(pool, stage_engram_recall_task, &args[1]) != NIMCP_SUCCESS) {
+        ctx->engram_done = true;
+        all_submitted = false;
+    }
+    if (nimcp_pool_submit(pool, stage_sleep_task,         &args[2]) != NIMCP_SUCCESS) {
+        ctx->sleep_done = true;
+        all_submitted = false;
+    }
+    if (nimcp_pool_submit(pool, stage_curiosity_task,     &args[3]) != NIMCP_SUCCESS) {
+        ctx->curiosity_done = true;
+        all_submitted = false;
+    }
+    if (nimcp_pool_submit(pool, stage_predictive_task,    &args[4]) != NIMCP_SUCCESS) {
+        ctx->prediction_done = true;
+        all_submitted = false;
+    }
+
+    if (!all_submitted) {
+        LOG_MODULE_WARN(LOG_MODULE, "Some pre-forward tasks failed to submit to thread pool");
+    }
 
     nimcp_pool_wait(pool);
     nimcp_free(args);
@@ -243,14 +263,22 @@ bool brain_decide_submit_post_forward(
         args[i].ctx = ctx;
     }
 
-    nimcp_pool_submit(pool, stage_engram_consol_task,    &args[0]);
-    nimcp_pool_submit(pool, stage_systems_consol_task,   &args[1]);
-    nimcp_pool_submit(pool, stage_wm_transfer_task,      &args[2]);
-    nimcp_pool_submit(pool, stage_semantic_task,          &args[3]);
-    nimcp_pool_submit(pool, stage_glial_task,             &args[4]);
-    nimcp_pool_submit(pool, stage_tom_task,               &args[5]);
-    nimcp_pool_submit(pool, stage_shannon_task,           &args[6]);
-    nimcp_pool_submit(pool, stage_quantum_shannon_task,   &args[7]);
+    if (nimcp_pool_submit(pool, stage_engram_consol_task,    &args[0]) != NIMCP_SUCCESS)
+        ctx->engram_consol_done = true;
+    if (nimcp_pool_submit(pool, stage_systems_consol_task,   &args[1]) != NIMCP_SUCCESS)
+        ctx->systems_consol_done = true;
+    if (nimcp_pool_submit(pool, stage_wm_transfer_task,      &args[2]) != NIMCP_SUCCESS)
+        ctx->wm_transfer_done = true;
+    if (nimcp_pool_submit(pool, stage_semantic_task,          &args[3]) != NIMCP_SUCCESS)
+        ctx->semantic_done = true;
+    if (nimcp_pool_submit(pool, stage_glial_task,             &args[4]) != NIMCP_SUCCESS)
+        ctx->glial_done = true;
+    if (nimcp_pool_submit(pool, stage_tom_task,               &args[5]) != NIMCP_SUCCESS)
+        ctx->tom_done = true;
+    if (nimcp_pool_submit(pool, stage_shannon_task,           &args[6]) != NIMCP_SUCCESS)
+        ctx->shannon_done = true;
+    if (nimcp_pool_submit(pool, stage_quantum_shannon_task,   &args[7]) != NIMCP_SUCCESS)
+        ctx->quantum_shannon_done = true;
 
     // Non-blocking — caller runs sequential stages on main thread, then calls pool_wait.
     // Store args pointer in ctx so caller can free after pool_wait completes.

@@ -126,14 +126,14 @@ static uint32_t hash_murmur3_32(uint32_t h)
 static uint32_t hash_murmur3(const void* key, size_t key_size)
 {
     const uint8_t* data = (const uint8_t*) key;
-    const int nblocks = key_size / 4;
+    const size_t nblocks = key_size / 4;
     uint32_t h = 0;  // seed = 0
 
     const uint32_t c1 = 0xcc9e2d51;
     const uint32_t c2 = 0x1b873593;
 
     // Body - process 4-byte blocks (use memcpy to avoid unaligned access UB)
-    for (int i = 0; i < nblocks; i++) {
+    for (size_t i = 0; i < nblocks; i++) {
         uint32_t k;
         memcpy(&k, data + i * 4, sizeof(uint32_t));
 
@@ -163,8 +163,10 @@ static uint32_t hash_murmur3(const void* key, size_t key_size)
             h ^= k;
     }
 
-    // Finalization
-    h ^= key_size;
+    // Finalization — explicitly cast to uint32_t for MurmurHash3 spec compliance.
+    // On 64-bit systems, key_size is size_t (64-bit); the standard MurmurHash3
+    // finalization XORs with the 32-bit length value.
+    h ^= (uint32_t)key_size;
     return hash_murmur3_32(h);
 }
 

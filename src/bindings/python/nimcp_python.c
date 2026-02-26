@@ -304,7 +304,9 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
 
     /* Return actual loss from the C learning engine */
     float loss = nimcp_brain_get_last_loss(self->brain);
-    return PyFloat_FromDouble((double)loss);
+    PyObject* result = PyFloat_FromDouble((double)loss);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -318,7 +320,9 @@ static PyObject* Brain_get_last_gradient_norm(BrainObject* self, PyObject* Py_UN
         return NULL;
     }
     float norm = nimcp_brain_get_last_gradient_norm(self->brain);
-    return PyFloat_FromDouble((double)norm);
+    PyObject* result = PyFloat_FromDouble((double)norm);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -508,7 +512,7 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
 
     // Allocate label buffers
     for (Py_ssize_t i = 0; i < batch_size; i++) {
-        labels[i] = (char*)nimcp_malloc(256);
+        labels[i] = (char*)nimcp_malloc(NIMCP_NAME_BUFFER_SIZE);
         if (!labels[i]) {
             for (Py_ssize_t j = 0; j < i; j++) {
                 nimcp_free(labels[j]);
@@ -520,7 +524,7 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
             nimcp_free(feature_arrays);
             nimcp_free(labels);
             nimcp_free(confidences);
-            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 256,
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, NIMCP_NAME_BUFFER_SIZE,
                               "Brain_predict_batch: Failed to allocate label buffer %zd", i);
             PyErr_SetString(PyExc_MemoryError, "Failed to allocate label buffers");
             return NULL;
@@ -751,7 +755,9 @@ static PyObject* Brain_auto_resize(BrainObject* self, PyObject* args) {
 static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
     // CRITICAL FIX: Pass internal brain, not handle wrapper
     uint32_t count = nimcp_brain_get_neuron_count(self->brain);
-    return PyLong_FromUnsignedLong(count);
+    PyObject* result = PyLong_FromUnsignedLong(count);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1144,11 +1150,12 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     if (!features)
         return NULL;
 
-    char label[64];
+    char label[NIMCP_MAX_LABEL_SIZE];
     float confidence;
-    char explanation[256];
-    float output_vector[1024];
-    uint32_t output_size = 1024;
+    char explanation[NIMCP_NAME_BUFFER_SIZE];
+    enum { DECIDE_FULL_MAX_OUTPUT = 1024 };
+    float output_vector[DECIDE_FULL_MAX_OUTPUT];
+    uint32_t output_size = DECIDE_FULL_MAX_OUTPUT;
     uint32_t num_active_neurons = 0;
     float sparsity = 0.0f;
     uint64_t inference_time_us = 0;
@@ -1169,7 +1176,7 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
         return NULL;
     }
 
-    uint32_t vec_len = (output_size < 1024) ? output_size : 1024;
+    uint32_t vec_len = (output_size < DECIDE_FULL_MAX_OUTPUT) ? output_size : DECIDE_FULL_MAX_OUTPUT;
     PyObject* vec_list = PyList_New(vec_len);
     if (!vec_list) return NULL;
     for (uint32_t i = 0; i < vec_len; i++) {
@@ -1215,7 +1222,9 @@ static PyObject* Brain_get_accuracy(BrainObject* self, PyObject* args) {
         return NULL;
     }
     float accuracy = nimcp_brain_get_accuracy(self->brain);
-    return PyFloat_FromDouble((double)accuracy);
+    PyObject* result = PyFloat_FromDouble((double)accuracy);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1384,7 +1393,9 @@ static PyObject* Brain_bg_update_reward(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ff", &reward, &expected)) return NULL;
 
     int result = brain_ti_update_reward(self->brain->internal_brain, reward, expected);
-    return PyLong_FromLong(result);
+    PyObject* py_result = PyLong_FromLong(result);
+    if (!py_result) return NULL;  /* OOM */
+    return py_result;
 }
 
 /**
@@ -1398,7 +1409,9 @@ static PyObject* Brain_bg_get_conflict(BrainObject* self, PyObject* Py_UNUSED(ar
         return NULL;
     }
     float conflict = brain_ti_get_conflict(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)conflict);
+    PyObject* result = PyFloat_FromDouble((double)conflict);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1412,7 +1425,9 @@ static PyObject* Brain_bg_get_mode(BrainObject* self, PyObject* Py_UNUSED(args))
         return NULL;
     }
     int mode = brain_ti_get_mode(self->brain->internal_brain);
-    return PyLong_FromLong(mode);
+    PyObject* result = PyLong_FromLong(mode);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1426,7 +1441,9 @@ static PyObject* Brain_bg_get_dopamine(BrainObject* self, PyObject* Py_UNUSED(ar
         return NULL;
     }
     float dopamine = brain_ti_get_dopamine(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)dopamine);
+    PyObject* result = PyFloat_FromDouble((double)dopamine);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1440,7 +1457,9 @@ static PyObject* Brain_bg_get_rpe(BrainObject* self, PyObject* Py_UNUSED(args)) 
         return NULL;
     }
     float rpe = brain_ti_get_rpe(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)rpe);
+    PyObject* result = PyFloat_FromDouble((double)rpe);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1458,7 +1477,9 @@ static PyObject* Brain_bg_register_habit(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "si", &domain, &action_id)) return NULL;
 
     int result = brain_ti_register_habit(self->brain->internal_brain, domain, action_id);
-    return PyLong_FromLong(result);
+    PyObject* py_result = PyLong_FromLong(result);
+    if (!py_result) return NULL;  /* OOM */
+    return py_result;
 }
 
 /**
@@ -1475,7 +1496,9 @@ static PyObject* Brain_bg_check_habit(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "s", &domain)) return NULL;
 
     int result = brain_ti_check_habit(self->brain->internal_brain, domain);
-    return PyLong_FromLong(result);
+    PyObject* py_result = PyLong_FromLong(result);
+    if (!py_result) return NULL;  /* OOM */
+    return py_result;
 }
 
 /**
@@ -1493,7 +1516,9 @@ static PyObject* Brain_bg_strengthen_habit(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ip", &habit_id, &success)) return NULL;
 
     int result = brain_ti_strengthen_habit(self->brain->internal_brain, habit_id, success);
-    return PyLong_FromLong(result);
+    PyObject* py_result = PyLong_FromLong(result);
+    if (!py_result) return NULL;  /* OOM */
+    return py_result;
 }
 
 /**
@@ -1507,7 +1532,9 @@ static PyObject* Brain_medulla_get_arousal(BrainObject* self, PyObject* Py_UNUSE
         return NULL;
     }
     float arousal = brain_ti_get_arousal(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)arousal);
+    PyObject* result = PyFloat_FromDouble((double)arousal);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1521,7 +1548,9 @@ static PyObject* Brain_medulla_get_circadian_phase(BrainObject* self, PyObject* 
         return NULL;
     }
     int phase = brain_ti_get_circadian_phase(self->brain->internal_brain);
-    return PyLong_FromLong(phase);
+    PyObject* result = PyLong_FromLong(phase);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1552,7 +1581,9 @@ static PyObject* Brain_medulla_get_circadian_efficiency(BrainObject* self, PyObj
         return NULL;
     }
     float efficiency = brain_ti_get_circadian_efficiency(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)efficiency);
+    PyObject* result = PyFloat_FromDouble((double)efficiency);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1611,7 +1642,9 @@ static PyObject* Brain_ti_forward_chain(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &max_iterations)) return NULL;
 
     int derived = brain_ti_forward_chain(self->brain->internal_brain, max_iterations);
-    return PyLong_FromLong(derived);
+    PyObject* result = PyLong_FromLong(derived);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1628,7 +1661,9 @@ static PyObject* Brain_ti_backward_chain(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "s", &goal)) return NULL;
 
     float confidence = brain_ti_backward_chain(self->brain->internal_brain, goal);
-    return PyFloat_FromDouble((double)confidence);
+    PyObject* result = PyFloat_FromDouble((double)confidence);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1645,7 +1680,9 @@ static PyObject* Brain_ti_query_knowledge(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "s", &query)) return NULL;
 
     int count = brain_ti_query_knowledge(self->brain->internal_brain, query);
-    return PyLong_FromLong(count);
+    PyObject* result = PyLong_FromLong(count);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1679,7 +1716,9 @@ static PyObject* Brain_ti_reason(BrainObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "s", &query)) return NULL;
 
     float confidence = brain_ti_reason(self->brain->internal_brain, query);
-    return PyFloat_FromDouble((double)confidence);
+    PyObject* result = PyFloat_FromDouble((double)confidence);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1696,7 +1735,9 @@ static PyObject* Brain_ti_compute_adaptive_lr(BrainObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
 
     float adaptive_lr = brain_ti_compute_adaptive_lr(self->brain->internal_brain, base_lr);
-    return PyFloat_FromDouble((double)adaptive_lr);
+    PyObject* result = PyFloat_FromDouble((double)adaptive_lr);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1713,7 +1754,9 @@ static PyObject* Brain_ti_compute_unified_lr(BrainObject* self, PyObject* args) 
     if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
 
     float unified_lr = brain_ti_compute_unified_lr(self->brain->internal_brain, base_lr, NULL);
-    return PyFloat_FromDouble((double)unified_lr);
+    PyObject* result = PyFloat_FromDouble((double)unified_lr);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1839,7 +1882,9 @@ static PyObject* Brain_ti_get_reasoning_degradation(BrainObject* self, PyObject*
         return NULL;
     }
     int level = brain_ti_get_reasoning_degradation();
-    return PyLong_FromLong(level);
+    PyObject* result = PyLong_FromLong(level);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1851,7 +1896,9 @@ static PyObject* Brain_ti_get_reasoning_phases_disabled(BrainObject* self, PyObj
         return NULL;
     }
     int disabled = brain_ti_get_reasoning_phases_disabled();
-    return PyLong_FromLong(disabled);
+    PyObject* result = PyLong_FromLong(disabled);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1863,7 +1910,9 @@ static PyObject* Brain_ti_get_cognitive_capacity(BrainObject* self, PyObject* Py
         return NULL;
     }
     float capacity = brain_ti_get_cognitive_capacity(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)capacity);
+    PyObject* result = PyFloat_FromDouble((double)capacity);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1875,7 +1924,9 @@ static PyObject* Brain_ti_get_urgency_mode(BrainObject* self, PyObject* Py_UNUSE
         return NULL;
     }
     int mode = brain_ti_get_urgency_mode(self->brain->internal_brain);
-    return PyLong_FromLong(mode);
+    PyObject* result = PyLong_FromLong(mode);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1887,7 +1938,9 @@ static PyObject* Brain_ti_get_stress_level(BrainObject* self, PyObject* Py_UNUSE
         return NULL;
     }
     float stress = brain_ti_get_stress_level(self->brain->internal_brain);
-    return PyFloat_FromDouble((double)stress);
+    PyObject* result = PyFloat_FromDouble((double)stress);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1909,7 +1962,9 @@ static PyObject* Brain_ti_mesh_is_available(PyObject* self, PyObject* args) {
 static PyObject* Brain_ti_mesh_get_participant_count(PyObject* self, PyObject* args) {
     (void)self; (void)args;
     uint32_t count = brain_ti_mesh_get_participant_count();
-    return PyLong_FromUnsignedLong(count);
+    PyObject* result = PyLong_FromUnsignedLong(count);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -1920,7 +1975,9 @@ static PyObject* Brain_ti_mesh_get_participant_count(PyObject* self, PyObject* a
 static PyObject* Brain_ti_mesh_get_coherence(PyObject* self, PyObject* args) {
     (void)self; (void)args;
     float coherence = brain_ti_mesh_get_coherence();
-    return PyFloat_FromDouble((double)coherence);
+    PyObject* result = PyFloat_FromDouble((double)coherence);
+    if (!result) return NULL;  /* OOM */
+    return result;
 }
 
 /**
@@ -3010,7 +3067,9 @@ static PyObject* Knowledge_query(KnowledgeObject* self, PyObject* args) {
         return NULL;
     }
 
-    return PyUnicode_FromString(result);
+    PyObject* py_result = PyUnicode_FromString(result);
+    if (!py_result) return NULL;  /* OOM */
+    return py_result;
 }
 
 static PyMethodDef Knowledge_methods[] = {

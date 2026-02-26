@@ -825,7 +825,12 @@ nimcp_exception_t* nimcp_exception_ref(nimcp_exception_t* ex) {
 void nimcp_exception_unref(nimcp_exception_t* ex) {
     if (!ex) return;
     int32_t new_count = __atomic_sub_fetch(&ex->ref_count, 1, __ATOMIC_SEQ_CST);
-    if (new_count <= 0) {
+    if (new_count < 0) {
+        // Already freed by another thread or over-released — do not free again.
+        // This prevents double-free when two threads race on the last unref.
+        return;
+    }
+    if (new_count == 0) {
         /* Free cause chain */
         if (ex->cause) {
             nimcp_exception_unref(ex->cause);

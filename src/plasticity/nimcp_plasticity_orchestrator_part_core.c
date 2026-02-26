@@ -2,6 +2,9 @@
 // Part of nimcp_plasticity_orchestrator.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp_plasticity_orchestrator.c
 
+/* Eligibility trace decay factor per reward event (95% retention).
+ * Matches eligibility_default_config().decay_lambda from nimcp_eligibility_trace.h */
+#define ORCHESTRATOR_ELIGIBILITY_DECAY  0.95f
 
 /* ============================================================================
  * Integration Functions
@@ -364,7 +367,7 @@ int plasticity_orchestrator_reward(
                 }
 
                 /* Decay eligibility trace */
-                syn->eligibility_trace *= 0.95f;
+                syn->eligibility_trace *= ORCHESTRATOR_ELIGIBILITY_DECAY;
             }
         }
     }

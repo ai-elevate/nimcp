@@ -139,10 +139,14 @@ nimcp_status_t nimcp_brain_predict(
 
     // Deep-copy decision for rubric access (last_decision owns this copy)
     // Note: internal_brain already validated non-NULL above
-    if (brain->internal_brain && brain->internal_brain->last_decision) {
-        brain_free_decision(brain->internal_brain->last_decision);
+    brain_decision_t* deep_copy = copy_decision_deep(decision);
+    if (deep_copy) {
+        if (brain->internal_brain->last_decision) {
+            brain_free_decision(brain->internal_brain->last_decision);
+        }
+        brain->internal_brain->last_decision = deep_copy;
     }
-    brain->internal_brain->last_decision = copy_decision_deep(decision);
+    // If copy_decision_deep fails (OOM), keep the old last_decision intact
 
     // Free original decision (caller's copy)
     brain_free_decision(decision);
@@ -314,6 +318,7 @@ nimcp_status_t nimcp_brain_decide_full(
     if (out_inference_time_us) *out_inference_time_us = decision->inference_time_us;
 
     brain_free_decision(decision);
+    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -383,7 +388,7 @@ nimcp_status_t nimcp_brain_snapshot_list(
     }
 
     set_error("No error");
-    return NIMCP_SUCCESS;
+    return NIMCP_OK;
 }
 
 
@@ -403,7 +408,7 @@ nimcp_status_t nimcp_brain_snapshot_delete(
     }
 
     set_error("No error");
-    return NIMCP_SUCCESS;
+    return NIMCP_OK;
 }
 
 

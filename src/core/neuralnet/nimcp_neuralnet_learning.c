@@ -203,6 +203,7 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
     float sum = 0.0f;
     float min_w = FLT_MAX;
     float max_w = -FLT_MAX;
+    uint32_t valid_count = 0;
 
     for (uint32_t i = 0; i < syn_count; i++) {
         synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
@@ -211,9 +212,19 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
         sum += w;
         if (w < min_w) min_w = w;
         if (w > max_w) max_w = w;
+        valid_count++;
     }
 
-    float avg = sum / (float)syn_count;
+    /* Guard: all handles were NULL despite syn_count > 0 */
+    if (valid_count == 0) {
+        if (mean) *mean = 0.0f;
+        if (std_dev) *std_dev = 0.0f;
+        if (min_weight) *min_weight = 0.0f;
+        if (max_weight) *max_weight = 0.0f;
+        return;
+    }
+
+    float avg = sum / (float)valid_count;
 
     float variance = 0.0f;
     for (uint32_t i = 0; i < syn_count; i++) {
@@ -222,7 +233,7 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
         float diff = h->weight - avg;
         variance += diff * diff;
     }
-    variance /= (float)syn_count;
+    variance /= (float)valid_count;
 
     if (mean) *mean = avg;
     if (std_dev) *std_dev = sqrtf(variance);

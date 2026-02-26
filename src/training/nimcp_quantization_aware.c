@@ -233,6 +233,9 @@ qat_ctx_t* qat_create(const qat_config_t* config) {
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        if (ctx->config.layer_configs) {
+            nimcp_free(ctx->config.layer_configs);
+        }
         nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qat_create: ctx->mutex is NULL");
         return NULL;
@@ -335,6 +338,13 @@ int qat_register_observer(
     if (ctx->config.observer.method == QAT_OBSERVER_HISTOGRAM) {
         obs->num_bins = ctx->config.observer.num_bins;
         obs->histogram = nimcp_calloc(obs->num_bins, sizeof(uint32_t));
+        if (!obs->histogram) {
+            memset(obs, 0, sizeof(observer_t));  /* Clean up partially-initialized slot */
+            nimcp_mutex_unlock(ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                                  "qat_register_observer: histogram alloc failed");
+            return -1;
+        }
     }
 
     /* Initialize LSQ parameters */

@@ -124,13 +124,32 @@ int nlp_node_start(nlp_node_t node) {
     // Create UDP socket
     node->socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (node->socket_fd < 0) {
-        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to create socket: %s", strerror(errno));
-        return -errno;
+        /* BUG-30 fix: Save errno before logging macro, which may clobber it
+         * via internal write/printf calls. */
+        int saved_errno = errno;
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to create socket: %s", strerror(saved_errno));
+        return -saved_errno;
     }
 
     // Set non-blocking
+    /* BUG-25 fix: Check fcntl return values. If F_GETFL fails (returns -1),
+     * F_SETFL would be called with -1 | O_NONBLOCK == -1 (all bits set),
+     * setting garbage flags on the socket descriptor. */
     int flags = fcntl(node->socket_fd, F_GETFL, 0);
-    fcntl(node->socket_fd, F_SETFL, flags | O_NONBLOCK);
+    if (flags < 0) {
+        int saved_errno = errno;
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to get socket flags: %s", strerror(saved_errno));
+        close(node->socket_fd);
+        node->socket_fd = -1;
+        return -saved_errno;
+    }
+    if (fcntl(node->socket_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        int saved_errno = errno;
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to set non-blocking: %s", strerror(saved_errno));
+        close(node->socket_fd);
+        node->socket_fd = -1;
+        return -saved_errno;
+    }
 
     // Allow address reuse
     int optval = 1;
@@ -144,10 +163,14 @@ int nlp_node_start(nlp_node_t node) {
 
     if (bind(node->socket_fd, (struct sockaddr*)&node->bind_addr,
              sizeof(node->bind_addr)) < 0) {
-        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to bind socket: %s", strerror(errno));
+        /* BUG-26 fix: Save errno before close() and logging, which can both
+         * modify errno. Returning -errno after these calls would return the
+         * wrong error code. */
+        int saved_errno = errno;
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to bind socket: %s", strerror(saved_errno));
         close(node->socket_fd);
         node->socket_fd = -1;
-        return -errno;
+        return -saved_errno;
     }
 
     nimcp_mutex_lock(&node->state_mutex);
@@ -788,8 +811,12 @@ int nlp_relay(nlp_node_t node, uint32_t dest_id, nlp_msg_type_t msg_type,
         uint16_t reserved;
     } relay_header;
 
+    /* BUG-29 fix: Replace magic number with named constant */
+#ifndef NLP_RELAY_MAX_TTL
+#define NLP_RELAY_MAX_TTL 16  /**< Maximum relay hops before message is dropped */
+#endif
     relay_header.final_dest = htonl(dest_id);
-    relay_header.ttl = 16;  // Max 16 hops
+    relay_header.ttl = NLP_RELAY_MAX_TTL;
     relay_header.hop_count = 0;
     relay_header.reserved = 0;
 
@@ -831,6 +858,15 @@ int nlp_send_spikes(nlp_node_t node, uint32_t peer_id,
     }
 
     if (count == 0) return 0;
+
+    /* BUG-23 fix: spike_count is uint16_t in the protocol header. Silently
+     * truncating a uint32_t count > UINT16_MAX corrupts the batch metadata,
+     * causing the receiver to misinterpret the payload layout. */
+    if (count > UINT16_MAX) {
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME,
+            "Spike count %u exceeds protocol maximum %u", count, UINT16_MAX);
+        return -EMSGSIZE;
+    }
 
     if (!bbb_check_pointer(neuron_ids, "nlp_send_spikes") ||
         !bbb_check_pointer(spike_times, "nlp_send_spikes")) {
@@ -878,6 +914,15 @@ int nlp_send_weight_deltas(nlp_node_t node, uint32_t peer_id,
     }
 
     if (count == 0) return 0;
+
+    /* BUG-24 fix: delta_count is uint16_t in the protocol header. Silently
+     * truncating a uint32_t count > UINT16_MAX corrupts the header metadata,
+     * causing the receiver to read wrong number of entries. */
+    if (count > UINT16_MAX) {
+        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME,
+            "Weight delta count %u exceeds protocol maximum %u", count, UINT16_MAX);
+        return -EMSGSIZE;
+    }
 
     if (!bbb_check_pointer(synapse_ids, "nlp_send_weight_deltas") ||
         !bbb_check_pointer(old_weights, "nlp_send_weight_deltas") ||

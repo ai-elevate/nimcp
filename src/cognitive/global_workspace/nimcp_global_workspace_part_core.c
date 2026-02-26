@@ -148,12 +148,6 @@ bool global_workspace_compete(
     // Immediately resolve competition (backward compatible behavior)
     cognitive_module_t winner = MODULE_NONE;
 
-    // Check if pool is empty
-    if (ws->num_active_competitors == 0) {
-        nimcp_platform_mutex_unlock(&ws->mutex);
-        return false;
-    }
-
     uint64_t current_time = get_time_ms();
     uint32_t winner_idx;
     float winner_strength;

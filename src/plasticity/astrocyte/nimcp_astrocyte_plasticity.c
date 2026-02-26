@@ -77,8 +77,9 @@ static float compute_d_serine_factor(float d_serine_level) {
 
     /* Above threshold, normal to enhanced function
      * Clamp normalized to [0, 1] to ensure factor stays in [0.6, 1.5] */
-    float normalized = (d_serine_level - ASTROCYTE_D_SERINE_LTP_THRESHOLD) /
-                       (1.0f - ASTROCYTE_D_SERINE_LTP_THRESHOLD);
+    float denom = 1.0f - ASTROCYTE_D_SERINE_LTP_THRESHOLD;
+    if (denom < 1e-6f) denom = 1e-6f;  /* Guard: prevent div-by-zero if threshold ≈ 1.0 */
+    float normalized = (d_serine_level - ASTROCYTE_D_SERINE_LTP_THRESHOLD) / denom;
     normalized = nimcp_clampf(normalized, 0.0f, 1.0f);
     return 0.6f + 0.9f * normalized;  /* Range: 0.6 - 1.5 */
 }
@@ -108,7 +109,9 @@ static float compute_a1r_inhibition(float adenosine_level) {
     }
 
     float above_threshold = adenosine_level - ASTROCYTE_ADENOSINE_A1R_THRESHOLD;
-    float normalized = above_threshold / (1.0f - ASTROCYTE_ADENOSINE_A1R_THRESHOLD);
+    float denom = 1.0f - ASTROCYTE_ADENOSINE_A1R_THRESHOLD;
+    if (denom < 1e-6f) denom = 1e-6f;  /* Guard: prevent div-by-zero if threshold ≈ 1.0 */
+    float normalized = above_threshold / denom;
     return 0.6f * normalized;  /* Max 60% inhibition */
 }
 

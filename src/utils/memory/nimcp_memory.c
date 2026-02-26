@@ -864,7 +864,6 @@ static size_t get_guard_size(void* ptr)
 
     nimcp_mutex_lock(&g_memory_state.lock);
     size_t guard_size = 0;  // 0 means not found or no guards
-    bool found = false;
 
     if (g_memory_state.block_buckets) {
         size_t idx = bucket_index_for_ptr(ptr);
@@ -872,14 +871,11 @@ static size_t get_guard_size(void* ptr)
         while (current) {
             if (current->ptr == ptr) {
                 guard_size = current->guard_size;
-                found = true;
                 break;
             }
             current = current->next;
         }
     }
-
-    (void)found;  // Tracked guard_size may be 0 if ptr wasn't in list
 
     // Return the tracked guard_size (may be 0 if allocation used no guards)
     // If not found in tracking, return 0 (assume no guards)
@@ -1443,6 +1439,13 @@ void* nimcp_malloc(size_t size)
     // Only add guards if tracking is enabled (guards need tracking to be freed correctly)
     if (g_memory_state.tracking_enabled) {
         const size_t guard_size = 8;  // Minimum guard size
+
+        // Check for integer overflow before adding guard overhead
+        if (size > SIZE_MAX - (2 * guard_size)) {
+            MEMORY_SAFE_THROW(NIMCP_ERROR_NO_MEMORY,
+                              "nimcp_malloc: integer overflow in size + guards (%zu bytes)", size);
+            return NULL;
+        }
         size_t total_size = size + (2 * guard_size);
 
         void* real_ptr = malloc(total_size);
@@ -1612,10 +1615,12 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     }
 
     // Special case: realloc(ptr, 0) - should free (implementation-defined in C11)
-    // Route through tracked free path to update allocation tracking
+    // Route through nimcp_free which handles guard offsets and UMM handles correctly.
+    // Previously this called untrack_allocation + free(ptr) directly, which would
+    // free the user pointer instead of the real pointer when guards were present,
+    // causing heap corruption.
     if (new_size == 0) {
-        untrack_allocation(ptr);
-        free(ptr);
+        nimcp_free(ptr);
         return NULL;
     }
 
@@ -1664,9 +1669,19 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     // Fallback to direct realloc if UMM not available or tracking disabled
     // NOTE: Untrack BEFORE realloc because realloc may move/free the old pointer.
     // If realloc fails, the old pointer is still valid — we must re-track it.
+    //
+    // BUG FIX: Must compute the real pointer (before guard region) for realloc.
+    // If the original allocation had guards (guard_size > 0), ptr is actually
+    // real_ptr + guard_size. Passing ptr directly to realloc() is UB because
+    // realloc() expects the exact pointer returned by malloc/calloc/realloc.
+    size_t old_guard_size = get_guard_size(ptr);
+    void* real_ptr_for_realloc = (old_guard_size > 0) ? (char*)ptr - old_guard_size : ptr;
     untrack_allocation(ptr);
-    void* new_ptr = realloc(ptr, new_size);
+    void* new_ptr = realloc(real_ptr_for_realloc, new_size);
     if (new_ptr) {
+        // realloc succeeded - the returned pointer is from real malloc, no guards.
+        // Track the new allocation without guards (guard_size=0) since realloc
+        // doesn't preserve our guard layout.
         track_allocation(new_ptr, new_size, 0, __FILE__, __LINE__, __func__);
         if (g_memory_state.debug_output) {
             printf("[MEMORY] Reallocated via realloc: %zu bytes at %p (old: %p)\n", new_size, new_ptr, ptr);
@@ -1674,7 +1689,8 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     } else {
         // realloc failed: old pointer is still valid but was untracked.
         // Re-track it so it doesn't appear as a leak or cause double-free warnings.
-        track_allocation(ptr, old_size, 0, __FILE__, __LINE__, __func__);
+        track_allocation(real_ptr_for_realloc == ptr ? ptr : (char*)real_ptr_for_realloc + old_guard_size,
+                         old_size, old_guard_size, __FILE__, __LINE__, __func__);
         nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
         nimcp_mutex_unlock(&g_memory_state.lock);
@@ -2335,8 +2351,24 @@ void* nimcp_aligned_alloc_impl(size_t alignment, size_t size)
     // KEY: Guard size must match alignment to preserve it
     size_t guard_size = (alignment > 8) ? alignment : 8;
 
+    // Check for integer overflow before computing total size with guards
+    if (size > SIZE_MAX - (2 * guard_size)) {
+        if (g_memory_state.debug_output) {
+            fprintf(stderr, "[MEMORY] Integer overflow in aligned alloc size calculation\n");
+        }
+        return NULL;
+    }
+
     // Compute total with guards (will preserve alignment)
     size_t total_size = size + (2 * guard_size);
+
+    // Check for overflow during alignment rounding
+    if (total_size > SIZE_MAX - (alignment - 1)) {
+        if (g_memory_state.debug_output) {
+            fprintf(stderr, "[MEMORY] Integer overflow in aligned alloc rounding\n");
+        }
+        return NULL;
+    }
     total_size = (total_size + alignment - 1) & ~(alignment - 1);
 
     // Allocate aligned memory
