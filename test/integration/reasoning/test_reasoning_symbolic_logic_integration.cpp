@@ -92,9 +92,12 @@ protected:
         bool r3 = brain_add_logical_rule(brain, "Penguin(x) -> ~Fly(x)", 0.95f);
         (void)r1; (void)r2; (void)r3;
 
-        // Create reasoning engine with symbolic logic enabled
+        // Create reasoning engine with symbolic logic enabled.
+        // Disable convergent reasoning so the sequential pipeline runs —
+        // these tests specifically verify the symbolic logic phase.
         reasoning_engine_config_t cfg = reasoning_engine_default_config();
         cfg.enable_symbolic_logic = true;
+        cfg.enable_convergent_reasoning = false;
         engine = reasoning_engine_create(&cfg);
         ASSERT_NE(engine, nullptr)
             << "Reasoning engine creation must succeed";
@@ -131,6 +134,7 @@ protected:
 
         reasoning_engine_config_t cfg = reasoning_engine_default_config();
         cfg.enable_symbolic_logic = true;  // enabled in config, but no engine on brain
+        cfg.enable_convergent_reasoning = false;  // test sequential pipeline behavior
         engine = reasoning_engine_create(&cfg);
         ASSERT_NE(engine, nullptr)
             << "Reasoning engine creation must succeed";
