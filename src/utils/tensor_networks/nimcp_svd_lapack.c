@@ -168,24 +168,25 @@ svd_result_t svd_compute(
 
     // WHAT: Convert input to column-major for LAPACK
     // WHY:  FORTRAN uses column-major, C uses row-major
-    float* A_col = (float*)nimcp_malloc(m * n * sizeof(float));
-    if (!A_col) return result;
+    float* A_col = NULL;
+    float* S_full = NULL;
+    float* U_full = NULL;
+    float* VT_full = NULL;
+    int* iwork = NULL;
+    float* work = NULL;
+
+    A_col = (float*)nimcp_malloc(m * n * sizeof(float));
+    if (!A_col) goto svd_fail;
 
     row_to_col_major(A, A_col, m, n);
 
     // WHAT: Allocate workspace for LAPACK
     // WHY:  sgesdd requires singular values and vectors storage
-    float* S_full = (float*)nimcp_malloc(min_dim * sizeof(float));
-    float* U_full = (float*)nimcp_malloc(m * min_dim * sizeof(float));
-    float* VT_full = (float*)nimcp_malloc(min_dim * n * sizeof(float));
+    S_full = (float*)nimcp_malloc(min_dim * sizeof(float));
+    U_full = (float*)nimcp_malloc(m * min_dim * sizeof(float));
+    VT_full = (float*)nimcp_malloc(min_dim * n * sizeof(float));
 
-    if (!S_full || !U_full || !VT_full) {
-        nimcp_free(A_col);
-        nimcp_free(S_full);
-        nimcp_free(U_full);
-        nimcp_free(VT_full);
-        return result;
-    }
+    if (!S_full || !U_full || !VT_full) goto svd_fail;
 
     // WHAT: Query optimal workspace size
     // WHY:  LAPACK needs temporary buffers for computation
@@ -194,44 +195,24 @@ svd_result_t svd_compute(
     int min_dim_int = (int)min_dim;
     int lwork = -1;
     float work_query;
-    int* iwork = (int*)nimcp_malloc(8 * min_dim * sizeof(int));
     int info;
     char jobz = 'S';  // Compute min(m,n) singular vectors
 
-    if (!iwork) {
-        nimcp_free(A_col);
-        nimcp_free(S_full);
-        nimcp_free(U_full);
-        nimcp_free(VT_full);
-        return result;
-    }
+    iwork = (int*)nimcp_malloc(8 * min_dim * sizeof(int));
+    if (!iwork) goto svd_fail;
 
     // Workspace query
     sgesdd_(&jobz, &m_int, &n_int, A_col, &m_int,
             S_full, U_full, &m_int, VT_full, &min_dim_int,
             &work_query, &lwork, iwork, &info);
 
-    if (info != 0) {
-        nimcp_free(A_col);
-        nimcp_free(S_full);
-        nimcp_free(U_full);
-        nimcp_free(VT_full);
-        nimcp_free(iwork);
-        return result;
-    }
+    if (info != 0) goto svd_fail;
 
     // WHAT: Allocate optimal workspace
     // WHY:  Use LAPACK's recommended size for best performance
     lwork = (int)work_query;
-    float* work = (float*)nimcp_malloc(lwork * sizeof(float));
-    if (!work) {
-        nimcp_free(A_col);
-        nimcp_free(S_full);
-        nimcp_free(U_full);
-        nimcp_free(VT_full);
-        nimcp_free(iwork);
-        return result;
-    }
+    work = (float*)nimcp_malloc(lwork * sizeof(float));
+    if (!work) goto svd_fail;
 
     // WHAT: Compute full SVD using LAPACK
     // WHY:  Divide-and-conquer algorithm for optimal performance
@@ -239,20 +220,17 @@ svd_result_t svd_compute(
             S_full, U_full, &m_int, VT_full, &min_dim_int,
             work, &lwork, iwork, &info);
 
-    nimcp_free(work);
-    nimcp_free(iwork);
-    nimcp_free(A_col);
+    nimcp_free(work); work = NULL;
+    nimcp_free(iwork); iwork = NULL;
+    nimcp_free(A_col); A_col = NULL;
 
     if (info != 0) {
-        nimcp_free(S_full);
-        nimcp_free(U_full);
-        nimcp_free(VT_full);
         if (info < 0) {
             fprintf(stderr, "LAPACK sgesdd: illegal argument %d\n", -info);
         } else {
             fprintf(stderr, "LAPACK sgesdd: convergence failure\n");
         }
-        return result;
+        goto svd_fail;
     }
 
     // WHAT: Determine actual rank based on tolerance
@@ -281,11 +259,8 @@ svd_result_t svd_compute(
     result.Vt = (float*)nimcp_malloc(actual_rank * n * sizeof(float));
 
     if (!result.U || !result.S || !result.Vt) {
-        nimcp_free(S_full);
-        nimcp_free(U_full);
-        nimcp_free(VT_full);
         svd_free(&result);
-        return result;
+        goto svd_fail;
     }
 
     // WHAT: Copy truncated singular values
@@ -333,12 +308,16 @@ svd_result_t svd_compute(
                                            (result.S[0] * result.S[0] * actual_rank));
     }
 
+svd_fail:
     // WHAT: Free temporary LAPACK workspace
     // WHY:  Cleanup after SVD computation and truncation
-    // NOTE: Must be done AFTER reconstruction error calculation
-    nimcp_free(S_full);
-    nimcp_free(U_full);
+    // NOTE: nimcp_free(NULL) is safe
     nimcp_free(VT_full);
+    nimcp_free(U_full);
+    nimcp_free(S_full);
+    nimcp_free(iwork);
+    nimcp_free(work);
+    nimcp_free(A_col);
 
     return result;
 }

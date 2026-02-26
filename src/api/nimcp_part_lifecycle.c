@@ -201,15 +201,19 @@ nimcp_brain_t nimcp_brain_create(
 }
 
 nimcp_status_t nimcp_brain_freeze(nimcp_brain_t brain) {
-    if (!brain || !brain->internal_brain) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "nimcp_brain_freeze: brain is NULL");
+    NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_NULL_ARG, "nimcp_brain_freeze: internal_brain is NULL");
     bool ok = brain_freeze(brain->internal_brain);
     return ok ? NIMCP_OK : NIMCP_ERROR;
 }
 
 bool nimcp_brain_is_frozen(nimcp_brain_t brain) {
-    if (!brain || !brain->internal_brain) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_is_frozen: brain is NULL");
+        return false;
+    }
+    if (!brain->internal_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_is_frozen: internal_brain is NULL");
         return false;
     }
     return brain_is_frozen(brain->internal_brain);
@@ -253,45 +257,51 @@ nimcp_brain_t nimcp_brain_create_with_neurons(
 
     NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
 
-    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
-    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
-                               "Failed to allocate brain handle");
+    nimcp_brain_t handle = NULL;
+    task_strategy_t* strategy = NULL;
+
+    handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_with_neurons: handle allocation failed");
+        goto cleanup;
+    }
 
     brain_size_t internal_size = BRAIN_SIZE_LARGE;
     brain_task_t internal_task = (brain_task_t)task;
 
     // Build config with neuron_count override
     brain_config_t config = {0};
-    task_strategy_t* strategy = strategy_create(internal_task);
+    strategy = strategy_create(internal_task);
     if (!strategy) {
-        set_error("Failed to create task strategy");
-        nimcp_free(handle);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "strategy allocation failed");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_with_neurons: strategy allocation failed");
+        goto cleanup;
     }
     nimcp_brain_factory_init_brain_config(&config, name, internal_size, internal_task,
                                           num_inputs, num_outputs, strategy);
     strategy_destroy(strategy);
+    strategy = NULL;
     config.neuron_count = neuron_count;
 
     handle->internal_brain = brain_create_custom(&config);
     if (!handle->internal_brain) {
-        set_error("Failed to create internal brain with custom neuron count");
-        nimcp_free(handle);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_with_neurons: brain_create_custom returned NULL");
-        return NULL;
+        goto cleanup;
     }
 
     set_error("No error");
     LOG_INFO("Brain '%s' created with %u neurons (handle=%p)", name, neuron_count, (void*)handle);
     return handle;
+
+cleanup:
+    set_error("Failed to create brain with custom neuron count");
+    strategy_destroy(strategy);
+    nimcp_free(handle);
+    return NULL;
 }
 
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
-        set_error("Config filepath is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_filepath is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_create_from_config: config_filepath is NULL");
         return NULL;
     }
 

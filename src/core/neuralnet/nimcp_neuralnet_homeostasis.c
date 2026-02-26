@@ -327,8 +327,12 @@ bool neural_network_accumulate_allostatic_load(neural_network_t network,
 float neural_network_compute_homeostatic_health(neural_network_t network,
                                                 uint32_t neuron_id)
 {
-    if (!network || neuron_id >= network->num_neurons) {
-        LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_compute_homeostatic_health: network is NULL");
+        return 0.0f;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_compute_homeostatic_health: neuron_id %u out of range", neuron_id);
         return 0.0f;
     }
 

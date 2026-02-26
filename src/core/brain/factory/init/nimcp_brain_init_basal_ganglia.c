@@ -77,7 +77,7 @@ void nimcp_brain_bg_default_config(brain_t brain, bg_enhanced_config_t* config) 
     /* Start with module defaults */
     bg_enhanced_default_config(config);
 
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_default_config: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -240,7 +240,7 @@ bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain) {
 }
 
 void nimcp_brain_bg_destroy(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_destroy: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -338,7 +338,7 @@ int nimcp_brain_bg_process_reward(brain_t brain,
 void nimcp_brain_bg_on_emotional_signal(brain_t brain,
                                          float valence,
                                          float arousal) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_on_emotional_signal: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -366,7 +366,7 @@ void nimcp_brain_bg_on_emotional_signal(brain_t brain,
 void nimcp_brain_bg_on_goal_change(brain_t brain,
                                     uint32_t goal_id,
                                     bool is_active) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_on_goal_change: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -386,7 +386,7 @@ void nimcp_brain_bg_on_goal_change(brain_t brain,
 
 void nimcp_brain_bg_on_arousal_change(brain_t brain,
                                        float arousal_level) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_on_arousal_change: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -436,7 +436,7 @@ bool nimcp_brain_bg_is_enabled(brain_t brain) {
 }
 
 bgod_behavior_type_t nimcp_brain_bg_get_behavior_type(brain_t brain) {
-    if (!brain) return BGOD_BEHAVIOR_UNKNOWN;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_get_behavior_type: brain is NULL"); return BGOD_BEHAVIOR_UNKNOWN; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -453,7 +453,7 @@ bgod_behavior_type_t nimcp_brain_bg_get_behavior_type(brain_t brain) {
 }
 
 float nimcp_brain_bg_get_motivation(brain_t brain) {
-    if (!brain) return 0.0f;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_get_motivation: brain is NULL"); return 0.0f; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -536,7 +536,7 @@ int nimcp_brain_bg_connect_training_context(brain_t brain,
 }
 
 float nimcp_brain_bg_get_last_rpe(brain_t brain) {
-    if (!brain) return 0.0f;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_get_last_rpe: brain is NULL"); return 0.0f; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -553,7 +553,7 @@ float nimcp_brain_bg_get_last_rpe(brain_t brain) {
 }
 
 uint32_t nimcp_brain_bg_get_active_traces(brain_t brain) {
-    if (!brain) return 0;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_bg_get_active_traces: brain is NULL"); return 0; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 

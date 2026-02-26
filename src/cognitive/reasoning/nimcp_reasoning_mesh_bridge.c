@@ -231,7 +231,9 @@ int reasoning_mesh_apply_evidence(
         step.relevance = ev->relevance;
         snprintf(step.description, sizeof(step.description), "%s", ev->description);
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_mesh: step add failed (chain full, steps=%u)", chain->num_steps);
+        }
         steps_added++;
     }
 

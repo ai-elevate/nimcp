@@ -150,7 +150,10 @@ void nlp_bridge_destroy(nlp_protocol_bridge_t* bridge) {
 void nlp_bridge_set_compression(nlp_protocol_bridge_t* bridge,
                                 bool use_nlp_compression,
                                 bool use_utils_compression) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_bridge_set_compression: bridge is NULL");
+        return;
+    }
 
     bridge->use_nlp_compression = use_nlp_compression;
     bridge->use_utils_compression = use_utils_compression;
@@ -170,7 +173,10 @@ void nlp_bridge_set_compression(nlp_protocol_bridge_t* bridge,
  */
 void nlp_bridge_set_reference_point(nlp_protocol_bridge_t* bridge,
                                     double lat_deg, double lon_deg) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_bridge_set_reference_point: bridge is NULL");
+        return;
+    }
 
     nlang_context_set_reference(&bridge->context, lat_deg, lon_deg);
 }

@@ -236,10 +236,9 @@ structural_plasticity_system_t* structural_plasticity_create(
     system->spines = (synapse_structural_state_t*)nimcp_malloc(
         sizeof(synapse_structural_state_t) * system->max_spines);
     if (!system->spines) {
-        nimcp_free(system);
         LOG_ERROR("Structural plasticity spine array allocation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "structural_plasticity_create: spines allocation failed");
-        return NULL;
+        goto cleanup;
     }
 
     memset(system->spines, 0,
@@ -248,17 +247,24 @@ structural_plasticity_system_t* structural_plasticity_create(
     /* Create mutex */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
-        nimcp_free(system->spines);
-        nimcp_free(system);
         LOG_ERROR("Structural plasticity mutex creation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "structural_plasticity_create: mutex creation failed");
-        return NULL;
+        goto cleanup;
     }
 
     system->next_synapse_id = 1;
 
     NIMCP_LOGGING_INFO("Structural plasticity system created");
     return system;
+
+cleanup:
+    if (system->mutex) {
+        nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+    }
+    nimcp_free(system->spines);
+    nimcp_free(system);
+    return NULL;
 }
 
 void structural_plasticity_destroy(structural_plasticity_system_t* system) {

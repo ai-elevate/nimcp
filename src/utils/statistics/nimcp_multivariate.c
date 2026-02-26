@@ -431,10 +431,17 @@ nimcp_mv_result_t nimcp_mv_svd(
     int min_mn = (M < N) ? M : N;
     int ldu = M;
     int ldvt = full_matrices ? N : min_mn;
+    nimcp_mv_result_t result = NIMCP_MV_OK;
 
     // LAPACK expects column-major, so transpose
-    float* A_col = (float*)nimcp_malloc(m * n * sizeof(float));
-    if (!A_col) return NIMCP_MV_ERROR_MEMORY;
+    float* A_col = NULL;
+    int* iwork = NULL;
+    float* U_col = NULL;
+    float* Vt_col = NULL;
+    float* work = NULL;
+
+    A_col = (float*)nimcp_malloc(m * n * sizeof(float));
+    if (!A_col) { result = NIMCP_MV_ERROR_MEMORY; goto svd_cleanup; }
     transpose_matrix(A, A_col, m, n);
 
     char jobz = full_matrices ? 'A' : 'S';
@@ -442,26 +449,30 @@ nimcp_mv_result_t nimcp_mv_svd(
     // Query workspace
     int lwork = -1;
     float work_query;
-    int* iwork = (int*)nimcp_malloc(8 * min_mn * sizeof(int));
     int info;
 
-    float* U_col = U ? (float*)nimcp_malloc(m * (full_matrices ? m : min_mn) * sizeof(float)) : NULL;
-    float* Vt_col = Vt ? (float*)nimcp_malloc((full_matrices ? n : min_mn) * n * sizeof(float)) : NULL;
+    iwork = (int*)nimcp_malloc(8 * min_mn * sizeof(int));
+    if (!iwork) { result = NIMCP_MV_ERROR_MEMORY; goto svd_cleanup; }
+
+    U_col = U ? (float*)nimcp_malloc(m * (full_matrices ? m : min_mn) * sizeof(float)) : NULL;
+    if (U && !U_col) { result = NIMCP_MV_ERROR_MEMORY; goto svd_cleanup; }
+
+    Vt_col = Vt ? (float*)nimcp_malloc((full_matrices ? n : min_mn) * n * sizeof(float)) : NULL;
+    if (Vt && !Vt_col) { result = NIMCP_MV_ERROR_MEMORY; goto svd_cleanup; }
 
     sgesdd_(&jobz, &M, &N, A_col, &lda, S, U_col, &ldu, Vt_col, &ldvt,
             &work_query, &lwork, iwork, &info);
 
     lwork = (int)work_query;
-    float* work = (float*)nimcp_malloc(lwork * sizeof(float));
+    work = (float*)nimcp_malloc(lwork * sizeof(float));
+    if (!work) { result = NIMCP_MV_ERROR_MEMORY; goto svd_cleanup; }
 
     sgesdd_(&jobz, &M, &N, A_col, &lda, S, U_col, &ldu, Vt_col, &ldvt,
             work, &lwork, iwork, &info);
 
     if (info != 0) {
-        nimcp_free(A_col); nimcp_free(work); nimcp_free(iwork);
-        if (U_col) nimcp_free(U_col);
-        if (Vt_col) nimcp_free(Vt_col);
-        return NIMCP_MV_ERROR_LAPACK;
+        result = NIMCP_MV_ERROR_LAPACK;
+        goto svd_cleanup;
     }
 
     // Transpose results back to row-major
@@ -474,11 +485,14 @@ nimcp_mv_result_t nimcp_mv_svd(
         transpose_matrix(Vt_col, Vt, n, vt_rows);
     }
 
-    nimcp_free(A_col); nimcp_free(work); nimcp_free(iwork);
-    if (U_col) nimcp_free(U_col);
-    if (Vt_col) nimcp_free(Vt_col);
+svd_cleanup:
+    nimcp_free(work);
+    nimcp_free(Vt_col);
+    nimcp_free(U_col);
+    nimcp_free(iwork);
+    nimcp_free(A_col);
 
-    return NIMCP_MV_OK;
+    return result;
 #else
     // Fallback to power iteration
     uint32_t min_mn = (m < n) ? m : n;
@@ -510,8 +524,13 @@ nimcp_mv_result_t nimcp_mv_eigh(
     if (n > 0 && (size_t)n * n > SIZE_MAX / sizeof(float)) {
         return NIMCP_MV_ERROR_MEMORY;
     }
-    float* A_work = (float*)nimcp_malloc((size_t)n * n * sizeof(float));
-    if (!A_work) return NIMCP_MV_ERROR_MEMORY;
+    float* A_work = NULL;
+    float* work = NULL;
+    int* iwork = NULL;
+    nimcp_mv_result_t result = NIMCP_MV_OK;
+
+    A_work = (float*)nimcp_malloc((size_t)n * n * sizeof(float));
+    if (!A_work) { result = NIMCP_MV_ERROR_MEMORY; goto eigh_cleanup; }
 
     // LAPACK expects column-major, transpose symmetric matrix
     transpose_matrix(A, A_work, n, n);
@@ -527,23 +546,28 @@ nimcp_mv_result_t nimcp_mv_eigh(
 
     lwork = (int)work_query;
     liwork = iwork_query;
-    float* work = (float*)nimcp_malloc(lwork * sizeof(float));
-    int* iwork = (int*)nimcp_malloc(liwork * sizeof(int));
+    work = (float*)nimcp_malloc(lwork * sizeof(float));
+    iwork = (int*)nimcp_malloc(liwork * sizeof(int));
+
+    if (!work || !iwork) { result = NIMCP_MV_ERROR_MEMORY; goto eigh_cleanup; }
 
     ssyevd_(&jobz, &uplo, &N, A_work, &lda, eigenvalues,
             work, &lwork, iwork, &liwork, &info);
 
     if (info != 0) {
-        nimcp_free(A_work); nimcp_free(work); nimcp_free(iwork);
-        return NIMCP_MV_ERROR_LAPACK;
+        result = NIMCP_MV_ERROR_LAPACK;
+        goto eigh_cleanup;
     }
 
     if (eigenvectors) {
         transpose_matrix(A_work, eigenvectors, n, n);
     }
 
-    nimcp_free(A_work); nimcp_free(work); nimcp_free(iwork);
-    return NIMCP_MV_OK;
+eigh_cleanup:
+    nimcp_free(iwork);
+    nimcp_free(work);
+    nimcp_free(A_work);
+    return result;
 #else
     // Simple power iteration for largest eigenvalue (fallback)
     // For full eigendecomposition without LAPACK, this is very slow

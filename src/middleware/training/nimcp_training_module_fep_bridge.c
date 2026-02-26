@@ -85,8 +85,7 @@ training_module_fep_bridge_t* training_module_fep_create(
         nimcp_malloc(sizeof(training_module_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("training_module_fep_create: Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_module_fep_create: bridge allocation failed");
         return NULL;
     }
 
@@ -122,15 +121,14 @@ training_module_fep_bridge_t* training_module_fep_create(
         bridge->fep_system = fep_create(&fep_config, 2, 1);
         if (!bridge->fep_system) {
             NIMCP_LOGGING_ERROR("training_module_fep_create: Failed to create FEP system");
-            nimcp_free(bridge);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_module_fep_create: bridge->fep_system is NULL");
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_module_fep_create: FEP system creation failed");
+            goto cleanup;
         }
         bridge->owns_fep_system = true;
     }
 
     /* Initialize mutex */
-    if (bridge_base_init(&bridge->base, 0, "training_module_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "training_module_fep") != 0) { goto cleanup; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("training_module_fep_create: Failed to create mutex");
     }
@@ -148,6 +146,14 @@ training_module_fep_bridge_t* training_module_fep_create(
     NIMCP_LOGGING_INFO("Created training module FEP bridge");
 
     return bridge;
+
+cleanup:
+    if (bridge->owns_fep_system && bridge->fep_system) {
+        fep_destroy(bridge->fep_system);
+    }
+    if (bridge->base.mutex) { bridge_base_cleanup(&bridge->base); }
+    nimcp_free(bridge);
+    return NULL;
 }
 
 void training_module_fep_destroy(training_module_fep_bridge_t* bridge) {

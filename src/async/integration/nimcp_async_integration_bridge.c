@@ -519,88 +519,46 @@ async_integration_t* async_integration_create(
         config = &default_config;
     }
 
-    /* Allocate bridge structure */
+    /* Allocate bridge structure - nimcp_calloc zeroes all pointers */
     async_integration_t* bridge = (async_integration_t*)nimcp_calloc(
         1, sizeof(async_integration_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge allocation failed");
         return NULL;
-
     }
+
+    /* Track how many priority queues were created for cleanup */
+    int pq_created = 0;
 
     /* Copy configuration */
     memcpy(&bridge->config, config, sizeof(async_integration_config_t));
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "async_integration") != 0) { nimcp_free(bridge); return NULL; }
-    if (!bridge->base.mutex) {
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge->base is NULL");
-        return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "async_integration") != 0) goto cleanup;
+    if (!bridge->base.mutex) goto cleanup;
 
     /* Create task registry */
     bridge->task_registry = task_registry_create(config->max_tasks);
-    if (!bridge->task_registry) {
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge->task_registry is NULL");
-        return NULL;
-    }
+    if (!bridge->task_registry) goto cleanup;
 
     /* Create promise registry */
     bridge->promise_registry = promise_registry_create(config->max_promises);
-    if (!bridge->promise_registry) {
-        task_registry_destroy((task_registry_t*)bridge->task_registry);
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge->promise_registry is NULL");
-        return NULL;
-    }
+    if (!bridge->promise_registry) goto cleanup;
 
     /* Create future registry */
     bridge->future_registry = future_registry_create(config->max_futures);
-    if (!bridge->future_registry) {
-        promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
-        task_registry_destroy((task_registry_t*)bridge->task_registry);
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_create: bridge->future_registry is NULL");
-        return NULL;
-    }
+    if (!bridge->future_registry) goto cleanup;
 
     /* Create phase sync group registry */
     bridge->phase_sync_groups = sync_group_registry_create(32);
-    if (!bridge->phase_sync_groups) {
-        future_registry_destroy((future_registry_t*)bridge->future_registry);
-        promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
-        task_registry_destroy((task_registry_t*)bridge->task_registry);
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_create: bridge->phase_sync_groups is NULL");
-        return NULL;
-    }
+    if (!bridge->phase_sync_groups) goto cleanup;
 
     /* Create priority queues */
     for (int i = 0; i < ASYNC_INTEGRATION_PRIORITY_LEVELS; i++) {
         bridge->priority_queues[i] = priority_queue_create(
             config->priority_queues[i].capacity);
-        if (!bridge->priority_queues[i]) {
-            /* Cleanup on failure */
-            for (int j = 0; j < i; j++) {
-                priority_queue_destroy((priority_queue_t*)bridge->priority_queues[j]);
-            }
-            sync_group_registry_destroy((sync_group_registry_t*)bridge->phase_sync_groups);
-            future_registry_destroy((future_registry_t*)bridge->future_registry);
-            promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
-            task_registry_destroy((task_registry_t*)bridge->task_registry);
-            bridge_base_cleanup(&bridge->base);
-            nimcp_free(bridge);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_create: operation failed");
-            return NULL;
-        }
+        if (!bridge->priority_queues[i]) goto cleanup;
+        pq_created++;
     }
 
     bridge->initialized = true;
@@ -608,6 +566,29 @@ async_integration_t* async_integration_create(
     bridge->bio_async_connected = false;
 
     return bridge;
+
+cleanup:
+    for (int j = pq_created - 1; j >= 0; j--) {
+        priority_queue_destroy((priority_queue_t*)bridge->priority_queues[j]);
+    }
+    if (bridge->phase_sync_groups) {
+        sync_group_registry_destroy((sync_group_registry_t*)bridge->phase_sync_groups);
+    }
+    if (bridge->future_registry) {
+        future_registry_destroy((future_registry_t*)bridge->future_registry);
+    }
+    if (bridge->promise_registry) {
+        promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
+    }
+    if (bridge->task_registry) {
+        task_registry_destroy((task_registry_t*)bridge->task_registry);
+    }
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+    }
+    nimcp_free(bridge);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: resource allocation failed");
+    return NULL;
 }
 
 void async_integration_destroy(async_integration_t* bridge)

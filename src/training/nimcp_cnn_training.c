@@ -301,19 +301,16 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
     trainer->optimizer = nimcp_optimizer_create(&config->optimizer_config, NULL, NULL);
     if (!trainer->optimizer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: Failed to create optimizer");
-        nimcp_free(trainer);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_create: trainer->optimizer is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize gradient manager */
     trainer->grad_manager = nimcp_gradient_manager_create(&config->gradient_config);
     if (!trainer->grad_manager) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: Failed to create gradient manager");
-        nimcp_optimizer_destroy(trainer->optimizer);
-        nimcp_free(trainer);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_create: trainer->grad_manager is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize loss function (requires loss-specific config) */
@@ -367,6 +364,14 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
 
     NIMCP_LOGGING_INFO("CNN trainer created successfully");
     return trainer;
+
+cleanup:
+    if (trainer) {
+        if (trainer->grad_manager) nimcp_gradient_manager_destroy(trainer->grad_manager);
+        if (trainer->optimizer) nimcp_optimizer_destroy(trainer->optimizer);
+        nimcp_free(trainer);
+    }
+    return NULL;
 }
 
 /**

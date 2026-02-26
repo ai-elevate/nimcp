@@ -364,7 +364,7 @@ bool nimcp_brain_factory_init_cycle_coordinator_subsystem(brain_t brain) {
  * @param brain Brain instance to destroy cycle coordinator for
  */
 void nimcp_brain_factory_destroy_cycle_coordinator_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_cycle_coordinator_subsystem: brain is NULL"); return; }
 
     if (brain->cycle_coordinator && brain->cycle_coordinator_enabled) {
         NIMCP_LOGGING_INFO("Shutting down brain cycle coordinator...");

@@ -484,7 +484,10 @@ bool hilbert_apply_batch(hilbert_transform_t* ht,
         tasks[ch].n = n;
         tasks[ch].success = true;
 
-        nimcp_pool_submit(pool, hilbert_apply_task_fn, &tasks[ch]);
+        nimcp_result_t rc = nimcp_pool_submit(pool, hilbert_apply_task_fn, &tasks[ch]);
+        if (rc != NIMCP_OK) {
+            tasks[ch].success = false;
+        }
     }
 
     // Wait for all tasks to complete
@@ -554,7 +557,10 @@ bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
         tasks[ch].n = n;
         tasks[ch].success = true;
 
-        nimcp_pool_submit(pool, hilbert_amplitude_task_fn, &tasks[ch]);
+        nimcp_result_t rc = nimcp_pool_submit(pool, hilbert_amplitude_task_fn, &tasks[ch]);
+        if (rc != NIMCP_OK) {
+            tasks[ch].success = false;
+        }
     }
 
     nimcp_pool_wait(pool);
@@ -622,7 +628,10 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
         tasks[ch].n = n;
         tasks[ch].success = true;
 
-        nimcp_pool_submit(pool, hilbert_phase_task_fn, &tasks[ch]);
+        nimcp_result_t rc = nimcp_pool_submit(pool, hilbert_phase_task_fn, &tasks[ch]);
+        if (rc != NIMCP_OK) {
+            tasks[ch].success = false;
+        }
     }
 
     nimcp_pool_wait(pool);

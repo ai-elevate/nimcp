@@ -315,10 +315,10 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     );
     if (!hcol) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate hypercolumn");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hcol is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: hcol is NULL");
         return NULL;
     }
+    memset(hcol, 0, sizeof(feature_hypercolumn_t));
 
     // Copy dimensions
     hcol->num_dimensions = num_dimensions;
@@ -326,9 +326,8 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         num_dimensions * sizeof(feature_dimension_t)
     );
     if (!hcol->dimensions) {
-        nimcp_free(hcol);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: hcol->dimensions is NULL");
-        return NULL;
+        goto cleanup;
     }
     memcpy(hcol->dimensions, dimensions,
            num_dimensions * sizeof(feature_dimension_t));
@@ -344,23 +343,18 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         hcol->total_columns * sizeof(feature_column_t)
     );
     if (!hcol->columns) {
-        nimcp_free(hcol->dimensions);
-        nimcp_free(hcol);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_hypercolumn_create: hcol->columns is NULL");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: hcol->columns is NULL");
+        goto cleanup;
     }
+    memset(hcol->columns, 0, hcol->total_columns * sizeof(feature_column_t));
 
     // Initialize each column
     uint32_t* indices = (uint32_t*)nimcp_malloc(
         num_dimensions * sizeof(uint32_t)
     );
     if (!indices) {
-        nimcp_free(hcol->columns);
-        nimcp_free(hcol->dimensions);
-        nimcp_free(hcol);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "indices is NULL");
-
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: indices is NULL");
+        goto cleanup;
     }
 
     for (uint32_t col_idx = 0; col_idx < hcol->total_columns; col_idx++) {
@@ -377,18 +371,15 @@ feature_hypercolumn_t* feature_hypercolumn_create(
                                  preferred,
                                  dimensions[0].tuning_width,
                                  0)) {
-            // Cleanup on failure
+            // Cleanup on failure — free weights for already-initialized columns
             for (uint32_t j = 0; j < col_idx; j++) {
                 if (hcol->columns[j].weights) {
                     nimcp_free(hcol->columns[j].weights);
                 }
             }
             nimcp_free(indices);
-            nimcp_free(hcol->columns);
-            nimcp_free(hcol->dimensions);
-            nimcp_free(hcol);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_hypercolumn_create: validation failed");
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: column init failed");
+            goto cleanup;
         }
     }
 
@@ -403,22 +394,31 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     // Create mutex
     hcol->mutex = nimcp_platform_mutex_create();
     if (!hcol->mutex) {
-        for (uint32_t i = 0; i < hcol->total_columns; i++) {
-            if (hcol->columns[i].weights) {
-                nimcp_free(hcol->columns[i].weights);
-            }
-        }
-        nimcp_free(hcol->columns);
-        nimcp_free(hcol->dimensions);
-        nimcp_free(hcol);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_hypercolumn_create: validation failed");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: mutex allocation failed");
+        goto cleanup_with_columns;
     }
 
     LOG_INFO(LOG_MODULE, "Created feature hypercolumn: %u dims, %u columns",
              num_dimensions, hcol->total_columns);
 
     return hcol;
+
+cleanup_with_columns:
+    /* Free weights from already-initialized columns */
+    if (hcol->columns) {
+        for (uint32_t i = 0; i < hcol->total_columns; i++) {
+            if (hcol->columns[i].weights) {
+                nimcp_free(hcol->columns[i].weights);
+            }
+        }
+    }
+cleanup:
+    if (hcol) {
+        nimcp_free(hcol->columns);
+        nimcp_free(hcol->dimensions);
+        nimcp_free(hcol);
+    }
+    return NULL;
 }
 
 void feature_hypercolumn_destroy(feature_hypercolumn_t* hcol) {

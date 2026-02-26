@@ -164,7 +164,7 @@ bool nimcp_brain_init_brainstem(struct brain_struct* brain) {
 }
 
 void nimcp_brain_destroy_brainstem(struct brain_struct* brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_destroy_brainstem: brain is NULL"); return; }
 
     LOG_INFO("[%s] Destroying brainstem subsystem", BRAINSTEM_INIT_LOG_MODULE);
 

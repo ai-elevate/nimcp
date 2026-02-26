@@ -928,7 +928,9 @@ static float phase_recall(reasoning_engine_t* engine, const char* query,
                  cue_count,
                  recall_confidence);
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: recall step add failed (steps=%u)", chain->num_steps);
+        }
 
         NIMCP_LOGGING_DEBUG("reasoning_chain: recall phase found engram %lu "
                             "(confidence=%.3f)",
@@ -989,7 +991,9 @@ static float phase_knowledge(reasoning_engine_t* engine, const char* query,
                  item.confidence,
                  item.reinforcement_count);
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: knowledge step add failed (steps=%u)", chain->num_steps);
+        }
 
         total_confidence += item.confidence;
         items_found++;
@@ -1025,7 +1029,9 @@ static float phase_knowledge(reasoning_engine_t* engine, const char* query,
                  knowledge_domain_name(connections[i].domain),
                  connections[i].confidence);
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: knowledge connection step add failed (steps=%u)", chain->num_steps);
+        }
 
         total_confidence += connections[i].confidence;
         items_found++;
@@ -1125,7 +1131,9 @@ static const char* phase_decomposition(reasoning_engine_t* engine, const char* q
                  query_type, (uint32_t)strlen(query));
     }
 
-    reasoning_chain_add_step(chain, &step);
+    if (reasoning_chain_add_step(chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("reasoning_chain: decomposition step add failed (steps=%u)", chain->num_steps);
+    }
 
     NIMCP_LOGGING_DEBUG("reasoning_chain: decomposition phase - type=%s, "
                         "clauses=%u, question_words=%u",
@@ -1261,7 +1269,9 @@ static float phase_world_model(reasoning_engine_t* engine, const char* query,
                  surprise,
                  simulation_confidence > 0.5f ? "chain" : "chain weakly");
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: world model step add failed (steps=%u)", chain->num_steps);
+        }
 
         NIMCP_LOGGING_DEBUG("reasoning_chain: world model phase - "
                             "confidence=%.3f, surprise=%.3f, steps=%u",
@@ -1359,7 +1369,9 @@ static float phase_symbolic_query(reasoning_engine_t* engine, const char* query,
                  query_confidence,
                  result.num_bindings > 0 ? "Variable bindings available." : "");
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: symbolic query step add failed (steps=%u)", chain->num_steps);
+        }
 
         NIMCP_LOGGING_DEBUG("reasoning_chain: symbolic query - %d matches, "
                             "confidence=%.3f",
@@ -1463,7 +1475,9 @@ static float phase_symbolic_inference(reasoning_engine_t* engine, const char* qu
                  proof_confidence,
                  proved ? "PROVEN" : "unresolved");
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: symbolic inference step add failed (steps=%u)", chain->num_steps);
+        }
 
         NIMCP_LOGGING_DEBUG("reasoning_chain: symbolic inference - proved in %u steps, "
                             "confidence=%.3f",
@@ -1504,7 +1518,9 @@ static float phase_symbolic_inference(reasoning_engine_t* engine, const char* qu
                      fc_result.num_new_facts,
                      proof_confidence);
 
-            reasoning_chain_add_step(chain, &step);
+            if (reasoning_chain_add_step(chain, &step) < 0) {
+                NIMCP_LOGGING_WARN("reasoning_chain: forward chain step add failed (steps=%u)", chain->num_steps);
+            }
 
             NIMCP_LOGGING_DEBUG("reasoning_chain: forward chain - %u new facts, "
                                 "confidence=%.3f",
@@ -1721,7 +1737,9 @@ static float phase_jepa_prediction(reasoning_engine_t* engine,
                  pred_rc, inference_confidence);
     }
 
-    reasoning_chain_add_step(chain, &step);
+    if (reasoning_chain_add_step(chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("reasoning_chain: JEPA step add failed (steps=%u)", chain->num_steps);
+    }
 
     /* Cleanup latents */
     jepa_latent_destroy(context_latent);
@@ -1850,7 +1868,9 @@ static float phase_inference(reasoning_engine_t* engine, reasoning_chain_t* chai
              evidence_count, query_type, inference_note,
              inference_confidence);
 
-    reasoning_chain_add_step(chain, &step);
+    if (reasoning_chain_add_step(chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("reasoning_chain: inference step add failed (steps=%u)", chain->num_steps);
+    }
 
     NIMCP_LOGGING_DEBUG("reasoning_chain: inference phase - %u sources, "
                         "confidence=%.3f",
@@ -1951,7 +1971,9 @@ static float phase_verification(reasoning_engine_t* engine, reasoning_chain_t* c
                     : "Prediction error detected - confidence reduced.",
              inference_confidence, verified_confidence);
 
-    reasoning_chain_add_step(chain, &step);
+    if (reasoning_chain_add_step(chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("reasoning_chain: verification step add failed (steps=%u)", chain->num_steps);
+    }
 
     NIMCP_LOGGING_DEBUG("reasoning_chain: verification phase - fe=%.3f, "
                         "factor=%.3f, passed=%s",
@@ -2078,7 +2100,9 @@ static float phase_epistemic(reasoning_engine_t* engine, const char* query,
                      assessment.logical_coherence);
         }
 
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: epistemic step add failed (steps=%u)", chain->num_steps);
+        }
 
         /* Flag if uncertainty exceeds threshold */
         if (uncertainty_score > engine->config.uncertainty_threshold) {
@@ -2366,7 +2390,9 @@ static void merge_chains(reasoning_chain_t* main_chain,
     for (uint32_t i = 0; i < local_chain->num_steps; i++) {
         reasoning_step_t step = local_chain->steps[i];
         step.step_id = main_chain->num_steps;  /* Reassign sequential ID */
-        reasoning_chain_add_step(main_chain, &step);
+        if (reasoning_chain_add_step(main_chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("reasoning_chain: merge step add failed (steps=%u)", main_chain->num_steps);
+        }
     }
 
     reasoning_chain_cleanup(local_chain);
@@ -2431,10 +2457,23 @@ static int reasoning_engine_reason_concurrent(reasoning_engine_t* engine,
     float symbolic_query_confidence = 0.0f;
 
     /* Submit all 4 evidence-gathering phases to the thread pool */
-    nimcp_pool_submit(engine->thread_pool, task_recall, &ctx_recall);
-    nimcp_pool_submit(engine->thread_pool, task_knowledge, &ctx_knowledge);
-    nimcp_pool_submit(engine->thread_pool, task_world_model, &ctx_world);
-    nimcp_pool_submit(engine->thread_pool, task_symbolic_query, &ctx_symbolic);
+    nimcp_result_t rc;
+    rc = nimcp_pool_submit(engine->thread_pool, task_recall, &ctx_recall);
+    if (rc != NIMCP_OK) {
+        NIMCP_LOGGING_ERROR("reasoning_chain: pool submit failed for recall (rc=%d)", rc);
+    }
+    rc = nimcp_pool_submit(engine->thread_pool, task_knowledge, &ctx_knowledge);
+    if (rc != NIMCP_OK) {
+        NIMCP_LOGGING_ERROR("reasoning_chain: pool submit failed for knowledge (rc=%d)", rc);
+    }
+    rc = nimcp_pool_submit(engine->thread_pool, task_world_model, &ctx_world);
+    if (rc != NIMCP_OK) {
+        NIMCP_LOGGING_ERROR("reasoning_chain: pool submit failed for world_model (rc=%d)", rc);
+    }
+    rc = nimcp_pool_submit(engine->thread_pool, task_symbolic_query, &ctx_symbolic);
+    if (rc != NIMCP_OK) {
+        NIMCP_LOGGING_ERROR("reasoning_chain: pool submit failed for symbolic_query (rc=%d)", rc);
+    }
 
     /* Wait for all Wave 1 tasks to complete */
     nimcp_pool_wait(engine->thread_pool);
@@ -3008,7 +3047,9 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
                          best->observations_explained,
                          best->total_observations);
 
-                reasoning_chain_add_step(chain, &abd_step);
+                if (reasoning_chain_add_step(chain, &abd_step) < 0) {
+                    NIMCP_LOGGING_WARN("reasoning_chain: abductive step add failed (steps=%u)", chain->num_steps);
+                }
 
                 /* Modulate inference confidence based on abductive plausibility */
                 float abd_factor = 0.9f + 0.1f * best->plausibility;
@@ -3337,7 +3378,9 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
                          best->explanation,
                          best->plausibility,
                          best->explanatory_power);
-                reasoning_chain_add_step(chain, &abd_step);
+                if (reasoning_chain_add_step(chain, &abd_step) < 0) {
+                    NIMCP_LOGGING_WARN("reasoning_chain: abductive domain step add failed (steps=%u)", chain->num_steps);
+                }
 
                 float abd_factor = 0.9f + 0.1f * best->plausibility;
                 inference_confidence *= abd_factor;

@@ -192,6 +192,7 @@ static uint32_t wd_get_dep(uint32_t node_index, uint32_t dep_index, void* user_d
  * HOW:  Allocate structures, set base path, prepare for loading
  */
 wiring_diagram_t* wiring_diagram_create(const char* base_path) {
+    /* nimcp_calloc zeroes all pointers for safe cleanup */
     wiring_diagram_t* wd = (wiring_diagram_t*)nimcp_calloc(
         1, sizeof(wiring_diagram_t));
     if (!wd) {
@@ -211,28 +212,13 @@ wiring_diagram_t* wiring_diagram_create(const char* base_path) {
 
     /* Create mutex */
     wd->mutex = nimcp_platform_mutex_create();
-    if (!wd->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
-            "wiring_diagram_create: failed to create mutex");
-        NIMCP_LOGGING_ERROR("Failed to create wiring diagram mutex");
-        nimcp_free(wd);
-        return NULL;
-    }
+    if (!wd->mutex) goto cleanup;
 
     /* Allocate initial module array */
     wd->module_capacity = WIRING_INITIAL_CAPACITY;
     wd->module_configs = (wiring_module_config_t**)nimcp_calloc(
         wd->module_capacity, sizeof(wiring_module_config_t*));
-    if (!wd->module_configs) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "wiring_diagram_create: failed to allocate module config array");
-        NIMCP_LOGGING_ERROR("Failed to allocate module config array");
-        nimcp_platform_mutex_destroy(wd->mutex);
-        nimcp_free(wd->mutex);
-        wd->mutex = NULL;
-        nimcp_free(wd);
-        return NULL;
-    }
+    if (!wd->module_configs) goto cleanup;
 
     /* Initialize state */
     wd->module_count = 0;
@@ -241,6 +227,17 @@ wiring_diagram_t* wiring_diagram_create(const char* base_path) {
 
     NIMCP_LOGGING_DEBUG("Wiring diagram created with base path: %s", wd->base_path);
     return wd;
+
+cleanup:
+    NIMCP_LOGGING_ERROR("Failed to allocate wiring diagram resources");
+    nimcp_free(wd->module_configs);
+    if (wd->mutex) {
+        nimcp_platform_mutex_destroy(wd->mutex);
+        nimcp_free(wd->mutex);
+    }
+    nimcp_free(wd);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wiring_diagram_create: allocation failed");
+    return NULL;
 }
 
 /**

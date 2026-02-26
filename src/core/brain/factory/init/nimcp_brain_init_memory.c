@@ -464,7 +464,7 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_consolidation_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_consolidation_subsystem: brain is NULL"); return; }
 
     if (brain->consolidation) {
         brain_stop_background_consolidation(brain);
@@ -480,7 +480,7 @@ void nimcp_brain_factory_destroy_consolidation_subsystem(brain_t brain) {
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_curiosity_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_curiosity_subsystem: brain is NULL"); return; }
 
     if (brain->curiosity) {
         curiosity_engine_destroy(brain->curiosity);
@@ -496,7 +496,7 @@ void nimcp_brain_factory_destroy_curiosity_subsystem(brain_t brain) {
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_salience_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_salience_subsystem: brain is NULL"); return; }
 
     if (brain->salience) {
         salience_evaluator_destroy(brain->salience);
@@ -512,7 +512,7 @@ void nimcp_brain_factory_destroy_salience_subsystem(brain_t brain) {
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_autobiographical_memory_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_autobiographical_memory_subsystem: brain is NULL"); return; }
 
     if (brain->autobio) {
         autobio_destroy(brain->autobio);
@@ -528,7 +528,7 @@ void nimcp_brain_factory_destroy_autobiographical_memory_subsystem(brain_t brain
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_global_workspace_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_global_workspace_subsystem: brain is NULL"); return; }
 
     if (brain->global_workspace) {
         global_workspace_destroy(brain->global_workspace);

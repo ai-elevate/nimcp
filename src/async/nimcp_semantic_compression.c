@@ -416,7 +416,8 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
         return NULL;
     }
 
-    /* Allocate compressor */
+    /* Allocate compressor - memset zeroes all pointers for safe cleanup */
+    bool mutex_initialized = false;
     nimcp_semantic_compressor_t* compressor =
         (nimcp_semantic_compressor_t*)nimcp_malloc(sizeof(nimcp_semantic_compressor_t));
     if (!compressor) {
@@ -434,13 +435,7 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
     compressor->hash_size = HASH_TABLE_SIZE;
     compressor->primitive_hash = (primitive_entry_t**)nimcp_malloc(
         compressor->hash_size * sizeof(primitive_entry_t*));
-
-    if (!compressor->primitive_hash) {
-        LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate primitive hash table");
-        nimcp_free(compressor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_create: compressor->primitive_hash is NULL");
-        return NULL;
-    }
+    if (!compressor->primitive_hash) goto cleanup;
 
     memset(compressor->primitive_hash, 0, compressor->hash_size * sizeof(primitive_entry_t*));
 
@@ -448,13 +443,8 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
     compressor->active_primitive_count = 0;
 
     /* Initialize mutex (non-recursive) */
-    if (nimcp_platform_mutex_init(&compressor->mutex, false) != 0) {
-        LOG_ERROR(COMPRESSION_MODULE, "Failed to initialize mutex");
-        nimcp_free(compressor->primitive_hash);
-        nimcp_free(compressor);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_semantic_compressor_create: validation failed");
-        return NULL;
-    }
+    if (nimcp_platform_mutex_init(&compressor->mutex, false) != 0) goto cleanup;
+    mutex_initialized = true;
 
     /* Initialize statistics */
     memset(&compressor->stats, 0, sizeof(nimcp_compression_stats_t));
@@ -471,6 +461,16 @@ nimcp_semantic_compressor_t* nimcp_semantic_compressor_create(
              config->max_primitives, config->vector_dimension, config->quality_level);
 
     return compressor;
+
+cleanup:
+    LOG_ERROR(COMPRESSION_MODULE, "Failed to allocate compressor resources");
+    if (mutex_initialized) {
+        nimcp_platform_mutex_destroy(&compressor->mutex);
+    }
+    nimcp_free(compressor->primitive_hash);
+    nimcp_free(compressor);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_semantic_compressor_create: allocation failed");
+    return NULL;
 }
 
 void nimcp_semantic_compressor_destroy(nimcp_semantic_compressor_t* compressor) {
@@ -509,6 +509,7 @@ uint32_t nimcp_semantic_compressor_add_primitive(
     /* Validate inputs (before locking) */
     if (!compressor || !meaning_vector) {
         LOG_ERROR(COMPRESSION_MODULE, "NULL parameter in add_primitive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_semantic_compressor_add_primitive: NULL parameter (compressor or meaning_vector)");
         return 0;
     }
 

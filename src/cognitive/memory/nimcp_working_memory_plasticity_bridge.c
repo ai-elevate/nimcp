@@ -238,19 +238,16 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "wm_plasticity") != 0) {
-        nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "wm_plasticity_create: validation failed");
-        return NULL;
+        goto cleanup;
     }
 
     /* Allocate synapse array */
     bridge->synapse_capacity = WM_PLASTICITY_MAX_SYNAPSES;
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(wm_plasticity_synapse_t));
     if (!bridge->synapses) {
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_plasticity_create: bridge->synapses is NULL");
-        return NULL;
+        goto cleanup;
     }
     bridge->synapse_count = 0;
 
@@ -258,11 +255,8 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     bridge->num_slots = WM_PLASTICITY_MAX_SLOTS;
     bridge->slot_states = nimcp_calloc(bridge->num_slots, sizeof(wm_slot_plasticity_t));
     if (!bridge->slot_states) {
-        nimcp_free(bridge->synapses);
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_plasticity_create: bridge->slot_states is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize slot states */
@@ -293,6 +287,15 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
 
     NIMCP_LOGGING_INFO("Created %s bridge", "working_memory_plasticity");
     return bridge;
+
+cleanup:
+    if (bridge) {
+        nimcp_free(bridge->slot_states);
+        nimcp_free(bridge->synapses);
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+    }
+    return NULL;
 }
 
 void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {

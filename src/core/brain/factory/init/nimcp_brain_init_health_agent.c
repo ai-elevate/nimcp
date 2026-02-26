@@ -211,7 +211,7 @@ bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain) {
  * @param brain Brain instance to destroy health agent for
  */
 void nimcp_brain_factory_destroy_health_agent_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_health_agent_subsystem: brain is NULL"); return; }
 
     /* Shutdown tick orchestrator first (before stopping agent thread) */
     if (brain->immune_system && brain->immune_enabled) {

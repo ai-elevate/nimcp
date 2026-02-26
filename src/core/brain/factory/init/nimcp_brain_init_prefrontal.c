@@ -479,7 +479,7 @@ bool nimcp_brain_factory_connect_prefrontal_to_immune(brain_t brain) {
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_prefrontal_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_prefrontal_subsystem: brain is NULL"); return; }
 
     LOG_DEBUG(LOG_MODULE, "Destroying prefrontal cortex subsystem");
 

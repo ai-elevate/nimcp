@@ -112,7 +112,10 @@ static void compute_scale_zp(float min_val, float max_val, qat_dtype_t dtype,
                              qat_scheme_t scheme, float* scale, int32_t* zero_point);
 static void get_qmin_qmax(qat_dtype_t dtype, int32_t* qmin, int32_t* qmax);
 int qat_default_config(qat_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_default_config: config is NULL");
+        return -1;
+    }
     memset(config, 0, sizeof(qat_config_t));
 
     /* Default dtypes */

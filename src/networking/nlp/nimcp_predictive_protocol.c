@@ -283,7 +283,7 @@ predictive_protocol_t* predictive_protocol_create(
         return NULL;
     }
 
-    /* Allocate context */
+    /* Allocate context - memset zeroes all pointers for safe cleanup */
     predictive_protocol_t* protocol = nimcp_malloc(sizeof(predictive_protocol_t));
     if (!protocol) {
         LOG_ERROR("Failed to allocate protocol");
@@ -309,24 +309,13 @@ predictive_protocol_t* predictive_protocol_create(
     protocol->pattern_table = nimcp_calloc(
         protocol->pattern_table_size,
         sizeof(pattern_node_t*));
-    if (!protocol->pattern_table) {
-        LOG_ERROR("Failed to allocate pattern table");
-        nimcp_free(protocol);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol->pattern_table is NULL");
-        return NULL;
-    }
+    if (!protocol->pattern_table) goto cleanup;
 
     /* Allocate history buffer */
     protocol->history = nimcp_calloc(
         protocol->config.history_buffer_size,
         sizeof(message_history_entry_t));
-    if (!protocol->history) {
-        LOG_ERROR("Failed to allocate history buffer");
-        nimcp_free(protocol->pattern_table);
-        nimcp_free(protocol);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol->history is NULL");
-        return NULL;
-    }
+    if (!protocol->history) goto cleanup;
 
     /* Allocate prefetch cache */
     if (protocol->config.enable_prefetch) {
@@ -334,14 +323,7 @@ predictive_protocol_t* predictive_protocol_create(
         protocol->prefetch_cache = nimcp_calloc(
             protocol->prefetch_cache_size,
             sizeof(prefetch_entry_t*));
-        if (!protocol->prefetch_cache) {
-            LOG_ERROR("Failed to allocate prefetch cache");
-            nimcp_free(protocol->history);
-            nimcp_free(protocol->pattern_table);
-            nimcp_free(protocol);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol->prefetch_cache is NULL");
-            return NULL;
-        }
+        if (!protocol->prefetch_cache) goto cleanup;
     }
 
     /* Initialize bio-async if enabled */
@@ -363,6 +345,15 @@ predictive_protocol_t* predictive_protocol_create(
         protocol->config.confidence_threshold);
 
     return protocol;
+
+cleanup:
+    LOG_ERROR("Failed to allocate predictive protocol resources");
+    nimcp_free(protocol->prefetch_cache);
+    nimcp_free(protocol->history);
+    nimcp_free(protocol->pattern_table);
+    nimcp_free(protocol);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: allocation failed");
+    return NULL;
 }
 
 void predictive_protocol_destroy(predictive_protocol_t* protocol)

@@ -171,11 +171,8 @@ plasticity_bio_async_bridge_t* plasticity_bio_async_bridge_create(
     plasticity_bio_async_bridge_t* bridge = nimcp_calloc(
         1, sizeof(plasticity_bio_async_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_bridge_create: bridge allocation failed");
         return NULL;
-
     }
 
     /* Apply configuration */
@@ -192,26 +189,27 @@ plasticity_bio_async_bridge_t* plasticity_bio_async_bridge_create(
         sizeof(plasticity_bio_subscription_t));
     if (!bridge->subscriptions) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_bridge_create: failed to allocate subscriptions");
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     /* Create mutex */
     if (bridge_base_init(&bridge->base, 0, "plasticity_bio_async") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_bridge_create: failed to initialize bridge base");
-        nimcp_free(bridge->subscriptions);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_bridge_create: failed to create mutex");
-        nimcp_free(bridge->subscriptions);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     bridge->last_broadcast_us = get_timestamp_us();
     return bridge;
+
+cleanup:
+    if (bridge->base.mutex) { bridge_base_cleanup(&bridge->base); }
+    nimcp_free(bridge->subscriptions);
+    nimcp_free(bridge);
+    return NULL;
 }
 
 void plasticity_bio_async_bridge_destroy(plasticity_bio_async_bridge_t* bridge) {

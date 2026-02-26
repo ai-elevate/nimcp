@@ -77,7 +77,7 @@ void nimcp_brain_thal_default_config(brain_t brain, thalamus_config_t* config) {
     /* Start with module defaults */
     thalamus_default_config(config);
 
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_default_config: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -237,7 +237,7 @@ bool nimcp_brain_factory_init_thalamus_subsystem(brain_t brain) {
 }
 
 void nimcp_brain_thal_destroy(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_destroy: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -579,7 +579,7 @@ int nimcp_brain_thal_trigger_burst(brain_t brain,
 //=============================================================================
 
 void nimcp_brain_thal_on_arousal_change(brain_t brain, float arousal_level) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_on_arousal_change: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -609,7 +609,7 @@ void nimcp_brain_thal_on_arousal_change(brain_t brain, float arousal_level) {
 void nimcp_brain_thal_on_attention_change(brain_t brain,
                                            uint32_t channel_id,
                                            float attention_weight) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_on_attention_change: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -628,7 +628,7 @@ void nimcp_brain_thal_on_attention_change(brain_t brain,
 }
 
 void nimcp_brain_thal_on_sleep_wake_change(brain_t brain, bool is_awake) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_on_sleep_wake_change: brain is NULL"); return; }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 

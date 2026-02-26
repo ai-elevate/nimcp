@@ -181,8 +181,7 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
         if (!state->history) {
             NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_state_create: failed to allocate history buffer");
-            nimcp_free(state);
-            return NULL;
+            goto cleanup;
         }
         memset(state->history, 0, config->history_size * sizeof(threshold_history_entry_t));
         state->history_size = config->history_size;
@@ -198,9 +197,7 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
     if (nimcp_platform_mutex_init(&state->lock, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metaplasticity_state_create: mutex init failed");
-        nimcp_free(state->history);
-        nimcp_free(state);
-        return NULL;
+        goto cleanup;
     }
 
     state->last_update_ms = nimcp_time_get_ms();
@@ -209,6 +206,11 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
                         state->history_size);
 
     return state;
+
+cleanup:
+    nimcp_free(state->history);
+    nimcp_free(state);
+    return NULL;
 }
 
 void metaplasticity_state_destroy(extended_metaplasticity_state_t* state) {
@@ -691,23 +693,17 @@ metaplasticity_controller_t metaplasticity_controller_create(
     if (!controller->states) {
         NIMCP_LOGGING_ERROR("Failed to allocate state array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_controller_create: failed to allocate state array");
-        nimcp_free(controller);
-        return NULL;
+        goto ctrl_cleanup;
     }
+    memset(controller->states, 0, num_synapses * sizeof(extended_metaplasticity_state_t*));
 
     /* Create individual states */
     for (uint32_t i = 0; i < num_synapses; i++) {
         controller->states[i] = metaplasticity_state_create(config);
         if (!controller->states[i]) {
             NIMCP_LOGGING_ERROR("Failed to create state %u", i);
-            /* Cleanup already created states */
-            for (uint32_t j = 0; j < i; j++) {
-                metaplasticity_state_destroy(controller->states[j]);
-            }
-            nimcp_free(controller->states);
-            nimcp_free(controller);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_create: controller->states is NULL");
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_controller_create: state creation failed");
+            goto ctrl_cleanup;
         }
     }
 
@@ -715,18 +711,22 @@ metaplasticity_controller_t metaplasticity_controller_create(
     if (nimcp_platform_mutex_init(&controller->mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize controller mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metaplasticity_controller_create: mutex init failed");
-        for (uint32_t i = 0; i < num_synapses; i++) {
-            metaplasticity_state_destroy(controller->states[i]);
-        }
-        nimcp_free(controller->states);
-        nimcp_free(controller);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "metaplasticity_controller_create: validation failed");
-        return NULL;
+        goto ctrl_cleanup;
     }
 
     NIMCP_LOGGING_INFO("Created metaplasticity controller for %u synapses", num_synapses);
 
     return (metaplasticity_controller_t)controller;
+
+ctrl_cleanup:
+    if (controller->states) {
+        for (uint32_t j = 0; j < num_synapses; j++) {
+            metaplasticity_state_destroy(controller->states[j]);
+        }
+        nimcp_free(controller->states);
+    }
+    nimcp_free(controller);
+    return NULL;
 }
 
 void metaplasticity_controller_destroy(metaplasticity_controller_t controller) {

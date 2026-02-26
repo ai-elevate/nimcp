@@ -232,7 +232,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         return NULL;
     }
 
-    /* Allocate bridge */
+    /* Allocate bridge - all pointers initialized to NULL via memset */
     router_immune_bridge_t* bridge = (router_immune_bridge_t*)
         nimcp_malloc(sizeof(router_immune_bridge_t));
     if (!bridge) {
@@ -241,7 +241,6 @@ router_immune_bridge_t* router_immune_bridge_create(
         return NULL;
     }
 
-    /* Initialize to zero */
     memset(bridge, 0, sizeof(router_immune_bridge_t));
 
     /* Link systems */
@@ -265,67 +264,44 @@ router_immune_bridge_t* router_immune_bridge_create(
     bridge->cytokine_capacity = config->max_cytokine_states;
     bridge->cytokine_states = (cytokine_routing_state_t*)
         nimcp_malloc(sizeof(cytokine_routing_state_t) * bridge->cytokine_capacity);
-    if (!bridge->cytokine_states) {
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->cytokine_states is NULL");
-        return NULL;
-    }
+    if (!bridge->cytokine_states) goto cleanup;
 
     /* Allocate inflammation impacts */
     bridge->inflammation_capacity = config->max_inflammation_sites;
     bridge->inflammation_impacts = (inflammation_routing_impact_t*)
         nimcp_malloc(sizeof(inflammation_routing_impact_t) * bridge->inflammation_capacity);
-    if (!bridge->inflammation_impacts) {
-        nimcp_free(bridge->cytokine_states);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->inflammation_impacts is NULL");
-        return NULL;
-    }
+    if (!bridge->inflammation_impacts) goto cleanup;
 
     /* Allocate quarantined nodes */
     bridge->quarantine_capacity = config->max_quarantined_nodes;
     bridge->quarantined_nodes = (quarantined_node_state_t*)
         nimcp_malloc(sizeof(quarantined_node_state_t) * bridge->quarantine_capacity);
-    if (!bridge->quarantined_nodes) {
-        nimcp_free(bridge->inflammation_impacts);
-        nimcp_free(bridge->cytokine_states);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->quarantined_nodes is NULL");
-        return NULL;
-    }
+    if (!bridge->quarantined_nodes) goto cleanup;
 
     /* Allocate anomaly history */
     bridge->anomaly_capacity = config->max_anomaly_history;
     bridge->recent_anomalies = (router_anomaly_event_t*)
         nimcp_malloc(sizeof(router_anomaly_event_t) * bridge->anomaly_capacity);
-    if (!bridge->recent_anomalies) {
-        nimcp_free(bridge->quarantined_nodes);
-        nimcp_free(bridge->inflammation_impacts);
-        nimcp_free(bridge->cytokine_states);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->recent_anomalies allocation failed");
-        return NULL;
-    }
+    if (!bridge->recent_anomalies) goto cleanup;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "bio_router_immune") != 0) {
-        nimcp_free(bridge->recent_anomalies);
-        nimcp_free(bridge->quarantined_nodes);
-        nimcp_free(bridge->inflammation_impacts);
-        nimcp_free(bridge->cytokine_states);
-        nimcp_free(bridge);
-        return NULL;
-    }
-    if (!bridge->base.mutex) {
-        nimcp_free(bridge->recent_anomalies);
-        nimcp_free(bridge->quarantined_nodes);
-        nimcp_free(bridge->inflammation_impacts);
-        nimcp_free(bridge->cytokine_states);
-        nimcp_free(bridge);    return NULL;
-    }
+    if (bridge_base_init(&bridge->base, 0, "bio_router_immune") != 0) goto cleanup;
+    if (!bridge->base.mutex) goto cleanup;
 
     LOG_MODULE_INFO("router_immune_bridge", "Bridge created successfully");
     return bridge;
+
+cleanup:
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
+    }
+    nimcp_free(bridge->recent_anomalies);
+    nimcp_free(bridge->quarantined_nodes);
+    nimcp_free(bridge->inflammation_impacts);
+    nimcp_free(bridge->cytokine_states);
+    nimcp_free(bridge);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: allocation failed");
+    return NULL;
 }
 
 void router_immune_bridge_destroy(router_immune_bridge_t* bridge) {

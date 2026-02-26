@@ -127,7 +127,10 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         }
     }
 
-    // Allocate router
+    // Allocate router - nimcp_calloc zeroes all pointers for safe cleanup
+    bool modules_mutex_init = false;
+    bool stats_mutex_init = false;
+
     g_router = nimcp_calloc(1, sizeof(struct bio_router_struct));
     if (!g_router) {
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
@@ -142,36 +145,14 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
 
     // Allocate module registry
     g_router->modules = nimcp_calloc(cfg.max_modules, sizeof(bio_module_entry_t));
-    if (!g_router->modules) {
-        nimcp_free(g_router);
-        g_router = NULL;
-        nimcp_platform_mutex_unlock(&g_router_init_mutex);
-        LOG_ERROR("Failed to allocate module registry");
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NO_MEMORY,
-                          "bio_router_init: failed to allocate module registry");
-    }
+    if (!g_router->modules) goto router_cleanup;
 
     // Initialize mutexes
-    if (nimcp_platform_mutex_init(&g_router->modules_mutex, false) != 0) {
-        nimcp_free(g_router->modules);
-        nimcp_free(g_router);
-        g_router = NULL;
-        nimcp_platform_mutex_unlock(&g_router_init_mutex);
-        LOG_ERROR("Failed to initialize modules mutex");
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MUTEX_INIT,
-                          "bio_router_init: failed to init modules mutex");
-    }
+    if (nimcp_platform_mutex_init(&g_router->modules_mutex, false) != 0) goto router_cleanup;
+    modules_mutex_init = true;
 
-    if (nimcp_platform_mutex_init(&g_router->stats_mutex, false) != 0) {
-        nimcp_platform_mutex_destroy(&g_router->modules_mutex);
-        nimcp_free(g_router->modules);
-        nimcp_free(g_router);
-        g_router = NULL;
-        nimcp_platform_mutex_unlock(&g_router_init_mutex);
-        LOG_ERROR("Failed to initialize stats mutex");
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MUTEX_INIT,
-                          "bio_router_init: failed to initialize stats mutex");
-    }
+    if (nimcp_platform_mutex_init(&g_router->stats_mutex, false) != 0) goto router_cleanup;
+    stats_mutex_init = true;
 
     // Initialize unified memory if requested
     if (cfg.max_message_size > 0) {
@@ -207,6 +188,21 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
              cfg.enable_predictive_protocol ? "enabled" : "disabled");
 
     return NIMCP_SUCCESS;
+
+router_cleanup:
+    LOG_ERROR("Failed to initialize bio-router resources");
+    if (stats_mutex_init) {
+        nimcp_platform_mutex_destroy(&g_router->stats_mutex);
+    }
+    if (modules_mutex_init) {
+        nimcp_platform_mutex_destroy(&g_router->modules_mutex);
+    }
+    nimcp_free(g_router->modules);
+    nimcp_free(g_router);
+    g_router = NULL;
+    nimcp_platform_mutex_unlock(&g_router_init_mutex);
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NO_MEMORY,
+                      "bio_router_init: resource allocation failed");
 }
 
 

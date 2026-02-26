@@ -139,9 +139,8 @@ systems_consolidation_system_t* systems_consolidation_create(void)
     system->cortical_nodes =
         nimcp_calloc(system->node_capacity, sizeof(cortical_memory_node_t*));
     if (!system->cortical_nodes) {
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "systems_consolidation_create: system->cortical_nodes is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     // WHAT: Allocate replay queue
@@ -149,10 +148,8 @@ systems_consolidation_system_t* systems_consolidation_create(void)
     system->replay_queue =
         nimcp_calloc(system->replay_queue_capacity, sizeof(replay_event_t));
     if (!system->replay_queue) {
-        nimcp_free(system->cortical_nodes);
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "systems_consolidation_create: system->replay_queue is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     // WHAT: Initialize parameters with biological defaults
@@ -236,6 +233,12 @@ systems_consolidation_system_t* systems_consolidation_create(void)
     }
 
     return system;
+
+cleanup:
+    nimcp_free(system->replay_queue);
+    nimcp_free(system->cortical_nodes);
+    nimcp_free(system);
+    return NULL;
 }
 
 

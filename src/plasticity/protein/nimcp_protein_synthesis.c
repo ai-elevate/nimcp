@@ -214,8 +214,7 @@ protein_synthesis_system_t protein_synthesis_create(
     if (!system->tags) {
         NIMCP_LOGGING_ERROR("Failed to allocate tag array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_synthesis_create: failed to allocate tag array");
-        nimcp_free(system);
-        return NULL;
+        goto cleanup;
     }
 
     system->num_tags = 0;
@@ -233,9 +232,7 @@ protein_synthesis_system_t protein_synthesis_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_synthesis_create: failed to create mutex");
-        nimcp_free(system->tags);
-        nimcp_free(system);
-        return NULL;
+        goto cleanup;
     }
 
     /* Bio-async disabled by default */
@@ -244,6 +241,15 @@ protein_synthesis_system_t protein_synthesis_create(
 
     NIMCP_LOGGING_INFO("Created protein synthesis system");
     return system;
+
+cleanup:
+    if (system->mutex) {
+        nimcp_platform_mutex_destroy(system->mutex);
+        nimcp_free(system->mutex);
+    }
+    nimcp_free(system->tags);
+    nimcp_free(system);
+    return NULL;
 }
 
 void protein_synthesis_destroy(protein_synthesis_system_t system) {

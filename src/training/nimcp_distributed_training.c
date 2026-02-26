@@ -249,8 +249,7 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     if (!ctx->mutex) {
         NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
                              "dist_create: failed to create mutex");
-        nimcp_free(ctx);
-        return NULL;
+        goto cleanup;
     }
 
     /* Create world group */
@@ -258,9 +257,7 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     if (!ctx->world_group) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(dist_group_t),
                           "dist_create: failed to allocate world group");
-        nimcp_mutex_free(ctx->mutex);
-        nimcp_free(ctx);
-        return NULL;
+        goto cleanup;
     }
 
     ctx->world_group->num_ranks = config->worker.world_size;
@@ -268,10 +265,7 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     if (!ctx->world_group->ranks) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, config->worker.world_size * sizeof(uint32_t),
                           "dist_create: failed to allocate ranks array");
-        nimcp_free(ctx->world_group);
-        nimcp_mutex_free(ctx->mutex);
-        nimcp_free(ctx);
-        return NULL;
+        goto cleanup;
     }
 
     for (uint32_t i = 0; i < config->worker.world_size; i++) {
@@ -322,6 +316,12 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     }
 
     return ctx;
+
+cleanup:
+    /* ctx was nimcp_calloc'd so all pointers are NULL-initialized;
+       dist_destroy safely handles partial initialization */
+    dist_destroy(ctx);
+    return NULL;
 }
 
 void dist_destroy(dist_ctx_t* ctx) {

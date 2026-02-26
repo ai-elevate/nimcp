@@ -148,8 +148,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     if (!bridge->columns) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate columns array");
         NIMCP_LOGGING_ERROR("Failed to allocate columns array");
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     /* Allocate column states array */
@@ -158,9 +157,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     if (!bridge->column_states) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate column states array");
         NIMCP_LOGGING_ERROR("Failed to allocate column states array");
-        nimcp_free(bridge->columns);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     memset(bridge->columns, 0, sizeof(hypercolumn_t*) * bridge->column_capacity);
@@ -170,16 +167,12 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     /* Create mutex */
     if (bridge_base_init(&bridge->base, 0, "cortical_plasticity") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to initialize bridge base");
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create mutex");
-        nimcp_free(bridge->column_states);
-        nimcp_free(bridge->columns);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     /* Connect coordinator if provided */
@@ -190,6 +183,14 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
 
     NIMCP_LOGGING_INFO("Cortical plasticity bridge created");
     return bridge;
+
+cleanup:
+    if (bridge) {
+        nimcp_free(bridge->column_states);
+        nimcp_free(bridge->columns);
+        nimcp_free(bridge);
+    }
+    return NULL;
 }
 
 void cortical_plasticity_bridge_destroy(cortical_plasticity_bridge_t* bridge) {

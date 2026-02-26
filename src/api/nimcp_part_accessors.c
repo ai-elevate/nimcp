@@ -60,12 +60,12 @@ nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
 
     // Guard: Validate parameters
     if (!brain) {
-        set_error("NULL brain provided to nimcp_get_oscillation_phasor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_oscillation_phasor: brain is NULL");
         return result;
     }
 
     if (!brain->internal_brain) {
-        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_oscillation_phasor: internal_brain is NULL");
         return result;
     }
 
@@ -78,7 +78,7 @@ nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
     // Get brain's oscillation analyzer
     brain_oscillation_analyzer_t* analyzer = brain_get_oscillations(brain->internal_brain);
     if (!analyzer) {
-        set_error("Brain oscillation analyzer not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_get_oscillation_phasor: analyzer not available");
         return result;
     }
 
@@ -104,22 +104,22 @@ float nimcp_get_phase_coherence(
 {
     // Guard: Validate parameters
     if (!brain) {
-        set_error("NULL brain provided to nimcp_get_phase_coherence");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_phase_coherence: brain is NULL");
         return 0.0F;
     }
 
     if (!brain->internal_brain) {
-        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_phase_coherence: internal_brain is NULL");
         return 0.0F;
     }
 
     if (!neuron_ids) {
-        set_error("NULL neuron_ids provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_phase_coherence: neuron_ids is NULL");
         return 0.0F;
     }
 
     if (count == 0) {
-        set_error("Invalid count (0) provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_get_phase_coherence: count is 0");
         return 0.0F;
     }
 
@@ -157,23 +157,23 @@ float nimcp_get_pac_modulation(
 {
     // Guard: Validate parameters
     if (!brain) {
-        set_error("NULL brain provided to nimcp_get_pac_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_pac_modulation: brain is NULL");
         return 0.0F;
     }
 
     if (!brain->internal_brain) {
-        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_get_pac_modulation: internal_brain is NULL");
         return 0.0F;
     }
 
     // Validate frequency ranges
     if (theta_freq < 4.0F || theta_freq > 8.0F) {
-        set_error("Theta frequency should be in range 4-8 Hz");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_get_pac_modulation: theta_freq out of range 4-8 Hz");
         return 0.0F;
     }
 
     if (gamma_freq < 30.0F || gamma_freq > 100.0F) {
-        set_error("Gamma frequency should be in range 30-100 Hz");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_get_pac_modulation: gamma_freq out of range 30-100 Hz");
         return 0.0F;
     }
 
@@ -203,12 +203,12 @@ float nimcp_get_pac_modulation(
 
 uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
     if (!brain) {
-        set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_get_neuron_count: brain is NULL");
         return 0;
     }
-    
+
     if (!brain->internal_brain) {
-        set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_get_neuron_count: internal_brain is NULL");
         return 0;
     }
     return brain_get_neuron_count(brain->internal_brain);

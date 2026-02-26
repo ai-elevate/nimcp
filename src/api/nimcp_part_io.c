@@ -22,32 +22,33 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 
 nimcp_brain_t nimcp_brain_load(const char* filepath) {
     if (!filepath) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
-        set_error("Filepath is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_ARG, "nimcp_brain_load: filepath is NULL");
         return NULL;
     }
 
-    // Allocate handle (calloc to zero-init last_loss/last_gradient_norm)
-    nimcp_brain_t handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
-    if (!handle) {
-        set_error("Failed to allocate brain handle");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle is NULL");
+    nimcp_brain_t handle = NULL;
 
-        return NULL;
+    // Allocate handle (calloc to zero-init last_loss/last_gradient_norm)
+    handle = (nimcp_brain_t)nimcp_calloc(1, sizeof(struct nimcp_brain_handle));
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_load: handle allocation failed");
+        goto cleanup;
     }
 
     // Load internal brain
     handle->internal_brain = brain_load(filepath);
-
     if (!handle->internal_brain) {
-        set_error("Failed to load brain from file");
-        nimcp_free(handle);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_brain_load: brain_load failed for given filepath");
-        return NULL;
+        goto cleanup;
     }
 
     set_error("No error");
     return handle;
+
+cleanup:
+    set_error("Failed to load brain from file");
+    nimcp_free(handle);
+    return NULL;
 }
 
 

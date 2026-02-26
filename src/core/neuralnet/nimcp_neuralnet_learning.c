@@ -248,8 +248,12 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
 uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
 {
     // Guard: Validate inputs
-    if (!network || neuron_id >= network->num_neurons) {
-        LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_oja: network is NULL");
+        return 0;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_apply_oja: neuron_id %u out of range", neuron_id);
         return 0;
     }
 
@@ -329,8 +333,12 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
 
 uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
 {
-    if (!network || neuron_id >= network->num_neurons) {
-        LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_stdp: network is NULL");
+        return 0;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_apply_stdp: neuron_id %u out of range", neuron_id);
         return 0;
     }
 
@@ -427,7 +435,11 @@ uint32_t neural_network_apply_lateral_inhibition(
     float inhibition_strength)
 {
     // Guard clauses
-    if (!network || output_count == 0) return 0;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_lateral_inhibition: network is NULL");
+        return 0;
+    }
+    if (output_count == 0) return 0;
     if (inhibition_strength <= 0.0f) return 0;
     if (inhibition_strength > 1.0f) inhibition_strength = 1.0f;
 
@@ -496,8 +508,12 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                                               float learning_rate, uint64_t current_time)
 {
     // Guard: Validate parameters
-    if (!network || reward < 0.0f || reward > 1.0f || learning_rate <= 0.0f) {
-        LOG_ERROR(LOG_MODULE, "Invalid parameters: reward=%.3f, lr=%.3f", reward, learning_rate);
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_reward_learning: network is NULL");
+        return 0;
+    }
+    if (reward < 0.0f || reward > 1.0f || learning_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_reward_learning: invalid reward=%.3f or lr=%.3f", reward, learning_rate);
         return 0;
     }
 
@@ -675,8 +691,12 @@ uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t
 uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neuron_id,
                                           uint64_t timestamp)
 {
-    if (!network || neuron_id >= network->num_neurons) {
-        LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_update_plasticity: network is NULL");
+        return 0;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_update_plasticity: neuron_id %u out of range", neuron_id);
         return 0;
     }
 

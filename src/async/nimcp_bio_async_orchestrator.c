@@ -107,6 +107,7 @@ int bio_orchestrator_default_config(bio_orchestrator_config_t* config) {
 }
 
 bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_t* config) {
+    /* nimcp_calloc zeroes all pointers for safe cleanup */
     bio_async_orchestrator_t* orch = (bio_async_orchestrator_t*)nimcp_calloc(
         1, sizeof(bio_async_orchestrator_t));
     if (!orch) {
@@ -127,24 +128,11 @@ bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_
     orch->module_capacity = orch->config.max_modules;
     orch->modules = (bio_module_entry_t*)nimcp_calloc(
         orch->module_capacity, sizeof(bio_module_entry_t));
-    if (!orch->modules) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "bio_orchestrator_create: failed to allocate module array");
-        NIMCP_LOGGING_ERROR("Failed to allocate module array");
-        nimcp_free(orch);
-        return NULL;
-    }
+    if (!orch->modules) goto cleanup;
 
     /* Create mutex */
     orch->mutex = nimcp_platform_mutex_create();
-    if (!orch->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
-            "bio_orchestrator_create: failed to create mutex");
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
-        nimcp_free(orch->modules);
-        nimcp_free(orch);
-        return NULL;
-    }
+    if (!orch->mutex) goto cleanup;
 
     /* Initialize state */
     orch->state = BIO_ORCHESTRATOR_STOPPED;
@@ -173,6 +161,17 @@ bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_
     }
 
     return orch;
+
+cleanup:
+    NIMCP_LOGGING_ERROR("Failed to allocate orchestrator resources");
+    if (orch->mutex) {
+        nimcp_platform_mutex_destroy(orch->mutex);
+        nimcp_free(orch->mutex);
+    }
+    nimcp_free(orch->modules);
+    nimcp_free(orch);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_orchestrator_create: allocation failed");
+    return NULL;
 }
 
 void bio_orchestrator_destroy(bio_async_orchestrator_t* orchestrator) {

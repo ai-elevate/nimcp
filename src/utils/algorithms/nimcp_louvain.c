@@ -104,7 +104,10 @@ static LouvainContext* louvain_context_create(const NimcpGraph* graph)
         return NULL;
 
     }
-    if (!graph->vertices) return NULL;
+    if (!graph->vertices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_context_create: graph->vertices is NULL");
+        return NULL;
+    }
 
     if (graph->vertex_count == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "louvain_context_create: graph->vertex_count is zero");
@@ -340,7 +343,10 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
         return NULL;
 
     }
-    if (!graph->vertices) return NULL;
+    if (!graph->vertices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_louvain_detect: graph->vertices is NULL");
+        return NULL;
+    }
 
     if (graph->vertex_count == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_louvain_detect: graph->vertex_count is zero");

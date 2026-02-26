@@ -533,8 +533,7 @@ cortical_training_bridge_t* cortical_training_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge allocation failed");
         return NULL;
     }
 
@@ -544,12 +543,11 @@ cortical_training_bridge_t* cortical_training_create(
     memcpy(&bridge->config, config, sizeof(cortical_training_config_t));
 
     /* Create mutex for thread safety */
-    if (bridge_base_init(&bridge->base, 0, "cortical_training") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "cortical_training") != 0) { goto cleanup; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge->base is NULL");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: mutex creation failed");
+        goto cleanup;
     }
 
     /* Allocate FE history buffer */
@@ -558,10 +556,8 @@ cortical_training_bridge_t* cortical_training_create(
     );
     if (!bridge->fe_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge->fe_history is NULL");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: fe_history allocation failed");
+        goto cleanup;
     }
     memset(bridge->fe_history, 0, sizeof(float) * CORTICAL_HISTORY_SIZE);
 
@@ -571,11 +567,8 @@ cortical_training_bridge_t* cortical_training_create(
     );
     if (!bridge->cortical_effects.precision_weights) {
         NIMCP_LOGGING_ERROR("Failed to allocate precision weights");
-        nimcp_free(bridge->fe_history);
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge->cortical_effects is NULL");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: precision_weights allocation failed");
+        goto cleanup;
     }
     bridge->cortical_effects.num_layers = CORTICAL_TRAINING_MAX_LAYERS;
     for (uint32_t i = 0; i < CORTICAL_TRAINING_MAX_LAYERS; i++) {
@@ -589,6 +582,13 @@ cortical_training_bridge_t* cortical_training_create(
     NIMCP_LOGGING_INFO("Created Cortical-Training bridge");
 
     return bridge;
+
+cleanup:
+    nimcp_free(bridge->cortical_effects.precision_weights);
+    nimcp_free(bridge->fe_history);
+    if (bridge->base.mutex) { bridge_base_cleanup(&bridge->base); }
+    nimcp_free(bridge);
+    return NULL;
 }
 
 void cortical_training_destroy(cortical_training_bridge_t* bridge) {

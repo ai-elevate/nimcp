@@ -250,14 +250,14 @@ static nimcp_result_t bio_message_handler(
  * ============================================================================ */
 
 protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
-    /* Allocate metrics */
+    /* Allocate metrics - nimcp_calloc zeroes all pointers for safe cleanup */
+    bool mutex_initialized = false;
     protocol_metrics_t* pm = (protocol_metrics_t*)nimcp_calloc(
         1, sizeof(protocol_metrics_t)
     );
     if (!pm) {
         LOG_ERROR("Failed to allocate protocol metrics");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protocol_metrics_create: failed to allocate protocol metrics");
-
         return NULL;
     }
 
@@ -273,25 +273,13 @@ protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
         pm->history.buffer = (protocol_stats_t*)nimcp_calloc(
             pm->config.history_depth, sizeof(protocol_stats_t)
         );
-        if (!pm->history.buffer) {
-            LOG_ERROR("Failed to allocate history buffer");
-            nimcp_free(pm);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protocol_metrics_create: pm->history is NULL");
-            return NULL;
-        }
+        if (!pm->history.buffer) goto cleanup;
         pm->history.capacity = pm->config.history_depth;
     }
 
     /* Initialize mutex */
-    if (nimcp_platform_mutex_init(&pm->mutex, false) != NIMCP_SUCCESS) {
-        LOG_ERROR("Failed to initialize mutex");
-        if (pm->history.buffer) {
-            nimcp_free(pm->history.buffer);
-        }
-        nimcp_free(pm);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_create: validation failed");
-        return NULL;
-    }
+    if (nimcp_platform_mutex_init(&pm->mutex, false) != NIMCP_SUCCESS) goto cleanup;
+    mutex_initialized = true;
 
     /* Initialize timing */
     pm->creation_time_ms = nimcp_time_get_us() / NIMCP_US_PER_MS;
@@ -318,6 +306,16 @@ protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
              pm->config.metrics_window_ms, pm->config.history_depth);
 
     return pm;
+
+cleanup:
+    LOG_ERROR("Failed to allocate protocol metrics resources");
+    if (mutex_initialized) {
+        nimcp_platform_mutex_destroy(&pm->mutex);
+    }
+    nimcp_free(pm->history.buffer);
+    nimcp_free(pm);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protocol_metrics_create: resource allocation failed");
+    return NULL;
 }
 
 void protocol_metrics_destroy(protocol_metrics_t* pm) {

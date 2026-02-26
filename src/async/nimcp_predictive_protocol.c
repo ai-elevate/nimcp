@@ -495,7 +495,9 @@ predictive_config_t predictive_protocol_default_config(void) {
 
 predictive_protocol_t predictive_protocol_create(const predictive_config_t* config) {
     predictive_config_t cfg = config ? *config : predictive_protocol_default_config();
+    bool mutex_initialized = false;
 
+    /* nimcp_calloc zeroes all pointers for safe cleanup */
     predictive_protocol_t proto = nimcp_calloc(1, sizeof(struct predictive_protocol_struct));
     if (!proto) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -510,23 +512,11 @@ predictive_protocol_t predictive_protocol_create(const predictive_config_t* conf
     /* Allocate transition array */
     proto->transition_capacity = 1024;  // Initial capacity
     proto->transitions = nimcp_calloc(proto->transition_capacity, sizeof(markov_transition_t));
-    if (!proto->transitions) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "predictive_protocol_create: failed to allocate transition array");
-        LOG_ERROR("Failed to allocate transition array");
-        nimcp_free(proto);
-        return NULL;
-    }
+    if (!proto->transitions) goto cleanup;
 
     /* Initialize mutex */
-    if (nimcp_platform_mutex_init(&proto->mutex, false) != 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
-            "predictive_protocol_create: failed to initialize mutex");
-        LOG_ERROR("Failed to initialize mutex");
-        nimcp_free(proto->transitions);
-        nimcp_free(proto);
-        return NULL;
-    }
+    if (nimcp_platform_mutex_init(&proto->mutex, false) != 0) goto cleanup;
+    mutex_initialized = true;
 
     proto->has_last_state = false;
 
@@ -534,6 +524,16 @@ predictive_protocol_t predictive_protocol_create(const predictive_config_t* conf
              cfg.cache_size, cfg.learning_rate, cfg.min_confidence);
 
     return proto;
+
+cleanup:
+    LOG_ERROR("Failed to allocate predictive protocol resources");
+    if (mutex_initialized) {
+        nimcp_platform_mutex_destroy(&proto->mutex);
+    }
+    nimcp_free(proto->transitions);
+    nimcp_free(proto);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: allocation failed");
+    return NULL;
 }
 
 void predictive_protocol_destroy(predictive_protocol_t proto) {

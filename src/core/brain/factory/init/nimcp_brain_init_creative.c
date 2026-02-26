@@ -577,7 +577,7 @@ bool nimcp_brain_factory_connect_creative_to_training(brain_t brain) {
 }
 
 bool nimcp_brain_factory_connect_creative_to_immune(brain_t brain) {
-    if (!brain) return true;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_creative_to_immune: brain is NULL"); return false; }
 
     /* Connect to brain immune system if available */
     if (brain->immune_enabled && brain->immune_system) {
@@ -588,7 +588,7 @@ bool nimcp_brain_factory_connect_creative_to_immune(brain_t brain) {
 }
 
 bool nimcp_brain_factory_connect_creative_to_visual_cortex(brain_t brain) {
-    if (!brain) return true;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_creative_to_visual_cortex: brain is NULL"); return false; }
 
     /* Connect to visual cortex if available */
     if (brain->visual_cortex) {
@@ -620,7 +620,7 @@ bool nimcp_brain_factory_connect_creative_to_visual_cortex(brain_t brain) {
 }
 
 bool nimcp_brain_factory_connect_creative_to_audio_cortex(brain_t brain) {
-    if (!brain) return true;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_creative_to_audio_cortex: brain is NULL"); return false; }
 
     /* Connect to audio cortex if available */
     if (brain->audio_cortex) {
@@ -652,7 +652,7 @@ bool nimcp_brain_factory_connect_creative_to_audio_cortex(brain_t brain) {
 }
 
 bool nimcp_brain_factory_connect_creative_to_speech_cortex(brain_t brain) {
-    if (!brain) return true;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_creative_to_speech_cortex: brain is NULL"); return false; }
 
     /* Connect to speech cortex if available */
     if (brain->speech_cortex) {
@@ -684,7 +684,7 @@ bool nimcp_brain_factory_connect_creative_to_speech_cortex(brain_t brain) {
 }
 
 bool nimcp_brain_factory_connect_creative_to_cortical_columns(brain_t brain) {
-    if (!brain) return true;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_creative_to_cortical_columns: brain is NULL"); return false; }
 
     /* Connect to cortical columns if available */
     if (brain->cortical_column_pool) {
@@ -721,7 +721,7 @@ bool nimcp_brain_factory_connect_creative_to_cortical_columns(brain_t brain) {
 //=============================================================================
 
 void nimcp_brain_factory_destroy_creative_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_creative_subsystem: brain is NULL"); return; }
 
     /* Destroy in reverse initialization order */
 

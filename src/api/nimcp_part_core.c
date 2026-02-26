@@ -189,8 +189,12 @@ nimcp_status_t nimcp_brain_predict_fast(
 
     // Forward pass using the full adaptive network path (spike encoding + thresholding)
     // to match the learning forward pass exactly.
-    adaptive_network_forward(ib->network, features, num_features,
-                             output, num_outputs, 0);
+    bool fwd_ok = adaptive_network_forward(ib->network, features, num_features,
+                                            output, num_outputs, 0);
+    if (!fwd_ok) {
+        if (output != stack_buf) nimcp_free(output);
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "nimcp_brain_predict_fast: forward pass failed");
+    }
 
     // Find argmax and map to label (replicates determine_output_label logic)
     uint32_t max_idx = 0;

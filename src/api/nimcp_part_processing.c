@@ -100,8 +100,11 @@ nimcp_status_t nimcp_brain_train_step(
     // === STEP 2: Forward pass with activation recording ===
     // Use network's forward pass for predictions (more reliable)
     backprop_clear(state->backprop);
-    (void)adaptive_network_forward(network, features, num_features,
-                                   predictions, num_targets, 0);
+    bool fwd_ok = adaptive_network_forward(network, features, num_features,
+                                            predictions, num_targets, 0);
+    if (!fwd_ok) {
+        LOG_WARN("train_step: adaptive_network_forward failed, predictions may be zero");
+    }
 
     // Store activations in backprop context from neuron states
     // The forward pass updated neuron->state for each neuron
@@ -453,19 +456,19 @@ nimcp_status_t nimcp_brain_train_step(
 
 float nimcp_brain_step_scheduler(nimcp_brain_t brain, float validation_metric) {
     if (!brain) {
-        set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_step_scheduler: brain is NULL");
         return 0.0F;
     }
 
     brain_t internal = brain->internal_brain;
     if (!internal || !internal->training_ctx) {
-        set_error("Training not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_step_scheduler: training not enabled");
         return 0.0F;
     }
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state || !state->configured) {
-        set_error("Training not configured");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_step_scheduler: training not configured");
         return 0.0F;
     }
 

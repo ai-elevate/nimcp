@@ -47,7 +47,7 @@ global_workspace_t* global_workspace_create_custom(
         (struct global_workspace_struct*)nimcp_calloc(1, sizeof(struct global_workspace_struct));
     if (workspace == NULL) {
         LOG_ERROR("Failed to allocate workspace structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_create_custom: failed to allocate workspace");
         return NULL;
     }
 
@@ -62,10 +62,7 @@ global_workspace_t* global_workspace_create_custom(
         (float*)nimcp_calloc(actual_config.capacity_dim, sizeof(float));
     if (workspace->broadcast_content == NULL) {
         LOG_ERROR("Failed to allocate broadcast content buffer");
-        nimcp_platform_mutex_destroy(&workspace->mutex);
-        nimcp_free(workspace);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
-        return NULL;
+        goto cleanup_mutex;
     }
 
     // Initialize broadcast state
@@ -79,11 +76,7 @@ global_workspace_t* global_workspace_create_custom(
             actual_config.history_depth, sizeof(workspace_broadcast_t));
         if (workspace->history == NULL) {
             LOG_ERROR("Failed to allocate history buffer");
-            nimcp_free(workspace->broadcast_content);
-            nimcp_platform_mutex_destroy(&workspace->mutex);
-            nimcp_free(workspace);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
-            return NULL;
+            goto cleanup_broadcast;
         }
 
         // Allocate content buffers for history
@@ -91,12 +84,7 @@ global_workspace_t* global_workspace_create_custom(
             actual_config.history_depth, sizeof(float*));
         if (workspace->history_content == NULL) {
             LOG_ERROR("Failed to allocate history content array");
-            nimcp_free(workspace->history);
-            nimcp_free(workspace->broadcast_content);
-            nimcp_platform_mutex_destroy(&workspace->mutex);
-            nimcp_free(workspace);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
-            return NULL;
+            goto cleanup_history;
         }
 
         for (uint32_t i = 0; i < actual_config.history_depth; i++) {
@@ -110,23 +98,11 @@ global_workspace_t* global_workspace_create_custom(
                 actual_config.capacity_dim, sizeof(float));
             if (workspace->history_content[i] == NULL) {
                 LOG_ERROR("Failed to allocate history content buffer %u", i);
-                // Clean up previously allocated
+                // Clean up previously allocated history content buffers
                 for (uint32_t j = 0; j < i; j++) {
-                    /* Phase 8: Loop progress heartbeat */
-                    if ((j & 0xFF) == 0 && i > 256) {
-                        global_workspace_heartbeat("global_works_loop",
-                                         (float)(j + 1) / (float)i);
-                    }
-
                     nimcp_free(workspace->history_content[j]);
                 }
-                nimcp_free(workspace->history_content);
-                nimcp_free(workspace->history);
-                nimcp_free(workspace->broadcast_content);
-                nimcp_platform_mutex_destroy(&workspace->mutex);
-                nimcp_free(workspace);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: operation failed");
-                return NULL;
+                goto cleanup_history_content;
             }
         }
     }
@@ -258,6 +234,22 @@ global_workspace_t* global_workspace_create_custom(
     // Note: global_workspace_t is typedef'd as a pointer, so function signature
     // expects global_workspace_t* (double pointer). Cast to match.
     return (global_workspace_t*)workspace;
+
+    /* Rollback labels — destroy in reverse creation order */
+cleanup_history_content:
+    nimcp_free(workspace->history_content);
+    workspace->history_content = NULL;
+cleanup_history:
+    nimcp_free(workspace->history);
+    workspace->history = NULL;
+cleanup_broadcast:
+    nimcp_free(workspace->broadcast_content);
+    workspace->broadcast_content = NULL;
+cleanup_mutex:
+    nimcp_platform_mutex_destroy(&workspace->mutex);
+    nimcp_free(workspace);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_create_custom: allocation failed");
+    return NULL;
 }
 
 

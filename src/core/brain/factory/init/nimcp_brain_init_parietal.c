@@ -770,7 +770,7 @@ int brain_update_intuition_biological_state(brain_t brain) {
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_parietal_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_parietal_subsystem: brain is NULL"); return; }
 
     /* Destroy intuition system */
     if (brain->intuition_system) {

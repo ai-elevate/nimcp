@@ -661,12 +661,13 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
         return NULL;
     }
 
-    // Allocate sync context
+    // Allocate sync context - nimcp_calloc zeroes all pointers for safe cleanup
+    bool mutex_init = false;
+    bool cond_init = false;
     phase_sync_context_t* sync_ctx = nimcp_calloc(1, sizeof(phase_sync_context_t));
     if (!sync_ctx) {
         LOG_ERROR("Failed to allocate phase sync context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sync_ctx is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_phase_sync_request: sync_ctx is NULL");
         return NULL;
     }
 
@@ -677,16 +678,13 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
 
     // Allocate promise array
     sync_ctx->promises = nimcp_calloc(target_count, sizeof(nimcp_bio_promise_t));
-    if (!sync_ctx->promises) {
-        nimcp_free(sync_ctx);
-        LOG_ERROR("Failed to allocate promise array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_signal_mutex_once: sync_ctx->promises is NULL");
-        return NULL;
-    }
+    if (!sync_ctx->promises) goto sync_cleanup;
 
     // Initialize synchronization primitives
-    nimcp_platform_mutex_init(&sync_ctx->mutex, false);
+    if (nimcp_platform_mutex_init(&sync_ctx->mutex, false) != 0) goto sync_cleanup;
+    mutex_init = true;
     nimcp_platform_cond_init(&sync_ctx->cond);
+    cond_init = true;
 
     // Send request to all targets and collect promises
     nimcp_bio_channel_type_t channel = BIO_CHANNEL_DOPAMINE;
@@ -720,6 +718,19 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
               band == BIO_OSC_ALPHA ? "ALPHA" : "OTHER");
 
     return (nimcp_phase_sync_t)sync_ctx;
+
+sync_cleanup:
+    LOG_ERROR("Failed to allocate phase sync resources");
+    if (cond_init) {
+        nimcp_platform_cond_destroy(&sync_ctx->cond);
+    }
+    if (mutex_init) {
+        nimcp_platform_mutex_destroy(&sync_ctx->mutex);
+    }
+    nimcp_free(sync_ctx->promises);
+    nimcp_free(sync_ctx);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_phase_sync_request: allocation failed");
+    return NULL;
 }
 
 

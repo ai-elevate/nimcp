@@ -1501,6 +1501,7 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
 
     // Guard clause: Validate neuron ID
     if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_update_neuron: neuron_id %u out of range", neuron_id);
         return false;
     }
 
@@ -1572,7 +1573,12 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
 uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
 {
     // Guard: Validate inputs
-    if (!network || neuron_id >= network->num_neurons) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_oja: network is NULL");
+        return 0;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_apply_oja: neuron_id out of range");
         return 0;
     }
 
@@ -1674,7 +1680,14 @@ static float compute_oja_weight_update(float pre_activity, float post_activity,
 uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id, uint64_t timestamp)
 {
     // CRIT-2 fix: Guard against NULL network and out-of-bounds neuron_id
-    if (!network || neuron_id >= network->num_neurons) return 0;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_stdp: network is NULL");
+        return 0;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_apply_stdp: neuron_id out of range");
+        return 0;
+    }
 
     // WHAT: Get presynaptic neuron (current neuron with outgoing synapses)
     // WHY: We're iterating over this neuron's outgoing connections
@@ -1826,7 +1839,12 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                                               float learning_rate, uint64_t current_time)
 {
     // Guard: Validate parameters
-    if (!network || reward < 0.0F || reward > 1.0F || learning_rate <= 0.0F) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_reward_learning: network is NULL");
+        return 0;
+    }
+    if (reward < 0.0F || reward > 1.0F || learning_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_reward_learning: invalid reward or learning_rate");
         return 0;
     }
 
@@ -2006,7 +2024,11 @@ uint32_t neural_network_apply_lateral_inhibition(
     float inhibition_strength)
 {
     // Guard clauses
-    if (!network || output_count == 0) return 0;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_lateral_inhibition: network is NULL");
+        return 0;
+    }
+    if (output_count == 0) return 0;
     if (inhibition_strength <= 0.0f) return 0;
     if (inhibition_strength > 1.0f) inhibition_strength = 1.0f;
     if ((uint64_t)output_start + output_count > network->num_neurons) return 0;
@@ -2202,7 +2224,10 @@ static void update_meta_plasticity(neural_network_t network, neuron_t* neuron, u
  */
 void neural_network_maintain_homeostasis(neural_network_t network, uint64_t timestamp)
 {
-    if (!network) return;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_maintain_homeostasis: network is NULL");
+        return;
+    }
 
     // Skip if too soon since last maintenance
     if (timestamp - network->last_maintenance < network->config.update_interval) {
@@ -2239,8 +2264,12 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
 bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, float magnitude,
                                  uint64_t timestamp)
 {
-    if (!network) return false;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_record_spike: network is NULL");
+        return false;
+    }
     if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_record_spike: neuron_id %u out of range", neuron_id);
         return false;
     }
 
@@ -2397,7 +2426,10 @@ float neural_network_get_average_activity(neural_network_t network, uint32_t neu
  */
 void neural_network_set_time(neural_network_t network, uint64_t timestamp)
 {
-    if (!network) return;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_time: network is NULL");
+        return;
+    }
     network->network_time = timestamp;
 }
 
@@ -2406,7 +2438,10 @@ void neural_network_set_time(neural_network_t network, uint64_t timestamp)
  */
 uint32_t neural_network_compute_step(neural_network_t network, uint64_t timestamp)
 {
-    if (!network) return 0;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_compute_step: network is NULL");
+        return 0;
+    }
 
     // Process pending bio-async messages
     if (network->bio_async_enabled && network->bio_ctx) {
@@ -2456,8 +2491,12 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
                                    float weight)
 {
     // HIGH-4 fix: Guard against NULL network before dereferencing
-    if (!network) return false;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_add_connection: network is NULL");
+        return false;
+    }
     if (from_id >= network->num_neurons || to_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_add_connection: neuron id out of range");
         return false;
     }
 
@@ -2647,7 +2686,10 @@ static void normalize_synaptic_weights(neuron_t* neuron)
  */
 uint32_t neural_network_prune_synapses(neural_network_t network, float threshold)
 {
-    if (!network) return 0;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_prune_synapses: network is NULL");
+        return 0;
+    }
 
     uint32_t pruned_count = 0;
 
@@ -2720,7 +2762,10 @@ uint32_t neural_network_prune_synapses(neural_network_t network, float threshold
  */
 void neural_network_maintain(neural_network_t network, uint64_t timestamp)
 {
-    if (!network) return;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_maintain: network is NULL");
+        return;
+    }
 
     // Skip if too soon since last maintenance
     if (timestamp - network->last_maintenance < network->config.update_interval) {
@@ -2747,9 +2792,14 @@ void neural_network_maintain(neural_network_t network, uint64_t timestamp)
  */
 void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id)
 {
-    if (!network) return;
-    if (neuron_id >= network->num_neurons)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_dump_neuron: network is NULL");
         return;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_dump_neuron: neuron_id out of range");
+        return;
+    }
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
@@ -2774,7 +2824,10 @@ void neural_network_dump_neuron(neural_network_t network, uint32_t neuron_id)
  */
 void neural_network_reset(neural_network_t network)
 {
-    if (!network) return;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_reset: network is NULL");
+        return;
+    }
 
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* neuron = &network->neurons[i];
@@ -2884,7 +2937,10 @@ synapse_t* neural_network_get_in_meta(neural_network_t network, neuron_t* neuron
 
 bool neural_network_rebuild_incoming(neural_network_t network)
 {
-    if (!network) return false;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_rebuild_incoming: network is NULL");
+        return false;
+    }
 
     // Clear all incoming storage
     for (uint32_t i = 0; i < network->num_neurons; i++) {
@@ -2962,12 +3018,16 @@ bool neural_network_rebuild_incoming(neural_network_t network)
 uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t activation)
 {
     // Guard clause: Validate network
-    if (!network)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_add_neuron: network is NULL");
         return UINT32_MAX;
+    }
 
     // Guard clause: Check capacity bounds
-    if (network->num_neurons >= network->capacity)
+    if (network->num_neurons >= network->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_add_neuron: capacity exceeded");
         return UINT32_MAX;
+    }
 
     uint32_t new_id = network->num_neurons;
     neuron_t* neuron = &network->neurons[new_id];
@@ -3029,8 +3089,14 @@ uint32_t neural_network_apply_generalized_oja(neural_network_t network, uint32_t
 uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neuron_id,
                                           uint64_t timestamp)
 {
-    if (!network || neuron_id >= network->num_neurons)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_update_plasticity: network is NULL");
         return 0;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_update_plasticity: neuron_id out of range");
+        return 0;
+    }
 
     neuron_t* neuron = &network->neurons[neuron_id];
     update_meta_plasticity(network, neuron, timestamp);
@@ -3182,8 +3248,14 @@ bool neural_network_set_neuron_model(neural_network_t network, uint32_t neuron_i
  */
 float neural_network_get_weight_norm(neural_network_t network, uint32_t neuron_id)
 {
-    if (!network || neuron_id >= network->num_neurons)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_get_weight_norm: network is NULL");
         return 0.0F;
+    }
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_get_weight_norm: neuron_id out of range");
+        return 0.0F;
+    }
     return network->neurons[neuron_id].weight_norm;
 }
 

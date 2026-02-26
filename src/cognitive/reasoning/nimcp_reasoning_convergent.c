@@ -227,7 +227,9 @@ int reasoning_accumulator_submit_evidence(evidence_accumulator_t* acc,
     for (uint32_t i = 0; i < contrib->local_chain.num_steps; i++) {
         reasoning_step_t step = contrib->local_chain.steps[i];
         step.step_id = chain->num_steps;
-        reasoning_chain_add_step(chain, &step);
+        if (reasoning_chain_add_step(chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("convergent: merge step add failed (chain full, steps=%u)", chain->num_steps);
+        }
     }
 
     /* Update running confidence with incremental average */
@@ -516,7 +518,9 @@ static void contrib_hippocampus(void* arg) {
     step.relevance = 0.6f;
     snprintf(step.description, REASONING_STEP_DESC_LEN,
              "Hippocampal pattern completion for query context");
-    reasoning_chain_add_step(&ctx->local_chain, &step);
+    if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("convergent: hippocampal step add failed (steps=%u)", ctx->local_chain.num_steps);
+    }
 
     ctx->result_confidence = step.confidence;
     ctx->completed = true;
@@ -545,7 +549,9 @@ static void contrib_semantic_memory(void* arg) {
     step.relevance = 0.65f;
     snprintf(step.description, REASONING_STEP_DESC_LEN,
              "Semantic memory activation: concept network spreading");
-    reasoning_chain_add_step(&ctx->local_chain, &step);
+    if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("convergent: semantic step add failed (steps=%u)", ctx->local_chain.num_steps);
+    }
 
     ctx->result_confidence = step.confidence;
     ctx->completed = true;
@@ -574,7 +580,9 @@ static void contrib_parietal(void* arg) {
     step.relevance = 0.5f;
     snprintf(step.description, REASONING_STEP_DESC_LEN,
              "Parietal hypothesis evaluation: mathematical/spatial reasoning");
-    reasoning_chain_add_step(&ctx->local_chain, &step);
+    if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("convergent: parietal step add failed (steps=%u)", ctx->local_chain.num_steps);
+    }
 
     ctx->result_confidence = step.confidence;
     ctx->completed = true;
@@ -603,7 +611,9 @@ static void contrib_intuition(void* arg) {
     step.relevance = 0.5f;
     snprintf(step.description, REASONING_STEP_DESC_LEN,
              "Intuitive hunch: rapid pattern matching without deliberation");
-    reasoning_chain_add_step(&ctx->local_chain, &step);
+    if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("convergent: intuition step add failed (steps=%u)", ctx->local_chain.num_steps);
+    }
 
     ctx->result_confidence = step.confidence;
     ctx->completed = true;
@@ -632,7 +642,9 @@ static void contrib_creative(void* arg) {
     step.relevance = 0.4f;
     snprintf(step.description, REASONING_STEP_DESC_LEN,
              "Creative analogy: cross-domain mapping for novel insight");
-    reasoning_chain_add_step(&ctx->local_chain, &step);
+    if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("convergent: creative step add failed (steps=%u)", ctx->local_chain.num_steps);
+    }
 
     ctx->result_confidence = step.confidence;
     ctx->completed = true;
@@ -661,7 +673,9 @@ static void contrib_kg_reader(void* arg) {
     step.relevance = 0.55f;
     snprintf(step.description, REASONING_STEP_DESC_LEN,
              "Self-knowledge query: internal knowledge graph traversal");
-    reasoning_chain_add_step(&ctx->local_chain, &step);
+    if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+        NIMCP_LOGGING_WARN("convergent: kg_reader step add failed (steps=%u)", ctx->local_chain.num_steps);
+    }
 
     ctx->result_confidence = step.confidence;
     ctx->completed = true;
@@ -705,7 +719,9 @@ static void contrib_mesh_evidence(void* arg) {
                  "Mesh consensus: %u endorsements, coherence=%.2f",
                  mesh_result.endorsements_approved,
                  (double)mesh_result.coherence);
-        reasoning_chain_add_step(&ctx->local_chain, &step);
+        if (reasoning_chain_add_step(&ctx->local_chain, &step) < 0) {
+            NIMCP_LOGGING_WARN("convergent: mesh_evidence step add failed (steps=%u)", ctx->local_chain.num_steps);
+        }
 
         ctx->result_confidence = mesh_result.consensus_confidence;
     } else {
@@ -1138,7 +1154,11 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
                     }
                 }
                 if (entry && entry->fn) {
-                    nimcp_pool_submit(pool, entry->fn, contrib);
+                    nimcp_result_t rc = nimcp_pool_submit(pool, entry->fn, contrib);
+                    if (rc != NIMCP_OK) {
+                        NIMCP_LOGGING_ERROR("convergent: pool submit failed for '%s' (rc=%d)",
+                                            contrib->module_name, rc);
+                    }
                     wave1_count++;
                 }
             }

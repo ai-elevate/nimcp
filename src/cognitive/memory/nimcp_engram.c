@@ -530,8 +530,14 @@ uint64_t engram_encode(
     // HOW:  Tag neurons, record activations, initialize state
 
     // Guard clauses
-    if (!system) return 0;
-    if (!neuron_ids || !activations) return 0;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engram_encode: system is NULL");
+        return 0;
+    }
+    if (!neuron_ids || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engram_encode: neuron_ids or activations is NULL");
+        return 0;
+    }
     if (count == 0) return 0;
     /* Phase 8: Heartbeat at operation start */
     engram_heartbeat("engram_encode", 0.0f);

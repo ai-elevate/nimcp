@@ -829,21 +829,15 @@ brain_decision_t* copy_decision(brain_decision_t* source)
 brain_decision_t* copy_decision_deep(const brain_decision_t* source)
 {
     if (!source) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source is NULL");
-
         return NULL;
-
     }
 
     // Allocate new decision structure
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
     if (!copy) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision_deep: failed to allocate decision copy");
-
         return NULL;
-
     }
 
     // Copy scalar fields
@@ -859,9 +853,8 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
     if (source->output_vector && source->output_size > 0) {
         copy->output_vector = nimcp_malloc(source->output_size * sizeof(float));
         if (!copy->output_vector) {
-            nimcp_free(copy);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision_deep: copy->output_vector is NULL");
-            return NULL;
+            goto cleanup;
         }
         memcpy(copy->output_vector, source->output_vector, source->output_size * sizeof(float));
     }
@@ -870,17 +863,20 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
     if (source->active_neuron_ids && source->num_active_neurons > 0) {
         copy->active_neuron_ids = nimcp_malloc(source->num_active_neurons * sizeof(uint32_t));
         if (!copy->active_neuron_ids) {
-            if (copy->output_vector)
-                nimcp_free(copy->output_vector);
-            nimcp_free(copy);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision_deep: failed to allocate active_neuron_ids");
-            return NULL;
+            goto cleanup;
         }
         memcpy(copy->active_neuron_ids, source->active_neuron_ids,
                source->num_active_neurons * sizeof(uint32_t));
     }
 
     return copy;
+
+cleanup:
+    nimcp_free(copy->output_vector);
+    nimcp_free(copy->active_neuron_ids);
+    nimcp_free(copy);
+    return NULL;
 }
 
 

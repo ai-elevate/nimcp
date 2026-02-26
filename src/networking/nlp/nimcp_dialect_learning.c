@@ -772,7 +772,10 @@ bool dialect_exists(dialect_learner_t dl, uint32_t source, uint32_t target) {
 
 float dialect_get_compatibility(dialect_learner_t dl, uint32_t source, uint32_t target) {
     // Guard clause
-    if (!dl) return -1.0F;
+    if (!dl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get_compatibility: dl is NULL");
+        return -1.0F;
+    }
 
     nimcp_mutex_lock(&dl->lock);
 

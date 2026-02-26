@@ -199,8 +199,7 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
     if (!bridge->compartments) {
         NIMCP_LOGGING_ERROR("Failed to allocate compartment array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_create: failed to allocate compartment array");
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
     memset(bridge->compartments, 0,
            bridge->compartment_capacity * sizeof(compartment_plasticity_state_t));
@@ -210,16 +209,12 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_create: failed to allocate mutex");
-        nimcp_free(bridge->compartments);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "dendrite_plasticity_create: failed to initialize mutex");
-        nimcp_free(bridge->compartments);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     bridge->initialized = true;
@@ -227,6 +222,12 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
 
     NIMCP_LOGGING_INFO("Created dendrite-plasticity bridge");
     return bridge;
+
+cleanup:
+    nimcp_free(bridge->base.mutex);
+    nimcp_free(bridge->compartments);
+    nimcp_free(bridge);
+    return NULL;
 }
 
 void dendrite_plasticity_destroy(dendrite_plasticity_bridge_t* bridge)

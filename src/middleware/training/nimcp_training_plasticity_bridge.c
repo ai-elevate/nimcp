@@ -967,7 +967,10 @@ nimcp_result_t tpb_apply_plasticity_batch(tpb_context_t* ctx, uint32_t num_synap
             work_items[i].weights = weights;
             work_items[i].updates_applied = 0;
 
-            nimcp_pool_submit(ctx->thread_pool, tpb_batch_worker, &work_items[i]);
+            nimcp_result_t rc = nimcp_pool_submit(ctx->thread_pool, tpb_batch_worker, &work_items[i]);
+            if (rc != NIMCP_OK) {
+                NIMCP_LOGGING_ERROR("tpb_apply_batch_stdp: pool submit failed for worker %u (rc=%d)", i, rc);
+            }
         }
 
         /* Wait for completion */

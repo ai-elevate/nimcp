@@ -779,7 +779,7 @@ bool nimcp_brain_factory_connect_hippocampus_to_sleep(brain_t brain) {
  * @param brain Brain instance
  */
 void nimcp_brain_factory_destroy_hippocampus_subsystem(brain_t brain) {
-    if (!brain) return;
+    if (!brain) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_destroy_hippocampus_subsystem: brain is NULL"); return; }
 
     LOG_DEBUG(LOG_MODULE, "Destroying hippocampus subsystem");
 

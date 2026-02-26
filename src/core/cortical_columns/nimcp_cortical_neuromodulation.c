@@ -154,9 +154,8 @@ cortical_neuromod_system_t* cortical_neuromod_create(
             (float*)nimcp_calloc(config->num_columns, sizeof(float));
         if (!system->state.per_column_da) {
             NIMCP_LOGGING_ERROR("Failed to allocate per-column DA");
-            nimcp_free(system);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromod_create: system->state is NULL");
-            return NULL;
+            goto cleanup;
         }
         system->state.num_columns = config->num_columns;
         /* Initialize to baseline */
@@ -171,22 +170,14 @@ cortical_neuromod_system_t* cortical_neuromod_create(
     system->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
-        if (system->state.per_column_da) {
-            nimcp_free(system->state.per_column_da);
-        }
-        nimcp_free(system);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_create: validation failed");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromod_create: mutex allocation failed");
+        goto cleanup;
     }
 
     if (nimcp_platform_mutex_init(system->mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        if (system->state.per_column_da) {
-            nimcp_free(system->state.per_column_da);
-        }
-        nimcp_free(system);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_create: validation failed");
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_neuromod_create: mutex init failed");
+        goto cleanup;
     }
 
     /* Initialize statistics */
@@ -206,6 +197,14 @@ cortical_neuromod_system_t* cortical_neuromod_create(
 
     NIMCP_LOGGING_INFO("Created cortical neuromodulation system");
     return system;
+
+cleanup:
+    if (system) {
+        nimcp_free(system->mutex);
+        nimcp_free(system->state.per_column_da);
+        nimcp_free(system);
+    }
+    return NULL;
 }
 
 void cortical_neuromod_destroy(cortical_neuromod_system_t* system) {

@@ -291,9 +291,8 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
         nimcp_calloc(config->num_columns, sizeof(column_sparse_state_t));
     if (!system->column_states) {
         NIMCP_LOGGING_ERROR("Failed to allocate column states");
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->column_states is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize column states */
@@ -313,10 +312,8 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     system->activity_history = (float*)nimcp_calloc(system->history_size, sizeof(float));
     if (!system->activity_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate activity history");
-        nimcp_free(system->column_states);
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->activity_history is NULL");
-        return NULL;
+        goto cleanup;
     }
     system->history_index = 0;
 
@@ -334,11 +331,8 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     system->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
-        nimcp_free(system->activity_history);
-        nimcp_free(system->column_states);
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->mutex is NULL");
-        return NULL;
+        goto cleanup;
     }
     nimcp_platform_mutex_init(system->mutex, false);
 
@@ -356,6 +350,13 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
                        config->num_columns, config->target_sparsity * 100.0f);
 
     return system;
+
+cleanup:
+    nimcp_free(system->mutex);
+    nimcp_free(system->activity_history);
+    nimcp_free(system->column_states);
+    nimcp_free(system);
+    return NULL;
 }
 
 void cortical_sparse_destroy(cortical_sparse_coding_system_t* system) {

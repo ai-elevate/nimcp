@@ -22,6 +22,7 @@
 #include "cognitive/reasoning/nimcp_reasoning_abduction.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 
 #include <string.h>
@@ -221,7 +222,10 @@ static void derive_recommendations(const char* cause, float plausibility,
 training_diagnoser_t* training_diagnoser_create(void)
 {
     training_diagnoser_t* diag = nimcp_calloc(1, sizeof(training_diagnoser_t));
-    if (!diag) return NULL;
+    if (!diag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_diagnoser_create: allocation failed");
+        return NULL;
+    }
 
     abduction_config_t config = reasoning_abduction_default_config();
     diag->abduction = reasoning_abduction_create(&config);
@@ -257,7 +261,10 @@ int training_diagnoser_observe_from_metrics(
     float arousal_level, float inflammation_level,
     float resource_pressure)
 {
-    if (!diag) return -1;
+    if (!diag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_diagnoser_observe_from_metrics: diag is NULL");
+        return -1;
+    }
 
     (void)learning_rate;
     (void)batch_size;
@@ -410,7 +417,10 @@ int training_diagnoser_diagnose(training_diagnoser_t* diag, training_diagnosis_t
 
 int training_diagnoser_reset(training_diagnoser_t* diag)
 {
-    if (!diag) return -1;
+    if (!diag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_diagnoser_reset: diag is NULL");
+        return -1;
+    }
 
     int rc = reasoning_abduction_clear_observations(diag->abduction);
     memset(diag->observations_present, 0, sizeof(diag->observations_present));

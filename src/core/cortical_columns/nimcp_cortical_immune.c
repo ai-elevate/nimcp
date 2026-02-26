@@ -200,11 +200,8 @@ cortical_immune_system_t* cortical_immune_create(
     cortical_immune_system_t* system = (cortical_immune_system_t*)
         nimcp_malloc(sizeof(cortical_immune_system_t));
     if (!system) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system is NULL");
         return NULL;
-
     }
 
     memset(system, 0, sizeof(cortical_immune_system_t));
@@ -221,9 +218,8 @@ cortical_immune_system_t* cortical_immune_create(
     system->microglial_sites = (microglial_site_t*)
         nimcp_malloc(sizeof(microglial_site_t) * system->site_capacity);
     if (!system->microglial_sites) {
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system->microglial_sites is NULL");
-        return NULL;
+        goto cleanup;
     }
     memset(system->microglial_sites, 0, sizeof(microglial_site_t) * system->site_capacity);
 
@@ -232,10 +228,8 @@ cortical_immune_system_t* cortical_immune_create(
     system->column_states = (cortical_column_immune_t*)
         nimcp_malloc(sizeof(cortical_column_immune_t) * system->column_capacity);
     if (!system->column_states) {
-        nimcp_free(system->microglial_sites);
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system->column_states is NULL");
-        return NULL;
+        goto cleanup;
     }
     memset(system->column_states, 0, sizeof(cortical_column_immune_t) * system->column_capacity);
 
@@ -244,23 +238,16 @@ cortical_immune_system_t* cortical_immune_create(
     system->layer_states = (layer_immune_state_t*)
         nimcp_malloc(sizeof(layer_immune_state_t) * system->layer_capacity);
     if (!system->layer_states) {
-        nimcp_free(system->column_states);
-        nimcp_free(system->microglial_sites);
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system->layer_states is NULL");
-        return NULL;
+        goto cleanup;
     }
     memset(system->layer_states, 0, sizeof(layer_immune_state_t) * system->layer_capacity);
 
     /* Create mutex */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
-        nimcp_free(system->layer_states);
-        nimcp_free(system->column_states);
-        nimcp_free(system->microglial_sites);
-        nimcp_free(system);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_create: system->mutex is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize state */
@@ -273,6 +260,13 @@ cortical_immune_system_t* cortical_immune_create(
               system->config.max_microglial_sites);
 
     return system;
+
+cleanup:
+    nimcp_free(system->layer_states);
+    nimcp_free(system->column_states);
+    nimcp_free(system->microglial_sites);
+    nimcp_free(system);
+    return NULL;
 }
 
 void cortical_immune_destroy(cortical_immune_system_t* system) {

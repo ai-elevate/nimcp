@@ -279,8 +279,15 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
     uint32_t n_thin = mcmc->config.n_thin > 0 ? mcmc->config.n_thin : 1;
     uint32_t total_iterations = n_burnin + n_samples * n_thin;
 
-    double* proposal_sd = (double*)nimcp_malloc(n_params * sizeof(double));
-    if (!proposal_sd) return NIMCP_BAYES_ERROR_MEMORY;
+    double* proposal_sd = NULL;
+    double* current = NULL;
+    double* proposed = NULL;
+    double* current_lp = NULL;
+    uint32_t* n_accepted = NULL;
+    nimcp_bayes_adv_result_t metro_result = NIMCP_BAYES_OK;
+
+    proposal_sd = (double*)nimcp_malloc(n_params * sizeof(double));
+    if (!proposal_sd) { metro_result = NIMCP_BAYES_ERROR_MEMORY; goto metro_cleanup; }
 
     if (mcmc->config.proposal_sd) {
         memcpy(proposal_sd, mcmc->config.proposal_sd, n_params * sizeof(double));
@@ -291,13 +298,14 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
         }
     }
 
-    double* current = (double*)nimcp_malloc((size_t)n_chains * n_params * sizeof(double));
-    double* proposed = (double*)nimcp_malloc(n_params * sizeof(double));
-    double* current_lp = (double*)nimcp_malloc(n_chains * sizeof(double));
+    current = (double*)nimcp_malloc((size_t)n_chains * n_params * sizeof(double));
+    proposed = (double*)nimcp_malloc(n_params * sizeof(double));
+    current_lp = (double*)nimcp_malloc(n_chains * sizeof(double));
+    n_accepted = (uint32_t*)nimcp_calloc(n_chains, sizeof(uint32_t));
 
-    if (!current || !proposed || !current_lp) {
-        nimcp_free(proposal_sd); nimcp_free(current); nimcp_free(proposed); nimcp_free(current_lp);
-        return NIMCP_BAYES_ERROR_MEMORY;
+    if (!current || !proposed || !current_lp || !n_accepted) {
+        metro_result = NIMCP_BAYES_ERROR_MEMORY;
+        goto metro_cleanup;
     }
 
     for (uint32_t c = 0; c < n_chains; c++) {
@@ -307,7 +315,6 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
         current_lp[c] = log_posterior(&current[c * n_params], n_params, data);
     }
 
-    uint32_t* n_accepted = (uint32_t*)nimcp_calloc(n_chains, sizeof(uint32_t));
     double target_accept = mcmc->config.target_accept > 0 ? mcmc->config.target_accept : 0.234;
 
     uint32_t sample_idx = 0;
@@ -360,13 +367,14 @@ nimcp_bayes_adv_result_t nimcp_mcmc_metropolis_hastings(
     }
     mcmc->diag.mean_accept_prob = total_accepted / (n_chains * n_samples * n_thin);
 
-    nimcp_free(proposal_sd);
-    nimcp_free(current);
-    nimcp_free(proposed);
-    nimcp_free(current_lp);
+metro_cleanup:
     nimcp_free(n_accepted);
+    nimcp_free(current_lp);
+    nimcp_free(proposed);
+    nimcp_free(current);
+    nimcp_free(proposal_sd);
 
-    return NIMCP_BAYES_OK;
+    return metro_result;
 }
 
 //=============================================================================

@@ -615,7 +615,7 @@ void sparse_synapse_pool_destroy(sparse_synapse_pool_t pool) {
 
 void sparse_synapse_storage_init(sparse_synapse_storage_t* storage) {
     if (storage == NULL) {
-        LOG_ERROR("Cannot initialize NULL storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sparse_synapse_storage_init: storage is NULL");
         return;
     }
 
@@ -908,7 +908,7 @@ void sparse_synapse_iterator_init(
     sparse_synapse_storage_t* storage
 ) {
     if (it == NULL || storage == NULL) {
-        LOG_ERROR("Cannot initialize NULL iterator or storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sparse_synapse_iterator_init: iterator or storage is NULL");
         return;
     }
 

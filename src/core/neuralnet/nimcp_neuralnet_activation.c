@@ -114,7 +114,7 @@ static void init_activation_strategies(activation_strategy_table_t* table)
 float neural_network_compute_activation(neuron_t* neuron, float input)
 {
     if (!neuron) {
-        LOG_ERROR(LOG_MODULE, "NULL neuron in compute_activation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_compute_activation: neuron is NULL");
         return 0.0f;
     }
 

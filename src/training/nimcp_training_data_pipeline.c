@@ -679,9 +679,8 @@ training_pipeline_ctx_t* training_pipeline_create(
 
     if (!data_shape || data_shape->rank < 1) {
         NIMCP_LOGGING_ERROR("Invalid data tensor shape");
-        nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create: data_shape is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Dataset size is first dimension */
@@ -711,9 +710,8 @@ training_pipeline_ctx_t* training_pipeline_create(
     ctx->indices = (uint32_t*)nimcp_malloc(ctx->dataset_size * sizeof(uint32_t));
     if (!ctx->indices) {
         NIMCP_LOGGING_ERROR("Failed to allocate index array");
-        nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_create: ctx->indices is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize indices to sequential order */
@@ -739,20 +737,15 @@ training_pipeline_ctx_t* training_pipeline_create(
     );
     if (!ctx->prefetch_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate prefetch buffer");
-        nimcp_free(ctx->indices);
-        nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_create: ctx->prefetch_buffer is NULL");
-        return NULL;
+        goto cleanup;
     }
 
     /* Initialize prefetch mutex */
     if (nimcp_platform_mutex_init(&ctx->prefetch_mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to init prefetch mutex");
-        nimcp_free(ctx->prefetch_buffer);
-        nimcp_free(ctx->indices);
-        nimcp_free(ctx);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_pipeline_create: validation failed");
-        return NULL;
+        goto cleanup;
     }
 
     /* Copy transforms if provided */
@@ -784,6 +777,15 @@ training_pipeline_ctx_t* training_pipeline_create(
                        training_pipeline_num_batches(ctx));
 
     return ctx;
+
+cleanup:
+    if (ctx) {
+        nimcp_free(ctx->transforms);
+        nimcp_free(ctx->prefetch_buffer);
+        nimcp_free(ctx->indices);
+        nimcp_free(ctx);
+    }
+    return NULL;
 }
 
 training_pipeline_ctx_t* training_pipeline_create_from_files(
@@ -1219,7 +1221,10 @@ int training_pipeline_get_stats(
 }
 
 void training_pipeline_reset_stats(training_pipeline_ctx_t* pipeline) {
-    if (!pipeline) return;
+    if (!pipeline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_reset_stats: pipeline is NULL");
+        return;
+    }
     memset(&pipeline->stats, 0, sizeof(training_pipeline_stats_t));
     pipeline->stats.current_epoch = pipeline->epoch;
 }

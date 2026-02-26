@@ -181,8 +181,7 @@ axon_plasticity_bridge_t* axon_plasticity_create(
     if (!bridge->segments) {
         NIMCP_LOGGING_ERROR("Failed to allocate segment array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_create: failed to allocate segment array");
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
     memset(bridge->segments, 0,
            bridge->segment_capacity * sizeof(axon_segment_state_t));
@@ -191,15 +190,11 @@ axon_plasticity_bridge_t* axon_plasticity_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_create: failed to allocate mutex");
-        nimcp_free(bridge->segments);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "axon_plasticity_create: failed to initialize mutex");
-        nimcp_free(bridge->segments);
-        nimcp_free(bridge);
-        return NULL;
+        goto cleanup;
     }
 
     bridge->initialized = true;
@@ -208,6 +203,12 @@ axon_plasticity_bridge_t* axon_plasticity_create(
 
     NIMCP_LOGGING_INFO("Created axon-plasticity bridge");
     return bridge;
+
+cleanup:
+    nimcp_free(bridge->base.mutex);
+    nimcp_free(bridge->segments);
+    nimcp_free(bridge);
+    return NULL;
 }
 
 void axon_plasticity_destroy(axon_plasticity_bridge_t* bridge)
