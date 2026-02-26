@@ -61,6 +61,18 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.decide(*args, **kwargs)
 
+    def ti_compute_unified_lr(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.ti_compute_unified_lr(*args, **kwargs)
+
+    def ti_compute_modulation_state(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.ti_compute_modulation_state(*args, **kwargs)
+
+    def ti_post_batch_update(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.ti_post_batch_update(*args, **kwargs)
+
     def __getattr__(self, name):
         """Proxy all other attributes to the underlying brain."""
         return getattr(self._brain, name)
@@ -558,6 +570,27 @@ class School:
                     mastered = self.metacognition.get_mastered_domains()
                     if mastered:
                         self.logger.log(f"[Metacognition] MASTERED domains: {mastered}")
+
+                # Log brain modulation state
+                try:
+                    state = self.brain.ti_compute_modulation_state()
+                    if state:
+                        self.logger.log(
+                            f"[BrainState] LR×{state.get('final_lr_factor', 1.0):.3f} "
+                            f"arousal={state.get('arousal_cognitive_gain', 0):.2f} "
+                            f"circadian={state.get('circadian_efficiency', 0):.2f} "
+                            f"inflam={state.get('inflammation_learning_factor', 1):.2f} "
+                            f"portia={state.get('portia_learning_gate', 1):.2f} "
+                            f"stress={state.get('stress_level', 0):.2f} "
+                            f"pause={state.get('should_pause', False)}"
+                        )
+                        if state.get("should_pause", False):
+                            self.logger.log("[BrainState] WARNING: Brain signals training should PAUSE")
+                            self._call_recess()
+                            self._last_recess = now
+                except Exception:
+                    pass
+
                 self._last_metacog = now
 
             # Recess (consolidation)

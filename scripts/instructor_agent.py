@@ -435,6 +435,21 @@ class InstructorAgent(threading.Thread):
             if count >= self.config.max_examples_per_dataset:
                 break
 
+    # --- Brain-State LR Modulation ---
+
+    def _modulate_lr(self, base_lr: float) -> float:
+        """Modulate learning rate through the brain's unified pipeline.
+
+        Applies arousal (inverted-U), circadian rhythm, RPE bonus,
+        instability response, inflammation suppression, Portia resource
+        gating, stress dampening, and cognitive capacity scaling.
+        Falls back to base_lr if the unified API is unavailable.
+        """
+        try:
+            return float(self.cognitive.compute_adaptive_lr(base_lr))
+        except Exception:
+            return base_lr
+
     # --- Teaching Methods ---
 
     def _execute_method(self, method: TeachingMethod, features: list,
@@ -475,7 +490,7 @@ class InstructorAgent(threading.Thread):
         else:
             lr = 0.8 * conf_mod
 
-        self.brain.learn(features, label, lr)
+        self.brain.learn(features, label, self._modulate_lr(lr))
         loss = 0.0 if correct else (1.0 - conf)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -490,7 +505,7 @@ class InstructorAgent(threading.Thread):
             return correct, 0.0
 
         lr = (0.5 + 0.5 * self.difficulty) * conf_mod
-        self.brain.learn(features, label, lr)
+        self.brain.learn(features, label, self._modulate_lr(lr))
         loss = 0.0 if correct else (1.0 - conf)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
@@ -501,12 +516,12 @@ class InstructorAgent(threading.Thread):
         correct = (pred == label)
 
         # Teach the correct label
-        self.brain.learn(features, label, 0.7 * conf_mod)
+        self.brain.learn(features, label, self._modulate_lr(0.7 * conf_mod))
 
         # If wrong, also explicitly teach "not the wrong answer"
         if not correct and pred:
             # Re-teach with correct answer at higher confidence
-            self.brain.learn(features, label, 0.9 * conf_mod)
+            self.brain.learn(features, label, self._modulate_lr(0.9 * conf_mod))
 
         loss = 0.0 if correct else (1.0 - conf)
         self.socratic.mastery.record(domain, correct)
@@ -529,7 +544,7 @@ class InstructorAgent(threading.Thread):
             lr = 0.9 * conf_mod  # disagreement → stronger teaching
 
         correct = (pred1 == label)
-        self.brain.learn(features, label, lr)
+        self.brain.learn(features, label, self._modulate_lr(lr))
 
         loss = 0.0 if correct else max(1.0 - conf1, 1.0 - conf2)
         self.socratic.mastery.record(domain, correct)
@@ -543,7 +558,7 @@ class InstructorAgent(threading.Thread):
         # Use mastery to set learning rate
         mastery = self.socratic.mastery.mastery(domain)
         lr = (0.3 + 0.7 * (1.0 - mastery)) * conf_mod
-        self.brain.learn(features, label, lr)
+        self.brain.learn(features, label, self._modulate_lr(lr))
 
         loss = 0.0 if correct else (1.0 - conf)
         self.socratic.mastery.record(domain, correct)
@@ -561,13 +576,13 @@ class InstructorAgent(threading.Thread):
 
         # Teach with boosted confidence on hard examples
         lr = (0.9 if not correct else 0.4) * conf_mod
-        self.brain.learn(features, label, lr)
+        self.brain.learn(features, label, self._modulate_lr(lr))
 
         # Periodically re-teach hard examples
         if (self.total_examples % 200 == 0 and self.adversarial_bank
                 and random.random() < self.config.adversarial_fraction):
             hard_feat, hard_label = random.choice(self.adversarial_bank)
-            self.brain.learn(hard_feat, hard_label, 0.8 * conf_mod)
+            self.brain.learn(hard_feat, hard_label, self._modulate_lr(0.8 * conf_mod))
 
         loss = 0.0 if correct else (1.0 - conf)
         self.socratic.mastery.record(domain, correct)
@@ -578,7 +593,7 @@ class InstructorAgent(threading.Thread):
         pred, conf = self.brain.predict_fast(features)
         correct = (pred == label)
 
-        self.brain.learn(features, label, 0.7 * conf_mod)
+        self.brain.learn(features, label, self._modulate_lr(0.7 * conf_mod))
 
         # Try to blend with cross-domain exemplar
         try:
@@ -591,7 +606,7 @@ class InstructorAgent(threading.Thread):
                         f * (1 - ratio) + e * ratio
                         for f, e in zip(features, ex_feats)
                     ]
-                    self.brain.learn(blended, label, 0.4 * conf_mod)
+                    self.brain.learn(blended, label, self._modulate_lr(0.4 * conf_mod))
         except Exception:
             pass
 
@@ -733,6 +748,13 @@ class InstructorAgent(threading.Thread):
         rate = self.total_examples / max(elapsed, 0.001)
         mastery = self.socratic.mastery.mastery(self.config.domain)
         accuracy = self.total_correct / max(self.total_examples, 1)
+
+        # Close the training loop: feed accuracy back to BG + medulla
+        try:
+            self.cognitive.post_batch_update(accuracy, 0.7, self.config.domain)
+        except Exception:
+            pass
+
         report = {
             "type": "final_report" if final else "progress",
             "domain": self.config.domain,

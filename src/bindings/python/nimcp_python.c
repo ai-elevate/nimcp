@@ -1625,6 +1625,80 @@ static PyObject* Brain_ti_compute_adaptive_lr(BrainObject* self, PyObject* args)
 }
 
 /**
+ * WHAT: Compute unified adaptive LR with all brain modulations
+ * WHY:  Replaces simple adaptive LR with full continuous modulation pipeline
+ * HOW:  Calls brain_ti_compute_unified_lr with base_lr, returns adjusted float
+ */
+static PyObject* Brain_ti_compute_unified_lr(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float base_lr;
+    if (!PyArg_ParseTuple(args, "f", &base_lr)) return NULL;
+
+    float unified_lr = brain_ti_compute_unified_lr(self->brain->internal_brain, base_lr, NULL);
+    return PyFloat_FromDouble((double)unified_lr);
+}
+
+/**
+ * WHAT: Get full modulation state from all brain subsystems
+ * WHY:  Exposes complete breakdown of all modulation factors for diagnostics
+ * HOW:  Calls brain_ti_compute_modulation_state, returns dict with all fields
+ */
+static PyObject* Brain_ti_compute_modulation_state(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    (void)args;
+
+    brain_ti_modulation_state_t state;
+    memset(&state, 0, sizeof(state));
+    int rc = brain_ti_compute_modulation_state(self->brain->internal_brain, &state);
+    if (rc != 0) {
+        /* Return defaults on error */
+        PyObject* d = PyDict_New();
+        if (!d) return PyErr_NoMemory();
+        PyDict_SetItemString(d, "final_lr_factor", PyFloat_FromDouble(1.0));
+        PyDict_SetItemString(d, "final_batch_factor", PyFloat_FromDouble(1.0));
+        PyDict_SetItemString(d, "final_clip_factor", PyFloat_FromDouble(1.0));
+        PyDict_SetItemString(d, "should_pause", Py_False);
+        Py_INCREF(Py_False);
+        return d;
+    }
+
+    PyObject* d = PyDict_New();
+    if (!d) return PyErr_NoMemory();
+
+    /* Individual module outputs */
+    PyDict_SetItemString(d, "arousal_level", PyFloat_FromDouble(state.arousal_level));
+    PyDict_SetItemString(d, "arousal_cognitive_gain", PyFloat_FromDouble(state.arousal_cognitive_gain));
+    PyDict_SetItemString(d, "arousal_memory_consolidation", PyFloat_FromDouble(state.arousal_memory_consolidation));
+    PyDict_SetItemString(d, "circadian_efficiency", PyFloat_FromDouble(state.circadian_efficiency));
+    PyDict_SetItemString(d, "rpe_bonus", PyFloat_FromDouble(state.rpe_bonus));
+    PyDict_SetItemString(d, "inflammation_learning_factor", PyFloat_FromDouble(state.inflammation_learning_factor));
+    PyDict_SetItemString(d, "inflammation_precision", PyFloat_FromDouble(state.inflammation_precision));
+    PyDict_SetItemString(d, "instability_lr_scale", PyFloat_FromDouble(state.instability_lr_scale));
+    PyDict_SetItemString(d, "instability_batch_scale", PyFloat_FromDouble(state.instability_batch_scale));
+    PyDict_SetItemString(d, "instability_clip_factor", PyFloat_FromDouble(state.instability_clip_factor));
+    PyDict_SetItemString(d, "portia_learning_gate", PyFloat_FromDouble(state.portia_learning_gate));
+    PyDict_SetItemString(d, "portia_compute_budget", PyFloat_FromDouble(state.portia_compute_budget));
+    PyDict_SetItemString(d, "stress_level", PyFloat_FromDouble(state.stress_level));
+    PyDict_SetItemString(d, "cognitive_capacity", PyFloat_FromDouble(state.cognitive_capacity));
+    PyDict_SetItemString(d, "conflict_level", PyFloat_FromDouble(state.conflict_level));
+
+    /* Composed final modulation factors */
+    PyDict_SetItemString(d, "final_lr_factor", PyFloat_FromDouble(state.final_lr_factor));
+    PyDict_SetItemString(d, "final_batch_factor", PyFloat_FromDouble(state.final_batch_factor));
+    PyDict_SetItemString(d, "final_clip_factor", PyFloat_FromDouble(state.final_clip_factor));
+    PyDict_SetItemString(d, "should_pause", state.should_pause ? Py_True : Py_False);
+    Py_INCREF(state.should_pause ? Py_True : Py_False);
+
+    return d;
+}
+
+/**
  * WHAT: Post-batch update — feed accuracy/domain back to training integration
  * WHY:  Closes the loop: training results inform basal ganglia, medulla, reasoning
  * HOW:  Calls brain_ti_post_batch_update with accuracy, expected, domain
@@ -2388,6 +2462,10 @@ static PyMethodDef Brain_methods[] = {
     // Training Integration API: adaptive learning rate + post-batch
     {"ti_compute_adaptive_lr", (PyCFunction)Brain_ti_compute_adaptive_lr, METH_VARARGS,
      "Compute adaptive learning rate: ti_compute_adaptive_lr(base_lr) -> float"},
+    {"ti_compute_unified_lr", (PyCFunction)Brain_ti_compute_unified_lr, METH_VARARGS,
+     "Compute unified adaptive LR with all brain modulations: ti_compute_unified_lr(base_lr) -> float"},
+    {"ti_compute_modulation_state", (PyCFunction)Brain_ti_compute_modulation_state, METH_NOARGS,
+     "Get full modulation state from all brain subsystems: ti_compute_modulation_state() -> dict"},
     {"ti_post_batch_update", (PyCFunction)Brain_ti_post_batch_update, METH_VARARGS | METH_KEYWORDS,
      "Post-batch update: ti_post_batch_update(accuracy, expected, domain) -> bool"},
     {"ti_should_skip_reasoning", (PyCFunction)Brain_ti_should_skip_reasoning, METH_NOARGS,

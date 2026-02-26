@@ -539,14 +539,44 @@ class CognitiveOrchestrator:
 
         Modulates base_lr based on dopamine level, arousal, circadian phase,
         and reward prediction error. Returns adjusted LR.
+
+        Prefers the unified pipeline (arousal inverted-U, circadian, RPE,
+        instability, inflammation, Portia, stress, cognitive capacity).
+        Falls back to the old 3-factor formula if unified is unavailable.
         """
         if not self._has_reasoning:
             return base_lr
+        # Try unified pipeline first (8-factor composition)
+        try:
+            return float(self.brain.ti_compute_unified_lr(base_lr))
+        except (AttributeError, Exception):
+            pass
+        # Fall back to old 3-factor formula
         try:
             return float(self.brain.ti_compute_adaptive_lr(base_lr))
         except Exception as e:
             logger.warning(f"ti_compute_adaptive_lr error: {e}")
             return base_lr
+
+    def get_modulation_state(self) -> Optional[dict]:
+        """
+        Get full modulation state from all brain subsystems.
+
+        Returns dict with individual factors (arousal_factor, inflammation_factor,
+        portia_compute_budget, etc.) and composed finals (final_lr_factor,
+        final_batch_factor, final_clip_factor, should_pause).
+        """
+        try:
+            return self.brain.ti_compute_modulation_state()
+        except (AttributeError, Exception):
+            return None
+
+    def should_pause_training(self) -> bool:
+        """Check if any brain subsystem signals training should pause."""
+        state = self.get_modulation_state()
+        if state is None:
+            return False
+        return bool(state.get("should_pause", False))
 
     def post_batch_update(self, accuracy: float, expected: float,
                           domain: str):

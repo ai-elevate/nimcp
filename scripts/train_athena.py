@@ -1120,11 +1120,21 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                             0.0, INTROSPECTION_INTERVAL)
                         examples_since_introspection = 0
 
-                        # Compute BG + medulla adaptive learning rate
+                        # Compute unified adaptive learning rate (all brain modulations)
                         try:
                             current_lr = phase2_scheduler.get_lr()
                             phase2_scheduler.step_count -= 1  # Undo extra step
                             adaptive_lr = cognitive.compute_adaptive_lr(base_lr=current_lr)
+                            # Log modulation state for diagnostics
+                            mod_state = cognitive.get_modulation_state()
+                            if mod_state:
+                                logger.log(
+                                    f"    [Modulation] LR×{mod_state.get('final_lr_factor', 1.0):.3f} "
+                                    f"arousal={mod_state.get('arousal_cognitive_gain', 0):.2f} "
+                                    f"inflam={mod_state.get('inflammation_learning_factor', 1):.2f} "
+                                    f"portia={mod_state.get('portia_learning_gate', 1):.2f}")
+                                if mod_state.get("should_pause", False):
+                                    logger.log("    [Modulation] WARNING: Brain signals PAUSE")
                         except Exception:
                             adaptive_lr = None
 
