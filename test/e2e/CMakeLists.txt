@@ -148,6 +148,41 @@ add_e2e_test(e2e_test_reasoning_convergent
     ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_convergent_e2e.cpp
 )
 
+add_e2e_test(e2e_test_reasoning_metacognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_metacognition_e2e.cpp
+)
+
+add_e2e_test(e2e_test_reasoning_calibration
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_calibration_e2e.cpp
+)
+
+add_e2e_test(e2e_test_reasoning_abduction
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_abduction_e2e.cpp
+)
+
+add_e2e_test(e2e_test_reasoning_kb_persistence
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_kb_persistence_e2e.cpp
+)
+
+add_e2e_test(e2e_test_reasoning_affective
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_affective_e2e.cpp
+)
+
+add_e2e_test(e2e_test_reasoning_causal
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_causal_e2e.cpp
+)
+
+add_e2e_test(e2e_test_reasoning_visuospatial
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_visuospatial_e2e.cpp
+)
+
 add_e2e_test(e2e_test_bio_async_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bio_async_pipeline.cpp

@@ -672,6 +672,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_hypo_bridge.c  # Hypothalamus motivational reasoning modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_mesh_bridge.c  # Distributed mesh consensus for reasoning
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_convergent.c  # Convergent evidence accumulation architecture
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_kb_persistence.c  # KB persistence (export/import)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_affective.c  # Affective emotion-based confidence modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_calibration.c  # Confidence calibration learning for contributors
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_metacognition.c  # Metacognitive adaptive strategy selection
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_abduction.c  # Abductive reasoning (inference to best explanation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_causal.c  # Causal DAG inference with do-calculus
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_visuospatial.c  # Visuospatial reasoning (spatial objects, relations, queries)
 
     # Cognitive Training Integration Layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/training/nimcp_training_integration.c  # Unified training pipeline API

@@ -145,6 +145,31 @@ gtest_discover_tests(unit_cognitive_reasoning_hypergraph_init
         TIMEOUT 120
 )
 
+# KB Persistence Unit Tests
+add_executable(unit_cognitive_reasoning_kb_persistence
+    test_reasoning_kb_persistence.cpp
+)
+target_link_libraries(unit_cognitive_reasoning_kb_persistence
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(unit_cognitive_reasoning_kb_persistence
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_reasoning_kb_persistence PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_reasoning_kb_persistence
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning;persistence"
+        TIMEOUT 120
+)
+
 # Reasoning Plasticity Bridge Unit Tests
 add_executable(unit_cognitive_reasoning_plasticity_bridge
     test_reasoning_plasticity_bridge.cpp

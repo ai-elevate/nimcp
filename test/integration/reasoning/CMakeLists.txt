@@ -225,3 +225,20 @@ gtest_discover_tests(integration_reasoning_test_convergent
         LABELS "integration;reasoning;convergent"
         TIMEOUT 180
 )
+
+# Macro for new reasoning integration tests
+macro(add_reasoning_integration_test TARGET_NAME SOURCE_FILE LABELS_EXTRA)
+    add_executable(${TARGET_NAME} ${SOURCE_FILE})
+    target_link_libraries(${TARGET_NAME} PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+    target_include_directories(${TARGET_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/test)
+    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+    gtest_discover_tests(${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_BINARY_DIR} PROPERTIES LABELS "integration;reasoning;${LABELS_EXTRA}" TIMEOUT 180)
+endmacro()
+
+add_reasoning_integration_test(integration_reasoning_test_metacognition test_reasoning_metacognition_integration.cpp "metacognition")
+add_reasoning_integration_test(integration_reasoning_test_calibration test_reasoning_calibration_integration.cpp "calibration")
+add_reasoning_integration_test(integration_reasoning_test_abduction test_reasoning_abduction_integration.cpp "abduction")
+add_reasoning_integration_test(integration_reasoning_test_kb_persistence test_reasoning_kb_persistence_integration.cpp "kb-persistence")
+add_reasoning_integration_test(integration_reasoning_test_affective test_reasoning_affective_integration.cpp "affective")
+add_reasoning_integration_test(integration_reasoning_test_causal test_reasoning_causal_integration.cpp "causal")
+add_reasoning_integration_test(integration_reasoning_test_visuospatial test_reasoning_visuospatial_integration.cpp "visuospatial")

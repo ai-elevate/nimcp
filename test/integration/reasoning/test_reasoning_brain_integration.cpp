@@ -98,7 +98,7 @@ TEST_F(ReasoningBrainIntegration, ReasonProducesChain) {
         const reasoning_step_t* step = reasoning_chain_get_step(&chain, i);
         ASSERT_NE(step, nullptr);
         EXPECT_GE(static_cast<int>(step->type), static_cast<int>(REASONING_STEP_RECALL));
-        EXPECT_LE(static_cast<int>(step->type), static_cast<int>(REASONING_STEP_MODULATION));
+        EXPECT_LE(static_cast<int>(step->type), static_cast<int>(REASONING_STEP_VISUOSPATIAL));
     }
 
     reasoning_chain_cleanup(&chain);

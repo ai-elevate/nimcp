@@ -295,6 +295,106 @@ gtest_discover_tests(unit_cognitive_test_reasoning_convergent
         TIMEOUT 90
 )
 
+# Reasoning Chain - Affective Modulation Unit Tests
+add_executable(unit_cognitive_test_reasoning_affective
+    test_reasoning_affective.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_affective
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_affective
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_affective PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_affective
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-affective"
+        TIMEOUT 90
+)
+
+# Reasoning Chain - Abductive Reasoning Unit Tests
+add_executable(unit_cognitive_test_reasoning_abduction
+    test_reasoning_abduction.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_abduction
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_abduction
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_abduction PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_abduction
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-abduction"
+        TIMEOUT 90
+)
+
+# Reasoning Chain - Confidence Calibration Unit Tests
+add_executable(unit_cognitive_test_reasoning_calibration
+    test_reasoning_calibration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_calibration
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_calibration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_calibration PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_calibration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-calibration"
+        TIMEOUT 90
+)
+
+# Reasoning Chain - Metacognitive Strategy Selection Unit Tests
+add_executable(unit_cognitive_test_reasoning_metacognition
+    test_reasoning_metacognition.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_metacognition
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_metacognition
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_metacognition PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_metacognition
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-metacognition"
+        TIMEOUT 90
+)
+
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
 
@@ -2447,5 +2547,62 @@ gtest_discover_tests(unit_cognitive_test_training_integration
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES
         LABELS "unit;cognitive;training-integration"
+        TIMEOUT 90
+)
+
+# Reasoning Chain - Causal Reasoning Unit Tests
+add_executable(unit_cognitive_test_reasoning_causal
+    test_reasoning_causal.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_causal
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_causal
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_causal PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_causal
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-causal"
+        TIMEOUT 90
+)
+
+# =============================================================================
+# Visuospatial Reasoning Unit Tests
+# =============================================================================
+add_executable(unit_cognitive_test_reasoning_visuospatial
+    test_reasoning_visuospatial.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_visuospatial
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_visuospatial
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_visuospatial PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_visuospatial
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-visuospatial"
         TIMEOUT 90
 )

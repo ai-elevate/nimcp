@@ -6607,6 +6607,97 @@ e2e_test_reasoning_convergent/fast:
 .PHONY : e2e_test_reasoning_convergent/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_reasoning_metacognition
+
+# Build rule for target.
+e2e_test_reasoning_metacognition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_metacognition
+.PHONY : e2e_test_reasoning_metacognition
+
+# fast build rule for target.
+e2e_test_reasoning_metacognition/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_metacognition.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_metacognition.dir/build
+.PHONY : e2e_test_reasoning_metacognition/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_reasoning_calibration
+
+# Build rule for target.
+e2e_test_reasoning_calibration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_calibration
+.PHONY : e2e_test_reasoning_calibration
+
+# fast build rule for target.
+e2e_test_reasoning_calibration/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_calibration.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_calibration.dir/build
+.PHONY : e2e_test_reasoning_calibration/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_reasoning_abduction
+
+# Build rule for target.
+e2e_test_reasoning_abduction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_abduction
+.PHONY : e2e_test_reasoning_abduction
+
+# fast build rule for target.
+e2e_test_reasoning_abduction/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_abduction.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_abduction.dir/build
+.PHONY : e2e_test_reasoning_abduction/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_reasoning_kb_persistence
+
+# Build rule for target.
+e2e_test_reasoning_kb_persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_kb_persistence
+.PHONY : e2e_test_reasoning_kb_persistence
+
+# fast build rule for target.
+e2e_test_reasoning_kb_persistence/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_kb_persistence.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_kb_persistence.dir/build
+.PHONY : e2e_test_reasoning_kb_persistence/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_reasoning_affective
+
+# Build rule for target.
+e2e_test_reasoning_affective: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_affective
+.PHONY : e2e_test_reasoning_affective
+
+# fast build rule for target.
+e2e_test_reasoning_affective/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_affective.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_affective.dir/build
+.PHONY : e2e_test_reasoning_affective/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_reasoning_causal
+
+# Build rule for target.
+e2e_test_reasoning_causal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_causal
+.PHONY : e2e_test_reasoning_causal
+
+# fast build rule for target.
+e2e_test_reasoning_causal/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_causal.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_causal.dir/build
+.PHONY : e2e_test_reasoning_causal/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_reasoning_visuospatial
+
+# Build rule for target.
+e2e_test_reasoning_visuospatial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_visuospatial
+.PHONY : e2e_test_reasoning_visuospatial
+
+# fast build rule for target.
+e2e_test_reasoning_visuospatial/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_visuospatial.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_visuospatial.dir/build
+.PHONY : e2e_test_reasoning_visuospatial/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_bio_async_pipeline
 
 # Build rule for target.
@@ -13991,6 +14082,19 @@ unit_cognitive_reasoning_hypergraph_init/fast:
 .PHONY : unit_cognitive_reasoning_hypergraph_init/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_reasoning_kb_persistence
+
+# Build rule for target.
+unit_cognitive_reasoning_kb_persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_reasoning_kb_persistence
+.PHONY : unit_cognitive_reasoning_kb_persistence
+
+# fast build rule for target.
+unit_cognitive_reasoning_kb_persistence/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_kb_persistence.dir/build.make test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_kb_persistence.dir/build
+.PHONY : unit_cognitive_reasoning_kb_persistence/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_reasoning_plasticity_bridge
 
 # Build rule for target.
@@ -14145,6 +14249,84 @@ regression_cognitive_reasoning_snn_plasticity: cmake_check_build_system
 regression_cognitive_reasoning_snn_plasticity/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_snn_plasticity.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_snn_plasticity.dir/build
 .PHONY : regression_cognitive_reasoning_snn_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_reasoning_calibration
+
+# Build rule for target.
+regression_cognitive_reasoning_calibration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_reasoning_calibration
+.PHONY : regression_cognitive_reasoning_calibration
+
+# fast build rule for target.
+regression_cognitive_reasoning_calibration/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_calibration.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_calibration.dir/build
+.PHONY : regression_cognitive_reasoning_calibration/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_reasoning_metacognition
+
+# Build rule for target.
+regression_cognitive_reasoning_metacognition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_reasoning_metacognition
+.PHONY : regression_cognitive_reasoning_metacognition
+
+# fast build rule for target.
+regression_cognitive_reasoning_metacognition/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_metacognition.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_metacognition.dir/build
+.PHONY : regression_cognitive_reasoning_metacognition/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_reasoning_affective
+
+# Build rule for target.
+regression_cognitive_reasoning_affective: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_reasoning_affective
+.PHONY : regression_cognitive_reasoning_affective
+
+# fast build rule for target.
+regression_cognitive_reasoning_affective/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_affective.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_affective.dir/build
+.PHONY : regression_cognitive_reasoning_affective/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_reasoning_abduction
+
+# Build rule for target.
+regression_cognitive_reasoning_abduction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_reasoning_abduction
+.PHONY : regression_cognitive_reasoning_abduction
+
+# fast build rule for target.
+regression_cognitive_reasoning_abduction/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_abduction.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_abduction.dir/build
+.PHONY : regression_cognitive_reasoning_abduction/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_reasoning_causal
+
+# Build rule for target.
+regression_cognitive_reasoning_causal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_reasoning_causal
+.PHONY : regression_cognitive_reasoning_causal
+
+# fast build rule for target.
+regression_cognitive_reasoning_causal/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_causal.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_causal.dir/build
+.PHONY : regression_cognitive_reasoning_causal/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_reasoning_visuospatial
+
+# Build rule for target.
+regression_cognitive_reasoning_visuospatial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_reasoning_visuospatial
+.PHONY : regression_cognitive_reasoning_visuospatial
+
+# fast build rule for target.
+regression_cognitive_reasoning_visuospatial/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_visuospatial.dir/build.make test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_visuospatial.dir/build
+.PHONY : regression_cognitive_reasoning_visuospatial/fast
 
 #=============================================================================
 # Target rules for targets named test_symbolic_logic
@@ -14340,6 +14522,58 @@ unit_cognitive_test_reasoning_convergent: cmake_check_build_system
 unit_cognitive_test_reasoning_convergent/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_convergent.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_convergent.dir/build
 .PHONY : unit_cognitive_test_reasoning_convergent/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_affective
+
+# Build rule for target.
+unit_cognitive_test_reasoning_affective: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_affective
+.PHONY : unit_cognitive_test_reasoning_affective
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_affective/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_affective.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_affective.dir/build
+.PHONY : unit_cognitive_test_reasoning_affective/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_abduction
+
+# Build rule for target.
+unit_cognitive_test_reasoning_abduction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_abduction
+.PHONY : unit_cognitive_test_reasoning_abduction
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_abduction/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_abduction.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_abduction.dir/build
+.PHONY : unit_cognitive_test_reasoning_abduction/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_calibration
+
+# Build rule for target.
+unit_cognitive_test_reasoning_calibration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_calibration
+.PHONY : unit_cognitive_test_reasoning_calibration
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_calibration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_calibration.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_calibration.dir/build
+.PHONY : unit_cognitive_test_reasoning_calibration/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_metacognition
+
+# Build rule for target.
+unit_cognitive_test_reasoning_metacognition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_metacognition
+.PHONY : unit_cognitive_test_reasoning_metacognition
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_metacognition/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_metacognition.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_metacognition.dir/build
+.PHONY : unit_cognitive_test_reasoning_metacognition/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_global_workspace_immune
@@ -15120,6 +15354,32 @@ unit_cognitive_test_training_integration: cmake_check_build_system
 unit_cognitive_test_training_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_integration.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_integration.dir/build
 .PHONY : unit_cognitive_test_training_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_causal
+
+# Build rule for target.
+unit_cognitive_test_reasoning_causal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_causal
+.PHONY : unit_cognitive_test_reasoning_causal
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_causal/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_causal.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_causal.dir/build
+.PHONY : unit_cognitive_test_reasoning_causal/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_visuospatial
+
+# Build rule for target.
+unit_cognitive_test_reasoning_visuospatial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_visuospatial
+.PHONY : unit_cognitive_test_reasoning_visuospatial
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_visuospatial/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_visuospatial.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_visuospatial.dir/build
+.PHONY : unit_cognitive_test_reasoning_visuospatial/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -27745,6 +28005,19 @@ regression_mesh_reasoning_bridge_test/fast:
 .PHONY : regression_mesh_reasoning_bridge_test/fast
 
 #=============================================================================
+# Target rules for targets named regression_kb_persistence_test
+
+# Build rule for target.
+regression_kb_persistence_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_kb_persistence_test
+.PHONY : regression_kb_persistence_test
+
+# fast build rule for target.
+regression_kb_persistence_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/reasoning_generation/CMakeFiles/regression_kb_persistence_test.dir/build.make test/regression/reasoning_generation/CMakeFiles/regression_kb_persistence_test.dir/build
+.PHONY : regression_kb_persistence_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -36065,6 +36338,97 @@ integration_reasoning_test_convergent/fast:
 .PHONY : integration_reasoning_test_convergent/fast
 
 #=============================================================================
+# Target rules for targets named integration_reasoning_test_metacognition
+
+# Build rule for target.
+integration_reasoning_test_metacognition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_metacognition
+.PHONY : integration_reasoning_test_metacognition
+
+# fast build rule for target.
+integration_reasoning_test_metacognition/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_metacognition.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_metacognition.dir/build
+.PHONY : integration_reasoning_test_metacognition/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_calibration
+
+# Build rule for target.
+integration_reasoning_test_calibration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_calibration
+.PHONY : integration_reasoning_test_calibration
+
+# fast build rule for target.
+integration_reasoning_test_calibration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_calibration.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_calibration.dir/build
+.PHONY : integration_reasoning_test_calibration/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_abduction
+
+# Build rule for target.
+integration_reasoning_test_abduction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_abduction
+.PHONY : integration_reasoning_test_abduction
+
+# fast build rule for target.
+integration_reasoning_test_abduction/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_abduction.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_abduction.dir/build
+.PHONY : integration_reasoning_test_abduction/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_kb_persistence
+
+# Build rule for target.
+integration_reasoning_test_kb_persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_kb_persistence
+.PHONY : integration_reasoning_test_kb_persistence
+
+# fast build rule for target.
+integration_reasoning_test_kb_persistence/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_kb_persistence.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_kb_persistence.dir/build
+.PHONY : integration_reasoning_test_kb_persistence/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_affective
+
+# Build rule for target.
+integration_reasoning_test_affective: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_affective
+.PHONY : integration_reasoning_test_affective
+
+# fast build rule for target.
+integration_reasoning_test_affective/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_affective.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_affective.dir/build
+.PHONY : integration_reasoning_test_affective/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_causal
+
+# Build rule for target.
+integration_reasoning_test_causal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_causal
+.PHONY : integration_reasoning_test_causal
+
+# fast build rule for target.
+integration_reasoning_test_causal/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_causal.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_causal.dir/build
+.PHONY : integration_reasoning_test_causal/fast
+
+#=============================================================================
+# Target rules for targets named integration_reasoning_test_visuospatial
+
+# Build rule for target.
+integration_reasoning_test_visuospatial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_visuospatial
+.PHONY : integration_reasoning_test_visuospatial
+
+# fast build rule for target.
+integration_reasoning_test_visuospatial/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_visuospatial.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_visuospatial.dir/build
+.PHONY : integration_reasoning_test_visuospatial/fast
+
+#=============================================================================
 # Target rules for targets named integration_generation_test_pipeline
 
 # Build rule for target.
@@ -40825,8 +41189,15 @@ help:
 	@echo "... e2e_test_quantum_reasoning_pipeline"
 	@echo "... e2e_test_query_to_answer"
 	@echo "... e2e_test_rcog_collective_integration"
+	@echo "... e2e_test_reasoning_abduction"
+	@echo "... e2e_test_reasoning_affective"
+	@echo "... e2e_test_reasoning_calibration"
+	@echo "... e2e_test_reasoning_causal"
 	@echo "... e2e_test_reasoning_convergent"
+	@echo "... e2e_test_reasoning_kb_persistence"
+	@echo "... e2e_test_reasoning_metacognition"
 	@echo "... e2e_test_reasoning_snn_plasticity_pipeline"
+	@echo "... e2e_test_reasoning_visuospatial"
 	@echo "... e2e_test_recursive_cognition_pipeline"
 	@echo "... e2e_test_salience_snn_plasticity_pipeline"
 	@echo "... e2e_test_second_messenger_pipeline"
@@ -41328,12 +41699,19 @@ help:
 	@echo "... integration_python_c"
 	@echo "... integration_quantum_bridges"
 	@echo "... integration_quantum_mcts_fep"
+	@echo "... integration_reasoning_test_abduction"
+	@echo "... integration_reasoning_test_affective"
+	@echo "... integration_reasoning_test_calibration"
+	@echo "... integration_reasoning_test_causal"
 	@echo "... integration_reasoning_test_convergent"
 	@echo "... integration_reasoning_test_hypo_bridge"
+	@echo "... integration_reasoning_test_kb_persistence"
 	@echo "... integration_reasoning_test_mesh_bridge"
+	@echo "... integration_reasoning_test_metacognition"
 	@echo "... integration_reasoning_test_portia_bridge"
 	@echo "... integration_reasoning_test_reasoning_brain"
 	@echo "... integration_reasoning_test_symbolic_logic"
+	@echo "... integration_reasoning_test_visuospatial"
 	@echo "... integration_rng_module"
 	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
@@ -41562,7 +41940,13 @@ help:
 	@echo "... regression_cognitive_modules_api_test"
 	@echo "... regression_cognitive_pass3_fixes"
 	@echo "... regression_cognitive_predictive_test_predictive_bridge_exception_regression"
+	@echo "... regression_cognitive_reasoning_abduction"
+	@echo "... regression_cognitive_reasoning_affective"
+	@echo "... regression_cognitive_reasoning_calibration"
+	@echo "... regression_cognitive_reasoning_causal"
+	@echo "... regression_cognitive_reasoning_metacognition"
 	@echo "... regression_cognitive_reasoning_snn_plasticity"
+	@echo "... regression_cognitive_reasoning_visuospatial"
 	@echo "... regression_cognitive_salience_snn_plasticity"
 	@echo "... regression_cognitive_self_model_snn_plasticity"
 	@echo "... regression_cognitive_sleep_bridge"
@@ -41731,6 +42115,7 @@ help:
 	@echo "... regression_jepa"
 	@echo "... regression_jepa_fep_bridge"
 	@echo "... regression_jepa_qmc"
+	@echo "... regression_kb_persistence_test"
 	@echo "... regression_language_pathway"
 	@echo "... regression_lateralization_regression"
 	@echo "... regression_lc_math_regression"
@@ -42473,6 +42858,7 @@ help:
 	@echo "... unit_cognitive_predictive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_predictive_test_predictive_real"
 	@echo "... unit_cognitive_reasoning_hypergraph_init"
+	@echo "... unit_cognitive_reasoning_kb_persistence"
 	@echo "... unit_cognitive_reasoning_plasticity_bridge"
 	@echo "... unit_cognitive_reasoning_snn_bridge"
 	@echo "... unit_cognitive_reasoning_substrate_bridge"
@@ -42558,12 +42944,18 @@ help:
 	@echo "... unit_cognitive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
+	@echo "... unit_cognitive_test_reasoning_abduction"
+	@echo "... unit_cognitive_test_reasoning_affective"
+	@echo "... unit_cognitive_test_reasoning_calibration"
+	@echo "... unit_cognitive_test_reasoning_causal"
 	@echo "... unit_cognitive_test_reasoning_chain"
 	@echo "... unit_cognitive_test_reasoning_convergent"
 	@echo "... unit_cognitive_test_reasoning_hypo_bridge"
 	@echo "... unit_cognitive_test_reasoning_mesh_bridge"
+	@echo "... unit_cognitive_test_reasoning_metacognition"
 	@echo "... unit_cognitive_test_reasoning_portia_bridge"
 	@echo "... unit_cognitive_test_reasoning_symbolic_logic"
+	@echo "... unit_cognitive_test_reasoning_visuospatial"
 	@echo "... unit_cognitive_test_remorse_regret"
 	@echo "... unit_cognitive_test_rubric"
 	@echo "... unit_cognitive_test_salience_attention_bridge"

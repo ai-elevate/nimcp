@@ -44,6 +44,11 @@
 #include "cognitive/reasoning/nimcp_reasoning_hypo_bridge.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 #include "cognitive/reasoning/nimcp_reasoning_convergent.h"
+#include "cognitive/reasoning/nimcp_reasoning_calibration.h"
+#include "cognitive/reasoning/nimcp_reasoning_metacognition.h"
+#include "cognitive/reasoning/nimcp_reasoning_abduction.h"
+#include "cognitive/reasoning/nimcp_reasoning_causal.h"
+#include "cognitive/reasoning/nimcp_reasoning_visuospatial.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -92,6 +97,15 @@ struct reasoning_engine {
 
     /* Thread pool for concurrent pipeline (created lazily or at init) */
     nimcp_thread_pool_t* thread_pool;
+
+    /* Confidence calibration system (may be NULL if disabled) */
+    reasoning_calibration_t* calibration;
+
+    /* Metacognitive controller (may be NULL if disabled) */
+    reasoning_metacognition_t* metacognition;
+
+    /* Abductive reasoning engine (may be NULL if disabled) */
+    reasoning_abduction_t* abduction;
 
     /* Aggregate statistics */
     reasoning_engine_stats_t stats;
@@ -195,6 +209,11 @@ const char* reasoning_step_type_name(reasoning_step_type_t type)
         case REASONING_STEP_NEURAL_LOGIC:        return "NEURAL_LOGIC";
         case REASONING_STEP_MESH_CONSENSUS:      return "MESH_CONSENSUS";
         case REASONING_STEP_MODULATION:          return "MODULATION";
+        case REASONING_STEP_METACOGNITIVE:       return "METACOGNITIVE";
+        case REASONING_STEP_ABDUCTIVE:           return "ABDUCTIVE";
+        case REASONING_STEP_AFFECTIVE:           return "AFFECTIVE";
+        case REASONING_STEP_CAUSAL:              return "CAUSAL";
+        case REASONING_STEP_VISUOSPATIAL:        return "VISUOSPATIAL";
         default:                             return "UNKNOWN";
     }
 }
@@ -234,6 +253,25 @@ reasoning_engine_config_t reasoning_engine_default_config(void)
     config.convergence_ema_alpha = REASONING_DEFAULT_EMA_ALPHA;
     config.convergence_threshold = REASONING_DEFAULT_CONVERGENCE_THRESHOLD;
     config.convergence_timeout_ms = REASONING_DEFAULT_CONVERGENCE_TIMEOUT_MS;
+
+    /* Confidence calibration defaults */
+    config.enable_calibration = false;
+    config.calibration_learning_rate = REASONING_DEFAULT_CALIBRATION_LEARNING_RATE;
+
+    /* Metacognitive controller defaults */
+    config.enable_metacognition = true;
+
+    /* Abductive reasoning defaults */
+    config.enable_abductive_reasoning = true;
+
+    /* Affective modulation defaults */
+    config.enable_affective_modulation = true;
+
+    /* Causal reasoning defaults (opt-in — requires DAG setup) */
+    config.enable_causal_reasoning = false;
+
+    /* Visuospatial reasoning defaults (opt-in — requires spatial scene setup) */
+    config.enable_visuospatial_reasoning = false;
 
     return config;
 }
@@ -276,11 +314,49 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
         }
     }
 
+    /* Create confidence calibration system if enabled */
+    if (engine->config.enable_calibration) {
+        calibration_config_t cal_config = reasoning_calibration_default_config();
+        cal_config.learning_rate = engine->config.calibration_learning_rate;
+        engine->calibration = reasoning_calibration_create(&cal_config);
+        if (!engine->calibration) {
+            NIMCP_LOGGING_WARN("reasoning_chain: failed to create calibration "
+                               "system, continuing without calibration");
+            engine->config.enable_calibration = false;
+        }
+    }
+
+    /* Create metacognitive controller if enabled */
+    if (engine->config.enable_metacognition) {
+        metacognitive_config_t mc_config = reasoning_metacognition_default_config();
+        engine->metacognition = reasoning_metacognition_create(&mc_config);
+        if (!engine->metacognition) {
+            NIMCP_LOGGING_WARN("reasoning_chain: failed to create metacognitive "
+                               "controller, continuing without metacognition");
+            engine->config.enable_metacognition = false;
+        }
+    }
+
+    /* Create abductive reasoning engine if enabled */
+    if (engine->config.enable_abductive_reasoning) {
+        abduction_config_t abd_config = reasoning_abduction_default_config();
+        engine->abduction = reasoning_abduction_create(&abd_config);
+        if (!engine->abduction) {
+            NIMCP_LOGGING_WARN("reasoning_chain: failed to create abduction "
+                               "engine, continuing without abductive reasoning");
+            engine->config.enable_abductive_reasoning = false;
+        }
+    }
+
     NIMCP_LOGGING_INFO("reasoning_chain: engine created (max_steps=%u, "
-                       "confidence_threshold=%.2f, concurrent=%s)",
+                       "confidence_threshold=%.2f, concurrent=%s, "
+                       "calibration=%s, metacognition=%s, abduction=%s)",
                        engine->config.max_steps,
                        engine->config.confidence_threshold,
-                       engine->config.enable_concurrent_pipeline ? "yes" : "no");
+                       engine->config.enable_concurrent_pipeline ? "yes" : "no",
+                       engine->config.enable_calibration ? "yes" : "no",
+                       engine->config.enable_metacognition ? "yes" : "no",
+                       engine->config.enable_abductive_reasoning ? "yes" : "no");
 
     return engine;
 }
@@ -288,6 +364,24 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
 void reasoning_engine_destroy(reasoning_engine_t* engine)
 {
     if (!engine) return;
+
+    /* Destroy abductive reasoning engine if created */
+    if (engine->abduction) {
+        reasoning_abduction_destroy(engine->abduction);
+        engine->abduction = NULL;
+    }
+
+    /* Destroy metacognitive controller if created */
+    if (engine->metacognition) {
+        reasoning_metacognition_destroy(engine->metacognition);
+        engine->metacognition = NULL;
+    }
+
+    /* Destroy calibration system if created */
+    if (engine->calibration) {
+        reasoning_calibration_destroy(engine->calibration);
+        engine->calibration = NULL;
+    }
 
     /* Destroy thread pool if created */
     if (engine->thread_pool) {
@@ -2458,20 +2552,110 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
     store_query_in_wm(engine, query);
 
     /*
-     * ── Concurrent vs Sequential dispatch ──
+     * ── Metacognitive continuous resource allocation ──
      *
-     * If the concurrent pipeline is enabled and the thread pool is available,
-     * use the parallel evidence-gathering path. Otherwise fall through to the
-     * original sequential pipeline.
-     */
-    /* ── Convergent evidence accumulation pipeline ──
+     * The metacognitive controller computes a continuous resource budget
+     * from the query's complexity score. Instead of discrete strategy
+     * switching (sequential vs concurrent vs convergent), the budget
+     * smoothly scales:
+     *   - parallelism_factor: 0.0 (sequential) → 1.0 (full convergent)
+     *   - max_contributors: 1 (minimal) → config.max (all modules)
+     *   - convergence_threshold: tight (quick answer) → loose (deep thought)
+     *   - confidence_target: high (easy) → moderate (hard queries)
      *
-     * If convergent reasoning is enabled and a thread pool is available,
-     * use the convergent architecture which runs ~44 brain modules as
-     * autonomous parallel agents with evidence accumulation and
-     * convergence detection (Global Workspace Theory).
+     * The dispatch always uses convergent if parallelism > 0.1 and a thread
+     * pool exists, but with contributor count scaled by the budget. This
+     * eliminates hard strategy boundaries — a score of 0.35 gets ~4
+     * contributors, not a binary switch from "concurrent" to "convergent".
      */
-    if (engine->config.enable_convergent_reasoning && engine->thread_pool) {
+    bool use_convergent = engine->config.enable_convergent_reasoning && engine->thread_pool;
+    bool use_concurrent = engine->config.enable_concurrent_pipeline && engine->thread_pool;
+    reasoning_resource_budget_t resource_budget;
+    memset(&resource_budget, 0, sizeof(resource_budget));
+    resource_budget.parallelism_factor = 1.0f;   /* default: full if no metacognition */
+    resource_budget.max_contributors = engine->config.max_convergent_contributors;
+    resource_budget.max_steps = engine->config.max_steps;
+    resource_budget.convergence_threshold = engine->config.convergence_threshold;
+    resource_budget.confidence_target = engine->config.confidence_threshold;
+    resource_budget.timeout_factor = 1.0f;
+    resource_budget.use_thread_pool = (engine->thread_pool != NULL);
+
+    if (engine->metacognition && engine->config.enable_metacognition) {
+        metacognitive_assessment_t assessment = reasoning_metacognition_assess(
+            engine->metacognition, query, &engine->config);
+
+        /* Extract the continuous resource budget */
+        resource_budget = assessment.budget;
+
+        /* Record the metacognitive step in the chain */
+        reasoning_step_t mc_step;
+        memset(&mc_step, 0, sizeof(mc_step));
+        mc_step.step_id = chain->num_steps;
+        mc_step.type = REASONING_STEP_METACOGNITIVE;
+        mc_step.confidence = assessment.confidence_in_assessment;
+        mc_step.relevance = 1.0f;
+        mc_step.timestamp_us = nimcp_time_get_us();
+        snprintf(mc_step.description, REASONING_STEP_DESC_LEN,
+                 "Metacognitive budget: score=%.3f parallelism=%.2f "
+                 "contributors=%u steps=%u conv_thresh=%.4f",
+                 assessment.complexity_score,
+                 resource_budget.parallelism_factor,
+                 resource_budget.max_contributors,
+                 resource_budget.max_steps,
+                 resource_budget.convergence_threshold);
+        reasoning_chain_add_step(chain, &mc_step);
+
+        /* Portia SEVERE overrides: force minimal resources */
+        if (portia_budget.source_degradation >= PORTIA_DEGRADATION_SEVERE) {
+            resource_budget.parallelism_factor = 0.0f;
+            resource_budget.use_thread_pool = false;
+            resource_budget.max_contributors = 1;
+        }
+
+        /* Apply continuous budget to dispatch decisions */
+        if (resource_budget.parallelism_factor < 0.10f || !resource_budget.use_thread_pool) {
+            use_convergent = false;
+            use_concurrent = false;
+        } else if (engine->config.enable_convergent_reasoning && engine->thread_pool) {
+            /* Use convergent with scaled contributor count */
+            use_convergent = true;
+        } else if (engine->config.enable_concurrent_pipeline && engine->thread_pool) {
+            use_concurrent = true;
+        }
+
+        /* Apply budget overrides to engine config for this query */
+        engine->config.max_convergent_contributors = resource_budget.max_contributors;
+        engine->config.max_steps = resource_budget.max_steps;
+        engine->config.convergence_threshold = resource_budget.convergence_threshold;
+        engine->config.confidence_threshold = resource_budget.confidence_target;
+
+        /* Update engine-level metacognitive stats */
+        engine->stats.metacognitive_assessments++;
+
+        NIMCP_LOGGING_INFO("reasoning_chain: metacognition budget — "
+                           "score=%.3f, parallelism=%.2f, contributors=%u, "
+                           "label=%s (%s)",
+                           assessment.complexity_score,
+                           resource_budget.parallelism_factor,
+                           resource_budget.max_contributors,
+                           reasoning_metacognition_get_strategy_name(
+                               assessment.recommended_strategy),
+                           reasoning_metacognition_get_complexity_name(
+                               assessment.complexity));
+    }
+
+    /*
+     * ── Dispatch (budget-driven) ──
+     *
+     * With continuous allocation, the "strategy" is emergent from the budget:
+     *   score ~0.0: 1 contributor, no thread pool → sequential pipeline
+     *   score ~0.3: 3-5 contributors, thread pool → lightweight convergent
+     *   score ~0.7: 20+ contributors, full pool → deep convergent
+     *   score ~1.0: max contributors, all modules → maximum depth
+     */
+
+    /* ── Convergent evidence accumulation pipeline (budget-scaled) ── */
+    if (use_convergent) {
         int result = reasoning_engine_reason_convergent(engine, query,
                                                          KNOWLEDGE_DOMAIN_GENERAL,
                                                          chain);
@@ -2495,11 +2679,20 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
 
+        /* Record metacognitive outcome for learning */
+        if (engine->metacognition && engine->config.enable_metacognition) {
+            reasoning_metacognition_record_outcome(engine->metacognition,
+                REASONING_STRATEGY_CONVERGENT,
+                chain->overall_confidence,
+                (float)(chain->end_time_us - chain->start_time_us),
+                chain->num_steps);
+        }
+
         engine->config = saved_config;
         return result;
     }
 
-    if (engine->config.enable_concurrent_pipeline && engine->thread_pool) {
+    if (use_concurrent) {
         int result = reasoning_engine_reason_concurrent(engine, query,
                                                          KNOWLEDGE_DOMAIN_GENERAL,
                                                          chain);
@@ -2529,6 +2722,15 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         engine->stats.avg_steps_per_query =
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
+
+        /* Record metacognitive outcome for learning */
+        if (engine->metacognition && engine->config.enable_metacognition) {
+            reasoning_metacognition_record_outcome(engine->metacognition,
+                REASONING_STRATEGY_CONCURRENT,
+                chain->overall_confidence,
+                (float)(chain->end_time_us - chain->start_time_us),
+                chain->num_steps);
+        }
 
         /* Restore original engine config */
         engine->config = saved_config;
@@ -2622,6 +2824,84 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         goto finalize;
     }
 
+    /* ── Phase 4.1: Abductive Reasoning (Inference to Best Explanation) ── */
+    if (engine->config.enable_abductive_reasoning && engine->abduction) {
+        /* Create observations from chain steps so far */
+        reasoning_abduction_clear_observations(engine->abduction);
+
+        for (uint32_t i = 0; i < chain->num_steps; i++) {
+            const reasoning_step_t* s = &chain->steps[i];
+            if (s->type == REASONING_STEP_RECALL ||
+                s->type == REASONING_STEP_KNOWLEDGE ||
+                s->type == REASONING_STEP_INFERENCE ||
+                s->type == REASONING_STEP_WORLD_MODEL ||
+                s->type == REASONING_STEP_SYMBOLIC_LOGIC) {
+                abductive_observation_t obs;
+                memset(&obs, 0, sizeof(obs));
+                strncpy(obs.description, s->description,
+                        ABDUCTION_MAX_EXPLANATION_LEN - 1);
+                obs.description[ABDUCTION_MAX_EXPLANATION_LEN - 1] = '\0';
+                obs.confidence = s->confidence;
+                obs.domain = 0;
+                obs.timestamp_us = s->timestamp_us;
+                reasoning_abduction_add_observation(engine->abduction, &obs);
+            }
+        }
+
+        /* Generate hypotheses */
+        abduction_result_t abd_result;
+        memset(&abd_result, 0, sizeof(abd_result));
+        if (reasoning_abduction_generate(engine->abduction, &abd_result) == 0 &&
+            abd_result.num_hypotheses > 0) {
+            const abductive_hypothesis_t* best =
+                reasoning_abduction_select_best(&abd_result);
+            if (best) {
+                /* Add best hypothesis as an ABDUCTIVE reasoning step */
+                reasoning_step_t abd_step;
+                memset(&abd_step, 0, sizeof(abd_step));
+                abd_step.step_id = chain->num_steps;
+                abd_step.type = REASONING_STEP_ABDUCTIVE;
+                abd_step.confidence = best->plausibility;
+                abd_step.relevance = best->explanatory_power;
+                abd_step.timestamp_us = nimcp_time_get_us();
+
+                snprintf(abd_step.description, sizeof(abd_step.description),
+                         "Abductive hypothesis: %.*s "
+                         "(plausibility=%.3f, explanatory_power=%.3f, "
+                         "simplicity=%.3f, coherence=%.3f, "
+                         "free_energy=%.3f, %u/%u obs explained)",
+                         (int)(sizeof(abd_step.description) - 150),
+                         best->explanation,
+                         best->plausibility,
+                         best->explanatory_power,
+                         best->simplicity,
+                         best->coherence,
+                         best->free_energy,
+                         best->observations_explained,
+                         best->total_observations);
+
+                reasoning_chain_add_step(chain, &abd_step);
+
+                /* Modulate inference confidence based on abductive plausibility */
+                float abd_factor = 0.9f + 0.1f * best->plausibility;
+                inference_confidence *= abd_factor;
+                if (inference_confidence > 1.0f) inference_confidence = 1.0f;
+
+                engine->stats.abductive_queries++;
+                float n_abd = (float)engine->stats.abductive_queries;
+                engine->stats.avg_hypotheses_per_query =
+                    engine->stats.avg_hypotheses_per_query *
+                    ((n_abd - 1.0f) / n_abd) +
+                    (float)abd_result.num_hypotheses / n_abd;
+            }
+        }
+
+        /* Check step limit */
+        if (chain->num_steps >= engine->config.max_steps) {
+            goto finalize;
+        }
+    }
+
     /* ── Phase 4.5: JEPA Prediction (Latent-Space Consistency) ── */
     float jepa_confidence = phase_jepa_prediction(engine, chain,
                                                     inference_confidence,
@@ -2697,6 +2977,15 @@ finalize:
     engine->stats.avg_steps_per_query =
         engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
         (float)chain->num_steps / n;
+
+    /* Record metacognitive outcome for learning */
+    if (engine->metacognition && engine->config.enable_metacognition) {
+        reasoning_metacognition_record_outcome(engine->metacognition,
+            REASONING_STRATEGY_SEQUENTIAL,
+            chain->overall_confidence,
+            (float)(chain->end_time_us - chain->start_time_us),
+            chain->num_steps);
+    }
 
     /* Restore original engine config */
     engine->config = saved_config;

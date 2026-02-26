@@ -24,6 +24,8 @@
 #include "cognitive/reasoning/nimcp_reasoning_convergent.h"
 #include "cognitive/reasoning/nimcp_reasoning_chain.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_affective.h"
+#include "cognitive/reasoning/nimcp_reasoning_calibration.h"
 
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -91,6 +93,8 @@ struct reasoning_engine_compat {
     void* jepa_fep_bridge;
     void* symbolic_logic;
     void* thread_pool;
+    void* calibration;     /* reasoning_calibration_t* */
+    void* metacognition;   /* reasoning_metacognition_t* */
     reasoning_engine_stats_t stats;
     bool is_connected;
 };
@@ -117,6 +121,12 @@ static inline nimcp_thread_pool_t* engine_get_pool(reasoning_engine_t* engine) {
 static inline reasoning_engine_stats_t* engine_get_stats(reasoning_engine_t* engine) {
     struct reasoning_engine_compat* e = (struct reasoning_engine_compat*)engine;
     return &e->stats;
+}
+
+/** Quick access to calibration from engine */
+static inline reasoning_calibration_t* engine_get_calibration(reasoning_engine_t* engine) {
+    struct reasoning_engine_compat* e = (struct reasoning_engine_compat*)engine;
+    return (reasoning_calibration_t*)e->calibration;
 }
 
 /** Check if a module pointer is non-NULL in the engine */
@@ -406,6 +416,26 @@ static bool avail_salience(reasoning_engine_t* engine) {
 static bool avail_shadow_emotions(reasoning_engine_t* engine) {
     brain_t b = engine_get_brain(engine);
     return b && b->shadow_emotions != NULL;
+}
+
+static bool avail_grief(reasoning_engine_t* engine) {
+    brain_t b = engine_get_brain(engine);
+    return b && b->grief_system != NULL;
+}
+
+static bool avail_joy(reasoning_engine_t* engine) {
+    brain_t b = engine_get_brain(engine);
+    return b && b->joy_system != NULL;
+}
+
+static bool avail_remorse(reasoning_engine_t* engine) {
+    brain_t b = engine_get_brain(engine);
+    return b && b->remorse_system != NULL;
+}
+
+static bool avail_social_bond(reasoning_engine_t* engine) {
+    brain_t b = engine_get_brain(engine);
+    return b && b->social_bond_system != NULL;
 }
 
 /* Always available (uses aggregation, no module pointer) */
@@ -722,7 +752,10 @@ static void contrib_bias(void* arg) {
         return;
     }
 
-    ctx->confidence_delta = 0.0f;
+    /* Use affective evaluation for meaningful modulation */
+    affective_contribution_t affect = reasoning_affective_evaluate_bias(
+        brain->bias_detection, ctx->query);
+    ctx->confidence_delta = affect.confidence_delta;
     ctx->completed = true;
     ctx->duration_us = nimcp_time_get_us() - start;
 }
@@ -802,7 +835,84 @@ static void contrib_shadow_emotions(void* arg) {
         return;
     }
 
-    ctx->confidence_delta = 0.0f;
+    /* Use affective evaluation for meaningful modulation */
+    affective_contribution_t affect = reasoning_affective_evaluate_shadow(
+        brain->shadow_emotions, ctx->query);
+    ctx->confidence_delta = affect.confidence_delta;
+    ctx->completed = true;
+    ctx->duration_us = nimcp_time_get_us() - start;
+}
+
+/* ── Tier 2: Affective Modulators (NEW — grief, joy, remorse, social) ── */
+
+static void contrib_grief(void* arg) {
+    convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
+    uint64_t start = nimcp_time_get_us();
+
+    brain_t brain = engine_get_brain(ctx->engine);
+    if (!brain || !brain->grief_system) {
+        ctx->skipped = true;
+        ctx->completed = true;
+        return;
+    }
+
+    affective_contribution_t affect = reasoning_affective_evaluate_grief(
+        brain->grief_system, ctx->query);
+    ctx->confidence_delta = affect.confidence_delta;
+    ctx->completed = true;
+    ctx->duration_us = nimcp_time_get_us() - start;
+}
+
+static void contrib_joy(void* arg) {
+    convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
+    uint64_t start = nimcp_time_get_us();
+
+    brain_t brain = engine_get_brain(ctx->engine);
+    if (!brain || !brain->joy_system) {
+        ctx->skipped = true;
+        ctx->completed = true;
+        return;
+    }
+
+    affective_contribution_t affect = reasoning_affective_evaluate_joy(
+        brain->joy_system, ctx->query);
+    ctx->confidence_delta = affect.confidence_delta;
+    ctx->completed = true;
+    ctx->duration_us = nimcp_time_get_us() - start;
+}
+
+static void contrib_remorse(void* arg) {
+    convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
+    uint64_t start = nimcp_time_get_us();
+
+    brain_t brain = engine_get_brain(ctx->engine);
+    if (!brain || !brain->remorse_system) {
+        ctx->skipped = true;
+        ctx->completed = true;
+        return;
+    }
+
+    affective_contribution_t affect = reasoning_affective_evaluate_remorse(
+        brain->remorse_system, ctx->query);
+    ctx->confidence_delta = affect.confidence_delta;
+    ctx->completed = true;
+    ctx->duration_us = nimcp_time_get_us() - start;
+}
+
+static void contrib_social_bond(void* arg) {
+    convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
+    uint64_t start = nimcp_time_get_us();
+
+    brain_t brain = engine_get_brain(ctx->engine);
+    if (!brain || !brain->social_bond_system) {
+        ctx->skipped = true;
+        ctx->completed = true;
+        return;
+    }
+
+    affective_contribution_t affect = reasoning_affective_evaluate_social(
+        brain->social_bond_system, ctx->query);
+    ctx->confidence_delta = affect.confidence_delta;
     ctx->completed = true;
     ctx->duration_us = nimcp_time_get_us() - start;
 }
@@ -847,6 +957,12 @@ static const reasoning_contributor_entry_t s_contributor_registry[] = {
     { "cingulate",      REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_cingulate,       avail_cingulate,       1 },
     { "salience",       REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_salience,        avail_salience,        1 },
     { "shadow_emotions", REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_shadow_emotions, avail_shadow_emotions, 1 },
+
+    /* ── Tier 2: Affective Modulators (Wave 1) — NEW ── */
+    { "grief",          REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_grief,           avail_grief,           1 },
+    { "joy",            REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_joy,             avail_joy,             1 },
+    { "remorse",        REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_remorse,         avail_remorse,         1 },
+    { "social_bond",    REASONING_ROLE_CONFIDENCE_MODULATOR, contrib_social_bond,     avail_social_bond,     1 },
 };
 
 static const uint32_t s_registry_count =
@@ -1012,12 +1128,28 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     /* ── Phase 5: Merge Wave 1 results into accumulator ── */
     uint32_t evidence_submitted = 0;
     uint32_t modulations_submitted = 0;
+    reasoning_calibration_t* cal = engine_get_calibration(engine);
 
     for (uint32_t i = 0; i < num_active; i++) {
         convergent_contribution_t* contrib = &session.contributions[i];
         if (contrib->skipped || !contrib->completed) continue;
 
         if (contrib->role == REASONING_ROLE_EVIDENCE_PRODUCER) {
+            /* Apply calibration adjustment if available */
+            if (cal && config->enable_calibration) {
+                float scale = 1.0f;
+                float bias = 0.0f;
+                reasoning_calibration_get_adjustment(
+                    cal, contrib->module_name, &scale, &bias);
+                contrib->result_confidence =
+                    contrib->result_confidence * scale + bias;
+                /* Clamp to [0, 1] */
+                if (contrib->result_confidence > 1.0f)
+                    contrib->result_confidence = 1.0f;
+                if (contrib->result_confidence < 0.0f)
+                    contrib->result_confidence = 0.0f;
+            }
+
             reasoning_accumulator_submit_evidence(
                 &session.accumulator, chain, contrib);
             reasoning_chain_cleanup(&contrib->local_chain);
@@ -1072,6 +1204,14 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
         stats->avg_convergence_time_us =
             stats->avg_convergence_time_us * ((n - 1.0f) / n) +
             duration / n;
+    }
+
+    /* Update calibration reliability stat */
+    if (cal && config->enable_calibration) {
+        calibration_stats_t cal_stats;
+        if (reasoning_calibration_get_stats(cal, &cal_stats) == 0) {
+            stats->avg_calibration_reliability = cal_stats.avg_reliability;
+        }
     }
 
     /* ── Cleanup ── */

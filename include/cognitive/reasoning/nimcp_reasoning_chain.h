@@ -107,7 +107,22 @@ typedef enum {
     REASONING_STEP_SELF_KNOWLEDGE,       /**< Internal KG self-knowledge */
     REASONING_STEP_NEURAL_LOGIC,         /**< Neural logic gate inference */
     REASONING_STEP_MESH_CONSENSUS,       /**< Distributed mesh consensus */
-    REASONING_STEP_MODULATION            /**< Confidence modulation step */
+    REASONING_STEP_MODULATION,           /**< Confidence modulation step */
+
+    /* Metacognitive controller step type (added v2.6.4) */
+    REASONING_STEP_METACOGNITIVE,        /**< Metacognitive strategy assessment */
+
+    /* Abductive reasoning step type (added v2.6.4) */
+    REASONING_STEP_ABDUCTIVE,            /**< Abductive hypothesis (inference to best explanation) */
+
+    /* Affective modulation step type (added v2.6.4) */
+    REASONING_STEP_AFFECTIVE,            /**< Affective emotion-based modulation */
+
+    /* Causal reasoning step type (added v2.6.4) */
+    REASONING_STEP_CAUSAL,               /**< Causal DAG inference (do-calculus) */
+
+    /* Visuospatial reasoning step type (added v2.6.4) */
+    REASONING_STEP_VISUOSPATIAL          /**< Visuospatial/parietal spatial reasoning */
 } reasoning_step_type_t;
 
 /*=============================================================================
@@ -184,6 +199,25 @@ typedef struct {
     float convergence_ema_alpha;          /**< EMA smoothing factor (default 0.3) */
     float convergence_threshold;          /**< EMA delta below this = converged (default 0.005) */
     uint32_t convergence_timeout_ms;      /**< Max time for convergence (default 500ms) */
+
+    /* Confidence calibration (added v2.6.4) */
+    bool enable_calibration;              /**< Enable confidence calibration learning (default false) */
+    float calibration_learning_rate;      /**< Calibration EMA learning rate (default 0.05) */
+
+    /* Metacognitive controller (added v2.6.4) */
+    bool enable_metacognition;            /**< Use metacognitive strategy selection (default true) */
+
+    /* Abductive reasoning (added v2.6.4) */
+    bool enable_abductive_reasoning;      /**< Use abductive hypothesis generation (default true) */
+
+    /* Affective modulation (added v2.6.4) */
+    bool enable_affective_modulation;     /**< Use affective emotion-based modulation (default true) */
+
+    /* Causal reasoning (added v2.6.4) */
+    bool enable_causal_reasoning;         /**< Use causal DAG inference (default false, opt-in) */
+
+    /* Visuospatial reasoning (added v2.6.4) */
+    bool enable_visuospatial_reasoning;   /**< Use visuospatial reasoning (default false, opt-in) */
 } reasoning_engine_config_t;
 
 /**
@@ -212,6 +246,28 @@ typedef struct {
     uint32_t convergent_queries;          /**< Total convergent reasoning queries */
     float avg_convergent_contributors;    /**< Average active contributors per query */
     float avg_convergence_time_us;        /**< Average convergence time in microseconds */
+
+    /* Confidence calibration stats (added v2.6.4) */
+    float avg_calibration_reliability;    /**< Average contributor reliability from calibration */
+
+    /* Metacognitive controller stats (added v2.6.4) */
+    uint32_t metacognitive_assessments;   /**< Total metacognitive assessments */
+    float avg_assessment_accuracy;        /**< Average metacognitive accuracy [0-1] */
+
+    /* Abductive reasoning stats (added v2.6.4) */
+    uint32_t abductive_queries;           /**< Total abductive reasoning queries */
+    float avg_hypotheses_per_query;       /**< Average hypotheses generated per query */
+
+    /* Affective modulation stats (added v2.6.4) */
+    uint32_t affective_modulations;       /**< Total affective modulations applied */
+    float avg_affective_delta;            /**< Average affective confidence delta */
+
+    /* Causal reasoning stats (added v2.6.4) */
+    uint32_t causal_queries;              /**< Total causal reasoning queries */
+    float avg_causal_strength;            /**< Average causal strength from queries */
+
+    /* Visuospatial reasoning stats (added v2.6.4) */
+    uint32_t visuospatial_queries;        /**< Total visuospatial reasoning queries */
 } reasoning_engine_stats_t;
 
 /**

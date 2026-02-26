@@ -605,6 +605,13 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_recursive_cognition_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_distributed_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_convergent.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_metacognition.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_calibration.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_abduction.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_kb_persistence.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_affective.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_causal.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_visuospatial.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bio_async_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_cognitive_bio_async.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_core_bio_async.dir
@@ -1719,6 +1726,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_test_reasoning_sleep_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_snn_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_hypergraph_init.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_kb_persistence.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/unit_cognitive_reasoning_plasticity_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/reasoning/CMakeFiles/edit_cache.dir
@@ -1752,6 +1760,12 @@
 /home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/test_rule_learning_accuracy.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/test_proof_finding_speed.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_snn_plasticity.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_calibration.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_metacognition.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_affective.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_abduction.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_causal.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/regression_cognitive_reasoning_visuospatial.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/reasoning/CMakeFiles/rebuild_cache.dir
@@ -1781,6 +1795,10 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_hypo_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_mesh_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_convergent.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_affective.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_abduction.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_calibration.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_metacognition.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_global_workspace_immune.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_immune.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_fep_bridge.dir
@@ -1841,6 +1859,8 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_remorse_regret.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_rubric.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_training_integration.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_causal.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_visuospatial.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
@@ -4520,6 +4540,7 @@
 /home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/regression_portia_reasoning_bridge_test.dir
 /home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/regression_hypo_reasoning_bridge_test.dir
 /home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/regression_mesh_reasoning_bridge_test.dir
+/home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/regression_kb_persistence_test.dir
 /home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/reasoning_generation/CMakeFiles/rebuild_cache.dir
@@ -6112,6 +6133,13 @@
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_hypo_bridge.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_mesh_bridge.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_convergent.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_metacognition.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_calibration.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_abduction.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_kb_persistence.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_affective.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_causal.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_visuospatial.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/rebuild_cache.dir

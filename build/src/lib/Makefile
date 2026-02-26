@@ -14393,6 +14393,102 @@ __/cognitive/reasoning/nimcp_knowledge_base_interface.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_knowledge_base_interface.c.s
 .PHONY : __/cognitive/reasoning/nimcp_knowledge_base_interface.c.s
 
+__/cognitive/reasoning/nimcp_reasoning_abduction.o: __/cognitive/reasoning/nimcp_reasoning_abduction.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_abduction.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_abduction.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_abduction.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_abduction.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_abduction.i: __/cognitive/reasoning/nimcp_reasoning_abduction.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_abduction.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_abduction.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_abduction.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_abduction.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_abduction.s: __/cognitive/reasoning/nimcp_reasoning_abduction.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_abduction.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_abduction.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_abduction.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_abduction.c.s
+
+__/cognitive/reasoning/nimcp_reasoning_affective.o: __/cognitive/reasoning/nimcp_reasoning_affective.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_affective.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_affective.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_affective.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_affective.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_affective.i: __/cognitive/reasoning/nimcp_reasoning_affective.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_affective.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_affective.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_affective.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_affective.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_affective.s: __/cognitive/reasoning/nimcp_reasoning_affective.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_affective.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_affective.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_affective.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_affective.c.s
+
+__/cognitive/reasoning/nimcp_reasoning_calibration.o: __/cognitive/reasoning/nimcp_reasoning_calibration.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_calibration.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_calibration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_calibration.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_calibration.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_calibration.i: __/cognitive/reasoning/nimcp_reasoning_calibration.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_calibration.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_calibration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_calibration.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_calibration.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_calibration.s: __/cognitive/reasoning/nimcp_reasoning_calibration.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_calibration.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_calibration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_calibration.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_calibration.c.s
+
+__/cognitive/reasoning/nimcp_reasoning_causal.o: __/cognitive/reasoning/nimcp_reasoning_causal.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_causal.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_causal.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_causal.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_causal.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_causal.i: __/cognitive/reasoning/nimcp_reasoning_causal.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_causal.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_causal.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_causal.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_causal.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_causal.s: __/cognitive/reasoning/nimcp_reasoning_causal.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_causal.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_causal.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_causal.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_causal.c.s
+
 __/cognitive/reasoning/nimcp_reasoning_chain.o: __/cognitive/reasoning/nimcp_reasoning_chain.c.o
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_chain.o
 
@@ -14537,6 +14633,30 @@ __/cognitive/reasoning/nimcp_reasoning_integration.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_integration.c.s
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_integration.c.s
 
+__/cognitive/reasoning/nimcp_reasoning_kb_persistence.o: __/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_kb_persistence.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_kb_persistence.i: __/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_kb_persistence.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_kb_persistence.s: __/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_kb_persistence.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_kb_persistence.c.s
+
 __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.o: __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.c.o
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.o
 
@@ -14560,6 +14680,30 @@ __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.s: __/cognitive/reasoning/nim
 __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_mesh_bridge.c.s
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.c.s
+
+__/cognitive/reasoning/nimcp_reasoning_metacognition.o: __/cognitive/reasoning/nimcp_reasoning_metacognition.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_metacognition.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_metacognition.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_metacognition.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_metacognition.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_metacognition.i: __/cognitive/reasoning/nimcp_reasoning_metacognition.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_metacognition.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_metacognition.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_metacognition.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_metacognition.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_metacognition.s: __/cognitive/reasoning/nimcp_reasoning_metacognition.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_metacognition.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_metacognition.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_metacognition.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_metacognition.c.s
 
 __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.o: __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c.o
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.o
@@ -14704,6 +14848,30 @@ __/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.s: __/cognitive/reasoning
 __/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.c.s
 .PHONY : __/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.c.s
+
+__/cognitive/reasoning/nimcp_reasoning_visuospatial.o: __/cognitive/reasoning/nimcp_reasoning_visuospatial.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_visuospatial.o
+
+# target to build an object file
+__/cognitive/reasoning/nimcp_reasoning_visuospatial.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_visuospatial.c.o
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_visuospatial.c.o
+
+__/cognitive/reasoning/nimcp_reasoning_visuospatial.i: __/cognitive/reasoning/nimcp_reasoning_visuospatial.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_visuospatial.i
+
+# target to preprocess a source file
+__/cognitive/reasoning/nimcp_reasoning_visuospatial.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_visuospatial.c.i
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_visuospatial.c.i
+
+__/cognitive/reasoning/nimcp_reasoning_visuospatial.s: __/cognitive/reasoning/nimcp_reasoning_visuospatial.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_visuospatial.s
+
+# target to generate assembly for a file
+__/cognitive/reasoning/nimcp_reasoning_visuospatial.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_reasoning_visuospatial.c.s
+.PHONY : __/cognitive/reasoning/nimcp_reasoning_visuospatial.c.s
 
 __/cognitive/reasoning/nimcp_symbolic_logic_attachment.o: __/cognitive/reasoning/nimcp_symbolic_logic_attachment.c.o
 .PHONY : __/cognitive/reasoning/nimcp_symbolic_logic_attachment.o
@@ -52615,6 +52783,18 @@ help:
 	@echo "... __/cognitive/reasoning/nimcp_knowledge_base_interface.o"
 	@echo "... __/cognitive/reasoning/nimcp_knowledge_base_interface.i"
 	@echo "... __/cognitive/reasoning/nimcp_knowledge_base_interface.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_abduction.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_abduction.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_abduction.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_affective.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_affective.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_affective.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_calibration.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_calibration.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_calibration.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_causal.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_causal.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_causal.s"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_chain.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_chain.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_chain.s"
@@ -52633,9 +52813,15 @@ help:
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_integration.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_integration.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_integration.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_kb_persistence.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_kb_persistence.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_kb_persistence.s"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_mesh_bridge.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_metacognition.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_metacognition.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_metacognition.s"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_plasticity_bridge.s"
@@ -52654,6 +52840,9 @@ help:
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.o"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.i"
 	@echo "... __/cognitive/reasoning/nimcp_reasoning_thalamic_bridge.s"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_visuospatial.o"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_visuospatial.i"
+	@echo "... __/cognitive/reasoning/nimcp_reasoning_visuospatial.s"
 	@echo "... __/cognitive/reasoning/nimcp_symbolic_logic_attachment.o"
 	@echo "... __/cognitive/reasoning/nimcp_symbolic_logic_attachment.i"
 	@echo "... __/cognitive/reasoning/nimcp_symbolic_logic_attachment.s"

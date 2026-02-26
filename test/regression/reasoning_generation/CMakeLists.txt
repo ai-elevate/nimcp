@@ -187,3 +187,17 @@ gtest_discover_tests(regression_mesh_reasoning_bridge_test
         LABELS "regression;reasoning;mesh-bridge"
         TIMEOUT 300
 )
+
+# KB Persistence Regression Tests
+add_executable(regression_kb_persistence_test
+    test_reasoning_kb_persistence_regression.cpp
+)
+target_link_libraries(regression_kb_persistence_test PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+target_include_directories(regression_kb_persistence_test PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/test)
+target_compile_features(regression_kb_persistence_test PRIVATE cxx_std_17)
+gtest_discover_tests(regression_kb_persistence_test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;reasoning;kb-persistence"
+        TIMEOUT 300
+)

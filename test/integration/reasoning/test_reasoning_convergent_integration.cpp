@@ -200,8 +200,12 @@ TEST_F(ConvergentIntegrationTest, TrainingAPIIsConvergent) {
     int rc = brain_ti_init_reasoning(brain);
     EXPECT_EQ(rc, 0);
 
-    /* Run reasoning to populate stats */
-    brain_ti_reason(brain, "What is entropy?");
+    /* Use a complex query so metacognition routes to convergent mode
+     * (needs counterfactual "would"+"had", causal, and logical keywords
+     * to score above the COMPLEX threshold) */
+    brain_ti_reason(brain, "What if entropy had been reversible, would "
+                    "equilibrium still emerge, and therefore would the "
+                    "second law be invalid because of symmetry?");
 
     /* Check if convergent was used */
     bool is_convergent = brain_ti_is_convergent_reasoning(brain);

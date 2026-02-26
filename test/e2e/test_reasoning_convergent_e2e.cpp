@@ -48,12 +48,21 @@ TEST_F(ConvergentE2ETest, FullBrainConvergent) {
     int rc = reasoning_engine_connect_brain(engine, brain);
     ASSERT_EQ(rc, 0);
 
-    /* Run multiple queries to test stability */
+    /* Complex queries with counterfactual ("would"+"had"), causal, and logical
+     * keywords to score above COMPLEX threshold for convergent routing */
     const char* queries[] = {
-        "What is consciousness?",
-        "How does memory work?",
-        "Why do we dream?",
-        "Is artificial intelligence possible?",
+        "What if consciousness had been purely computational, would subjective "
+        "experience still emerge, and therefore would free will be invalid "
+        "because of determinism?",
+        "What if memory consolidation had failed during sleep, would learning "
+        "still occur, and therefore would knowledge decay because of the "
+        "absence of replay?",
+        "What if dreaming had served no purpose, would the brain still "
+        "generate hallucinations, and therefore would cognition degrade "
+        "because of unfiltered noise?",
+        "What if artificial intelligence had achieved embodiment, would it "
+        "then reason generally, and therefore would understanding emerge "
+        "because of grounding?",
     };
 
     for (int i = 0; i < 4; i++) {

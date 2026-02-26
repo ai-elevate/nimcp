@@ -26,6 +26,8 @@
 #include "cognitive/nimcp_executive.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include "cognitive/reasoning/nimcp_reasoning_kb_persistence.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -805,13 +807,26 @@ bool brain_export_knowledge_base(
         return false;
     }
 
-    // TODO: Implement knowledge base export
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_brain_integration_heartbeat("symbolic_log_brain_export_knowled", 0.0f);
 
+    /* Delegate to KB persistence module if quantum reasoner is available */
+    if (brain->quantum_reasoner) {
+        kb_export_result_t exp_result;
+        memset(&exp_result, 0, sizeof(exp_result));
+        int rc = reasoning_kb_save_to_file(brain->quantum_reasoner, filepath,
+                                            NULL, &exp_result);
+        if (rc == 0) {
+            NIMCP_LOGGING_INFO("Knowledge base exported: %u facts, %u rules to %s",
+                               exp_result.num_facts_exported,
+                               exp_result.num_rules_exported, filepath);
+            return true;
+        }
+        set_error("KB persistence save failed for %s", filepath);
+        return false;
+    }
 
-    set_error("Knowledge base export not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_export_knowledge_base: operation failed");
+    set_error("No quantum reasoner attached to brain — cannot export");
     return false;
 }
 
@@ -837,13 +852,26 @@ bool brain_import_knowledge_base(
         return false;
     }
 
-    // TODO: Implement knowledge base import
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_brain_integration_heartbeat("symbolic_log_brain_import_knowled", 0.0f);
 
+    /* Delegate to KB persistence module if quantum reasoner is available */
+    if (brain->quantum_reasoner) {
+        kb_import_result_t imp_result;
+        memset(&imp_result, 0, sizeof(imp_result));
+        int rc = reasoning_kb_load_from_file(brain->quantum_reasoner, filepath,
+                                              &imp_result);
+        if (rc == 0) {
+            NIMCP_LOGGING_INFO("Knowledge base imported: %u facts, %u rules from %s",
+                               imp_result.num_facts_imported,
+                               imp_result.num_rules_imported, filepath);
+            return true;
+        }
+        set_error("KB persistence load failed for %s", filepath);
+        return false;
+    }
 
-    set_error("Knowledge base import not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_import_knowledge_base: operation failed");
+    set_error("No quantum reasoner attached to brain — cannot import");
     return false;
 }
 

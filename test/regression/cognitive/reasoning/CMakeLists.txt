@@ -58,3 +58,153 @@ gtest_discover_tests(regression_cognitive_reasoning_snn_plasticity
         LABELS "regression;cognitive;reasoning;snn;plasticity"
         TIMEOUT 180
 )
+
+# Reasoning Calibration Regression Tests
+add_executable(regression_cognitive_reasoning_calibration
+    test_reasoning_calibration_regression.cpp
+)
+target_link_libraries(regression_cognitive_reasoning_calibration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(regression_cognitive_reasoning_calibration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_reasoning_calibration PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_reasoning_calibration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;reasoning;calibration"
+        TIMEOUT 180
+)
+
+# Reasoning Metacognition Regression Tests
+add_executable(regression_cognitive_reasoning_metacognition
+    test_reasoning_metacognition_regression.cpp
+)
+target_link_libraries(regression_cognitive_reasoning_metacognition
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(regression_cognitive_reasoning_metacognition
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_reasoning_metacognition PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_reasoning_metacognition
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;reasoning;metacognition"
+        TIMEOUT 180
+)
+
+# Reasoning Affective Modulation Regression Tests
+add_executable(regression_cognitive_reasoning_affective
+    test_reasoning_affective_regression.cpp
+)
+target_link_libraries(regression_cognitive_reasoning_affective
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(regression_cognitive_reasoning_affective
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_reasoning_affective PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_reasoning_affective
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;reasoning;affective"
+        TIMEOUT 180
+)
+
+# Reasoning Abduction Regression Tests
+add_executable(regression_cognitive_reasoning_abduction
+    test_reasoning_abduction_regression.cpp
+)
+target_link_libraries(regression_cognitive_reasoning_abduction
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(regression_cognitive_reasoning_abduction
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_reasoning_abduction PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_reasoning_abduction
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;reasoning;abduction"
+        TIMEOUT 180
+)
+
+# Reasoning Causal Regression Tests
+add_executable(regression_cognitive_reasoning_causal
+    test_reasoning_causal_regression.cpp
+)
+target_link_libraries(regression_cognitive_reasoning_causal
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(regression_cognitive_reasoning_causal
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_reasoning_causal PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_reasoning_causal
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;reasoning;causal"
+        TIMEOUT 180
+)
+
+# Reasoning Visuospatial Regression Tests
+add_executable(regression_cognitive_reasoning_visuospatial
+    test_reasoning_visuospatial_regression.cpp
+)
+target_link_libraries(regression_cognitive_reasoning_visuospatial
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(regression_cognitive_reasoning_visuospatial
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(regression_cognitive_reasoning_visuospatial PRIVATE cxx_std_17)
+gtest_discover_tests(regression_cognitive_reasoning_visuospatial
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;reasoning;visuospatial"
+        TIMEOUT 180
+)
