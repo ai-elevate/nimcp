@@ -1662,6 +1662,8 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     }
 
     // Fallback to direct realloc if UMM not available or tracking disabled
+    // NOTE: Untrack BEFORE realloc because realloc may move/free the old pointer.
+    // If realloc fails, the old pointer is still valid — we must re-track it.
     untrack_allocation(ptr);
     void* new_ptr = realloc(ptr, new_size);
     if (new_ptr) {
@@ -1670,11 +1672,14 @@ void* nimcp_realloc(void* ptr, size_t new_size)
             printf("[MEMORY] Reallocated via realloc: %zu bytes at %p (old: %p)\n", new_size, new_ptr, ptr);
         }
     } else {
+        // realloc failed: old pointer is still valid but was untracked.
+        // Re-track it so it doesn't appear as a leak or cause double-free warnings.
+        track_allocation(ptr, old_size, 0, __FILE__, __LINE__, __func__);
         nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
         nimcp_mutex_unlock(&g_memory_state.lock);
         if (g_memory_state.debug_output) {
-            fprintf(stderr, "[MEMORY] Reallocation failed: %zu bytes\n", new_size);
+            fprintf(stderr, "[MEMORY] Reallocation failed: %zu bytes (old ptr re-tracked)\n", new_size);
         }
     }
 

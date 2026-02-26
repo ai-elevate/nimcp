@@ -95,9 +95,9 @@ typedef struct {
     uint32_t handler_count;
     nimcp_platform_mutex_t handler_mutex;
 
-    // Statistics (handler_invocations/errors use __atomic builtins)
-    uint64_t messages_received;
-    uint64_t messages_sent;
+    // Statistics (all counters use _Atomic for thread-safe increments)
+    _Atomic uint64_t messages_received;
+    _Atomic uint64_t messages_sent;
     _Atomic uint64_t handler_invocations;
     _Atomic uint64_t handler_errors;
 } bio_module_entry_t;

@@ -533,8 +533,9 @@ static void update_statistics(adaptive_neuron_state_t* state, float activation)
 static uint32_t get_label_index(adaptive_network_t network, const char* label)
 {
     // Guard clause: Validate inputs
+    // BUG-12 fix: Return UINT32_MAX on failure instead of 0 (valid index)
     if (!network || !label)
-        return 0;
+        return UINT32_MAX;
 
     // O(1) hash table lookup
     uint32_t index = hash_table_lookup_label(network->label_table, label);
@@ -546,15 +547,16 @@ static uint32_t get_label_index(adaptive_network_t network, const char* label)
     // Add new label
     char** new_map = nimcp_realloc(network->label_map, (network->num_labels + 1) * sizeof(char*));
     // Guard clause: Check allocation
+    // BUG-12 fix: Return UINT32_MAX on allocation failure
     if (!new_map)
-        return 0;
+        return UINT32_MAX;
 
     network->label_map = new_map;
     // Use nimcp_malloc instead of strdup to match nimcp_free in free_label_map
     size_t label_len = strlen(label);
     network->label_map[network->num_labels] = nimcp_malloc(label_len + 1);
     if (!network->label_map[network->num_labels])
-        return 0;
+        return UINT32_MAX;
     strncpy(network->label_map[network->num_labels], label, label_len + 1);
     network->label_map[network->num_labels][label_len] = '\0';
 
@@ -807,7 +809,9 @@ uint32_t adaptive_encode_spikes(int32_t spike_count, spike_encoding_t encoding,
     if (encoding >= 4)
         return 0;
 
-    // Create temporary strategy table (should be passed in production code)
+    // BUG-13: Known performance issue — strategy table is rebuilt per encode call.
+    // TODO: Cache the strategy table (e.g., static or pass from caller) to avoid
+    // redundant initialization on every invocation.
     spike_strategy_table_t table;
     init_spike_strategy_table(&table);
 
@@ -1403,8 +1407,13 @@ static bool process_neuron_output(adaptive_neuron_state_t* state, float* output_
  *
  * @return Number of active neurons
  */
-static uint32_t process_network_outputs(adaptive_network_t network, float* output,
-                                        uint32_t output_size)
+/**
+ * BUG-11 fix: Added `readonly` parameter so the forward_readonly path can call
+ * this without casting away const. When readonly=true, statistics updates and
+ * threshold adaptation are skipped (they mutate neuron_states).
+ */
+static uint32_t process_network_outputs_impl(adaptive_network_t network, float* output,
+                                             uint32_t output_size, bool readonly)
 {
     // Guard clause: Validate inputs
     if (!network || !output)
@@ -1420,13 +1429,15 @@ static uint32_t process_network_outputs(adaptive_network_t network, float* outpu
     for (uint32_t i = 0; i < num_to_process; i++) {
         adaptive_neuron_state_t* state = &network->neuron_states[i];
 
-        // Update statistics (O(1))
-        update_statistics(state, output[i]);
+        if (!readonly) {
+            // Update statistics (O(1))
+            update_statistics(state, output[i]);
 
-        // Adapt threshold if enabled (O(1))
-        if (params->enable_adaptation) {
-            adapt_neuron_threshold(state, network->running_sparsity, params->sparsity_target,
-                                   params->min_threshold, params->max_threshold);
+            // Adapt threshold if enabled (O(1))
+            if (params->enable_adaptation) {
+                adapt_neuron_threshold(state, network->running_sparsity, params->sparsity_target,
+                                       params->min_threshold, params->max_threshold);
+            }
         }
 
         // Process neuron output (O(1))
@@ -1438,6 +1449,13 @@ static uint32_t process_network_outputs(adaptive_network_t network, float* outpu
     }
 
     return active_count;
+}
+
+/* Backward-compatible wrapper for non-readonly callers */
+static uint32_t process_network_outputs(adaptive_network_t network, float* output,
+                                        uint32_t output_size)
+{
+    return process_network_outputs_impl(network, output, output_size, false);
 }
 
 /**
@@ -1602,7 +1620,8 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
                                                 input, input_size,
                                                 output, output_size);
         if (result == 0) {
-            uint32_t active_count = process_network_outputs((adaptive_network_t)network, output, output_size);
+            /* BUG-11 fix: Use readonly=true to avoid mutating state through const */
+            uint32_t active_count = process_network_outputs_impl((adaptive_network_t)network, output, output_size, true);
             return active_count;
         }
         // NeuronCore failed — fall through to GPU or CPU
@@ -1616,7 +1635,8 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
         }
         nimcp_gpu_forward_pass(network->gpu_weight_cache,
                                input, input_size, output, output_size);
-        uint32_t active_count = process_network_outputs((adaptive_network_t)network, output, output_size);
+        /* BUG-11 fix: Use readonly=true to avoid mutating state through const */
+        uint32_t active_count = process_network_outputs_impl((adaptive_network_t)network, output, output_size, true);
         return active_count;
     }
 
@@ -1642,8 +1662,8 @@ uint32_t adaptive_network_forward_readonly(const adaptive_network_t network, con
     free_hot_buffer(spike_input);  // Phase MP: Return to pool
 
     // Step 4: Process outputs with adaptive thresholding
-    // Cast away const - process_network_outputs only reads network config
-    uint32_t active_count = process_network_outputs((adaptive_network_t)network, output, output_size);
+    // BUG-11 fix: Use readonly=true instead of casting away const
+    uint32_t active_count = process_network_outputs_impl((adaptive_network_t)network, output, output_size, true);
 
     // Phase 3: SKIP statistics updates for read-only inference
     // REMOVED: update_running_sparsity(network, active_count, output_size);
@@ -1703,9 +1723,9 @@ uint32_t adaptive_network_prune(adaptive_network_t network, float threshold)
     if (!network)
         return 0;
 
-    // Prune weak connections in base network
-    // This would require exposing weight pruning in neural_network API
-    // For now, return 0 and mark for future implementation
+    /* TODO: Implement network pruning. This requires exposing weight pruning
+     * in the neural_network API. Currently a no-op stub. */
+    (void)threshold;
     network->num_pruned_synapses = 0;
 
     return network->num_pruned_synapses;
@@ -1780,6 +1800,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
                 for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
                     float error_j = example->target[j] - output[j];
+                    /* NOTE: Assumes sigmoid activation. For non-sigmoid activations
+                     * (e.g., ReLU, tanh), the derivative computation needs update. */
                     float sig_deriv = output[j] * (1.0f - output[j]);
                     if (sig_deriv < 0.01f) sig_deriv = 0.01f;
 
@@ -1884,8 +1906,12 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    // Compute layer offsets
-                    uint32_t layer_offsets[num_layers];
+                    // BUG-10 fix: Replace VLA with heap allocation to avoid stack overflow
+                    // for networks with many layers
+                    uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
+                    if (!layer_offsets) {
+                        break;
+                    }
                     layer_offsets[0] = 0;
                     for (uint32_t l = 1; l < num_layers; l++)
                         layer_offsets[l] = layer_offsets[l-1] + layer_sizes[l-1];
@@ -1904,6 +1930,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                     if (!delta_cur || !delta_prev) {
                         if (delta_cur) free_hot_buffer(delta_cur);
                         if (delta_prev) free_hot_buffer(delta_prev);
+                        nimcp_free(layer_offsets);
                         break;
                     }
 
@@ -2030,6 +2057,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
 
                     free_hot_buffer(delta_cur);
                     free_hot_buffer(delta_prev);
+                    nimcp_free(layer_offsets);  /* BUG-10 fix: free heap-allocated layer_offsets */
                 }
                 // Store gradient L2 norm on the network
                 network->last_grad_norm = sqrtf(grad_norm_sq);

@@ -235,6 +235,11 @@ int nlp_node_stop(nlp_node_t node) {
     // Disconnect all peers
     nimcp_mutex_lock(&node->peer_mutex);
     for (uint32_t i = 0; i < node->peer_count; i++) {
+        /* BUG-18 related: Zero session key material on stop */
+        volatile uint8_t* vp = (volatile uint8_t*)node->peers[i].session_key;
+        for (size_t k = 0; k < sizeof(node->peers[i].session_key); k++) {
+            vp[k] = 0;
+        }
         node->peers[i].session_state = NLP_SESSION_DISCONNECTED;
     }
     node->peer_count = 0;
@@ -300,54 +305,105 @@ uint32_t nlp_connect_peer(nlp_node_t node, const char* address, uint16_t port) {
 
     node->peer_count++;
 
+    /* BUG-4 fix: Copy needed peer fields to local variables BEFORE unlocking
+     * peer_mutex. After unlock, the peers array can be modified by other threads
+     * (disconnect, new connect causing realloc, etc.), making `peer` a dangling
+     * pointer. */
+    uint32_t local_peer_id = peer->peer_id;
+    nlp_session_state_t local_session_state = peer->session_state;
+
     nimcp_mutex_unlock(&node->peer_mutex);
 
     // Initiate handshake based on mode
     if (node->current_mode == NLP_MODE_STANDARD) {
         // Start 3-way handshake - transition state first
-        nlp_session_start_handshake(node, peer);
+        // CRIT-1 fix: Re-acquire peer_mutex and re-find peer by ID before
+        // calling nlp_session_start_handshake. The `peer` pointer captured
+        // above may be stale if another thread called nlp_disconnect_peer
+        // (which does memmove on the peers array) between the unlock and here.
+        nimcp_mutex_lock(&node->peer_mutex);
+        nlp_peer_t* hs_peer = NULL;
+        for (uint32_t i = 0; i < node->peer_count; i++) {
+            if (node->peers[i].peer_id == local_peer_id) {
+                hs_peer = &node->peers[i];
+                break;
+            }
+        }
+        if (hs_peer) {
+            nlp_session_start_handshake(node, hs_peer);
+        }
+        nimcp_mutex_unlock(&node->peer_mutex);
+
+        if (!hs_peer) {
+            // Peer was removed before handshake could start
+            NIMCP_LOGGING_WARN(NLP_MODULE_NAME,
+                "Peer 0x%08X removed before handshake", local_peer_id);
+            return local_peer_id;
+        }
 
         // Actually send the handshake request message over the network
-        // This is necessary because nlp_session_start_handshake only manages state,
-        // it doesn't send the actual network message
-        int send_rc = nlp_send(node, peer->peer_id, NLP_MSG_HANDSHAKE_REQ,
+        int send_rc = nlp_send(node, local_peer_id, NLP_MSG_HANDSHAKE_REQ,
                                NULL, 0, NLP_PRIORITY_HIGH);
         if (send_rc < 0) {
             NIMCP_LOGGING_WARN(NLP_MODULE_NAME,
                 "Failed to send handshake request to peer 0x%08X: %d",
-                peer->peer_id, send_rc);
+                local_peer_id, send_rc);
             // Don't fail peer creation - peer will retry or timeout
         } else {
             NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
-                "Sent handshake request to peer 0x%08X", peer->peer_id);
+                "Sent handshake request to peer 0x%08X", local_peer_id);
         }
     } else {
         // Tactical/Stealth: use PSK, mark as established immediately
-        peer->session_state = NLP_SESSION_ESTABLISHED;
-
-        // Select active PSK
-        nimcp_mutex_lock(&node->key_mutex);
-        for (int i = 0; i < NLP_KEY_SLOTS; i++) {
-            if (node->psk_slots[i].active) {
-                memcpy(peer->session_key, node->psk_slots[i].key, NLP_KEY_SIZE);
+        nimcp_mutex_lock(&node->peer_mutex);
+        // Re-find peer under lock (it may have been removed)
+        nlp_peer_t* found_peer = NULL;
+        for (uint32_t i = 0; i < node->peer_count; i++) {
+            if (node->peers[i].peer_id == local_peer_id) {
+                found_peer = &node->peers[i];
                 break;
             }
         }
-        nimcp_mutex_unlock(&node->key_mutex);
+        if (found_peer) {
+            found_peer->session_state = NLP_SESSION_ESTABLISHED;
+            local_session_state = NLP_SESSION_ESTABLISHED;
 
-        peer->healthy = true;
+            // Select active PSK
+            nimcp_mutex_lock(&node->key_mutex);
+            for (int i = 0; i < NLP_KEY_SLOTS; i++) {
+                if (node->psk_slots[i].active) {
+                    memcpy(found_peer->session_key, node->psk_slots[i].key, NLP_KEY_SIZE);
+                    break;
+                }
+            }
+            nimcp_mutex_unlock(&node->key_mutex);
+
+            found_peer->healthy = true;
+        }
+        nimcp_mutex_unlock(&node->peer_mutex);
     }
 
     NIMCP_LOGGING_INFO(NLP_MODULE_NAME, "Peer added: %s:%d id=0x%08X",
-                   address, port, peer->peer_id);
+                   address, port, local_peer_id);
 
-    // Notify callback
+    // Notify callback (use local copies since peer pointer may be stale)
     if (node->peer_callback) {
-        node->peer_callback(node, peer, NLP_SESSION_DISCONNECTED,
-                           peer->session_state, node->user_data);
+        nimcp_mutex_lock(&node->peer_mutex);
+        nlp_peer_t* cb_peer = NULL;
+        for (uint32_t i = 0; i < node->peer_count; i++) {
+            if (node->peers[i].peer_id == local_peer_id) {
+                cb_peer = &node->peers[i];
+                break;
+            }
+        }
+        if (cb_peer) {
+            node->peer_callback(node, cb_peer, NLP_SESSION_DISCONNECTED,
+                               local_session_state, node->user_data);
+        }
+        nimcp_mutex_unlock(&node->peer_mutex);
     }
 
-    return peer->peer_id;
+    return local_peer_id;
 }
 
 
@@ -362,26 +418,47 @@ int nlp_disconnect_peer(nlp_node_t node, uint32_t peer_id) {
         if (node->peers[i].peer_id == peer_id) {
             nlp_peer_t* peer = &node->peers[i];
             nlp_session_state_t old_state = peer->session_state;
+            bool need_disconnect_msg = (node->current_mode == NLP_MODE_STANDARD &&
+                                        peer->session_state == NLP_SESSION_ESTABLISHED);
 
-            // Send disconnect message if in standard mode
-            if (node->current_mode == NLP_MODE_STANDARD &&
-                peer->session_state == NLP_SESSION_ESTABLISHED) {
-                nlp_send(node, peer_id, NLP_MSG_DISCONNECT, NULL, 0, NLP_PRIORITY_HIGH);
+            /* HIGH-2 fix: nlp_send() acquires peer_mutex internally for unicast
+             * key lookup. Calling it while holding peer_mutex causes deadlock
+             * on non-recursive mutex. Release the lock, send, then re-acquire
+             * and re-find the peer by ID for the memmove removal. */
+
+            /* BUG-7 fix: Zero session key material before removing peer */
+            {
+                volatile uint8_t* vp = (volatile uint8_t*)peer->session_key;
+                for (size_t k = 0; k < sizeof(peer->session_key); k++) {
+                    vp[k] = 0;
+                }
             }
 
-            // Notify callback
+            // Notify callback while we still have the peer pointer
             if (node->peer_callback) {
                 node->peer_callback(node, peer, old_state,
                                    NLP_SESSION_DISCONNECTED, node->user_data);
             }
 
-            // Remove peer by shifting array
-            if (i < node->peer_count - 1) {
-                memmove(&node->peers[i], &node->peers[i + 1],
-                       (node->peer_count - i - 1) * sizeof(nlp_peer_t));
-            }
-            node->peer_count--;
+            nimcp_mutex_unlock(&node->peer_mutex);
 
+            // Send disconnect message OUTSIDE the lock to avoid deadlock
+            if (need_disconnect_msg) {
+                nlp_send(node, peer_id, NLP_MSG_DISCONNECT, NULL, 0, NLP_PRIORITY_HIGH);
+            }
+
+            // Re-acquire lock and re-find peer by ID for removal
+            nimcp_mutex_lock(&node->peer_mutex);
+            for (uint32_t j = 0; j < node->peer_count; j++) {
+                if (node->peers[j].peer_id == peer_id) {
+                    if (j < node->peer_count - 1) {
+                        memmove(&node->peers[j], &node->peers[j + 1],
+                               (node->peer_count - j - 1) * sizeof(nlp_peer_t));
+                    }
+                    node->peer_count--;
+                    break;
+                }
+            }
             nimcp_mutex_unlock(&node->peer_mutex);
 
             NIMCP_LOGGING_INFO(NLP_MODULE_NAME, "Peer disconnected: 0x%08X", peer_id);
@@ -621,8 +698,21 @@ serialize_and_send:
 
     // Send to peer(s)
     if (peer_id == 0) {
-        // Broadcast
-        rc = nlp_broadcast(node, msg_type, payload, payload_len, priority);
+        /* BUG-13 fix: For non-standard mode broadcasts (peer_id == 0), send the
+         * pre-built wire_buffer directly to each peer via nlp_send_raw instead of
+         * calling nlp_broadcast (which calls nlp_send, which re-builds and
+         * re-encrypts the message, causing double-send). In non-standard modes
+         * all peers share the same PSK, so one encrypted message works for all. */
+        nimcp_mutex_lock(&node->peer_mutex);
+        rc = 0;
+        for (uint32_t i = 0; i < node->peer_count; i++) {
+            if (node->peers[i].session_state == NLP_SESSION_ESTABLISHED) {
+                int send_rc = nlp_send_raw(node, node->peers[i].peer_id,
+                                           wire_buffer, wire_len);
+                if (send_rc >= 0) rc++;
+            }
+        }
+        nimcp_mutex_unlock(&node->peer_mutex);
     } else {
         rc = nlp_send_raw(node, peer_id, wire_buffer, wire_len);
     }
@@ -653,6 +743,15 @@ int nlp_broadcast(nlp_node_t node, nlp_msg_type_t msg_type,
     // unlock-iterate-relock race where peers array can change
     nimcp_mutex_lock(&node->peer_mutex);
     uint32_t peer_count = node->peer_count;
+
+    /* BUG-6 fix: Early return when no peers to avoid zero-size allocation.
+     * nimcp_malloc(0) may return NULL or a unique pointer depending on
+     * platform, leading to incorrect behavior. */
+    if (peer_count == 0) {
+        nimcp_mutex_unlock(&node->peer_mutex);
+        return 0;
+    }
+
     uint32_t* peer_ids = nimcp_malloc(peer_count * sizeof(uint32_t));
     uint32_t active = 0;
     if (peer_ids) {
@@ -806,12 +905,14 @@ int nlp_send_weight_deltas(nlp_node_t node, uint32_t peer_id,
 
     for (uint32_t i = 0; i < count; i++) {
         entries[i].synapse_id = htonl(synapse_ids[i]);
-        // Convert float to network byte order
-        uint32_t old_w, new_w;
-        memcpy(&old_w, &old_weights[i], sizeof(float));
-        memcpy(&new_w, &new_weights[i], sizeof(float));
-        entries[i].old_weight = *(float*)&old_w;  // Keep native float representation
-        entries[i].new_weight = *(float*)&new_w;
+        /* BUG-15 fix: Use memcpy instead of pointer cast to avoid strict aliasing
+         * violation. The compiler may optimize away *(float*)&uint32 because it
+         * violates C's type-based aliasing rules. memcpy is always safe. */
+        float old_val, new_val;
+        memcpy(&old_val, &old_weights[i], sizeof(float));
+        memcpy(&new_val, &new_weights[i], sizeof(float));
+        memcpy(&entries[i].old_weight, &old_val, sizeof(float));
+        memcpy(&entries[i].new_weight, &new_val, sizeof(float));
     }
 
     int rc = nlp_send(node, peer_id, NLP_MSG_WEIGHT_DELTA, payload, payload_len,
@@ -854,16 +955,62 @@ int nlp_rotate_session_key(nlp_node_t node, uint32_t peer_id) {
     nlp_crypto_generate_nonce(node, new_key);       // First 12 bytes
     nlp_crypto_generate_nonce(node, new_key + 12);  // Next 12 bytes
 
+    /* WARNING: Key rotation protocol is insecure — key sent as plaintext.
+     * TODO: Implement DH key exchange for proper forward secrecy.
+     * Mitigation: encrypt the new key with the OLD session key before sending,
+     * so at least an eavesdropper without the old key cannot read it. */
+
     // Find peer and update key
     nimcp_mutex_lock(&node->peer_mutex);
     for (uint32_t i = 0; i < node->peer_count; i++) {
         if (node->peers[i].peer_id == peer_id) {
+            /* BUG-5 fix: Encrypt the new key with the OLD session key before
+             * sending it over the wire. The receiver must decrypt with the old
+             * key to obtain the new key. This is NOT a proper key exchange (still
+             * vulnerable if old key is compromised), but prevents passive
+             * eavesdroppers from capturing the new key in cleartext. */
+            uint8_t old_key[NLP_KEY_SIZE];
+            memcpy(old_key, node->peers[i].session_key, NLP_KEY_SIZE);
+
+            /* Update peer's session key to the new one */
             memcpy(node->peers[i].session_key, new_key, NLP_KEY_SIZE);
             nimcp_mutex_unlock(&node->peer_mutex);
 
-            // Send key rotation message
+            /* Send the new key encrypted under the OLD key.
+             * nlp_send() will use the peer's current (new) session key for
+             * encrypting the payload. We need to temporarily restore the old
+             * key for this one send, then restore the new key.
+             * Simpler approach: send via nlp_send which encrypts with session
+             * key — we already updated to new_key, so we need to send with old.
+             * Restore old key temporarily for the send. */
+            nimcp_mutex_lock(&node->peer_mutex);
+            for (uint32_t j = 0; j < node->peer_count; j++) {
+                if (node->peers[j].peer_id == peer_id) {
+                    memcpy(node->peers[j].session_key, old_key, NLP_KEY_SIZE);
+                    break;
+                }
+            }
+            nimcp_mutex_unlock(&node->peer_mutex);
+
+            /* Send key rotation message — encrypted with OLD key */
             nlp_send(node, peer_id, NLP_MSG_KEY_ROTATE, new_key, NLP_KEY_SIZE,
                     NLP_PRIORITY_HIGH);
+
+            /* Now install the new key for future messages */
+            nimcp_mutex_lock(&node->peer_mutex);
+            for (uint32_t j = 0; j < node->peer_count; j++) {
+                if (node->peers[j].peer_id == peer_id) {
+                    memcpy(node->peers[j].session_key, new_key, NLP_KEY_SIZE);
+                    break;
+                }
+            }
+            nimcp_mutex_unlock(&node->peer_mutex);
+
+            /* Zero temporary old key copy */
+            {
+                volatile uint8_t* vp = (volatile uint8_t*)old_key;
+                for (size_t k = 0; k < NLP_KEY_SIZE; k++) vp[k] = 0;
+            }
 
             NIMCP_LOGGING_INFO(NLP_MODULE_NAME, "Session key rotated for peer 0x%08X", peer_id);
             return 0;

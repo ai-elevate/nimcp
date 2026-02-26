@@ -234,6 +234,12 @@ static void connect_parietal_to_global_workspace(parietal_lobe_t* parietal, brai
     #define MODULE_PARIETAL 41  /* Matches PARIETAL_BRAIN_REGION_TYPE */
     #endif
 
+    /* TODO: This function is a no-op. It should:
+     *   1. Call global_workspace_subscribe(brain->global_workspace, MODULE_PARIETAL)
+     *   2. Register a GW broadcast callback so parietal receives workspace broadcasts
+     *   3. Implement parietal_on_gw_broadcast() to process incoming broadcast content
+     * Currently only prints a log message without performing any actual connection. */
+
     /* Note: global_workspace_subscribe takes module ID, not parietal pointer */
     /* The parietal will need to implement GW callbacks separately */
     fprintf(stderr, "[PARIETAL] Global workspace integration prepared (module %d)\n", MODULE_PARIETAL);
@@ -398,12 +404,14 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
  * @return Parietal lobe handle or NULL if not enabled
  */
 parietal_lobe_t* brain_get_parietal(brain_t brain) {
-    if (!brain || !brain->parietal_enabled) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "brain_get_parietal: invalid parameters");
-
-            return NULL;
+                "brain_get_parietal: brain is NULL");
+        return NULL;
+    }
+    /* Feature disabled is a normal state — return NULL without throwing */
+    if (!brain->parietal_enabled) {
+        return NULL;
     }
     return brain->parietal;
 }
@@ -421,12 +429,14 @@ parietal_lobe_t* brain_get_parietal(brain_t brain) {
  * @return 0 on success, -1 on error
  */
 int brain_update_parietal_from_immune(brain_t brain) {
-    if (!brain || !brain->parietal_enabled || !brain->parietal) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "brain_update_parietal_from_immune: invalid parameters");
-
-            return -1;
+                "brain_update_parietal_from_immune: brain is NULL");
+        return -1;
+    }
+    /* Feature disabled is a normal state — return success without throwing */
+    if (!brain->parietal_enabled || !brain->parietal) {
+        return 0;
     }
 
     return parietal_update_from_immune(brain->parietal);
@@ -441,12 +451,14 @@ int brain_update_parietal_from_immune(brain_t brain) {
  * @return 0 on success, -1 on error
  */
 int brain_update_parietal_from_sleep(brain_t brain) {
-    if (!brain || !brain->parietal_enabled || !brain->parietal) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "brain_update_parietal_from_sleep: invalid parameters");
-
-            return -1;
+                "brain_update_parietal_from_sleep: brain is NULL");
+        return -1;
+    }
+    /* Feature disabled is a normal state — return success without throwing */
+    if (!brain->parietal_enabled || !brain->parietal) {
+        return 0;
     }
 
     return parietal_update_from_sleep(brain->parietal);
@@ -462,12 +474,14 @@ int brain_update_parietal_from_sleep(brain_t brain) {
  * @return 0 on success, -1 on error
  */
 int brain_step_parietal(brain_t brain, uint64_t delta_t) {
-    if (!brain || !brain->parietal_enabled || !brain->parietal) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "brain_step_parietal: invalid parameters");
-
-            return -1;
+                "brain_step_parietal: brain is NULL");
+        return -1;
+    }
+    /* Feature disabled is a normal state — return success without throwing */
+    if (!brain->parietal_enabled || !brain->parietal) {
+        return 0;
     }
 
     int result = parietal_step(brain->parietal, delta_t);
@@ -519,7 +533,11 @@ static void connect_intuition_to_attention(intuition_system_t* intuition, brain_
     /* For now, skip this connection - would need attention adapter */
     (void)intuition;
     (void)brain;
-    /* TODO: Create attention adapter if needed */
+    /* TODO: This function is permanently stubbed. To implement:
+     *   1. Create an attention_system_t adapter that wraps multihead_attention_t
+     *   2. Call intuition_attach_attention(intuition, adapter) to connect
+     *   3. This would allow intuition to guide attentional focus allocation
+     * Blocked on defining the adapter interface between the two attention types. */
 }
 
 /**
@@ -686,12 +704,14 @@ bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain) {
  * @return Intuition system handle or NULL if not enabled
  */
 intuition_system_t* brain_get_intuition_system(brain_t brain) {
-    if (!brain || !brain->intuition_system_enabled) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "brain_get_intuition_system: invalid parameters");
-
-            return NULL;
+                "brain_get_intuition_system: brain is NULL");
+        return NULL;
+    }
+    /* Feature disabled is a normal state — return NULL without throwing */
+    if (!brain->intuition_system_enabled) {
+        return NULL;
     }
     return brain->intuition_system;
 }
@@ -705,12 +725,14 @@ intuition_system_t* brain_get_intuition_system(brain_t brain) {
  * @return 0 on success, -1 on error
  */
 int brain_update_intuition_biological_state(brain_t brain) {
-    if (!brain || !brain->intuition_system_enabled || !brain->intuition_system) {
+    if (!brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "brain_update_intuition_biological_state: invalid parameters");
-
-            return -1;
+                "brain_update_intuition_biological_state: brain is NULL");
+        return -1;
+    }
+    /* Feature disabled is a normal state — return success without throwing */
+    if (!brain->intuition_system_enabled || !brain->intuition_system) {
+        return 0;
     }
 
     /* Get inflammation from immune system if available */

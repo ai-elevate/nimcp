@@ -248,7 +248,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
                       const float* inputs, uint32_t input_size,
                       float* outputs, uint32_t output_size) {
     if (!ctx || !inputs || !outputs) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backprop_destroy: required parameter is NULL (ctx, inputs, outputs)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backprop_forward: required parameter is NULL (ctx, inputs, outputs)");
         return false;
     }
 
@@ -289,6 +289,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
              * sparse synapse API reusing the same handle struct for both directions. */
             for (uint32_t s = 0; s < NEURON_IN_COUNT(neuron); s++) {
                 synapse_handle_t* syn = NEURON_IN_HANDLE(neuron, s);
+                if (!syn) continue;
                 uint32_t src_id = syn->target_neuron_id;  /* source ID for incoming */
 
                 /* Find which layer and index the source is in */
@@ -357,7 +358,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
 bool backprop_backward(backprop_ctx_t* ctx,
                        const float* output_gradients, uint32_t output_size) {
     if (!ctx || !output_gradients) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backprop_destroy: required parameter is NULL (ctx, output_gradients)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backprop_backward: required parameter is NULL (ctx, output_gradients)");
         return false;
     }
 
@@ -372,7 +373,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
     float** layer_deltas = nimcp_malloc(num_layers * sizeof(float*));
     if (!layer_deltas) {
         LOG_ERROR("Failed to allocate layer delta array");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_destroy: layer_deltas is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_backward: layer_deltas is NULL");
         return false;
     }
 
@@ -385,7 +386,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
             }
             nimcp_free(layer_deltas);
             LOG_ERROR("Failed to allocate delta buffer for layer %u", l);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_destroy: layer_deltas is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_backward: layer_deltas[l] is NULL");
             return false;
         }
         memset(layer_deltas[l], 0, layer_size * sizeof(float));

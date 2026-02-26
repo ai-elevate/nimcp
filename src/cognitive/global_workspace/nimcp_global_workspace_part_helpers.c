@@ -13,9 +13,11 @@ static nimcp_error_t handle_attention_shift(
     void* user_data)
 {
     (void)msg_size;
-    (void)response_promise;
 
     if (!msg || !user_data) {
+        if (response_promise) {
+            nimcp_bio_promise_complete(response_promise, NULL);
+        }
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -26,7 +28,13 @@ static nimcp_error_t handle_attention_shift(
     LOG_DEBUG("Received attention shift: target=%u, weight=%.2f",
               shift->target_id, shift->attention_weight);
 
-    // TODO: Process attention shift
+    // TODO: Process attention shift — currently a no-op acknowledgment
+
+    // Complete the promise so callers waiting on a response are unblocked
+    if (response_promise) {
+        nimcp_bio_promise_complete(response_promise, NULL);
+    }
+
     return NIMCP_SUCCESS;
 }
 

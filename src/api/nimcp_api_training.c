@@ -422,9 +422,19 @@ nimcp_status_t nimcp_brain_train_step(
 
     nimcp_free(output_gradients);
 
-    // Step 4: Extract current weights into flat array
+    // Step 4: Extract current weights into flat array and optimize
+    float* params = NULL;
+    float current_lr = 0.0f;
+    if (total_weights == 0) {
+        // No weights to optimize — skip Steps 4-7
+        // This can happen with degenerate networks (no synapses)
+        if (weight_gradients) nimcp_free(weight_gradients);
+        nimcp_free(predictions);
+        goto skip_optimization;
+    }
+
     uint32_t num_neurons = neural_network_get_num_neurons(base_net);
-    float* params = nimcp_malloc(total_weights * sizeof(float));
+    params = nimcp_malloc(total_weights * sizeof(float));
     if (!params) {
         nimcp_free(predictions);
         if (weight_gradients) nimcp_free(weight_gradients);
@@ -450,7 +460,6 @@ nimcp_status_t nimcp_brain_train_step(
     }
 
     // Step 6: Get current learning rate
-    float current_lr = 0.0f;
     nimcp_lr_scheduler_ctx_t* sched = nimcp_brain_training_get_scheduler(
         training_ctx, state->scheduler_id);
     if (sched) {
@@ -474,6 +483,9 @@ nimcp_status_t nimcp_brain_train_step(
     nimcp_free(params);
     if (weight_gradients) nimcp_free(weight_gradients);
     nimcp_free(predictions);
+
+skip_optimization:
+    ;
 
     // Step 8: Increment step count and fill result
     state->step_count++;
@@ -573,6 +585,7 @@ nimcp_status_t nimcp_brain_train_batch(
 
     // Train on each example and average results
     float total_loss = 0.0f;
+    uint32_t processed = 0;
     nimcp_training_result_t step_result = {0};
 
     for (uint32_t i = 0; i < batch_size; i++) {
@@ -587,6 +600,7 @@ nimcp_status_t nimcp_brain_train_batch(
             return res;
         }
 
+        processed++;
         total_loss += step_result.loss;
 
         if (step_result.early_stopped) {
@@ -595,7 +609,7 @@ nimcp_status_t nimcp_brain_train_batch(
     }
 
     if (result) {
-        result->loss = total_loss / batch_size;
+        result->loss = total_loss / (processed > 0 ? processed : 1);
         result->learning_rate = step_result.learning_rate;
         result->step = step_result.step;
         result->early_stopped = step_result.early_stopped;

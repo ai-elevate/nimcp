@@ -236,7 +236,8 @@ bool neural_network_modulate_scaling_rate(neural_network_t network,
     if (scaling_multiplier < 0.1f) scaling_multiplier = 0.1f;
     if (scaling_multiplier > 2.0f) scaling_multiplier = 2.0f;
 
-    neuron->homeostatic.strength *= scaling_multiplier;
+    neuron->homeostatic.strength = fmaxf(0.01f, fminf(5.0f,
+        neuron->homeostatic.strength * scaling_multiplier));
 
     LOG_DEBUG(LOG_MODULE, "Modulated scaling rate for neuron %u by %.3f",
               neuron_id, cytokine_modulation);
@@ -268,10 +269,21 @@ bool neural_network_apply_immune_metabolic_load(neural_network_t network,
 
         neuron->homeostatic.metabolic_load = metabolic_load;
 
-        float plasticity_reduction = 1.0f - (metabolic_load * 0.5f);
-        neuron->plasticity_rate *= plasticity_reduction;
-        if (neuron->plasticity_rate < NIMCP_DEFAULT_DECAY_RATE) {
-            neuron->plasticity_rate = NIMCP_DEFAULT_DECAY_RATE;
+        if (metabolic_load > 0.1f) {
+            // High metabolic load reduces plasticity
+            float plasticity_reduction = 1.0f - (metabolic_load * 0.5f);
+            neuron->plasticity_rate *= plasticity_reduction;
+            if (neuron->plasticity_rate < NIMCP_DEFAULT_DECAY_RATE) {
+                neuron->plasticity_rate = NIMCP_DEFAULT_DECAY_RATE;
+            }
+        } else {
+            // Low metabolic load: partial recovery toward baseline learning rate
+            // Recovery rate proportional to distance from baseline
+            float baseline_lr = neuron->oja_params.alpha;  // Original learning rate
+            if (baseline_lr > neuron->plasticity_rate) {
+                float recovery_rate = 0.1f * (1.0f - metabolic_load);
+                neuron->plasticity_rate += recovery_rate * (baseline_lr - neuron->plasticity_rate);
+            }
         }
     }
 
@@ -304,7 +316,7 @@ bool neural_network_accumulate_allostatic_load(neural_network_t network,
     neuron->homeostatic.allostatic_load += load_increment;
 
     float health_penalty = 1.0f - fminf(neuron->homeostatic.allostatic_load * 0.1f, 0.8f);
-    neuron->homeostatic.strength *= health_penalty;
+    neuron->homeostatic.strength = fmaxf(neuron->homeostatic.strength * health_penalty, 0.01f);
 
     LOG_DEBUG(LOG_MODULE, "Accumulated allostatic load %.6f for neuron %u (duration=%lu ms, level=%.3f)",
               neuron->homeostatic.allostatic_load, neuron_id,

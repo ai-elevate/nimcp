@@ -182,7 +182,7 @@ float nimcp_brain_get_arousal_level(brain_t brain);
  *
  * BIOLOGICAL ANALOGY: Like each neuron having its own receptor machinery
  */
-static _Thread_local modulation_effects_t thread_effect_buffer = {0};
+/* BUG-5 fix: Removed unused _Thread_local modulation_effects_t thread_effect_buffer */
 
 //=============================================================================
 // Internal Structures
@@ -412,6 +412,14 @@ neuromodulator_pool_t neuromodulator_pool_create(void)
     uint32_t dims[1] = {NEUROMOD_COUNT};
     pool.concentrations = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
     pool.decay_rates = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    /* BUG-4 fix: Check tensor creation success */
+    if (!pool.concentrations || !pool.decay_rates) {
+        LOG_ERROR(LOG_MODULE, "Failed to create neuromodulator pool tensors");
+        if (pool.concentrations) { nimcp_tensor_destroy(pool.concentrations); pool.concentrations = NULL; }
+        if (pool.decay_rates) { nimcp_tensor_destroy(pool.decay_rates); pool.decay_rates = NULL; }
+        pool.owns_tensors = false;
+        return pool;
+    }
     pool.owns_tensors = true;
     pool.last_update = 0;
 
@@ -506,6 +514,12 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
         sys->threat_norepinephrine_gain = config->threat_norepinephrine_gain;
         sys->salience_acetylcholine_gain = config->salience_acetylcholine_gain;
         sys->punishment_serotonin_gain = config->punishment_serotonin_gain;
+
+        /* BUG-1 fix: Initialize GABA/Glutamate baselines that are not in config struct */
+        sys->baselines[NEUROMOD_GABA] = 0.4f;
+        sys->baselines[NEUROMOD_GLUTAMATE] = 0.3f;
+        sys->decay_times[NEUROMOD_GABA] = 500.0f;
+        sys->decay_times[NEUROMOD_GLUTAMATE] = 200.0f;
 
         sys->enable_volume_transmission = config->enable_volume_transmission;
         sys->diffusion_rate = config->diffusion_rate;
@@ -1208,9 +1222,12 @@ bool neuromodulator_get_stats(neuromodulator_system_t system, neuromodulator_sta
     stats->dopamine_variance = system->stats.variances[NEUROMOD_DOPAMINE];
 
     // RPE accuracy
+    // BUG-2 fix: Read rpe_count inside the read lock to avoid TOCTOU with
+    // reward_prediction_error_sum (both must be read atomically together)
+    float rpe_sum = system->stats.reward_prediction_error_sum;
     uint64_t rpe_count = atomic_load(&system->stats.rpe_count);
     stats->reward_prediction_accuracy = (rpe_count > 0)
-        ? system->stats.reward_prediction_error_sum / (float)rpe_count
+        ? rpe_sum / (float)rpe_count
         : 0.0f;
 
     nimcp_platform_rwlock_unlock(&system->rwlock);
@@ -1242,14 +1259,15 @@ bool neuromodulator_reset(neuromodulator_system_t system)
     }
     system->stats.reward_prediction_error_sum = 0.0f;
 
-    nimcp_platform_rwlock_unlock(&system->rwlock);
-
-    // Reset atomic counters
+    // BUG-3 fix: Move atomic counter resets inside write lock to prevent
+    // concurrent readers from seeing partially-reset state
     for (int i = 0; i < NEUROMOD_COUNT; i++) {
         atomic_store(&system->stats.release_counts[i], 0);
     }
     atomic_store(&system->stats.update_count, 0);
     atomic_store(&system->stats.rpe_count, 0);
+
+    nimcp_platform_rwlock_unlock(&system->rwlock);
 
     LOG_INFO(LOG_MODULE, "Neuromodulator system reset to baselines");
     return true;

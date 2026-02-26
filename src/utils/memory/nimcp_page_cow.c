@@ -214,6 +214,19 @@ static inline void spinlock_release(atomic_flag* lock) {
 }
 
 /**
+ * @brief Spinlock try-acquire (async-signal-safe, non-blocking)
+ *
+ * WHY: Signal handlers must not block. If the interrupted thread already holds
+ * this spinlock, a blocking acquire would deadlock forever. trylock returns
+ * immediately with false if the lock is already held.
+ *
+ * @return true if lock was acquired, false if lock was already held
+ */
+static inline bool spinlock_trylock(atomic_flag* lock) {
+    return !atomic_flag_test_and_set_explicit(lock, memory_order_acquire);
+}
+
+/**
  * @brief Find view by address (for signal handler)
  *
  * Must be called with g_page_cow.lock held
@@ -292,7 +305,12 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
         return false;
     }
 
-    spinlock_acquire(&view->spinlock);
+    // CRITICAL: Use trylock since this may be called from a signal handler.
+    // The interrupted thread may already hold view->spinlock (e.g., in
+    // page_cow_view_make_page_private). Blocking here would deadlock.
+    if (!spinlock_trylock(&view->spinlock)) {
+        return false;  // Lock contention in signal context — cannot handle fault
+    }
 
     view_page_entry_t* vpage = &view->pages[page_idx];
 
@@ -368,7 +386,14 @@ static void sigsegv_handler(int sig, siginfo_t* info, void* context) {
     void* fault_addr = info->si_addr;
 
     // Try to find and handle as COW fault
-    spinlock_acquire(&g_page_cow.lock);
+    // CRITICAL: Use trylock, NOT blocking acquire. If the interrupted thread
+    // already holds g_page_cow.lock, a blocking acquire would deadlock forever
+    // since signal handlers run on the interrupted thread's stack.
+    if (!spinlock_trylock(&g_page_cow.lock)) {
+        // Lock is held by the interrupted thread — cannot safely look up view.
+        // Fall through to chain to old handler (may re-raise SIGSEGV).
+        goto chain_old_handler;
+    }
     page_cow_view_t view = find_view_by_address(fault_addr);
     spinlock_release(&g_page_cow.lock);
 
@@ -377,7 +402,8 @@ static void sigsegv_handler(int sig, siginfo_t* info, void* context) {
         return;
     }
 
-    // Not our fault - chain to old handler
+chain_old_handler:
+    // Not our fault (or lock contention in signal context) - chain to old handler
     if (g_page_cow.old_handler.sa_flags & SA_SIGINFO) {
         g_page_cow.old_handler.sa_sigaction(sig, info, context);
     } else if (g_page_cow.old_handler.sa_handler != SIG_DFL &&
@@ -395,14 +421,25 @@ static void sigsegv_handler(int sig, siginfo_t* info, void* context) {
 //=============================================================================
 
 NIMCP_EXPORT bool page_cow_init(void) {
-    if (g_page_cow.initialized) return true;
+    // Double-check with atomic CAS to prevent TOCTOU race:
+    // Two threads could both see initialized==false and double-init,
+    // clobbering old_handler and corrupting signal handler chain.
+    if (__atomic_load_n(&g_page_cow.initialized, __ATOMIC_ACQUIRE)) return true;
+
+    // Use spinlock to serialize initialization attempts
+    spinlock_acquire(&g_page_cow.lock);
+
+    // Re-check after acquiring lock (another thread may have initialized)
+    if (g_page_cow.initialized) {
+        spinlock_release(&g_page_cow.lock);
+        return true;
+    }
 
     // Initialize global state
     memset(g_page_cow.regions, 0, sizeof(g_page_cow.regions));
     memset(g_page_cow.views, 0, sizeof(g_page_cow.views));
     g_page_cow.region_count = 0;
     g_page_cow.view_count = 0;
-    atomic_flag_clear(&g_page_cow.lock);
 
     // Install SIGSEGV handler
     struct sigaction sa;
@@ -412,21 +449,23 @@ NIMCP_EXPORT bool page_cow_init(void) {
     sigemptyset(&sa.sa_mask);
 
     if (sigaction(SIGSEGV, &sa, &g_page_cow.old_handler) < 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_init: validation failed");
+        spinlock_release(&g_page_cow.lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_init: sigaction failed");
         return false;
     }
 
-    g_page_cow.initialized = true;
+    __atomic_store_n(&g_page_cow.initialized, true, __ATOMIC_RELEASE);
+    spinlock_release(&g_page_cow.lock);
     return true;
 }
 
 NIMCP_EXPORT void page_cow_shutdown(void) {
-    if (!g_page_cow.initialized) return;
+    if (!__atomic_load_n(&g_page_cow.initialized, __ATOMIC_ACQUIRE)) return;
 
     // Restore old handler
     sigaction(SIGSEGV, &g_page_cow.old_handler, NULL);
 
-    g_page_cow.initialized = false;
+    __atomic_store_n(&g_page_cow.initialized, false, __ATOMIC_RELEASE);
 }
 
 NIMCP_EXPORT page_cow_region_t page_cow_region_create(
@@ -673,13 +712,44 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_clone(page_cow_view_t source) {
 
     }
 
-    // Copy private pages from source
+    // Copy private pages from source to clone.
+    // The clone starts as read-only (COW protected). We must make it writable
+    // before copying private page data, otherwise the memcpy will SIGSEGV.
     spinlock_acquire(&source->spinlock);
+    bool has_private = false;
     for (size_t i = 0; i < source->num_pages; i++) {
         if (source->pages[i].is_private && source->pages[i].data) {
-            // Copy private page
-            void* page_addr = (char*)clone->view_base + i * PAGE_COW_PAGE_SIZE;
-            memcpy(page_addr, source->pages[i].data, PAGE_COW_PAGE_SIZE);
+            has_private = true;
+            break;
+        }
+    }
+
+    if (has_private) {
+        // Make clone writable so we can copy private page data into it
+        if (mprotect(clone->view_base, clone->num_pages * PAGE_COW_PAGE_SIZE,
+                     PROT_READ | PROT_WRITE) < 0) {
+            spinlock_release(&source->spinlock);
+            page_cow_view_destroy(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                                  "page_cow_view_clone: mprotect failed for private page copy");
+            return NULL;
+        }
+        clone->writable = true;
+
+        for (size_t i = 0; i < source->num_pages; i++) {
+            if (source->pages[i].is_private && source->pages[i].data) {
+                // Copy private page data
+                void* page_addr = (char*)clone->view_base + i * PAGE_COW_PAGE_SIZE;
+                memcpy(page_addr, source->pages[i].data, PAGE_COW_PAGE_SIZE);
+
+                // Mark clone's page as private too
+                clone->pages[i].data = page_addr;
+                clone->pages[i].is_private = true;
+                atomic_fetch_add(&clone->private_pages, 1);
+
+                // Decrement shared page refcount (clone no longer shares this page)
+                atomic_fetch_sub(&region->pages[clone->pages[i].source_page_idx].refcount, 1);
+            }
         }
     }
     spinlock_release(&source->spinlock);
@@ -802,12 +872,12 @@ NIMCP_EXPORT bool page_cow_view_make_page_private(
     // Decrement shared refcount
     atomic_fetch_sub(&region->pages[vpage->source_page_idx].refcount, 1);
 
-    // Update statistics
+    // Update statistics using atomics to avoid nested spinlock deadlock
+    // (view->spinlock is already held; acquiring region->spinlock risks deadlock
+    // if another thread holds region->spinlock and is waiting on view->spinlock)
     if (region->enable_tracking) {
-        spinlock_acquire(&region->spinlock);
-        region->stats.private_pages++;
-        region->stats.total_bytes_copied += PAGE_COW_PAGE_SIZE;
-        spinlock_release(&region->spinlock);
+        __atomic_add_fetch(&region->stats.private_pages, 1, __ATOMIC_RELAXED);
+        __atomic_add_fetch(&region->stats.total_bytes_copied, PAGE_COW_PAGE_SIZE, __ATOMIC_RELAXED);
     }
 
     spinlock_release(&view->spinlock);

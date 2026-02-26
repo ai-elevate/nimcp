@@ -111,8 +111,6 @@ static const char* scheme_names[] = {
 static void compute_scale_zp(float min_val, float max_val, qat_dtype_t dtype,
                              qat_scheme_t scheme, float* scale, int32_t* zero_point);
 static void get_qmin_qmax(qat_dtype_t dtype, int32_t* qmin, int32_t* qmax);
-static float nimcp_clampf(float x, float min_val, float max_val);
-
 int qat_default_config(qat_config_t* config) {
     if (!config) return -1;
     memset(config, 0, sizeof(qat_config_t));
@@ -218,6 +216,18 @@ qat_ctx_t* qat_create(const qat_config_t* config) {
     /* Copy configuration */
     memcpy(&ctx->config, config, sizeof(qat_config_t));
 
+    /* Deep copy layer_configs if present (shallow memcpy only copies pointer) */
+    if (config->layer_configs && config->num_layer_configs > 0) {
+        size_t lc_size = config->num_layer_configs * sizeof(config->layer_configs[0]);
+        ctx->config.layer_configs = nimcp_malloc(lc_size);
+        if (!ctx->config.layer_configs) {
+            nimcp_free(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qat_create: layer_configs deep copy failed");
+            return NULL;
+        }
+        memcpy(ctx->config.layer_configs, config->layer_configs, lc_size);
+    }
+
     /* Create mutex */
     mutex_attr_t attr = {0};
     attr.type = MUTEX_TYPE_NORMAL;
@@ -264,6 +274,11 @@ void qat_destroy(qat_ctx_t* ctx) {
         if (obs->params.zero_points) {
             nimcp_free(obs->params.zero_points);
         }
+    }
+
+    /* Free deep-copied layer configs */
+    if (ctx->config.layer_configs) {
+        nimcp_free(ctx->config.layer_configs);
     }
 
     /* Destroy mutex */

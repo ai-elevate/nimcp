@@ -68,20 +68,30 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
     // Copy PSK slots from config
     memcpy(node->psk_slots, node->config.psk, sizeof(node->psk_slots));
 
-    // Initialize mutexes
-    if (nimcp_mutex_init(&node->state_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->peer_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->key_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->env_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->stats_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->seq_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->burst_mutex, NULL) != NIMCP_SUCCESS ||
-        nimcp_mutex_init(&node->queue_mutex, NULL) != NIMCP_SUCCESS) {
-        NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to init mutexes");
-        nlp_node_destroy(node);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_node_create: operation failed");
-        return NULL;
+    /* BUG-19 fix: Track which mutexes have been successfully initialized so we
+     * only destroy those on partial failure. Calling nlp_node_destroy on a
+     * partially initialized node would destroy uninitialized mutexes (UB). */
+    uint8_t mutex_init_count = 0;
+    nimcp_mutex_t* mutex_order[] = {
+        &node->state_mutex, &node->peer_mutex, &node->key_mutex,
+        &node->env_mutex, &node->stats_mutex, &node->seq_mutex,
+        &node->burst_mutex, &node->queue_mutex
+    };
+    for (int m = 0; m < 8; m++) {
+        if (nimcp_mutex_init(mutex_order[m], NULL) != NIMCP_SUCCESS) {
+            NIMCP_LOGGING_ERROR(NLP_MODULE_NAME,
+                "Failed to init mutex %d of 8", m);
+            /* Destroy only the mutexes we successfully initialized */
+            for (int j = m - 1; j >= 0; j--) {
+                nimcp_mutex_destroy(mutex_order[j]);
+            }
+            nimcp_free(node);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_node_create: mutex init failed");
+            return NULL;
+        }
+        mutex_init_count++;
     }
+    (void)mutex_init_count;  /* Used for documentation; all 8 initialized if we get here */
 
     // Allocate stealth burst buffer
     node->burst_buffer = (uint8_t*)nimcp_malloc(
@@ -129,6 +139,17 @@ void nlp_node_destroy(nlp_node_t node) {
     if (node->running) {
         nlp_node_stop(node);
     }
+
+    /* BUG-18 fix: Zero all peer session keys before destroying the node to
+     * prevent sensitive key material from lingering in freed memory. */
+    nimcp_mutex_lock(&node->peer_mutex);
+    for (uint32_t i = 0; i < node->peer_count; i++) {
+        volatile uint8_t* vp = (volatile uint8_t*)node->peers[i].session_key;
+        for (size_t k = 0; k < sizeof(node->peers[i].session_key); k++) {
+            vp[k] = 0;
+        }
+    }
+    nimcp_mutex_unlock(&node->peer_mutex);
 
     // Clean up crypto subsystem
     nlp_crypto_shutdown(node);

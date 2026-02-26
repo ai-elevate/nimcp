@@ -95,6 +95,10 @@ static basal_ganglia_t* get_bg_core(brain_t brain) {
  *       This is correct because each instructor works on its own brain or
  *       its own reasoning queries, and the engine is cheap to create per-thread.
  */
+/* BUG-20 note: These thread-local caches are never automatically cleaned up.
+ * brain_ti_destroy_reasoning() MUST be called explicitly before thread exit
+ * to avoid leaking the reasoning engine. Callers (e.g., Athena instructors)
+ * should call brain_ti_destroy_reasoning(brain) in their thread cleanup path. */
 static _Thread_local reasoning_engine_t* g_cached_engine = NULL;
 static _Thread_local brain_t g_cached_brain = NULL;
 static _Thread_local uint32_t g_last_reasoning_steps = 0;
@@ -262,7 +266,8 @@ float brain_ti_get_circadian_efficiency(brain_t brain) {
     };
 
     int idx = (int)phase;
-    if (idx < 0 || idx >= 8) { return 1.0f; }
+    /* BUG-22 fix: Replaced magic number 8 with computed array size */
+    if (idx < 0 || idx >= (int)(sizeof(phase_efficiency) / sizeof(phase_efficiency[0]))) { return 1.0f; }
     return phase_efficiency[idx];
 }
 
@@ -544,11 +549,28 @@ int brain_ti_post_batch_update(brain_t brain, float accuracy,
             basal_ganglia_t* bg = get_bg_core(brain);
             if (bg) {
                 uint32_t context = hash_domain(domain);
+                /* BUG-19 fix: Lock BG mutex before accessing internal fields
+                 * (num_habits, habits[]) which may be modified concurrently */
+                if (bg->mutex) {
+                    nimcp_mutex_lock(bg->mutex);
+                }
                 /* Find the habit_id for this context */
                 for (uint32_t i = 0; i < bg->num_habits; i++) {
                     if (bg->habits[i].trigger_context == context) {
+                        uint32_t habit_id = bg->habits[i].habit_id;
+                        if (bg->mutex) {
+                            nimcp_mutex_unlock(bg->mutex);
+                        }
+                        /* HIGH-7: The unlock-before-use pattern is safe here because:
+                         * 1. habit_id is a uint32_t identifier (not a pointer) — IDs
+                         *    remain valid even if the habits array is reallocated.
+                         * 2. basal_ganglia_get_habit_strength() and
+                         *    basal_ganglia_strengthen_habit() both take (bg, habit_id)
+                         *    and acquire their own internal locks as needed.
+                         * 3. If the habit is removed concurrently, these functions
+                         *    return error values (-1.0f or negative int) gracefully. */
                         float strength = basal_ganglia_get_habit_strength(
-                            bg, bg->habits[i].habit_id);
+                            bg, habit_id);
                         if (strength > 0.7f) {
                             NIMCP_LOGGING_INFO("training_integration: domain "
                                                "'%s' in habitual mode "
@@ -560,7 +582,7 @@ int brain_ti_post_batch_update(brain_t brain, float accuracy,
                          * expected */
                         if (accuracy > expected_accuracy) {
                             basal_ganglia_strengthen_habit(
-                                bg, bg->habits[i].habit_id, true);
+                                bg, habit_id, true);
                             NIMCP_LOGGING_DEBUG("training_integration: "
                                                 "strengthened habit for "
                                                 "domain='%s' (accuracy %.3f "
@@ -568,9 +590,13 @@ int brain_ti_post_batch_update(brain_t brain, float accuracy,
                                                 domain, accuracy,
                                                 expected_accuracy);
                         }
-                        break;
+                        goto bg_done;
                     }
                 }
+                if (bg->mutex) {
+                    nimcp_mutex_unlock(bg->mutex);
+                }
+                bg_done: ;
             }
         }
     }
@@ -860,17 +886,11 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
     /* --- BG conflict --- */
     state->conflict_level = brain_ti_get_conflict(brain);
 
-    /* --- Neuromodulator levels (informational, logged for diagnostics) ---
-     *
-     * TODO: Add dopamine_level, serotonin_level, acetylcholine_level,
-     *       norepinephrine_level fields to brain_ti_modulation_state_t and
-     *       incorporate them into the final LR formula. Currently the RPE
-     *       bonus partially captures dopamine dynamics via the BG reward
-     *       system, but direct neuromodulator queries would improve fidelity
-     *       (e.g., serotonin gates patience/exploration, acetylcholine
-     *       gates attention-driven encoding, norepinephrine boosts
-     *       consolidation under threat).
-     */
+    /* BUG-23: Neuromodulator levels are queried but only logged, not used in
+     * the modulation computation. TODO: Either add DA/5HT/ACh/NE fields to
+     * brain_ti_modulation_state_t and incorporate into the LR formula, or
+     * remove this block to avoid wasted computation. Keeping for now since
+     * the debug logging is useful during training diagnostics. */
     if (brain->neuromodulator_system) {
         float da = neuromodulator_get_level(brain->neuromodulator_system,
                                              NEUROMOD_DOPAMINE);
@@ -1010,10 +1030,11 @@ int brain_ti_compute_decision_cycle(
     }
 
     /* --- Layer 3: Abductive Diagnosis --- */
-    /* TODO(perf): training_diagnoser_create/destroy every call causes heap churn.
-     * Consider caching in _Thread_local storage and using training_diagnoser_reset()
-     * between calls. Same applies to training_causal_model and
-     * training_convergent_session below. */
+    /* BUG-21 TODO(perf): training_diagnoser_create/destroy every call causes
+     * heap churn. Consider caching in _Thread_local storage and using
+     * training_diagnoser_reset() between calls. Same applies to
+     * training_causal_model (line ~1042) and training_convergent_session
+     * (line ~1079) below. All three allocate+free per decision cycle. */
     training_diagnoser_t* diag = training_diagnoser_create();
     training_diagnosis_t diagnosis;
     memset(&diagnosis, 0, sizeof(diagnosis));

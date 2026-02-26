@@ -17,6 +17,9 @@ bool global_workspace_compete(
     // WHAT: Submit content and immediately resolve competition
     // WHY:  Backward compatibility - original API auto-resolves
     // HOW:  Use submit() + resolve() internally
+    // TODO: The slot-finding, validation, and content-copy logic is duplicated
+    //       between compete() and submit(). Extract a shared internal helper
+    //       (e.g., submit_to_pool_unlocked()) to reduce maintenance burden.
 
     // Guard: NULL checks
     if (workspace == NULL || content == NULL) {
@@ -636,18 +639,25 @@ uint64_t global_workspace_time_since_broadcast(
     global_workspace_heartbeat("global_works_time_since_broadcast", 0.0f);
 
 
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
+    /* Cast away const for mutex — consistent with other accessor patterns */
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    nimcp_platform_mutex_lock(&ws->mutex);
 
     if (ws->last_broadcast_time_ms == 0) {
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return UINT64_MAX;  // Never broadcast
     }
 
     if (current_time_ms < ws->last_broadcast_time_ms) {
+        nimcp_platform_mutex_unlock(&ws->mutex);
         return 0;  // Time went backwards?
     }
 
-    return current_time_ms - ws->last_broadcast_time_ms;
+    uint64_t result = current_time_ms - ws->last_broadcast_time_ms;
+    nimcp_platform_mutex_unlock(&ws->mutex);
+    return result;
 }
 
 

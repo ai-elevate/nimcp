@@ -559,8 +559,27 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
                 status = NIMCP_ERROR_NO_MEMORY;
             } else {
                 for (Py_ssize_t i = 0; i < batch_size; i++) {
-                    PyList_SetItem(labels_list, i, PyUnicode_FromString(labels[i]));
-                    PyList_SetItem(confidences_list, i, PyFloat_FromDouble(confidences[i]));
+                    PyObject* label_obj = PyUnicode_FromString(labels[i]);
+                    if (!label_obj) {
+                        Py_DECREF(labels_list);
+                        Py_DECREF(confidences_list);
+                        labels_list = NULL;
+                        confidences_list = NULL;
+                        status = NIMCP_ERROR_NO_MEMORY;
+                        break;
+                    }
+                    PyList_SET_ITEM(labels_list, i, label_obj);
+
+                    PyObject* conf_obj = PyFloat_FromDouble(confidences[i]);
+                    if (!conf_obj) {
+                        Py_DECREF(labels_list);
+                        Py_DECREF(confidences_list);
+                        labels_list = NULL;
+                        confidences_list = NULL;
+                        status = NIMCP_ERROR_NO_MEMORY;
+                        break;
+                    }
+                    PyList_SET_ITEM(confidences_list, i, conf_obj);
                 }
             }
         }
@@ -1153,8 +1172,11 @@ static PyObject* Brain_decide_full(BrainObject* self, PyObject* args) {
     uint32_t vec_len = (output_size < 1024) ? output_size : 1024;
     PyObject* vec_list = PyList_New(vec_len);
     if (!vec_list) return NULL;
-    for (uint32_t i = 0; i < vec_len; i++)
-        PyList_SetItem(vec_list, i, PyFloat_FromDouble(output_vector[i]));
+    for (uint32_t i = 0; i < vec_len; i++) {
+        PyObject* val = PyFloat_FromDouble(output_vector[i]);
+        if (!val) { Py_DECREF(vec_list); return NULL; }
+        PyList_SET_ITEM(vec_list, i, val);
+    }
 
     PyObject* result = PyDict_New();
     if (!result) { Py_DECREF(vec_list); return NULL; }
@@ -1947,13 +1969,17 @@ static PyObject* Brain_cache_communities(BrainObject* self, PyObject* Py_UNUSED(
 
     PyObject* tmp;
     tmp = PyLong_FromUnsignedLong(self->community_cache->num_communities);
-    if (tmp) { PyDict_SetItemString(result, "num_communities", tmp); Py_DECREF(tmp); }
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    PyDict_SetItemString(result, "num_communities", tmp); Py_DECREF(tmp);
     tmp = PyLong_FromUnsignedLong(self->community_cache->num_hubs);
-    if (tmp) { PyDict_SetItemString(result, "num_hubs", tmp); Py_DECREF(tmp); }
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    PyDict_SetItemString(result, "num_hubs", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(self->community_cache->modularity);
-    if (tmp) { PyDict_SetItemString(result, "modularity", tmp); Py_DECREF(tmp); }
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    PyDict_SetItemString(result, "modularity", tmp); Py_DECREF(tmp);
     tmp = PyLong_FromUnsignedLong(self->community_cache->num_neurons);
-    if (tmp) { PyDict_SetItemString(result, "num_neurons", tmp); Py_DECREF(tmp); }
+    if (!tmp) { Py_DECREF(result); return NULL; }
+    PyDict_SetItemString(result, "num_neurons", tmp); Py_DECREF(tmp);
 
     return result;
 }
@@ -1994,10 +2020,15 @@ static PyObject* Brain_get_uncertainty(BrainObject* self, PyObject* args) {
         PyObject* dict = PyDict_New();
         if (!dict) return NULL;
         PyObject* zero = PyFloat_FromDouble(0.0);
-        PyDict_SetItemString(dict, "epistemic", zero);
-        PyDict_SetItemString(dict, "aleatoric", zero);
-        PyDict_SetItemString(dict, "total", zero);
-        PyDict_SetItemString(dict, "confidence", zero);
+        if (!zero) { Py_DECREF(dict); return NULL; }
+        if (PyDict_SetItemString(dict, "epistemic", zero) < 0 ||
+            PyDict_SetItemString(dict, "aleatoric", zero) < 0 ||
+            PyDict_SetItemString(dict, "total", zero) < 0 ||
+            PyDict_SetItemString(dict, "confidence", zero) < 0) {
+            Py_DECREF(zero);
+            Py_DECREF(dict);
+            return NULL;
+        }
         Py_DECREF(zero);
         return dict;
     }
@@ -2811,7 +2842,9 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
         return NULL;
     }
     for (unsigned int i = 0; i < num_outputs; i++) {
-        PyList_SET_ITEM(result, i, PyFloat_FromDouble((double)outputs[i]));
+        PyObject* val = PyFloat_FromDouble((double)outputs[i]);
+        if (!val) { Py_DECREF(result); nimcp_free(outputs); return NULL; }
+        PyList_SET_ITEM(result, i, val);
     }
     nimcp_free(outputs);
     return result;

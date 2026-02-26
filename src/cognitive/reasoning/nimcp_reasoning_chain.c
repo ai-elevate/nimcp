@@ -50,6 +50,7 @@
 #include "cognitive/reasoning/nimcp_reasoning_causal.h"
 #include "cognitive/reasoning/nimcp_reasoning_visuospatial.h"
 #include "utils/thread/nimcp_thread_pool.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
@@ -112,6 +113,11 @@ struct reasoning_engine {
 
     /* Connection state */
     bool is_connected;
+
+    /* FIX #5: Mutex to protect config/stats from concurrent reason() calls.
+     * The save/swap/restore pattern on engine->config is not thread-safe
+     * without serialization. This mutex is held for the duration of reason(). */
+    nimcp_mutex_t* reason_mutex;
 };
 
 /*=============================================================================
@@ -299,6 +305,19 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
     /* All module pointers are already NULL from calloc */
     engine->is_connected = false;
 
+    /* FIX #5: Create mutex to protect config/stats during concurrent reason() calls */
+    {
+        mutex_attr_t mattr;
+        memset(&mattr, 0, sizeof(mattr));
+        mattr.type = MUTEX_TYPE_RECURSIVE;  /* Recursive: reason() may call sub-functions that also lock */
+        engine->reason_mutex = nimcp_mutex_create(&mattr);
+        if (!engine->reason_mutex) {
+            NIMCP_LOGGING_ERROR("reasoning_chain: failed to create engine mutex");
+            nimcp_free(engine);
+            return NULL;
+        }
+    }
+
     /* Create thread pool for concurrent pipeline if enabled */
     if (engine->config.enable_concurrent_pipeline) {
         uint32_t pool_size = engine->config.concurrent_pool_size;
@@ -364,6 +383,12 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
 void reasoning_engine_destroy(reasoning_engine_t* engine)
 {
     if (!engine) return;
+
+    /* FIX #5: Destroy engine mutex */
+    if (engine->reason_mutex) {
+        nimcp_mutex_destroy(engine->reason_mutex);
+        engine->reason_mutex = NULL;
+    }
 
     /* Destroy abductive reasoning engine if created */
     if (engine->abduction) {
@@ -869,7 +894,8 @@ static float phase_recall(reasoning_engine_t* engine, const char* query,
         ENGRAM_MAX_NEURONS,
         &recall_confidence);
 
-    engine->stats.engram_recalls++;
+    /* HIGH-5 fix: Use atomic increment — this runs in Wave 1 parallel tasks */
+    __atomic_fetch_add(&engine->stats.engram_recalls, 1, __ATOMIC_RELAXED);
 
     /* Only count as evidence if confidence meets threshold */
     if (engram_id != 0 && recall_confidence > ENGRAM_MIN_CONFIDENCE) {
@@ -953,7 +979,8 @@ static float phase_knowledge(reasoning_engine_t* engine, const char* query,
 
         total_confidence += item.confidence;
         items_found++;
-        engine->stats.knowledge_queries++;
+        /* HIGH-5 fix: Use atomic increment — may run in Wave 1 parallel tasks */
+        __atomic_fetch_add(&engine->stats.knowledge_queries, 1, __ATOMIC_RELAXED);
     }
 
     /* Cross-domain connections for richer context */
@@ -988,7 +1015,8 @@ static float phase_knowledge(reasoning_engine_t* engine, const char* query,
 
         total_confidence += connections[i].confidence;
         items_found++;
-        engine->stats.knowledge_queries++;
+        /* HIGH-5 fix: Use atomic increment — may run in Wave 1 parallel tasks */
+        __atomic_fetch_add(&engine->stats.knowledge_queries, 1, __ATOMIC_RELAXED);
     }
 
     if (items_found > 0) {
@@ -1133,7 +1161,8 @@ static float phase_world_model(reasoning_engine_t* engine, const char* query,
         return 0.0f;
     }
 
-    engine->stats.world_model_simulations++;
+    /* HIGH-5 fix: Use atomic increment — this runs in Wave 1 parallel tasks */
+    __atomic_fetch_add(&engine->stats.world_model_simulations, 1, __ATOMIC_RELAXED);
 
     uint32_t horizon = engine->config.world_model_horizon;
     if (horizon == 0) horizon = DEFAULT_WM_HORIZON;
@@ -1255,7 +1284,8 @@ static float phase_symbolic_query(reasoning_engine_t* engine, const char* query,
         return 0.0f;
     }
 
-    engine->stats.symbolic_queries++;
+    /* HIGH-5 fix: Use atomic increment — this runs in Wave 1 parallel tasks */
+    __atomic_fetch_add(&engine->stats.symbolic_queries, 1, __ATOMIC_RELAXED);
 
     /*
      * Attempt to query the symbolic KB with the raw query string.
@@ -1392,7 +1422,8 @@ static float phase_symbolic_inference(reasoning_engine_t* engine, const char* qu
     float proof_confidence = 0.0f;
 
     if (proved && bc_result.confidence > 0.0f) {
-        engine->stats.symbolic_proofs++;
+        /* HIGH-5 fix: Use atomic increment for thread safety */
+        __atomic_fetch_add(&engine->stats.symbolic_proofs, 1, __ATOMIC_RELAXED);
 
         proof_confidence = bc_result.confidence;
 
@@ -1511,7 +1542,8 @@ static float phase_jepa_prediction(reasoning_engine_t* engine,
         return inference_confidence;  /* Pass through unchanged */
     }
 
-    engine->stats.jepa_predictions++;
+    /* HIGH-5 fix: Use atomic increment for thread safety */
+    __atomic_fetch_add(&engine->stats.jepa_predictions, 1, __ATOMIC_RELAXED);
 
     /*
      * Step 1: Create latent representations for context and prediction.
@@ -1881,9 +1913,10 @@ static float phase_verification(reasoning_engine_t* engine, reasoning_chain_t* c
     bool passed = (verification_factor > 0.7f);
 
     if (passed) {
-        engine->stats.verification_passes++;
+        /* HIGH-5 fix: Use atomic increment for thread safety */
+        __atomic_fetch_add(&engine->stats.verification_passes, 1, __ATOMIC_RELAXED);
     } else {
-        engine->stats.verification_failures++;
+        __atomic_fetch_add(&engine->stats.verification_failures, 1, __ATOMIC_RELAXED);
     }
 
     /* Build verification step */
@@ -2036,7 +2069,8 @@ static float phase_epistemic(reasoning_engine_t* engine, const char* query,
         /* Flag if uncertainty exceeds threshold */
         if (uncertainty_score > engine->config.uncertainty_threshold) {
             chain->has_uncertainty_flag = true;
-            engine->stats.uncertainty_flags++;
+            /* HIGH-5 fix: Use atomic increment for thread safety */
+            __atomic_fetch_add(&engine->stats.uncertainty_flags, 1, __ATOMIC_RELAXED);
         }
     }
 
@@ -2067,12 +2101,33 @@ static float phase_synthesis(reasoning_engine_t* engine, const char* query,
                              float recall_confidence, float knowledge_confidence,
                              float uncertainty_score)
 {
-    /* Collect all step confidences for geometric mean */
-    float confidences[REASONING_CHAIN_DEFAULT_MAX_STEPS];
+    /* FIX #8: Use dynamic allocation instead of fixed-size array to avoid
+     * truncating results when chain has more steps than DEFAULT_MAX_STEPS.
+     * The synthesis phase must consider ALL steps for accurate geometric mean.
+     * Allocate enough for all steps; fall back to truncated stack buffer. */
+    uint32_t max_conf_capacity = chain->num_steps > 0 ? chain->num_steps : 1;
+    bool confidences_on_heap = false;
+    float stack_confidences[REASONING_CHAIN_DEFAULT_MAX_STEPS];
+    float* confidences;
     uint32_t conf_count = 0;
 
+    if (max_conf_capacity > REASONING_CHAIN_DEFAULT_MAX_STEPS) {
+        confidences = (float*)nimcp_calloc(max_conf_capacity, sizeof(float));
+        if (confidences) {
+            confidences_on_heap = true;
+        } else {
+            NIMCP_LOGGING_WARN("reasoning_chain: synthesis allocation failed, "
+                               "truncating to %u steps",
+                               REASONING_CHAIN_DEFAULT_MAX_STEPS);
+            confidences = stack_confidences;
+            max_conf_capacity = REASONING_CHAIN_DEFAULT_MAX_STEPS;
+        }
+    } else {
+        confidences = stack_confidences;
+    }
+
     for (uint32_t i = 0; i < chain->num_steps &&
-         conf_count < REASONING_CHAIN_DEFAULT_MAX_STEPS; i++) {
+         conf_count < max_conf_capacity; i++) {
         if (chain->steps[i].confidence > 0.0f) {
             confidences[conf_count++] = chain->steps[i].confidence;
         }
@@ -2152,6 +2207,11 @@ static float phase_synthesis(reasoning_engine_t* engine, const char* query,
                        "steps=%u, duration=%lu us",
                        overall_confidence, chain->num_steps,
                        (unsigned long)(chain->end_time_us - chain->start_time_us));
+
+    /* FIX #8: Free heap-allocated confidences array */
+    if (confidences_on_heap && confidences) {
+        nimcp_free(confidences);
+    }
 
     return overall_confidence;
 }
@@ -2547,6 +2607,12 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
      * engine->config internally, but we use a goto cleanup pattern to guarantee
      * restoration on ALL exit paths (including error returns).
      */
+    /* FIX #5: Lock mutex before modifying engine->config to prevent data races
+     * when multiple threads call reason() concurrently. */
+    if (engine->reason_mutex) {
+        nimcp_mutex_lock(engine->reason_mutex);
+    }
+
     reasoning_engine_config_t saved_config = engine->config;
     engine->config = effective_config;
 
@@ -2718,6 +2784,7 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
         }
 
         engine->config = saved_config;
+        if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return result;
     }
 
@@ -2766,6 +2833,7 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
 
         /* Restore original engine config */
         engine->config = saved_config;
+        if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return result;
     }
 
@@ -2797,6 +2865,7 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
         engine->config = saved_config;
+        if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return 0;
     }
 
@@ -3021,6 +3090,7 @@ finalize:
 
     /* Restore original engine config */
     engine->config = saved_config;
+    if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
     return 0;
 }
 
@@ -3049,8 +3119,16 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
         return -1;
     }
 
+    /* HIGH-6 fix: Acquire reason_mutex to protect config/stats reads and writes.
+     * reason_mutex is RECURSIVE, so nested calls from reason() are safe. */
+    if (engine->reason_mutex) nimcp_mutex_lock(engine->reason_mutex);
+
     /* ── Step 0: Initialize chain ── */
-    reasoning_chain_init(chain);
+    /* FIX #2: Guard against double-init memory leak. Callers may have already
+     * initialized the chain. Only init if the chain hasn't been initialized yet. */
+    if (chain->steps == NULL) {
+        reasoning_chain_init(chain);
+    }
     chain->start_time_us = nimcp_time_get_us();
 
     NIMCP_LOGGING_INFO("reasoning_chain: domain-restricted reasoning "
@@ -3070,9 +3148,9 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
      *      resource pressure, returning an empty chain gracefully.
      */
     if (reasoning_portia_should_skip()) {
-        reasoning_chain_init(chain);
-        chain->start_time_us = nimcp_time_get_us();
-        chain->end_time_us = chain->start_time_us;
+        /* FIX #2: Don't re-init — chain is already initialized above.
+         * Just reset the fields for the skip case. */
+        chain->end_time_us = nimcp_time_get_us();
         chain->overall_confidence = 0.0f;
         chain->is_complete = true;
         snprintf(chain->conclusion, REASONING_CHAIN_CONCLUSION_LEN,
@@ -3080,6 +3158,7 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
         engine->stats.total_queries++;
         NIMCP_LOGGING_INFO("reasoning_chain: domain-restricted reasoning skipped "
                            "(Portia: severe resource pressure)");
+        if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return 0;
     }
 
@@ -3089,7 +3168,10 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
                                                          chain);
         chain->end_time_us = nimcp_time_get_us();
         engine->stats.total_queries++;
-        engine->stats.successful_queries++;
+        /* FIX #3: Only count as success if the convergent call succeeded */
+        if (result == 0) {
+            engine->stats.successful_queries++;
+        }
         engine->stats.total_steps += chain->num_steps;
 
         float n = (float)engine->stats.total_queries;
@@ -3100,6 +3182,7 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
 
+        if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return result;
     }
 
@@ -3109,7 +3192,10 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
                                                          chain);
         chain->end_time_us = nimcp_time_get_us();
         engine->stats.total_queries++;
-        engine->stats.successful_queries++;
+        /* FIX #3: Only count as success if the concurrent call succeeded */
+        if (result == 0) {
+            engine->stats.successful_queries++;
+        }
         engine->stats.total_steps += chain->num_steps;
 
         float n = (float)engine->stats.total_queries;
@@ -3120,10 +3206,14 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
             engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
             (float)chain->num_steps / n;
 
+        if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
         return result;
     }
 
     /* ── Sequential fallback ── */
+    /* FIX #4: Domain path now mirrors the main reasoning_engine_reason()
+     * sequential pipeline, including world model, symbolic logic, JEPA,
+     * and abductive reasoning phases that were previously missing. */
 
     /* ── Phase 1: Recall ── */
     float recall_confidence = phase_recall(engine, query, chain);
@@ -3134,36 +3224,158 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
     /* ── Phase 3: Decomposition ── */
     const char* query_type = phase_decomposition(engine, query, chain);
 
+    /* Check step limit */
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto domain_finalize;
+    }
+
+    /* ── Phase 3.5: World Model Simulation ── */
+    {
+        float wm_confidence = phase_world_model(engine, query, query_type, chain);
+        (void)wm_confidence;
+    }
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto domain_finalize;
+    }
+
+    /* ── Phase 3.9: Symbolic Logic Query ── */
+    float symbolic_query_confidence = phase_symbolic_query(engine, query,
+                                                            query_type, chain);
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto domain_finalize;
+    }
+
+    /* ── Phase 3.95: Symbolic Logic Inference ── */
+    {
+        float symbolic_proof_confidence = phase_symbolic_inference(engine, query,
+                                                                    query_type,
+                                                                    symbolic_query_confidence,
+                                                                    chain);
+        (void)symbolic_proof_confidence;
+    }
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto domain_finalize;
+    }
+
     /* ── Phase 4: Inference ── */
     float inference_confidence = phase_inference(engine, chain,
                                                   recall_confidence,
                                                   knowledge_confidence,
                                                   query_type);
+    if (chain->num_steps >= engine->config.max_steps) {
+        goto domain_finalize;
+    }
 
-    /* ── Phase 5: Verification ── */
-    float verified_confidence = phase_verification(engine, chain,
-                                                    inference_confidence);
+    /* ── Phase 4.1: Abductive Reasoning ── */
+    if (engine->config.enable_abductive_reasoning && engine->abduction) {
+        reasoning_abduction_clear_observations(engine->abduction);
+        for (uint32_t i = 0; i < chain->num_steps; i++) {
+            const reasoning_step_t* s = &chain->steps[i];
+            if (s->type == REASONING_STEP_RECALL ||
+                s->type == REASONING_STEP_KNOWLEDGE ||
+                s->type == REASONING_STEP_INFERENCE ||
+                s->type == REASONING_STEP_WORLD_MODEL ||
+                s->type == REASONING_STEP_SYMBOLIC_LOGIC) {
+                abductive_observation_t obs;
+                memset(&obs, 0, sizeof(obs));
+                strncpy(obs.description, s->description,
+                        ABDUCTION_MAX_EXPLANATION_LEN - 1);
+                obs.description[ABDUCTION_MAX_EXPLANATION_LEN - 1] = '\0';
+                obs.confidence = s->confidence;
+                obs.domain = domain;
+                obs.timestamp_us = s->timestamp_us;
+                reasoning_abduction_add_observation(engine->abduction, &obs);
+            }
+        }
 
-    /* ── Phase 6: Epistemic ── */
-    float uncertainty_score = phase_epistemic(engine, query, chain,
-                                              verified_confidence);
+        abduction_result_t abd_result;
+        memset(&abd_result, 0, sizeof(abd_result));
+        if (reasoning_abduction_generate(engine->abduction, &abd_result) == 0 &&
+            abd_result.num_hypotheses > 0) {
+            const abductive_hypothesis_t* best =
+                reasoning_abduction_select_best(&abd_result);
+            if (best) {
+                reasoning_step_t abd_step;
+                memset(&abd_step, 0, sizeof(abd_step));
+                abd_step.step_id = chain->num_steps;
+                abd_step.type = REASONING_STEP_ABDUCTIVE;
+                abd_step.confidence = best->plausibility;
+                abd_step.relevance = best->explanatory_power;
+                abd_step.timestamp_us = nimcp_time_get_us();
+                snprintf(abd_step.description, sizeof(abd_step.description),
+                         "Abductive hypothesis (domain=%u): %.*s "
+                         "(plausibility=%.3f, explanatory_power=%.3f)",
+                         domain,
+                         (int)(sizeof(abd_step.description) - 100),
+                         best->explanation,
+                         best->plausibility,
+                         best->explanatory_power);
+                reasoning_chain_add_step(chain, &abd_step);
 
-    /* ── Phase 7: Synthesis ── */
-    float overall = phase_synthesis(engine, query, query_type, chain,
-                                    recall_confidence, knowledge_confidence,
-                                    uncertainty_score);
+                float abd_factor = 0.9f + 0.1f * best->plausibility;
+                inference_confidence *= abd_factor;
+                if (inference_confidence > 1.0f) inference_confidence = 1.0f;
 
-    /* ── Update statistics ── */
-    engine->stats.total_queries++;
-    engine->stats.successful_queries++;
-    engine->stats.total_steps += chain->num_steps;
+                engine->stats.abductive_queries++;
+            }
+        }
+        if (chain->num_steps >= engine->config.max_steps) {
+            goto domain_finalize;
+        }
+    }
 
-    float n = (float)engine->stats.total_queries;
-    engine->stats.avg_confidence =
-        engine->stats.avg_confidence * ((n - 1.0f) / n) + overall / n;
-    engine->stats.avg_steps_per_query =
-        engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
-        (float)chain->num_steps / n;
+    /* ── Phase 4.5: JEPA Prediction ── */
+    {
+        float jepa_confidence = phase_jepa_prediction(engine, chain,
+                                                        inference_confidence,
+                                                        query);
 
+        if (chain->num_steps >= engine->config.max_steps) {
+            goto domain_finalize;
+        }
+
+        /* ── Phase 5: Verification ── */
+        float verified_confidence = phase_verification(engine, chain,
+                                                        jepa_confidence);
+
+        if (chain->num_steps >= engine->config.max_steps) {
+            goto domain_finalize;
+        }
+
+        /* ── Phase 6: Epistemic ── */
+        phase_epistemic(engine, query, chain, verified_confidence);
+    }
+
+domain_finalize:
+    ; /* C90 empty statement after label */
+
+    /* Retrieve latest uncertainty from chain */
+    {
+        float final_uncertainty = 0.0f;
+        for (uint32_t i = 0; i < chain->num_steps; i++) {
+            if (chain->steps[i].type == REASONING_STEP_UNCERTAINTY) {
+                final_uncertainty = 1.0f - chain->steps[i].confidence;
+            }
+        }
+
+        /* ── Phase 7: Synthesis ── */
+        float overall = phase_synthesis(engine, query, query_type, chain,
+                                        recall_confidence, knowledge_confidence,
+                                        final_uncertainty);
+
+        /* ── Update statistics ── */
+        engine->stats.total_queries++;
+        engine->stats.successful_queries++;
+        engine->stats.total_steps += chain->num_steps;
+
+        float n = (float)engine->stats.total_queries;
+        engine->stats.avg_confidence =
+            engine->stats.avg_confidence * ((n - 1.0f) / n) + overall / n;
+        engine->stats.avg_steps_per_query =
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
+            (float)chain->num_steps / n;
+    }
+
+    if (engine->reason_mutex) nimcp_mutex_unlock(engine->reason_mutex);
     return 0;
 }

@@ -330,7 +330,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (!brain->emotional_system) {
         set_error("Failed to create emotional system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->emotional_system is NULL");
-        return false;
+        goto cleanup_wm;
     }
 
     /* =========================================================================
@@ -346,7 +346,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (!brain->sleep_system) {
         set_error("Failed to create sleep system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->sleep_system is NULL");
-        return false;
+        goto cleanup_emotional;
     }
 
     // Connect brain reference for working memory access (Phase 10.3 integration)
@@ -365,7 +365,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (!brain->engram_system) {
         set_error("Failed to create engram system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->engram_system is NULL");
-        return false;
+        goto cleanup_sleep;
     }
 
     /**
@@ -381,7 +381,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (!brain->systems_consolidation) {
         set_error("Failed to create systems consolidation system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->systems_consolidation is NULL");
-        return false;
+        goto cleanup_engram;
     }
 
     // Link to Phase M1 engram system (source of memories to consolidate)
@@ -403,7 +403,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (!brain->wm_transfer_system) {
         set_error("Failed to create working memory transfer system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->wm_transfer_system is NULL");
-        return false;
+        goto cleanup_systems_consol;
     }
 
     // Link to Phase 10.1 working memory (source of temporary information)
@@ -428,13 +428,34 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     if (!brain->semantic_memory) {
         set_error("Failed to create semantic memory network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_working_memory_subsystem: brain->semantic_memory is NULL");
-        return false;
+        goto cleanup_wm_transfer;
     }
 
     // Link to Phase M2 systems consolidation (source of semantic concepts)
     semantic_memory_set_consolidation(brain->semantic_memory, brain->systems_consolidation);
 
     return true;
+
+    /* Rollback labels — destroy in reverse creation order */
+cleanup_wm_transfer:
+    wm_transfer_destroy(brain->wm_transfer_system);
+    brain->wm_transfer_system = NULL;
+cleanup_systems_consol:
+    systems_consolidation_destroy(brain->systems_consolidation);
+    brain->systems_consolidation = NULL;
+cleanup_engram:
+    engram_system_destroy(brain->engram_system);
+    brain->engram_system = NULL;
+cleanup_sleep:
+    sleep_system_destroy(brain->sleep_system);
+    brain->sleep_system = NULL;
+cleanup_emotional:
+    emotion_system_destroy(brain->emotional_system);
+    brain->emotional_system = NULL;
+cleanup_wm:
+    working_memory_destroy(brain->working_memory);
+    brain->working_memory = NULL;
+    return false;
 }
 
 

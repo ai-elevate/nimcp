@@ -842,6 +842,15 @@ void nimcp_exception_unref(nimcp_exception_t* ex) {
             }
             agg->child_count = 0;
         }
+        /* Free strdup'd stack trace function name strings.
+         * These were allocated by strdup() in nimcp_exception_capture_stack_trace()
+         * and must be freed with free() (not nimcp_free) since strdup uses malloc. */
+        for (size_t i = 0; i < ex->stack_trace.depth; i++) {
+            if (ex->stack_trace.frames[i].function) {
+                free((void*)ex->stack_trace.frames[i].function);
+                ex->stack_trace.frames[i].function = NULL;
+            }
+        }
         nimcp_free(ex);
     }
 }

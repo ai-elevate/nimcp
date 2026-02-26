@@ -238,7 +238,10 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
 void astrocyte_plasticity_destroy(astrocyte_plasticity_t astro) {
     if (!astro) return;
 
-    /* Destroy mutex using platform-agnostic API */
+    /* Destroy mutex using platform-agnostic API.
+     * BUG-7 note: nimcp_platform_mutex_destroy() only destroys internal state
+     * (pthread_mutex_destroy). nimcp_platform_mutex_create() allocates with
+     * nimcp_malloc(), so nimcp_free() is required to release the memory. */
     if (astro->mutex) {
         nimcp_platform_mutex_destroy(astro->mutex);
         nimcp_free(astro->mutex);
@@ -274,6 +277,12 @@ int astrocyte_plasticity_update(
     astrocyte_state_t* state = &astro->states[astrocyte_id];
     float dt_s = delta_ms / 1000.0f;
     state->delta_time_s = dt_s;
+    /* BUG-8 note: This stores the delta (interval) not an absolute timestamp.
+     * The header documents last_update_ms as "Last state update timestamp" but
+     * astrocyte_plasticity_update() receives delta_ms (elapsed time), not an
+     * absolute timestamp. The field is not currently read back for ISI
+     * computation, so renaming the field or adding a timestamp parameter would
+     * be the proper fix. For now, document the inconsistency. */
     state->last_update_ms = delta_ms;
 
     /* Update calcium based on synaptic activity */
@@ -425,13 +434,18 @@ int astrocyte_plasticity_release_gliotransmitter(
 
     astro->gliotransmitter_releases++;
 
-    /* Invoke callback if registered */
-    if (astro->config.gliotransmitter_callback) {
-        astro->config.gliotransmitter_callback(type, clamped_amount,
-                                                astro->config.callback_user_data);
-    }
+    /* BUG-6 fix: Copy callback + data under lock, release mutex, THEN invoke
+     * callback to avoid holding mutex during user callback execution */
+    void (*cb)(gliotransmitter_type_t, float, void*) = astro->config.gliotransmitter_callback;
+    void* cb_data = astro->config.callback_user_data;
 
     nimcp_platform_mutex_unlock(astro->mutex);
+
+    /* Invoke callback AFTER unlock */
+    if (cb) {
+        cb(type, clamped_amount, cb_data);
+    }
+
     return 0;
 }
 
@@ -458,8 +472,11 @@ int astrocyte_plasticity_get_effects(
     effects->ltp_capacity_modulation = effects->nmda_coagonist_factor;
 
     /* STDP window modulation (lower D-serine → narrower window) */
+    /* BUG-9 fix: Guard against division by zero if baseline constant is redefined to 0 */
+    float d_serine_baseline = ASTROCYTE_D_SERINE_BASELINE > 1e-6f
+        ? ASTROCYTE_D_SERINE_BASELINE : 1e-6f;
     effects->stdp_window_modulation =
-        0.7f + 0.3f * (state->d_serine_level / ASTROCYTE_D_SERINE_BASELINE);
+        0.7f + 0.3f * (state->d_serine_level / d_serine_baseline);
 
     /* Glutamate clearance effects */
     effects->glutamate_clearance_time =

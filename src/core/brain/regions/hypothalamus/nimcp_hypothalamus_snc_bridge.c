@@ -203,15 +203,14 @@ hypo_rpe_t hypo_snc_bridge_process_reward(
 
     /* Broadcast if enabled */
     if (bridge->config.broadcast_enabled) {
-        /* Will unlock/relock internally if needed */
+        /* Increment counter under lock before releasing for broadcast */
+        bridge->broadcasts_sent += 2;
         nimcp_mutex_unlock(bridge->base.mutex);
         hypo_snc_bridge_broadcast_rpe(bridge, &rpe);
         hypo_snc_bridge_broadcast_dopamine(bridge);
-        nimcp_mutex_lock(bridge->base.mutex);
-        bridge->broadcasts_sent += 2;
+    } else {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
-
-    nimcp_mutex_unlock(bridge->base.mutex);
     return rpe;
 }
 
@@ -248,8 +247,12 @@ float hypo_snc_bridge_get_dopamine(
         return HYPO_SNC_TONIC_BASELINE;
     }
 
-    /* Note: Const function, no lock needed for read */
-    return bridge->dopamine.channels[channel].level;
+    /* Cast away const to acquire mutex — reads must be synchronized */
+    hypo_snc_bridge_t* mutable_bridge = (hypo_snc_bridge_t*)bridge;
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
+    float level = bridge->dopamine.channels[channel].level;
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
+    return level;
 }
 
 hypo_da_signal_type_t hypo_snc_bridge_get_signal_type(
@@ -268,11 +271,16 @@ float hypo_snc_bridge_get_global_dopamine(const hypo_snc_bridge_t* bridge) {
         return HYPO_SNC_TONIC_BASELINE;
     }
 
+    /* Cast away const to acquire mutex — reads must be synchronized */
+    hypo_snc_bridge_t* mutable_bridge = (hypo_snc_bridge_t*)bridge;
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     float sum = 0.0f;
     for (int i = 0; i < HYPO_DA_CHANNEL_COUNT; i++) {
         sum += bridge->dopamine.channels[i].level;
     }
-    return sum / (float)HYPO_DA_CHANNEL_COUNT;
+    float result = sum / (float)HYPO_DA_CHANNEL_COUNT;
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
+    return result;
 }
 
 const hypo_rpe_t* hypo_snc_bridge_get_last_rpe(const hypo_snc_bridge_t* bridge) {
@@ -340,7 +348,7 @@ bool hypo_snc_bridge_connect_snc(
     void* snc_module) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_get_last_rpe: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_connect_snc: bridge is NULL");
         return false;
     }
 
@@ -370,7 +378,7 @@ bool hypo_snc_bridge_register_bio(
     bool use_kg_wiring) {
 
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_disconnect_snc: bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_register_bio: bridge is NULL");
         return false;
     }
 
@@ -386,7 +394,7 @@ bool hypo_snc_bridge_register_bio(
 
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_disconnect_snc: bridge->bio_ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 
@@ -398,7 +406,7 @@ bool hypo_snc_bridge_register_bio(
     if (err != NIMCP_SUCCESS) {
         bio_router_unregister_module(bridge->bio_ctx);
         bridge->bio_ctx = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_disconnect_snc: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_register_bio: reward handler registration failed");
         return false;
     }
 
@@ -410,7 +418,7 @@ bool hypo_snc_bridge_register_bio(
     if (err != NIMCP_SUCCESS) {
         bio_router_unregister_module(bridge->bio_ctx);
         bridge->bio_ctx = NULL;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_disconnect_snc: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_register_bio: value handler registration failed");
         return false;
     }
 
@@ -502,10 +510,16 @@ void hypo_snc_bridge_get_stats(
 
     if (!bridge) return;
 
+    /* Cast away const to acquire mutex — reads must be synchronized */
+    hypo_snc_bridge_t* mutable_bridge = (hypo_snc_bridge_t*)bridge;
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
+
     if (rewards_processed) *rewards_processed = bridge->rewards_processed;
     if (avg_rpe) *avg_rpe = bridge->dopamine.avg_rpe;
     if (burst_count) *burst_count = bridge->dopamine.burst_count;
     if (dip_count) *dip_count = bridge->dopamine.dip_count;
+
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 }
 
 void hypo_snc_bridge_get_reward_stats(
@@ -515,8 +529,14 @@ void hypo_snc_bridge_get_reward_stats(
 
     if (!bridge) return;
 
+    /* Cast away const to acquire mutex — reads must be synchronized */
+    hypo_snc_bridge_t* mutable_bridge = (hypo_snc_bridge_t*)bridge;
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
+
     if (total_reward) *total_reward = bridge->cumulative_reward;
     if (alignment_reward) *alignment_reward = bridge->cumulative_alignment_reward;
+
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 }
 
 /*=============================================================================

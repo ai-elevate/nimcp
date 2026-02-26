@@ -5,6 +5,12 @@
 
 /* brain_heartbeat is defined in nimcp_brain_internal.h */
 
+/* Moved from inside brain_destroy() function body to file scope
+ * (includes inside function bodies are non-standard and cause warnings) */
+#include "cognitive/analysis/nimcp_network_analysis.h"
+#include "security/nimcp_security_recovery_bridge.h"
+#include "security/nimcp_security_integration.h"
+
 //=============================================================================
 // Bio-Async Message Handlers and Integration
 //=============================================================================
@@ -263,29 +269,24 @@ void brain_destroy(brain_t brain)
     if (brain->glial) {
         glial_integration_destroy(brain->glial);
         brain->glial = NULL;
-    } else {
     }
-
 
     // Phase 5/6: Cleanup myelin sheath network (after glial to avoid dangling pointers)
     if (brain->myelin_sheath) {
         myelin_network_destroy(brain->myelin_sheath);
         brain->myelin_sheath = NULL;
-    } else {
     }
 
     // Phase 1.5.6: Cleanup axon network
     if (brain->axon_network) {
         axon_network_destroy((axon_network_t*)brain->axon_network);
         brain->axon_network = NULL;
-    } else {
     }
 
     // Phase 1.5.7: Cleanup dendrite network
     if (brain->dendrite_network) {
         dendrite_network_destroy((dendrite_network_t*)brain->dendrite_network);
         brain->dendrite_network = NULL;
-    } else {
     }
 
 
@@ -472,8 +473,11 @@ void brain_destroy(brain_t brain)
 
 
     // Phase 10.2: Cleanup memory consolidation
+    // Note: brain_stop_background_consolidation() stops the thread, destroys
+    // synchronization primitives, AND frees the handle — no separate free needed.
     if (brain->consolidation) {
         brain_stop_background_consolidation(brain->consolidation);
+        brain->consolidation = NULL;
     }
 
     // Phase 10.3: Cleanup executive functions
@@ -675,8 +679,6 @@ void brain_destroy(brain_t brain)
 
     // Network Analyzer: Cleanup
     if (brain->network_analyzer) {
-        // Local include to avoid global type conflicts
-        #include "cognitive/analysis/nimcp_network_analysis.h"
         network_analyzer_destroy((network_analyzer_t*)brain->network_analyzer);
         brain->network_analyzer = NULL;
     }
@@ -706,8 +708,6 @@ void brain_destroy(brain_t brain)
 
     // === PHASE SC-2: CLEANUP SECURITY RECOVERY BRIDGE ===
     if (brain->security_bridge) {
-        // Local include to avoid global type conflicts
-        #include "security/nimcp_security_recovery_bridge.h"
         nimcp_srb_destroy((nimcp_security_recovery_bridge_t*)brain->security_bridge);
         brain->security_bridge = NULL;
     }
@@ -724,9 +724,6 @@ void brain_destroy(brain_t brain)
 
     // === PHASE SC-4: CLEANUP UNIVERSAL SECURITY INTEGRATION ===
     if (brain->security_integration) {
-        // Local include to avoid global type conflicts
-        #include "security/nimcp_security_integration.h"
-
         // Unregister regions
         if (brain->sec_region_ids) {
             for (uint32_t i = 0; i < brain->num_sec_regions; i++) {

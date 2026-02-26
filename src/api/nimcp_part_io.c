@@ -77,7 +77,7 @@ nimcp_status_t nimcp_brain_snapshot_save(
     }
 
     set_error("No error");
-    return NIMCP_SUCCESS;
+    return NIMCP_OK;
 }
 
 

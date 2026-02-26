@@ -69,8 +69,11 @@ void global_workspace_print_state(
     global_workspace_heartbeat("global_works_print_state", 0.0f);
 
 
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
+    /* Cast away const for mutex — debug function, large lock scope is acceptable */
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    nimcp_platform_mutex_lock(&ws->mutex);
 
     fprintf(stderr, "=== Global Workspace State ===\n");
 
@@ -169,6 +172,8 @@ void global_workspace_print_state(
     }
 
     fprintf(stderr, "==============================\n");
+
+    nimcp_platform_mutex_unlock(&ws->mutex);
 }
 
 

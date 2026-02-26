@@ -157,11 +157,15 @@ bool global_workspace_get_history(
     global_workspace_heartbeat("global_works_get_history", 0.0f);
 
 
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
+    /* Cast away const for mutex — other accessors use the same pattern */
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    nimcp_platform_mutex_lock(&ws->mutex);
 
     if (!ws->config.enable_history || ws->history == NULL) {
         *actual_count = 0;
+        nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_history: ws->config is NULL");
         return false;
     }
@@ -183,6 +187,7 @@ bool global_workspace_get_history(
         history[i] = ws->history[idx];
     }
 
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 
@@ -204,15 +209,20 @@ bool global_workspace_get_statistics(
     global_workspace_heartbeat("global_works_get_statistics", 0.0f);
 
 
-    const struct global_workspace_struct* ws =
-        (const struct global_workspace_struct*)workspace;
+    /* Cast away const for mutex — other accessors use the same pattern */
+    struct global_workspace_struct* ws =
+        (struct global_workspace_struct*)workspace;
+
+    nimcp_platform_mutex_lock(&ws->mutex);
 
     if (!ws->config.enable_statistics) {
+        nimcp_platform_mutex_unlock(&ws->mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_statistics: ws->config is NULL");
         return false;
     }
 
     *stats = ws->stats;
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 
@@ -272,7 +282,9 @@ bool global_workspace_set_ignition_threshold(
                                  GLOBAL_WORKSPACE_MIN_IGNITION_THRESHOLD,
                                  GLOBAL_WORKSPACE_MAX_IGNITION_THRESHOLD);
 
+    nimcp_platform_mutex_lock(&ws->mutex);
     ws->config.ignition_threshold = new_threshold;
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 
@@ -312,7 +324,9 @@ bool global_workspace_set_module_priority(
     // Clamp to valid range
     priority = nimcp_clampf(priority, 0.0F, 1.0F);
 
+    nimcp_platform_mutex_lock(&ws->mutex);
     ws->config.module_priorities[module] = priority;
+    nimcp_platform_mutex_unlock(&ws->mutex);
     return true;
 }
 

@@ -72,7 +72,9 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
 
     memset(entry, 0, sizeof(*entry));
 
-    entry->magic = BIO_MODULE_MAGIC;
+    /* BUG-8 fix: Do NOT set magic yet — entry must not be visible to other
+     * threads (via bio_router_find_module) until inbox and handler_mutex are
+     * fully initialized. magic is set AFTER all initialization completes. */
     entry->module_id = info->module_id;
     strncpy(entry->module_name, info->module_name ? info->module_name : "unknown",
             MAX_MODULE_NAME - 1);
@@ -102,6 +104,10 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
         return NULL;
     }
 
+    /* BUG-8 fix: NOW set magic — inbox and handler_mutex are fully initialized,
+     * so other threads can safely use this entry. */
+    entry->magic = BIO_MODULE_MAGIC;
+
     // Count active modules for statistics
     uint32_t active_count = 0;
     for (uint32_t i = 0; i < g_router->module_count; i++) {
@@ -122,8 +128,11 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
     if (!ctx) {
         LOG_ERROR("Failed to allocate module context");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_register_module: failed to allocate context");
-        /* Undo registration to avoid orphaned entry */
+        /* BUG-16 fix: Undo registration AND clean up inbox/handler_mutex to
+         * prevent resource leaks when context allocation fails. */
         nimcp_platform_mutex_lock(&g_router->modules_mutex);
+        bio_msg_queue_destroy(&entry->inbox);
+        nimcp_platform_mutex_destroy(&entry->handler_mutex);
         entry->magic = 0;
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         return NULL;
@@ -244,8 +253,9 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             g_router->stats.messages_routed++;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
 
+            /* BUG-1 fix: Use atomic increment for thread-safe counter update */
             if (ctx && ctx->entry) {
-                ctx->entry->messages_sent++;
+                atomic_fetch_add(&ctx->entry->messages_sent, 1);
             }
 
             LOG_TRACE("Message type=0x%04X routed through mesh", header->type);
@@ -322,7 +332,13 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
         return NIMCP_SUCCESS;
 
     } else if (target_id == 0) {
-        // Broadcast to all modules except sender
+        /* Broadcast to all modules except sender.
+         * BUG-10 note: We hold modules_mutex while calling bio_msg_queue_enqueue
+         * for each target. This is acceptable for broadcasts because:
+         * (a) bio_router_broadcast() always passes timeout_ms=0, making enqueue
+         *     non-blocking (try-grow-or-fail, never waits on condition var).
+         * (b) We need the lock to safely iterate the modules array.
+         * For blocking sends (timeout_ms > 0), use bio_router_send_with_promise. */
         for (uint32_t i = 0; i < g_router->module_count; i++) {
             bio_module_entry_t* entry = &g_router->modules[i];
             if (entry->magic == BIO_MODULE_MAGIC &&
@@ -332,7 +348,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                                                                   msg, msg_size,
                                                                   NULL, timeout_ms);
                 if (enq_result == NIMCP_SUCCESS) {
-                    entry->messages_received++;
+                    atomic_fetch_add(&entry->messages_received, 1);
                 } else {
                     result = NIMCP_ERROR_OUT_OF_RANGE;
                     // Queue overflow expected during high-load scenarios (stress tests)
@@ -347,7 +363,9 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
         nimcp_platform_mutex_unlock(&g_router->stats_mutex);
 
     } else {
-        // Send to specific module
+        /* BUG-10 fix: Copy target inbox pointer under lock, then release
+         * modules_mutex BEFORE calling bio_msg_queue_enqueue to prevent
+         * deadlock when enqueue blocks (timeout_ms > 0). */
         bio_module_entry_t* target = bio_router_find_module(target_id);
         if (!target) {
             nimcp_platform_mutex_unlock(&g_router->modules_mutex);
@@ -361,10 +379,13 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                               "bio_router_send: target module not found");
         }
 
-        result = bio_msg_queue_enqueue(&target->inbox, msg, msg_size,
+        bio_msg_queue_t* target_inbox = &target->inbox;
+        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+
+        result = bio_msg_queue_enqueue(target_inbox, msg, msg_size,
                                         NULL, timeout_ms);
         if (result == NIMCP_SUCCESS) {
-            target->messages_received++;
+            atomic_fetch_add(&target->messages_received, 1);
         } else {
             LOG_WARN("Failed to enqueue to module %u inbox", target_id);
 
@@ -372,9 +393,11 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             g_router->stats.messages_dropped++;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
         }
+        goto skip_unlock_send;
     }
 
     nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+skip_unlock_send:
 
     // Update routing statistics
     if (result == NIMCP_SUCCESS) {
@@ -681,7 +704,12 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
             ctx, request, request_size, sync_ctx->promises[i], 0);
 
         if (send_result != NIMCP_SUCCESS) {
-            LOG_WARN("Failed to send sync request to target %u", targets[i]);
+            /* BUG-20 fix: Destroy the promise on send failure to prevent leaks.
+             * A promise that was never sent will never be completed, so it would
+             * hang forever on wait and leak memory. */
+            LOG_WARN("Failed to send sync request to target %u, destroying promise", targets[i]);
+            nimcp_bio_promise_destroy(sync_ctx->promises[i]);
+            sync_ctx->promises[i] = NULL;
         }
     }
 

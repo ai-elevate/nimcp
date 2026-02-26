@@ -44,12 +44,13 @@ static void stage_wellbeing_task(void* arg)
 
     if (brain->wellbeing_monitoring_enabled && brain->introspection) {
         uint64_t current_time = nimcp_time_get_ms();
+        uint64_t last_check = __atomic_load_n(&brain->last_wellbeing_check_time, __ATOMIC_ACQUIRE);
         bool should_check = (brain->wellbeing_check_interval_ms == 0) ||
-                           ((current_time - brain->last_wellbeing_check_time) >= brain->wellbeing_check_interval_ms);
+                           ((current_time - last_check) >= brain->wellbeing_check_interval_ms);
         if (should_check) {
             distress_assessment_t distress = wellbeing_assess_distress(brain->introspection);
             a->ctx->distress_level = distress.severity;
-            brain->last_wellbeing_check_time = current_time;
+            __atomic_store_n(&brain->last_wellbeing_check_time, current_time, __ATOMIC_RELEASE);
         }
     }
     a->ctx->wellbeing_done = true;
@@ -61,7 +62,9 @@ static void stage_engram_recall_task(void* arg)
     brain_t brain = a->brain;
 
     if (brain->engram_system) {
-        // Engram recall is read-only on the store
+        // TODO: Implement parallel engram recall — currently a stub.
+        //       Should call engram_recall() with feature pattern and populate
+        //       a->ctx->engram_strength with the match score.
         a->ctx->engram_strength = 0.0f;  // Placeholder — actual recall in main thread
     }
     a->ctx->engram_done = true;
@@ -73,6 +76,8 @@ static void stage_sleep_task(void* arg)
     brain_t brain = a->brain;
 
     if (brain->sleep_system) {
+        // TODO: Implement parallel sleep pressure query — currently a stub.
+        //       Should call sleep_get_pressure() and populate a->ctx->sleep_pressure.
         a->ctx->sleep_pressure = 0.0f;  // Placeholder — actual sleep check in main thread
     }
     a->ctx->sleep_done = true;
@@ -84,6 +89,8 @@ static void stage_curiosity_task(void* arg)
     brain_t brain = a->brain;
 
     if (brain->curiosity) {
+        // TODO: Implement parallel curiosity evaluation — currently reads a cached value.
+        //       Should call curiosity_evaluate() with features for fresh drive computation.
         a->ctx->curiosity_score = brain->last_curiosity_drive;
     }
     a->ctx->curiosity_done = true;
@@ -93,6 +100,8 @@ static void stage_predictive_task(void* arg)
 {
     pre_forward_task_arg_t* a = (pre_forward_task_arg_t*)arg;
     (void)a;  // Prediction depends on network state — run in main thread
+    // TODO: Implement parallel predictive coding — currently a stub.
+    //       Needs careful synchronization since prediction reads network weights.
     a->ctx->prediction_done = true;
 }
 
@@ -114,6 +123,8 @@ static void stage_engram_consol_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;  // Consolidation runs asynchronously
+    // TODO: Implement engram consolidation — should trigger engram_consolidate_step()
+    //       for recently-activated engrams after the decision is made.
     a->ctx->engram_consol_done = true;
 }
 
@@ -121,6 +132,8 @@ static void stage_systems_consol_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement systems consolidation — should call systems_consolidation_step()
+    //       for hippocampus-to-cortex memory transfer after each decision.
     a->ctx->systems_consol_done = true;
 }
 
@@ -128,6 +141,8 @@ static void stage_wm_transfer_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement working memory transfer — should call wm_transfer_step()
+    //       to selectively consolidate rehearsed WM items into engrams.
     a->ctx->wm_transfer_done = true;
 }
 
@@ -135,6 +150,8 @@ static void stage_semantic_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement semantic memory update — should call semantic_memory_step()
+    //       to update spreading activation and concept priming after the decision.
     a->ctx->semantic_done = true;
 }
 
@@ -142,6 +159,8 @@ static void stage_glial_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement glial maintenance — should call glial_step() to update
+    //       astrocyte calcium dynamics and myelin modulation post-decision.
     a->ctx->glial_done = true;
 }
 
@@ -149,6 +168,8 @@ static void stage_tom_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement Theory of Mind update — should call tom_update() to
+    //       refresh agent models based on the decision outcome.
     a->ctx->tom_done = true;
 }
 
@@ -156,6 +177,8 @@ static void stage_shannon_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement Shannon information analysis — should compute
+    //       broadcast information content and update workspace entropy stats.
     a->ctx->shannon_done = true;
 }
 
@@ -163,6 +186,8 @@ static void stage_quantum_shannon_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     (void)a->brain;
+    // TODO: Implement quantum Shannon analysis — should compute
+    //       von Neumann entropy for quantum-coherent workspace states.
     a->ctx->quantum_shannon_done = true;
 }
 

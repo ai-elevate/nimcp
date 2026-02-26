@@ -505,16 +505,18 @@ void hash_table_destroy(hash_table_t* table)
     }
 
     // Free all entries in all buckets
-    for (size_t i = 0; i < table->bucket_count; i++) {
-        hash_entry_t* current = table->buckets[i];
-        while (current) {
-            hash_entry_t* next = current->next;
-            free_entry(table, current);
-            current = next;
+    if (table->buckets) {
+        for (size_t i = 0; i < table->bucket_count; i++) {
+            hash_entry_t* current = table->buckets[i];
+            while (current) {
+                hash_entry_t* next = current->next;
+                free_entry(table, current);
+                current = next;
+            }
         }
+        nimcp_free(table->buckets);
     }
 
-    nimcp_free(table->buckets);
     nimcp_free(table);
 }
 
@@ -530,7 +532,7 @@ size_t hash_table_bucket_count(const hash_table_t* table)
 
 void hash_table_clear(hash_table_t* table)
 {
-    if (!table) {
+    if (!table || !table->buckets) {
         return;
     }
 
@@ -770,7 +772,7 @@ bool hash_table_remove_uint64(hash_table_t* table, uint64_t key)
 
 void hash_table_iterate(hash_table_t* table, hash_table_iterator_fn_t callback, void* user_data)
 {
-    if (!table || !callback) {
+    if (!table || !callback || !table->buckets) {
         return;
     }
 
@@ -797,7 +799,7 @@ void hash_table_iterate(hash_table_t* table, hash_table_iterator_fn_t callback, 
 void hash_table_stats(const hash_table_t* table, size_t* max_chain_length, float* avg_chain_length,
                       size_t* empty_buckets)
 {
-    if (!table) {
+    if (!table || !table->buckets) {
         if (max_chain_length)
             *max_chain_length = 0;
         if (avg_chain_length)

@@ -763,6 +763,12 @@ brain_decision_t* copy_decision(brain_decision_t* source)
 
     // Setup reference counting for the shared data
     // Use atomic compare-and-swap to handle concurrent initialization
+    //
+    // KNOWN LIMITATION (ABA window): Between loading existing_refcount and the CAS,
+    // another thread could free the refcount and reallocate at the same address.
+    // This is a theoretical ABA concern. In practice, decisions are short-lived and
+    // copies are typically made on the same thread. A proper fix would require
+    // hazard pointers or epoch-based reclamation, which is deferred.
     uint32_t* existing_refcount = __atomic_load_n(&source->_cow_refcount, __ATOMIC_ACQUIRE);
     if (!existing_refcount) {
         // Source owns its data - create a new refcount for sharing
@@ -909,7 +915,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (num_features != brain->config.num_inputs) {
         set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
                   num_features);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_decide: feature count mismatch");
         return NULL;
     }
 
@@ -1006,7 +1012,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                          brain->last_distress.description ? brain->last_distress.description : "Unknown");
                 // Note: Caller should check error and potentially apply intervention
                 nimcp_free(local_features);
-                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide: validation failed");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "brain_decide: system in CRITICAL distress");
                 return NULL;
             }
         }
@@ -2108,15 +2114,17 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // Record as executed action
         mirror_neurons_execute_action(brain->mirror_neurons, &action);
 
-        // If predictive network predicted this, match observation with execution
-        // This strengthens mirror neuron associations (Hebbian learning)
-        if (brain->predictive_network && prediction) {
-            action_t predicted_action = features_to_action(prediction, num_features, 0);
-            float similarity = 0.0F;
-            mirror_neurons_match_actions(brain->mirror_neurons, &predicted_action,
-                                        &action, &similarity);
-            // High similarity → strong association between prediction and execution
-        }
+        // TODO: Dead code — `prediction` is always NULL here (freed at STAGE 2,
+        // lines 1246-1247). To restore mirror-prediction matching, the prediction
+        // buffer lifetime must be extended past this point, or the prediction error
+        // float should be used instead.
+        //
+        // if (brain->predictive_network && prediction) {
+        //     action_t predicted_action = features_to_action(prediction, num_features, 0);
+        //     float similarity = 0.0F;
+        //     mirror_neurons_match_actions(brain->mirror_neurons, &predicted_action,
+        //                                 &action, &similarity);
+        // }
     }
 
     // ========================================================================

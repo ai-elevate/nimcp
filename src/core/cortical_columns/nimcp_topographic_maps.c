@@ -239,9 +239,16 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
 
     /* Create mutex */
     map->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-    if (map->mutex) {
-        nimcp_platform_mutex_init(map->mutex, false);
+    if (!map->mutex) {
+        /* Free somatotopic regions if we deep-copied them */
+        if (config->type == TOPOGRAPHIC_SOMATOTOPIC && map->config.somatotopic.regions) {
+            nimcp_free(map->config.somatotopic.regions);
+        }
+        nimcp_free(map);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create: mutex allocation failed");
+        return NULL;
     }
+    nimcp_platform_mutex_init(map->mutex, false);
 
     /* Initialize cache */
     map->cache_valid = false;
@@ -423,7 +430,12 @@ topographic_map_t* topographic_map_create_somatotopic(uint32_t num_body_regions)
 
     config.magnification_factor = 1.0F;
 
-    return topographic_map_create(&config);
+    topographic_map_t* map = topographic_map_create(&config);
+
+    /* topographic_map_create deep-copies regions, so free the local allocation */
+    nimcp_free(config.somatotopic.regions);
+
+    return map;
 }
 
 /* ============================================================================

@@ -219,6 +219,9 @@ static bool page_pool_init(page_pool_t* pool, size_t num_pages) {
 
     if (!pool || num_pages == 0) return false;
 
+    // Check for integer overflow before multiplication
+    if (num_pages > SIZE_MAX / PAGE_COW_PAGE_SIZE) return false;
+
     // Allocate pages via mmap
     size_t total_size = num_pages * PAGE_COW_PAGE_SIZE;
     pool->base = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
@@ -458,17 +461,20 @@ NIMCP_EXPORT unified_mem_manager_t unified_mem_create(
 NIMCP_EXPORT void unified_mem_destroy(unified_mem_manager_t manager) {
     if (!manager || manager->magic != UNIFIED_MANAGER_MAGIC) return;
 
-    // Warning: handles should be freed first
-    if (manager->handle_count > 0) {
-    
-        // Force cleanup of remaining handles
-        struct unified_mem_handle_struct* current = manager->handles;
-        while (current) {
-        
-            struct unified_mem_handle_struct* next = current->next;
-            unified_mem_free(current);
-            current = next;
-        }
+    // Detach handle list under lock so no concurrent access races with us.
+    // We can't hold the lock while calling unified_mem_free (it re-acquires),
+    // so snapshot the list head and clear the manager's list atomically.
+    nimcp_platform_mutex_lock(&manager->mutex);
+    struct unified_mem_handle_struct* pending = manager->handles;
+    manager->handles = NULL;
+    manager->handle_count = 0;
+    nimcp_platform_mutex_unlock(&manager->mutex);
+
+    // Force cleanup of remaining handles (now safe: list is detached)
+    while (pending) {
+        struct unified_mem_handle_struct* next = pending->next;
+        unified_mem_free(pending);
+        pending = next;
     }
 
     // Destroy page pool
@@ -820,17 +826,30 @@ NIMCP_EXPORT void unified_mem_free(unified_mem_handle_t handle) {
         remove_handle_from_list(manager, handle);
         pool_initialized = manager->page_pool.initialized;
 
-        // Update statistics
+        // Update statistics with underflow guards.
+        // Without guards, freeing a handle whose state was changed without
+        // updating stats (or freeing untracked memory) wraps size_t counters
+        // to near-SIZE_MAX, corrupting all subsequent statistics.
         if (handle->state == UNIFIED_STATE_SHARED) {
-
-            manager->stats.shared_handles--;
-            manager->stats.shared_memory_bytes -= handle->size;
+            if (manager->stats.shared_handles > 0)
+                manager->stats.shared_handles--;
+            if (manager->stats.shared_memory_bytes >= handle->size)
+                manager->stats.shared_memory_bytes -= handle->size;
+            else
+                manager->stats.shared_memory_bytes = 0;
         } else if (handle->state == UNIFIED_STATE_PRIVATE) {
-            manager->stats.private_handles--;
-            manager->stats.private_memory_bytes -= handle->size;
+            if (manager->stats.private_handles > 0)
+                manager->stats.private_handles--;
+            if (manager->stats.private_memory_bytes >= handle->size)
+                manager->stats.private_memory_bytes -= handle->size;
+            else
+                manager->stats.private_memory_bytes = 0;
         }
 
-        manager->stats.total_memory_bytes -= handle->size;
+        if (manager->stats.total_memory_bytes >= handle->size)
+            manager->stats.total_memory_bytes -= handle->size;
+        else
+            manager->stats.total_memory_bytes = 0;
 
         nimcp_platform_mutex_unlock(&manager->mutex);
     }
@@ -957,19 +976,25 @@ NIMCP_EXPORT void* unified_mem_write(unified_mem_handle_t handle) {
             break;
     }
 
-    // Update statistics if state changed
+    // Update statistics if state changed (shared -> private CoW trigger)
     if (manager && manager->magic == UNIFIED_MANAGER_MAGIC && was_shared &&
         handle->state == UNIFIED_STATE_PRIVATE) {
         nimcp_platform_mutex_lock(&manager->mutex);
         manager->stats.cow_triggers++;
-        manager->stats.shared_handles--;
+        if (manager->stats.shared_handles > 0)
+            manager->stats.shared_handles--;
         manager->stats.private_handles++;
-        manager->stats.shared_memory_bytes -= handle->size;
+        if (manager->stats.shared_memory_bytes >= handle->size)
+            manager->stats.shared_memory_bytes -= handle->size;
+        else
+            manager->stats.shared_memory_bytes = 0;
         manager->stats.private_memory_bytes += handle->size;
-        manager->stats.memory_saved_bytes -= handle->size;
+        if (manager->stats.memory_saved_bytes >= handle->size)
+            manager->stats.memory_saved_bytes -= handle->size;
+        else
+            manager->stats.memory_saved_bytes = 0;
 
         if (manager->config.enable_tracking) {
-        
             manager->stats.total_cow_time_ns += get_time_ns() - start_time;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);

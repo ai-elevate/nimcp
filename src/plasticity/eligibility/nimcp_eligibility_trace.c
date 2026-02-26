@@ -602,11 +602,10 @@ float eligibility_consolidate_on_burst(
         }
         synapse->weight += delta_w;
 
-        // Clamp weight to physiological range [0, 1]
-        // WHAT: Bound weight updates to prevent unbounded growth
-        // WHY: Synaptic weights must stay in valid range
-        // HOW: Use fminf/fmaxf for branchless clamping
-        float new_weight = fminf(fmaxf(synapse->weight, 0.0f), 1.0f);
+        // BUG-16 fix: Use same [-10, 10] bounds as standard mode (caller uses these
+        // bounds in synapse_learn_three_factor). Previous [0, 1] was inconsistent
+        // and prevented inhibitory weights in burst-triggered mode.
+        float new_weight = fminf(fmaxf(synapse->weight, -10.0f), 10.0f);
         synapse->weight = isnan(new_weight) ? 0.5f : new_weight;
 
         return delta_w;

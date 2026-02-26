@@ -70,7 +70,11 @@ int plasticity_orchestrator_connect_bio_async(plasticity_orchestrator_t* orchest
         return -1;
     }
 
+    /* BUG-27 fix: Lock mutex around state mutation, matching the pattern
+     * of connect_immune, connect_sleep, and connect_neuromodulators */
+    nimcp_platform_mutex_lock(orchestrator->mutex);
     orchestrator->bio_async_connected = true;
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
     NIMCP_LOGGING_INFO("Connected orchestrator to bio-async router");
     return 0;
 }
@@ -169,7 +173,10 @@ int plasticity_orchestrator_pre_spike(
 
     /* Update activity estimate */
     float time_since_last = (float)(timestamp_ms - prev_spike_time);
+    /* BUG-24 fix: Clamp to minimum 1ms to prevent division by zero for
+     * same-millisecond spikes and avoid Inf from float precision issues */
     if (time_since_last > 0) {
+        if (time_since_last < 1.0f) time_since_last = 1.0f;
         syn->recent_activity_hz = 1000.0f / time_since_last;  /* Convert to Hz */
     }
 
@@ -336,7 +343,8 @@ int plasticity_orchestrator_reward(
             synapse_entry_t* syn = &orchestrator->synapses[i];
             if (!syn->active) continue;
 
-            if (syn->eligibility_trace > 0.01f) {
+            /* BUG-26 fix: Use fabsf to catch negative eligibility traces (LTD) */
+            if (fabsf(syn->eligibility_trace) > 0.01f) {
                 float dw = syn->eligibility_trace * reward_magnitude *
                           orchestrator->config.global_learning_rate;
 

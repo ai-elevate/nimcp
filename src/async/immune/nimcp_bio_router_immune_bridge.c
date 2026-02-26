@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stddef.h>  /* for NULL */
 #include "utils/thread/nimcp_thread.h"
+#include "utils/platform/nimcp_platform_time.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(bio_router_immune_bridge)
@@ -42,6 +43,9 @@ static inline float clamp_f(float value, float min, float max) {
     if (value > max) return max;
     return value;
 }
+
+/* Forward declaration for unlocked stats helper */
+static int router_immune_update_stats_unlocked(router_immune_bridge_t* bridge);
 
 /**
  * @brief Map inflammation level to priority
@@ -405,19 +409,24 @@ int router_immune_prioritize_cytokine(
         return -1;
     }
     if (!bridge->enable_cytokine_priority_routing) return 0;
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+
+    /* BUG-3 fix: Capacity check moved INSIDE the mutex lock to prevent TOCTOU race.
+     * Previously the check was done before acquiring the lock, so another thread
+     * could fill the last slot between the check and the lock acquisition. */
     if (bridge->cytokine_count >= bridge->cytokine_capacity) {
+        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "router_immune_prioritize_cytokine: capacity exceeded");
         return -1;
     }
-
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     /* Create cytokine routing state */
     cytokine_routing_state_t* state = &bridge->cytokine_states[bridge->cytokine_count];
     state->type = cytokine_type;
     state->priority_level = cytokine_to_priority(cytokine_type);
     state->concentration = clamp_f(concentration, 0.0f, 1.0f);
-    state->release_time = 0;  /* Would get from system time */
+    state->release_time = nimcp_platform_time_monotonic_us() / 1000;  /* HIGH-1 fix: store in ms to match expiration logic */
     state->expired = false;
 
     bridge->cytokine_count++;
@@ -456,7 +465,7 @@ int router_immune_apply_inflammation_latency(
         }
         impact = &bridge->inflammation_impacts[bridge->inflammation_count++];
         impact->affected_region = region_id;
-        impact->start_time = 0;  /* Would get from system time */
+        impact->start_time = nimcp_platform_time_monotonic_us() / 1000;  /* HIGH-1 fix: store in ms */
     }
 
     /* Update inflammation state */
@@ -510,7 +519,7 @@ int router_immune_quarantine_node(
 
     quarantined_node_state_t* qnode = &bridge->quarantined_nodes[bridge->quarantine_count++];
     qnode->node_id = node_id;
-    qnode->quarantine_start = 0;  /* Would get from system time */
+    qnode->quarantine_start = nimcp_platform_time_monotonic_us() / 1000;  /* HIGH-1 fix: store in ms to match duration_ms */
     qnode->quarantine_duration_ms = duration_ms;
     qnode->fully_isolated = ROUTER_QUARANTINE_FULL_ISOLATION;
     qnode->trust_score = trust_score;
@@ -584,7 +593,12 @@ int router_immune_broadcast_alert(
         uint32_t severity;
     } alert_msg;
 
-    /* Initialize message header */
+    /* BUG-11 fix: Zero the entire struct first to avoid sending uninitialized
+     * header fields (source_module, sequence, flags, etc.) over the bus. */
+    memset(&alert_msg, 0, sizeof(alert_msg));
+
+    /* Initialize message header fields */
+    alert_msg.header.type = BIO_MSG_SECURITY_ALERT;
     alert_msg.antigen_id = antigen_id;
     alert_msg.severity = (uint32_t)severity;
 
@@ -626,8 +640,8 @@ int router_immune_detect_anomalies(
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
-    /* Update statistics under lock to prevent TOCTOU race */
-    router_immune_update_stats(bridge);
+    /* Update statistics under lock to prevent TOCTOU race (use _unlocked variant) */
+    router_immune_update_stats_unlocked(bridge);
 
     /* Check for anomalies */
     bool anomaly_detected = false;
@@ -635,7 +649,7 @@ int router_immune_detect_anomalies(
     memset(&anomaly, 0, sizeof(anomaly));
 
     anomaly.node_id = node_id;
-    anomaly.timestamp = 0;  /* Would get from system time */
+    anomaly.timestamp = nimcp_platform_time_monotonic_us() / 1000;  /* HIGH-1 fix: store in ms to match time_window_ms */
     anomaly.observed_latency_ms = bridge->stats.avg_latency_ms;
     anomaly.observed_drop_rate = bridge->stats.current_drop_rate;
     anomaly.observed_error_rate = bridge->stats.current_error_rate;
@@ -725,7 +739,10 @@ int router_immune_trigger_from_anomaly(
     );
 
     if (result == 0) {
+        /* BUG-17 fix: Protect immune_triggers increment with mutex */
+        nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
         bridge->immune_triggers++;
+        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         LOG_MODULE_INFO("router_immune_bridge",
                   "Triggered immune response from anomaly (antigen %u)", antigen_id);
     }
@@ -784,7 +801,10 @@ int router_immune_present_byzantine(
     );
 
     if (result == 0) {
+        /* BUG-17 fix: Protect immune_triggers increment with mutex */
+        nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
         bridge->immune_triggers++;
+        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         LOG_MODULE_WARN("router_immune_bridge",
                   "Presented Byzantine behavior as antigen %u", antigen_id);
     }
@@ -810,8 +830,8 @@ int router_immune_bridge_update(
 
     uint64_t current_time = bridge->total_updates * delta_ms;  /* Simplified time tracking */
 
-    /* Update routing statistics */
-    router_immune_update_stats(bridge);
+    /* Update routing statistics under the lock (use _unlocked variant) */
+    router_immune_update_stats_unlocked(bridge);
 
     /* Expire old cytokine routing states */
     router_immune_expire_cytokines(bridge, current_time);
@@ -819,24 +839,28 @@ int router_immune_bridge_update(
     /* Release expired quarantines */
     router_immune_release_expired_quarantines(bridge, current_time);
 
-    /* Detect routing anomalies (would check specific nodes) */
-    /* For now, check overall routing health */
+    bridge->total_updates++;
+
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+
+    /* BUG-2 fix: Call detect_anomalies AFTER releasing the mutex.
+     * detect_anomalies() acquires bridge->base.mutex internally, so calling it
+     * while already holding the mutex causes a deadlock (non-recursive mutex). */
     if (bridge->enable_anomaly_immune_trigger) {
         router_immune_detect_anomalies(bridge, 0);  /* Node 0 = overall */
     }
 
-    bridge->total_updates++;
-
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int router_immune_update_stats(router_immune_bridge_t* bridge) {
-    /* Guard clauses */
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_update_stats: bridge is NULL");
-        return -1;
-    }
+/**
+ * @brief Internal stats update — caller MUST hold bridge->base.mutex.
+ *
+ * BUG-9 fix: Split into _unlocked helper so that callers already holding
+ * the mutex (detect_anomalies, bridge_update) can call without deadlock,
+ * while the public API acquires the lock.
+ */
+static int router_immune_update_stats_unlocked(router_immune_bridge_t* bridge) {
     if (!bridge->router) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_update_stats: bridge->router is NULL");
         return -1;
@@ -866,9 +890,25 @@ int router_immune_update_stats(router_immune_bridge_t* bridge) {
             (float)bridge->stats.routing_errors / (float)bridge->stats.messages_sent;
     }
 
-    bridge->stats.last_update_time = 0;  /* Would get from system time */
+    /* BUG-12 fix: Use actual monotonic time instead of hardcoded 0 */
+    /* HIGH-1 fix: Convert to ms for consistent time units throughout bridge */
+    bridge->stats.last_update_time = nimcp_platform_time_monotonic_us() / 1000;
 
     return 0;
+}
+
+int router_immune_update_stats(router_immune_bridge_t* bridge) {
+    /* Guard clauses */
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_update_stats: bridge is NULL");
+        return -1;
+    }
+
+    /* BUG-9 fix: Acquire mutex for thread safety when called as public API */
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    int result = router_immune_update_stats_unlocked(bridge);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    return result;
 }
 
 int router_immune_expire_cytokines(
@@ -1015,7 +1055,8 @@ uint32_t router_immune_get_anomaly_count(
     }
 
     /* Count anomalies within time window */
-    uint64_t current_time = 0;  /* Would get from system time */
+    /* HIGH-1 fix: Convert to ms — timestamps are stored in ms, time_window_ms is in ms */
+    uint64_t current_time = nimcp_platform_time_monotonic_us() / 1000;
     uint32_t count = 0;
     for (size_t i = 0; i < bridge->anomaly_count; i++) {
         uint64_t age = current_time - bridge->recent_anomalies[i].timestamp;

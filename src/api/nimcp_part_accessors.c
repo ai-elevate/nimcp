@@ -21,16 +21,14 @@ nimcp_status_t nimcp_brain_workspace_has_broadcast(
     nimcp_brain_t brain,
     bool* has_broadcast)
 {
-    // Guard: Validate brain
+    // Guard: Validate brain and output parameter FIRST (before dereferencing subsystems)
     NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain provided to workspace_has_broadcast");
+    NIMCP_CHECK_THROW(has_broadcast, NIMCP_ERROR_NULL_ARG, "NULL has_broadcast parameter");
     NIMCP_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // Guard: Check if global workspace enabled
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     NIMCP_CHECK_THROW(workspace, NIMCP_ERROR_INVALID, "Global workspace not enabled in brain config");
-
-    // Guard: Validate output parameter
-    NIMCP_CHECK_THROW(has_broadcast, NIMCP_ERROR_NULL_ARG, "NULL has_broadcast parameter");
 
     // Check for broadcast
     *has_broadcast = global_workspace_has_broadcast(workspace);

@@ -70,6 +70,7 @@ typedef struct episode_entry {
 /**
  * @brief Internal social memory structure
  */
+/* TODO: Add mutex for thread safety — currently NOT thread-safe despite header doc */
 typedef struct social_memory_struct {
     uint32_t magic;                    /**< Validation magic number */
 
@@ -153,7 +154,7 @@ NIMCP_EXPORT social_memory_config_t social_memory_config_default(void) {
     memset(&config, 0, sizeof(config));
 
     /* Capacity */
-    config.max_persons = 1000;
+    config.max_persons = 1024;
     config.max_episodes = 5000;
     config.max_facts_per_person = 100;
 
@@ -174,7 +175,7 @@ NIMCP_EXPORT social_memory_config_t social_memory_config_default(void) {
     /* Integration */
     config.enable_entanglement = true;
     config.enable_episode_linking = true;
-    /* resonance_config zeroed by memset — uses defaults */
+    /* resonance_config zeroed by memset — all zero values */
 
     return config;
 }
@@ -508,8 +509,8 @@ NIMCP_EXPORT uint64_t social_memory_add_person(
     // Assign matrix index
     int idx = assign_matrix_index(mem, person->person_id);
     if (idx < 0) {
+        /* remove_person_entry already frees the person node — do NOT call free_person_node again */
         remove_person_entry(mem, person->person_id);
-        free_person_node(person);
         return SOCIAL_MEM_INVALID_PERSON_ID;
     }
 
@@ -569,8 +570,9 @@ NIMCP_EXPORT uint64_t social_memory_add_person_full(
                                 mem->config.max_facts_per_person : person->num_facts;
         new_person->facts = (prime_signature_t*)nimcp_malloc(new_person->max_facts * sizeof(prime_signature_t));
         if (new_person->facts) {
-            memcpy(new_person->facts, person->facts, person->num_facts * sizeof(prime_signature_t));
-            new_person->num_facts = person->num_facts;
+            /* Only copy up to max_facts elements to avoid buffer overflow */
+            memcpy(new_person->facts, person->facts, new_person->max_facts * sizeof(prime_signature_t));
+            new_person->num_facts = new_person->max_facts;
         }
     }
 
@@ -581,8 +583,8 @@ NIMCP_EXPORT uint64_t social_memory_add_person_full(
 
     int idx = assign_matrix_index(mem, new_person->person_id);
     if (idx < 0) {
+        /* remove_person_entry already frees the person node — do NOT call free_person_node again */
         remove_person_entry(mem, new_person->person_id);
-        free_person_node(new_person);
         return SOCIAL_MEM_INVALID_PERSON_ID;
     }
 
@@ -1136,10 +1138,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_update_name(
     }
 
     nimcp_free(entry->person->name);
-    entry->person->name = strdup(name);
+    size_t name_len = strlen(name) + 1;
+    entry->person->name = (char*)nimcp_malloc(name_len);
     if (!entry->person->name) {
         return SOCIAL_MEM_ERROR_NO_MEMORY;
     }
+    memcpy(entry->person->name, name, name_len);
 
     entry->person->modified_time_ms = social_memory_current_time_ms();
     return SOCIAL_MEM_SUCCESS;
@@ -1754,10 +1758,18 @@ NIMCP_EXPORT uint64_t social_memory_record_episode_full(
     new_ep->created_time_ms = social_memory_current_time_ms();
 
     if (episode->location) {
-        new_ep->location = strdup(episode->location);
+        size_t loc_len = strlen(episode->location) + 1;
+        new_ep->location = (char*)nimcp_malloc(loc_len);
+        if (new_ep->location) {
+            memcpy(new_ep->location, episode->location, loc_len);
+        }
     }
     if (episode->description) {
-        new_ep->description = strdup(episode->description);
+        size_t desc_len = strlen(episode->description) + 1;
+        new_ep->description = (char*)nimcp_malloc(desc_len);
+        if (new_ep->description) {
+            memcpy(new_ep->description, episode->description, desc_len);
+        }
     }
 
     // Copy participants
@@ -3003,13 +3015,15 @@ static person_node_t* create_person_node(const char* name) {
     }
 
     if (name) {
-        person->name = strdup(name);
+        size_t name_len = strlen(name) + 1;
+        person->name = (char*)nimcp_malloc(name_len);
         if (!person->name) {
             nimcp_free(person);
             set_error("Failed to allocate person name");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_person_node: person->name is NULL");
             return NULL;
         }
+        memcpy(person->name, name, name_len);
     }
 
     // Initialize defaults

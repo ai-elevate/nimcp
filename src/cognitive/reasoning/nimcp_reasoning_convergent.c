@@ -75,29 +75,38 @@
  *
  * We define a compatible layout here to avoid modifying the chain file's
  * struct definition. This MUST stay in sync with reasoning_engine in chain.c.
+ *
+ * FIX #1 (compat struct drift): All fields are void* because the canonical
+ * struct uses typedef'd pointer types (knowledge_system_t, predictive_network_t,
+ * epistemic_filter_t, self_model_system_t, engram_system_t* etc.) which are all
+ * pointer-sized. The field ORDER and COUNT must match exactly.
+ *
+ * MAINTENANCE: If you add/remove/reorder fields in reasoning_engine (chain.c),
+ * you MUST update this struct to match.
  */
 struct reasoning_engine_compat {
-    reasoning_engine_config_t config;
-    brain_t brain;
-    void* engram_system;
-    void* knowledge_system;
-    void* working_memory;
-    void* predictive_net;
-    void* epistemic_filter;
-    void* rcog_engine;
-    void* self_model;
-    void* omni_world_model;
-    void* multimodal_world_model;
-    void* jepa_predictor;
-    void* jepa_context;
-    void* jepa_fep_bridge;
-    void* symbolic_logic;
-    void* thread_pool;
-    void* calibration;     /* reasoning_calibration_t* */
-    void* metacognition;   /* reasoning_metacognition_t* */
-    void* abduction;       /* reasoning_abduction_t* */
-    reasoning_engine_stats_t stats;
-    bool is_connected;
+    reasoning_engine_config_t config;   /* must match chain.c field 1 */
+    brain_t brain;                      /* must match chain.c field 2 */
+    void* engram_system;                /* engram_system_t* */
+    void* knowledge_system;             /* knowledge_system_t (typedef ptr) */
+    void* working_memory;               /* working_memory_t* */
+    void* predictive_net;               /* predictive_network_t (typedef ptr) */
+    void* epistemic_filter;             /* epistemic_filter_t (typedef ptr) */
+    void* rcog_engine;                  /* rcog_engine_t* */
+    void* self_model;                   /* self_model_system_t (typedef ptr) */
+    void* omni_world_model;             /* struct omni_world_model* */
+    void* multimodal_world_model;       /* struct nimcp_world_model* */
+    void* jepa_predictor;               /* jepa_predictor_t* */
+    void* jepa_context;                 /* jepa_context_encoder_t* */
+    void* jepa_fep_bridge;              /* jepa_fep_bridge_t* */
+    void* symbolic_logic;               /* symbolic_logic_t* */
+    void* thread_pool;                  /* nimcp_thread_pool_t* */
+    void* calibration;                  /* reasoning_calibration_t* */
+    void* metacognition;                /* reasoning_metacognition_t* */
+    void* abduction;                    /* reasoning_abduction_t* */
+    reasoning_engine_stats_t stats;     /* must match chain.c stats field */
+    bool is_connected;                  /* must match chain.c is_connected field */
+    void* reason_mutex;                 /* nimcp_mutex_t* — FIX #5: added for thread safety */
 };
 
 /** Quick access to brain from engine */
@@ -660,8 +669,8 @@ static void contrib_mesh_evidence(void* arg) {
     convergent_contribution_t* ctx = (convergent_contribution_t*)arg;
     uint64_t start = nimcp_time_get_us();
 
-    reasoning_chain_init(&ctx->local_chain);
-
+    /* FIX #7: Check mesh availability BEFORE initializing local_chain
+     * to avoid leaking the chain's step array on early return. */
     if (!reasoning_mesh_is_available()) {
         ctx->skipped = true;
         ctx->completed = true;
@@ -669,6 +678,15 @@ static void contrib_mesh_evidence(void* arg) {
     }
 
     brain_t brain = engine_get_brain(ctx->engine);
+    /* FIX #9: NULL check on brain before passing to mesh gather */
+    if (!brain) {
+        ctx->skipped = true;
+        ctx->completed = true;
+        return;
+    }
+
+    reasoning_chain_init(&ctx->local_chain);
+
     reasoning_mesh_result_t mesh_result = reasoning_mesh_gather_evidence(
         brain, ctx->query, REASONING_MESH_DEFAULT_TIMEOUT_MS);
 
@@ -1067,30 +1085,45 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     }
 
     /* ── Phase 2: Build active contributor list ── */
-    convergent_session_t session;
-    memset(&session, 0, sizeof(session));
+    /* FIX #6: Heap-allocate the session to avoid stack overflow.
+     * convergent_session_t contains convergent_contribution_t[128], each
+     * ~1.1KB due to embedded reasoning_chain_t (conclusion[1024]).
+     * Total: ~144KB — far too large for a stack frame. */
+    convergent_session_t* session = (convergent_session_t*)nimcp_calloc(
+        1, sizeof(convergent_session_t));
+    if (!session) {
+        NIMCP_LOGGING_ERROR("convergent: failed to allocate session (%zu bytes)",
+                            sizeof(convergent_session_t));
+        return -1;
+    }
 
     uint32_t num_active = build_active_contributors(
-        &session, engine, query, query_type, domain);
+        session, engine, query, query_type, domain);
 
     NIMCP_LOGGING_INFO("convergent: %u active contributors from registry",
                        num_active);
 
     /* ── Phase 3: Initialize evidence accumulator ── */
     int rc = reasoning_accumulator_init(
-        &session.accumulator, num_active,
+        &session->accumulator, num_active,
         config->convergence_ema_alpha,
         config->convergence_threshold);
     if (rc != 0) {
         NIMCP_LOGGING_ERROR("convergent: failed to initialize accumulator");
+        nimcp_free(session);
         return -1;
     }
 
     /* ── Phase 4: Submit Wave 1 contributors to thread pool ── */
+    /* FIX #11: Record start time to enforce convergence_timeout_ms */
+    uint64_t convergence_start_us = nimcp_time_get_us();
+    uint32_t timeout_ms = config->convergence_timeout_ms;
+    if (timeout_ms == 0) timeout_ms = REASONING_DEFAULT_CONVERGENCE_TIMEOUT_MS;
+
     uint32_t wave1_count = 0;
     if (pool) {
         for (uint32_t i = 0; i < num_active; i++) {
-            convergent_contribution_t* contrib = &session.contributions[i];
+            convergent_contribution_t* contrib = &session->contributions[i];
             if (contrib->wave == 1) {
                 const reasoning_contributor_entry_t* entry = NULL;
                 /* Find matching registry entry for the function pointer */
@@ -1113,9 +1146,10 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
             nimcp_pool_wait(pool);
         }
     } else {
-        /* No thread pool: run Wave 1 sequentially */
+        /* FIX #15: No thread pool — fall back to sequential execution of
+         * Wave 1 contributors. This correctly handles the NULL pool case. */
         for (uint32_t i = 0; i < num_active; i++) {
-            convergent_contribution_t* contrib = &session.contributions[i];
+            convergent_contribution_t* contrib = &session->contributions[i];
             if (contrib->wave == 1) {
                 for (uint32_t r = 0; r < s_registry_count; r++) {
                     if (strcmp(s_contributor_registry[r].name,
@@ -1130,13 +1164,31 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
         }
     }
 
+    /* FIX #11: Enforce convergence_timeout_ms — check if we've exceeded it */
+    {
+        uint64_t elapsed_us = nimcp_time_get_us() - convergence_start_us;
+        uint64_t timeout_us = (uint64_t)timeout_ms * 1000;
+        if (elapsed_us > timeout_us) {
+            NIMCP_LOGGING_WARN("convergent: timeout exceeded (%lu us > %lu us), "
+                               "skipping late contributors",
+                               (unsigned long)elapsed_us,
+                               (unsigned long)timeout_us);
+            /* Mark incomplete contributors as skipped */
+            for (uint32_t i = 0; i < num_active; i++) {
+                if (!session->contributions[i].completed) {
+                    session->contributions[i].skipped = true;
+                }
+            }
+        }
+    }
+
     /* ── Phase 5: Merge Wave 1 results into accumulator ── */
     uint32_t evidence_submitted = 0;
     uint32_t modulations_submitted = 0;
     reasoning_calibration_t* cal = engine_get_calibration(engine);
 
     for (uint32_t i = 0; i < num_active; i++) {
-        convergent_contribution_t* contrib = &session.contributions[i];
+        convergent_contribution_t* contrib = &session->contributions[i];
         if (contrib->skipped || !contrib->completed) continue;
 
         if (contrib->role == REASONING_ROLE_EVIDENCE_PRODUCER) {
@@ -1156,12 +1208,12 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
             }
 
             reasoning_accumulator_submit_evidence(
-                &session.accumulator, chain, contrib);
+                &session->accumulator, chain, contrib);
             reasoning_chain_cleanup(&contrib->local_chain);
             evidence_submitted++;
         } else if (contrib->role == REASONING_ROLE_CONFIDENCE_MODULATOR) {
             reasoning_accumulator_submit_modulation(
-                &session.accumulator, contrib->confidence_delta);
+                &session->accumulator, contrib->confidence_delta);
             modulations_submitted++;
         }
     }
@@ -1169,18 +1221,18 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     NIMCP_LOGGING_DEBUG("convergent: Wave 1 merged — %u evidence, "
                         "%u modulations, converged=%s",
                         evidence_submitted, modulations_submitted,
-                        session.accumulator.converged ? "yes" : "no");
+                        session->accumulator.converged ? "yes" : "no");
 
     /* ── Phase 6: Apply net Tier 2 modulation (clamped ±0.3) ── */
     float net_modulation = reasoning_accumulator_apply_modulation(
-        &session.accumulator);
+        &session->accumulator);
     if (net_modulation != 0.0f) {
         NIMCP_LOGGING_DEBUG("convergent: net modulation = %.4f",
                             (double)net_modulation);
     }
 
     /* ── Phase 7: Update chain confidence from accumulator ── */
-    chain->overall_confidence = session.accumulator.current_confidence;
+    chain->overall_confidence = session->accumulator.current_confidence;
 
     /* Mark chain as complete if convergence threshold met */
     if (chain->overall_confidence >= config->confidence_threshold) {
@@ -1193,7 +1245,7 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
              "confidence=%.3f%s",
              num_active, evidence_submitted,
              (double)chain->overall_confidence,
-             session.accumulator.converged ? " (converged)" : "");
+             session->accumulator.converged ? " (converged)" : "");
     chain->is_complete = true;
     chain->end_time_us = nimcp_time_get_us();
 
@@ -1220,7 +1272,8 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     }
 
     /* ── Cleanup ── */
-    reasoning_accumulator_destroy(&session.accumulator);
+    reasoning_accumulator_destroy(&session->accumulator);
+    nimcp_free(session);
 
     NIMCP_LOGGING_INFO("convergent: completed — %u steps, confidence=%.3f, "
                        "contributors=%u",

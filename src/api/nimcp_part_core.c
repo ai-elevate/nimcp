@@ -31,10 +31,12 @@ nimcp_status_t nimcp_brain_learn_example(
     NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
     NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
     NIMCP_API_CHECK_NULL(label, NIMCP_ERROR_NULL_ARG, "Label is NULL");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     /* === PHASE IS-1: BBB INPUT VALIDATION === */
     /* Validate external input data through Blood-Brain Barrier before processing */
-    if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
+    /* Note: brain->internal_brain already validated non-NULL above */
+    if (brain->internal_brain->bbb_enabled &&
         brain->internal_brain->bbb_system) {
         LOG_DEBUG("BBB enabled, validating inputs");
         bbb_validation_result_t result;
@@ -108,10 +110,11 @@ nimcp_status_t nimcp_brain_predict(
     API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
     API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
     API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
-    if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
+    if (brain->internal_brain->bbb_enabled &&
         brain->internal_brain->bbb_system) {
         bbb_validation_result_t result;
 
@@ -135,7 +138,8 @@ nimcp_status_t nimcp_brain_predict(
     *out_confidence = decision->confidence;
 
     // Deep-copy decision for rubric access (last_decision owns this copy)
-    if (brain->internal_brain->last_decision) {
+    // Note: internal_brain already validated non-NULL above
+    if (brain->internal_brain && brain->internal_brain->last_decision) {
         brain_free_decision(brain->internal_brain->last_decision);
     }
     brain->internal_brain->last_decision = copy_decision_deep(decision);
@@ -168,6 +172,10 @@ nimcp_status_t nimcp_brain_predict_fast(
 
     // Allocate output buffer on stack for small outputs, heap for large
     uint32_t num_outputs = ib->config.num_outputs;
+    if (num_outputs == 0) {
+        set_error("Brain has 0 outputs");
+        return NIMCP_ERROR_INVALID;
+    }
     float stack_buf[256];
     float* output = (num_outputs <= 256) ? stack_buf : (float*)nimcp_calloc(num_outputs, sizeof(float));
     if (!output) {
@@ -225,6 +233,7 @@ nimcp_status_t nimcp_brain_infer(
     API_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "NULL brain handle");
     API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
     API_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
     if (num_features == 0) {
         set_error("num_features must be > 0");
         return NIMCP_ERROR_INVALID;
@@ -274,6 +283,7 @@ nimcp_status_t nimcp_brain_decide_full(
     API_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
     API_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
     API_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence is NULL");
+    API_CHECK_THROW(brain->internal_brain, NIMCP_ERROR_INVALID, "Brain has NULL internal_brain");
 
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
     if (!decision) {

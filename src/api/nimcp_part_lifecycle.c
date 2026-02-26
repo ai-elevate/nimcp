@@ -66,7 +66,7 @@ nimcp_status_t nimcp_init(void) {
                                              NIMCP_MEMORY_ORDER_ACQ_REL)) {
         // Another thread is initializing - wait for it to complete
         while (nimcp_atomic_load_bool(&g_init_in_progress, NIMCP_MEMORY_ORDER_ACQUIRE)) {
-            // Spin-wait (could use yield/sleep for production)
+            usleep(1);  // Yield CPU to avoid busy-spin burning cycles
         }
         return g_init_result;
     }
@@ -92,6 +92,13 @@ nimcp_status_t nimcp_init(void) {
 
 void nimcp_shutdown(void) {
     LOG_INFO("Shutting down NIMCP library");
+
+    // KNOWN LIMITATION: There is a race window between setting g_initialized=false
+    // and completing subsystem teardown. In-flight API calls that already passed the
+    // g_initialized check may access freed resources during shutdown. A proper fix
+    // would require epoch-based reclamation (RCU) or a global quiescent-state check,
+    // which is deferred due to complexity. Callers must ensure no concurrent API
+    // calls are in progress when calling nimcp_shutdown().
 
     // Atomically set g_initialized to false at the START of shutdown.
     // This prevents other threads from entering API functions during cleanup.
@@ -135,6 +142,12 @@ void nimcp_shutdown(void) {
     nimcp_memory_cleanup();
 
     // Reset init state to allow re-initialization
+    // KNOWN LIMITATION: Between setting g_initialized=false (top of shutdown) and
+    // resetting g_init_result here, a concurrent nimcp_init() that passes the
+    // fast-path check could read the old g_init_result. This is benign because
+    // g_initialized is already false, so the fast path won't be taken. However,
+    // if re-initialization races with the tail end of shutdown, the spinning
+    // thread may read a stale g_init_result before this reset.
     g_init_result = NIMCP_OK;  // Reset to default for next init
     // g_initialized already set to false via CAS at top of shutdown
     LOG_INFO("NIMCP library shutdown complete");
@@ -251,6 +264,8 @@ nimcp_brain_t nimcp_brain_create_with_neurons(
     brain_config_t config = {0};
     task_strategy_t* strategy = strategy_create(internal_task);
     if (!strategy) {
+        set_error("Failed to create task strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "strategy allocation failed");
         nimcp_free(handle);
         return NULL;
     }

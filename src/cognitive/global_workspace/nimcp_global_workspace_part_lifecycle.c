@@ -62,6 +62,7 @@ global_workspace_t* global_workspace_create_custom(
         (float*)nimcp_calloc(actual_config.capacity_dim, sizeof(float));
     if (workspace->broadcast_content == NULL) {
         LOG_ERROR("Failed to allocate broadcast content buffer");
+        nimcp_platform_mutex_destroy(&workspace->mutex);
         nimcp_free(workspace);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
         return NULL;
@@ -79,6 +80,7 @@ global_workspace_t* global_workspace_create_custom(
         if (workspace->history == NULL) {
             LOG_ERROR("Failed to allocate history buffer");
             nimcp_free(workspace->broadcast_content);
+            nimcp_platform_mutex_destroy(&workspace->mutex);
             nimcp_free(workspace);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
             return NULL;
@@ -91,6 +93,7 @@ global_workspace_t* global_workspace_create_custom(
             LOG_ERROR("Failed to allocate history content array");
             nimcp_free(workspace->history);
             nimcp_free(workspace->broadcast_content);
+            nimcp_platform_mutex_destroy(&workspace->mutex);
             nimcp_free(workspace);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
             return NULL;
@@ -120,6 +123,7 @@ global_workspace_t* global_workspace_create_custom(
                 nimcp_free(workspace->history_content);
                 nimcp_free(workspace->history);
                 nimcp_free(workspace->broadcast_content);
+                nimcp_platform_mutex_destroy(&workspace->mutex);
                 nimcp_free(workspace);
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: operation failed");
                 return NULL;
@@ -161,6 +165,10 @@ global_workspace_t* global_workspace_create_custom(
         .enable_guard_pages = false
     };
     workspace->broadcast_content_pool = memory_pool_create(&content_pool_config);
+    /* Memory pool creation is non-fatal — workspace operates without pools (slower alloc path) */
+    if (workspace->broadcast_content_pool == NULL) {
+        LOG_WARN("Failed to create broadcast content pool — continuing without pool optimization");
+    }
 
     // Pool for history content buffers (same size, more blocks)
     memory_pool_config_t history_pool_config = {
@@ -171,6 +179,10 @@ global_workspace_t* global_workspace_create_custom(
         .enable_guard_pages = false
     };
     workspace->history_content_pool = memory_pool_create(&history_pool_config);
+    /* Memory pool creation is non-fatal — workspace operates without pools (slower alloc path) */
+    if (workspace->history_content_pool == NULL) {
+        LOG_WARN("Failed to create history content pool — continuing without pool optimization");
+    }
 
     // Initialize bio-async fields
     workspace->bio_ctx = NULL;
@@ -258,8 +270,7 @@ void global_workspace_destroy(global_workspace_t* workspace) {
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
-    // Lock before destroying to ensure no concurrent operations
-    nimcp_platform_mutex_lock(&ws->mutex);
+    /* Caller must ensure exclusive access — no threads may be using the workspace */
 
     // Unregister from bio-async router
     if (ws->bio_async_enabled && ws->bio_ctx) {
@@ -324,8 +335,7 @@ void global_workspace_destroy(global_workspace_t* workspace) {
         }
     }
 
-    // Unlock and destroy mutex
-    nimcp_platform_mutex_unlock(&ws->mutex);
+    // Destroy mutex (no unlock needed — caller guarantees exclusive access)
     nimcp_platform_mutex_destroy(&ws->mutex);
 
     // Free workspace structure
@@ -341,9 +351,12 @@ void global_workspace_reset_statistics(global_workspace_t* workspace) {
 
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
+
+    nimcp_platform_mutex_lock(&ws->mutex);
     memset(&ws->stats, 0, sizeof(workspace_statistics_t));
 
     // Restore current counts
     ws->stats.current_subscribers = ws->num_subscribers;
     ws->stats.current_competitors = ws->num_active_competitors;
+    nimcp_platform_mutex_unlock(&ws->mutex);
 }

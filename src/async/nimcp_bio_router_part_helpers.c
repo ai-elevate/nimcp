@@ -78,6 +78,11 @@ static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
 
     // DEBUG: Verify mutex is held by attempting trylock (should fail if held)
     // This assertion helps catch incorrect usage during development
+    /* BUG-14 note: This assertion is ONLY valid for non-recursive mutexes.
+     * If queue->mutex is a recursive (reentrant) mutex, trylock will SUCCEED
+     * even when the calling thread already holds the lock (incrementing the
+     * recursion count). In that case, this assertion would fire a false positive.
+     * The current queue mutexes are non-recursive, so this is correct for now. */
 #ifndef NDEBUG
     int trylock_result = nimcp_platform_mutex_trylock(&queue->mutex);
     if (trylock_result == 0) {
@@ -385,36 +390,33 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
         LOG_TRACE("BBB validation passed for async message type=0x%04X", header->type);
     }
 
-    nimcp_platform_mutex_lock(&g_router->modules_mutex);
-
-    nimcp_error_t result = NIMCP_SUCCESS;
-
     if (target_id == 0) {
-        // Broadcast - can't have response promise for broadcasts
-        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         LOG_ERROR("Cannot use async send with response for broadcasts");
         NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
                           "bio_router_send_with_promise: cannot use promise for broadcasts");
-    } else {
-        // Send to specific module with promise
-        bio_module_entry_t* target = bio_router_find_module(target_id);
-        if (!target) {
-            nimcp_platform_mutex_unlock(&g_router->modules_mutex);
-            LOG_ERROR("Target module %u not found", target_id);
-            NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND,
-                              "bio_router_send_with_promise: target module not found");
-        }
-
-        result = bio_msg_queue_enqueue(&target->inbox, msg, msg_size,
-                                        response_promise, timeout_ms);
-        if (result == NIMCP_SUCCESS) {
-            target->messages_received++;
-        } else {
-            LOG_WARN("Failed to enqueue to module %u inbox", target_id);
-        }
     }
 
+    /* BUG-10 fix: Look up the target entry under modules_mutex, copy the inbox
+     * pointer, then release modules_mutex BEFORE calling bio_msg_queue_enqueue.
+     * Holding modules_mutex while blocking on a queue causes deadlocks. */
+    nimcp_platform_mutex_lock(&g_router->modules_mutex);
+    bio_module_entry_t* target = bio_router_find_module(target_id);
+    if (!target) {
+        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+        LOG_ERROR("Target module %u not found", target_id);
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND,
+                          "bio_router_send_with_promise: target module not found");
+    }
+    bio_msg_queue_t* target_inbox = &target->inbox;
     nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+
+    nimcp_error_t result = bio_msg_queue_enqueue(target_inbox, msg, msg_size,
+                                                  response_promise, timeout_ms);
+    if (result == NIMCP_SUCCESS) {
+        atomic_fetch_add(&target->messages_received, 1);
+    } else {
+        LOG_WARN("Failed to enqueue to module %u inbox", target_id);
+    }
 
     if (result == NIMCP_SUCCESS) {
         nimcp_platform_mutex_lock(&g_router->stats_mutex);
@@ -496,7 +498,7 @@ static int bio_router_kg_dispatch_internal(
                                                           msg, msg_size,
                                                           NULL, timeout_ms);
         if (enq_result == NIMCP_SUCCESS) {
-            target->messages_received++;
+            atomic_fetch_add(&target->messages_received, 1);
             dispatched++;
         } else {
             LOG_DEBUG("KG dispatch: failed to enqueue to module %u", target->module_id);
