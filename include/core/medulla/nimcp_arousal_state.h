@@ -28,8 +28,11 @@ extern "C" {
 
 /**
  * WHAT: Discrete arousal states mapping to consciousness levels
- * WHY: Biologically-grounded state classifications for brain function
- * HOW: Ordered from lowest (coma) to highest (panic) arousal
+ * WHY: Backward-compatible labels for logging, display, and serialization
+ * HOW: Ordered from lowest (coma) to highest (panic) arousal.
+ *      Labels are derived FROM the continuous arousal_level via
+ *      arousal_state_label_from_level(). All behavioral dispatch
+ *      should use the continuous level, not these discrete labels.
  */
 typedef enum {
     AROUSAL_STATE_COMA = 0,          // 0.00-0.05: Unconscious, no response
@@ -43,6 +46,32 @@ typedef enum {
     AROUSAL_STATE_PANIC,              // 0.95-1.00: Extreme arousal, survival mode
     AROUSAL_STATE_COUNT
 } arousal_state_enum_t;
+
+/**
+ * WHAT: Continuous parameters computed from arousal level
+ * WHY: Replaces discrete dispatch with smooth, continuous scaling
+ * HOW: All parameters vary smoothly as functions of arousal_level (0-1).
+ *      No step functions -- uses linear interpolation, sigmoid, and
+ *      inverted-U curves to model biologically-plausible arousal effects.
+ *
+ * Biological Basis:
+ * - Cognitive gain follows Yerkes-Dodson inverted-U (optimal at moderate arousal)
+ * - Cortical activation increases monotonically with arousal (sigmoid)
+ * - Sensory gating relaxes at high arousal (threat detection) and low (sleep)
+ * - Muscle tone varies: atonia during deep sleep, hypertonia during panic
+ * - Metabolic rate scales with activation demand
+ */
+typedef struct {
+    float cortical_activation;   // Sigmoid: 0.0 (coma) -> 1.0 (panic)
+    float cognitive_gain;        // Inverted-U: peaks ~0.6, drops at extremes
+    float sensory_gating;        // U-shape: tight at moderate, open at extremes
+    float muscle_tone;           // Sigmoid: 0.0 (atonia) -> 1.0 (rigid)
+    float metabolic_rate;        // Linear: 0.3 (coma) -> 1.0 (panic)
+    float vigilance_factor;      // Exponential rise: low->high, saturates
+    float emotional_reactivity;  // Exponential: increases sharply above 0.7
+    float memory_consolidation;  // Inverted-U: best at moderate-low (sleep/relaxed)
+    float free_energy;           // Inverted-U from optimal (alert ~0.6): deviation = energy
+} arousal_params_t;
 
 /**
  * WHAT: Configuration for arousal state system behavior
@@ -221,6 +250,41 @@ int arousal_state_disconnect_bio_async(arousal_state_t* state);
  * @return true if connected, false otherwise
  */
 bool arousal_state_is_bio_async_connected(const arousal_state_t* state);
+
+/**
+ * WHAT: Computes continuous behavioral parameters from arousal level
+ * WHY: Replaces discrete state dispatch with smooth mathematical functions
+ * HOW: Uses sigmoid, inverted-U, exponential, and linear curves to compute
+ *      biologically-plausible parameters directly from the continuous level.
+ *      All outputs vary smoothly -- no step functions or binary jumps.
+ *
+ * @param arousal_level Continuous arousal level (0.0-1.0), clamped internally
+ * @param out Output parameter struct
+ * @return 0 on success, negative on error
+ */
+int arousal_compute_parameters(float arousal_level, arousal_params_t* out);
+
+/**
+ * WHAT: Derives a discrete label from a continuous arousal level
+ * WHY: Backward-compatible labeling for logging, display, and serialization.
+ *      The label is derived FROM the continuous value, not the other way around.
+ * HOW: Maps level to the appropriate enum based on threshold boundaries
+ *
+ * @param level Continuous arousal level (0.0-1.0)
+ * @return Corresponding arousal state label
+ */
+arousal_state_enum_t arousal_state_label_from_level(float level);
+
+/**
+ * WHAT: Gets continuous parameters from arousal state manager
+ * WHY: Convenience wrapper that reads the current level and computes params
+ * HOW: Thread-safe read of arousal_level, then calls arousal_compute_parameters()
+ *
+ * @param state Arousal state manager
+ * @param out Output parameter struct
+ * @return 0 on success, negative on error
+ */
+int arousal_state_get_parameters(const arousal_state_t* state, arousal_params_t* out);
 
 #ifdef __cplusplus
 }

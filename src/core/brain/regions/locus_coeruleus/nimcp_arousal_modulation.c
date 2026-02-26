@@ -259,7 +259,9 @@ int nimcp_arousal_update(
     /* Update homeostatic pressure from fatigue */
     system->homeostatic_pressure = system->performance.fatigue_level * 0.5f;
 
-    /* Update arousal state classification */
+    /* Update arousal state label (for logging/display only).
+     * All behavioral dispatch above uses continuous dimensions directly.
+     * This label is derived FROM the continuous arousal value. */
     float arousal = system->dimensions.arousal;
     if (arousal < 0.1f) {
         system->state = AROUSAL_STATE_SLEEP;
