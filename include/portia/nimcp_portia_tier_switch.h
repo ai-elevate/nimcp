@@ -172,7 +172,46 @@ typedef struct {
     float current_cpu_temp_c;       /**< Current CPU temperature */
     float current_battery_pct;      /**< Current battery level % */
     float current_cpu_load_pct;     /**< Current CPU load % */
+
+    // Continuous resource pressure metric [0.0 - 1.0]
+    float resource_pressure;        /**< Composite resource pressure (0=idle, 1=critical) */
 } tier_switch_state_t;
+
+//=============================================================================
+// Continuous Allocation Structures
+//=============================================================================
+
+/**
+ * @brief Continuous resource allocation output
+ *
+ * WHAT: Smooth resource allocation derived from continuous pressure metric
+ * WHY:  Replace hard tier thresholds with smooth sigmoid-based transitions
+ * HOW:  All fields vary continuously in [0.0, 1.0] based on resource_pressure
+ *
+ * DESIGN:
+ * Instead of discrete tier switching (if usage > 80% -> SEVERE),
+ * resource allocation varies continuously:
+ *   quality_scale = sigmoid(resource_pressure, center=0.7, steepness=10)
+ *   allocation_fraction = 1.0 - resource_pressure
+ *   feature_gate = sigmoid(resource_pressure, center=threshold, steepness=12)
+ *
+ * The tier enum is still derived for logging/serialization via
+ * portia_tier_from_pressure(), but all actual resource decisions
+ * use these continuous values.
+ */
+typedef struct {
+    float quality_scale;            /**< Quality scaling factor [0.0-1.0] (1.0 = full quality) */
+    float allocation_fraction;      /**< Resource allocation fraction [0.0-1.0] (1.0 = max resources) */
+    float feature_gate_plasticity;  /**< Plasticity feature gate [0.0-1.0] (1.0 = fully enabled) */
+    float feature_gate_learning;    /**< Learning feature gate [0.0-1.0] (1.0 = fully enabled) */
+    float feature_gate_emotions;    /**< Emotions feature gate [0.0-1.0] (1.0 = fully enabled) */
+    float feature_gate_planning;    /**< Planning feature gate [0.0-1.0] (1.0 = fully enabled) */
+    float feature_gate_meta;        /**< Meta-cognition feature gate [0.0-1.0] (1.0 = fully enabled) */
+    float compute_budget_scale;     /**< Compute budget scaling [0.0-1.0] (1.0 = full budget) */
+    float memory_budget_scale;      /**< Memory budget scaling [0.0-1.0] (1.0 = full budget) */
+    float thread_budget_scale;      /**< Thread pool scaling [0.0-1.0] (1.0 = all threads) */
+    platform_tier_t derived_tier;   /**< Tier label derived from pressure (backward compat) */
+} portia_allocation_t;
 
 /**
  * @brief Tier transition event notification
@@ -562,6 +601,86 @@ NIMCP_EXPORT const char* portia_tier_switch_trigger_name(
  */
 NIMCP_EXPORT void portia_tier_switch_print_state(
     portia_tier_switch_t switcher
+);
+
+//=============================================================================
+// Continuous Resource Pressure API
+//=============================================================================
+
+/**
+ * @brief Compute composite resource pressure from system metrics
+ *
+ * WHAT: Combine memory, thermal, battery, and load into single [0.0-1.0] pressure
+ * WHY:  Continuous metric enables smooth allocation without hard thresholds
+ * HOW:  Weighted max of individual normalized pressures
+ *
+ * @param switcher Tier switch handle
+ * @param pressure Output: composite resource pressure [0.0-1.0]
+ * @return 0 on success, negative on error
+ *
+ * THREAD SAFETY: Thread-safe
+ */
+NIMCP_EXPORT int portia_compute_resource_pressure(
+    portia_tier_switch_t switcher,
+    float* pressure
+);
+
+/**
+ * @brief Compute continuous resource allocation from pressure
+ *
+ * WHAT: Map resource_pressure to smooth allocation values
+ * WHY:  Eliminate discrete jumps at tier boundaries
+ * HOW:  Sigmoid curves gate features; linear scaling for budgets
+ *
+ * @param resource_pressure Input pressure [0.0-1.0]
+ * @param out Output: continuous allocation values
+ * @return 0 on success, negative on error
+ *
+ * THREAD SAFETY: Thread-safe (pure function, no shared state)
+ */
+NIMCP_EXPORT int portia_compute_allocation(
+    float resource_pressure,
+    portia_allocation_t* out
+);
+
+/**
+ * @brief Derive discrete tier label from continuous pressure
+ *
+ * WHAT: Map continuous pressure to tier enum for logging/serialization
+ * WHY:  Backward compatibility with code expecting tier enums
+ * HOW:  Simple threshold mapping
+ *
+ * MAPPING:
+ *   pressure < 0.25  -> PLATFORM_TIER_FULL
+ *   pressure < 0.50  -> PLATFORM_TIER_MEDIUM
+ *   pressure < 0.75  -> PLATFORM_TIER_CONSTRAINED
+ *   pressure >= 0.75 -> PLATFORM_TIER_MINIMAL
+ *
+ * @param resource_pressure Input pressure [0.0-1.0]
+ * @return Derived platform tier
+ *
+ * THREAD SAFETY: Thread-safe (pure function)
+ */
+NIMCP_EXPORT platform_tier_t portia_tier_from_pressure(
+    float resource_pressure
+);
+
+/**
+ * @brief Get current continuous allocation from switcher
+ *
+ * WHAT: Convenience function to query pressure and compute allocation
+ * WHY:  Single call for consumers that need current allocation state
+ * HOW:  Calls portia_compute_resource_pressure then portia_compute_allocation
+ *
+ * @param switcher Tier switch handle
+ * @param out Output: current continuous allocation
+ * @return 0 on success, negative on error
+ *
+ * THREAD SAFETY: Thread-safe
+ */
+NIMCP_EXPORT int portia_tier_switch_get_allocation(
+    portia_tier_switch_t switcher,
+    portia_allocation_t* out
 );
 
 #ifdef __cplusplus

@@ -25,6 +25,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_tier_switch)
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <math.h>
 
 //=============================================================================
 // Constants
@@ -207,14 +208,49 @@ static bool query_system_metrics(portia_tier_switch_t switcher) {
         switcher->state.current_cpu_load_pct = 0.0F;  // TODO: Implement CPU load monitoring
     }
 
+    // Compute continuous resource pressure [0.0, 1.0]
+    // Use max of individual normalized pressures
+    {
+        float mem_p = switcher->state.current_memory_usage_pct / 100.0F;
+        float thermal_p = 0.0F;
+        if (switcher->state.current_cpu_temp_c > 0.0F && switcher->config.thermal_threshold_c > 0.0F) {
+            thermal_p = switcher->state.current_cpu_temp_c / switcher->config.thermal_threshold_c;
+        }
+        float battery_p = 0.0F;
+        if (switcher->state.current_battery_pct < 100.0F) {
+            battery_p = 1.0F - (switcher->state.current_battery_pct / 100.0F);
+        }
+        float load_p = switcher->state.current_cpu_load_pct / 100.0F;
+
+        // Clamp individual pressures to [0, 1]
+        if (mem_p < 0.0F) mem_p = 0.0F;
+        if (mem_p > 1.0F) mem_p = 1.0F;
+        if (thermal_p < 0.0F) thermal_p = 0.0F;
+        if (thermal_p > 1.0F) thermal_p = 1.0F;
+        if (battery_p < 0.0F) battery_p = 0.0F;
+        if (battery_p > 1.0F) battery_p = 1.0F;
+        if (load_p < 0.0F) load_p = 0.0F;
+        if (load_p > 1.0F) load_p = 1.0F;
+
+        // Composite pressure = max of all individual pressures
+        float pressure = mem_p;
+        if (thermal_p > pressure) pressure = thermal_p;
+        if (battery_p > pressure) pressure = battery_p;
+        if (load_p > pressure) pressure = load_p;
+
+        switcher->state.resource_pressure = pressure;
+    }
+
     nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
-    LOG_DEBUG("[%s] System metrics: Memory=%.1f%%, Temp=%.1f°C, Battery=%.1f%%, Load=%.1f%%",
+    LOG_DEBUG("[%s] System metrics: Memory=%.1f%%, Temp=%.1f%cC, Battery=%.1f%%, Load=%.1f%%, Pressure=%.3f",
               PORTIA_MODULE_NAME,
               switcher->state.current_memory_usage_pct,
               switcher->state.current_cpu_temp_c,
+              0xB0,  /* degree symbol */
               switcher->state.current_battery_pct,
-              switcher->state.current_cpu_load_pct);
+              switcher->state.current_cpu_load_pct,
+              switcher->state.resource_pressure);
 
     return true;
 }
@@ -276,51 +312,9 @@ static void invoke_callbacks(
 // Helper Functions - Tier Logic
 //=============================================================================
 
-static platform_tier_t calculate_downgrade_tier(
-    portia_tier_switch_t switcher,
-    tier_switch_trigger_t trigger)
-{
-    platform_tier_t current = switcher->state.current_tier;
-
-    // Emergency conditions go to minimal
-    if (trigger == TIER_SWITCH_TRIGGER_MEMORY_PRESSURE &&
-        switcher->state.current_memory_usage_pct > switcher->config.memory_critical_threshold) {
-        LOG_WARN("[%s] Critical memory pressure, downgrading to MINIMAL", PORTIA_MODULE_NAME);
-        return PLATFORM_TIER_MINIMAL;
-    }
-
-    // Normal downgrade: go down one tier
-    switch (current) {
-        case PLATFORM_TIER_FULL:
-            return PLATFORM_TIER_MEDIUM;
-        case PLATFORM_TIER_MEDIUM:
-            return PLATFORM_TIER_CONSTRAINED;
-        case PLATFORM_TIER_CONSTRAINED:
-            return PLATFORM_TIER_MINIMAL;
-        case PLATFORM_TIER_MINIMAL:
-            return PLATFORM_TIER_MINIMAL;  // Already at minimum
-        default:
-            return current;
-    }
-}
-
-static platform_tier_t calculate_upgrade_tier(portia_tier_switch_t switcher) {
-    platform_tier_t current = switcher->state.current_tier;
-
-    // Upgrade one tier at a time
-    switch (current) {
-        case PLATFORM_TIER_MINIMAL:
-            return PLATFORM_TIER_CONSTRAINED;
-        case PLATFORM_TIER_CONSTRAINED:
-            return PLATFORM_TIER_MEDIUM;
-        case PLATFORM_TIER_MEDIUM:
-            return PLATFORM_TIER_FULL;
-        case PLATFORM_TIER_FULL:
-            return PLATFORM_TIER_FULL;  // Already at maximum
-        default:
-            return current;
-    }
-}
+// NOTE: calculate_downgrade_tier and calculate_upgrade_tier removed.
+// Tier derivation is now done via portia_tier_from_pressure() using
+// continuous resource pressure instead of discrete one-step transitions.
 
 //=============================================================================
 // Monitoring Thread
@@ -604,68 +598,65 @@ bool portia_tier_switch_evaluate(
     *trigger = TIER_SWITCH_TRIGGER_INIT;
     bool should_switch = false;
 
-    // Check downgrade conditions (higher priority)
-    if (switcher->config.allow_downgrade) {
-        // Memory pressure
-        if (switcher->state.current_memory_usage_pct > switcher->config.memory_high_threshold) {
-            *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_MEMORY_PRESSURE);
-            *trigger = TIER_SWITCH_TRIGGER_MEMORY_PRESSURE;
-            should_switch = true;
-            LOG_INFO("[%s] Memory pressure detected: %.1f%% > %.1f%%",
-                     PORTIA_MODULE_NAME,
-                     switcher->state.current_memory_usage_pct,
-                     switcher->config.memory_high_threshold);
-        }
-        // Thermal throttling
-        else if (switcher->state.current_cpu_temp_c > 0.0F &&
-                 switcher->state.current_cpu_temp_c > switcher->config.thermal_threshold_c) {
-            *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_THERMAL_THROTTLE);
-            *trigger = TIER_SWITCH_TRIGGER_THERMAL_THROTTLE;
-            should_switch = true;
-            LOG_INFO("[%s] Thermal throttling: %.1f°C > %.1f°C",
-                     PORTIA_MODULE_NAME,
-                     switcher->state.current_cpu_temp_c,
-                     switcher->config.thermal_threshold_c);
-        }
-        // Battery low
-        else if (switcher->state.current_battery_pct < 100.0F &&
-                 switcher->state.current_battery_pct < switcher->config.battery_threshold_pct) {
-            *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_BATTERY_LOW);
-            *trigger = TIER_SWITCH_TRIGGER_BATTERY_LOW;
-            should_switch = true;
-            LOG_INFO("[%s] Low battery: %.1f%% < %.1f%%",
-                     PORTIA_MODULE_NAME,
-                     switcher->state.current_battery_pct,
-                     switcher->config.battery_threshold_pct);
-        }
-        // Load spike
-        else if (switcher->state.current_cpu_load_pct > 0.0F &&
-                 switcher->state.current_cpu_load_pct > switcher->config.load_threshold) {
-            *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_LOAD_SPIKE);
-            *trigger = TIER_SWITCH_TRIGGER_LOAD_SPIKE;
-            should_switch = true;
-            LOG_INFO("[%s] CPU load spike: %.1f%% > %.1f%%",
-                     PORTIA_MODULE_NAME,
-                     switcher->state.current_cpu_load_pct,
-                     switcher->config.load_threshold);
-        }
+    // --- Continuous pressure-driven evaluation ---
+    // Use the composite resource_pressure (computed in query_system_metrics)
+    // to derive the target tier. Identify dominant trigger for logging/backward compat.
+    float pressure = switcher->state.resource_pressure;
+
+    // Compute individual normalized pressures to identify dominant trigger
+    float mem_p = switcher->state.current_memory_usage_pct / 100.0F;
+    float thermal_p = 0.0F;
+    if (switcher->state.current_cpu_temp_c > 0.0F && switcher->config.thermal_threshold_c > 0.0F) {
+        thermal_p = switcher->state.current_cpu_temp_c / switcher->config.thermal_threshold_c;
+    }
+    float battery_p = 0.0F;
+    if (switcher->state.current_battery_pct < 100.0F) {
+        battery_p = 1.0F - (switcher->state.current_battery_pct / 100.0F);
+    }
+    float load_p = switcher->state.current_cpu_load_pct / 100.0F;
+
+    // Identify dominant trigger (which metric contributes most pressure)
+    tier_switch_trigger_t dominant_trigger = TIER_SWITCH_TRIGGER_MEMORY_PRESSURE;
+    float max_individual = mem_p;
+    if (thermal_p > max_individual) {
+        max_individual = thermal_p;
+        dominant_trigger = TIER_SWITCH_TRIGGER_THERMAL_THROTTLE;
+    }
+    if (battery_p > max_individual) {
+        max_individual = battery_p;
+        dominant_trigger = TIER_SWITCH_TRIGGER_BATTERY_LOW;
+    }
+    if (load_p > max_individual) {
+        max_individual = load_p;
+        dominant_trigger = TIER_SWITCH_TRIGGER_LOAD_SPIKE;
     }
 
-    // Check upgrade conditions (lower priority, only if no downgrade needed)
-    if (!should_switch && switcher->config.allow_upgrade && current < PLATFORM_TIER_FULL) {
-        bool memory_ok = switcher->state.current_memory_usage_pct < switcher->config.memory_low_threshold;
-        bool thermal_ok = switcher->state.current_cpu_temp_c == 0.0F ||
-                          switcher->state.current_cpu_temp_c < switcher->config.thermal_safe_c;
-        bool battery_ok = switcher->state.current_battery_pct == 100.0F ||
-                          switcher->state.current_battery_pct > switcher->config.battery_safe_pct;
-        bool load_ok = switcher->state.current_cpu_load_pct == 0.0F ||
-                       switcher->state.current_cpu_load_pct < switcher->config.load_safe;
+    // Derive target tier from continuous pressure
+    platform_tier_t pressure_derived_tier = portia_tier_from_pressure(pressure);
 
-        if (memory_ok && thermal_ok && battery_ok && load_ok) {
-            *target_tier = calculate_upgrade_tier(switcher);
+    // Determine if a switch is needed based on continuous tier derivation
+    if (pressure_derived_tier != current) {
+        bool is_downgrade = (pressure_derived_tier > current);  // Higher enum = lower capability
+        bool is_upgrade = (pressure_derived_tier < current);
+
+        if (is_downgrade && switcher->config.allow_downgrade) {
+            *target_tier = pressure_derived_tier;
+            *trigger = dominant_trigger;
+            should_switch = true;
+            LOG_INFO("[%s] Continuous pressure %.3f -> downgrade %s -> %s (trigger: %s)",
+                     PORTIA_MODULE_NAME, (double)pressure,
+                     platform_tier_get_name(current),
+                     platform_tier_get_name(pressure_derived_tier),
+                     portia_tier_switch_trigger_name(dominant_trigger));
+        }
+        else if (is_upgrade && switcher->config.allow_upgrade) {
+            *target_tier = pressure_derived_tier;
             *trigger = TIER_SWITCH_TRIGGER_RESOURCE_AVAILABLE;
             should_switch = true;
-            LOG_INFO("[%s] Resources available for upgrade", PORTIA_MODULE_NAME);
+            LOG_INFO("[%s] Continuous pressure %.3f -> upgrade %s -> %s",
+                     PORTIA_MODULE_NAME, (double)pressure,
+                     platform_tier_get_name(current),
+                     platform_tier_get_name(pressure_derived_tier));
         }
     }
 
@@ -886,30 +877,27 @@ bool portia_tier_switch_can_upgrade(
         return false;
     }
 
-    // Check resources
-    bool memory_ok = switcher->state.current_memory_usage_pct < switcher->config.memory_low_threshold;
-    bool thermal_ok = switcher->state.current_cpu_temp_c == 0.0F ||
-                      switcher->state.current_cpu_temp_c < switcher->config.thermal_safe_c;
-    bool battery_ok = switcher->state.current_battery_pct == 100.0F ||
-                      switcher->state.current_battery_pct > switcher->config.battery_safe_pct;
-    bool load_ok = switcher->state.current_cpu_load_pct == 0.0F ||
-                   switcher->state.current_cpu_load_pct < switcher->config.load_safe;
+    // Use continuous pressure to determine if upgrade is safe
+    float pressure = switcher->state.resource_pressure;
+    platform_tier_t pressure_tier = portia_tier_from_pressure(pressure);
 
-    bool can_upgrade = memory_ok && thermal_ok && battery_ok && load_ok;
+    // Can only upgrade if pressure supports the target tier
+    bool can_upgrade = (pressure_tier <= target_tier);
 
     nimcp_platform_mutex_unlock(&switcher->state_mutex);
 
     if (can_upgrade) {
-        LOG_DEBUG("[%s] Upgrade to %s is safe",
+        LOG_DEBUG("[%s] Upgrade to %s is safe (pressure=%.3f, pressure_tier=%s)",
                   PORTIA_MODULE_NAME,
-                  platform_tier_get_name(target_tier));
+                  platform_tier_get_name(target_tier),
+                  (double)pressure,
+                  platform_tier_get_name(pressure_tier));
     } else {
-        LOG_DEBUG("[%s] Upgrade blocked: memory=%s, thermal=%s, battery=%s, load=%s",
+        LOG_DEBUG("[%s] Upgrade blocked: pressure=%.3f -> %s (need <= %s)",
                   PORTIA_MODULE_NAME,
-                  memory_ok ? "ok" : "high",
-                  thermal_ok ? "ok" : "hot",
-                  battery_ok ? "ok" : "low",
-                  load_ok ? "ok" : "high");
+                  (double)pressure,
+                  platform_tier_get_name(pressure_tier),
+                  platform_tier_get_name(target_tier));
     }
 
     return can_upgrade;
@@ -949,28 +937,32 @@ bool portia_tier_switch_can_downgrade(
         return false;
     }
 
-    // Check downgrade conditions
-    if (switcher->state.current_memory_usage_pct > switcher->config.memory_high_threshold) {
-        *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_MEMORY_PRESSURE);
+    // Use continuous pressure to determine downgrade need
+    float pressure = switcher->state.resource_pressure;
+    platform_tier_t pressure_tier = portia_tier_from_pressure(pressure);
+
+    if (pressure_tier > current) {
+        // Pressure-derived tier is lower capability than current -> downgrade needed
+        *target_tier = pressure_tier;
+
+        // Identify dominant trigger from individual pressures
+        float mem_p = switcher->state.current_memory_usage_pct / 100.0F;
+        float thermal_p = 0.0F;
+        if (switcher->state.current_cpu_temp_c > 0.0F && switcher->config.thermal_threshold_c > 0.0F) {
+            thermal_p = switcher->state.current_cpu_temp_c / switcher->config.thermal_threshold_c;
+        }
+        float battery_p = 0.0F;
+        if (switcher->state.current_battery_pct < 100.0F) {
+            battery_p = 1.0F - (switcher->state.current_battery_pct / 100.0F);
+        }
+        float load_p = switcher->state.current_cpu_load_pct / 100.0F;
+
         *trigger = TIER_SWITCH_TRIGGER_MEMORY_PRESSURE;
-        should_downgrade = true;
-    }
-    else if (switcher->state.current_cpu_temp_c > 0.0F &&
-             switcher->state.current_cpu_temp_c > switcher->config.thermal_threshold_c) {
-        *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_THERMAL_THROTTLE);
-        *trigger = TIER_SWITCH_TRIGGER_THERMAL_THROTTLE;
-        should_downgrade = true;
-    }
-    else if (switcher->state.current_battery_pct < 100.0F &&
-             switcher->state.current_battery_pct < switcher->config.battery_threshold_pct) {
-        *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_BATTERY_LOW);
-        *trigger = TIER_SWITCH_TRIGGER_BATTERY_LOW;
-        should_downgrade = true;
-    }
-    else if (switcher->state.current_cpu_load_pct > 0.0F &&
-             switcher->state.current_cpu_load_pct > switcher->config.load_threshold) {
-        *target_tier = calculate_downgrade_tier(switcher, TIER_SWITCH_TRIGGER_LOAD_SPIKE);
-        *trigger = TIER_SWITCH_TRIGGER_LOAD_SPIKE;
+        float max_p = mem_p;
+        if (thermal_p > max_p) { max_p = thermal_p; *trigger = TIER_SWITCH_TRIGGER_THERMAL_THROTTLE; }
+        if (battery_p > max_p) { max_p = battery_p; *trigger = TIER_SWITCH_TRIGGER_BATTERY_LOW; }
+        if (load_p > max_p) { *trigger = TIER_SWITCH_TRIGGER_LOAD_SPIKE; }
+
         should_downgrade = true;
     }
 
@@ -1241,5 +1233,138 @@ void portia_tier_switch_print_state(portia_tier_switch_t switcher) {
     printf("CPU Temperature:    %.1f°C\n", state.current_cpu_temp_c);
     printf("Battery Level:      %.1f%%\n", state.current_battery_pct);
     printf("CPU Load:           %.1f%%\n", state.current_cpu_load_pct);
+    printf("Resource Pressure:  %.3f\n", state.resource_pressure);
     printf("==================================\n\n");
+}
+
+//=============================================================================
+// Public API - Continuous Resource Pressure
+//=============================================================================
+
+/**
+ * @brief Sigmoid function for smooth feature gating
+ *
+ * Returns 1.0 at low x, 0.0 at high x (inverse sigmoid).
+ */
+static float portia_sigmoid(float x, float center, float steepness) {
+    float exponent = steepness * (x - center);
+    // Clamp exponent to prevent overflow
+    if (exponent > 30.0F) return 0.0F;
+    if (exponent < -30.0F) return 1.0F;
+    return 1.0F / (1.0F + expf(exponent));
+}
+
+int portia_compute_resource_pressure(
+    portia_tier_switch_t switcher,
+    float* pressure)
+{
+    if (!validate_switcher(switcher)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "portia_compute_resource_pressure: validate_switcher failed");
+        return -1;
+    }
+
+    if (!bbb_validate_pointer(NULL, pressure, sizeof(float), NULL)) {
+        LOG_ERROR("[%s] Invalid pressure output pointer", PORTIA_MODULE_NAME);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "portia_compute_resource_pressure: pressure pointer is NULL");
+        return -1;
+    }
+
+    // Refresh system metrics (updates resource_pressure internally)
+    if (!query_system_metrics(switcher)) {
+        LOG_ERROR("[%s] Failed to query system metrics for pressure", PORTIA_MODULE_NAME);
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(&switcher->state_mutex);
+    *pressure = switcher->state.resource_pressure;
+    nimcp_platform_mutex_unlock(&switcher->state_mutex);
+
+    return 0;
+}
+
+int portia_compute_allocation(
+    float resource_pressure,
+    portia_allocation_t* out)
+{
+    if (!out) {
+        return -1;
+    }
+
+    // Clamp input to [0.0, 1.0]
+    if (resource_pressure < 0.0F) resource_pressure = 0.0F;
+    if (resource_pressure > 1.0F) resource_pressure = 1.0F;
+
+    // Quality scale: sigmoid centered at 0.7, steepness 10
+    out->quality_scale = portia_sigmoid(resource_pressure, 0.7F, 10.0F);
+
+    // Allocation fraction: linear with floor at 10%
+    out->allocation_fraction = 0.1F + 0.9F * (1.0F - resource_pressure);
+
+    // Feature gates: sigmoids with different centers (costlier features gate off earlier)
+    out->feature_gate_plasticity = portia_sigmoid(resource_pressure, 0.5F, 12.0F);
+    out->feature_gate_learning   = portia_sigmoid(resource_pressure, 0.55F, 12.0F);
+    out->feature_gate_emotions   = portia_sigmoid(resource_pressure, 0.6F, 12.0F);
+    out->feature_gate_planning   = portia_sigmoid(resource_pressure, 0.65F, 12.0F);
+    out->feature_gate_meta       = portia_sigmoid(resource_pressure, 0.45F, 12.0F);
+
+    // Budget scales: sigmoid curves
+    out->compute_budget_scale = portia_sigmoid(resource_pressure, 0.6F, 8.0F);
+    out->memory_budget_scale  = portia_sigmoid(resource_pressure, 0.65F, 8.0F);
+
+    // Thread budget: linear with floor at 20%
+    out->thread_budget_scale = 0.2F + 0.8F * (1.0F - resource_pressure);
+
+    // Derive tier label from pressure for backward compatibility
+    out->derived_tier = portia_tier_from_pressure(resource_pressure);
+
+    LOG_DEBUG("[%s] Allocation: pressure=%.3f, quality=%.3f, alloc=%.3f, tier=%s",
+              PORTIA_MODULE_NAME,
+              (double)resource_pressure,
+              (double)out->quality_scale,
+              (double)out->allocation_fraction,
+              platform_tier_get_name(out->derived_tier));
+
+    return 0;
+}
+
+platform_tier_t portia_tier_from_pressure(float resource_pressure) {
+    // Clamp
+    if (resource_pressure < 0.0F) resource_pressure = 0.0F;
+    if (resource_pressure > 1.0F) resource_pressure = 1.0F;
+
+    // Map continuous pressure to discrete tier labels (for logging only)
+    if (resource_pressure < 0.25F) {
+        return PLATFORM_TIER_FULL;
+    } else if (resource_pressure < 0.50F) {
+        return PLATFORM_TIER_MEDIUM;
+    } else if (resource_pressure < 0.75F) {
+        return PLATFORM_TIER_CONSTRAINED;
+    } else {
+        return PLATFORM_TIER_MINIMAL;
+    }
+}
+
+int portia_tier_switch_get_allocation(
+    portia_tier_switch_t switcher,
+    portia_allocation_t* out)
+{
+    if (!validate_switcher(switcher)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "portia_tier_switch_get_allocation: validate_switcher failed");
+        return -1;
+    }
+
+    if (!out) {
+        return -1;
+    }
+
+    float pressure;
+    int result = portia_compute_resource_pressure(switcher, &pressure);
+    if (result != 0) {
+        return result;
+    }
+
+    return portia_compute_allocation(pressure, out);
 }
