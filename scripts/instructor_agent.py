@@ -198,6 +198,13 @@ class InstructorAgent(threading.Thread):
         self._finished = False
         self._error: Optional[str] = None
 
+        # Rolling metrics for decision cycle (Layers 1/2/3)
+        self._loss_history: deque = deque(maxlen=50)
+        self._grad_history: deque = deque(maxlen=50)
+        self._last_loss = 0.0
+        self._last_grad_norm = 0.0
+        self._last_decision: Optional[dict] = None
+
         # Logging
         self._log_dir = log_dir
         self._log_file = None
@@ -438,17 +445,73 @@ class InstructorAgent(threading.Thread):
     # --- Brain-State LR Modulation ---
 
     def _modulate_lr(self, base_lr: float) -> float:
-        """Modulate learning rate through the brain's unified pipeline.
+        """Modulate learning rate through the brain's decision cycle.
 
-        Applies arousal (inverted-U), circadian rhythm, RPE bonus,
-        instability response, inflammation suppression, Portia resource
-        gating, stress dampening, and cognitive capacity scaling.
-        Falls back to base_lr if the unified API is unavailable.
+        If the decision cycle (Layers 1/2/3) has run recently, uses its
+        consensus lr_factor. Otherwise falls back to the unified 8-factor
+        pipeline. Falls back to base_lr if neither is available.
         """
+        # Use decision cycle lr_factor if available and recent
+        if self._last_decision is not None:
+            lr_factor = self._last_decision.get("lr_factor", 1.0)
+            return base_lr * lr_factor
+        # Fallback to unified pipeline
         try:
             return float(self.cognitive.compute_adaptive_lr(base_lr))
         except Exception:
             return base_lr
+
+    def _update_metrics_and_decide(self, loss: float):
+        """Track rolling metrics and run decision cycle at report intervals.
+
+        Called after each learn(). Captures gradient norm from C, accumulates
+        loss/gradient history, and runs the full decision cycle (observe ->
+        diagnose -> simulate -> decide) every report_interval examples.
+        """
+        # Capture gradient norm from C backprop
+        grad_norm = self.cognitive.get_last_gradient_norm()
+        if grad_norm < 0:
+            grad_norm = 0.0
+
+        self._loss_history.append(loss)
+        self._grad_history.append(grad_norm)
+        self._last_loss = loss
+        self._last_grad_norm = grad_norm
+
+        # Run decision cycle every report_interval
+        if self.total_examples > 0 and self.total_examples % self.config.report_interval == 0:
+            self._run_decision_cycle()
+
+    def _run_decision_cycle(self):
+        """Run the full Layer 1/2/3 decision cycle."""
+        losses = list(self._loss_history)
+        grads = list(self._grad_history)
+        if len(losses) < 2 or len(grads) < 2:
+            return
+
+        loss_current = losses[-1]
+        loss_previous = losses[-2]
+        grad_norm = grads[-1]
+        grad_norm_previous = grads[-2]
+
+        # Compute volatility and variance from rolling window
+        mean_loss = sum(losses) / len(losses)
+        loss_volatility = (sum((l - mean_loss) ** 2 for l in losses) / len(losses)) ** 0.5
+
+        mean_grad = sum(grads) / len(grads)
+        gradient_variance = (sum((g - mean_grad) ** 2 for g in grads) / len(grads)) ** 0.5
+
+        # Get current LR from the unified pipeline
+        current_lr = self.cognitive.compute_adaptive_lr(0.001)
+
+        decision = self.cognitive.compute_decision_cycle(
+            loss_current, loss_previous,
+            grad_norm, grad_norm_previous,
+            loss_volatility, gradient_variance,
+            current_lr, 32.0)
+
+        if decision is not None:
+            self._last_decision = decision
 
     # --- Teaching Methods ---
 
@@ -492,6 +555,7 @@ class InstructorAgent(threading.Thread):
 
         self.brain.learn(features, label, self._modulate_lr(lr))
         loss = 0.0 if correct else (1.0 - conf)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -507,6 +571,7 @@ class InstructorAgent(threading.Thread):
         lr = (0.5 + 0.5 * self.difficulty) * conf_mod
         self.brain.learn(features, label, self._modulate_lr(lr))
         loss = 0.0 if correct else (1.0 - conf)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -524,6 +589,7 @@ class InstructorAgent(threading.Thread):
             self.brain.learn(features, label, self._modulate_lr(0.9 * conf_mod))
 
         loss = 0.0 if correct else (1.0 - conf)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -547,6 +613,7 @@ class InstructorAgent(threading.Thread):
         self.brain.learn(features, label, self._modulate_lr(lr))
 
         loss = 0.0 if correct else max(1.0 - conf1, 1.0 - conf2)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -561,6 +628,7 @@ class InstructorAgent(threading.Thread):
         self.brain.learn(features, label, self._modulate_lr(lr))
 
         loss = 0.0 if correct else (1.0 - conf)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -585,6 +653,7 @@ class InstructorAgent(threading.Thread):
             self.brain.learn(hard_feat, hard_label, self._modulate_lr(0.8 * conf_mod))
 
         loss = 0.0 if correct else (1.0 - conf)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -611,6 +680,7 @@ class InstructorAgent(threading.Thread):
             pass
 
         loss = 0.0 if correct else (1.0 - conf)
+        self._update_metrics_and_decide(loss)
         self.socratic.mastery.record(domain, correct)
         return correct, loss
 
@@ -755,6 +825,20 @@ class InstructorAgent(threading.Thread):
         except Exception:
             pass
 
+        # Include decision cycle state if available
+        decision_info = None
+        if self._last_decision is not None:
+            d = self._last_decision
+            decision_info = {
+                "consensus_action": d.get("consensus_action", -1),
+                "lr_factor": round(d.get("lr_factor", 1.0), 4),
+                "batch_factor": round(d.get("batch_factor", 1.0), 4),
+                "urgency": round(d.get("urgency", 0.0), 3),
+                "converged": d.get("converged", False),
+                "diagnosis": d.get("primary_diagnosis", ""),
+                "recommend_pause": d.get("recommend_pause", False),
+            }
+
         report = {
             "type": "final_report" if final else "progress",
             "domain": self.config.domain,
@@ -765,6 +849,7 @@ class InstructorAgent(threading.Thread):
             "examples_per_sec": round(rate, 1),
             "elapsed_s": round(elapsed, 1),
             "method_stats": self.method_stats.summary(),
+            "decision_cycle": decision_info,
             "error": self._error,
             "ts": time.time(),
         }

@@ -578,6 +578,37 @@ class CognitiveOrchestrator:
             return False
         return bool(state.get("should_pause", False))
 
+    def compute_decision_cycle(self, loss_current: float, loss_previous: float,
+                               grad_norm: float, grad_norm_previous: float,
+                               loss_volatility: float, gradient_variance: float,
+                               current_lr: float, current_batch: float) -> Optional[dict]:
+        """
+        Run full training decision cycle: observe -> diagnose -> simulate -> decide.
+
+        Combines Layer 1 (convergent evidence accumulation), Layer 2 (causal DAG
+        simulation), and Layer 3 (abductive diagnosis) into one call.
+
+        Returns dict with consensus_action, lr_factor, batch_factor, grad_clip_factor,
+        urgency, converged, primary_diagnosis, causal_explanation, recommend_pause, etc.
+        Returns None if the binding is unavailable.
+        """
+        try:
+            return self.brain.ti_compute_decision_cycle(
+                loss_current, loss_previous,
+                grad_norm, grad_norm_previous,
+                loss_volatility, gradient_variance,
+                current_lr, current_batch)
+        except (AttributeError, Exception) as e:
+            logger.debug(f"decision_cycle unavailable: {e}")
+            return None
+
+    def get_last_gradient_norm(self) -> float:
+        """Get gradient L2 norm from the most recent learn() call."""
+        try:
+            return float(self.brain.get_last_gradient_norm())
+        except (AttributeError, Exception):
+            return -1.0
+
     def post_batch_update(self, accuracy: float, expected: float,
                           domain: str):
         """

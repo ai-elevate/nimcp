@@ -73,6 +73,14 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.ti_post_batch_update(*args, **kwargs)
 
+    def ti_compute_decision_cycle(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.ti_compute_decision_cycle(*args, **kwargs)
+
+    def get_last_gradient_norm(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.get_last_gradient_norm(*args, **kwargs)
+
     def __getattr__(self, name):
         """Proxy all other attributes to the underlying brain."""
         return getattr(self._brain, name)
