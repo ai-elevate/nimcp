@@ -2496,7 +2496,6 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
         return false;
     }
     if (from_id >= network->num_neurons || to_id >= network->num_neurons) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_add_connection: neuron id out of range");
         return false;
     }
 
@@ -3023,9 +3022,8 @@ uint32_t neural_network_add_neuron(neural_network_t network, activation_type_t a
         return UINT32_MAX;
     }
 
-    // Guard clause: Check capacity bounds
+    // Guard clause: Check capacity bounds (expected during normal wiring — no throw)
     if (network->num_neurons >= network->capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "neural_network_add_neuron: capacity exceeded");
         return UINT32_MAX;
     }
 
