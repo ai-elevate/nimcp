@@ -144,7 +144,8 @@ int brain_immune_initiate_inflammation(
     site->id = system->next_inflammation_id++;
     site->region_id = region_id;
     site->triggering_antigen_id = antigen_id;
-    site->level = INFLAMMATION_LOCAL;
+    site->inflammation_level = 0.175f;  /* LOCAL midpoint on continuous scale */
+    site->level = inflammation_level_from_continuous(site->inflammation_level);
     site->start_time = get_timestamp_ms();
     site->resource_allocation = 0.2f;
     site->resolution_progress = 0.0f;

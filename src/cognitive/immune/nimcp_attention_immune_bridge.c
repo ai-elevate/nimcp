@@ -96,21 +96,17 @@ static inline float clamp_0_1(float value) {
 }
 
 /**
- * @brief Get inflammation capacity factor
+ * @brief Get inflammation capacity factor (continuous)
  *
  * WHAT: Map inflammation level to attention capacity reduction
- * WHY:  Different inflammation levels have different cognitive impacts
- * HOW:  Return predefined factor based on level
+ * WHY:  Smooth modulation instead of discrete steps
+ * HOW:  Use continuous interpolation between healthy and storm endpoints
  */
 static float get_inflammation_capacity_factor(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_CAPACITY_FACTOR;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_CAPACITY_FACTOR;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_CAPACITY_FACTOR;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_CAPACITY_FACTOR;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_CAPACITY_FACTOR;
-        default:                    return 1.0f;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_CAPACITY_FACTOR,
+        INFLAMMATION_STORM_CAPACITY_FACTOR);
 }
 
 /* ============================================================================
@@ -306,17 +302,20 @@ int attention_immune_apply_inflammation_effects(attention_immune_bridge_t* bridg
     brain_immune_stats_t stats;
     brain_immune_get_stats(bridge->immune_system, &stats);
 
-    /* Use inflammation level from immune stats */
+    /* Use continuous inflammation level from immune stats */
+    float cont_level = stats.inflammation_level_continuous;
     brain_inflammation_level_t level = stats.inflammation_level;
     bridge->inflammation_state.current_level = level;
 
-    /* Capacity factor based on inflammation */
+    /* Capacity factor based on continuous inflammation */
     bridge->inflammation_state.capacity_factor =
-        get_inflammation_capacity_factor(level);
+        inflammation_compute_factor(cont_level,
+            INFLAMMATION_NONE_CAPACITY_FACTOR,
+            INFLAMMATION_STORM_CAPACITY_FACTOR);
 
-    /* Width narrowing */
+    /* Width narrowing - continuous scaling */
     float narrowing = INFLAMMATION_NARROWING_BASE +
-                     (level * INFLAMMATION_NARROWING_PER_LEVEL);
+                     (cont_level * INFLAMMATION_NARROWING_PER_LEVEL * 4.0f);
     bridge->inflammation_state.width_narrowing = clamp_0_1(narrowing);
 
     /* Sustained attention deficit */

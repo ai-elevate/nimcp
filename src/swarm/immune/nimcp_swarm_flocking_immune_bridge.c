@@ -42,14 +42,10 @@ struct swarm_flocking_immune_bridge_struct {
 
 static float get_flocking_factor_for_level(brain_inflammation_level_t level)
 {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_FLOCKING_FACTOR;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_FLOCKING_FACTOR;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_FLOCKING_FACTOR;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_FLOCKING_FACTOR;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_FLOCKING_FACTOR;
-        default:                          return INFLAMMATION_NONE_FLOCKING_FACTOR;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_FLOCKING_FACTOR,
+        INFLAMMATION_STORM_FLOCKING_FACTOR);
 }
 
 int swarm_flocking_immune_default_config(swarm_flocking_immune_config_t* config)

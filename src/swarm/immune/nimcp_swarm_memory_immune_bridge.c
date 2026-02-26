@@ -42,26 +42,18 @@ struct swarm_memory_immune_bridge_struct {
 
 static float get_capacity_factor_for_level(brain_inflammation_level_t level)
 {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_MEMORY_CAPACITY;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_MEMORY_CAPACITY;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_MEMORY_CAPACITY;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_MEMORY_CAPACITY;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_MEMORY_CAPACITY;
-        default:                          return INFLAMMATION_NONE_MEMORY_CAPACITY;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_MEMORY_CAPACITY,
+        INFLAMMATION_STORM_MEMORY_CAPACITY);
 }
 
 static float get_forgetting_mult_for_level(brain_inflammation_level_t level)
 {
-    switch (level) {
-        case INFLAMMATION_NONE:     return INFLAMMATION_NONE_FORGETTING_MULT;
-        case INFLAMMATION_LOCAL:    return INFLAMMATION_LOCAL_FORGETTING_MULT;
-        case INFLAMMATION_REGIONAL: return INFLAMMATION_REGIONAL_FORGETTING_MULT;
-        case INFLAMMATION_SYSTEMIC: return INFLAMMATION_SYSTEMIC_FORGETTING_MULT;
-        case INFLAMMATION_STORM:    return INFLAMMATION_STORM_FORGETTING_MULT;
-        default:                          return INFLAMMATION_NONE_FORGETTING_MULT;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_NONE_FORGETTING_MULT,
+        INFLAMMATION_STORM_FORGETTING_MULT);
 }
 
 int swarm_memory_immune_default_config(swarm_memory_immune_config_t* config)

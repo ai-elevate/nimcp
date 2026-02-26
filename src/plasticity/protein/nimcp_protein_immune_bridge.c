@@ -47,20 +47,10 @@ BRIDGE_DEFINE_SECURITY_SETTERS(protein_immune_bridge)
  * HOW:  Return predefined factor for level
  */
 static float get_inflammation_synthesis_factor(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:
-            return INFLAM_SYNTHESIS_NONE;
-        case INFLAMMATION_LOCAL:
-            return INFLAM_SYNTHESIS_LOCAL;
-        case INFLAMMATION_REGIONAL:
-            return INFLAM_SYNTHESIS_REGIONAL;
-        case INFLAMMATION_SYSTEMIC:
-            return INFLAM_SYNTHESIS_SYSTEMIC;
-        case INFLAMMATION_STORM:
-            return INFLAM_SYNTHESIS_STORM;
-        default:
-            return 1.0f;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAM_SYNTHESIS_NONE,
+        INFLAM_SYNTHESIS_STORM);
 }
 
 /**

@@ -1501,29 +1501,24 @@ int brain_immune_broadcast_alert(
     brain_immune_heartbeat("brain_immune_broadcast_alert", 0.0f);
 
 
+    /* Convert discrete severity to continuous for smooth cytokine selection */
+    float cont_level = inflammation_level_to_continuous(severity);
+    if (cont_level <= 0.0f) return 0;  /* NONE: nothing to broadcast */
+
     brain_cytokine_type_t type;
     float concentration;
 
-    switch (severity) {
-        case INFLAMMATION_LOCAL:
-            type = CYTOKINE_IL1B;
-            concentration = 0.3f;
-            break;
-        case INFLAMMATION_REGIONAL:
-            type = CYTOKINE_IL6;
-            concentration = 0.5f;
-            break;
-        case INFLAMMATION_SYSTEMIC:
-            type = CYTOKINE_TNFA;
-            concentration = 0.7f;
-            break;
-        case INFLAMMATION_STORM:
-            type = CYTOKINE_TNFA;
-            concentration = 0.9f;
-            break;
-        default:
-            return 0;
+    /* Cytokine type transitions smoothly based on continuous level */
+    if (cont_level < 0.30f) {
+        type = CYTOKINE_IL1B;       /* Low: IL-1b (local alert) */
+    } else if (cont_level < 0.60f) {
+        type = CYTOKINE_IL6;        /* Medium: IL-6 (regional) */
+    } else {
+        type = CYTOKINE_TNFA;       /* High: TNF-a (systemic/storm) */
     }
+
+    /* Concentration scales linearly with continuous level */
+    concentration = 0.2f + 0.7f * cont_level;  /* range [0.2, 0.9] */
 
     uint32_t cytokine_id;
     return brain_immune_release_cytokine(system, type, 0, concentration, 0, &cytokine_id);
@@ -1551,10 +1546,15 @@ int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t s
 
     nimcp_mutex_lock(system->mutex);
 
-    if (site->level < INFLAMMATION_STORM) {
-        site->level++;
-        site->resource_allocation += 0.2f;
-        if (site->resource_allocation > 1.0f) site->resource_allocation = 1.0f;
+    /* Continuous escalation: increase by 0.25 (roughly one discrete step) */
+    if (site->inflammation_level < 1.0f) {
+        site->inflammation_level += 0.25f;
+        if (site->inflammation_level > 1.0f) site->inflammation_level = 1.0f;
+        site->level = inflammation_level_from_continuous(site->inflammation_level);
+
+        inflammation_effects_t effects;
+        inflammation_compute_effects(site->inflammation_level, &effects);
+        site->resource_allocation = effects.resource_demand;
     }
 
     /* Capture callback and data under mutex to prevent race condition */
@@ -1574,8 +1574,9 @@ int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t s
 
     if (system->config.enable_logging) {
         LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME,
-            "Inflammation escalated at site %u to level %s",
-            site_id, brain_immune_inflammation_to_string(site->level));
+            "Inflammation escalated at site %u to level %s (continuous: %.3f)",
+            site_id, brain_immune_inflammation_to_string(site->level),
+            (double)site->inflammation_level);
     }
 
     return 0;

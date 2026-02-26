@@ -194,14 +194,8 @@ static bool is_chronic_inflammation(
  * HOW:  Lookup table based on inflammation level
  */
 static float inflammation_to_suppression(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:     return 1.0f;  /* No suppression */
-        case INFLAMMATION_LOCAL:    return 0.9f;  /* 10% reduction */
-        case INFLAMMATION_REGIONAL: return 0.7f;  /* 30% reduction */
-        case INFLAMMATION_SYSTEMIC: return 0.4f;  /* 60% reduction */
-        case INFLAMMATION_STORM:    return 0.1f;  /* 90% reduction */
-        default:                    return 1.0f;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont, 1.0f, 0.1f);  /* 1.0 at healthy, 0.1 at storm */
 }
 
 /* ============================================================================

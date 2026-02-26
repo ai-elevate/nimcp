@@ -239,26 +239,10 @@ static float compute_inflammation_penalty(const reasoning_immune_bridge_t* bridg
 
     brain_inflammation_level_t level = get_max_inflammation(bridge->immune_system);
 
-    float penalty = 0.0f;
-    switch (level) {
-        case INFLAMMATION_NONE:
-            penalty = 0.0f;
-            break;
-        case INFLAMMATION_LOCAL:
-            penalty = INFLAMMATION_LOCAL_REASONING_PENALTY;
-            break;
-        case INFLAMMATION_REGIONAL:
-            penalty = INFLAMMATION_REGIONAL_REASONING_PENALTY;
-            break;
-        case INFLAMMATION_SYSTEMIC:
-            penalty = INFLAMMATION_SYSTEMIC_REASONING_PENALTY;
-            break;
-        case INFLAMMATION_STORM:
-            penalty = INFLAMMATION_STORM_REASONING_PENALTY;  /* Delirium */
-            break;
-        default:
-            penalty = 0.0f;
-    }
+    /* Continuous penalty: smooth interpolation from 0.0 (none) to storm penalty */
+    float cont = inflammation_level_to_continuous(level);
+    float penalty = inflammation_compute_factor(cont,
+        0.0f, INFLAMMATION_STORM_REASONING_PENALTY);
 
     /* Apply sensitivity */
     penalty *= bridge->inflammation_sensitivity;

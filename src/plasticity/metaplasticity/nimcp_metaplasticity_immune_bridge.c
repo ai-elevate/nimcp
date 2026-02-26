@@ -34,20 +34,10 @@ BRIDGE_DEFINE_SECURITY_SETTERS(metaplasticity_immune_bridge)
  * HOW:  Lookup table based on biological evidence
  */
 static float get_inflammation_threshold_factor(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:
-            return INFLAMMATION_THETA_NONE;
-        case INFLAMMATION_LOCAL:
-            return INFLAMMATION_THETA_LOCAL;
-        case INFLAMMATION_REGIONAL:
-            return INFLAMMATION_THETA_REGIONAL;
-        case INFLAMMATION_SYSTEMIC:
-            return INFLAMMATION_THETA_SYSTEMIC;
-        case INFLAMMATION_STORM:
-            return INFLAMMATION_THETA_STORM;
-        default:
-            return INFLAMMATION_THETA_NONE;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_THETA_NONE,
+        INFLAMMATION_THETA_STORM);
 }
 
 /**
@@ -56,20 +46,10 @@ static float get_inflammation_threshold_factor(brain_inflammation_level_t level)
  * HOW:  Lookup table
  */
 static float get_inflammation_adapt_factor(brain_inflammation_level_t level) {
-    switch (level) {
-        case INFLAMMATION_NONE:
-            return INFLAMMATION_ADAPT_RATE_NONE;
-        case INFLAMMATION_LOCAL:
-            return INFLAMMATION_ADAPT_RATE_LOCAL;
-        case INFLAMMATION_REGIONAL:
-            return INFLAMMATION_ADAPT_RATE_REGIONAL;
-        case INFLAMMATION_SYSTEMIC:
-            return INFLAMMATION_ADAPT_RATE_SYSTEMIC;
-        case INFLAMMATION_STORM:
-            return INFLAMMATION_ADAPT_RATE_STORM;
-        default:
-            return INFLAMMATION_ADAPT_RATE_NONE;
-    }
+    float cont = inflammation_level_to_continuous(level);
+    return inflammation_compute_factor(cont,
+        INFLAMMATION_ADAPT_RATE_NONE,
+        INFLAMMATION_ADAPT_RATE_STORM);
 }
 
 /* ============================================================================
