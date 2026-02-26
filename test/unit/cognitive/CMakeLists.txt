@@ -270,6 +270,31 @@ gtest_discover_tests(unit_cognitive_test_reasoning_mesh_bridge
         TIMEOUT 90
 )
 
+# Reasoning Chain - Convergent Evidence Accumulation Unit Tests
+add_executable(unit_cognitive_test_reasoning_convergent
+    test_reasoning_convergent.cpp
+)
+
+target_link_libraries(unit_cognitive_test_reasoning_convergent
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(unit_cognitive_test_reasoning_convergent
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_reasoning_convergent PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_reasoning_convergent
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;reasoning-convergent"
+        TIMEOUT 90
+)
+
 # Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
 # add_subdirectory(immune)
 

@@ -511,6 +511,34 @@ int brain_ti_get_urgency_mode(brain_t brain);
  */
 float brain_ti_get_stress_level(brain_t brain);
 
+/*=============================================================================
+ * CONVERGENT REASONING INTEGRATION
+ *
+ * Wraps the convergent reasoning architecture for the training pipeline.
+ *===========================================================================*/
+
+/**
+ * @brief Check if convergent reasoning mode is active
+ *
+ * WHAT: Query whether the brain's reasoning engine uses convergent mode
+ * WHY:  Training pipeline may log different metrics for convergent vs wave
+ *
+ * @param brain Brain instance (NULL safe)
+ * @return true if convergent reasoning is enabled in the brain's config
+ */
+bool brain_ti_is_convergent_reasoning(brain_t brain);
+
+/**
+ * @brief Get convergent contributor count from last reasoning query
+ *
+ * WHAT: Number of active contributors in the most recent convergent query
+ * WHY:  Training pipeline can track how many modules participated
+ *
+ * @param brain Brain instance (NULL safe)
+ * @return Number of active contributors, or 0 if unavailable
+ */
+uint32_t brain_ti_get_convergent_contributor_count(brain_t brain);
+
 /* ---- Mesh bridge wrappers (reasoning-mesh distributed consensus) ---- */
 
 /**

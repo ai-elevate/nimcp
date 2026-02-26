@@ -43,6 +43,7 @@
 #include "cognitive/reasoning/nimcp_reasoning_portia_bridge.h"
 #include "cognitive/reasoning/nimcp_reasoning_hypo_bridge.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_convergent.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -185,6 +186,15 @@ const char* reasoning_step_type_name(reasoning_step_type_t type)
         case REASONING_STEP_WORLD_MODEL:     return "WORLD_MODEL";
         case REASONING_STEP_JEPA_PREDICTION: return "JEPA_PREDICTION";
         case REASONING_STEP_SYMBOLIC_LOGIC:  return "SYMBOLIC_LOGIC";
+        case REASONING_STEP_SEMANTIC_ACTIVATION: return "SEMANTIC_ACTIVATION";
+        case REASONING_STEP_HIPPOCAMPAL_RECALL:  return "HIPPOCAMPAL_RECALL";
+        case REASONING_STEP_MATHEMATICAL:        return "MATHEMATICAL";
+        case REASONING_STEP_INTUITIVE:           return "INTUITIVE";
+        case REASONING_STEP_CREATIVE_ANALOGY:    return "CREATIVE_ANALOGY";
+        case REASONING_STEP_SELF_KNOWLEDGE:      return "SELF_KNOWLEDGE";
+        case REASONING_STEP_NEURAL_LOGIC:        return "NEURAL_LOGIC";
+        case REASONING_STEP_MESH_CONSENSUS:      return "MESH_CONSENSUS";
+        case REASONING_STEP_MODULATION:          return "MODULATION";
         default:                             return "UNKNOWN";
     }
 }
@@ -216,6 +226,14 @@ reasoning_engine_config_t reasoning_engine_default_config(void)
     config.world_model_horizon = DEFAULT_WM_HORIZON;
     config.symbolic_inference_depth = DEFAULT_SYMBOLIC_DEPTH;
     config.concurrent_pool_size = 4;
+
+    /* Convergent reasoning defaults */
+    config.enable_convergent_reasoning = true;
+    config.convergent_pool_size = 8;
+    config.max_convergent_contributors = 64;
+    config.convergence_ema_alpha = REASONING_DEFAULT_EMA_ALPHA;
+    config.convergence_threshold = REASONING_DEFAULT_CONVERGENCE_THRESHOLD;
+    config.convergence_timeout_ms = REASONING_DEFAULT_CONVERGENCE_TIMEOUT_MS;
 
     return config;
 }
@@ -2446,6 +2464,41 @@ int reasoning_engine_reason(reasoning_engine_t* engine, const char* query,
      * use the parallel evidence-gathering path. Otherwise fall through to the
      * original sequential pipeline.
      */
+    /* ── Convergent evidence accumulation pipeline ──
+     *
+     * If convergent reasoning is enabled and a thread pool is available,
+     * use the convergent architecture which runs ~44 brain modules as
+     * autonomous parallel agents with evidence accumulation and
+     * convergence detection (Global Workspace Theory).
+     */
+    if (engine->config.enable_convergent_reasoning && engine->thread_pool) {
+        int result = reasoning_engine_reason_convergent(engine, query,
+                                                         KNOWLEDGE_DOMAIN_GENERAL,
+                                                         chain);
+
+        chain->end_time_us = nimcp_time_get_us();
+        engine->stats.total_queries++;
+        engine->stats.successful_queries++;
+        engine->stats.total_steps += chain->num_steps;
+
+        if (portia_budget.confidence_boost > 0.0f) {
+            chain->overall_confidence += portia_budget.confidence_boost;
+            if (chain->overall_confidence > 1.0f)
+                chain->overall_confidence = 1.0f;
+        }
+
+        float n = (float)engine->stats.total_queries;
+        engine->stats.avg_confidence =
+            engine->stats.avg_confidence * ((n - 1.0f) / n) +
+            chain->overall_confidence / n;
+        engine->stats.avg_steps_per_query =
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
+            (float)chain->num_steps / n;
+
+        engine->config = saved_config;
+        return result;
+    }
+
     if (engine->config.enable_concurrent_pipeline && engine->thread_pool) {
         int result = reasoning_engine_reason_concurrent(engine, query,
                                                          KNOWLEDGE_DOMAIN_GENERAL,
@@ -2688,6 +2741,26 @@ int reasoning_engine_reason_in_domain(reasoning_engine_t* engine, const char* qu
 
     /* Store query in working memory */
     store_query_in_wm(engine, query);
+
+    /* Convergent dispatch for domain-restricted reasoning */
+    if (engine->config.enable_convergent_reasoning && engine->thread_pool) {
+        int result = reasoning_engine_reason_convergent(engine, query, domain,
+                                                         chain);
+        chain->end_time_us = nimcp_time_get_us();
+        engine->stats.total_queries++;
+        engine->stats.successful_queries++;
+        engine->stats.total_steps += chain->num_steps;
+
+        float n = (float)engine->stats.total_queries;
+        engine->stats.avg_confidence =
+            engine->stats.avg_confidence * ((n - 1.0f) / n) +
+            chain->overall_confidence / n;
+        engine->stats.avg_steps_per_query =
+            engine->stats.avg_steps_per_query * ((n - 1.0f) / n) +
+            (float)chain->num_steps / n;
+
+        return result;
+    }
 
     /* Concurrent dispatch for domain-restricted reasoning */
     if (engine->config.enable_concurrent_pipeline && engine->thread_pool) {

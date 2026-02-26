@@ -50,6 +50,8 @@ reasoning_budget_t reasoning_portia_full_budget(void) {
     budget.allow_concurrent         = true;
     budget.max_steps_override       = 0;
     budget.confidence_boost         = 0.0f;
+    budget.allow_convergent_mode    = true;
+    budget.max_convergent_contributors = 0;
     budget.source_degradation       = PORTIA_DEGRADATION_NONE;
 
     return budget;
@@ -72,6 +74,7 @@ static void apply_severe_budget(reasoning_budget_t* budget) {
     budget->allow_verification       = false;
     budget->allow_epistemic          = false;
     budget->allow_concurrent         = false;
+    budget->allow_convergent_mode    = false;  /* Force wave pipeline */
     budget->max_steps_override       = 10;
     budget->confidence_boost         = 0.05f;
 }
@@ -124,6 +127,9 @@ reasoning_budget_t reasoning_portia_compute_budget(void) {
             /* Force sequential, cap steps */
             budget.allow_concurrent         = false;
             budget.max_steps_override       = 20;
+            /* Convergent allowed but with limited contributors */
+            budget.allow_convergent_mode    = true;
+            budget.max_convergent_contributors = 16;
             break;
 
         case PORTIA_DEGRADATION_SEVERE:
@@ -262,6 +268,14 @@ int reasoning_portia_apply_budget(reasoning_engine_config_t* config,
     /* Step cap override */
     if (budget->max_steps_override > 0) {
         config->max_steps = budget->max_steps_override;
+    }
+
+    /* Convergent reasoning overrides */
+    if (!budget->allow_convergent_mode) {
+        config->enable_convergent_reasoning = false;
+    }
+    if (budget->max_convergent_contributors > 0) {
+        config->max_convergent_contributors = budget->max_convergent_contributors;
     }
 
     return disabled;

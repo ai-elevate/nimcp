@@ -46,6 +46,7 @@ reasoning_hypo_modulation_t reasoning_hypo_neutral_modulation(void) {
     mod.sleep_pressure = 0.0f;
     mod.recommended_max_steps = 0;  /* 0 = no override */
     mod.force_sequential = false;
+    mod.force_wave_pipeline = false;
     mod.hypothalamus_available = false;
 
     return mod;
@@ -122,6 +123,7 @@ reasoning_hypo_modulation_t reasoning_hypo_compute_modulation(brain_t brain) {
         case REASONING_URGENCY_FIGHT_OR_FLIGHT:
             mod.recommended_max_steps = 10;
             mod.force_sequential = true;
+            mod.force_wave_pipeline = true;  /* No convergent under acute stress */
             break;
         case REASONING_URGENCY_ALERT:
             mod.recommended_max_steps = 30;
@@ -160,6 +162,12 @@ int reasoning_hypo_apply_modulation(reasoning_engine_config_t* config,
 
     /* Force sequential if indicated */
     if (mod->force_sequential) {
+        config->enable_concurrent_pipeline = false;
+    }
+
+    /* Force wave pipeline (disable convergent) */
+    if (mod->force_wave_pipeline) {
+        config->enable_convergent_reasoning = false;
         config->enable_concurrent_pipeline = false;
     }
 

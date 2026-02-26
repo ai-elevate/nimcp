@@ -604,6 +604,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_cognitive_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_recursive_cognition_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_distributed_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_convergent.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bio_async_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_cognitive_bio_async.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_core_bio_async.dir
@@ -1779,6 +1780,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_portia_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_hypo_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_mesh_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_convergent.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_global_workspace_immune.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_immune.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_curiosity_fep_bridge.dir
@@ -6109,6 +6111,7 @@
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_portia_bridge.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_hypo_bridge.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_mesh_bridge.dir
+/home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/integration_reasoning_test_convergent.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/reasoning/CMakeFiles/rebuild_cache.dir

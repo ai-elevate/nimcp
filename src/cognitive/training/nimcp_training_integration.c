@@ -606,6 +606,29 @@ float brain_ti_get_stress_level(brain_t brain) {
     return mod.stress_level;
 }
 
+/*=============================================================================
+ * CONVERGENT REASONING INTEGRATION
+ *===========================================================================*/
+
+bool brain_ti_is_convergent_reasoning(brain_t brain) {
+    (void)brain;
+    if (!g_cached_engine) return false;
+    reasoning_engine_stats_t stats;
+    memset(&stats, 0, sizeof(stats));
+    reasoning_engine_get_stats(g_cached_engine, &stats);
+    return stats.convergent_queries > 0;
+}
+
+uint32_t brain_ti_get_convergent_contributor_count(brain_t brain) {
+    (void)brain;
+    if (!g_cached_engine) return 0;
+    reasoning_engine_stats_t stats;
+    memset(&stats, 0, sizeof(stats));
+    reasoning_engine_get_stats(g_cached_engine, &stats);
+    if (stats.convergent_queries == 0) return 0;
+    return (uint32_t)stats.avg_convergent_contributors;
+}
+
 /* ---- Mesh bridge wrappers ---- */
 
 bool brain_ti_mesh_is_available(void) {

@@ -187,3 +187,41 @@ gtest_discover_tests(integration_reasoning_test_mesh_bridge
         LABELS "integration;reasoning;mesh-bridge"
         TIMEOUT 180
 )
+
+# =============================================================================
+# NIMCP Reasoning Chain - Convergent Evidence Accumulation Integration Tests
+# =============================================================================
+# WHAT: Integration tests for convergent reasoning with a live brain
+# WHY:  Verify multi-module contributor activation, fallback paths,
+#       bridge interactions, and training API integration
+# HOW:  GTest executable linked against nimcp library
+# =============================================================================
+
+add_executable(integration_reasoning_test_convergent
+    test_reasoning_convergent_integration.cpp
+)
+
+target_link_libraries(integration_reasoning_test_convergent
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_reasoning_test_convergent
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_reasoning_test_convergent PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_reasoning_test_convergent
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;reasoning;convergent"
+        TIMEOUT 180
+)

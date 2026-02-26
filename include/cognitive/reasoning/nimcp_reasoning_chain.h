@@ -96,7 +96,18 @@ typedef enum {
     REASONING_STEP_SYNTHESIS,        /**< Combine sub-results */
     REASONING_STEP_WORLD_MODEL,      /**< World model causal simulation */
     REASONING_STEP_JEPA_PREDICTION,  /**< JEPA latent-space consistency check */
-    REASONING_STEP_SYMBOLIC_LOGIC    /**< Symbolic logic formal inference */
+    REASONING_STEP_SYMBOLIC_LOGIC,   /**< Symbolic logic formal inference */
+
+    /* Convergent architecture step types (added v2.6.4) */
+    REASONING_STEP_SEMANTIC_ACTIVATION,  /**< Semantic memory concept spreading */
+    REASONING_STEP_HIPPOCAMPAL_RECALL,   /**< Hippocampal pattern completion */
+    REASONING_STEP_MATHEMATICAL,         /**< Parietal mathematical/spatial */
+    REASONING_STEP_INTUITIVE,            /**< Rapid intuitive hunch */
+    REASONING_STEP_CREATIVE_ANALOGY,     /**< Cross-domain creative analogy */
+    REASONING_STEP_SELF_KNOWLEDGE,       /**< Internal KG self-knowledge */
+    REASONING_STEP_NEURAL_LOGIC,         /**< Neural logic gate inference */
+    REASONING_STEP_MESH_CONSENSUS,       /**< Distributed mesh consensus */
+    REASONING_STEP_MODULATION            /**< Confidence modulation step */
 } reasoning_step_type_t;
 
 /*=============================================================================
@@ -165,6 +176,14 @@ typedef struct {
     uint32_t working_memory_slots; /**< WM capacity (default 7) */
     uint32_t world_model_horizon;  /**< World model simulation steps (default 3) */
     uint32_t concurrent_pool_size; /**< Thread pool size for concurrent pipeline (default 4) */
+
+    /* Convergent reasoning architecture (added v2.6.4) */
+    bool enable_convergent_reasoning;    /**< Use convergent evidence accumulation (default true) */
+    uint32_t convergent_pool_size;       /**< Thread pool size for convergent pipeline (default 8) */
+    uint32_t max_convergent_contributors; /**< Max active contributors (default 64) */
+    float convergence_ema_alpha;          /**< EMA smoothing factor (default 0.3) */
+    float convergence_threshold;          /**< EMA delta below this = converged (default 0.005) */
+    uint32_t convergence_timeout_ms;      /**< Max time for convergence (default 500ms) */
 } reasoning_engine_config_t;
 
 /**
@@ -188,6 +207,11 @@ typedef struct {
     uint32_t jepa_predictions;       /**< Times JEPA predictor was invoked */
     uint32_t symbolic_queries;       /**< Times symbolic logic KB was queried */
     uint32_t symbolic_proofs;        /**< Times symbolic backward chain proved goal */
+
+    /* Convergent reasoning stats (added v2.6.4) */
+    uint32_t convergent_queries;          /**< Total convergent reasoning queries */
+    float avg_convergent_contributors;    /**< Average active contributors per query */
+    float avg_convergence_time_us;        /**< Average convergence time in microseconds */
 } reasoning_engine_stats_t;
 
 /**

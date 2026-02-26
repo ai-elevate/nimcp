@@ -52,6 +52,10 @@ typedef struct {
     uint32_t max_steps_override;    /**< 0 = use config default */
     float confidence_boost;         /**< Added to final confidence to compensate for fewer steps */
 
+    /* Convergent reasoning overrides (added v2.6.4) */
+    bool allow_convergent_mode;          /**< Allow convergent evidence accumulation */
+    uint32_t max_convergent_contributors; /**< 0 = use config default */
+
     /* Source information */
     portia_degradation_level_t source_degradation; /**< Degradation level that produced this budget */
 } reasoning_budget_t;

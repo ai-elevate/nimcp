@@ -78,6 +78,9 @@ typedef struct {
     /* Whether to force sequential (high stress → avoid thread contention) */
     bool force_sequential;
 
+    /* Convergent reasoning override (added v2.6.4) */
+    bool force_wave_pipeline;     /**< Force wave pipeline (disable convergent) */
+
     /* Source: was hypothalamus available */
     bool hypothalamus_available;
 } reasoning_hypo_modulation_t;

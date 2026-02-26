@@ -671,6 +671,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_portia_bridge.c  # Portia resource-aware reasoning budget
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_hypo_bridge.c  # Hypothalamus motivational reasoning modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_mesh_bridge.c  # Distributed mesh consensus for reasoning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_convergent.c  # Convergent evidence accumulation architecture
 
     # Cognitive Training Integration Layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/training/nimcp_training_integration.c  # Unified training pipeline API

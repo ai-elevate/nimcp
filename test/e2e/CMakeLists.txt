@@ -143,6 +143,11 @@ add_e2e_test(e2e_test_distributed_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/test_distributed_pipeline.cpp
 )
 
+add_e2e_test(e2e_test_reasoning_convergent
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_convergent_e2e.cpp
+)
+
 add_e2e_test(e2e_test_bio_async_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bio_async_pipeline.cpp

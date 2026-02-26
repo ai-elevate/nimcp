@@ -6594,6 +6594,19 @@ e2e_test_distributed_pipeline/fast:
 .PHONY : e2e_test_distributed_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_reasoning_convergent
+
+# Build rule for target.
+e2e_test_reasoning_convergent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_reasoning_convergent
+.PHONY : e2e_test_reasoning_convergent
+
+# fast build rule for target.
+e2e_test_reasoning_convergent/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_convergent.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_convergent.dir/build
+.PHONY : e2e_test_reasoning_convergent/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_bio_async_pipeline
 
 # Build rule for target.
@@ -14314,6 +14327,19 @@ unit_cognitive_test_reasoning_mesh_bridge: cmake_check_build_system
 unit_cognitive_test_reasoning_mesh_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_mesh_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_mesh_bridge.dir/build
 .PHONY : unit_cognitive_test_reasoning_mesh_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_reasoning_convergent
+
+# Build rule for target.
+unit_cognitive_test_reasoning_convergent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_reasoning_convergent
+.PHONY : unit_cognitive_test_reasoning_convergent
+
+# fast build rule for target.
+unit_cognitive_test_reasoning_convergent/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_convergent.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_reasoning_convergent.dir/build
+.PHONY : unit_cognitive_test_reasoning_convergent/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_global_workspace_immune
@@ -36026,6 +36052,19 @@ integration_reasoning_test_mesh_bridge/fast:
 .PHONY : integration_reasoning_test_mesh_bridge/fast
 
 #=============================================================================
+# Target rules for targets named integration_reasoning_test_convergent
+
+# Build rule for target.
+integration_reasoning_test_convergent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_reasoning_test_convergent
+.PHONY : integration_reasoning_test_convergent
+
+# fast build rule for target.
+integration_reasoning_test_convergent/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/reasoning/CMakeFiles/integration_reasoning_test_convergent.dir/build.make test/integration/reasoning/CMakeFiles/integration_reasoning_test_convergent.dir/build
+.PHONY : integration_reasoning_test_convergent/fast
+
+#=============================================================================
 # Target rules for targets named integration_generation_test_pipeline
 
 # Build rule for target.
@@ -40786,6 +40825,7 @@ help:
 	@echo "... e2e_test_quantum_reasoning_pipeline"
 	@echo "... e2e_test_query_to_answer"
 	@echo "... e2e_test_rcog_collective_integration"
+	@echo "... e2e_test_reasoning_convergent"
 	@echo "... e2e_test_reasoning_snn_plasticity_pipeline"
 	@echo "... e2e_test_recursive_cognition_pipeline"
 	@echo "... e2e_test_salience_snn_plasticity_pipeline"
@@ -41288,6 +41328,7 @@ help:
 	@echo "... integration_python_c"
 	@echo "... integration_quantum_bridges"
 	@echo "... integration_quantum_mcts_fep"
+	@echo "... integration_reasoning_test_convergent"
 	@echo "... integration_reasoning_test_hypo_bridge"
 	@echo "... integration_reasoning_test_mesh_bridge"
 	@echo "... integration_reasoning_test_portia_bridge"
@@ -42518,6 +42559,7 @@ help:
 	@echo "... unit_cognitive_test_rcog_health"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
 	@echo "... unit_cognitive_test_reasoning_chain"
+	@echo "... unit_cognitive_test_reasoning_convergent"
 	@echo "... unit_cognitive_test_reasoning_hypo_bridge"
 	@echo "... unit_cognitive_test_reasoning_mesh_bridge"
 	@echo "... unit_cognitive_test_reasoning_portia_bridge"
