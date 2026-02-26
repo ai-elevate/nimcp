@@ -25,6 +25,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #define LOG_MODULE "MESH_MEDULLA"
 
@@ -445,34 +446,34 @@ static float medulla_get_free_energy(void* ctx) {
         return -1.0f;
     }
 
-    /* Free energy based on arousal state and protection level */
+    /* Free energy based on continuous arousal level and protection level.
+     * Map discrete state to continuous level, then compute energy via
+     * inverted-U curve centered at alert (optimal). This replaces the
+     * former discrete switch with smooth continuous scaling. */
     float arousal_energy = 0.0f;
     float protection_energy = 0.0f;
 
-    /* Arousal energy - alert state is optimal */
-    switch (integration->arousal_state) {
-        case MEDULLA_AROUSAL_ALERT:
-            arousal_energy = 0.1f;  /* Optimal */
-            break;
-        case MEDULLA_AROUSAL_RELAXED:
-        case MEDULLA_AROUSAL_VIGILANT:
-            arousal_energy = 0.2f;
-            break;
-        case MEDULLA_AROUSAL_DROWSY:
-        case MEDULLA_AROUSAL_HYPERVIGILANT:
-            arousal_energy = 0.4f;
-            break;
-        case MEDULLA_AROUSAL_LIGHT_SLEEP:
-        case MEDULLA_AROUSAL_EMERGENCY:
-            arousal_energy = 0.6f;
-            break;
-        case MEDULLA_AROUSAL_DEEP_SLEEP:
-            arousal_energy = 0.8f;
-            break;
-        case MEDULLA_AROUSAL_COMA:
-            arousal_energy = 1.0f;  /* Worst */
-            break;
-    }
+    /* Map discrete arousal enum to continuous level (0-1) for energy calc.
+     * Uses midpoint of each state's typical range for smooth interpolation. */
+    static const float MEDULLA_AROUSAL_LEVELS[] = {
+        0.02f,  /* COMA */
+        0.10f,  /* DEEP_SLEEP */
+        0.22f,  /* LIGHT_SLEEP */
+        0.35f,  /* DROWSY */
+        0.47f,  /* RELAXED */
+        0.62f,  /* ALERT (optimal) */
+        0.77f,  /* VIGILANT */
+        0.90f,  /* HYPERVIGILANT */
+        0.97f,  /* EMERGENCY */
+    };
+    float arousal_level = MEDULLA_AROUSAL_LEVELS[(int)integration->arousal_state];
+
+    /* Arousal energy: inverted-U centered at alert (~0.62), sigma=0.3.
+     * Deviation from optimal = higher free energy. */
+    float optimal_arousal = 0.62f;
+    float dev = arousal_level - optimal_arousal;
+    float optimality = expf(-(dev * dev) / (2.0f * 0.3f * 0.3f));
+    arousal_energy = 1.0f - optimality;  /* 0.0 at optimal, ~1.0 at extremes */
 
     /* Protection energy - normal is optimal */
     switch (integration->protection_level) {

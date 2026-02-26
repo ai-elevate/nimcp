@@ -36,11 +36,12 @@ static const float STATE_THRESHOLDS[AROUSAL_STATE_COUNT + 1] = {
 };
 
 /**
- * WHAT: Determines discrete state from continuous arousal level
- * WHY: Maps continuous space to discrete state classifications
- * HOW: Finds first threshold exceeded by arousal level
+ * WHAT: Determines discrete state label from continuous arousal level
+ * WHY: Maps continuous space to discrete labels for logging/display only
+ * HOW: Finds first threshold exceeded by arousal level.
+ *      Public API: labels are derived FROM continuous values.
  */
-static arousal_state_enum_t get_state_from_level(float level) {
+arousal_state_enum_t arousal_state_label_from_level(float level) {
     // Clamp level to valid range
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
@@ -53,6 +54,13 @@ static arousal_state_enum_t get_state_from_level(float level) {
     }
 
     return AROUSAL_STATE_PANIC;  // Max state
+}
+
+/**
+ * WHAT: Internal wrapper for backward compatibility
+ */
+static arousal_state_enum_t get_state_from_level(float level) {
+    return arousal_state_label_from_level(level);
 }
 
 /**
@@ -439,6 +447,101 @@ const char* arousal_state_get_state_name(arousal_state_enum_t state_enum) {
         case AROUSAL_STATE_PANIC:         return "PANIC";
         default:                          return "UNKNOWN";
     }
+}
+
+/**
+ * WHAT: Sigmoid function for smooth 0-1 transitions
+ * WHY: Models biological activation curves without step discontinuities
+ * HOW: 1 / (1 + exp(-k * (x - midpoint)))
+ */
+static float sigmoid(float x, float midpoint, float steepness) {
+    return 1.0f / (1.0f + expf(-steepness * (x - midpoint)));
+}
+
+/**
+ * WHAT: Inverted-U (Yerkes-Dodson) curve
+ * WHY: Models optimal performance at moderate arousal, decline at extremes
+ * HOW: Gaussian-like peak at 'optimal', width controlled by 'sigma'
+ */
+static float inverted_u(float x, float optimal, float sigma) {
+    float dev = x - optimal;
+    return expf(-(dev * dev) / (2.0f * sigma * sigma));
+}
+
+int arousal_compute_parameters(float arousal_level, arousal_params_t* out) {
+    // Guard: NULL check
+    if (!out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_compute_parameters: out is NULL");
+        NIMCP_LOGGING_ERROR("NULL output pointer");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    // Clamp input to valid range
+    if (arousal_level < 0.0f) arousal_level = 0.0f;
+    if (arousal_level > 1.0f) arousal_level = 1.0f;
+
+    // Cortical activation: sigmoid centered at 0.35, steep transition
+    // Low arousal (coma/sleep) = near 0, high arousal = near 1
+    out->cortical_activation = sigmoid(arousal_level, 0.35f, 10.0f);
+
+    // Cognitive gain: Yerkes-Dodson inverted-U, optimal around 0.6 (alert)
+    // sigma=0.25 gives a broad peak covering relaxed-to-vigilant range
+    out->cognitive_gain = inverted_u(arousal_level, 0.6f, 0.25f);
+
+    // Sensory gating: U-shaped (tight at moderate, open at extremes)
+    // During sleep: sensory gates open (dreams, external stimuli)
+    // During panic: gates open (threat detection, hypervigilance)
+    // During alert: gates tight (focused attention filters noise)
+    float gating_tightness = inverted_u(arousal_level, 0.6f, 0.3f);
+    out->sensory_gating = 1.0f - gating_tightness;
+
+    // Muscle tone: sigmoid, atonia during deep sleep, hypertonia during panic
+    // Centered at 0.3 (transition from sleep to wake)
+    out->muscle_tone = sigmoid(arousal_level, 0.3f, 8.0f);
+
+    // Metabolic rate: linear from 0.3 (basal in coma) to 1.0 (max in panic)
+    out->metabolic_rate = 0.3f + 0.7f * arousal_level;
+
+    // Vigilance factor: exponential rise, saturating near 1.0
+    // Models increasing environmental scanning with arousal
+    out->vigilance_factor = 1.0f - expf(-3.0f * arousal_level);
+
+    // Emotional reactivity: exponential increase above 0.5
+    // Low arousal: minimal reactivity; high arousal: explosive reactivity
+    float above_threshold = arousal_level - 0.5f;
+    if (above_threshold < 0.0f) above_threshold = 0.0f;
+    out->emotional_reactivity = 1.0f - expf(-4.0f * above_threshold);
+
+    // Memory consolidation: inverted-U, best during moderate-low arousal
+    // Peak around 0.35 (light sleep / drowsy -- where consolidation happens)
+    out->memory_consolidation = inverted_u(arousal_level, 0.35f, 0.2f);
+
+    // Free energy: deviation from optimal arousal (alert ~0.6)
+    // Uses inverted-U centered at 0.6, inverted: 1 - peak = energy
+    float optimality = inverted_u(arousal_level, 0.6f, 0.3f);
+    out->free_energy = 1.0f - optimality;
+
+    return 0;
+}
+
+int arousal_state_get_parameters(const arousal_state_t* state, arousal_params_t* out) {
+    // Guard: NULL checks
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_get_parameters: state is NULL");
+        NIMCP_LOGGING_ERROR("NULL state pointer");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_get_parameters: out is NULL");
+        NIMCP_LOGGING_ERROR("NULL output pointer");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    nimcp_platform_mutex_lock(state->mutex);
+    float level = state->arousal_level;
+    nimcp_platform_mutex_unlock(state->mutex);
+
+    return arousal_compute_parameters(level, out);
 }
 
 int arousal_state_connect_bio_async(arousal_state_t* state) {
