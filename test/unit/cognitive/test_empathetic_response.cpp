@@ -792,3 +792,373 @@ TEST_F(EmpatheticResponseTest, MaxLengthTextInput) {
 
     EXPECT_TRUE(result);
 }
+
+/* ============================================================================
+ * Continuous Intensity API Tests
+ * ============================================================================ */
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityFromFloat) {
+    // WHAT: Verify discrete label derivation from continuous float
+    // WHY:  Boundary correctness is critical for backward compatibility
+    // HOW:  Test each threshold boundary
+
+    EXPECT_EQ(emotion_intensity_from_float(0.0f),  EMOTION_INTENSITY_NONE);
+    EXPECT_EQ(emotion_intensity_from_float(0.04f), EMOTION_INTENSITY_NONE);
+    EXPECT_EQ(emotion_intensity_from_float(0.05f), EMOTION_INTENSITY_LOW);
+    EXPECT_EQ(emotion_intensity_from_float(0.29f), EMOTION_INTENSITY_LOW);
+    EXPECT_EQ(emotion_intensity_from_float(0.30f), EMOTION_INTENSITY_MEDIUM);
+    EXPECT_EQ(emotion_intensity_from_float(0.59f), EMOTION_INTENSITY_MEDIUM);
+    EXPECT_EQ(emotion_intensity_from_float(0.60f), EMOTION_INTENSITY_HIGH);
+    EXPECT_EQ(emotion_intensity_from_float(0.79f), EMOTION_INTENSITY_HIGH);
+    EXPECT_EQ(emotion_intensity_from_float(0.80f), EMOTION_INTENSITY_EXTREME);
+    EXPECT_EQ(emotion_intensity_from_float(1.0f),  EMOTION_INTENSITY_EXTREME);
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityToFloat) {
+    // WHAT: Verify representative float values for each discrete label
+    // WHY:  Backward-compat fallback converts enum to float for dispatch
+    // HOW:  Check each label maps to a float inside its own band
+
+    EXPECT_FLOAT_EQ(emotion_intensity_to_float(EMOTION_INTENSITY_NONE),    0.0f);
+    EXPECT_FLOAT_EQ(emotion_intensity_to_float(EMOTION_INTENSITY_LOW),     0.175f);
+    EXPECT_FLOAT_EQ(emotion_intensity_to_float(EMOTION_INTENSITY_MEDIUM),  0.45f);
+    EXPECT_FLOAT_EQ(emotion_intensity_to_float(EMOTION_INTENSITY_HIGH),    0.70f);
+    EXPECT_FLOAT_EQ(emotion_intensity_to_float(EMOTION_INTENSITY_EXTREME), 0.90f);
+
+    // Roundtrip: to_float -> from_float should preserve the label
+    for (int i = 0; i <= (int)EMOTION_INTENSITY_EXTREME; i++) {
+        emotion_intensity_t label = (emotion_intensity_t)i;
+        float f = emotion_intensity_to_float(label);
+        EXPECT_EQ(emotion_intensity_from_float(f), label);
+    }
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityEffectsNull) {
+    // WHAT: Verify NULL output guard
+    // WHY:  Defensive programming
+    // HOW:  Call with NULL output
+
+    int ret = emotion_compute_intensity_effects(0.5f, nullptr);
+    EXPECT_EQ(ret, -1);
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityEffectsZero) {
+    // WHAT: Verify zero intensity produces minimal effects
+    // WHY:  No emotion should not trigger interventions
+    // HOW:  Compute effects at 0.0
+
+    emotion_intensity_effects_t effects;
+    int ret = emotion_compute_intensity_effects(0.0f, &effects);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(effects.label, EMOTION_INTENSITY_NONE);
+    EXPECT_LE(effects.grounding_need, 0.01f);
+    EXPECT_LE(effects.de_escalation_strength, 0.01f);
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityEffectsMax) {
+    // WHAT: Verify max intensity produces strong effects
+    // WHY:  Extreme emotion should trigger full response
+    // HOW:  Compute effects at 1.0
+
+    emotion_intensity_effects_t effects;
+    int ret = emotion_compute_intensity_effects(1.0f, &effects);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(effects.label, EMOTION_INTENSITY_EXTREME);
+    EXPECT_GE(effects.response_urgency, 0.8f);
+    EXPECT_GE(effects.empathy_weight, 0.5f);
+    EXPECT_GE(effects.de_escalation_strength, 0.8f);
+    EXPECT_GE(effects.grounding_need, 0.8f);
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityEffectsMonotonic) {
+    // WHAT: Verify key effects are monotonically non-decreasing
+    // WHY:  Higher intensity should produce stronger or equal effects
+    // HOW:  Sweep 0 to 1 in small steps, check monotonicity
+
+    emotion_intensity_effects_t prev, cur;
+    emotion_compute_intensity_effects(0.0f, &prev);
+
+    for (int i = 1; i <= 20; i++) {
+        float v = (float)i / 20.0f;
+        emotion_compute_intensity_effects(v, &cur);
+
+        // de_escalation_strength and grounding_need must be monotonic
+        EXPECT_GE(cur.de_escalation_strength, prev.de_escalation_strength - 1e-6f)
+            << "de_escalation_strength decreased at v=" << v;
+        EXPECT_GE(cur.grounding_need, prev.grounding_need - 1e-6f)
+            << "grounding_need decreased at v=" << v;
+
+        prev = cur;
+    }
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityEffectsSmooth) {
+    // WHAT: Verify no large discontinuities in effects
+    // WHY:  Smooth transitions are the whole point of continuous intensity
+    // HOW:  Check that adjacent steps differ by less than 0.25
+
+    emotion_intensity_effects_t prev, cur;
+    emotion_compute_intensity_effects(0.0f, &prev);
+
+    for (int i = 1; i <= 100; i++) {
+        float v = (float)i / 100.0f;
+        emotion_compute_intensity_effects(v, &cur);
+
+        float d_urgency = std::fabs(cur.response_urgency - prev.response_urgency);
+        float d_empathy = std::fabs(cur.empathy_weight - prev.empathy_weight);
+        float d_deesc   = std::fabs(cur.de_escalation_strength - prev.de_escalation_strength);
+        float d_ground  = std::fabs(cur.grounding_need - prev.grounding_need);
+
+        EXPECT_LT(d_urgency, 0.25f) << "urgency jump at v=" << v;
+        EXPECT_LT(d_empathy, 0.25f) << "empathy jump at v=" << v;
+        EXPECT_LT(d_deesc,   0.25f) << "de_escalation jump at v=" << v;
+        EXPECT_LT(d_ground,  0.25f) << "grounding jump at v=" << v;
+
+        prev = cur;
+    }
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityEffectsClamp) {
+    // WHAT: Verify out-of-range inputs are clamped
+    // WHY:  Robustness against bad input
+    // HOW:  Pass negative and > 1.0 values
+
+    emotion_intensity_effects_t effects;
+
+    int ret = emotion_compute_intensity_effects(-0.5f, &effects);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(effects.label, EMOTION_INTENSITY_NONE);
+    EXPECT_LE(effects.grounding_need, 0.01f);
+
+    ret = emotion_compute_intensity_effects(1.5f, &effects);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(effects.label, EMOTION_INTENSITY_EXTREME);
+    EXPECT_GE(effects.de_escalation_strength, 0.8f);
+}
+
+TEST_F(EmpatheticResponseTest, ContinuousIntensityModerateAlias) {
+    // WHAT: Verify EMOTION_INTENSITY_MODERATE == EMOTION_INTENSITY_MEDIUM
+    // WHY:  Backward compatibility for code using the old name
+    // HOW:  Compare enum values
+
+    EXPECT_EQ((int)EMOTION_INTENSITY_MODERATE, (int)EMOTION_INTENSITY_MEDIUM);
+}
+
+TEST_F(EmpatheticResponseTest, GenerateResponseWithContinuousIntensity) {
+    // WHAT: Verify response generation uses continuous intensity_value
+    // WHY:  Core refactoring: dispatch should use float, not enum
+    // HOW:  Set intensity_value=0.95 (extreme), verify GROUND strategy for rage
+
+    engine = empathetic_response_create(nullptr, nullptr);
+    ASSERT_NE(engine, nullptr);
+
+    emotional_state_t state;
+    memset(&state, 0, sizeof(state));
+    state.emotion_type = EMOTION_RAGE;
+    state.intensity = EMOTION_INTENSITY_NONE;  // Discrete says NONE
+    state.intensity_value = 0.95f;             // Continuous says EXTREME
+    state.valence = -0.9f;
+    state.arousal = 0.95f;
+    strncpy(state.text_input, "I HATE this!", sizeof(state.text_input) - 1);
+
+    empathetic_response_t response;
+    bool result = empathetic_response_generate(engine, &state, &response);
+
+    ASSERT_TRUE(result);
+    // With continuous 0.95 (>= 0.8), rage should get GROUND strategy
+    EXPECT_EQ(response.primary_strategy, RESPONSE_GROUND);
+}
+
+TEST_F(EmpatheticResponseTest, GenerateResponseContinuousLowIntensity) {
+    // WHAT: Verify low continuous intensity gives VALIDATE, not GROUND
+    // WHY:  Low intensity should not trigger de-escalation strategies
+    // HOW:  Set intensity_value=0.3 for rage
+
+    engine = empathetic_response_create(nullptr, nullptr);
+    ASSERT_NE(engine, nullptr);
+
+    emotional_state_t state;
+    memset(&state, 0, sizeof(state));
+    state.emotion_type = EMOTION_RAGE;
+    state.intensity = EMOTION_INTENSITY_NONE;
+    state.intensity_value = 0.3f;  // Low-moderate
+    state.valence = -0.4f;
+    state.arousal = 0.4f;
+    strncpy(state.text_input, "This is annoying", sizeof(state.text_input) - 1);
+
+    empathetic_response_t response;
+    bool result = empathetic_response_generate(engine, &state, &response);
+
+    ASSERT_TRUE(result);
+    // 0.3 < 0.6, so rage should get VALIDATE, not GROUND
+    EXPECT_EQ(response.primary_strategy, RESPONSE_VALIDATE);
+}
+
+TEST_F(EmpatheticResponseTest, BackwardCompatDiscreteIntensityStillWorks) {
+    // WHAT: Verify that setting only discrete intensity still works
+    // WHY:  Backward compatibility: old callers set intensity enum, not float
+    // HOW:  Set intensity=HIGH, intensity_value=0 -> fallback to enum conversion
+
+    engine = empathetic_response_create(nullptr, nullptr);
+    ASSERT_NE(engine, nullptr);
+
+    emotional_state_t state;
+    memset(&state, 0, sizeof(state));
+    state.emotion_type = EMOTION_RAGE;
+    state.intensity = EMOTION_INTENSITY_HIGH;
+    state.intensity_value = 0.0f;  // Not set — forces fallback
+    state.valence = -0.7f;
+    state.arousal = 0.8f;
+    strncpy(state.text_input, "This is making me so angry!", sizeof(state.text_input) - 1);
+
+    empathetic_response_t response;
+    bool result = empathetic_response_generate(engine, &state, &response);
+
+    ASSERT_TRUE(result);
+    // HIGH maps to 0.70f via emotion_intensity_to_float, which is >= 0.6
+    // So rage should still get GROUND strategy
+    EXPECT_EQ(response.primary_strategy, RESPONSE_GROUND);
+}
+
+TEST_F(EmpatheticResponseTest, PredictSafetyContinuousReduction) {
+    // WHAT: Verify safety prediction uses smooth continuous reduction
+    // WHY:  Old code used discrete intensity-1; new code uses *0.8 reduction
+    // HOW:  Check predicted_reaction has smoothly reduced intensity_value
+
+    engine = empathetic_response_create(nullptr, nullptr);
+    ASSERT_NE(engine, nullptr);
+
+    emotional_state_t state;
+    memset(&state, 0, sizeof(state));
+    state.emotion_type = EMOTION_FRUSTRATION;
+    state.intensity = EMOTION_INTENSITY_HIGH;
+    state.intensity_value = 0.75f;
+    state.valence = -0.5f;
+    state.arousal = 0.6f;
+
+    emotional_state_t predicted;
+    memset(&predicted, 0, sizeof(predicted));
+
+    float safety = empathetic_response_predict_safety(
+        engine, &state,
+        "I understand this is frustrating. Let's work through it together.",
+        &predicted
+    );
+
+    // Safe response should get safety > 0.7
+    EXPECT_GT(safety, 0.7f);
+    // Predicted intensity should be smoothly reduced: 0.75 * 0.8 = 0.6
+    EXPECT_NEAR(predicted.intensity_value, 0.75f * 0.8f, 0.01f);
+    // Discrete label should be synced from the new continuous value
+    EXPECT_EQ(predicted.intensity, emotion_intensity_from_float(predicted.intensity_value));
+    // Valence should improve
+    EXPECT_GT(predicted.valence, state.valence);
+}
+
+/* ============================================================================
+ * Continuous Emotion Intensity Effects Tests
+ * ============================================================================ */
+
+TEST(EmotionIntensityEffectsTest, NullOutputReturnsError) {
+    EXPECT_EQ(emotion_compute_intensity_effects(0.5f, nullptr), -1);
+}
+
+TEST(EmotionIntensityEffectsTest, ZeroIntensityMinimalEffects) {
+    emotion_intensity_effects_t fx;
+    EXPECT_EQ(emotion_compute_intensity_effects(0.0f, &fx), 0);
+    EXPECT_LT(fx.response_urgency, 0.01f);
+    EXPECT_EQ(fx.intervention_probability, 0.0f);
+    EXPECT_NEAR(fx.grounding_need, 0.0f, 0.01f);
+    EXPECT_EQ(fx.label, EMOTION_INTENSITY_NONE);
+}
+
+TEST(EmotionIntensityEffectsTest, MaxIntensityStrongEffects) {
+    emotion_intensity_effects_t fx;
+    EXPECT_EQ(emotion_compute_intensity_effects(1.0f, &fx), 0);
+    EXPECT_GT(fx.response_urgency, 0.99f);
+    EXPECT_GT(fx.intervention_probability, 0.9f);
+    EXPECT_GT(fx.de_escalation_strength, 0.9f);
+    EXPECT_NEAR(fx.grounding_need, 1.0f, 0.01f);
+    EXPECT_EQ(fx.label, EMOTION_INTENSITY_EXTREME);
+}
+
+TEST(EmotionIntensityEffectsTest, UrgencySigmoidCentered) {
+    /* At 0.5, sigmoid should be ~0.5 */
+    emotion_intensity_effects_t fx;
+    emotion_compute_intensity_effects(0.5f, &fx);
+    EXPECT_NEAR(fx.response_urgency, 0.5f, 0.05f);
+}
+
+TEST(EmotionIntensityEffectsTest, EmpathyPeaksAtModerateHigh) {
+    emotion_intensity_effects_t low, mid, high;
+    emotion_compute_intensity_effects(0.1f, &low);
+    emotion_compute_intensity_effects(0.65f, &mid);
+    emotion_compute_intensity_effects(1.0f, &high);
+    /* Peak should be at 0.65 */
+    EXPECT_GE(mid.empathy_weight, low.empathy_weight);
+    EXPECT_GE(mid.empathy_weight, high.empathy_weight);
+}
+
+TEST(EmotionIntensityEffectsTest, InterventionZeroBelowThreshold) {
+    emotion_intensity_effects_t fx;
+    emotion_compute_intensity_effects(0.1f, &fx);
+    EXPECT_FLOAT_EQ(fx.intervention_probability, 0.0f);
+
+    emotion_compute_intensity_effects(0.29f, &fx);
+    EXPECT_FLOAT_EQ(fx.intervention_probability, 0.0f);
+}
+
+TEST(EmotionIntensityEffectsTest, UrgencyIncreasesMonotonically) {
+    float prev = -1.0f;
+    for (int i = 0; i <= 20; i++) {
+        float intensity = (float)i / 20.0f;
+        emotion_intensity_effects_t fx;
+        emotion_compute_intensity_effects(intensity, &fx);
+        EXPECT_GE(fx.response_urgency, prev)
+            << "Urgency should increase monotonically at " << intensity;
+        prev = fx.response_urgency;
+    }
+}
+
+TEST(EmotionIntensityEffectsTest, GroundingNeedQuadratic) {
+    emotion_intensity_effects_t fx;
+    emotion_compute_intensity_effects(0.5f, &fx);
+    EXPECT_NEAR(fx.grounding_need, 0.25f, 0.01f);  /* 0.5^2 = 0.25 */
+}
+
+TEST(EmotionIntensityEffectsTest, ClampOutOfRange) {
+    emotion_intensity_effects_t neg, over;
+    emotion_compute_intensity_effects(-0.5f, &neg);
+    emotion_compute_intensity_effects(2.0f, &over);
+    EXPECT_EQ(neg.label, EMOTION_INTENSITY_NONE);
+    EXPECT_EQ(over.label, EMOTION_INTENSITY_EXTREME);
+}
+
+TEST(EmotionIntensityEffectsTest, LabelFromFloatRoundtrip) {
+    EXPECT_EQ(emotion_intensity_from_float(0.0f), EMOTION_INTENSITY_NONE);
+    EXPECT_EQ(emotion_intensity_from_float(0.175f), EMOTION_INTENSITY_LOW);
+    EXPECT_EQ(emotion_intensity_from_float(0.45f), EMOTION_INTENSITY_MEDIUM);
+    EXPECT_EQ(emotion_intensity_from_float(0.7f), EMOTION_INTENSITY_HIGH);
+    EXPECT_EQ(emotion_intensity_from_float(0.9f), EMOTION_INTENSITY_EXTREME);
+}
+
+TEST(EmotionIntensityEffectsTest, NoSmoothJumps) {
+    /* Verify no parameter jumps > 0.15 across 0.01 steps */
+    emotion_intensity_effects_t prev;
+    emotion_compute_intensity_effects(0.0f, &prev);
+
+    for (int i = 1; i <= 100; i++) {
+        float intensity = (float)i / 100.0f;
+        emotion_intensity_effects_t cur;
+        emotion_compute_intensity_effects(intensity, &cur);
+
+        EXPECT_LT(fabsf(cur.response_urgency - prev.response_urgency), 0.15f)
+            << "Urgency jump at " << intensity;
+        EXPECT_LT(fabsf(cur.de_escalation_strength - prev.de_escalation_strength), 0.15f)
+            << "De-escalation jump at " << intensity;
+        EXPECT_LT(fabsf(cur.grounding_need - prev.grounding_need), 0.15f)
+            << "Grounding jump at " << intensity;
+
+        prev = cur;
+    }
+}

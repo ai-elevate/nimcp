@@ -88,17 +88,57 @@ typedef enum {
 #endif /* NIMCP_EMOTION_CATEGORY_T_DEFINED */
 
 /**
- * WHAT: Emotion intensity levels
- * WHY:  Differentiate mild vs intense emotions (critical for safety)
- * HOW:  5-level scale from none to extreme
+ * WHAT: Emotion intensity levels (discrete labels for logging/display)
+ * WHY:  Backward-compatible labeling; dispatch uses continuous intensity_value
+ * HOW:  5-level scale derived from continuous float [0.0-1.0]
  */
+#ifndef NIMCP_EMOTION_INTENSITY_T_DEFINED
+#define NIMCP_EMOTION_INTENSITY_T_DEFINED
 typedef enum {
-    EMOTION_INTENSITY_NONE = 0,      /**< No emotion detected */
-    EMOTION_INTENSITY_LOW,           /**< Mild emotion (0.0-0.3) */
-    EMOTION_INTENSITY_MEDIUM,        /**< Moderate emotion (0.3-0.6) */
-    EMOTION_INTENSITY_HIGH,          /**< Strong emotion (0.6-0.8) */
-    EMOTION_INTENSITY_EXTREME        /**< Extreme emotion (0.8-1.0) */
+    EMOTION_INTENSITY_NONE = 0,      /**< No emotion detected (< 0.05) */
+    EMOTION_INTENSITY_LOW,           /**< Mild emotion [0.05-0.3) */
+    EMOTION_INTENSITY_MEDIUM,        /**< Moderate emotion [0.3-0.6) */
+    EMOTION_INTENSITY_HIGH,          /**< Strong emotion [0.6-0.8) */
+    EMOTION_INTENSITY_EXTREME        /**< Extreme emotion [0.8-1.0] */
 } emotion_intensity_t;
+#endif /* NIMCP_EMOTION_INTENSITY_T_DEFINED */
+
+// ============================================================================
+// CONTINUOUS INTENSITY API
+// ============================================================================
+
+#ifndef NIMCP_EMOTION_INTENSITY_EFFECTS_T_DEFINED
+#define NIMCP_EMOTION_INTENSITY_EFFECTS_T_DEFINED
+typedef struct {
+    float response_urgency;
+    float empathy_weight;
+    float intervention_probability;
+    float de_escalation_strength;
+    float grounding_need;
+    emotion_intensity_t label;
+} emotion_intensity_effects_t;
+#endif
+
+static inline emotion_intensity_t emotion_intensity_from_float(float intensity) {
+    if (intensity < 0.05f) return EMOTION_INTENSITY_NONE;
+    if (intensity < 0.30f) return EMOTION_INTENSITY_LOW;
+    if (intensity < 0.60f) return EMOTION_INTENSITY_MEDIUM;
+    if (intensity < 0.80f) return EMOTION_INTENSITY_HIGH;
+    return EMOTION_INTENSITY_EXTREME;
+}
+
+static inline float emotion_intensity_to_float(emotion_intensity_t label) {
+    switch (label) {
+        case EMOTION_INTENSITY_NONE:    return 0.0f;
+        case EMOTION_INTENSITY_LOW:     return 0.175f;
+        case EMOTION_INTENSITY_MEDIUM:  return 0.45f;
+        case EMOTION_INTENSITY_HIGH:    return 0.70f;
+        case EMOTION_INTENSITY_EXTREME: return 0.90f;
+        default:                        return 0.0f;
+    }
+}
+
+int emotion_compute_intensity_effects(float intensity, emotion_intensity_effects_t *out);
 
 /**
  * WHAT: Valence classification (positive/negative/neutral)
@@ -193,7 +233,8 @@ typedef struct {
     // === Primary Emotion ===
     emotion_category_t category;     /**< Final emotion decision */
     float confidence;                /**< Overall confidence [0.0-1.0] */
-    emotion_intensity_t intensity;   /**< Emotion intensity level */
+    emotion_intensity_t intensity;   /**< Discrete label (for logging/display) */
+    float intensity_value;           /**< Continuous intensity [0.0-1.0] (for dispatch) */
 
     // === Dimensional Representation ===
     float valence;                   /**< Pleasure/displeasure [-1.0, +1.0] */

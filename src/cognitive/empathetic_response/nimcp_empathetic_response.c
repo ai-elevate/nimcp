@@ -280,10 +280,14 @@ bool empathetic_response_detect_crisis(
 
 /**
  * @brief Select appropriate response template based on emotion
+ *
+ * WHAT: Choose template from per-emotion set using continuous intensity
+ * WHY:  Continuous dispatch avoids discrete jumps at threshold boundaries
+ * HOW:  intensity_value >= 0.6 selects the first (most empathetic) template
  */
 static const char* select_response_template(
     negative_emotion_type_t emotion_type,
-    emotion_intensity_t intensity)
+    float intensity_value)
 {
     const char** templates = NULL;
 
@@ -316,8 +320,8 @@ static const char* select_response_template(
                    "and I'm here to help you. Would you like to talk about it?";
     }
 
-    // Select template based on intensity (use first template for higher intensity)
-    if (intensity >= EMOTION_INTENSITY_HIGH) {
+    // Select template based on continuous intensity (>= 0.6 -> first/most empathetic)
+    if (intensity_value >= 0.6f) {
         return templates[0];
     } else if (templates[1] != NULL) {
         return templates[1];
@@ -328,10 +332,16 @@ static const char* select_response_template(
 
 /**
  * @brief Determine primary response strategy
+ *
+ * WHAT: Select the best response strategy using continuous intensity
+ * WHY:  Continuous thresholds (0.8 for extreme, 0.6 for high) provide smooth
+ *       transitions between strategies instead of discrete jumps
+ * HOW:  intensity_value >= 0.8 -> extreme handling
+ *       intensity_value >= 0.6 -> high handling (GROUND for rage/panic)
  */
 static response_strategy_t select_strategy(
     negative_emotion_type_t emotion_type,
-    emotion_intensity_t intensity,
+    float intensity_value,
     uint32_t crisis_flags)
 {
     // Guard: Crisis always escalates
@@ -339,8 +349,8 @@ static response_strategy_t select_strategy(
         return RESPONSE_ESCALATE;
     }
 
-    // Guard: Extreme intensity needs de-escalation
-    if (intensity == EMOTION_INTENSITY_EXTREME) {
+    // Guard: Extreme intensity (>= 0.8) needs de-escalation
+    if (intensity_value >= 0.8f) {
         // For rage/panic, start with grounding
         if (emotion_type == EMOTION_RAGE || emotion_type == EMOTION_PANIC) {
             return RESPONSE_GROUND;
@@ -351,11 +361,11 @@ static response_strategy_t select_strategy(
         }
     }
 
-    // Standard progression: VALIDATE → EXPLORE → GROUND if needed
+    // Standard progression: VALIDATE -> EXPLORE -> GROUND if needed
     switch (emotion_type) {
         case EMOTION_RAGE:
         case EMOTION_PANIC:
-            return (intensity >= EMOTION_INTENSITY_HIGH) ?
+            return (intensity_value >= 0.6f) ?
                    RESPONSE_GROUND : RESPONSE_VALIDATE;
 
         case EMOTION_FEAR:
@@ -438,14 +448,20 @@ bool empathetic_response_generate(
         return true;
     }
 
-    // Determine strategy
+    // Resolve continuous intensity: prefer intensity_value, fall back to discrete enum
+    float intensity_val = state->intensity_value;
+    if (intensity_val <= 0.0f && state->intensity != EMOTION_INTENSITY_NONE) {
+        intensity_val = emotion_intensity_to_float(state->intensity);
+    }
+
+    // Determine strategy using continuous intensity
     response->primary_strategy = select_strategy(state->emotion_type,
-                                                 state->intensity,
+                                                 intensity_val,
                                                  crisis_flags);
 
-    // Select and customize template
-    const char* template = select_response_template(state->emotion_type, state->intensity);
-    strncpy(response->response_text, template, sizeof(response->response_text) - 1);
+    // Select and customize template using continuous intensity
+    const char* tmpl = select_response_template(state->emotion_type, intensity_val);
+    strncpy(response->response_text, tmpl, sizeof(response->response_text) - 1);
 
     // Set metadata
     response->empathy_score = 0.85F;  // High empathy by design
@@ -567,10 +583,18 @@ float empathetic_response_predict_safety(
     // Predict reaction (simplified - would use empathy network)
     if (predicted_reaction) {
         *predicted_reaction = *student_state;
-        // If response is safe, predict slight improvement
+        // If response is safe, predict smooth improvement via continuous reduction
         if (safety_score > 0.7F) {
-            predicted_reaction->intensity = (predicted_reaction->intensity > 0) ?
-                                           predicted_reaction->intensity - 1 : 0;
+            // Resolve current continuous intensity
+            float cur_val = predicted_reaction->intensity_value;
+            if (cur_val <= 0.0f && predicted_reaction->intensity != EMOTION_INTENSITY_NONE) {
+                cur_val = emotion_intensity_to_float(predicted_reaction->intensity);
+            }
+            // Smooth reduction: multiply by 0.8 (gradual de-escalation)
+            predicted_reaction->intensity_value = cur_val * 0.8f;
+            // Sync discrete label from the new continuous value
+            predicted_reaction->intensity = emotion_intensity_from_float(
+                predicted_reaction->intensity_value);
             predicted_reaction->valence = fminf(1.0F, predicted_reaction->valence + 0.2F);
         }
     }

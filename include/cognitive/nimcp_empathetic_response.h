@@ -41,15 +41,73 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Emotion intensity levels
+ * @brief Emotion intensity levels (discrete labels for logging/display)
+ *
+ * NOTE: Dispatch uses continuous intensity_value field.
+ *       EMOTION_INTENSITY_MODERATE is an alias for EMOTION_INTENSITY_MEDIUM.
  */
+#ifndef NIMCP_EMOTION_INTENSITY_T_DEFINED
+#define NIMCP_EMOTION_INTENSITY_T_DEFINED
 typedef enum {
     EMOTION_INTENSITY_NONE = 0,       /**< No emotion detected */
     EMOTION_INTENSITY_LOW,            /**< Mild emotion */
-    EMOTION_INTENSITY_MODERATE,       /**< Noticeable emotion */
+    EMOTION_INTENSITY_MEDIUM,         /**< Noticeable emotion */
     EMOTION_INTENSITY_HIGH,           /**< Strong emotion */
     EMOTION_INTENSITY_EXTREME         /**< Overwhelming emotion (may require escalation) */
 } emotion_intensity_t;
+#endif /* NIMCP_EMOTION_INTENSITY_T_DEFINED */
+#ifndef EMOTION_INTENSITY_MODERATE
+#define EMOTION_INTENSITY_MODERATE EMOTION_INTENSITY_MEDIUM  /**< Alias for backward compat */
+#endif
+
+// ============================================================================
+// Continuous Intensity API
+// ============================================================================
+
+/**
+ * @brief Emotion intensity effects computed from continuous intensity
+ */
+#ifndef NIMCP_EMOTION_INTENSITY_EFFECTS_T_DEFINED
+#define NIMCP_EMOTION_INTENSITY_EFFECTS_T_DEFINED
+typedef struct {
+    float response_urgency;          /**< How urgently a response is needed [0.0-1.0] */
+    float empathy_weight;            /**< How much empathy to apply [0.0-1.0] */
+    float intervention_probability;  /**< Probability intervention is needed [0.0-1.0] */
+    float de_escalation_strength;    /**< How strongly to de-escalate [0.0-1.0] */
+    float grounding_need;            /**< Need for grounding exercises [0.0-1.0] */
+    emotion_intensity_t label;       /**< Discrete label derived from continuous value */
+} emotion_intensity_effects_t;
+#endif
+
+/**
+ * @brief Derive discrete intensity label from continuous float
+ */
+static inline emotion_intensity_t emotion_intensity_from_float(float intensity) {
+    if (intensity < 0.05f) return EMOTION_INTENSITY_NONE;
+    if (intensity < 0.30f) return EMOTION_INTENSITY_LOW;
+    if (intensity < 0.60f) return EMOTION_INTENSITY_MEDIUM;
+    if (intensity < 0.80f) return EMOTION_INTENSITY_HIGH;
+    return EMOTION_INTENSITY_EXTREME;
+}
+
+/**
+ * @brief Convert discrete intensity label to representative float
+ */
+static inline float emotion_intensity_to_float(emotion_intensity_t label) {
+    switch (label) {
+        case EMOTION_INTENSITY_NONE:    return 0.0f;
+        case EMOTION_INTENSITY_LOW:     return 0.175f;
+        case EMOTION_INTENSITY_MEDIUM:  return 0.45f;
+        case EMOTION_INTENSITY_HIGH:    return 0.70f;
+        case EMOTION_INTENSITY_EXTREME: return 0.90f;
+        default:                        return 0.0f;
+    }
+}
+
+/**
+ * @brief Compute continuous intensity effects from a float intensity
+ */
+int emotion_compute_intensity_effects(float intensity, emotion_intensity_effects_t *out);
 
 /**
  * @brief Negative emotions requiring special handling
@@ -106,7 +164,8 @@ typedef enum {
  */
 typedef struct emotional_state {
     negative_emotion_type_t emotion_type;    /**< Primary negative emotion */
-    emotion_intensity_t intensity;           /**< Intensity level */
+    emotion_intensity_t intensity;           /**< Discrete intensity label (for logging/display) */
+    float intensity_value;                   /**< Continuous intensity [0.0-1.0] (for dispatch) */
     float valence;                           /**< Valence (-1 = negative, +1 = positive) */
     float arousal;                           /**< Arousal (0 = calm, 1 = excited) */
     char text_input[512];                    /**< Student's text input */
