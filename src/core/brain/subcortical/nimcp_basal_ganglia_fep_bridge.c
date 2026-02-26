@@ -11,6 +11,7 @@
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -92,12 +93,6 @@ struct bg_fep_bridge {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static float clamp(float x, float min, float max) {
-    if (x < min) return min;
-    if (x > max) return max;
-    return x;
-}
 
 static float safe_log(float x) {
     if (x < BG_FEP_EPSILON) x = BG_FEP_EPSILON;
@@ -469,7 +464,7 @@ int bg_fep_update_precision(
     float target = 1.0f / (pe_sq + BG_FEP_EPSILON);
 
     bridge->action_precision[action_id] = (1.0f - lr) * current + lr * target;
-    bridge->action_precision[action_id] = clamp(
+    bridge->action_precision[action_id] = nimcp_clampf(
         bridge->action_precision[action_id],
         BG_FEP_MIN_PRECISION,
         BG_FEP_MAX_PRECISION
@@ -756,7 +751,7 @@ int bg_fep_set_habit(
         return -1;
     }
 
-    bridge->habit_strength[action_id] = clamp(strength, 0.0f, 1.0f);
+    bridge->habit_strength[action_id] = nimcp_clampf(strength, 0.0f, 1.0f);
 
     /* Boost prior for habitual actions */
     bridge->habit_prior[action_id] =
@@ -765,7 +760,7 @@ int bg_fep_set_habit(
     /* Boost precision for habits (more confident about value) */
     if (strength > bridge->config.habit_threshold) {
         bridge->action_precision[action_id] *= bridge->config.habit_precision_boost;
-        bridge->action_precision[action_id] = clamp(
+        bridge->action_precision[action_id] = nimcp_clampf(
             bridge->action_precision[action_id],
             BG_FEP_MIN_PRECISION,
             BG_FEP_MAX_PRECISION
@@ -817,7 +812,7 @@ int bg_fep_set_dopamine(bg_fep_bridge_t* bridge, float dopamine_level) {
         return -1;
     }
 
-    bridge->dopamine_level = clamp(dopamine_level, 0.0f, 1.0f);
+    bridge->dopamine_level = nimcp_clampf(dopamine_level, 0.0f, 1.0f);
 
     /* Dopamine modulates precision
      * Higher dopamine = higher precision on GO signals (D1)

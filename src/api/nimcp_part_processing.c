@@ -170,15 +170,18 @@ nimcp_status_t nimcp_brain_train_step(
     size_t grad_count = backprop_get_weight_gradients(state->backprop, weight_gradients, total_weights);
 
     if (grad_count == 0 || !backprop_has_valid_gradients(state->backprop)) {
-        // Fallback: use output gradients distributed across weights
-        // This is not ideal but prevents complete failure
-        float grad_per_weight = 0.0F;
+        // Fallback: use absolute output gradients distributed across weights
+        // Sum absolute values to get total gradient magnitude, then distribute evenly
+        float total_grad = 0.0F;
         for (uint32_t i = 0; i < num_targets; i++) {
-            grad_per_weight += output_gradients[i];
+            total_grad += fabsf(output_gradients[i]);
         }
-        grad_per_weight /= (float)total_weights;
+        float grad_per_weight = total_grad / (float)total_weights;
         for (size_t i = 0; i < total_weights; i++) {
             weight_gradients[i] = grad_per_weight;
+            // Clamp to [-1.0, 1.0] to prevent exploding gradients
+            if (weight_gradients[i] > 1.0F) weight_gradients[i] = 1.0F;
+            if (weight_gradients[i] < -1.0F) weight_gradients[i] = -1.0F;
         }
     }
 
@@ -224,6 +227,12 @@ nimcp_status_t nimcp_brain_train_step(
         for (size_t i = 0; i < total_weights; i++) {
             weight_gradients[i] *= scale;
         }
+    }
+
+    // Per-element gradient clipping to prevent exploding gradients
+    for (size_t i = 0; i < total_weights; i++) {
+        if (weight_gradients[i] > 1.0F) weight_gradients[i] = 1.0F;
+        if (weight_gradients[i] < -1.0F) weight_gradients[i] = -1.0F;
     }
 
     // Apply optimizer step

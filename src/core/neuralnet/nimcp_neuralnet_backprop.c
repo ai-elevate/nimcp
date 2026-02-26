@@ -39,36 +39,8 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet_backprop)
 
-//=============================================================================
-// Internal Network Structure
-//=============================================================================
-
-/* Strategy pattern function pointer types for activation functions */
-typedef float (*activation_fn)(float input, float threshold);
-
-typedef struct activation_strategy_table_struct {
-    activation_fn strategies[5];  /* One per activation_type_t */
-} activation_strategy_table_t;
-
-/**
- * @brief Internal neural network structure (needed for direct field access)
- *
- * Matches the definition in nimcp_neuralnet.c
- */
-struct neural_network_struct {
-    neuron_t* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    uint64_t current_time;
-    network_config_t config;
-    uint64_t network_time;
-    float global_activity;
-    float network_stability;
-    float learning_momentum;
-    float last_avg_weight;
-    uint64_t last_maintenance;
-    activation_strategy_table_t activation_strategies;
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Activation Function Derivatives
@@ -660,10 +632,32 @@ void backprop_store_activations_from_network(backprop_ctx_t* ctx,
                 float a = neuron->state;
                 ctx->activations[l].post_activation[i] = a;
 
-                /* Estimate pre-activation from activation */
-                /* For sigmoid: z = logit(a) = log(a / (1-a)) */
-                /* For simplicity, use state directly */
-                ctx->activations[l].pre_activation[i] = a;
+                /* Reconstruct pre-activation from post-activation using
+                 * inverse activation function.
+                 *
+                 * BUGFIX: Previously stored post-activation 'a' as pre-activation,
+                 * which caused incorrect gradient computation since
+                 * activation_derivative(a, type) != activation_derivative(z, type).
+                 */
+                float z = a;  /* default for linear/adaptive */
+                if (neuron->activation_type == ACTIVATION_SIGMOID) {
+                    if (a > 0.001f && a < 0.999f) {
+                        z = logf(a / (1.0f - a));  /* logit (inverse sigmoid) */
+                    } else {
+                        z = (a <= 0.001f) ? -6.9f : 6.9f;  /* clamped extremes */
+                    }
+                } else if (neuron->activation_type == ACTIVATION_TANH) {
+                    if (a > -0.999f && a < 0.999f) {
+                        z = 0.5f * logf((1.0f + a) / (1.0f - a));  /* arctanh */
+                    } else {
+                        z = (a <= -0.999f) ? -3.8f : 3.8f;
+                    }
+                } else if (neuron->activation_type == ACTIVATION_RELU) {
+                    z = (a > 0.0f) ? a : 0.0f;  /* ReLU is identity for positive */
+                } else if (neuron->activation_type == ACTIVATION_LEAKY_RELU) {
+                    z = (a > 0.0f) ? a : a / 0.01f;  /* inverse leaky ReLU */
+                }
+                ctx->activations[l].pre_activation[i] = z;
 
                 neuron_idx++;
             }

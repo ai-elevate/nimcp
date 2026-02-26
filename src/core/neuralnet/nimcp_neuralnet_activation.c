@@ -21,15 +21,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet_activation)
 #define MAX_ACTIVATION 1.0f
 #define MIN_ACTIVATION -1.0f
 
-//=============================================================================
-// Internal Type Definitions
-//=============================================================================
-
-typedef float (*activation_fn_t)(float input, float threshold);
-
-typedef struct {
-    activation_fn_t functions[8];
-} activation_strategy_table_t;
+/* Single authoritative definition of activation_strategy_table_t and neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Forward Declarations

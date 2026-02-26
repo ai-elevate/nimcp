@@ -605,3 +605,33 @@ set_tests_properties(unit_middleware_training_test_training_diagnosis
     PROPERTIES
         LABELS "unit;middleware;training;diagnosis"
         TIMEOUT 120)
+
+# Training Integration Fixes Unit Tests (Bug fixes: Portia, inflammation, buffer, modulation)
+add_executable(unit_middleware_training_test_training_integration_fixes
+    test_training_integration_fixes.cpp
+)
+
+target_include_directories(unit_middleware_training_test_training_integration_fixes PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_training_integration_fixes PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_training_integration_fixes
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_training_integration_fixes
+         COMMAND unit_middleware_training_test_training_integration_fixes)
+
+set_tests_properties(unit_middleware_training_test_training_integration_fixes
+    PROPERTIES
+        LABELS "unit;middleware;training;integration_fixes"
+        TIMEOUT 120)

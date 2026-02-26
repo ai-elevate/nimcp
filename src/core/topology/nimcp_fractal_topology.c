@@ -79,14 +79,8 @@ static void fractal_topology_bio_cleanup(void) {
     nimcp_mutex_unlock(&bio_cleanup_mutex);
 }
 
-// Access to network internal structure for getting neuron count
-// Note: Minimal struct definition to access num_neurons field
-struct neural_network_struct {
-    void* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    // Other fields not accessed from this module
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Error Handling - Thread-local storage

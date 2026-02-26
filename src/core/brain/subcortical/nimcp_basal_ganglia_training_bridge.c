@@ -7,6 +7,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -27,10 +28,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(basal_ganglia_training_bridge, MESH_ADAPTER_CATEGOR
 /* ============================================================================
  * Static Helpers
  * ============================================================================ */
-
-static float clamp(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 /* ============================================================================
  * Lifecycle Functions
@@ -331,7 +328,7 @@ int bgtr_bridge_update_weights(bgtr_bridge_t* bridge, float rpe) {
 
         /* D1 pathway: positive RPE → LTP */
         delta = bridge->config.d1_learning_rate * trace->trace_value * rpe;
-        d1[action] = clamp(d1[action] + delta, 0.0f, 1.0f);
+        d1[action] = nimcp_clampf(d1[action] + delta, 0.0f, 1.0f);
         bridge->stats.d1_updates++;
 
         /* D2 pathway: negative RPE → LTP (asymmetric learning) */
@@ -340,7 +337,7 @@ int bgtr_bridge_update_weights(bgtr_bridge_t* bridge, float rpe) {
         } else {
             delta = bridge->config.d2_learning_rate * trace->trace_value * rpe;
         }
-        d2[action] = clamp(d2[action] + delta, 0.0f, 1.0f);
+        d2[action] = nimcp_clampf(d2[action] + delta, 0.0f, 1.0f);
         bridge->stats.d2_updates++;
 
         updates++;
@@ -388,7 +385,7 @@ int bgtr_bridge_strengthen_habit(
         float* habits = nimcp_training_write_weights(
             bridge->training, &bridge->habit_weights);
         if (habits) {
-            habits[action_id] = clamp(
+            habits[action_id] = nimcp_clampf(
                 habits[action_id] + amount * bridge->config.habit_rate_scale,
                 0.0f, 1.0f
             );
@@ -465,7 +462,7 @@ int bgtr_bridge_set_weight(
         return -1;
     }
 
-    weight = clamp(weight, 0.0f, 1.0f);
+    weight = nimcp_clampf(weight, 0.0f, 1.0f);
 
     switch (target) {
         case BGTR_TARGET_DIRECT:

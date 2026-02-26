@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from cognitive_orchestrator import CognitiveOrchestrator
 from instructor_agent import InstructorAgent, InstructorConfig
 
 
@@ -81,8 +82,51 @@ class ThreadSafeBrain:
         with self._lock:
             return self._brain.get_last_gradient_norm(*args, **kwargs)
 
+    def consolidate(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.consolidate(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.save(*args, **kwargs)
+
+    def load(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.load(*args, **kwargs)
+
+    def probe(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.probe(*args, **kwargs)
+
+    def cache_communities(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.cache_communities(*args, **kwargs)
+
+    def invalidate_community_cache(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.invalidate_community_cache(*args, **kwargs)
+
+    def audio_cortex_process(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.audio_cortex_process(*args, **kwargs)
+
+    def visual_cortex_process(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.visual_cortex_process(*args, **kwargs)
+
+    def speech_cortex_process(self, *args, **kwargs):
+        with self._lock:
+            return self._brain.speech_cortex_process(*args, **kwargs)
+
     def __getattr__(self, name):
-        """Proxy all other attributes to the underlying brain."""
+        """Proxy all other attributes to the underlying brain.
+
+        NOTE: Only attributes not explicitly wrapped above go through this
+        fallback.  Explicitly wrapped methods acquire the RLock to prevent
+        concurrent C-level mutations.  If you add a new brain method that
+        mutates state, add an explicit wrapper above rather than relying on
+        this passthrough.
+        """
         return getattr(self._brain, name)
 
 
@@ -303,6 +347,10 @@ class School:
         self.cross_domain_queue: queue.Queue = queue.Queue(maxsize=500)
         self.board = SchoolProgressBoard()
         self.metacognition = TrainingMetacognition(self.logger)
+        self.cognitive = CognitiveOrchestrator(self.brain)
+
+        # Per-domain accuracy history for stall detection via CognitiveOrchestrator
+        self._domain_accuracy_history: Dict[str, List[float]] = {}
 
         self.instructors: List[InstructorAgent] = []
         self._start_time = 0.0
@@ -641,6 +689,25 @@ class School:
                 report.get("loss", 1.0),
                 report.get("total_examples", 0),
             )
+
+            # Accumulate per-domain accuracy for stall detection
+            accuracy = report.get("accuracy", 0.0)
+            if domain not in self._domain_accuracy_history:
+                self._domain_accuracy_history[domain] = []
+            self._domain_accuracy_history[domain].append(accuracy)
+            # Keep last 100 entries per domain
+            if len(self._domain_accuracy_history[domain]) > 100:
+                self._domain_accuracy_history[domain] = \
+                    self._domain_accuracy_history[domain][-100:]
+
+            # Stall detection: check if learning is stalled for this domain
+            recent_accs = self._domain_accuracy_history[domain]
+            if self.cognitive.is_learning_stalled(recent_accs):
+                self.logger.log(
+                    f"[School] Learning stalled in {domain}, "
+                    f"triggering consolidation")
+                self._call_recess()
+                self._last_recess = time.time()
 
             # Log to school-level JSONL
             if self._school_log_file:

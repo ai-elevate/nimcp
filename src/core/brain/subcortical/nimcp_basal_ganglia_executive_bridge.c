@@ -7,6 +7,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -27,10 +28,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(basal_ganglia_executive_bridge, MESH_ADAPTER_CATEGO
 /* ============================================================================
  * Static Helpers
  * ============================================================================ */
-
-static float clamp(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 static bge_goal_t* find_goal(bge_bridge_t* bridge, uint32_t goal_id) {
     for (uint32_t i = 0; i < bridge->num_goals; i++) {
@@ -190,7 +187,7 @@ int bge_bridge_register_goal(
 
     goal->goal_id = bridge->next_goal_id++;
     goal->target_action = target_action;
-    goal->priority = clamp(priority, 0.0f, 1.0f);
+    goal->priority = nimcp_clampf(priority, 0.0f, 1.0f);
     goal->value = value;
     goal->state = BGE_GOAL_PENDING;
     goal->start_time_ms = 0;
@@ -307,7 +304,7 @@ int bge_bridge_update_control(
     /* Compute PFC influence (inversely related to load) */
     if (bridge->config.enable_load_monitoring) {
         bridge->state.pfc_influence = 1.0f - bridge->state.cognitive_load * 0.5f;
-        bridge->state.pfc_influence = clamp(bridge->state.pfc_influence, 0.2f, 1.0f);
+        bridge->state.pfc_influence = nimcp_clampf(bridge->state.pfc_influence, 0.2f, 1.0f);
     }
 
     /* Compute habit pressure (higher when load is high) */
@@ -445,7 +442,7 @@ int bge_bridge_inhibit_action(
     }
 
     bridge->inhibited_action = action_id;
-    bridge->inhibition_level = clamp(strength, 0.0f, 1.0f);
+    bridge->inhibition_level = nimcp_clampf(strength, 0.0f, 1.0f);
 
     return 0;
 }

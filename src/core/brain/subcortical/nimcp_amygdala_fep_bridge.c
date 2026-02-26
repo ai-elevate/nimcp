@@ -8,6 +8,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/subcortical/nimcp_amygdala_fep_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -79,12 +80,6 @@ struct amyg_fep_bridge_s {
 // Helper Functions
 //=============================================================================
 
-static float clamp(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
-
 /**
  * @brief Compute threat prediction based on model
  *
@@ -150,8 +145,8 @@ static void compute_threat_prediction(
     }
 
     /* Clamp predictions */
-    predicted[0] = clamp(predicted[0], 0.0f, 1.0f);
-    predicted[1] = clamp(predicted[1], -1.0f, 1.0f);
+    predicted[0] = nimcp_clampf(predicted[0], 0.0f, 1.0f);
+    predicted[1] = nimcp_clampf(predicted[1], -1.0f, 1.0f);
 }
 
 /**
@@ -377,7 +372,7 @@ int amyg_fep_compute_errors(
     float expected_threat = compute_model_threat_prior(bridge->current_model);
 
     /* Observed threat is first observation dimension */
-    float observed_threat = (obs_dim > 0) ? clamp(observations[0], 0.0f, 1.0f) : 0.0f;
+    float observed_threat = (obs_dim > 0) ? nimcp_clampf(observations[0], 0.0f, 1.0f) : 0.0f;
 
     /* Safety prediction error: threat when expected safe */
     float safety_error = 0.0f;
@@ -403,7 +398,7 @@ int amyg_fep_compute_errors(
     /* Contextual error (context familiarity mismatch) */
     float context_error = 0.0f;
     if (obs_dim > 1 && bridge->config.use_context) {
-        float context_safety = clamp(observations[1], 0.0f, 1.0f);
+        float context_safety = nimcp_clampf(observations[1], 0.0f, 1.0f);
         float expected_context_safety = 1.0f - expected_threat;
         context_error = fabsf(context_safety - expected_context_safety) *
             bridge->config.contextual_precision;
@@ -477,8 +472,8 @@ int amyg_fep_update_precision(
         return -1;
     }
 
-    bridge->current_arousal = clamp(arousal, 0.0f, 1.0f);
-    bridge->current_stress = clamp(stress, 0.0f, 1.0f);
+    bridge->current_arousal = nimcp_clampf(arousal, 0.0f, 1.0f);
+    bridge->current_stress = nimcp_clampf(stress, 0.0f, 1.0f);
 
     if (bridge->config.precision_mode == AMYG_FEP_PRECISION_ADAPTIVE ||
         bridge->config.precision_mode == AMYG_FEP_PRECISION_INTEROCEPTIVE) {
@@ -526,7 +521,7 @@ int amyg_fep_set_interoception(
                          intero->skin_conductance * 0.3f +
                          intero->muscle_tension * 0.2f +
                          (intero->gut_feeling + 1.0f) * 0.1f;
-    bridge->beliefs[3] = clamp(body_arousal, 0.0f, 1.0f);
+    bridge->beliefs[3] = nimcp_clampf(body_arousal, 0.0f, 1.0f);
 
     return 0;
 }
@@ -559,7 +554,7 @@ int amyg_fep_infer_state(
                 bridge->precision[i];
 
             /* Clamp beliefs to valid range */
-            bridge->beliefs[i] = clamp(bridge->beliefs[i], -1.0f, 1.0f);
+            bridge->beliefs[i] = nimcp_clampf(bridge->beliefs[i], -1.0f, 1.0f);
         }
         bridge->stats.inference_steps_total++;
     }
@@ -826,7 +821,7 @@ int amyg_fep_condition(
     }
 
     /* Conditioning shifts priors toward threat expectation */
-    float intensity = clamp(threat_intensity, 0.0f, 1.0f);
+    float intensity = nimcp_clampf(threat_intensity, 0.0f, 1.0f);
 
     /* Increase threat prior */
     bridge->beliefs[0] = fmaxf(bridge->beliefs[0], intensity * 0.8f);
@@ -934,7 +929,7 @@ int amyg_fep_update(amyg_fep_bridge_t* bridge, float dt_ms) {
 
     /* Update model evidence based on prediction accuracy */
     float error = bridge->current_errors.precision_weighted_error;
-    float evidence_update = 1.0f - clamp(error, 0.0f, 1.0f);
+    float evidence_update = 1.0f - nimcp_clampf(error, 0.0f, 1.0f);
 
     bridge->model_evidence[bridge->current_model] =
         0.95f * bridge->model_evidence[bridge->current_model] +

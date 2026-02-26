@@ -7,6 +7,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -27,10 +28,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(basal_ganglia_thalamus_bridge, MESH_ADAPTER_CATEGOR
 /* ============================================================================
  * Static Helpers
  * ============================================================================ */
-
-static float clamp(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 /* ============================================================================
  * Lifecycle Functions
@@ -311,7 +308,7 @@ int bgt_bridge_relay_explicit(
 
     /* Apply TRN inhibition */
     float trn_factor = 1.0f - bridge->trn_inhibition * bridge->config.trn_sensitivity;
-    trn_factor = clamp(trn_factor, 0.0f, 1.0f);
+    trn_factor = nimcp_clampf(trn_factor, 0.0f, 1.0f);
     for (uint32_t i = 0; i < nc; i++) {
         bridge->thal_input_buffer[i] *= trn_factor;
     }
@@ -390,7 +387,7 @@ int bgt_bridge_set_attention(bgt_bridge_t* bridge, float attention) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_attention: bridge is NULL");
         return -1;
     }
-    bridge->current_attention = clamp(attention, 0.0f, 1.0f);
+    bridge->current_attention = nimcp_clampf(attention, 0.0f, 1.0f);
     return 0;
 }
 
@@ -399,7 +396,7 @@ int bgt_bridge_set_urgency(bgt_bridge_t* bridge, float urgency) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_urgency: bridge is NULL");
         return -1;
     }
-    bridge->current_urgency = clamp(urgency, 0.0f, 1.0f);
+    bridge->current_urgency = nimcp_clampf(urgency, 0.0f, 1.0f);
     return 0;
 }
 
@@ -408,7 +405,7 @@ int bgt_bridge_set_trn_inhibition(bgt_bridge_t* bridge, float inhibition) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_trn_inhibition: bridge is NULL");
         return -1;
     }
-    bridge->trn_inhibition = clamp(inhibition, 0.0f, 1.0f);
+    bridge->trn_inhibition = nimcp_clampf(inhibition, 0.0f, 1.0f);
     return 0;
 }
 

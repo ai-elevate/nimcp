@@ -75,26 +75,8 @@ static void network_serialization_security_cleanup(void) {
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(network_serialization)
 
-// Access to internal network structure (defined in neuralnet.c)
-// NOTE: This mirrors the internal structure for serialization access
-typedef struct activation_strategy_table {
-    void* functions[8];
-} activation_strategy_table_t;
-
-struct neural_network_struct {
-    neuron_t* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    uint64_t current_time;
-    network_config_t config;
-    uint64_t network_time;
-    float global_activity;
-    float network_stability;
-    float learning_momentum;
-    float last_avg_weight;
-    uint64_t last_maintenance;
-    activation_strategy_table_t activation_strategies;
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Forward Declarations

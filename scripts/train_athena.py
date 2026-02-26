@@ -1216,6 +1216,9 @@ def phase2_guided_study(brain, socratic: SocraticTrainer,
                     logger.log(f"  {name}: {count:,} deferred examples")
                 except Exception as e:
                     logger.log(f"  {name}: ERROR — {e}")
+                # Decay hard example losses after each deferred dataset to
+                # prevent unbounded growth and let old hard examples age out
+                phase2_miner.decay(factor=0.95)
                 gc.collect()
 
         # Final hard example replay for Phase 2

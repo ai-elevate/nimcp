@@ -134,3 +134,22 @@ target_include_directories(unit_core_brain_factory_test_brain_tier_config
 add_test(NAME unit_core_brain_factory_test_brain_tier_config
          COMMAND unit_core_brain_factory_test_brain_tier_config)
 set_tests_properties(unit_core_brain_factory_test_brain_tier_config PROPERTIES LABELS "unit" TIMEOUT 90)
+
+# Test: BG BBB/KG Initialization Wiring
+add_executable(unit_core_brain_factory_init_bg_bbb_kg
+    init/test_bg_bbb_kg_initialization.cpp
+)
+target_link_libraries(unit_core_brain_factory_init_bg_bbb_kg
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_core_brain_factory_init_bg_bbb_kg
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME unit_core_brain_factory_init_bg_bbb_kg
+         COMMAND unit_core_brain_factory_init_bg_bbb_kg)
+set_tests_properties(unit_core_brain_factory_init_bg_bbb_kg PROPERTIES LABELS "unit" RESOURCE_LOCK "brain_heavy")

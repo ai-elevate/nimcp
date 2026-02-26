@@ -45,17 +45,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(spike_nlp)
 
 #define SPIKE_NLP_MODULE_NAME "spike_nlp"
 
-// Internal network structure (for direct neuron access)
-// WHAT: Minimal struct declaration for accessing neuron array
-// WHY: neural_network_t is opaque, need direct access for performance
-// HOW: Forward declare only fields we need
-struct neural_network_struct {
-    neuron_t* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    uint64_t current_time;
-    // ... other fields omitted
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Embedding-to-Spike Conversion

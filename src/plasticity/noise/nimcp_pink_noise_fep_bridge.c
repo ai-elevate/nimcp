@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -26,12 +27,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS(pink_noise_fep_bridge)
 
 #define LOG_MODULE "PINK_NOISE_FEP_BRIDGE"
 
-
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 int pink_noise_fep_bridge_default_config(pink_noise_fep_config_t* config) {
     if (!config) {
@@ -136,7 +131,7 @@ float pink_noise_fep_compute_amplitude_from_precision(pink_noise_fep_bridge_t* b
     float scaling = 1.0f / (precision + 0.1f);
     float amplitude = bridge->config.base_amplitude * scaling * bridge->config.precision_amplitude_gain;
 
-    return clamp(amplitude, PINK_NOISE_FEP_AMPLITUDE_MIN, PINK_NOISE_FEP_AMPLITUDE_MAX);
+    return nimcp_clampf(amplitude, PINK_NOISE_FEP_AMPLITUDE_MIN, PINK_NOISE_FEP_AMPLITUDE_MAX);
 }
 
 float pink_noise_fep_compute_alpha_from_free_energy(pink_noise_fep_bridge_t* bridge, float free_energy) {
@@ -145,7 +140,7 @@ float pink_noise_fep_compute_alpha_from_free_energy(pink_noise_fep_bridge_t* bri
     /* Higher free energy → steeper spectral slope (more low frequency) */
     float alpha = bridge->config.base_alpha + free_energy * bridge->config.free_energy_alpha_gain;
 
-    return clamp(alpha, PINK_NOISE_FEP_ALPHA_MIN, PINK_NOISE_FEP_ALPHA_MAX);
+    return nimcp_clampf(alpha, PINK_NOISE_FEP_ALPHA_MIN, PINK_NOISE_FEP_ALPHA_MAX);
 }
 
 float pink_noise_fep_compute_uncertainty_from_noise(const pink_noise_fep_bridge_t* bridge) {

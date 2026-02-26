@@ -26,27 +26,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet_homeostasis)
 #define MAX_SYNAPTIC_STRENGTH 10.0f
 #define NORMALIZATION_INTERVAL 1000
 
-// External structure definition
-struct neural_network_struct {
-    neuron_t* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    uint64_t current_time;
-    uint64_t network_time;
-    float global_activity;
-    float network_stability;
-    float learning_momentum;
-    float last_avg_weight;
-    uint64_t last_maintenance;
-    void* neuromodulator_system;
-    float* global_state;
-    uint32_t global_state_size;
-    void* glial_integration;
-    void* axon_network;
-    void* bio_ctx;
-    bool bio_async_enabled;
-    void* immune_system;  // brain_immune_system_t*
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Internal Helper Functions
@@ -366,8 +347,14 @@ bool neural_network_connect_immune_system(neural_network_t network,
         return false;
     }
 
-    network->immune_system = (void*)immune_system;
+    /* NOTE: The immune system connection is managed at the brain layer
+     * (nimcp_brain.c), not the neural network layer. The stale duplicate struct
+     * had a bogus 'immune_system' field that was never in the canonical
+     * definition and caused silent memory corruption. This function is kept
+     * for API compatibility but is a no-op at the network level.
+     */
+    (void)immune_system;
 
-    LOG_INFO(LOG_MODULE, "Connected immune system to neural network");
+    LOG_INFO(LOG_MODULE, "Connected immune system to neural network (managed at brain layer)");
     return true;
 }

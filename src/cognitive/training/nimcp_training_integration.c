@@ -35,6 +35,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "portia/nimcp_portia_tier_switch.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 
 #include <string.h>
 #include <math.h>
@@ -740,11 +741,39 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
     state->instability_batch_scale = 1.0f;
     state->instability_clip_factor = 1.0f;
 
+    /* --- Stress level (HPA axis cortisol) --- */
+    /* NOTE: Computed before Portia so we can use stress as a resource pressure proxy */
+    state->stress_level = brain_ti_get_stress_level(brain);
+
+    /* --- Cognitive capacity --- */
+    /* NOTE: Computed before Portia so we can use cognitive demand as a pressure proxy */
+    state->cognitive_capacity = brain_ti_get_cognitive_capacity(brain);
+
     /* --- Portia resource allocation --- */
     {
         portia_allocation_t alloc;
         memset(&alloc, 0, sizeof(alloc));
-        if (portia_compute_allocation(0.0f, &alloc) == 0) {
+
+        /*
+         * Estimate resource pressure from brain state.
+         * portia_compute_resource_pressure() requires a tier_switch handle
+         * which is not stored on brain_t. Instead, we derive a proxy from
+         * the HPA axis stress level and cognitive demand.
+         *
+         * BUG FIX: Previously hardcoded 0.0f, making Portia allocation
+         * always return full-capacity values regardless of system state.
+         */
+        float resource_pressure = state->stress_level;  /* Proxy from HPA axis */
+
+        /* If the hypothalamus reports high cognitive demand, blend it in */
+        float cog_demand = 1.0f - state->cognitive_capacity;
+        if (cog_demand > resource_pressure) {
+            resource_pressure = 0.6f * cog_demand + 0.4f * resource_pressure;
+        }
+
+        resource_pressure = clampf(resource_pressure, 0.0f, 1.0f);
+
+        if (portia_compute_allocation(resource_pressure, &alloc) == 0) {
             state->portia_learning_gate = alloc.feature_gate_learning;
             state->portia_compute_budget = alloc.compute_budget_scale;
         } else {
@@ -753,14 +782,34 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
         }
     }
 
-    /* --- Stress level (HPA axis cortisol) --- */
-    state->stress_level = brain_ti_get_stress_level(brain);
-
-    /* --- Cognitive capacity --- */
-    state->cognitive_capacity = brain_ti_get_cognitive_capacity(brain);
-
     /* --- BG conflict --- */
     state->conflict_level = brain_ti_get_conflict(brain);
+
+    /* --- Neuromodulator levels (informational, logged for diagnostics) ---
+     *
+     * TODO: Add dopamine_level, serotonin_level, acetylcholine_level,
+     *       norepinephrine_level fields to brain_ti_modulation_state_t and
+     *       incorporate them into the final LR formula. Currently the RPE
+     *       bonus partially captures dopamine dynamics via the BG reward
+     *       system, but direct neuromodulator queries would improve fidelity
+     *       (e.g., serotonin gates patience/exploration, acetylcholine
+     *       gates attention-driven encoding, norepinephrine boosts
+     *       consolidation under threat).
+     */
+    if (brain->neuromodulator_system) {
+        float da = neuromodulator_get_level(brain->neuromodulator_system,
+                                             NEUROMOD_DOPAMINE);
+        float ser = neuromodulator_get_level(brain->neuromodulator_system,
+                                              NEUROMOD_SEROTONIN);
+        float ach = neuromodulator_get_level(brain->neuromodulator_system,
+                                              NEUROMOD_ACETYLCHOLINE);
+        float ne = neuromodulator_get_level(brain->neuromodulator_system,
+                                             NEUROMOD_NOREPINEPHRINE);
+        NIMCP_LOGGING_DEBUG("training_integration: neuromodulators "
+                            "DA=%.3f 5HT=%.3f ACh=%.3f NE=%.3f",
+                            da, ser, ach, ne);
+        (void)da; (void)ser; (void)ach; (void)ne;
+    }
 
     /* =================================================================
      * COMPOSE FINAL MODULATION FACTORS
@@ -775,6 +824,10 @@ int brain_ti_compute_modulation_state(brain_t brain, brain_ti_modulation_state_t
         state->portia_learning_gate *
         (1.0f - 0.3f * state->stress_level) *
         (0.7f + 0.3f * state->cognitive_capacity);
+
+    /* Clamp final LR factor to a safe range to prevent runaway scaling
+     * even under extreme combinations of modulation inputs */
+    state->final_lr_factor = clampf(state->final_lr_factor, 0.01f, 10.0f);
 
     state->final_batch_factor =
         state->instability_batch_scale *
@@ -860,8 +913,20 @@ int brain_ti_compute_decision_cycle(
         /* Get inflammation and resource pressure from modulation state */
         brain_ti_modulation_state_t mod_state;
         if (brain_ti_compute_modulation_state(brain, &mod_state) == 0) {
-            inflammation_level = 1.0f - mod_state.inflammation_learning_factor; /* inverse */
-            resource_pressure = 1.0f - mod_state.portia_compute_budget; /* inverse */
+            /*
+             * Semantic conversion:
+             *   mod_state.inflammation_learning_factor is CAPACITY (1.0=healthy, 0.0=impaired)
+             *   diagnoser expects inflammation as SEVERITY (0.0=none, 1.0=severe)
+             *   severity = 1.0 - capacity
+             */
+            inflammation_level = 1.0f - mod_state.inflammation_learning_factor;
+            /*
+             * Semantic conversion:
+             *   mod_state.portia_compute_budget is BUDGET (1.0=full, 0.0=exhausted)
+             *   diagnoser expects resource_pressure as PRESSURE (0.0=idle, 1.0=critical)
+             *   pressure = 1.0 - budget
+             */
+            resource_pressure = 1.0f - mod_state.portia_compute_budget;
         }
     }
 

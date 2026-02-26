@@ -22,3 +22,24 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_spike_ring_buffer.cpp
     unit
 )
+
+# Test 4: Backprop Activation Reconstruction (Bug Fix Validation)
+add_test_binary(
+    test_backprop_activation_reconstruction
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_backprop_activation_reconstruction.cpp
+    unit
+)
+
+# Test 5: Learning Rules with Sparse Synapse Storage (Bug Fix Validation)
+add_test_binary(
+    test_learning_sparse_synapse
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_learning_sparse_synapse.cpp
+    unit
+)
+
+# Test 6: Struct Consistency (canary for stale struct copies)
+add_test_binary(
+    test_struct_consistency
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_struct_consistency.cpp
+    unit
+)

@@ -7,6 +7,7 @@
 
 #include "core/neuralnet/nimcp_neuralnet_learning.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
@@ -31,28 +32,8 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(neuralnet_learning)
 #define NORMALIZATION_INTERVAL 1000
 #define ACTIVITY_THRESHOLD 0.01f
 
-// External structure definition (opaque pointer access)
-struct neural_network_struct {
-    neuron_t* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    uint64_t current_time;
-    uint64_t network_time;
-    network_config_t config;  // Network configuration
-    float global_activity;
-    float network_stability;
-    float learning_momentum;
-    float last_avg_weight;
-    uint64_t last_maintenance;
-    void* neuromodulator_system;
-    float* global_state;
-    uint32_t global_state_size;
-    void* glial_integration;
-    void* axon_network;
-    // Bio-async fields
-    void* bio_ctx;
-    bool bio_async_enabled;
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 //=============================================================================
 // Internal Helper Functions
@@ -93,7 +74,9 @@ static float compute_oja_weight_update(float pre_activity, float post_activity,
     return hebbian_term - decay_term - forgetting_term;
 }
 
-static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp)
+static void update_synaptic_traces_sparse(neuron_t* neuron,
+                                          synapse_metadata_pool_t meta_pool,
+                                          uint64_t timestamp)
 {
     if (!neuron)
         return;
@@ -103,19 +86,32 @@ static void update_synaptic_traces(neuron_t* neuron, uint64_t timestamp)
 
     float decay = expf(-TRACE_DECAY_RATE * dt);
 
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        neuron->synapses[i].trace *= decay;
+    /* Iterate outgoing synapses via sparse storage API */
+    sparse_synapse_iterator_t it;
+    sparse_synapse_iterator_init(&it, &neuron->outgoing);
+    synapse_handle_t* handle;
+    while ((handle = sparse_synapse_iterator_next(&it)) != NULL) {
+        /* Update trace on metadata if available */
+        if (handle->metadata_index != SPARSE_SYNAPSE_NO_METADATA && meta_pool) {
+            synapse_t* meta = synapse_metadata_pool_get(meta_pool, handle->metadata_index);
+            if (meta) {
+                meta->trace *= decay;
+            }
+        }
     }
 }
 
-static void normalize_synaptic_weights(neuron_t* neuron)
+static void normalize_synaptic_weights_sparse(neuron_t* neuron)
 {
-    if (!neuron || neuron->num_synapses == 0)
+    uint32_t syn_count = NEURON_OUT_COUNT(neuron);
+    if (!neuron || syn_count == 0)
         return;
 
     float sum_sq = 0.0f;
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        float w = neuron->synapses[i].weight;
+    for (uint32_t i = 0; i < syn_count; i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+        if (!h) continue;
+        float w = h->weight;
         sum_sq += w * w;
     }
 
@@ -128,8 +124,10 @@ static void normalize_synaptic_weights(neuron_t* neuron)
     float target_norm = neuron->oja_params.target_norm;
     if (norm > target_norm * 1.5f) {
         float scale = target_norm / norm;
-        for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-            neuron->synapses[i].weight *= scale;
+        for (uint32_t i = 0; i < syn_count; i++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+            if (!h) continue;
+            h->weight *= scale;
         }
         LOG_DEBUG(LOG_MODULE, "Normalized weights for neuron %u: %.3f -> %.3f",
                   neuron->id, norm, target_norm);
@@ -149,7 +147,7 @@ bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_
     }
 
     neuron_t* neuron = &network->neurons[neuron_id];
-    normalize_synaptic_weights(neuron);
+    normalize_synaptic_weights_sparse(neuron);
 
     return true;
 }
@@ -163,7 +161,7 @@ void neural_network_update_traces(neural_network_t network, uint32_t neuron_id,
     }
 
     neuron_t* neuron = &network->neurons[neuron_id];
-    update_synaptic_traces(neuron, timestamp);
+    update_synaptic_traces_sparse(neuron, network->synapse_metadata_pool, timestamp);
 }
 
 float neural_network_get_weight_norm(neural_network_t network, uint32_t neuron_id)
@@ -190,8 +188,9 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
     }
 
     neuron_t* neuron = &network->neurons[neuron_id];
+    uint32_t syn_count = NEURON_OUT_COUNT(neuron);
 
-    if (neuron->num_synapses == 0) {
+    if (syn_count == 0) {
         if (mean) *mean = 0.0f;
         if (std_dev) *std_dev = 0.0f;
         if (min_weight) *min_weight = 0.0f;
@@ -199,25 +198,30 @@ void neural_network_get_weight_statistics_ext(neural_network_t network, uint32_t
         return;
     }
 
+    synapse_handle_t* first = NEURON_OUT_HANDLE(neuron, 0);
     float sum = 0.0f;
-    float min_w = neuron->synapses[0].weight;
-    float max_w = neuron->synapses[0].weight;
+    float min_w = first ? first->weight : 0.0f;
+    float max_w = min_w;
 
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        float w = neuron->synapses[i].weight;
+    for (uint32_t i = 0; i < syn_count; i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+        if (!h) continue;
+        float w = h->weight;
         sum += w;
         if (w < min_w) min_w = w;
         if (w > max_w) max_w = w;
     }
 
-    float avg = sum / (float)neuron->num_synapses;
+    float avg = sum / (float)syn_count;
 
     float variance = 0.0f;
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        float diff = neuron->synapses[i].weight - avg;
+    for (uint32_t i = 0; i < syn_count; i++) {
+        synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, i);
+        if (!h) continue;
+        float diff = h->weight - avg;
         variance += diff * diff;
     }
-    variance /= (float)neuron->num_synapses;
+    variance /= (float)syn_count;
 
     if (mean) *mean = avg;
     if (std_dev) *std_dev = sqrtf(variance);
@@ -248,36 +252,58 @@ uint32_t neural_network_apply_oja(neural_network_t network, uint32_t neuron_id, 
         return 0;
     }
 
-    // Calculate weight updates using Oja's rule
-    for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        synapse_t* syn = &neuron->synapses[i];
+    // Calculate weight updates using Oja's rule via sparse synapse API
+    uint32_t syn_count = NEURON_OUT_COUNT(neuron);
+    for (uint32_t i = 0; i < syn_count; i++) {
+        synapse_handle_t* handle = NEURON_OUT_HANDLE(neuron, i);
+        if (!handle) continue;
+
+        uint32_t target_id = handle->target_neuron_id;
+        if (target_id >= network->num_neurons) continue;
 
         // Get post-synaptic average activity (target of synapse)
-        float y = network->neurons[syn->target_id].avg_activity;
+        float y = network->neurons[target_id].avg_activity;
 
         // Compute weight update using Oja's rule: Δw = α(y*x - y²*w)
-        float delta_w = compute_oja_weight_update(x, y, syn->weight, &neuron->oja_params);
+        float delta_w = compute_oja_weight_update(x, y, handle->weight, &neuron->oja_params);
+
+        // Get meta-plasticity from metadata if available
+        float meta_plasticity = 1.0f;
+        synapse_t* meta = NULL;
+        if (handle->metadata_index != SPARSE_SYNAPSE_NO_METADATA &&
+            network->synapse_metadata_pool) {
+            meta = synapse_metadata_pool_get(network->synapse_metadata_pool,
+                                             handle->metadata_index);
+            if (meta) {
+                meta_plasticity = meta->meta_plasticity;
+            }
+        }
 
         // Apply weight update with meta-plasticity
-        float new_weight = syn->weight + delta_w * syn->meta_plasticity;
+        float new_weight = handle->weight + delta_w * meta_plasticity;
 
         // Apply weight constraints
         new_weight = fmaxf(network->config.min_weight,
                           fminf(network->config.max_weight, new_weight));
 
         // Update weight if change is significant
-        if (fabsf(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-            syn->weight = new_weight;
+        if (fabsf(new_weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+            handle->weight = new_weight;
             modified++;
         }
 
         // Update synaptic strength
-        syn->strength = fminf(syn->strength * (1.0f + delta_w), MAX_SYNAPTIC_STRENGTH);
+        float new_strength = fminf(handle->strength * (1.0f + delta_w), MAX_SYNAPTIC_STRENGTH);
+        handle->strength = new_strength;
+        if (meta) {
+            meta->weight = handle->weight;
+            meta->strength = new_strength;
+        }
     }
 
     // Normalize weights periodically
     if (modified > 0 && (timestamp - neuron->last_update) > NORMALIZATION_INTERVAL) {
-        normalize_synaptic_weights(neuron);
+        normalize_synaptic_weights_sparse(neuron);
     }
 
     LOG_DEBUG(LOG_MODULE, "Applied Oja's rule to neuron %u, modified %u synapses",
@@ -295,12 +321,17 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
     neuron_t* pre_neuron = &network->neurons[neuron_id];
     uint32_t modified = 0;
 
-    // Iterate over all outgoing synapses from this neuron
-    for (uint32_t i = 0; i < pre_neuron->num_synapses; i++) {
-        synapse_t* syn = &pre_neuron->synapses[i];
+    // Iterate over all outgoing synapses from this neuron via sparse API
+    uint32_t syn_count = NEURON_OUT_COUNT(pre_neuron);
+    for (uint32_t i = 0; i < syn_count; i++) {
+        synapse_handle_t* handle = NEURON_OUT_HANDLE(pre_neuron, i);
+        if (!handle) continue;
+
+        uint32_t target_id = handle->target_neuron_id;
+        if (target_id >= network->num_neurons) continue;
 
         // Get postsynaptic neuron (target of this synapse)
-        const neuron_t* post_neuron = &network->neurons[syn->target_id];
+        const neuron_t* post_neuron = &network->neurons[target_id];
 
         // Guard: Skip if either neuron never spiked
         if (pre_neuron->last_spike == 0 || post_neuron->last_spike == 0) {
@@ -318,33 +349,49 @@ uint32_t neural_network_apply_stdp(neural_network_t network, uint32_t neuron_id,
         // Compute STDP weight change factor
         float stdp_factor = compute_stdp_update((float)dt, &pre_neuron->stdp_params);
 
+        // Get trace and meta-plasticity from metadata if available
+        float trace_val = 1.0f;
+        float meta_plasticity = 1.0f;
+        synapse_t* meta = NULL;
+        if (handle->metadata_index != SPARSE_SYNAPSE_NO_METADATA &&
+            network->synapse_metadata_pool) {
+            meta = synapse_metadata_pool_get(network->synapse_metadata_pool,
+                                             handle->metadata_index);
+            if (meta) {
+                trace_val = meta->trace;
+                meta_plasticity = meta->meta_plasticity;
+            }
+        }
+
         // Scale STDP by learning rate, trace, and meta-plasticity
-        float delta_w = pre_neuron->stdp_params.learning_rate * stdp_factor * syn->trace;
+        float delta_w = pre_neuron->stdp_params.learning_rate * stdp_factor * trace_val;
 
         // Apply weight update with meta-plasticity modulation
-        float new_weight = syn->weight + delta_w * syn->meta_plasticity;
+        float new_weight = handle->weight + delta_w * meta_plasticity;
 
         // Clamp weight to configured bounds
         new_weight = fmaxf(network->config.min_weight,
                           fminf(network->config.max_weight, new_weight));
 
         // Update weight if change is significant
-        if (fabsf(new_weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-            syn->weight = new_weight;
+        if (fabsf(new_weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+            handle->weight = new_weight;
+            if (meta) meta->weight = new_weight;
             modified++;
         }
 
         // Apply BCM homeostatic plasticity after STDP (if enabled)
-        if (syn->enable_bcm && syn->bcm) {
+        if (meta && meta->enable_bcm && meta->bcm) {
             bcm_params_t bcm_params = bcm_params_cortical();
-            float dt_sec = (float)(timestamp - syn->last_active) / 1000000.0f;
-            float pre_activity = syn->trace;
+            float dt_sec = (float)(timestamp - meta->last_active) / 1000000.0f;
+            float pre_activity = trace_val;
             float post_activity = post_neuron->state;
 
-            bcm_apply_rule(syn->bcm, pre_activity, post_activity, dt_sec, &bcm_params);
+            bcm_apply_rule(meta->bcm, pre_activity, post_activity, dt_sec, &bcm_params);
 
-            if (fabsf(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                syn->weight = syn->bcm->weight;
+            if (fabsf(meta->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                handle->weight = meta->bcm->weight;
+                meta->weight = meta->bcm->weight;
             }
         }
     }
@@ -439,15 +486,25 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
 
     // PRE-PASS: Set outgoing synapse traces from current neuron states
     // WHY: The forward pass (neural_network_forward) sets neuron->state via
-    //      incoming_synapses but never updates outgoing synapse traces.
+    //      incoming synapses but never updates outgoing synapse traces.
     //      Eligibility learning needs syn->trace > 0.1 to trigger updates.
     //      Set each neuron's outgoing synapse traces to |neuron->state| so
     //      eligibility-based credit assignment knows which synapses were active.
     for (uint32_t n = 0; n < network->num_neurons; n++) {
         float activity = fabsf(network->neurons[n].state);
         neuron_t* neuron = &network->neurons[n];
-        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-            neuron->synapses[s].trace = activity;
+        uint32_t out_count = NEURON_OUT_COUNT(neuron);
+        for (uint32_t s = 0; s < out_count; s++) {
+            synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, s);
+            if (!h) continue;
+            if (h->metadata_index != SPARSE_SYNAPSE_NO_METADATA &&
+                network->synapse_metadata_pool) {
+                synapse_t* meta = synapse_metadata_pool_get(
+                    network->synapse_metadata_pool, h->metadata_index);
+                if (meta) {
+                    meta->trace = activity;
+                }
+            }
         }
     }
 
@@ -466,11 +523,21 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
         }
 
         // Apply eligibility-trace-based learning with reward signal
-        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
-            synapse_t* syn = &neuron->synapses[syn_idx];
+        uint32_t syn_count = NEURON_OUT_COUNT(neuron);
+        for (uint32_t syn_idx = 0; syn_idx < syn_count; syn_idx++) {
+            synapse_handle_t* handle = NEURON_OUT_HANDLE(neuron, syn_idx);
+            if (!handle) continue;
 
-            // Update eligibility traces
-            if (syn->enable_eligibility && syn->eligibility) {
+            // Get metadata for eligibility/BCM access
+            synapse_t* syn = NULL;
+            if (handle->metadata_index != SPARSE_SYNAPSE_NO_METADATA &&
+                network->synapse_metadata_pool) {
+                syn = synapse_metadata_pool_get(network->synapse_metadata_pool,
+                                                handle->metadata_index);
+            }
+
+            // Update eligibility traces (requires metadata)
+            if (syn && syn->enable_eligibility && syn->eligibility) {
                 eligibility_config_t elig_config = eligibility_default_config();
                 elig_config.learning_rate = learning_rate;
 
@@ -489,7 +556,8 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                 }
 
                 // Apply eligibility-based weight update
-                float old_weight = syn->weight;
+                float old_weight = handle->weight;
+                syn->weight = handle->weight;  // sync before eligibility modifies it
                 eligibility_apply_reward(syn, syn->eligibility, &elig_config, reward, dopamine);
 
                 // Biological security: Validate weight change
@@ -504,42 +572,64 @@ uint32_t neural_network_apply_reward_learning(neural_network_t network, float re
                                   fminf(network->config.max_weight, syn->weight));
 
                 if (fabsf(syn->weight - old_weight) > WEIGHT_UPDATE_THRESHOLD) {
+                    handle->weight = syn->weight;  // sync back to handle
                     total_modified++;
                 }
             }
 
-            // Apply BCM homeostatic plasticity
-            if (syn->enable_bcm && syn->bcm) {
-                bcm_params_t bcm_params = bcm_params_cortical();
-                const neuron_t* post_neuron = &network->neurons[syn->target_id];
+            // Apply BCM homeostatic plasticity (requires metadata)
+            if (syn && syn->enable_bcm && syn->bcm) {
+                uint32_t target_id = handle->target_neuron_id;
+                if (target_id < network->num_neurons) {
+                    bcm_params_t bcm_params = bcm_params_cortical();
+                    const neuron_t* post_neuron = &network->neurons[target_id];
 
-                bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
+                    bcm_apply_rule(syn->bcm, neuron->state, post_neuron->state, 1.0f, &bcm_params);
 
-                if (fabsf(syn->bcm->weight - syn->weight) > WEIGHT_UPDATE_THRESHOLD) {
-                    syn->weight = syn->bcm->weight;
-                    total_modified++;
+                    if (fabsf(syn->bcm->weight - handle->weight) > WEIGHT_UPDATE_THRESHOLD) {
+                        handle->weight = syn->bcm->weight;
+                        syn->weight = syn->bcm->weight;
+                        total_modified++;
+                    }
                 }
             }
         }
     }
 
     // POST-PASS: Sync outgoing synapse weights to incoming synapses
-    // WHY: Learning modifies outgoing synapse weights (neuron->synapses[]),
-    //      but neural_network_forward() reads from incoming_synapses[].
-    //      These are separate struct copies — without sync, weight changes
-    //      have no effect on the forward pass.
+    // WHY: Learning modifies outgoing synapse handle weights, but the forward
+    //      pass reads from incoming synapse handles. With sparse storage,
+    //      outgoing and incoming handles are separate — must sync weights.
+    //      Peer-index cross-references enable efficient O(1) sync per synapse.
     if (total_modified > 0) {
         for (uint32_t n = 0; n < network->num_neurons; n++) {
             neuron_t* neuron = &network->neurons[n];
-            for (uint32_t s = 0; s < neuron->num_synapses; s++) {
-                synapse_t* out = &neuron->synapses[s];
-                if (out->target_id >= network->num_neurons) continue;
-                neuron_t* target = &network->neurons[out->target_id];
-                for (uint32_t k = 0; k < target->num_incoming; k++) {
-                    if (target->incoming_synapses[k].source_neuron_id == n) {
-                        target->incoming_synapses[k].weight = out->weight;
-                        target->incoming_synapses[k].strength = out->strength;
-                        break;
+            uint32_t out_count = NEURON_OUT_COUNT(neuron);
+            for (uint32_t s = 0; s < out_count; s++) {
+                synapse_handle_t* out_h = NEURON_OUT_HANDLE(neuron, s);
+                if (!out_h) continue;
+                uint32_t target_id = out_h->target_neuron_id;
+                if (target_id >= network->num_neurons) continue;
+
+                // Use peer_index for O(1) sync if available
+                if (out_h->peer_index != SPARSE_SYNAPSE_NO_PEER) {
+                    neuron_t* target = &network->neurons[target_id];
+                    synapse_handle_t* in_h = NEURON_IN_HANDLE(target, out_h->peer_index);
+                    if (in_h) {
+                        in_h->weight = out_h->weight;
+                        in_h->strength = out_h->strength;
+                    }
+                } else {
+                    // Fallback: linear scan of target's incoming synapses
+                    neuron_t* target = &network->neurons[target_id];
+                    uint32_t in_count = NEURON_IN_COUNT(target);
+                    for (uint32_t k = 0; k < in_count; k++) {
+                        synapse_handle_t* in_h = NEURON_IN_HANDLE(target, k);
+                        if (in_h && in_h->target_neuron_id == n) {
+                            in_h->weight = out_h->weight;
+                            in_h->strength = out_h->strength;
+                            break;
+                        }
                     }
                 }
             }

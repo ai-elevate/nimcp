@@ -107,6 +107,15 @@ class CognitiveOrchestrator:
         Use curiosity module to generate exploration questions.
 
         Tries C binding first, falls back to template-based generation.
+
+        NOTE: This method is intentionally not called from the current training
+        pipeline. The Socratic training flow (SocraticTrainer) generates its
+        own predict-before-learn questions per example. This method exists for
+        future use: standalone curiosity-driven exploration sessions where the
+        brain generates questions about topics it wants to learn more about,
+        independent of a fixed dataset. It will be wired into a future
+        "curiosity exploration" phase (post-Athena) where the brain actively
+        seeks knowledge rather than being fed examples.
         """
         # Try C-level curiosity
         if self._has_curiosity:

@@ -7,6 +7,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/math/nimcp_math_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -27,10 +28,6 @@ BRIDGE_BOILERPLATE_MESH_ONLY(basal_ganglia_amygdala_bridge, MESH_ADAPTER_CATEGOR
 /* ============================================================================
  * Static Helpers
  * ============================================================================ */
-
-static float clamp(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 static bga_influence_type_t determine_influence(float fear, float anxiety,
                                                  amyg_threat_level_t threat) {
@@ -378,7 +375,7 @@ int bga_bridge_apply_modulation(
         action_values[i] += mod->fear_bias;
 
         /* Clamp to valid range */
-        action_values[i] = clamp(action_values[i], 0.0f, 1.0f);
+        action_values[i] = nimcp_clampf(action_values[i], 0.0f, 1.0f);
     }
 
     /* Update statistics */
@@ -447,7 +444,7 @@ int bga_bridge_send_outcome(
             /* Failed avoidance → increase fear */
             float current_fear = amygdala_get_fear_level(bridge->amygdala);
             amygdala_set_fear_level(bridge->amygdala,
-                                    clamp(current_fear - outcome * 0.1f, 0.0f, 1.0f));
+                                    nimcp_clampf(current_fear - outcome * 0.1f, 0.0f, 1.0f));
         }
     }
 

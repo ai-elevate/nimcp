@@ -273,5 +273,56 @@ gtest_discover_tests(integration_training_test_training_integration
         TIMEOUT 300
 )
 
+# =============================================================================
+# Bio Modulation Integration Tests
+# =============================================================================
+# WHAT: Tests that individual biological modulation subsystems correctly
+#       affect the unified learning rate computation and compose multiplicatively
+# WHY:  The unified continuous modulation pipeline composes 8+ factors; these
+#       tests verify each factor's directional effect and composition
+# HOW:  Creates brain_t instances, manipulates subsystem state, checks unified LR
+#
+# TESTS:
+# 1. ArousalAffectsLR - Boosted arousal changes LR
+# 2. InflammationFactorReasonable - Baseline inflammation factor
+# 3. StressReducesLR - Stress penalty applied
+# 4. AllModulatorsCompose - Factors compose multiplicatively
+# 5. CognitiveCapacityAffectsLR - Capacity modulates LR
+# 6. CircadianEfficiencyAffectsLR - Circadian phase modulates LR
+# 7. RewardPredictionErrorModulatesLR - RPE changes LR
+# 8. ModulationAfterPostBatchUpdate - Post-batch changes state
+# 9. HabitFormationIntegration - Habit lifecycle
+# 10. ReasoningIntegrationWithModulation - Reasoning + modulation
+# 11-14. Portia, Instability, Consistency, ShouldPause
+# =============================================================================
+
+add_executable(integration_training_bio_modulation
+    test_bio_modulation_integration.cpp
+)
+
+target_link_libraries(integration_training_bio_modulation PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+
+target_include_directories(integration_training_bio_modulation PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_training_bio_modulation PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_training_bio_modulation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;training;bio;modulation;arousal;inflammation;stress"
+        TIMEOUT 300
+        RESOURCE_LOCK "brain_heavy"
+)
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)

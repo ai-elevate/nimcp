@@ -238,16 +238,8 @@ neural_network_t network_create_fractal(uint32_t num_neurons, float fractal_dime
 // Pink Noise Weight Initialization
 //=============================================================================
 
-// Internal network structure (defined in nimcp_neuralnet.c)
-// WHAT: Access internal structure for synapse iteration
-// WHY: neural_network_t is opaque, need to cast to access neurons
-// HOW: Forward declare the internal structure
-struct neural_network_struct {
-    neuron_t* neurons;
-    uint32_t num_neurons;
-    uint32_t capacity;
-    // ... other fields not needed here
-};
+/* Single authoritative definition of neural_network_struct */
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
 
 bool network_init_weights_pink_noise(
     neural_network_t network,

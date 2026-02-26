@@ -57,6 +57,11 @@ extern "C" {
 #define NIMCP_MAX_LABEL_SIZE 64
 #endif
 
+/* Maximum size for decision explanation buffers */
+#ifndef NIMCP_MAX_EXPLANATION_SIZE
+#define NIMCP_MAX_EXPLANATION_SIZE 256
+#endif
+
 /**
  * @brief Get NIMCP version as string
  * @return Version string (e.g., "2.6.3")

@@ -278,13 +278,13 @@ nimcp_status_t nimcp_brain_decide_full(
         return NIMCP_ERROR;
     }
 
-    strncpy(out_label, decision->label, 63);
-    out_label[63] = '\0';
+    strncpy(out_label, decision->label, NIMCP_MAX_LABEL_SIZE - 1);
+    out_label[NIMCP_MAX_LABEL_SIZE - 1] = '\0';
     *out_confidence = decision->confidence;
 
     if (out_explanation) {
-        strncpy(out_explanation, decision->explanation, 255);
-        out_explanation[255] = '\0';
+        strncpy(out_explanation, decision->explanation, NIMCP_MAX_EXPLANATION_SIZE - 1);
+        out_explanation[NIMCP_MAX_EXPLANATION_SIZE - 1] = '\0';
     }
 
     if (out_output_vector && out_output_size) {

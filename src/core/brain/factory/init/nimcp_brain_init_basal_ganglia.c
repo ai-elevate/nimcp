@@ -4,6 +4,7 @@
 
 #include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -172,6 +173,18 @@ bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain) {
 
     b->basal_ganglia_enabled = true;
     b->last_basal_ganglia_update_us = 0;
+
+    /* Wire BBB system into basal ganglia for input validation */
+    if (b->bbb_system) {
+        basal_ganglia_set_bbb(b->bbb_system);
+        NIMCP_LOGGING_DEBUG("BG: BBB system wired for input validation");
+    }
+
+    /* Wire KG persistence context into basal ganglia for state recording */
+    if (b->kg_persistence) {
+        basal_ganglia_set_kg_context(b->kg_persistence);
+        NIMCP_LOGGING_DEBUG("BG: KG persistence context wired for state recording");
+    }
 
     NIMCP_LOGGING_INFO("Enhanced basal ganglia initialized successfully");
 

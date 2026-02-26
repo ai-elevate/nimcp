@@ -442,6 +442,15 @@ if(TARGET unit_api_test_api_complex)
   )
 endif()
 
+# API safety fix tests: 7 tests with per-test brain create/destroy + training steps
+if(TARGET unit_api_test_api_safety_fixes)
+  set_tests_properties(
+    unit_api_test_api_safety_fixes
+    PROPERTIES TIMEOUT 600
+    RESOURCE_LOCK "brain_heavy"
+  )
+endif()
+
 # Tests using NIMCP_BRAIN_SMALL need even longer timeouts (1K neurons vs 100)
 if(TARGET unit_api_test_api_global_workspace)
   set_tests_properties(
