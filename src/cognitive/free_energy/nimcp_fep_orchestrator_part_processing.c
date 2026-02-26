@@ -3,8 +3,139 @@
 // DO NOT compile separately - #included from nimcp_fep_orchestrator.c
 
 
+/* ============================================================================
+ * Continuous Scheduling Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Compute continuous update interval from FEP metrics
+ *
+ * WHAT: Derive smooth interval from prediction error and free energy
+ * WHY:  Higher urgency → shorter intervals, calm system → longer intervals
+ * HOW:  base = max * exp(-decay * prediction_error)
+ *       interval = base / (1 + fe_scale * free_energy)
+ *       clamp to [min, max]
+ */
+int fep_compute_update_interval(
+    float prediction_error,
+    float free_energy,
+    const fep_continuous_schedule_config_t* schedule_config,
+    float* interval_ms
+) {
+    if (!schedule_config || !interval_ms) {
+        return -1;
+    }
+
+    /* Clamp inputs to non-negative */
+    float pe = prediction_error < 0.0f ? 0.0f : prediction_error;
+    float fe = free_energy < 0.0f ? 0.0f : free_energy;
+
+    float min_iv = schedule_config->min_interval_ms;
+    float max_iv = schedule_config->max_interval_ms;
+
+    /* Exponential decay: high prediction error drives interval toward minimum */
+    float base = max_iv * expf(-schedule_config->decay_rate * pe);
+
+    /* Sigmoid modulation: high free energy further shortens the interval */
+    float modulated = base / (1.0f + schedule_config->fe_scale * fe);
+
+    /* Clamp result */
+    if (modulated < min_iv) modulated = min_iv;
+    if (modulated > max_iv) modulated = max_iv;
+
+    *interval_ms = modulated;
+    return 0;
+}
+
+
+/**
+ * @brief Derive discrete tier label from continuous interval
+ */
+const char* fep_scheduling_tier_label(float interval_ms) {
+    if (interval_ms <= 15.0f) return "fast";
+    if (interval_ms <= 75.0f) return "medium";
+    return "slow";
+}
+
+
+/**
+ * @brief Set FEP metrics and recompute all continuous intervals
+ */
+int fep_orchestrator_set_fep_metrics(
+    fep_orchestrator_t* orchestrator,
+    const fep_scheduling_metrics_t* metrics
+) {
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+    NIMCP_CHECK_THROW(metrics, NIMCP_ERROR_NULL_POINTER, "metrics is NULL");
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    orchestrator->fep_metrics = *metrics;
+
+    /* Recompute continuous intervals for all categories if enabled */
+    if (orchestrator->config.continuous_schedule.enabled) {
+        for (int i = 0; i < FEP_BRIDGE_CATEGORY_COUNT; i++) {
+            float interval = 0.0f;
+            fep_compute_update_interval(
+                metrics->prediction_error,
+                metrics->free_energy,
+                &orchestrator->config.continuous_schedule,
+                &interval
+            );
+            orchestrator->config.categories[i].continuous_interval_ms = interval;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+
+/**
+ * @brief Get current FEP scheduling metrics
+ */
+int fep_orchestrator_get_fep_metrics(
+    const fep_orchestrator_t* orchestrator,
+    fep_scheduling_metrics_t* metrics
+) {
+    NIMCP_CHECK_THROW(orchestrator && metrics, NIMCP_ERROR_NULL_POINTER,
+                      "orchestrator or metrics is NULL");
+
+    fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+    *metrics = orchestrator->fep_metrics;
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return 0;
+}
+
+
+/**
+ * @brief Get effective update interval for a category
+ *
+ * WHAT: Return continuous interval when enabled, fixed interval otherwise
+ * WHY:  Single point of truth for interval lookup — used by category_needs_update
+ */
+static float get_effective_interval_ms(
+    const fep_orchestrator_t* orchestrator,
+    fep_bridge_category_t category
+) {
+    const fep_category_config_t* cat_cfg = &orchestrator->config.categories[category];
+
+    if (orchestrator->config.continuous_schedule.enabled &&
+        cat_cfg->continuous_interval_ms > 0.0f) {
+        return cat_cfg->continuous_interval_ms;
+    }
+
+    /* Fallback to fixed interval */
+    return (float)cat_cfg->update_interval_ms;
+}
+
+
 /**
  * @brief Check if category is due for update
+ *
+ * Uses continuous interval when continuous scheduling is enabled,
+ * falls back to the fixed discrete interval otherwise.
  */
 static bool category_needs_update(
     const fep_orchestrator_t* orchestrator,
@@ -15,9 +146,10 @@ static bool category_needs_update(
     if (!cat_cfg->enabled) {
         return false;
     }
-    
+
+    float interval = get_effective_interval_ms(orchestrator, category);
     uint64_t elapsed = current_time_ms - cat_cfg->last_update_time;
-    return elapsed >= cat_cfg->update_interval_ms;
+    return (float)elapsed >= interval;
 }
 
 
