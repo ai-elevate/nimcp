@@ -112,6 +112,53 @@ static void compute_scale_zp(float min_val, float max_val, qat_dtype_t dtype,
                              qat_scheme_t scheme, float* scale, int32_t* zero_point);
 static void get_qmin_qmax(qat_dtype_t dtype, int32_t* qmin, int32_t* qmax);
 static float nimcp_clampf(float x, float min_val, float max_val);
+
+int qat_default_config(qat_config_t* config) {
+    if (!config) return -1;
+    memset(config, 0, sizeof(qat_config_t));
+
+    /* Default dtypes */
+    config->default_weight_dtype = QAT_DTYPE_INT8;
+    config->default_activation_dtype = QAT_DTYPE_INT8;
+    config->default_scheme = QAT_SCHEME_SYMMETRIC;
+    config->default_granularity = QAT_GRANULARITY_TENSOR;
+
+    /* Observer: MinMax with EMA */
+    config->observer.method = QAT_OBSERVER_MINMAX;
+    config->observer.ema_decay = QAT_DEFAULT_EMA_DECAY;
+    config->observer.percentile = 0.999f;
+    config->observer.num_bins = 2048;
+    config->observer.calibration_batches = QAT_DEFAULT_CALIBRATION_BATCHES;
+    config->observer.symmetric = true;
+
+    /* Fake quantization: STE */
+    config->fake_quant.method = QAT_FAKE_QUANT_STE;
+    config->fake_quant.learn_scale = false;
+    config->fake_quant.learn_zero_point = false;
+    config->fake_quant.initial_scale = 1.0f;
+    config->fake_quant.scale_lr_multiplier = 1.0f;
+    config->fake_quant.grad_scale_factor = 1.0f;
+
+    /* Training schedule */
+    config->warmup_epochs = 0;
+    config->freeze_bn_epochs = 0;
+    config->start_with_calibration = false;
+
+    /* No per-layer configs by default */
+    config->layer_configs = NULL;
+    config->num_layer_configs = 0;
+
+    /* Integration */
+    config->integrate_tensor_layer = true;
+    config->integrate_brain_factory = false;
+
+    /* Debugging */
+    config->verbose = false;
+    config->track_statistics = true;
+
+    return 0;
+}
+
 int qat_int4_config(qat_config_t* config) {
     int result = qat_default_config(config);
     if (result != 0) {

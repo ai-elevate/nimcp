@@ -67,7 +67,27 @@ static void snc_bridge_compute_rpe(hypo_snc_bridge_t* bridge,
 static void snc_bridge_update_dopamine(hypo_snc_bridge_t* bridge,
                                        const hypo_rpe_t* rpe);
 static void snc_bridge_decay_phasic(hypo_snc_bridge_t* bridge, float dt_sec);
-static float nimcp_clampf(float val, float min_val, float max_val);
+hypo_snc_bridge_config_t hypo_snc_bridge_default_config(void) {
+    hypo_snc_bridge_config_t config;
+    memset(&config, 0, sizeof(config));
+
+    config.discount_gamma = HYPO_SNC_DEFAULT_GAMMA;
+    config.rpe_threshold = MIN_PHASIC_RPE;
+    config.burst_magnitude = 0.5f;
+    config.dip_magnitude = 0.5f;
+    config.decay_rate = 2.0f;
+
+    for (int i = 0; i < HYPO_DA_CHANNEL_COUNT; i++) {
+        config.channel_gains[i] = 1.0f;
+    }
+
+    config.alignment_sensitivity = 1.0f;
+    config.use_external_snc = false;
+    config.broadcast_enabled = true;
+
+    return config;
+}
+
 hypo_snc_bridge_t* hypo_snc_bridge_create(
     hypo_drive_system_handle_t* drives,
     const hypo_snc_bridge_config_t* config) {

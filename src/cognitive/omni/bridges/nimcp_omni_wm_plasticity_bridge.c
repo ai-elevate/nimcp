@@ -185,8 +185,12 @@ static nimcp_error_t process_stdp_events(omni_wm_plasticity_bridge_t* bridge);
 static nimcp_error_t process_spike_sequences(omni_wm_plasticity_bridge_t* bridge);
 static nimcp_error_t update_snn_prediction(omni_wm_plasticity_bridge_t* bridge);
 
-static uint64_t get_current_time_us(void);
-static float nimcp_clampf(float value, float min_val, float max_val);
+static uint64_t get_current_time_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+}
+
 /**
  * @brief Allocate STDP event buffer
  */

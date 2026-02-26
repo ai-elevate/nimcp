@@ -148,7 +148,37 @@ static void free_episode(social_episode_t* episode);
 static person_node_t* create_person_node(const char* name);
 static social_episode_t* create_episode(void);
 static float compute_signature_match(const prime_signature_t* s1, const prime_signature_t* s2);
-static float nimcp_clampf(float value, float min_val, float max_val);
+NIMCP_EXPORT social_memory_config_t social_memory_config_default(void) {
+    social_memory_config_t config;
+    memset(&config, 0, sizeof(config));
+
+    /* Capacity */
+    config.max_persons = 1000;
+    config.max_episodes = 5000;
+    config.max_facts_per_person = 100;
+
+    /* Trust parameters */
+    config.initial_trust = 0.5f;
+    config.trust_decay_rate = 0.001f;
+    config.trust_learning_rate = 0.1f;
+
+    /* Relationship parameters */
+    config.relationship_decay_rate = 0.0005f;
+    config.familiarity_threshold = 0.3f;
+
+    /* Recognition parameters */
+    config.id_threshold = 0.85f;
+    config.face_weight = 0.6f;
+    config.voice_weight = 0.4f;
+
+    /* Integration */
+    config.enable_entanglement = true;
+    config.enable_episode_linking = true;
+    /* resonance_config zeroed by memset — uses defaults */
+
+    return config;
+}
+
 NIMCP_EXPORT bool social_memory_config_validate(const social_memory_config_t* config) {
     if (!config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_config_validate: config is NULL");

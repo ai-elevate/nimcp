@@ -137,4 +137,16 @@ static nimcp_error_t handle_attention_shift(const void*, size_t, nimcp_bio_promi
 static int global_workspace_wiring_handler_callback( bio_module_context_t ctx, const bio_message_type_t* message_types, uint32_t message_count, void* user_data);
 static void bio_broadcast_workspace_event(struct global_workspace_struct* ws, uint32_t broadcast_id, float strength);
 static uint64_t get_time_ms(void);
-static inline float nimcp_clampf(float value, float min, float max);
+
+//=============================================================================
+// SRP #include-based split: Implementation parts
+// These files contain the actual function implementations.
+// DO NOT compile them separately - they are included here.
+//=============================================================================
+
+#include "nimcp_global_workspace_part_helpers.c"
+#include "nimcp_global_workspace_part_lifecycle.c"
+#include "nimcp_global_workspace_part_core.c"
+#include "nimcp_global_workspace_part_accessors.c"
+#include "nimcp_global_workspace_part_io.c"
+#include "nimcp_global_workspace_part_processing.c"

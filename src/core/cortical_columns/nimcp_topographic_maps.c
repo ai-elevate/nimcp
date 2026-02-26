@@ -184,7 +184,78 @@ static float somatotopic_get_magnification(topographic_map_t* map,
     const float* input);
 
 /* Utility helpers */
-static float nimcp_clampf(float value, float min_val, float max_val);
+/**
+ * WHAT: Creates a topographic map from configuration
+ * WHY: Initialize mapping structure with specified parameters
+ * HOW: Allocates memory, initializes type-specific data structures
+ */
+topographic_map_t* topographic_map_create(const topographic_map_config_t* config) {
+    if (!config) {
+        TOPO_LOG_ERROR("[TopographicMaps] NULL config in topographic_map_create");
+        return NULL;
+    }
+
+    /* Allocate map structure */
+    topographic_map_t* map = (topographic_map_t*)nimcp_calloc(1, sizeof(topographic_map_t));
+    if (!map) {
+        TOPO_LOG_ERROR("[TopographicMaps] Failed to allocate topographic map");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create: allocation failed");
+        return NULL;
+    }
+
+    /* Copy configuration */
+    map->config = *config;
+
+    /* Deep copy somatotopic regions if present */
+    if (config->type == TOPOGRAPHIC_SOMATOTOPIC && config->somatotopic.regions &&
+        config->somatotopic.num_regions > 0) {
+        size_t regions_size = sizeof(somatotopic_region_t) * config->somatotopic.num_regions;
+        map->config.somatotopic.regions = (somatotopic_region_t*)nimcp_malloc(regions_size);
+        if (!map->config.somatotopic.regions) {
+            nimcp_free(map);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create: regions allocation failed");
+            return NULL;
+        }
+        memcpy(map->config.somatotopic.regions, config->somatotopic.regions, regions_size);
+    }
+
+    /* Compute cortical grid dimensions */
+    float cortical_width_f = config->cortical_range[1] - config->cortical_range[0];
+    float cortical_height_f = config->cortical_range[3] - config->cortical_range[2];
+    map->cortical_width = (cortical_width_f > 0.0f) ? (uint32_t)cortical_width_f : 1;
+    map->cortical_height = (cortical_height_f > 0.0f) ? (uint32_t)cortical_height_f : 1;
+    map->total_columns = map->cortical_width * map->cortical_height;
+
+    /* Compute transform parameters */
+    float input_range_x = config->input_range[1] - config->input_range[0];
+    float input_range_y = (config->input_dims >= 2) ?
+                          config->input_range[3] - config->input_range[2] : 1.0f;
+    map->transform_scale_x = (input_range_x > TOPOGRAPHIC_EPSILON) ?
+                              cortical_width_f / input_range_x : 1.0f;
+    map->transform_scale_y = (input_range_y > TOPOGRAPHIC_EPSILON) ?
+                              cortical_height_f / input_range_y : 1.0f;
+    map->transform_offset_x = config->cortical_range[0];
+    map->transform_offset_y = config->cortical_range[2];
+
+    /* Create mutex */
+    map->mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
+    if (map->mutex) {
+        nimcp_platform_mutex_init(map->mutex, false);
+    }
+
+    /* Initialize cache */
+    map->cache_valid = false;
+    topographic_initialize_cache(map);
+
+    TOPO_LOG_INFO("[TopographicMaps] Created %s map: %ux%u (%u columns)",
+                  config->type == TOPOGRAPHIC_RETINOTOPIC ? "retinotopic" :
+                  config->type == TOPOGRAPHIC_TONOTOPIC ? "tonotopic" :
+                  config->type == TOPOGRAPHIC_SOMATOTOPIC ? "somatotopic" : "custom",
+                  map->cortical_width, map->cortical_height, map->total_columns);
+
+    return map;
+}
+
 /**
  * WHAT: Destroys a topographic map and frees resources
  * WHY: Prevent memory leaks

@@ -168,7 +168,12 @@ int omni_wm_hypothalamus_bridge_training_end(omni_wm_hypothalamus_bridge_t* brid
  * Internal Helper Forward Declarations
  * ============================================================================ */
 
-static uint64_t get_current_time_us(void);
+static uint64_t get_current_time_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+}
+
 static nimcp_error_t update_hypo_to_wm_effects(omni_wm_hypothalamus_bridge_t* bridge);
 static nimcp_error_t update_wm_to_hypo_effects(omni_wm_hypothalamus_bridge_t* bridge);
 static nimcp_error_t update_drive_states(omni_wm_hypothalamus_bridge_t* bridge);
@@ -176,7 +181,7 @@ static nimcp_error_t update_circadian_state(omni_wm_hypothalamus_bridge_t* bridg
 static nimcp_error_t check_conservative_mode(omni_wm_hypothalamus_bridge_t* bridge);
 static nimcp_error_t predict_resources_internal(omni_wm_hypothalamus_bridge_t* bridge);
 static float compute_drive_priority_boost(float urgency, float threshold, float strength);
-static float nimcp_clampf(float value, float min_val, float max_val);
+
 /**
  * @brief Compute priority boost from drive urgency
  *
