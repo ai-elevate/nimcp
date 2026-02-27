@@ -450,12 +450,21 @@ bool nimcp_gpu_weight_cache_download(nimcp_gpu_weight_cache_t* cache, neural_net
                     source_id < src_offset + src_layer_size) {
                     int src_local = (int)(source_id - src_offset);
 
-                    // Linear scan CSR row for matching column
+                    // Binary search CSR row for matching column (columns sorted by cuSPARSE)
                     float eff_weight = 0.0f;
-                    for (int p = row_start; p < row_end; p++) {
-                        if (cache->host_coo_col_idx[p] == src_local) {
-                            eff_weight = cache->host_coo_values[p];
-                            break;
+                    {
+                        int lo = row_start, hi = row_end - 1;
+                        while (lo <= hi) {
+                            int mid = lo + (hi - lo) / 2;
+                            int col = cache->host_coo_col_idx[mid];
+                            if (col == src_local) {
+                                eff_weight = cache->host_coo_values[mid];
+                                break;
+                            } else if (col < src_local) {
+                                lo = mid + 1;
+                            } else {
+                                hi = mid - 1;
+                            }
                         }
                     }
 
@@ -737,111 +746,72 @@ bool nimcp_gpu_forward_pass_batch(
     for (uint32_t l = 0; l < num_transitions; l++) {
         uint32_t out_size = cache->layer_sizes[l + 1];
 
-        // SpMM: result = W[l] @ act^T, then transpose back
-        // nimcp_sparse_mm_batched expects: A [out x in] sparse, B [in x batch] dense
-        // Our act is [batch x in], so we need B = act^T [in x batch]
-        // Result C = [out x batch], then transpose to [batch x out]
-        //
-        // Alternative: process per-sample on GPU (still faster than CPU)
-        // Use per-sample SpMV loop on GPU for correctness, given sparse_mm_batched
-        // expects column-major B which our row-major doesn't match directly.
+        // Phase 3 optimization: True SpMM per layer instead of per-sample SpMV
+        // Kernel launches: O(batch × layers) → O(layers)
+        nimcp_gpu_tensor_t* next_act = NULL;
+        if (cache->sparse_weights[l]) {
+            next_act = nimcp_sparse_linear_forward(
+                cache->sparse_ctx, cache->sparse_weights[l],
+                cache->biases[l], act);
+        }
 
-        // Per-sample SpMV within the batch — still GPU-accelerated
-        size_t out_dims[2] = { batch_size, out_size };
-        nimcp_gpu_tensor_t* next_act = nimcp_gpu_tensor_create(
-            cache->ctx, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
         if (!next_act) {
-            nimcp_gpu_tensor_destroy(act);
-            free(clamp_buf);
-            return false;
+            // Zero fallback: allocate zeroed output tensor
+            size_t out_dims[2] = { batch_size, out_size };
+            next_act = nimcp_gpu_tensor_create(
+                cache->ctx, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
+            if (!next_act) {
+                nimcp_gpu_tensor_destroy(act);
+                free(clamp_buf);
+                return false;
+            }
         }
 
-        // Download current activations to host for per-sample processing
-        float* act_host = (float*)malloc(batch_size * cache->layer_sizes[l] * sizeof(float));
-        if (!act_host) {
-            nimcp_gpu_tensor_destroy(act);
-            nimcp_gpu_tensor_destroy(next_act);
-            free(clamp_buf);
-            return false;
-        }
-        nimcp_gpu_tensor_to_host(act, act_host);
+        // Activation: download → host-side apply → re-upload
+        // (kept for functional parity; future: GPU activation kernel)
+        activation_type_t atype = cache->layer_activations[l + 1];
+        size_t total_elems = (size_t)batch_size * out_size;
+        nimcp_gpu_tensor_to_host(next_act, clamp_buf);
 
-        float* out_host = (float*)malloc(batch_size * out_size * sizeof(float));
-        if (!out_host) {
-            nimcp_gpu_tensor_destroy(act);
-            nimcp_gpu_tensor_destroy(next_act);
-            free(act_host);
-            free(clamp_buf);
-            return false;
-        }
-
-        // Process each sample through the single-layer GPU SpMV
-        for (uint32_t s = 0; s < batch_size; s++) {
-            const float* sample_in = act_host + s * cache->layer_sizes[l];
-            float* sample_out = out_host + s * out_size;
-
-            size_t sv_in_dims[1] = { cache->layer_sizes[l] };
-            nimcp_gpu_tensor_t* sv_input = nimcp_gpu_tensor_from_host(
-                cache->ctx, sample_in, sv_in_dims, 1, NIMCP_GPU_PRECISION_FP32);
-            if (!sv_input) { sample_out[0] = 0; continue; }
-
-            size_t sv_out_dims[1] = { out_size };
-            nimcp_gpu_tensor_t* sv_output = nimcp_gpu_tensor_create(
-                cache->ctx, sv_out_dims, 1, NIMCP_GPU_PRECISION_FP32);
-            if (!sv_output) { nimcp_gpu_tensor_destroy(sv_input); continue; }
-
-            // SpMV
-            if (cache->sparse_weights[l]) {
-                nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
-                    cache->sparse_ctx,
-                    cache->sparse_weights[l],
-                    sv_input, 1.0f, 0.0f, sv_output);
-                if (mv_result && mv_result != sv_output) {
-                    nimcp_gpu_tensor_destroy(sv_output);
-                    sv_output = mv_result;
+        // Apply activation on host
+        switch (atype) {
+            case ACTIVATION_SIGMOID:
+                for (size_t i = 0; i < total_elems; i++) {
+                    clamp_buf[i] = 1.0f / (1.0f + expf(-clamp_buf[i]));
                 }
-            }
-
-            // Add bias
-            nimcp_gpu_add(cache->ctx, sv_output, cache->biases[l], sv_output);
-
-            // Activation
-            activation_type_t atype = cache->layer_activations[l + 1];
-            switch (atype) {
-                case ACTIVATION_SIGMOID:
-                    nimcp_gpu_sigmoid(cache->ctx, sv_output, sv_output); break;
-                case ACTIVATION_TANH:
-                    nimcp_gpu_tanh(cache->ctx, sv_output, sv_output); break;
-                case ACTIVATION_RELU:
-                    nimcp_gpu_relu(cache->ctx, sv_output, sv_output); break;
-                case ACTIVATION_LEAKY_RELU:
-                    nimcp_gpu_leaky_relu(cache->ctx, sv_output, sv_output, 0.01f); break;
-                default:
-                    nimcp_gpu_tanh(cache->ctx, sv_output, sv_output); break;
-            }
-
-            // Download — only clamp unbounded activations
-            nimcp_gpu_tensor_to_host(sv_output, sample_out);
-            if (atype == ACTIVATION_RELU || atype == ACTIVATION_LEAKY_RELU) {
-                for (uint32_t ci = 0; ci < out_size; ci++) {
-                    if (sample_out[ci] > 100.0f) sample_out[ci] = 100.0f;
-                    else if (sample_out[ci] < -100.0f) sample_out[ci] = -100.0f;
+                break;
+            case ACTIVATION_TANH:
+                for (size_t i = 0; i < total_elems; i++) {
+                    clamp_buf[i] = tanhf(clamp_buf[i]);
                 }
-            }
-
-            nimcp_gpu_tensor_destroy(sv_input);
-            nimcp_gpu_tensor_destroy(sv_output);
+                break;
+            case ACTIVATION_RELU:
+                for (size_t i = 0; i < total_elems; i++) {
+                    if (clamp_buf[i] < 0.0f) clamp_buf[i] = 0.0f;
+                    else if (clamp_buf[i] > 100.0f) clamp_buf[i] = 100.0f;
+                }
+                break;
+            case ACTIVATION_LEAKY_RELU:
+                for (size_t i = 0; i < total_elems; i++) {
+                    if (clamp_buf[i] < 0.0f) clamp_buf[i] *= 0.01f;
+                    if (clamp_buf[i] > 100.0f) clamp_buf[i] = 100.0f;
+                    else if (clamp_buf[i] < -100.0f) clamp_buf[i] = -100.0f;
+                }
+                break;
+            default:
+                for (size_t i = 0; i < total_elems; i++) {
+                    clamp_buf[i] = tanhf(clamp_buf[i]);
+                }
+                break;
         }
 
-        // Upload clamped batch result back to GPU
+        // Re-upload activated batch to GPU
         nimcp_gpu_tensor_destroy(act);
         nimcp_gpu_tensor_destroy(next_act);
-        free(act_host);
 
+        size_t out_dims[2] = { batch_size, out_size };
         act = nimcp_gpu_tensor_from_host(
-            cache->ctx, out_host, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
-        free(out_host);
-
+            cache->ctx, clamp_buf, out_dims, 2, NIMCP_GPU_PRECISION_FP32);
         if (!act) {
             free(clamp_buf);
             return false;

@@ -32,6 +32,7 @@
 //=============================================================================
 
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "plasticity/adaptive/nimcp_backprop_kernel.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1794,73 +1795,38 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
         nimcp_gpu_weight_cache_sync_activations(network->gpu_weight_cache,
                                                 network->base_network);
 
-        // 4.5 Delta rule for output layer + hidden layer backprop
+        // 4.5 Full backprop through all layers (GPU forward, CPU backward)
+        // Delegated to shared kernel with parallel + SIMD optimizations
         {
-            float grad_norm_sq = 0.0f;  // Accumulate squared gradients for L2 norm
+            float grad_norm = 0.0f;
             uint32_t num_layers = network->config.base_config.num_layers;
             uint32_t* layer_sizes = network->config.base_config.layer_sizes;
             if (num_layers >= 2 && layer_sizes) {
-                // Compute output layer offset
-                uint32_t output_offset = 0;
-                for (uint32_t l = 0; l < num_layers - 1; l++)
-                    output_offset += layer_sizes[l];
-                uint32_t output_size = layer_sizes[num_layers - 1];
-
-                // Output layer learning rate (boosted for classification)
-                float output_lr = learning_rate * OUTPUT_LR_BOOST;
-
-                for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
-                    float error_j = example->target[j] - output[j];
-                    /* NOTE: Assumes sigmoid activation. For non-sigmoid activations
-                     * (e.g., ReLU, tanh), the derivative computation needs update. */
-                    float sig_deriv = output[j] * (1.0f - output[j]);
-                    if (sig_deriv < 0.01f) sig_deriv = 0.01f;
-
-                    neuron_t* out_n = neural_network_get_neuron(
-                        network->base_network, output_offset + j);
-                    if (!out_n) continue;
-
-                    for (uint32_t k = 0; k < NEURON_IN_COUNT(out_n); k++) {
-                        synapse_handle_t* in_syn = NEURON_IN_HANDLE(out_n, k);
-                        if (!in_syn) continue;
-                        neuron_t* src = neural_network_get_neuron(
-                            network->base_network, in_syn->target_neuron_id);
-                        if (!src) continue;
-
-                        float delta = output_lr * error_j * src->state * sig_deriv;
-                        if (delta > 0.1f) delta = 0.1f;
-                        if (delta < -0.1f) delta = -0.1f;
-                        grad_norm_sq += delta * delta;
-                        in_syn->weight += delta;
-
-                        // Update outgoing synapse copy
-                        for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
-                            synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
-                            if (out_syn && out_syn->target_neuron_id == output_offset + j) {
-                                out_syn->weight += delta;
-                                break;
-                            }
-                        }
-                    }
-
-                    out_n->bias += output_lr * error_j * sig_deriv;
-                    grad_norm_sq += (output_lr * error_j * sig_deriv) *
-                                    (output_lr * error_j * sig_deriv);
-                }
+                backprop_sparse_full(network->base_network,
+                    num_layers, layer_sizes, learning_rate,
+                    network->config.base_config.min_weight,
+                    network->config.base_config.max_weight,
+                    example->target, output, example->target_size,
+                    &grad_norm);
             }
-            // Store gradient L2 norm on the network (mirrors CPU path)
-            network->last_grad_norm = sqrtf(grad_norm_sq);
+            network->last_grad_norm = grad_norm;
         }
 
         // 6. Mark weights dirty (learning modified synapse weights on CPU)
         network->gpu_weight_cache->weights_dirty_on_cpu = true;
 
         // 7. For HYBRID mode: apply biological plasticity after GPU backprop
+        //    Skip for large networks (>100K neurons) — O(N) bio-plasticity
+        //    iterates ALL neurons twice (STDP/BCM/eligibility) which takes ~80s
+        //    at 1.5M neurons. Backprop alone handles gradient learning.
         if (mode == LEARN_MODE_HYBRID && network->base_network) {
-            float reward = fmaxf(0.0f, 1.0f - loss);
-            neural_network_apply_reward_learning(
-                network->base_network, reward, learning_rate * 0.1f,
-                network->total_learning_steps);
+            uint32_t bio_n = neural_network_get_num_neurons(network->base_network);
+            if (bio_n <= 100000) {
+                float reward = fmaxf(0.0f, 1.0f - loss);
+                neural_network_apply_reward_learning(
+                    network->base_network, reward, learning_rate * 0.1f,
+                    network->total_learning_steps);
+            }
         }
 
         free_hot_buffer(output);
@@ -1871,12 +1837,13 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     // CPU fallback path (original code)
 
     // Forward pass to get current output (Phase MP: use pool)
+    // Use raw forward (no sparsity thresholding) so backprop sees true activations
     float* output = (float*)alloc_hot_buffer(example->target_size * sizeof(float));
     if (!output) {
         return -1.0F;
     }
-    adaptive_network_forward(network, example->input, example->input_size, output,
-                             example->target_size, 0);
+    adaptive_network_forward_raw(network, example->input, example->input_size, output,
+                                 example->target_size);
 
     // Compute loss based on mode
     float loss = 0.0F;
@@ -1884,12 +1851,16 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
     switch (mode) {
         case LEARN_MODE_SUPERVISED:
         case LEARN_MODE_DISTILLATION:
-            // Mean squared error (target_size > 0 guaranteed by top-level guard)
-            for (uint32_t i = 0; i < example->target_size; i++) {
-                float error = output[i] - example->target[i];
-                loss += error * error;
+            // Binary cross-entropy loss (natural pair with sigmoid activation)
+            {
+                float eps = 1e-7f;
+                for (uint32_t i = 0; i < example->target_size; i++) {
+                    float o = fmaxf(eps, fminf(1.0f - eps, output[i]));
+                    loss -= example->target[i] * logf(o)
+                          + (1.0f - example->target[i]) * logf(1.0f - o);
+                }
+                loss /= example->target_size;
             }
-            loss /= example->target_size;
 
             // =================================================================
             // BIOLOGICAL PLASTICITY: Apply STDP/BCM to synapses
@@ -1907,175 +1878,20 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // =================================================================
 
             // Full backpropagation through all layers (sparse-efficient)
-            // WHY: Output-layer-only delta rule can't learn non-linear features.
-            //      Backprop through hidden layers enables feature learning.
-            // HOW: Standard backprop adapted for sparse connectivity:
-            //      - Only neurons with active synapses get updated
-            //      - O(synapses) per layer, not O(neurons²)
+            // Delegated to shared kernel with parallel + SIMD optimizations
             {
-                float grad_norm_sq = 0.0f;  // Accumulate squared gradients for L2 norm
+                float grad_norm = 0.0f;
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    // BUG-10 fix: Replace VLA with heap allocation to avoid stack overflow
-                    // for networks with many layers
-                    uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
-                    if (!layer_offsets) {
-                        break;
-                    }
-                    layer_offsets[0] = 0;
-                    for (uint32_t l = 1; l < num_layers; l++)
-                        layer_offsets[l] = layer_offsets[l-1] + layer_sizes[l-1];
-
-                    uint32_t output_size = layer_sizes[num_layers - 1];
-                    uint32_t output_offset = layer_offsets[num_layers - 1];
-
-                    // Allocate delta buffers for current and next layer
-                    // (reuse hot buffer pool to avoid malloc per learn call)
-                    uint32_t max_layer = 0;
-                    for (uint32_t l = 0; l < num_layers; l++)
-                        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
-
-                    float* delta_cur = (float*)alloc_hot_buffer(max_layer * sizeof(float));
-                    float* delta_prev = (float*)alloc_hot_buffer(max_layer * sizeof(float));
-                    if (!delta_cur || !delta_prev) {
-                        if (delta_cur) free_hot_buffer(delta_cur);
-                        if (delta_prev) free_hot_buffer(delta_prev);
-                        nimcp_free(layer_offsets);
-                        break;
-                    }
-
-                    // --- Output layer deltas ---
-                    for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
-                        float error_j = example->target[j] - output[j];
-                        float sig_deriv = output[j] * (1.0f - output[j]);
-                        if (sig_deriv < 0.01f) sig_deriv = 0.01f;
-                        delta_cur[j] = error_j * sig_deriv;
-                    }
-
-                    // --- Backpropagate layer by layer (output → first hidden) ---
-                    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
-                        uint32_t cur_offset = layer_offsets[layer];
-                        uint32_t cur_size = layer_sizes[layer];
-                        uint32_t prev_size = layer_sizes[layer - 1];
-
-                        // Scale learning rate by 1/sqrt(fan_in) to prevent saturation
-                        // with high-dimensional spike-encoded inputs
-                        float fan_in = (float)prev_size;
-                        float layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
-
-                        // Zero prev-layer deltas (will accumulate from backprop)
-                        memset(delta_prev, 0, prev_size * sizeof(float));
-
-                        // Update weights and propagate deltas
-                        for (uint32_t j = 0; j < cur_size; j++) {
-                            if (layer == (int32_t)num_layers - 1 && j >= example->target_size)
-                                break;
-
-                            neuron_t* cur_n = neural_network_get_neuron(
-                                network->base_network, cur_offset + j);
-                            if (!cur_n) continue;
-
-                            // Gradient clipping: prevent exploding gradients
-                            float dj = delta_cur[j];
-                            if (dj > 1.0f) dj = 1.0f;
-                            if (dj < -1.0f) dj = -1.0f;
-
-                            // Update incoming synapses + propagate delta to prev layer
-                            for (uint32_t k = 0; k < NEURON_IN_COUNT(cur_n); k++) {
-                                synapse_handle_t* in_syn = NEURON_IN_HANDLE(cur_n, k);
-                                if (!in_syn) continue;
-
-                                uint32_t src_id = in_syn->target_neuron_id;
-                                neuron_t* src = neural_network_get_neuron(
-                                    network->base_network, src_id);
-                                if (!src) continue;
-
-                                // Weight update: Δw = lr * delta_j * activation_i
-                                float weight_delta = layer_lr * dj * src->state;
-
-                                // Clip weight delta to prevent weight explosion
-                                if (weight_delta > 0.1f) weight_delta = 0.1f;
-                                if (weight_delta < -0.1f) weight_delta = -0.1f;
-
-                                // Accumulate squared gradient for L2 norm
-                                grad_norm_sq += weight_delta * weight_delta;
-
-                                // Accumulate delta for prev layer BEFORE updating weight
-                                // (backprop needs the old weight to propagate error correctly)
-                                uint32_t prev_offset = layer_offsets[layer - 1];
-                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
-                                    uint32_t prev_idx = src_id - prev_offset;
-                                    // Backprop: delta_i += weight * delta_j
-                                    delta_prev[prev_idx] += in_syn->weight * dj;
-                                }
-
-                                in_syn->weight += weight_delta;
-                                /* Clamp accumulated weight to prevent unbounded growth → NaN */
-                                in_syn->weight = fmaxf(network->config.base_config.min_weight,
-                                    fminf(network->config.base_config.max_weight, in_syn->weight));
-
-                                // Update outgoing synapse copy
-                                for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
-                                    synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
-                                    if (out_syn && out_syn->target_neuron_id == cur_offset + j) {
-                                        out_syn->weight = in_syn->weight;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Bias update (also accumulate for gradient norm)
-                            float bias_delta = layer_lr * dj;
-                            grad_norm_sq += bias_delta * bias_delta;
-                            cur_n->bias += bias_delta;
-                            cur_n->bias = fmaxf(-10.0F, fminf(10.0F, cur_n->bias));
-                        }
-
-                        // Apply activation derivative to prev-layer deltas
-                        if (layer > 1) {  // Don't backprop into input layer
-                            uint32_t prev_offset = layer_offsets[layer - 1];
-                            for (uint32_t i = 0; i < prev_size; i++) {
-                                neuron_t* prev_n = neural_network_get_neuron(
-                                    network->base_network, prev_offset + i);
-                                if (!prev_n) continue;
-                                float s = prev_n->state;
-                                // Activation derivative must match the neuron's actual function
-                                float act_deriv;
-                                switch (prev_n->activation_type) {
-                                    case ACTIVATION_RELU:
-                                        act_deriv = (s > 0.0f) ? 1.0f : 0.0f;
-                                        break;
-                                    case ACTIVATION_LEAKY_RELU:
-                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
-                                        break;
-                                    case ACTIVATION_TANH:
-                                        act_deriv = 1.0f - s * s;
-                                        break;
-                                    case ACTIVATION_SIGMOID:
-                                        act_deriv = s * (1.0f - s);
-                                        if (act_deriv < 0.01f) act_deriv = 0.01f;
-                                        break;
-                                    default:  // ADAPTIVE and others
-                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
-                                        break;
-                                }
-                                delta_prev[i] *= act_deriv;
-                            }
-
-                            // Swap buffers for next iteration
-                            float* tmp = delta_cur;
-                            delta_cur = delta_prev;
-                            delta_prev = tmp;
-                        }
-                    }
-
-                    free_hot_buffer(delta_cur);
-                    free_hot_buffer(delta_prev);
-                    nimcp_free(layer_offsets);  /* BUG-10 fix: free heap-allocated layer_offsets */
+                    backprop_sparse_full(network->base_network,
+                        num_layers, layer_sizes, learning_rate,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        example->target, output, example->target_size,
+                        &grad_norm);
                 }
-                // Store gradient L2 norm on the network
-                network->last_grad_norm = sqrtf(grad_norm_sq);
+                network->last_grad_norm = grad_norm;
             }
             break;
 
@@ -2096,7 +1912,11 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             uint64_t time_rl = network->total_learning_steps;
             float rl_reward = example->confidence;  // Direct reward signal
 
-            neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
+            // Skip bio-plasticity for large networks — O(N) is impractical at >100K neurons
+            uint32_t rl_n = neural_network_get_num_neurons(base_rl);
+            if (rl_n <= 100000) {
+                neural_network_apply_reward_learning(base_rl, rl_reward, learning_rate, time_rl);
+            }
             }
             break;
 
@@ -2117,184 +1937,55 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             // - BCM prevents weight saturation via sliding threshold
             // =================================================================
 
-            // Phase 1: MSE loss computation (same as supervised, target_size > 0 guaranteed)
-            for (uint32_t i = 0; i < example->target_size; i++) {
-                float error = output[i] - example->target[i];
-                loss += error * error;
-            }
-            loss /= example->target_size;
-
-            // Phase 2: Full backpropagation through all layers (same as supervised)
+            // Phase 1: Binary cross-entropy loss (same as supervised)
             {
-                float grad_norm_sq = 0.0f;  // Accumulate squared gradients for L2 norm
+                float eps = 1e-7f;
+                for (uint32_t i = 0; i < example->target_size; i++) {
+                    float o = fmaxf(eps, fminf(1.0f - eps, output[i]));
+                    loss -= example->target[i] * logf(o)
+                          + (1.0f - example->target[i]) * logf(1.0f - o);
+                }
+                loss /= example->target_size;
+            }
+
+            // Phase 2: Full backpropagation (delegated to shared kernel)
+            {
+                float grad_norm = 0.0f;
                 uint32_t num_layers = network->config.base_config.num_layers;
                 uint32_t* layer_sizes = network->config.base_config.layer_sizes;
                 if (num_layers >= 2 && layer_sizes) {
-                    // BUG-10 fix (HYBRID): Replace VLA with heap allocation to avoid
-                    // stack overflow for networks with many layers (matches SUPERVISED fix)
-                    uint32_t* layer_offsets = (uint32_t*)nimcp_malloc(num_layers * sizeof(uint32_t));
-                    if (!layer_offsets) {
-                        break;
-                    }
-                    layer_offsets[0] = 0;
-                    for (uint32_t l = 1; l < num_layers; l++)
-                        layer_offsets[l] = layer_offsets[l-1] + layer_sizes[l-1];
-
-                    uint32_t output_size = layer_sizes[num_layers - 1];
-                    uint32_t output_offset = layer_offsets[num_layers - 1];
-
-                    // Allocate delta buffers
-                    uint32_t max_layer = 0;
-                    for (uint32_t l = 0; l < num_layers; l++)
-                        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
-
-                    float* delta_cur = (float*)alloc_hot_buffer(max_layer * sizeof(float));
-                    float* delta_prev = (float*)alloc_hot_buffer(max_layer * sizeof(float));
-                    if (!delta_cur || !delta_prev) {
-                        if (delta_cur) free_hot_buffer(delta_cur);
-                        if (delta_prev) free_hot_buffer(delta_prev);
-                        nimcp_free(layer_offsets);
-                        break;
-                    }
-
-                    // --- Output layer deltas ---
-                    for (uint32_t j = 0; j < output_size && j < example->target_size; j++) {
-                        float error_j = example->target[j] - output[j];
-                        float sig_deriv = output[j] * (1.0f - output[j]);
-                        if (sig_deriv < 0.01f) sig_deriv = 0.01f;
-                        delta_cur[j] = error_j * sig_deriv;
-                    }
-
-                    // --- Backpropagate layer by layer (output -> first hidden) ---
-                    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
-                        uint32_t cur_offset = layer_offsets[layer];
-                        uint32_t cur_size = layer_sizes[layer];
-                        uint32_t prev_size = layer_sizes[layer - 1];
-
-                        float fan_in = (float)prev_size;
-                        float layer_lr = learning_rate / sqrtf(fmaxf(fan_in, 1.0f));
-
-                        memset(delta_prev, 0, prev_size * sizeof(float));
-
-                        for (uint32_t j = 0; j < cur_size; j++) {
-                            if (layer == (int32_t)num_layers - 1 && j >= example->target_size)
-                                break;
-
-                            neuron_t* cur_n = neural_network_get_neuron(
-                                network->base_network, cur_offset + j);
-                            if (!cur_n) continue;
-
-                            float dj = delta_cur[j];
-                            if (dj > 1.0f) dj = 1.0f;
-                            if (dj < -1.0f) dj = -1.0f;
-
-                            for (uint32_t k = 0; k < NEURON_IN_COUNT(cur_n); k++) {
-                                synapse_handle_t* in_syn = NEURON_IN_HANDLE(cur_n, k);
-                                if (!in_syn) continue;
-
-                                uint32_t src_id = in_syn->target_neuron_id;
-                                neuron_t* src = neural_network_get_neuron(
-                                    network->base_network, src_id);
-                                if (!src) continue;
-
-                                float weight_delta = layer_lr * dj * src->state;
-                                if (weight_delta > 0.1f) weight_delta = 0.1f;
-                                if (weight_delta < -0.1f) weight_delta = -0.1f;
-
-                                // Accumulate squared gradient for L2 norm
-                                grad_norm_sq += weight_delta * weight_delta;
-
-                                // Accumulate delta for prev layer BEFORE updating weight
-                                // (backprop needs the old weight to propagate error correctly)
-                                uint32_t prev_offset = layer_offsets[layer - 1];
-                                if (src_id >= prev_offset && src_id < prev_offset + prev_size) {
-                                    uint32_t prev_idx = src_id - prev_offset;
-                                    delta_prev[prev_idx] += in_syn->weight * dj;
-                                }
-
-                                in_syn->weight += weight_delta;
-                                /* Clamp accumulated weight to prevent unbounded growth → NaN */
-                                in_syn->weight = fmaxf(network->config.base_config.min_weight,
-                                    fminf(network->config.base_config.max_weight, in_syn->weight));
-
-                                for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
-                                    synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
-                                    if (out_syn && out_syn->target_neuron_id == cur_offset + j) {
-                                        out_syn->weight = in_syn->weight;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Bias update (also accumulate for gradient norm)
-                            float bias_delta = layer_lr * dj;
-                            grad_norm_sq += bias_delta * bias_delta;
-                            cur_n->bias += bias_delta;
-                            cur_n->bias = fmaxf(-10.0F, fminf(10.0F, cur_n->bias));
-                        }
-
-                        if (layer > 1) {
-                            uint32_t prev_offset = layer_offsets[layer - 1];
-                            for (uint32_t i = 0; i < prev_size; i++) {
-                                neuron_t* prev_n = neural_network_get_neuron(
-                                    network->base_network, prev_offset + i);
-                                if (!prev_n) continue;
-                                float s = prev_n->state;
-                                float act_deriv;
-                                switch (prev_n->activation_type) {
-                                    case ACTIVATION_RELU:
-                                        act_deriv = (s > 0.0f) ? 1.0f : 0.0f;
-                                        break;
-                                    case ACTIVATION_LEAKY_RELU:
-                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
-                                        break;
-                                    case ACTIVATION_TANH:
-                                        act_deriv = 1.0f - s * s;
-                                        break;
-                                    case ACTIVATION_SIGMOID:
-                                        act_deriv = s * (1.0f - s);
-                                        if (act_deriv < 0.01f) act_deriv = 0.01f;
-                                        break;
-                                    default:
-                                        act_deriv = (s > 0.0f) ? 1.0f : 0.01f;
-                                        break;
-                                }
-                                delta_prev[i] *= act_deriv;
-                            }
-
-                            float* tmp = delta_cur;
-                            delta_cur = delta_prev;
-                            delta_prev = tmp;
-                        }
-                    }
-
-                    free_hot_buffer(delta_cur);
-                    free_hot_buffer(delta_prev);
+                    backprop_sparse_full(network->base_network,
+                        num_layers, layer_sizes, learning_rate,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        example->target, output, example->target_size,
+                        &grad_norm);
 
                     // Phase 3: Biological plasticity AFTER backprop
-                    // Convert loss to reward: low loss = high reward = strong LTP
                     float reward = fmaxf(0.0f, 1.0f - loss);
                     neural_network_t base_hybrid = network->base_network;
                     if (base_hybrid) {
-                        // Use 10% of learning rate for biological rules to prevent
-                        // bio-plasticity from overwhelming backprop gradients
-                        neural_network_apply_reward_learning(
-                            base_hybrid, reward, learning_rate * 0.1f,
-                            network->total_learning_steps);
+                        uint32_t hybrid_n = neural_network_get_num_neurons(base_hybrid);
+                        if (hybrid_n <= 100000) {
+                            neural_network_apply_reward_learning(
+                                base_hybrid, reward, learning_rate * 0.1f,
+                                network->total_learning_steps);
+                        }
                     }
 
-                    // Phase 4: Lateral inhibition on output layer for sharper classification
+                    // Phase 4: Lateral inhibition on output layer
                     if (network->base_network) {
+                        uint32_t output_offset = 0;
+                        for (uint32_t l = 0; l < num_layers - 1; l++)
+                            output_offset += layer_sizes[l];
+                        uint32_t output_size = layer_sizes[num_layers - 1];
                         neural_network_apply_lateral_inhibition(
                             network->base_network,
                             output_offset, output_size,
                             LATERAL_INHIBITION_STRENGTH);
                     }
-
-                    nimcp_free(layer_offsets);  /* BUG-10 fix: free heap-allocated layer_offsets */
                 }
-                // Store gradient L2 norm on the network
-                network->last_grad_norm = sqrtf(grad_norm_sq);
+                network->last_grad_norm = grad_norm;
             }
             break;
     }

@@ -698,7 +698,10 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
 
 def phase1_parallel_school(brain, socratic: SocraticTrainer,
                            cognitive: CognitiveOrchestrator,
-                           logger: AthenaLogger, total_trained: int):
+                           logger: AthenaLogger, total_trained: int,
+                           max_concurrent_instructors: int = 1,
+                           min_domain_accuracy: float = 0.0,
+                           max_retry_passes: int = 5):
     """
     Phase 1: 23 parallel instructor agents teach simultaneously.
     20 text domains + 3 multimodal (audio, visual, speech).
@@ -727,6 +730,9 @@ def phase1_parallel_school(brain, socratic: SocraticTrainer,
         startup_stagger_s=3.0,
         num_inputs=ATHENA_NUM_INPUTS,
         num_outputs=ATHENA_NUM_OUTPUTS,
+        max_concurrent_instructors=max_concurrent_instructors,
+        min_domain_accuracy=min_domain_accuracy,
+        max_retry_passes=max_retry_passes,
     )
 
     school = School(brain, school_config, logger)
@@ -1656,10 +1662,19 @@ def find_latest_checkpoint() -> Path:
     return checkpoints[0] if checkpoints else None
 
 
-def main():
-    global ATHENA_NUM_INPUTS, ATHENA_NUM_OUTPUTS  # May be overridden by checkpoint dims
+def _parse_cli_arg(name, default, cast=int):
+    """Parse --name VALUE from sys.argv, return default if missing."""
+    if name in sys.argv:
+        idx = sys.argv.index(name)
+        if idx + 1 < len(sys.argv) and not sys.argv[idx + 1].startswith("-"):
+            return cast(sys.argv[idx + 1])
+    return default
 
-    # Parse --resume flag
+
+def main():
+    global ATHENA_NUM_INPUTS, ATHENA_NUM_OUTPUTS, PHASE2_MAX_PER_DATASET
+
+    # Parse CLI flags
     resume_path = None
     if "--resume" in sys.argv:
         idx = sys.argv.index("--resume")
@@ -1670,6 +1685,11 @@ def main():
         if resume_path is None or not resume_path.exists():
             print(f"ERROR: No checkpoint found to resume from")
             sys.exit(1)
+
+    PHASE2_MAX_PER_DATASET = _parse_cli_arg("--examples-per-domain", PHASE2_MAX_PER_DATASET)
+    cli_max_concurrent = _parse_cli_arg("--max-concurrent", 1)
+    cli_min_accuracy = _parse_cli_arg("--min-domain-accuracy", 0.0, float)
+    cli_max_retry = _parse_cli_arg("--max-retry-passes", 5)
 
     logger = AthenaLogger(ATHENA_LOG_DIR)
     logger.log("=" * 70)
@@ -1872,7 +1892,10 @@ def main():
             logger.log("=" * 70)
         else:
             result = phase1_parallel_school(brain, socratic, cognitive,
-                                            logger, total_trained)
+                                            logger, total_trained,
+                                            max_concurrent_instructors=cli_max_concurrent,
+                                            min_domain_accuracy=cli_min_accuracy,
+                                            max_retry_passes=cli_max_retry)
             if isinstance(result, tuple):
                 total_trained, report_card = result
             else:

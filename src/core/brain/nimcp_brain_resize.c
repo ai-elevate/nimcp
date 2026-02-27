@@ -606,7 +606,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         new_config.spike_params.min_threshold = 0.0001F;
         new_config.spike_params.max_threshold = 10.0F;
         new_config.spike_params.sparsity_target = 0.7F;
-        new_config.spike_params.encoding = SPIKE_ENCODING_INTEGER;
+        new_config.spike_params.encoding = SPIKE_ENCODING_PASSTHROUGH;
         new_config.spike_params.enable_soft_reset = true;
         new_config.spike_params.enable_adaptation = true;
         new_config.spike_params.adaptation_window = 100;

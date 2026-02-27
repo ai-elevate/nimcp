@@ -1,0 +1,67 @@
+//=============================================================================
+// nimcp_backprop_kernel.h - Shared Backprop Kernel with Parallel + SIMD
+//=============================================================================
+/**
+ * @file nimcp_backprop_kernel.h
+ * @brief Extracted sparse backpropagation kernel used by all learning modes
+ *
+ * WHAT: Full backprop through all layers with sparse active-set tracking
+ * WHY:  Deduplicate 3x identical backprop blocks (GPU/SUPERVISED/HYBRID)
+ * PERF: Within-layer parallel dispatch + SIMD activation derivatives
+ */
+
+#ifndef NIMCP_BACKPROP_KERNEL_H
+#define NIMCP_BACKPROP_KERNEL_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+// Forward declare — avoid pulling in full neuralnet header
+typedef struct neural_network_struct* neural_network_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Run sparse backprop through all layers
+ *
+ * @param net           Base neural network handle
+ * @param num_layers    Number of layers (must be >= 2)
+ * @param layer_sizes   Array of per-layer neuron counts [num_layers]
+ * @param learning_rate Base learning rate (output layer gets 10x boost)
+ * @param min_weight    Weight clamp lower bound
+ * @param max_weight    Weight clamp upper bound
+ * @param target        Target vector [target_size]
+ * @param output        Network output vector [target_size]
+ * @param target_size   Length of target/output vectors
+ * @param out_grad_norm Output: L2 gradient norm (sqrt of sum of squared weight deltas)
+ * @return 0 on success, -1 on allocation failure
+ */
+int backprop_sparse_full(
+    neural_network_t net,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    float learning_rate,
+    float min_weight, float max_weight,
+    const float* target, const float* output,
+    uint32_t target_size,
+    float* out_grad_norm);
+
+/**
+ * @brief Destroy the static backprop thread pool
+ *
+ * Call during shutdown to release worker threads.
+ * Safe to call multiple times or if pool was never created.
+ */
+void backprop_kernel_cleanup(void);
+
+// Buffer allocation helpers (shared with nimcp_adaptive.c)
+void* bp_alloc_hot_buffer(size_t size);
+void  bp_free_hot_buffer(void* buf);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // NIMCP_BACKPROP_KERNEL_H

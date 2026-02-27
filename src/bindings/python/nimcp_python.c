@@ -78,6 +78,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "cognitive/training/nimcp_training_integration.h"
+#include "utils/signal/nimcp_signal_handler.h"
 #include "middleware/training/nimcp_training_convergent_decision.h"
 #include "cognitive/reasoning/nimcp_reasoning_mesh_bridge.h"
 //=============================================================================
@@ -286,14 +287,33 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
 
     /* P1-49: nimcp_brain_learn_example returns nimcp_status_t, NOT float.
      * Error codes are POSITIVE (not negative), so checking < 0.0F was wrong. */
-    nimcp_status_t status;
+    nimcp_status_t status = NIMCP_ERROR_UNKNOWN;
     nimcp_brain_t brain_ref = self->brain;
     uint32_t nf = (uint32_t)num_features;
+    volatile bool learn_crashed = false;
 
     Py_BEGIN_ALLOW_THREADS
-    status = nimcp_brain_learn_example(brain_ref, features, nf, label, confidence);
+
+    /* Wrap learn in signal recovery — SIGSEGV during backprop returns error
+     * instead of killing the process. Crash is reported to immune system. */
+    SIGNAL_TRY_RECOVER(0, "Brain_learn") {
+        status = nimcp_brain_learn_example(brain_ref, features, nf, label, confidence);
+    } SIGNAL_ON_CRASH {
+        /* SIGSEGV/SIGBUS during learn — immune system already notified by handler */
+        learn_crashed = true;
+        status = NIMCP_ERROR_UNKNOWN;
+    } SIGNAL_TRY_END;
+
     nimcp_free(features);
     Py_END_ALLOW_THREADS
+
+    if (learn_crashed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "Brain_learn: SIGSEGV during learn (reported to immune system)");
+        PyErr_SetString(PyExc_RuntimeError,
+            "Brain.learn() crashed (SIGSEGV) — reported to immune system");
+        return NULL;
+    }
 
     if (status != NIMCP_OK) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",

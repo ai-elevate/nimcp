@@ -1149,6 +1149,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_signal_fep_bridge.c
 
     # Plasticity mechanisms
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_backprop_kernel.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic.c   # Phase T1: Homeostatic Plasticity (synaptic scaling, intrinsic plasticity)

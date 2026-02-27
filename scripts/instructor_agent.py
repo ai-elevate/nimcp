@@ -80,6 +80,8 @@ class InstructorConfig:
     debate_noise_level: float = 0.1
     analogical_blend_ratio: float = 0.5
     startup_delay_s: float = 0.0
+    min_domain_accuracy: float = 0.0    # Min accuracy before domain is "done" (0=disabled)
+    max_retry_passes: int = 5           # Max times to re-teach datasets if below threshold
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +232,7 @@ class InstructorAgent(threading.Thread):
             self._log_file = None
 
     def run(self):
-        """Main instructor loop."""
+        """Main instructor loop — repeats until accuracy threshold or max passes."""
         self._start_time = time.time()
         self._open_log()
         try:
@@ -238,11 +240,38 @@ class InstructorAgent(threading.Thread):
             if self.config.startup_delay_s > 0:
                 time.sleep(self.config.startup_delay_s)
 
-            # Teach each dataset
-            for ds_config in self.datasets:
+            threshold = self.config.min_domain_accuracy
+            max_passes = self.config.max_retry_passes if threshold > 0 else 1
+
+            for pass_num in range(max_passes):
                 if self.stop_event.is_set():
                     break
-                self._teach_dataset(ds_config)
+
+                # Teach each dataset
+                for ds_config in self.datasets:
+                    if self.stop_event.is_set():
+                        break
+                    self._teach_dataset(ds_config)
+
+                # Check accuracy after this pass
+                current_acc = self.total_correct / max(self.total_examples, 1)
+                if threshold > 0 and current_acc >= threshold:
+                    self._log_example({
+                        "action": "GRADUATED",
+                        "pass": pass_num + 1,
+                        "accuracy": round(current_acc, 4),
+                        "threshold": threshold,
+                    })
+                    break
+
+                if threshold > 0 and pass_num < max_passes - 1:
+                    self._log_example({
+                        "action": "RETRY_PASS",
+                        "pass": pass_num + 1,
+                        "accuracy": round(current_acc, 4),
+                        "threshold": threshold,
+                        "reason": f"accuracy {current_acc:.1%} < threshold {threshold:.1%}",
+                    })
 
             # Remedial: re-teach hard items from replay buffer
             self._remedial_teaching()

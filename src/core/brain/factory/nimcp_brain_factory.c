@@ -532,6 +532,15 @@ brain_t brain_create_custom(const brain_config_t* config)
         brain->stats.num_active_synapses = brain->stats.num_synapses;
     }
 
+    // Pre-allocate scratch buffers for learn() hot path (eliminates 4 malloc/free per call)
+    brain->learn_scratch.target_cap = config->num_outputs;
+    brain->learn_scratch.features_cap = config->num_inputs;
+    brain->learn_scratch.target = nimcp_malloc(config->num_outputs * sizeof(float));
+    brain->learn_scratch.prediction = nimcp_malloc(config->num_outputs * sizeof(float));
+    brain->learn_scratch.attended_features = nimcp_malloc(config->num_inputs * sizeof(float));
+    brain->learn_scratch.cue_neurons = nimcp_malloc(config->num_inputs * sizeof(uint32_t));
+    // Non-fatal if any fail — learn() will fall back to per-call malloc
+
     // ========================================================================
     // PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS
     // P2 FIX: Check each pool creation for failure. Pools are optional

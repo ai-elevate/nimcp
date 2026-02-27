@@ -38,10 +38,9 @@ typedef signal_crash_context_t crash_context_t;
 #include <ucontext.h>  /* For ucontext_t */
 #include "utils/memory/nimcp_unified_memory.h"
 
-/* Code immune system integration - include conditionally to avoid circular deps */
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
+/* Code immune system integration — always included.
+ * Signal handler MUST report crashes to the immune system. */
 #include "cognitive/immune/nimcp_code_immune.h"
-#endif
 
 /* Signal exception queue for bridging to exception hierarchy */
 #include "utils/signal/nimcp_signal_exception_queue.h"
@@ -105,11 +104,7 @@ static struct sigaction g_old_sighup;
  * WHY:  Enable hot-patching and self-healing on crashes
  * HOW:  Set via signal_handler_set_code_immune()
  */
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
 static code_immune_system_t* g_code_immune = NULL;
-#else
-static void* g_code_immune = NULL;  /* Placeholder when disabled */
-#endif
 
 /**
  * @brief Recovery jump buffer for siglongjmp
@@ -555,11 +550,11 @@ static void log_crash_context(const crash_context_t* ctx)
 // Code Immune Integration
 //=============================================================================
 
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
 /**
  * WHAT: Present crash to code immune system
  * WHY:  Allow immune system to potentially fix and recover from crash
  * HOW:  Call code_immune_present_crash with captured context
+ *       Always active — signal handler MUST report crashes to immune system
  *
  * @param ctx Crash context
  * @return true if immune system handled the crash
@@ -567,13 +562,13 @@ static void log_crash_context(const crash_context_t* ctx)
 static bool present_crash_to_code_immune(const crash_context_t* ctx)
 {
     if (!g_code_immune || !ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "present_crash_to_code_immune: required parameter is NULL (g_code_immune, ctx)");
+        /* Cannot use NIMCP_THROW_TO_IMMUNE in signal handler (not async-signal-safe).
+         * Just return false — the caller will handle the fallthrough. */
         return false;
     }
 
     /* Prevent recursive handling */
     if (g_in_immune_handling) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "present_crash_to_code_immune: validation failed");
         return false;
     }
     g_in_immune_handling = 1;
@@ -589,7 +584,6 @@ static bool present_crash_to_code_immune(const crash_context_t* ctx)
 
     return (result == 0);
 }
-#endif /* NIMCP_ENABLE_CODE_IMMUNE */
 
 //=============================================================================
 // SA_SIGINFO Signal Handlers (Enhanced with full context)
@@ -688,14 +682,12 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
             }
         }
 
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
-        /* Try code immune system first */
+        /* Always try code immune system (no ifdef guard — always active) */
         if (g_code_immune && present_crash_to_code_immune(&ctx)) {
             safe_write("!!! Code immune system handling crash...\n");
             g_recoveries++;
             immune_handled = true;
         }
-#endif /* NIMCP_ENABLE_CODE_IMMUNE */
 
         /* Attempt recovery jump (thread-local or global) */
         /* This will not return if a valid recovery point exists */
@@ -710,6 +702,9 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
             return;
         }
     }
+
+    /* No recovery point — terminal crash. Still report to immune system. */
+    safe_write("!!! No recovery point available — crash is terminal\n");
 
     /* Log stack trace if enabled */
     if (g_config.enable_stack_trace) {
@@ -727,9 +722,9 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
         attempt_checkpoint_save_unsafe();
     }
 
-    safe_write("!!! Process terminating due to fatal signal\n");
-
-    /* Restore default handler and re-raise to generate core dump */
+    /* Restore default handler and re-raise to get core dump.
+     * NOTE: We do NOT call _exit() — we let the OS generate a core dump
+     * via the default SIGSEGV handler for post-mortem debugging. */
     signal(sig, SIG_DFL);
     raise(sig);
 }
@@ -767,14 +762,12 @@ static void handle_sigfpe_extended(int sig, siginfo_t* info, void* context)
             signal_exception_queue_enqueue(sig, &ctx);
         }
 
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
-        /* Try code immune system */
+        /* Always try code immune system */
         if (g_code_immune && present_crash_to_code_immune(&ctx)) {
             g_recoveries++;
             immune_handled = true;
             safe_write("*** Code immune handled FPE\n");
         }
-#endif
 
         /* Attempt recovery jump if available */
         if (try_recovery_jump(sig, immune_handled) == 0) {
@@ -1449,11 +1442,11 @@ void signal_handler_set_max_recovery_attempts(int max_attempts)
 // Code Immune System Integration API
 //=============================================================================
 
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
 /**
  * WHAT: Register code immune system with signal handler
  * WHY:  Enable immune-based crash handling and recovery
  * HOW:  Store reference to immune system for use in crash handlers
+ *       Always active — no ifdef guard. Crashes MUST be reported to immune.
  *
  * @param sys Code immune system instance
  */
@@ -1473,18 +1466,6 @@ code_immune_system_t* signal_handler_get_code_immune(void)
 {
     return g_code_immune;
 }
-#else
-/* Stub implementations when code immune is disabled */
-void signal_handler_set_code_immune(void* sys)
-{
-    g_code_immune = sys;
-}
-
-void* signal_handler_get_code_immune(void)
-{
-    return g_code_immune;
-}
-#endif /* NIMCP_ENABLE_CODE_IMMUNE */
 
 /**
  * WHAT: Set recovery point for siglongjmp-based recovery
@@ -1566,11 +1547,7 @@ void signal_handler_clear_pending_crash(void)
  */
 bool signal_handler_has_code_immune(void)
 {
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
     return (g_code_immune != NULL);
-#else
-    return false;
-#endif
 }
 
 /**

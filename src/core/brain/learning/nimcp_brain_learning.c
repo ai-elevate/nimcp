@@ -173,7 +173,7 @@ void nimcp_brain_learning_label_to_output(brain_t brain, const char* label,
     uint32_t label_idx = nimcp_brain_learning_get_or_create_label_index(brain, label);
 
     memset(output, 0, brain->config.num_outputs * sizeof(float));
-    output[label_idx] = confidence;
+    output[label_idx] = 1.0f;  /* Always one-hot; confidence scales LR, not target */
 }
 
 /**
@@ -392,8 +392,15 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         return -1.0F;  // Error already set by ensure_writable_network
     }
 
-    // Convert label to target output
-    float* target = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+    // Convert label to target output (use pre-allocated scratch if available)
+    bool target_from_scratch = false;
+    float* target = NULL;
+    if (brain->learn_scratch.target && brain->learn_scratch.target_cap >= brain->config.num_outputs) {
+        target = brain->learn_scratch.target;
+        target_from_scratch = true;
+    } else {
+        target = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+    }
     if (!target) {
         set_error("Failed to allocate target vector (%u outputs)", brain->config.num_outputs);
         NIMCP_THROW(NIMCP_ERROR_NO_MEMORY,
@@ -567,6 +574,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // - Thalamic gating of sensory input (Sherman & Guillery, 2002)
     // - Top-down attention from PFC modulates V1-V4 learning rates
     float* attended_features = NULL;
+    bool attended_from_scratch = false;
     if (brain->multihead_attention && brain->attention_training_enabled) {
         // Set thalamic gate: confidence gates executive attention,
         // novelty opens the gate wider for exploration
@@ -575,7 +583,12 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
         // Run attention forward pass (single token: [1 × input_dim])
         // Even with seq_len=1, this applies Q/K/V projections + thalamic gate
-        attended_features = nimcp_malloc(num_features * sizeof(float));
+        if (brain->learn_scratch.attended_features && brain->learn_scratch.features_cap >= num_features) {
+            attended_features = brain->learn_scratch.attended_features;
+            attended_from_scratch = true;
+        } else {
+            attended_features = nimcp_malloc(num_features * sizeof(float));
+        }
         if (attended_features) {
             bool attn_ok = multihead_attention_forward(
                 brain->multihead_attention,
@@ -607,7 +620,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 // Attention boost: highly attended inputs learn up to 20% faster
                 effective_learning_rate *= (1.0f + attn_strength * 0.2f);
             } else {
-                nimcp_free(attended_features);
+                if (!attended_from_scratch) nimcp_free(attended_features);
                 attended_features = NULL;
             }
         }
@@ -675,7 +688,14 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // - Contextual priming in associative memory (Anderson 1983)
     // - Prior knowledge facilitates new learning (Tse et al. 2007)
     if (brain->engram_system) {
-        uint32_t* cue_neurons = nimcp_malloc(num_features * sizeof(uint32_t));
+        bool cue_from_scratch = false;
+        uint32_t* cue_neurons;
+        if (brain->learn_scratch.cue_neurons && brain->learn_scratch.features_cap >= num_features) {
+            cue_neurons = brain->learn_scratch.cue_neurons;
+            cue_from_scratch = true;
+        } else {
+            cue_neurons = nimcp_malloc(num_features * sizeof(uint32_t));
+        }
         if (cue_neurons) {
             // Map features to cue neuron IDs
             for (uint32_t i = 0; i < num_features; i++) {
@@ -714,7 +734,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 engram_trigger_reconsolidation(brain->engram_system, recalled_id);
             }
 
-            nimcp_free(cue_neurons);
+            if (!cue_from_scratch) nimcp_free(cue_neurons);
         }
     }
 
@@ -804,7 +824,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
                 nimcp_security_emergency_inhibit(adaptive_network_get_base_network(brain->network));
             }
 
-            nimcp_free(target);
+            if (!target_from_scratch) nimcp_free(target);
             return -1.0F;  // Abort learning
         } else if (activity_stats.activity_ratio > brain->config.activity_warning_threshold) {
             // WARNING: Elevated activity - apply graduated inhibition
@@ -879,7 +899,14 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     }
 
     // Post-learning evaluation: MSE between updated network output and target
-    float* prediction = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+    bool prediction_from_scratch = false;
+    float* prediction;
+    if (brain->learn_scratch.prediction && brain->learn_scratch.target_cap >= brain->config.num_outputs) {
+        prediction = brain->learn_scratch.prediction;
+        prediction_from_scratch = true;
+    } else {
+        prediction = nimcp_malloc(brain->config.num_outputs * sizeof(float));
+    }
     if (prediction) {
         // Forward pass AFTER weight update to measure post-learning accuracy
         adaptive_network_forward(brain->network, features, num_features, prediction,
@@ -916,7 +943,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         brain->stats.running_accuracy =
             brain->stats.running_accuracy * 0.99F + match_val * 0.01F;
 
-        nimcp_free(prediction);
+        if (!prediction_from_scratch) nimcp_free(prediction);
     }
 
     // ========================================================================
@@ -945,17 +972,6 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     // ========================================================================
     // PHASE 7.5: VAE TRAINING STEP
     // ========================================================================
-    // WHAT: Train VAE on current input (reconstruction + KL divergence)
-    // WHY:  VAE learns compressed latent representations of training data.
-    //       ELBO loss implements variational free energy minimization (FEP).
-    //       Learned latent space enables: generative replay, anomaly detection,
-    //       better engram encoding, imagination/dreaming.
-    // HOW:  Single training step: encode → sample → decode → ELBO loss → update
-    //
-    // BIOLOGICAL BASIS:
-    // - Predictive coding: brain maintains generative model of sensory input
-    // - Free Energy Principle: minimize surprise via accurate internal model
-    // - Hippocampal generative replay during consolidation (sleep/wake)
     if (brain->vae_system && brain->vae_enabled) {
         vae_system_t* vae = (vae_system_t*)brain->vae_system;
 
@@ -1109,9 +1125,9 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     }
 
     // Free attended features buffer (allocated in Phase 4.5)
-    nimcp_free(attended_features);  // NULL-safe
+    if (!attended_from_scratch) nimcp_free(attended_features);  // NULL-safe
 
-    nimcp_free(target);
+    if (!target_from_scratch) nimcp_free(target);
 
     // Update statistics (atomic for thread safety)
     __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
@@ -1401,6 +1417,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         }
     }
 
+
     // ========================================================================
     // PHASE M3: WORKING MEMORY TRANSFER INTEGRATION (LEARNING PIPELINE)
     // ========================================================================
@@ -1492,9 +1509,10 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         neural_network_t base_net = adaptive_network_get_base_network(brain->network);
         if (base_net) {
             uint32_t num_neurons = neural_network_get_num_neurons(base_net);
+            uint32_t homeo_cap = num_neurons < 1000 ? num_neurons : 1000;
 
-            // Compute firing rates array from network state
-            float* firing_rates = nimcp_malloc(num_neurons * sizeof(float));
+            // Compute firing rates array from network state (capped at 1000 neurons)
+            float* firing_rates = nimcp_malloc(homeo_cap * sizeof(float));
             if (firing_rates) {
                 // Estimate firing rates from neuron outputs
                 for (uint32_t i = 0; i < num_neurons && i < 1000; i++) {  // Cap at 1000 neurons
@@ -1547,6 +1565,7 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
             }
         }
     }
+
 
     // Phase T1.2: Dendritic Computation - Process through dendritic tree
     if (brain->dendritic && brain->config.enable_dendritic_computation) {

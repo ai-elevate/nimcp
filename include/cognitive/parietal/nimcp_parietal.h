@@ -100,10 +100,10 @@ typedef struct brain_region_struct* brain_region_t;
 typedef struct neural_network_struct* neural_network_t;
 #endif
 
-/* Immune system */
+/* Immune system — forward declaration matching nimcp_code_immune.h */
 #ifndef NIMCP_CODE_IMMUNE_SYSTEM_T_DEFINED
 #define NIMCP_CODE_IMMUNE_SYSTEM_T_DEFINED
-typedef struct code_immune_system_struct* code_immune_system_t;
+typedef struct code_immune_system code_immune_system_t;
 #endif
 
 /* Thalamic routing */

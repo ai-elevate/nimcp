@@ -96,7 +96,7 @@ adaptive_spike_params_t nimcp_brain_factory_build_spike_params(float sparsity_ta
     adaptive_spike_params_t params = {0};
     params.k_factor = 0.5F;
     params.sparsity_target = sparsity_target;
-    params.encoding = SPIKE_ENCODING_INTEGER;
+    params.encoding = SPIKE_ENCODING_PASSTHROUGH;  /* Raw floats — best for gradient training */
     params.enable_soft_reset = true;
     params.enable_adaptation = true;
     params.adaptation_window = 100;

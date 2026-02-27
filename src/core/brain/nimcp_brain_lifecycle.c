@@ -145,7 +145,7 @@ static adaptive_spike_params_t build_spike_params(float sparsity_target)
     adaptive_spike_params_t params = {0};
     params.k_factor = 0.5f;
     params.sparsity_target = sparsity_target;
-    params.encoding = SPIKE_ENCODING_INTEGER;
+    params.encoding = SPIKE_ENCODING_PASSTHROUGH;  /* Raw floats for gradient training */
     params.enable_soft_reset = true;
     params.enable_adaptation = true;
     params.adaptation_window = 100;
@@ -1007,6 +1007,12 @@ void brain_destroy(brain_t brain)
         brain_bio_async_shutdown(brain);
         brain->bio_async_enabled = false;
     }
+
+    // Free learn() scratch buffers
+    nimcp_free(brain->learn_scratch.target);
+    nimcp_free(brain->learn_scratch.prediction);
+    nimcp_free(brain->learn_scratch.attended_features);
+    nimcp_free(brain->learn_scratch.cue_neurons);
 
     nimcp_free(brain);
 }

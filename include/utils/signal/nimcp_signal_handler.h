@@ -44,9 +44,10 @@ extern "C" {
 
 typedef struct brain_struct* brain_t;
 
-/* Forward declaration for code immune system (optional integration) */
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
-struct code_immune_system;
+/* Forward declaration for code immune system (always active).
+ * Must match the typedef in cognitive/immune/nimcp_code_immune.h. */
+#ifndef NIMCP_CODE_IMMUNE_SYSTEM_T_DEFINED
+#define NIMCP_CODE_IMMUNE_SYSTEM_T_DEFINED
 typedef struct code_immune_system code_immune_system_t;
 #endif
 
@@ -399,13 +400,13 @@ typedef struct signal_crash_context {
     char memory_region[256];                  /**< Memory region from /proc/self/maps */
 } signal_crash_context_t;
 
-#ifdef NIMCP_ENABLE_CODE_IMMUNE
 /**
  * @brief Register code immune system for crash handling
  *
  * WHAT: Associate code immune system with signal handler
  * WHY:  Enable immune-based crash recovery and hot-patching
  * HOW:  Store pointer for use in signal handler
+ *       Always active — signal handler MUST report crashes to immune system
  *
  * @param sys Code immune system instance (NULL to unregister)
  */
@@ -417,11 +418,6 @@ void signal_handler_set_code_immune(code_immune_system_t* sys);
  * @return Registered code immune system or NULL
  */
 code_immune_system_t* signal_handler_get_code_immune(void);
-#else
-/* Stub declarations when code immune is disabled */
-void signal_handler_set_code_immune(void* sys);
-void* signal_handler_get_code_immune(void);
-#endif
 
 /**
  * @brief Set recovery point for siglongjmp-based recovery

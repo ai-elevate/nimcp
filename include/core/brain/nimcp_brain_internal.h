@@ -1738,6 +1738,20 @@ struct brain_struct {
     bool vae_enabled;                                // VAE enabled for this brain
     float last_vae_anomaly_score;                    // Most recent anomaly score from VAE
     float last_vae_free_energy;                      // Most recent free energy (negative ELBO)
+
+    // === PRE-ALLOCATED SCRATCH BUFFERS FOR learn() HOT PATH ===
+    //
+    // Eliminates 4 malloc+free round-trips per learn() call by reusing
+    // pre-allocated buffers. Buffers grow on first use to match brain dimensions.
+    //
+    struct {
+        float* target;              // One-hot target vector [num_outputs]
+        float* prediction;          // Post-learn prediction [num_outputs]
+        float* attended_features;   // Attention output [num_inputs]
+        uint32_t* cue_neurons;      // Engram recall cue IDs [num_inputs]
+        uint32_t target_cap;        // Capacity of target/prediction buffers
+        uint32_t features_cap;      // Capacity of attended_features/cue_neurons
+    } learn_scratch;
 };
 
 //=============================================================================

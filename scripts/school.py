@@ -185,6 +185,8 @@ class SchoolConfig:
     num_inputs: int = 1024   # Match ATHENA_NUM_INPUTS (was 128)
     num_outputs: int = 256   # Match ATHENA_NUM_OUTPUTS (was 32)
     max_concurrent_instructors: int = 1    # Sequential: C library has memory corruption with concurrent access even through RLock
+    min_domain_accuracy: float = 0.0       # Per-domain min accuracy before "done" (0=disabled)
+    max_retry_passes: int = 5              # Max re-teach passes if below accuracy threshold
 
 
 # ---------------------------------------------------------------------------
@@ -439,6 +441,8 @@ class School:
                 modality=modality,
                 max_examples_per_dataset=self.config.max_examples_per_dataset,
                 startup_delay_s=0.0,
+                min_domain_accuracy=self.config.min_domain_accuracy,
+                max_retry_passes=self.config.max_retry_passes,
             )
             agent = InstructorAgent(
                 brain=self.brain,
@@ -595,6 +599,8 @@ class School:
                 modality=modality,
                 max_examples_per_dataset=self.config.max_examples_per_dataset,
                 startup_delay_s=0.0,
+                min_domain_accuracy=self.config.min_domain_accuracy,
+                max_retry_passes=self.config.max_retry_passes,
             )
             agent = InstructorAgent(
                 brain=self.brain,
