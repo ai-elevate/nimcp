@@ -151,8 +151,10 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
     config.enable_homeostasis = true;
 
     // Enable BCM for homeostatic plasticity (prevents weight saturation via sliding threshold)
-    config.enable_bcm = true;
-    config.enable_eligibility = true;
+    // Disabled for large networks (>100K neurons) — each does nimcp_calloc per synapse,
+    // creating 20M+ mutex-locked allocs for 10M backbone connections.
+    config.enable_bcm = (num_neurons <= 100000);
+    config.enable_eligibility = (num_neurons <= 100000);
 
     // BUGFIX: Set weight bounds to allow random initialization to work
     // Without these, fmaxf(0, fminf(0, weight)) clamps all weights to 0!
@@ -368,16 +370,17 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->training_default_lr = 0.0F;
 
     // Phase TM-4/5/6: Advanced Training Pipeline defaults
-    config->enable_lr_scheduler = false;
-    config->enable_regularization = false;
+    // Enabled by default for non-minimal brains — essential for effective training
+    config->enable_lr_scheduler = !minimal;
+    config->enable_regularization = !minimal;
     config->regularization_l1_lambda = 0.0F;
     config->regularization_l2_lambda = 0.0001F;
     config->dropout_rate = 0.0F;
-    config->enable_gradient_management = false;
+    config->enable_gradient_management = !minimal;
     config->enable_gradient_health_check = true;
     config->gradient_accumulation_steps = 1;
-    config->gradient_clip_value = 0.0F;
-    config->gradient_clip_norm = 0.0F;
+    config->gradient_clip_value = 1.0F;
+    config->gradient_clip_norm = 1.0F;
 }
 
 void nimcp_brain_factory_init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t size,

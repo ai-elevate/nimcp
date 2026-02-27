@@ -618,7 +618,7 @@ class ActiveLearner:
 
         # Check if explanation mentions concepts from both domains
         if explanation:
-            from scripts.safety_gate import DOMAIN_KEYWORDS
+            from safety_gate import DOMAIN_KEYWORDS
             keywords_a = DOMAIN_KEYWORDS.get(domain_a, [])
             keywords_b = DOMAIN_KEYWORDS.get(domain_b, [])
             exp_lower = explanation.lower()

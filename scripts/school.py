@@ -184,7 +184,7 @@ class SchoolConfig:
     startup_stagger_s: float = 2.0         # Delay between instructor starts
     num_inputs: int = 1024   # Match ATHENA_NUM_INPUTS (was 128)
     num_outputs: int = 256   # Match ATHENA_NUM_OUTPUTS (was 32)
-    max_concurrent_instructors: int = 6    # Max instructor threads starting per batch
+    max_concurrent_instructors: int = 1    # Sequential: C library has memory corruption with concurrent access even through RLock
 
 
 # ---------------------------------------------------------------------------

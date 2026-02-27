@@ -1,0 +1,1 @@
+{"action": "LEARN", "method": "debate", "correct": false, "loss": 0.0, "confidence_mod": 0.597, "ethics_label": "neutral", "dataset": "live_news_global", "features_dim": 1024, "ts": 1772151488.276664, "domain": "news"}

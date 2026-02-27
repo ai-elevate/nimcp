@@ -2011,12 +2011,15 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 }
 
                                 in_syn->weight += weight_delta;
+                                /* Clamp accumulated weight to prevent unbounded growth → NaN */
+                                in_syn->weight = fmaxf(network->config.base_config.min_weight,
+                                    fminf(network->config.base_config.max_weight, in_syn->weight));
 
                                 // Update outgoing synapse copy
                                 for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
                                     synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
                                     if (out_syn && out_syn->target_neuron_id == cur_offset + j) {
-                                        out_syn->weight += weight_delta;
+                                        out_syn->weight = in_syn->weight;
                                         break;
                                     }
                                 }
@@ -2026,6 +2029,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                             float bias_delta = layer_lr * dj;
                             grad_norm_sq += bias_delta * bias_delta;
                             cur_n->bias += bias_delta;
+                            cur_n->bias = fmaxf(-10.0F, fminf(10.0F, cur_n->bias));
                         }
 
                         // Apply activation derivative to prev-layer deltas
@@ -2209,11 +2213,14 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                                 }
 
                                 in_syn->weight += weight_delta;
+                                /* Clamp accumulated weight to prevent unbounded growth → NaN */
+                                in_syn->weight = fmaxf(network->config.base_config.min_weight,
+                                    fminf(network->config.base_config.max_weight, in_syn->weight));
 
                                 for (uint32_t s = 0; s < NEURON_OUT_COUNT(src); s++) {
                                     synapse_handle_t* out_syn = NEURON_OUT_HANDLE(src, s);
                                     if (out_syn && out_syn->target_neuron_id == cur_offset + j) {
-                                        out_syn->weight += weight_delta;
+                                        out_syn->weight = in_syn->weight;
                                         break;
                                     }
                                 }
@@ -2223,6 +2230,7 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
                             float bias_delta = layer_lr * dj;
                             grad_norm_sq += bias_delta * bias_delta;
                             cur_n->bias += bias_delta;
+                            cur_n->bias = fmaxf(-10.0F, fminf(10.0F, cur_n->bias));
                         }
 
                         if (layer > 1) {

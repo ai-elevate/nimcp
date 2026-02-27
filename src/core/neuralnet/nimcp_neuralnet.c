@@ -768,12 +768,15 @@ neural_network_t neural_network_create(const network_config_t* config)
             uint32_t next_layer_size = config->layer_sizes[layer + 1];
             uint32_t next_layer_offset = offset + curr_layer_size;
 
-            // Connect each neuron in current layer to each neuron in next layer
+            // Connect each neuron in current layer to each neuron in next layer.
+            // Use Xavier/Glorot uniform initialization: U(-limit, limit) where
+            // limit = sqrt(6 / (fan_in + fan_out)). This keeps activation
+            // variance stable across layers, preventing gradient explosion.
+            float limit = sqrtf(6.0f / (float)(curr_layer_size + next_layer_size));
             for (uint32_t i = 0; i < curr_layer_size && offset + i < network->num_neurons; i++) {
                 for (uint32_t j = 0;
                      j < next_layer_size && next_layer_offset + j < network->num_neurons; j++) {
-                    // Random initial weight between -0.5 and 0.5
-                    float weight = ((float) nimcp_tl_rand() / RAND_MAX) - 0.5F;
+                    float weight = (2.0f * ((float) nimcp_tl_rand() / RAND_MAX) - 1.0f) * limit;
                     neural_network_add_connection(network, offset + i, next_layer_offset + j,
                                                   weight);
                 }

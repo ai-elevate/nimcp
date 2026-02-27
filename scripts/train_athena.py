@@ -1657,6 +1657,8 @@ def find_latest_checkpoint() -> Path:
 
 
 def main():
+    global ATHENA_NUM_INPUTS, ATHENA_NUM_OUTPUTS  # May be overridden by checkpoint dims
+
     # Parse --resume flag
     resume_path = None
     if "--resume" in sys.argv:
@@ -1694,6 +1696,17 @@ def main():
         logger.log(f"Loading brain from checkpoint: {resume_path}")
         brain = nimcp.Brain.load(str(resume_path))
         logger.log(f"Neuron count: {brain.get_neuron_count():,}")
+
+        # Check dimension compatibility — checkpoint may have different dimensions
+        probe_info = brain.probe()
+        ckpt_inputs = probe_info.get("num_inputs", 0)
+        ckpt_outputs = probe_info.get("num_outputs", 0)
+        if ckpt_inputs != ATHENA_NUM_INPUTS or ckpt_outputs != ATHENA_NUM_OUTPUTS:
+            logger.log(f"WARNING: Checkpoint dimensions ({ckpt_inputs}in/{ckpt_outputs}out) "
+                        f"don't match config ({ATHENA_NUM_INPUTS}in/{ATHENA_NUM_OUTPUTS}out)")
+            logger.log(f"Using checkpoint dimensions — overriding ATHENA_NUM_INPUTS/OUTPUTS")
+            ATHENA_NUM_INPUTS = ckpt_inputs
+            ATHENA_NUM_OUTPUTS = ckpt_outputs
     else:
         # Create brain directly at target neuron count
         logger.log(f"Creating Athena brain with {ATHENA_NEURONS:,} neurons...")
@@ -1706,6 +1719,19 @@ def main():
             neuron_count=ATHENA_NEURONS,
         )
         logger.log(f"Neuron count: {brain.get_neuron_count():,}")
+
+    # Configure training pipeline (LR scheduler, regularization, gradient management)
+    # Essential for effective training — especially for checkpoints from older saves
+    try:
+        brain.configure_training(
+            learning_rate=0.001,
+            weight_decay=0.0001,
+            gradient_clip=1.0,
+            scheduler="cosine",
+        )
+        logger.log("Configured training pipeline (Adam, cosine LR, L2=0.0001, grad_clip=1.0)")
+    except Exception as e:
+        logger.log(f"Training pipeline configuration failed: {e}")
 
     # Enable multi-network ensemble training (LNN + CNN alongside adaptive SNN)
     try:
@@ -1768,10 +1794,11 @@ def main():
             fds = FashionMNISTDataset()
             fex = fds.get_examples()
             if fex:
-                assert len(fex[0]["features"]) == ATHENA_NUM_INPUTS, \
-                    f"Fashion-MNIST: {len(fex[0]['features'])} != {ATHENA_NUM_INPUTS}"
+                raw_len = len(fex[0]["features"])
+                # Fashion-MNIST returns 256 pooled features — training pads to ATHENA_NUM_INPUTS
+                assert raw_len > 0, f"Fashion-MNIST: empty features"
             logger.log(f"  OK: encoding pipeline (text={len(tf)}, qa={len(qa)}, "
-                       f"fashion={len(fex[0]['features']) if fex else '?'})")
+                       f"fashion={raw_len if fex else '?'} raw, padded to {ATHENA_NUM_INPUTS})")
 
         # 4. Verify domain labels are prefixed
         test_label = domain_label("wine", 0)

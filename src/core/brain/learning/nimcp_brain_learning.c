@@ -1667,14 +1667,26 @@ int brain_enable_multi_network_training(brain_t brain)
     // Skip LNN for very small networks (< 8 inputs/outputs) to avoid
     // tensor dimension mismatch crashes in the ODE forward pass.
     if (!brain->lnn_network && num_inputs >= 8 && num_outputs >= 8) {
-        // Create NCP (Neural Circuit Policy) LNN matched to brain dimensions
-        uint32_t n_inter = (num_inputs + num_outputs) / 2;
+        // Create NCP (Neural Circuit Policy) LNN with ALL layers capped to 256.
+        // LNN papers use 19-256 neurons; beyond 256 the O(n^2) adjoint Jacobian
+        // dominates (1024^2 = 1M ops/step vs 256^2 = 65K). When brain dims exceed
+        // the cap, lnn_train_step() average-pools the input and truncates targets
+        // to match the LNN's smaller dimensions.
+        uint32_t lnn_cap = 256;
+        uint32_t lnn_in = (num_inputs > lnn_cap) ? lnn_cap : num_inputs;
+        uint32_t lnn_out = (num_outputs > lnn_cap) ? lnn_cap : num_outputs;
+        uint32_t n_inter = (lnn_in + lnn_out) / 2;
         if (n_inter < 8) n_inter = 8;
-        uint32_t n_command = num_outputs * 2;
+        if (n_inter > lnn_cap) n_inter = lnn_cap;
+        uint32_t n_command = lnn_out * 2;
         if (n_command < 8) n_command = 8;
+        if (n_command > lnn_cap) n_command = lnn_cap;
+
+        NIMCP_LOGGING_INFO("LNN NCP: brain dims %u→%u, LNN dims %u→%u→%u→%u→%u",
+                           num_inputs, num_outputs, lnn_in, n_inter, n_command, lnn_out);
 
         lnn_network_t* lnn = lnn_network_create_ncp(
-            num_inputs, n_inter, n_command, num_outputs
+            lnn_in, n_inter, n_command, lnn_out
         );
         if (!lnn) {
             NIMCP_LOGGING_WARN("Failed to create LNN network for multi-network training");

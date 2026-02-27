@@ -969,8 +969,7 @@ signal_handler_config_t signal_handler_default_config(void)
 bool signal_handler_install(const signal_handler_config_t* config)
 {
     if (g_installed) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
-        return false;  /* Already installed */
+        return true;  /* Already installed — idempotent */
     }
 
     /* Use defaults if config is NULL */

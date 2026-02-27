@@ -271,6 +271,13 @@ nimcp_brain_t nimcp_brain_create_with_neurons(
 
     // Build config with neuron_count override
     brain_config_t config = {0};
+
+    /* Enable lazy init for large brains BEFORE init_brain_config so sub-flags propagate.
+     * Skips O(N) axon/dendrite init loops — created on-demand if needed. */
+    if (neuron_count > 100000) {
+        config.lazy_init_mode = true;
+    }
+
     strategy = strategy_create(internal_task);
     if (!strategy) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create_with_neurons: strategy allocation failed");

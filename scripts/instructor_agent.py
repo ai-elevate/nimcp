@@ -73,7 +73,7 @@ class InstructorConfig:
     domain: str
     modality: str = "text"  # "text", "audio", "visual", "speech"
     examples_per_method: int = 50
-    report_interval: int = 100
+    report_interval: int = 10
     max_examples_per_dataset: int = 50_000
     difficulty_ramp_rate: float = 0.01
     adversarial_fraction: float = 0.15

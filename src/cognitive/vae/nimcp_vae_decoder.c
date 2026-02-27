@@ -1084,8 +1084,7 @@ bool vae_decoder_has_nan(const vae_decoder_t* decoder) {
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_decoder_has_nan: validation failed");
-    return false;
+    return false;  /* No NaN/Inf found */
 }
 
 uint32_t vae_decoder_get_layer_dim(const vae_decoder_t* decoder, uint32_t layer_idx) {

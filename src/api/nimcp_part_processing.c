@@ -100,11 +100,9 @@ nimcp_status_t nimcp_brain_train_step(
     // === STEP 2: Forward pass with activation recording ===
     // Use network's forward pass for predictions (more reliable)
     backprop_clear(state->backprop);
-    bool fwd_ok = adaptive_network_forward(network, features, num_features,
-                                            predictions, num_targets, 0);
-    if (!fwd_ok) {
-        LOG_WARN("train_step: adaptive_network_forward failed, predictions may be zero");
-    }
+    // Note: returns uint32_t active count (0 is valid for untrained brain), not bool
+    adaptive_network_forward(network, features, num_features,
+                             predictions, num_targets, 0);
 
     // Store activations in backprop context from neuron states
     // The forward pass updated neuron->state for each neuron

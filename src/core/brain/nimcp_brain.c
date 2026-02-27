@@ -29,6 +29,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/signal/nimcp_signal_handler.h"
 
 #define LOG_MODULE "BRAIN"
 #include <math.h>

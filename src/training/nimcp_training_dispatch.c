@@ -334,11 +334,16 @@ static int lnn_train_step(
 
     lnn_training_ctx_t* ctx = brain->lnn_training_ctx;
 
-    // Create input and target tensors using proper API
-    // LNN expects sequence tensors [seq_len, features]
-    // For single-step training, use 1D tensors
-    uint32_t input_dims[1] = {num_inputs};
-    uint32_t target_dims[1] = {num_targets};
+    // LNN may have smaller input/output dims than the brain (capped at 256
+    // for O(n^2) adjoint efficiency). Average-pool inputs and truncate targets
+    // to match the LNN's expected dimensions.
+    uint32_t lnn_in = brain->lnn_network->n_inputs;
+    uint32_t lnn_out = brain->lnn_network->n_outputs;
+    uint32_t eff_inputs = (num_inputs > lnn_in) ? lnn_in : num_inputs;
+    uint32_t eff_targets = (num_targets > lnn_out) ? lnn_out : num_targets;
+
+    uint32_t input_dims[1] = {eff_inputs};
+    uint32_t target_dims[1] = {eff_targets};
 
     nimcp_tensor_t* input_tensor = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
     nimcp_tensor_t* target_tensor = nimcp_tensor_create(target_dims, 1, NIMCP_DTYPE_F32);
@@ -350,12 +355,26 @@ static int lnn_train_step(
         return -1;
     }
 
-    // Copy data
     float* in_data = (float*)nimcp_tensor_data(input_tensor);
     float* tgt_data = (float*)nimcp_tensor_data(target_tensor);
     if (in_data && tgt_data) {
-        memcpy(in_data, inputs, num_inputs * sizeof(float));
-        memcpy(tgt_data, targets, num_targets * sizeof(float));
+        if (num_inputs > lnn_in) {
+            // Average-pool: group brain inputs into lnn_in bins
+            uint32_t stride = num_inputs / lnn_in;
+            for (uint32_t i = 0; i < lnn_in; i++) {
+                float sum = 0.0f;
+                uint32_t start = i * stride;
+                uint32_t end = (i + 1 < lnn_in) ? (i + 1) * stride : num_inputs;
+                for (uint32_t j = start; j < end; j++) {
+                    sum += inputs[j];
+                }
+                in_data[i] = sum / (float)(end - start);
+            }
+        } else {
+            memcpy(in_data, inputs, num_inputs * sizeof(float));
+        }
+        // Targets: truncate to LNN output size (first eff_targets elements)
+        memcpy(tgt_data, targets, eff_targets * sizeof(float));
     }
 
     // Run training step
@@ -398,12 +417,13 @@ static int cnn_train_step(
 
     cnn_trainer_t* trainer = brain->cnn_trainer;
 
-    // Create input tensor using proper API
-    uint32_t input_dims[1] = {num_inputs};
-    uint32_t target_dims[1] = {num_targets};
+    // Create input/target tensors as 2D (batch=1, features) — dense layers
+    // interpret dims[0] as batch size, so 1D {N} would be misread as batch=N
+    uint32_t input_dims[2] = {1, num_inputs};
+    uint32_t target_dims[2] = {1, num_targets};
 
-    nimcp_tensor_t* input_tensor = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
-    nimcp_tensor_t* target_tensor = nimcp_tensor_create(target_dims, 1, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* input_tensor = nimcp_tensor_create(input_dims, 2, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* target_tensor = nimcp_tensor_create(target_dims, 2, NIMCP_DTYPE_F32);
 
     if (!input_tensor || !target_tensor) {
         if (input_tensor) nimcp_tensor_destroy(input_tensor);

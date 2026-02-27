@@ -186,6 +186,9 @@ void brain_destroy(brain_t brain)
     if (!brain)
         return;
 
+    // Unregister brain from signal handler (handler stays installed for safety)
+    signal_handler_unregister_brain();
+
     // Destroy inference thread pool (before subsystems that tasks might reference)
     if (brain->inference_pool) {
         nimcp_pool_destroy(brain->inference_pool);

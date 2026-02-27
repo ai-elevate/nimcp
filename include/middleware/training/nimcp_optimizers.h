@@ -192,6 +192,7 @@ typedef struct nimcp_optimizer_stats {
     double current_lr;             /**< Current learning rate */
     uint64_t total_compute_time_ns;/**< Total computation time */
     size_t peak_memory_bytes;      /**< Peak memory usage */
+    uint64_t gradient_explosions;  /**< Number of skipped updates due to NaN/Inf gradients */
 } nimcp_optimizer_stats_t;
 
 /* ============================================================================

@@ -1,0 +1,2 @@
+{"action": "LEARN", "method": "curriculum", "correct": false, "loss": 0.8, "confidence_mod": 0.593, "ethics_label": "neutral", "dataset": "mmlu_world_religions", "features_dim": 1024, "ts": 1772151447.6766903, "domain": "anthropology"}
+{"action": "LEARN", "method": "socratic", "correct": false, "loss": 0.24153, "confidence_mod": 0.608, "ethics_label": "neutral", "dataset": "mmlu_world_religions", "features_dim": 1024, "ts": 1772151457.3486083, "domain": "anthropology"}

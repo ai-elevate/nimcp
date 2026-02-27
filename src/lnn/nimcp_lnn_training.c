@@ -470,10 +470,17 @@ int lnn_training_step(
         result = lnn_gradient_compute_adjoint(ctx->gradient_ctx, ctx->network, ctx->loss_gradient);
         if (result != 0) {
             NIMCP_LOGGING_WARN("Gradient computation failed: %d", result);
+            /* Reset ALL gradient state to prevent NaN propagation into optimizer.
+             * A failed adjoint leaves NaN in both the context accumulator AND
+             * the per-layer grad_W_in/grad_W_rec/etc. tensors (written by
+             * accumulate_parameter_gradients during partial backward pass). */
+            lnn_gradient_reset(ctx->gradient_ctx);
+            lnn_network_zero_gradients(ctx->network);
+            grad_norm = 0.0f;
+        } else {
+            /* Get gradient norm for statistics */
+            grad_norm = lnn_gradient_norm(ctx->gradient_ctx);
         }
-
-        /* Get gradient norm for statistics */
-        grad_norm = lnn_gradient_norm(ctx->gradient_ctx);
     }
 
     /* 4. Accumulate gradients if needed */

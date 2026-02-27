@@ -1545,9 +1545,16 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
     float* grad_data = nimcp_tensor_data(grad);
     const float* target_data = nimcp_tensor_data_const(target);
     size_t numel = nimcp_tensor_numel(grad);
+    size_t target_numel = nimcp_tensor_numel(target);
 
-    for (size_t i = 0; i < numel; i++) {
-        grad_data[i] = (grad_data[i] - target_data[i]) * 2.0f / (float)numel;
+    /* Safety: clamp loop to min(output, target) elements to prevent OOB read */
+    size_t common = (numel < target_numel) ? numel : target_numel;
+    for (size_t i = 0; i < common; i++) {
+        grad_data[i] = (grad_data[i] - target_data[i]) * 2.0f / (float)common;
+    }
+    /* Zero gradient for output elements beyond target coverage */
+    for (size_t i = common; i < numel; i++) {
+        grad_data[i] = 0.0f;
     }
 
     /* Backpropagate through layers in reverse order */

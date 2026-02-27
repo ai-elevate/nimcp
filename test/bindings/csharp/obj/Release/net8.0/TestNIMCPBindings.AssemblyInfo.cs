@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TestNIMCPBindings")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d06f4d333b6e731a61d23e4a7b40a5788460038b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7b2dcdc9fd6dfa4eae52d42541810d9ad8ef4e0f")]
 [assembly: System.Reflection.AssemblyProductAttribute("TestNIMCPBindings")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TestNIMCPBindings")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

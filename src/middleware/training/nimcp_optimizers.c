@@ -1152,38 +1152,48 @@ nimcp_result_t nimcp_optimizer_step(
     /* Compute gradient norm */
     float grad_norm = nimcp_optimizer_gradient_norm(gradients, count);
 
-    /* Check for gradient explosion */
-    if (!isfinite(grad_norm) || grad_norm > 1e6F) {
-        nimcp_log(LOG_LEVEL_WARN, "[%s] Gradient explosion detected: norm=%f",
-                  LOG_MODULE, grad_norm);
+    /* Mandatory gradient sanitization: replace NaN/Inf with zero, then clip.
+     * Previous approach (skip entire update) meant the brain NEVER learned
+     * because every early update had inf gradients from random-weight forward
+     * passes on large networks (1024-dim input → 512-dim hidden). */
+    float* clipped_grads = alloc_buffer(ctx, count);
+    const float* grads_to_use = gradients;
+
+    if (clipped_grads) {
+        memcpy(clipped_grads, gradients, count * sizeof(float));
+
+        /* Step 1: Sanitize NaN/Inf values to zero */
+        if (!isfinite(grad_norm) || grad_norm > 1e6F) {
+            ctx->stats.gradient_explosions++;
+            for (size_t i = 0; i < count; i++) {
+                if (!isfinite(clipped_grads[i])) {
+                    clipped_grads[i] = 0.0f;
+                }
+            }
+        }
+
+        /* Step 2: Always clip by norm (max_norm=1.0) to stabilize training.
+         * This is applied unconditionally — even "normal" gradients benefit
+         * from norm clipping on large networks. */
+        float clip_norm = (ctx->config.clip_gradients && ctx->config.gradient_clip_norm > 0.0F)
+                          ? ctx->config.gradient_clip_norm : 1.0F;
+        nimcp_optimizer_clip_by_norm(clipped_grads, count, clip_norm);
+
+        /* Step 3: Optional per-value clipping if configured */
+        if (ctx->config.clip_gradients && ctx->config.gradient_clip_value > 0.0F) {
+            size_t clips = nimcp_optimizer_clip_by_value(
+                clipped_grads, count, ctx->config.gradient_clip_value);
+            ctx->stats.gradient_clips += clips;
+        }
+        grads_to_use = clipped_grads;
+    } else if (!isfinite(grad_norm)) {
+        /* Fallback: can't allocate clip buffer and gradients are bad — skip */
+        ctx->stats.gradient_explosions++;
+        return NIMCP_SUCCESS;
     }
 
     nimcp_log(LOG_LEVEL_TRACE, "[%s] Optimizer step: lr=%f, grad_norm=%f, step=%lu",
               LOG_MODULE, ctx->current_lr, grad_norm, ctx->step_count);
-
-    /* Apply gradient clipping if enabled */
-    float* clipped_grads = NULL;
-    const float* grads_to_use = gradients;
-
-    if (ctx->config.clip_gradients) {
-        clipped_grads = alloc_buffer(ctx, count);
-        if (clipped_grads) {
-            memcpy(clipped_grads, gradients, count * sizeof(float));
-
-            if (ctx->config.gradient_clip_norm > 0.0F) {
-                nimcp_optimizer_clip_by_norm(clipped_grads, count, ctx->config.gradient_clip_norm);
-            }
-            if (ctx->config.gradient_clip_value > 0.0F) {
-                size_t clips = nimcp_optimizer_clip_by_value(
-                    clipped_grads, count, ctx->config.gradient_clip_value);
-                ctx->stats.gradient_clips += clips;
-                if (clips > 0) {
-                    nimcp_log(LOG_LEVEL_DEBUG, "[%s] Clipped %zu gradients", LOG_MODULE, clips);
-                }
-            }
-            grads_to_use = clipped_grads;
-        }
-    }
 
     /* Perform optimizer step */
     switch (ctx->config.type) {

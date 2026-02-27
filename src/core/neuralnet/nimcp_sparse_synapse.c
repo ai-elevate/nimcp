@@ -44,18 +44,18 @@
  * Solution: Multiple pools at power-of-2 sizes. Allocate from smallest
  * fitting class. On grow, allocate from next class and copy.
  */
-#define SIZE_CLASS_COUNT 8
+#define SIZE_CLASS_COUNT 10
 #define SIZE_CLASS_MIN_HANDLES 16
-#define SIZE_CLASS_MAX_HANDLES 2048
+#define SIZE_CLASS_MAX_HANDLES 8192
 
 // Size class capacities (handles per block)
 static const uint32_t SIZE_CLASS_CAPACITIES[SIZE_CLASS_COUNT] = {
-    16, 32, 64, 128, 256, 512, 1024, 2048
+    16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192
 };
 
 // Blocks per size class (more small blocks, fewer large blocks)
 static const uint32_t SIZE_CLASS_BLOCK_COUNTS[SIZE_CLASS_COUNT] = {
-    1024, 512, 256, 128, 64, 32, 16, 8
+    1024, 512, 256, 128, 64, 32, 16, 8, 4, 2
 };
 
 //=============================================================================

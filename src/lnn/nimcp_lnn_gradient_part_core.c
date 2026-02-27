@@ -679,7 +679,14 @@ int lnn_gradient_adjoint_step(
         float* delta_data = (float*)nimcp_tensor_data(delta);
         if (delta_data) {
             for (size_t i = 0; i < numel; i++) {
-                next_data[i] = adj_data[i] + delta_data[i];
+                float val = adj_data[i] + delta_data[i];
+                /* Clamp adjoint to prevent unbounded growth → NaN.
+                 * Large networks produce huge Jacobian products that
+                 * accumulate exponentially over backward integration steps. */
+                if (val > 1e6f) val = 1e6f;
+                else if (val < -1e6f) val = -1e6f;
+                else if (!isfinite(val)) val = 0.0f;
+                next_data[i] = val;
             }
         } else {
             for (size_t i = 0; i < numel; i++) next_data[i] = adj_data[i];

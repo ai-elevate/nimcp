@@ -420,8 +420,7 @@ int vae_training_step(vae_training_bridge_t* bridge,
 {
     if (!bridge || !input || !target || !result) return NIMCP_ERROR_VAE_TRAIN_NULL;
     if (bridge->state != VAE_TRAIN_STATE_READY) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_TRAIN_NOT_CONNECTED, "vae_training_bridge: error condition");
-        return NIMCP_ERROR_VAE_TRAIN_NOT_CONNECTED;
+        return NIMCP_ERROR_VAE_TRAIN_NOT_CONNECTED;  /* Not yet connected — caller should retry later */
     }
 
     uint64_t start_us = get_timestamp_us();
@@ -535,7 +534,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
     /* Sample z using reparameterization trick */
     for (uint32_t i = 0; i < latent_dim; i++) {
         float mu = result->latent_mu[i];
-        float log_var = result->latent_log_var[i];
+        float log_var = fminf(result->latent_log_var[i], 20.0f);  /* Cap to prevent expf overflow */
         float std = expf(0.5f * log_var);
         float eps = ((float)nimcp_tl_rand() / RAND_MAX) * 2.0f - 1.0f;
         result->latent_sample[i] = mu + std * eps;

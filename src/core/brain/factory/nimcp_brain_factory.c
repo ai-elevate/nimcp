@@ -119,6 +119,7 @@
 #include "core/brain/factory/nimcp_brain_init_state_manager.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/signal/nimcp_signal_handler.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -520,6 +521,17 @@ brain_t brain_create_custom(const brain_config_t* config)
     init_brain_stats(&brain->stats, config->task_name, config->size,
                      config->num_inputs, config->learning_rate);
 
+    // Fix: init_brain_stats uses the preset neuron count for the size enum,
+    // but if neuron_count was overridden (e.g. 1.5M instead of preset 5000),
+    // we must update stats to reflect the actual network size.
+    if (num_neurons != brain->stats.num_neurons) {
+        brain->stats.num_neurons = num_neurons;
+        // Recalculate synapse estimate with actual neuron count
+        uint64_t synapse_count = (uint64_t)num_neurons * (uint64_t)config->num_inputs;
+        brain->stats.num_synapses = (synapse_count > UINT32_MAX) ? UINT32_MAX : (uint32_t)synapse_count;
+        brain->stats.num_active_synapses = brain->stats.num_synapses;
+    }
+
     // ========================================================================
     // PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS
     // P2 FIX: Check each pool creation for failure. Pools are optional
@@ -793,6 +805,18 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // Brain Immune System (Adaptive Defense Coordination)
     if (!init_immune_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Signal Handler Installation (SIGSEGV, SIGABRT, etc.)
+    // Install after immune system so crash signals can be reported to immune.
+    // Uses default config: fatal signals → LOG_SHUTDOWN with stack trace.
+    {
+        signal_handler_config_t sig_cfg = signal_handler_default_config();
+        sig_cfg.enable_stack_trace = true;
+        sig_cfg.enable_checkpoint_save = true;
+        if (!signal_handler_install(&sig_cfg)) {
+            LOG_MODULE_WARN("BRAIN_FACTORY", "Signal handler installation failed");
+        }
+    }
 
     // Phase T1: Biological Framework Enhancements (Training Pipeline)
     if (!init_homeostatic_plasticity_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -1131,6 +1155,9 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Only the last brain to be destroyed will unregister the global bio-async context.
     extern volatile int g_brain_bio_ref_count;
     __atomic_fetch_add(&g_brain_bio_ref_count, 1, __ATOMIC_ACQ_REL);
+
+    // Register brain with signal handler for crash checkpoint saves
+    signal_handler_register_brain(brain);
 
     brain_clear_error();
     return brain;
