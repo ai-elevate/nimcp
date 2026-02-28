@@ -218,6 +218,7 @@ static kg_entity_t* parse_entity(const char* json) {
         if (name) {
             strncpy(entity->name, name, KG_MAX_NAME_LENGTH - 1);
             nimcp_free(name);
+            name = NULL;
         }
     }
 
@@ -228,6 +229,7 @@ static kg_entity_t* parse_entity(const char* json) {
         if (type) {
             strncpy(entity->entity_type, type, KG_MAX_TYPE_LENGTH - 1);
             nimcp_free(type);
+            type = NULL;
         }
     }
 
@@ -249,6 +251,7 @@ static kg_entity_t* parse_entity(const char* json) {
             nimcp_free(entity->observations[i]);
         }
         nimcp_free(entity);
+        entity = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_entity: validation failed");
         return NULL;
     }
@@ -276,6 +279,7 @@ static kg_relation_t* parse_relation(const char* json) {
         if (from) {
             strncpy(relation->from, from, KG_MAX_NAME_LENGTH - 1);
             nimcp_free(from);
+            from = NULL;
         }
     }
 
@@ -286,6 +290,7 @@ static kg_relation_t* parse_relation(const char* json) {
         if (to) {
             strncpy(relation->to, to, KG_MAX_NAME_LENGTH - 1);
             nimcp_free(to);
+            to = NULL;
         }
     }
 
@@ -296,11 +301,13 @@ static kg_relation_t* parse_relation(const char* json) {
         if (type) {
             strncpy(relation->relation_type, type, KG_MAX_TYPE_LENGTH - 1);
             nimcp_free(type);
+            type = NULL;
         }
     }
 
     if (relation->from[0] == '\0' || relation->to[0] == '\0') {
         nimcp_free(relation);
+        relation = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_relation: validation failed");
         return NULL;
     }
@@ -395,6 +402,7 @@ void kg_reader_destroy(kg_reader_t* reader) {
     }
 
     nimcp_free(reader);
+    reader = NULL;
 }
 
 int kg_reader_load(kg_reader_t* reader, const char* file_path) {
@@ -562,6 +570,7 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
     list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
         nimcp_free(list);
+        list = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_entities_by_type: list->entities is NULL");
         return NULL;
     }
@@ -613,6 +622,7 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
     list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
         nimcp_free(list);
+        list = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_all_entities: list->entities is NULL");
         return NULL;
     }
@@ -655,6 +665,7 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
     list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
         nimcp_free(list);
+        list = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_search_entities: list->entities is NULL");
         return NULL;
     }
@@ -715,6 +726,7 @@ void kg_entity_list_destroy(kg_entity_list_t* list) {
 
     nimcp_free(list->entities);
     nimcp_free(list);
+    list = NULL;
 }
 
 /* ============================================================================
@@ -744,6 +756,7 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
     list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
         nimcp_free(list);
+        list = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_relations_from: list->relations is NULL");
         return NULL;
     }
@@ -792,6 +805,7 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
     list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
         nimcp_free(list);
+        list = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_relations_to: list->relations is NULL");
         return NULL;
     }
@@ -840,6 +854,7 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
     list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
         nimcp_free(list);
+        list = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_relations_by_type: list->relations is NULL");
         return NULL;
     }
@@ -895,6 +910,7 @@ void kg_relation_list_destroy(kg_relation_list_t* list) {
 
     nimcp_free(list->relations);
     nimcp_free(list);
+    list = NULL;
 }
 
 /* ============================================================================
@@ -1008,7 +1024,7 @@ int kg_reader_generate_self_description(const kg_reader_t* reader, char* buffer,
 
 
     int written = 0;
-    int n;
+    int n = 0;
 
     n = snprintf(buffer + written, buffer_size - written,
                  "I am NIMCP (Neuro-Inspired Model of Cognitive Processing).\n\n");

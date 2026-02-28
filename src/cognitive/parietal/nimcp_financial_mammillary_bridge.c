@@ -276,6 +276,7 @@ financial_mammillary_bridge_t* financial_mammillary_bridge_create(
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate trace storage for mammillary bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -299,6 +300,7 @@ void financial_mammillary_bridge_destroy(financial_mammillary_bridge_t* bridge) 
         bridge->traces = NULL;
     }
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_mammillary_heartbeat("financial_mammillary_bridge_destroy", 1.0f);
 }

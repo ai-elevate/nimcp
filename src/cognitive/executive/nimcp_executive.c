@@ -826,6 +826,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
         set_error("Failed to initialize task queue mutex");
         nimcp_free(exec->task_queue);
         nimcp_free(exec);
+        exec = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_create_custom: validation failed");
         return NULL;
     }
@@ -1153,6 +1154,7 @@ void executive_destroy(executive_controller_t* exec)
 
     // Free controller structure
     nimcp_free(exec);
+    exec = NULL;
 }
 
 //=============================================================================
@@ -1486,6 +1488,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
         set_error("Failed to allocate plan steps (%zu bytes)",
                   max_steps * sizeof(plan_step_t));
         nimcp_free(plan);
+        plan = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan: plan->steps is NULL");
         return NULL;
     }
@@ -1620,6 +1623,7 @@ void executive_destroy_plan(plan_t* plan)
     }
 
     nimcp_free(plan);
+    plan = NULL;
 }
 
 //=============================================================================
@@ -2103,6 +2107,7 @@ cleanup:
         nimcp_free(exec->active_task);
     }
     nimcp_free(exec);
+    exec = NULL;
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_load: validation failed");
     return NULL;
 }
@@ -2848,7 +2853,9 @@ task_descriptor_t* executive_select_task_softmax_mc(
     float* values = nimcp_calloc(exec->num_tasks, sizeof(float));
     if (!pending || !values) {
         nimcp_free(pending);
+        pending = NULL;
         nimcp_free(values);
+        values = NULL;
         return get_highest_priority_task(exec);
     }
 
@@ -2876,7 +2883,9 @@ task_descriptor_t* executive_select_task_softmax_mc(
 
     if (num_pending == 0) {
         nimcp_free(pending);
+        pending = NULL;
         nimcp_free(values);
+        values = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_select_task_softmax_mc: num_pending is zero");
         return NULL;
     }
@@ -2914,7 +2923,9 @@ task_descriptor_t* executive_select_task_softmax_mc(
     }
 
     nimcp_free(pending);
+    pending = NULL;
     nimcp_free(values);
+    values = NULL;
 
     return selected;
 }
@@ -3105,6 +3116,7 @@ static bool plan_is_terminal(const void* state, void* user_data) {
 static void plan_free_state(void* state, void* user_data) {
     (void)user_data;
     nimcp_free(state);
+    state = NULL;
 }
 
 /* MCTS Callback: Clone state */
@@ -3253,6 +3265,7 @@ plan_t* executive_create_plan_mcts(
     if (!plan->steps) {
         set_error("Failed to allocate plan steps");
         nimcp_free(plan);
+        plan = NULL;
         plan_free_state(initial, &ctx);
         mcts_result_free(&mcts_result);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan_mcts: plan->steps is NULL");

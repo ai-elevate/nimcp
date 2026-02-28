@@ -63,6 +63,7 @@ rubric_evaluator_t* rubric_evaluator_create(const rubric_config_t* config) {
 
 void rubric_evaluator_destroy(rubric_evaluator_t* eval) {
     nimcp_free(eval);
+    eval = NULL;
 }
 
 /*=============================================================================

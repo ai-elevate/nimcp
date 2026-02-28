@@ -324,6 +324,7 @@ static int hash_remove_pr(struct pr_kg_bridge_struct* bridge, uint64_t pr_id) {
             pr_hash_entry_t* to_free = *pp;
             *pp = (*pp)->next;
             nimcp_free(to_free);
+            to_free = NULL;
             return 0;
         }
         pp = &(*pp)->next;
@@ -346,6 +347,7 @@ static int hash_remove_kg(struct pr_kg_bridge_struct* bridge,
             kg_hash_entry_t* to_free = *pp;
             *pp = (*pp)->next;
             nimcp_free(to_free);
+            to_free = NULL;
             return 0;
         }
         pp = &(*pp)->next;
@@ -371,6 +373,7 @@ static void hash_clear_all(struct pr_kg_bridge_struct* bridge) {
         while (entry) {
             pr_hash_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         bridge->pr_to_kg_hash[i] = NULL;
@@ -388,6 +391,7 @@ static void hash_clear_all(struct pr_kg_bridge_struct* bridge) {
         while (entry) {
             kg_hash_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         bridge->kg_to_pr_hash[i] = NULL;
@@ -521,6 +525,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
     if (!bridge->mappings) {
         set_error("Failed to allocate mapping array");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_bridge_create: bridge->mappings is NULL");
         return NULL;
     }
@@ -537,6 +542,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
         nimcp_free(bridge->pr_to_kg_hash);
         nimcp_free(bridge->kg_to_pr_hash);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_bridge_create: required parameter is NULL (bridge->pr_to_kg_hash, bridge->kg_to_pr_hash)");
         return NULL;
     }
@@ -586,6 +592,7 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
     MUTEX_DESTROY(bridge->base.mutex);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
@@ -1965,6 +1972,7 @@ pr_kg_query_result_t* pr_kg_query_result_create(uint32_t capacity) {
     result->mappings = (pr_kg_mapping_t*)nimcp_calloc(capacity, sizeof(pr_kg_mapping_t));
     if (!result->mappings) {
         nimcp_free(result);
+        result = NULL;
         set_error("Failed to allocate mapping array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_query_result_create: result->mappings is NULL");
         return NULL;
@@ -1990,6 +1998,7 @@ void pr_kg_query_result_destroy(pr_kg_query_result_t* result) {
     }
 
     nimcp_free(result);
+    result = NULL;
 }
 
 void pr_kg_query_result_clear(pr_kg_query_result_t* result) {

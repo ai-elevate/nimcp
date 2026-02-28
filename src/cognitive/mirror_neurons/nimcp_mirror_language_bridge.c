@@ -288,6 +288,7 @@ static bool remove_binding_entry(
             }
 
             nimcp_free(entry);
+            entry = NULL;
             bridge->num_bindings--;
             return true;
         }
@@ -689,11 +690,13 @@ void mirror_language_bridge_destroy(mirror_language_bridge_t* bridge)
         while (entry) {
             binding_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Mirror-language bridge destroyed");
 }
 

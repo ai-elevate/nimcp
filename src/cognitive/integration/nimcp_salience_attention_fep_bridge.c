@@ -375,6 +375,7 @@ sa_fep_bridge_t* sa_fep_bridge_create(const sa_fep_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "salience_attention_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sa_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -425,6 +426,7 @@ void sa_fep_bridge_destroy(sa_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int sa_fep_bridge_reset(sa_fep_bridge_t* bridge) {

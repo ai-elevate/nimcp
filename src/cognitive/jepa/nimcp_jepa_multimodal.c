@@ -131,7 +131,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
 
     jepa_multimodal_t* mm = NULL;
     jepa_multimodal_config_t default_config;
-    int rc;
+    int rc = 0;
 
     /* Use defaults if not provided */
     if (!config) {
@@ -141,6 +141,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
 
     /* Allocate system */
     mm = (jepa_multimodal_t*)nimcp_calloc(1, sizeof(jepa_multimodal_t));
+    if (!mm) return -1;
     NIMCP_API_CHECK_ALLOC(mm, "Failed to allocate multimodal system");
 
     /* Initialize bridge base */
@@ -189,6 +190,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
     /* Allocate working buffers */
     mm->visual_buffer = (float*)nimcp_calloc(config->joint_dim, sizeof(float));
     mm->speech_buffer = (float*)nimcp_calloc(config->joint_dim, sizeof(float));
+    if (!mm->speech_buffer) return -1;
     mm->fused_buffer = (float*)nimcp_calloc(config->joint_dim * 2, sizeof(float));
 
     if (!mm->visual_buffer || !mm->speech_buffer || !mm->fused_buffer) {
@@ -246,6 +248,7 @@ void jepa_multimodal_destroy(jepa_multimodal_t* mm)
 
     /* Free system */
     nimcp_free(mm);
+    mm = NULL;
 }
 
 int jepa_multimodal_reset(jepa_multimodal_t* mm)
@@ -795,7 +798,9 @@ int jepa_multimodal_batch_similarity(
 
     if (!visual_joints || !speech_joints) {
         nimcp_free(visual_joints);
+        visual_joints = NULL;
         nimcp_free(speech_joints);
+        speech_joints = NULL;
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -821,7 +826,9 @@ int jepa_multimodal_batch_similarity(
                 nimcp_free(speech_joints[j].embedding);
             }
             nimcp_free(visual_joints);
+            visual_joints = NULL;
             nimcp_free(speech_joints);
+            speech_joints = NULL;
             return rc;
         }
     }
@@ -847,7 +854,9 @@ int jepa_multimodal_batch_similarity(
                 nimcp_free(speech_joints[j].embedding);
             }
             nimcp_free(visual_joints);
+            visual_joints = NULL;
             nimcp_free(speech_joints);
+            speech_joints = NULL;
             return rc;
         }
     }
@@ -889,7 +898,9 @@ int jepa_multimodal_batch_similarity(
         nimcp_free(speech_joints[i].embedding);
     }
     nimcp_free(visual_joints);
+    visual_joints = NULL;
     nimcp_free(speech_joints);
+    speech_joints = NULL;
 
     return NIMCP_SUCCESS;
 }
@@ -1195,6 +1206,7 @@ jepa_mm_batch_t* jepa_mm_batch_create(uint32_t max_pairs)
     batch->pairs = (jepa_mm_pair_t*)nimcp_calloc(max_pairs, sizeof(jepa_mm_pair_t));
     if (!batch->pairs) {
         nimcp_free(batch);
+        batch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mm_batch_create: batch->pairs is NULL");
         return NULL;
     }
@@ -1215,6 +1227,7 @@ void jepa_mm_batch_destroy(jepa_mm_batch_t* batch)
 
     nimcp_free(batch->pairs);
     nimcp_free(batch);
+    batch = NULL;
 }
 
 int jepa_mm_batch_add_pair(
@@ -1359,6 +1372,7 @@ static int projection_create(
         p->hidden_weights = (float*)nimcp_calloc(
             config->input_dim * config->hidden_dim, sizeof(float));
         p->hidden_bias = (float*)nimcp_calloc(config->hidden_dim, sizeof(float));
+        if (!p->hidden_bias) return -1;
         p->weights = (float*)nimcp_calloc(
             config->hidden_dim * config->output_dim, sizeof(float));
 
@@ -1414,6 +1428,7 @@ static void projection_destroy(jepa_mm_projection_t* proj)
     nimcp_free(proj->hidden_weights);
     nimcp_free(proj->hidden_bias);
     nimcp_free(proj);
+    proj = NULL;
 }
 
 static int projection_forward(
@@ -1479,6 +1494,7 @@ static int projection_forward(
         }
 
         nimcp_free(hidden);
+        hidden = NULL;
     } else {
         /* Linear projection */
         for (uint32_t j = 0; j < proj->output_dim; j++) {

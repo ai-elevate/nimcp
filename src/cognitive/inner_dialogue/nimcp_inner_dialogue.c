@@ -298,6 +298,7 @@ inner_dialogue_engine_t* inner_dialogue_engine_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_INNER_DIALOGUE_ERROR_NO_MEMORY,
                               "inner_dialogue: failed to init perspective registry (rc=%d)", rc);
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
 
@@ -307,6 +308,7 @@ inner_dialogue_engine_t* inner_dialogue_engine_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_INNER_DIALOGUE_ERROR_NO_MEMORY,
                               "inner_dialogue: failed to create turn history");
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
 
@@ -360,6 +362,7 @@ void inner_dialogue_engine_destroy(inner_dialogue_engine_t* engine) {
 
     engine->magic = 0;
     nimcp_free(engine);
+    engine = NULL;
 }
 
 int inner_dialogue_engine_reset(inner_dialogue_engine_t* engine) {

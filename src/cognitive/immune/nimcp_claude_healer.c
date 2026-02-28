@@ -508,6 +508,7 @@ static claude_heal_status_t make_api_request(
     char* escaped_prompt = nimcp_malloc(prompt_len * 2 + 1);
     if (escaped_prompt == NULL) {
         nimcp_free(body);
+        body = NULL;
         return CLAUDE_HEAL_ERROR_MEMORY;
     }
     json_escape_string(prompt, escaped_prompt, prompt_len * 2 + 1);
@@ -522,6 +523,7 @@ static claude_heal_status_t make_api_request(
         escaped_prompt
     );
     nimcp_free(escaped_prompt);
+    escaped_prompt = NULL;
 
     /* Set up headers */
     struct curl_slist* headers = NULL;
@@ -559,6 +561,7 @@ static claude_heal_status_t make_api_request(
     /* Clean up headers */
     curl_slist_free_all(headers);
     nimcp_free(body);
+    body = NULL;
 
     /* Check result */
     if (res == CURLE_OPERATION_TIMEDOUT) {
@@ -693,6 +696,7 @@ claude_healer_t* claude_healer_create(const claude_healer_config_t* config)
     if (healer->request_timestamps == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate timestamp buffer");
         nimcp_free(healer);
+        healer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claude_healer_create: validation failed");
         return NULL;
     }
@@ -703,6 +707,7 @@ claude_healer_t* claude_healer_create(const claude_healer_config_t* config)
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create mutex");
         nimcp_free(healer->request_timestamps);
         nimcp_free(healer);
+        healer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "claude_healer_create: validation failed");
         return NULL;
     }
@@ -715,6 +720,7 @@ claude_healer_t* claude_healer_create(const claude_healer_config_t* config)
         nimcp_mutex_free(healer->mutex);
         nimcp_free(healer->request_timestamps);
         nimcp_free(healer);
+        healer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claude_healer_create: validation failed");
         return NULL;
     }
@@ -754,6 +760,7 @@ void claude_healer_destroy(claude_healer_t* healer)
 
     nimcp_free(healer->request_timestamps);
     nimcp_free(healer);
+    healer = NULL;
 
     LOG_MODULE_DEBUG(LOG_TAG, "Claude healer destroyed");
 }
@@ -909,6 +916,7 @@ claude_heal_status_t claude_healer_request_fix(
     int prompt_len = claude_healer_format_prompt(request, prompt, MAX_PROMPT_SIZE);
     if (prompt_len < 0) {
         nimcp_free(prompt);
+        prompt = NULL;
         response->error_message = nimcp_strdup("Failed to format prompt");
         return CLAUDE_HEAL_ERROR_INTERNAL;
     }
@@ -923,6 +931,7 @@ claude_heal_status_t claude_healer_request_fix(
     api_response.data = nimcp_malloc(api_response.capacity);
     if (api_response.data == NULL) {
         nimcp_free(prompt);
+        prompt = NULL;
         response->error_message = nimcp_strdup("Failed to allocate response buffer");
         return CLAUDE_HEAL_ERROR_MEMORY;
     }
@@ -969,6 +978,7 @@ claude_heal_status_t claude_healer_request_fix(
     }
 
     nimcp_free(prompt);
+    prompt = NULL;
 
     if (status != CLAUDE_HEAL_SUCCESS) {
         nimcp_free(api_response.data);
@@ -995,6 +1005,7 @@ claude_heal_status_t claude_healer_request_fix(
 
     if (text_len == 0) {
         nimcp_free(text_content);
+        text_content = NULL;
         nimcp_free(api_response.data);
         response->error_message = nimcp_strdup("Failed to parse API response");
         return CLAUDE_HEAL_ERROR_PARSE;
@@ -1006,6 +1017,7 @@ claude_heal_status_t claude_healer_request_fix(
     response->fixed_code = nimcp_malloc(CLAUDE_HEALER_MAX_FIX_SIZE);
     if (response->fixed_code == NULL) {
         nimcp_free(text_content);
+        text_content = NULL;
         response->error_message = nimcp_strdup("Failed to allocate fix buffer");
         return CLAUDE_HEAL_ERROR_MEMORY;
     }
@@ -1030,6 +1042,7 @@ claude_heal_status_t claude_healer_request_fix(
             explain_len = CLAUDE_HEALER_MAX_EXPLANATION_SIZE - 1;
         }
         response->explanation = nimcp_malloc(explain_len + 1);
+        if (!response->explanation) return -1;
         if (response->explanation != NULL) {
             memcpy(response->explanation, text_content, explain_len);
             response->explanation[explain_len] = '\0';
@@ -1049,6 +1062,7 @@ claude_heal_status_t claude_healer_request_fix(
     }
 
     nimcp_free(text_content);
+    text_content = NULL;
 
     /* Validate generated fix code */
     if (!validate_fix_code(response->fixed_code, response->fixed_code_len)) {

@@ -248,6 +248,7 @@ emotion_consolidation_system_t* emotion_consolidation_create(
     if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         EC_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_consolidation_create: validation failed");
         return NULL;
     }
@@ -275,6 +276,7 @@ void emotion_consolidation_destroy(emotion_consolidation_system_t* system) {
 
     nimcp_rwlock_destroy(&system->lock);
     nimcp_free(system);
+    system = NULL;
 
     EC_LOG_INFO("Emotion-consolidation system destroyed");
 }

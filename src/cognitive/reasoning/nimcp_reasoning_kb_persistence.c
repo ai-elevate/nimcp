@@ -513,6 +513,7 @@ static int import_text(
     }
 
     nimcp_free(text);
+    text = NULL;
 
     if (result) {
         result->num_facts_imported = facts_imported;
@@ -583,6 +584,7 @@ int reasoning_kb_save_to_file(
     FILE* f = fopen(filepath, "wb");
     if (!f) {
         nimcp_free(buffer);
+        buffer = NULL;
         return -1;
     }
 
@@ -591,6 +593,7 @@ int reasoning_kb_save_to_file(
 
     if (written != size) {
         nimcp_free(buffer);
+        buffer = NULL;
         return -1;
     }
 
@@ -618,6 +621,7 @@ int reasoning_kb_save_to_file(
     }
 
     nimcp_free(buffer);
+    buffer = NULL;
     return 0;
 }
 
@@ -663,12 +667,14 @@ int reasoning_kb_load_from_file(
 
     if (bytes_read != (size_t)file_size) {
         nimcp_free(buffer);
+        buffer = NULL;
         return -1;
     }
 
     /* Import from buffer */
     int rc = reasoning_kb_import_from_buffer(kb_target, buffer, bytes_read, result);
     nimcp_free(buffer);
+    buffer = NULL;
     return rc;
 }
 

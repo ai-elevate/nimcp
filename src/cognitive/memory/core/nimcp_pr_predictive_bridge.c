@@ -253,6 +253,7 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, PR_PRED_MODULE_ID, PR_PRED_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         set_error("Failed to initialize base bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_predictive_bridge_create: validation failed");
         return NULL;
@@ -274,6 +275,7 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
     if (!bridge->reconsolidation_windows) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         set_error("Failed to allocate reconsolidation windows");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_predictive_bridge_create: bridge->reconsolidation_windows is NULL");
         return NULL;
@@ -308,6 +310,7 @@ void pr_predictive_bridge_destroy(pr_predictive_bridge_t* bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("Destroyed predictive bridge");
 }
@@ -583,7 +586,7 @@ pr_pred_error_t pr_predictive_bridge_update(
 
     /* Step 6: Compute free energy */
     if (bridge->config.track_free_energy) {
-        float free_energy;
+        float free_energy = 0.0f;
         pr_predictive_bridge_compute_free_energy(bridge, &free_energy);
     }
 

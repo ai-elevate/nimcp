@@ -163,6 +163,7 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "ethics_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_plasticity_create: validation failed");
         return NULL;
     }
@@ -174,6 +175,7 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -208,6 +210,7 @@ void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int ethics_plasticity_reset(ethics_plasticity_bridge_t* bridge) {

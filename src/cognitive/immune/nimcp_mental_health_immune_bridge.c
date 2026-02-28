@@ -293,6 +293,7 @@ void mental_health_immune_bridge_destroy(mental_health_immune_bridge_t* bridge) 
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_MODULE_INFO("mental_health_immune_bridge", "Bridge destroyed");
 }
 
@@ -530,7 +531,7 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
 
         /* Depression → increased pro-inflammatory cytokines */
         /* Release IL-6 and TNF-α */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(bridge->immune_system,
                                      BRAIN_CYTOKINE_IL6,
                                      0, /* source cell */
@@ -593,7 +594,7 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
         trigger->inflammatory_rebound = trigger->anxiety_severity * 0.5f;
 
         /* Release inflammatory cytokines (rebound effect) */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(bridge->immune_system,
                                      BRAIN_CYTOKINE_IL6,
                                      0,
@@ -645,7 +646,7 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
         trigger->chronic_inflammation_level = trigger->ptsd_severity * 0.7f;
 
         /* Release multiple pro-inflammatory cytokines */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(bridge->immune_system,
                                      BRAIN_CYTOKINE_IL1,
                                      0,
@@ -705,7 +706,7 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
         /* Release IL-10 (anti-inflammatory) */
         boost->il10_release_boost = RECOVERY_IL10_BOOST * boost->intervention_effectiveness;
 
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(bridge->immune_system,
                                      BRAIN_CYTOKINE_IL10,
                                      0,

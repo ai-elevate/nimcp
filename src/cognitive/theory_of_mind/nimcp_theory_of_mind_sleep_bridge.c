@@ -233,6 +233,7 @@ void tom_sleep_bridge_destroy(tom_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int tom_sleep_update(tom_sleep_bridge_t bridge) {

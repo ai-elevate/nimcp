@@ -801,6 +801,7 @@ omni_wm_security_immune_bridge_t* omni_wm_security_immune_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_SECURITY_IMMUNE_BRIDGE,
                          "wm_security_immune_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
@@ -818,6 +819,7 @@ omni_wm_security_immune_bridge_t* omni_wm_security_immune_bridge_create(
     if (err != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate prediction buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -829,6 +831,7 @@ omni_wm_security_immune_bridge_t* omni_wm_security_immune_bridge_create(
         free_prediction_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate event buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -841,6 +844,7 @@ omni_wm_security_immune_bridge_t* omni_wm_security_immune_bridge_create(
         free_prediction_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate signature cache");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -935,6 +939,7 @@ void omni_wm_security_immune_bridge_destroy(
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM Security-Immune Bridge destroyed");
 }
@@ -1362,6 +1367,7 @@ const wm_threat_prediction_t* omni_wm_security_immune_bridge_get_active_predicti
 
 
     if (count_out) *count_out = bridge->prediction_buffer_size;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return bridge->prediction_buffer;
 }
 

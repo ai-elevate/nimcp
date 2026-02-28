@@ -171,6 +171,7 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
     // Create Poincaré point
     item->hyperbolic_embedding = poincare_point_create(dim, coords, -1.0F);
     nimcp_free(coords);
+    coords = NULL;
 
     if (!item->hyperbolic_embedding) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -265,6 +266,7 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "knowledge_hyperbolic_knn: failed to allocate candidates array");
         nimcp_free(all_items);
+        all_items = NULL;
         return 0;
     }
 
@@ -318,6 +320,7 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
 
     // Cleanup
     nimcp_free(candidates);
+    candidates = NULL;
     // NOTE: Don't free all_items - it's owned by the system
 
     return num_neighbors;
@@ -454,7 +457,7 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
                 if (!all_items[j].hyperbolic_embedding) continue;
 
                 // Compute target distance based on hierarchical relationship
-                float target_distance;
+                float target_distance = 0.0f;
 
                 // If parent-child relationship
                 if (all_items[i].parent_index == j || all_items[j].parent_index == i) {
@@ -539,6 +542,7 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
     // Cleanup
     nimcp_free(gradient);
+    gradient = NULL;
 
     return total_loss;
 }
@@ -623,6 +627,7 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
 
     item->hyperbolic_embedding = poincare_point_create(target_dim, hyp_coords, -1.0F);
     nimcp_free(hyp_coords);
+    hyp_coords = NULL;
 
     if (!item->hyperbolic_embedding) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,

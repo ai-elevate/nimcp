@@ -190,6 +190,7 @@ int rcog_orchestrator_get_trace(
         copy->entries = nimcp_calloc(copy->num_entries, sizeof(rcog_trace_entry_t));
         if (!copy->entries) {
             nimcp_free(copy);
+            copy = NULL;
             nimcp_mutex_unlock(((rcog_orchestrator_t*)orch)->mutex);
             return RCOG_ERROR_OUT_OF_MEMORY;
         }
@@ -332,6 +333,7 @@ int rcog_orchestrator_get_topological_order(
     uint32_t* sorted_indices = nimcp_calloc(decomp->num_subtasks, sizeof(uint32_t));
     if (!sorted_indices) {
         nimcp_free(in_degrees);
+        in_degrees = NULL;
         return RCOG_ERROR_OUT_OF_MEMORY;
     }
 
@@ -354,7 +356,9 @@ int rcog_orchestrator_get_topological_order(
     }
 
     nimcp_free(sorted_indices);
+    sorted_indices = NULL;
     nimcp_free(in_degrees);
+    in_degrees = NULL;
 
     *num_order = sorted_count;
 

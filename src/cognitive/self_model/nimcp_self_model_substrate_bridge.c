@@ -134,6 +134,7 @@ void self_model_substrate_bridge_destroy(self_model_substrate_bridge_t* bridge) 
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_model_substrate_bridge_update(self_model_substrate_bridge_t* bridge) {

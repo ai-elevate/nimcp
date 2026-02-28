@@ -542,6 +542,7 @@ void financial_investor_archetype_destroy(financial_investor_archetype_t* arch) 
     if (!arch) return;
     fin_arch_heartbeat("destroy", 0.5f);
     nimcp_free(arch);
+    arch = NULL;
     fin_arch_heartbeat("destroy", 1.0f);
 }
 

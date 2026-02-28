@@ -225,6 +225,7 @@ vae_bbb_bridge_t* vae_bbb_bridge_create(const vae_bbb_bridge_config_t* config)
     if (!bridge->mutex) {
         NIMCP_LOG_ERROR("VAE-BBB Bridge: Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_bbb_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
@@ -258,6 +259,7 @@ void vae_bbb_bridge_destroy(vae_bbb_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_bbb_bridge_reset(vae_bbb_bridge_t* bridge)

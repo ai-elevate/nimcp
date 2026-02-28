@@ -94,6 +94,7 @@ void vae_visual_bridge_destroy(vae_visual_bridge_t* bridge) {
     if (bridge->gabor_buffer) nimcp_free(bridge->gabor_buffer);
     if (bridge->fft_buffer) nimcp_free(bridge->fft_buffer);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_visual_bridge_connect_vae(vae_visual_bridge_t* bridge, vae_system_t* vae) {
@@ -340,6 +341,7 @@ int vae_visual_generate(vae_visual_bridge_t* bridge,
 
     int ret = vae_visual_decode(bridge, latent, latent_dim, result);
     nimcp_free(latent);
+    latent = NULL;
     return ret;
 }
 

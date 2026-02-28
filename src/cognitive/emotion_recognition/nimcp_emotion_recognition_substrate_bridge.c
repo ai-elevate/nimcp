@@ -138,6 +138,7 @@ void emotion_recognition_substrate_bridge_destroy(emotion_recognition_substrate_
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int emotion_recognition_substrate_bridge_update(emotion_recognition_substrate_bridge_t* bridge) {

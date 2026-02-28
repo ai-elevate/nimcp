@@ -263,6 +263,7 @@ habituation_system_t* habituation_create(const habituation_config_t* config) {
     if (!system->mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Habituation: Failed to create mutex");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "habituation_create: system->mutex is NULL");
         return NULL;
     }
@@ -296,6 +297,7 @@ void habituation_destroy(habituation_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
     nimcp_log(LOG_LEVEL_DEBUG, "Habituation: Destroyed system");
 }
 

@@ -234,6 +234,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
     if (read_header(fp, &weights->header) != NIMCP_SUCCESS) {
         fclose(fp);
         nimcp_free(weights);
+        weights = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_weights_open: validation failed");
         return NULL;
     }
@@ -246,6 +247,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
     if (!weights->tensors) {
         fclose(fp);
         nimcp_free(weights);
+        weights = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_weights_open: weights->tensors is NULL");
         return NULL;
     }
@@ -316,6 +318,7 @@ void jepa_weights_close(jepa_weights_t* weights) {
     }
 
     nimcp_free(weights);
+    weights = NULL;
 }
 
 int jepa_weights_validate(const char* path, uint32_t expected_latent_dim) {

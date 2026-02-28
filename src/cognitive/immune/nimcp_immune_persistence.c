@@ -204,7 +204,7 @@ static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
 
     uint32_t checksum = 0xFFFFFFFF;
     uint8_t buffer[4096];
-    size_t bytes_read;
+    size_t bytes_read = 0;
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
         for (size_t i = 0; i < bytes_read; i++) {
@@ -969,7 +969,7 @@ int immune_persistence_create_backup(
 
     /* Copy data */
     char buffer[8192];
-    size_t bytes;
+    size_t bytes = 0;
     while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
         if (fwrite(buffer, 1, bytes, dst) != bytes) {
             fclose(src);

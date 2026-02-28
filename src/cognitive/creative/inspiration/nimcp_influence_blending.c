@@ -288,6 +288,7 @@ static int blend_adaptive(influence_blender_t* blender,
                                                          sizeof(creative_influence_t));
     if (!adj_influences) {
         nimcp_free(adjusted_weights);
+        adjusted_weights = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: adj_influences is NULL");
         return -1;
     }
@@ -301,7 +302,9 @@ static int blend_adaptive(influence_blender_t* blender,
     int result = blend_linear(adj_influences, num_influences, out);
 
     nimcp_free(adj_influences);
+    adj_influences = NULL;
     nimcp_free(adjusted_weights);
+    adjusted_weights = NULL;
 
     return result;
 }
@@ -336,6 +339,7 @@ influence_blender_t* influence_blender_create(
     if (!blender->current_influences) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate influences");
         nimcp_free(blender);
+        blender = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: blender->current_influences is NULL");
         return NULL;
     }
@@ -355,6 +359,7 @@ void influence_blender_destroy(influence_blender_t* blender) {
 
     nimcp_free(blender->current_influences);
     nimcp_free(blender);
+    blender = NULL;
 
     LOG_INFO(LOG_MODULE, "Influence blender destroyed");
 }
@@ -463,7 +468,7 @@ int influence_blender_add_archetype(influence_blender_t* blender,
         return -1;
     }
 
-    int result;
+    int result = 0;
     if (is_positive) {
         result = influence_blender_add(blender, &emb, weight, NULL, NULL);
     } else {
@@ -540,7 +545,7 @@ int influence_blender_blend_explicit(influence_blender_t* blender,
         mode = blender->config.default_mode;
     }
 
-    int blend_result;
+    int blend_result = 0;
 
     switch (mode) {
         case BLEND_MODE_LINEAR:
@@ -788,6 +793,7 @@ int influence_blender_optimize_weights(influence_blender_t* blender) {
         }
 
         nimcp_free(gradients);
+        gradients = NULL;
         (void)coherence;
     }
 
@@ -797,6 +803,7 @@ int influence_blender_optimize_weights(influence_blender_t* blender) {
     }
 
     nimcp_free(weights);
+    weights = NULL;
     style_embedding_destroy(&blend);
 
     return 0;

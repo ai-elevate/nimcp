@@ -186,6 +186,7 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_substrate_bridge_create: failed to allocate mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -193,6 +194,7 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_substrate_bridge_create: failed to initialize mutex");
         nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -237,6 +239,7 @@ void attention_substrate_bridge_destroy(attention_substrate_bridge_t* bridge)
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("Destroyed attention substrate bridge");
 }

@@ -50,6 +50,7 @@ static void free_comp_node(cs_comp_node_t* node) {
     }
 
     nimcp_free(node);
+    node = NULL;
 }
 
 static cs_comp_node_t* copy_comp_node(const cs_comp_node_t* src) {
@@ -531,6 +532,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
     cs->primitives = nimcp_calloc(cs->primitive_capacity, sizeof(cs_primitive_t));
     if (!cs->primitives) {
         nimcp_free(cs);
+        cs = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cs_create: cs->primitives is NULL");
         return NULL;
     }
@@ -543,6 +545,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
     if (!cs->compositions) {
         nimcp_free(cs->primitives);
         nimcp_free(cs);
+        cs = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cs_create: cs->compositions is NULL");
         return NULL;
     }
@@ -556,6 +559,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
         nimcp_free(cs->compositions);
         nimcp_free(cs->primitives);
         nimcp_free(cs);
+        cs = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cs_create: cs->rules is NULL");
         return NULL;
     }
@@ -653,6 +657,7 @@ void cs_destroy(nimcp_compositional_t* cs) {
     nimcp_free(cs->rules);
 
     nimcp_free(cs);
+    cs = NULL;
 }
 
 /*=============================================================================

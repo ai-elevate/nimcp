@@ -428,6 +428,7 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
     if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         LOG_ERROR(LOG_MODULE, "Failed to initialize mutex");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_system_create: validation failed");
         return NULL;
     }
@@ -577,6 +578,7 @@ void emotion_system_destroy(emotional_system_t* system) {
     LOG_DEBUG(LOG_MODULE, "Destroyed mutex");
 
     nimcp_free(system);
+    system = NULL;
 }
 
 //=============================================================================
@@ -987,7 +989,7 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
 
     // Fallback to classical regulation
     // Choose strategy based on state
-    uint32_t strategy;
+    uint32_t strategy = 0;
     if (system->state.valence < -0.5F && system->state.arousal > 0.7F) {
         strategy = 2;  // Distraction for severe negative high-arousal
     } else if (system->state.valence < 0.0F) {

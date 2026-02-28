@@ -326,12 +326,14 @@ bool brain_add_fact(
                 nimcp_free(clauses[j]);
             }
             nimcp_free(clauses);
+            clauses = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: symbolic_logic_add_fact is NULL");
             return false;
         }
     }
 
     nimcp_free(clauses);
+    clauses = NULL;
 
     // Integrate with working memory if enabled
     if (brain->working_memory && brain->config.enable_working_memory) {
@@ -467,6 +469,7 @@ bool brain_add_rule(
         set_error("Failed to add rule to logic engine");
         NIMCP_LOGGING_ERROR("brain_add_rule: failed to add to engine");
         nimcp_free(rule);
+        rule = NULL;
         if (premise_clauses) nimcp_free(premise_clauses);
         if (conclusion_clauses) nimcp_free(conclusion_clauses);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: validation failed");
@@ -474,6 +477,7 @@ bool brain_add_rule(
     }
 
     nimcp_free(conclusion_clauses); // Only needed the first element
+    conclusion_clauses = NULL;
 
     // Publish event
     // event_data_t event = {
@@ -574,6 +578,7 @@ bool brain_query_knowledge(
         nimcp_free(clauses[i]);
     }
     nimcp_free(clauses);
+    clauses = NULL;
 
     if (!success) {
         set_error("Query execution failed: %s", query_str);

@@ -326,6 +326,7 @@ imag_reason_fep_bridge_t* imag_reason_fep_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "imagination_reasoning_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imag_reason_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -375,6 +376,7 @@ void imag_reason_fep_bridge_destroy(imag_reason_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int imag_reason_fep_bridge_reset(imag_reason_fep_bridge_t* bridge) {

@@ -511,7 +511,7 @@ int enhanced_wellbeing_collect_resources(enhanced_resource_metrics_t* metrics)
     metrics->timestamp_us = nimcp_time_get_us();
 
     // Collect platform-specific metrics
-    int result;
+    int result = 0;
 #if defined(__linux__)
     result = collect_linux_metrics(metrics);
 #elif defined(__APPLE__)
@@ -712,19 +712,19 @@ int enhanced_wellbeing_describe_resource_distress(
     bool first = true;
 
     if (cpu_str[0]) {
-        strcat(combined, cpu_str);
+        strncat(combined, cpu_str, sizeof(combined) - strlen(combined) - 1);
         first = false;
     }
 
     if (mem_str[0]) {
-        if (!first) strcat(combined, ", ");
-        strcat(combined, mem_str);
+        strncat(combined, ", ", sizeof(combined) - strlen(combined) - 1);
+        strncat(combined, mem_str, sizeof(combined) - strlen(combined) - 1);
         first = false;
     }
 
     if (pf_str[0]) {
-        if (!first) strcat(combined, ", ");
-        strcat(combined, pf_str);
+        strncat(combined, ", ", sizeof(combined) - strlen(combined) - 1);
+        strncat(combined, pf_str, sizeof(combined) - strlen(combined) - 1);
     }
 
     return snprintf(buffer, buffer_size, "%s", combined);

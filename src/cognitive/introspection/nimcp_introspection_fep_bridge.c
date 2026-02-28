@@ -116,6 +116,7 @@ void introspection_fep_bridge_destroy(introspection_fep_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int introspection_fep_bridge_connect_fep(introspection_fep_bridge_t* bridge, fep_system_t* fep) {

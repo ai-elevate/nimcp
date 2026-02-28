@@ -237,6 +237,7 @@ void self_model_sleep_bridge_destroy(self_model_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_model_sleep_update(self_model_sleep_bridge_t bridge) {

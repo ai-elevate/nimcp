@@ -211,6 +211,7 @@ static episode_node_t* create_episode_node(void) {
 static void free_episode_node(episode_node_t* node) {
     if (node) {
         nimcp_free(node);
+        node = NULL;
     }
 }
 
@@ -308,6 +309,7 @@ financial_autobio_bridge_t* financial_autobio_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_AUTOBIO, "financial_autobio") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_autobio_bridge_create: validation failed");
         return NULL;
     }
@@ -352,6 +354,7 @@ void financial_autobio_bridge_destroy(financial_autobio_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int financial_autobio_bridge_reset(financial_autobio_bridge_t* bridge) {

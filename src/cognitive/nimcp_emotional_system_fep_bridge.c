@@ -111,6 +111,7 @@ emotional_system_fep_bridge_t* emotional_system_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_system_fep_create: bridge->base is NULL");
         return NULL;
     }
@@ -142,6 +143,7 @@ void emotional_system_fep_destroy(emotional_system_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed emotional system FEP bridge");
 }
 

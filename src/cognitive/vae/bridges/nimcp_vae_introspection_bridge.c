@@ -222,6 +222,7 @@ void vae_intro_bridge_destroy(vae_intro_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_intro_bridge_connect_vae(vae_intro_bridge_t* bridge, vae_system_t* vae) {
@@ -311,7 +312,7 @@ int vae_intro_sample_state(vae_intro_bridge_t* bridge,
     memset(state, 0, sizeof(*state));
 
     /* Determine sampling parameters based on strategy */
-    float sample_fraction;
+    float sample_fraction = 0.0f;
     switch (strategy) {
         case VAE_INTRO_STRATEGY_FAST:
             sample_fraction = 0.1f;
@@ -425,7 +426,7 @@ int vae_intro_encode_state(vae_intro_bridge_t* bridge,
 
     /* Flatten brain state to vector */
     uint32_t max_dim = 6 + VAE_INTRO_MAX_MODULES * 4 + VAE_INTRO_MAX_PATTERNS * 2;
-    uint32_t actual_dim;
+    uint32_t actual_dim = 0;
     flatten_brain_state(state, bridge->encode_buffer, max_dim, &actual_dim);
 
     /* Encode with VAE using tensor API */
@@ -568,12 +569,14 @@ int vae_intro_encode_modules(vae_intro_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(log_var_tensor);
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_INTRO_NO_MEMORY, "vae_introspection_bridge: error condition");
         return NIMCP_ERROR_VAE_INTRO_NO_MEMORY;
     }
 
     memcpy(TENSOR_DATA_F32(input_tensor), buffer, idx * sizeof(float));
     nimcp_free(buffer);
+    buffer = NULL;
 
     int ret = vae_encode(bridge->vae, input_tensor, mu_tensor, log_var_tensor);
 
@@ -685,6 +688,7 @@ int vae_intro_predict_next_state(vae_intro_bridge_t* bridge,
     }
 
     nimcp_free(velocity);
+    velocity = NULL;
 
     /* Decode final predicted state */
     float* final_latent = &result->latent_trajectory[(steps_ahead - 1) * latent_dim];

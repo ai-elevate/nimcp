@@ -317,6 +317,7 @@ float vae_latent_kl_with_free_bits(const nimcp_tensor_t* mu,
     }
 
     nimcp_free(kl_dims);
+    kl_dims = NULL;
 
     return total_kl;
 }
@@ -624,7 +625,7 @@ int vae_latent_interpolate_path(const nimcp_tensor_t* z1,
     for (uint32_t s = 0; s < num_steps; s++) {
         float alpha = (float)s / (float)(num_steps - 1);
 
-        int result;
+        int result = 0;
         if (use_slerp) {
             result = vae_latent_slerp(z1, z2, alpha, step_tensor);
         } else {
@@ -676,8 +677,11 @@ int vae_latent_state_init(vae_latent_state_t* state, uint32_t latent_dim) {
     state->latent_dim = latent_dim;
 
     state->mu = (float*)nimcp_calloc(latent_dim, sizeof(float));
+    if (!state->mu) return -1;
     state->log_var = (float*)nimcp_calloc(latent_dim, sizeof(float));
+    if (!state->log_var) return -1;
     state->z = (float*)nimcp_calloc(latent_dim, sizeof(float));
+    if (!state->z) return -1;
     state->precision = (float*)nimcp_calloc(latent_dim, sizeof(float));
 
     if (!state->mu || !state->log_var || !state->z || !state->precision) {
@@ -769,6 +773,7 @@ vae_latent_state_t* vae_latent_state_create(uint32_t latent_dim) {
 
     if (vae_latent_state_init(state, latent_dim) != 0) {
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "vae_latent_state_create: validation failed");
         return NULL;
     }
@@ -780,6 +785,7 @@ void vae_latent_state_destroy(vae_latent_state_t* state) {
     if (!state) return;
     vae_latent_state_free(state);
     nimcp_free(state);
+    state = NULL;
 }
 
 int vae_latent_state_copy(vae_latent_state_t* dst, const vae_latent_state_t* src) {

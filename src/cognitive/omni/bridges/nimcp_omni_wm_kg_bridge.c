@@ -714,6 +714,7 @@ omni_wm_kg_bridge_t* omni_wm_kg_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_KG_BRIDGE,
                          "wm_kg_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
@@ -731,6 +732,7 @@ omni_wm_kg_bridge_t* omni_wm_kg_bridge_create(
     if (err != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate effects arrays");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -767,6 +769,7 @@ void omni_wm_kg_bridge_destroy(omni_wm_kg_bridge_t* bridge) {
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM KG Bridge destroyed");
 }
@@ -1124,6 +1127,7 @@ nimcp_error_t omni_wm_kg_bridge_predict_relationship_strength(
     if (!bridge->config.enable_relationship_prediction) {
         *out_predicted_strength = 0.5f;
         *out_confidence = 0.0f;
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_SUCCESS;
     }
 

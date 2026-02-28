@@ -288,6 +288,7 @@ static int collective_query_handler(
             int ret = collective_cognition_get_state(bridge->collective, state);
             if (ret != 0) {
                 nimcp_free(state);
+                state = NULL;
                 result->status = -1;
                 strncpy(result->error_message, "Failed to get collective state",
                         sizeof(result->error_message) - 1);
@@ -321,6 +322,7 @@ static int collective_query_handler(
             int ret = collective_cognition_get_stats(bridge->collective, stats);
             if (ret != 0) {
                 nimcp_free(stats);
+                stats = NULL;
                 result->status = -1;
                 strncpy(result->error_message, "Failed to get collective stats",
                         sizeof(result->error_message) - 1);
@@ -415,6 +417,7 @@ collective_hub_bridge_t* collective_hub_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "collective_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_hub_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -455,6 +458,7 @@ void collective_hub_bridge_destroy(collective_hub_bridge_t* bridge) {
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

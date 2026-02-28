@@ -349,6 +349,7 @@ void music_generator_destroy(music_generator_t* gen) {
     }
 
     nimcp_free(gen);
+    gen = NULL;
 
     LOG_INFO(LOG_MODULE, "Music generator destroyed");
 }

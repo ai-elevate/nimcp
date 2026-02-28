@@ -159,6 +159,7 @@ void joy_substrate_bridge_destroy(joy_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int joy_substrate_bridge_update(joy_substrate_bridge_t* bridge) {

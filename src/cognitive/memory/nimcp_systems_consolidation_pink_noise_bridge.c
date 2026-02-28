@@ -202,12 +202,14 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_pink_noise_create: bridge->base is NULL");
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_pink_noise_create: validation failed");
         return NULL;
     }
@@ -235,6 +237,7 @@ void consolidation_pink_noise_destroy(consolidation_pink_noise_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed pink noise bridge");
 }
 

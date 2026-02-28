@@ -704,6 +704,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_HYPOTHALAMUS_BRIDGE,
                          "wm_hypothalamus_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
@@ -721,6 +722,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
     if (!bridge->hypo_to_wm.controller_outputs) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate controller outputs");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->hypo_to_wm is NULL");
         return NULL;
@@ -732,6 +734,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         nimcp_free(bridge->hypo_to_wm.controller_outputs);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate predicted state");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->wm_to_hypo is NULL");
         return NULL;
@@ -744,6 +747,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         nimcp_free(bridge->hypo_to_wm.controller_outputs);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate suggested setpoints");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->wm_to_hypo is NULL");
         return NULL;
@@ -756,6 +760,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         nimcp_free(bridge->hypo_to_wm.controller_outputs);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate last predicted state");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->last_predicted_state is NULL");
         return NULL;
@@ -788,6 +793,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
             nimcp_free(bridge->hypo_to_wm.controller_outputs);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_LOGGING_ERROR("Failed to allocate resource predictions");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
             return NULL;
@@ -854,6 +860,7 @@ void omni_wm_hypothalamus_bridge_destroy(omni_wm_hypothalamus_bridge_t* bridge) 
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM Hypothalamus Bridge destroyed");
 }
@@ -1369,6 +1376,7 @@ float omni_wm_hypothalamus_bridge_get_stress(
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_stress", 0.0f);
 
 
+    nimcp_mutex_unlock(bridge->base.mutex);
     return bridge->current_stress_smoothed;
 }
 
@@ -1380,6 +1388,7 @@ float omni_wm_hypothalamus_bridge_get_arousal(
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_arousal", 0.0f);
 
 
+    nimcp_mutex_unlock(bridge->base.mutex);
     return bridge->current_arousal_smoothed;
 }
 

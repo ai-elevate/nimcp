@@ -146,7 +146,7 @@ static bool is_critical_error(const char* error_type) {
  * @return Valence in [-1.0, 1.0]
  */
 static float compute_valence(const nimcp_recovery_episode_t* episode) {
-    float valence;
+    float valence = 0.0f;
 
     if (episode->success) {
         /* WHAT: Successful recovery → positive valence
@@ -323,7 +323,7 @@ static float compute_frustration(const nimcp_recovery_episode_t* episode) {
 
     /* WHAT: Scale frustration with retries
      * WHY:  More attempts → more frustration */
-    float frustration;
+    float frustration = 0.0f;
     if (episode->retry_count >= CRITICAL_RETRY_THRESHOLD) {
         frustration = 0.8F + (episode->retry_count - CRITICAL_RETRY_THRESHOLD) * 0.02F;
     } else if (episode->retry_count >= HIGH_RETRY_THRESHOLD) {
@@ -410,6 +410,7 @@ nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
     if (nimcp_mutex_init(&tagger->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize tagger mutex");
         nimcp_free(tagger);
+        tagger = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_emotional_tagger_create: validation failed");
         return NULL;
     }
@@ -460,6 +461,7 @@ void nimcp_emotional_tagger_destroy(nimcp_emotional_tagger_t* tagger) {
     }
 
     nimcp_free(tagger);
+    tagger = NULL;
 
     LOG_INFO("Emotional tagger destroyed");
 }

@@ -939,6 +939,7 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
         nimcp_mutex_destroy(&handle->lock);
         nimcp_cond_destroy(&handle->trigger_cond);
         nimcp_free(handle);
+        handle = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_start_background_consolidation: validation failed");
         return NULL;
     }
@@ -1030,6 +1031,7 @@ void brain_stop_background_consolidation(consolidation_handle_t handle)
 
     /* WHAT: Free handle */
     nimcp_free(handle);
+    handle = NULL;
 }
 
 /**
@@ -1186,6 +1188,7 @@ void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patter
         nimcp_free(patterns[i].pattern_name);
     }
     nimcp_free(patterns);
+    patterns = NULL;
 }
 
 /**
@@ -1571,6 +1574,7 @@ void consolidation_community_cache_destroy(consolidation_community_cache_t* cach
     nimcp_free(cache->hub_community_ids);
     nimcp_free(cache->hub_is_connector);
     nimcp_free(cache);
+    cache = NULL;
 }
 
 /**
@@ -1658,9 +1662,13 @@ bool consolidation_cache_communities(consolidation_community_cache_t* cache, bra
         cache->num_hubs = hubs->num_hubs;
 
         cache->hub_neuron_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
+        if (!cache->hub_neuron_ids) return -1;
         cache->hub_centralities = (float*)nimcp_calloc(hubs->num_hubs, sizeof(float));
+        if (!cache->hub_centralities) return -1;
         cache->hub_community_ids = (uint32_t*)nimcp_calloc(hubs->num_hubs, sizeof(uint32_t));
+        if (!cache->hub_community_ids) return -1;
         cache->hub_is_connector = (bool*)nimcp_calloc(hubs->num_hubs, sizeof(bool));
+        if (!cache->hub_is_connector) return -1;
 
         if (cache->hub_neuron_ids && cache->hub_centralities &&
             cache->hub_community_ids && cache->hub_is_connector) {

@@ -290,6 +290,7 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
     if (!bridge->snn) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create SNN network");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_snn_create: bridge->snn is NULL");
         return NULL;
     }
@@ -324,6 +325,7 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to initialize bridge base");
         snn_network_destroy(bridge->snn);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_snn_create: validation failed");
         return NULL;
     }
@@ -381,6 +383,7 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "mirror_snn") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_snn_create_with_network: validation failed");
         return NULL;
     }
@@ -423,6 +426,7 @@ void mirror_snn_destroy(mirror_snn_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOG_INFO(LOG_MODULE, "Destroyed mirror-SNN bridge");
 }
 

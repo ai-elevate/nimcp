@@ -219,6 +219,7 @@ void attention_immune_bridge_destroy(attention_immune_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================
@@ -497,7 +498,7 @@ int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* br
         bridge->mindful_boosts++;
 
         /* Actually release IL-10 via immune system */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
             CYTOKINE_IL10,

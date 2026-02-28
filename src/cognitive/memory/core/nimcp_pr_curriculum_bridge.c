@@ -617,6 +617,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
     if (config) {
         if (!pr_curriculum_config_validate(config)) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_create: pr_curriculum_config_validate is NULL");
             return NULL;
         }
@@ -628,6 +629,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_curriculum") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_curriculum_bridge_create: validation failed");
         return NULL;
     }
@@ -640,6 +642,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (!bridge->difficulty_cache) {
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_bridge_create: bridge->difficulty_cache is NULL");
             return NULL;
         }
@@ -654,6 +657,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_bridge_create: validation failed");
         return NULL;
     }
@@ -670,6 +674,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
             if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_bridge_create: validation failed");
             return NULL;
         }
@@ -708,6 +713,7 @@ void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_curriculum_bridge_reset(pr_curriculum_bridge_t bridge) {
@@ -1040,6 +1046,7 @@ int pr_curriculum_order_by_resonance(
     pr_curriculum_sample_t* temp = nimcp_calloc(count, sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
+        scores = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_resonance: temp is NULL");
         return -1;
     }
@@ -1056,7 +1063,9 @@ int pr_curriculum_order_by_resonance(
     }
 
     nimcp_free(temp);
+    temp = NULL;
     nimcp_free(scores);
+    scores = NULL;
 
     return 0;
 }
@@ -1122,6 +1131,7 @@ int pr_curriculum_order_by_difficulty(
     pr_curriculum_sample_t* temp = nimcp_calloc(count, sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
+        scores = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_difficulty: temp is NULL");
         return -1;
     }
@@ -1138,7 +1148,9 @@ int pr_curriculum_order_by_difficulty(
     }
 
     nimcp_free(temp);
+    temp = NULL;
     nimcp_free(scores);
+    scores = NULL;
 
     return 0;
 }
@@ -1199,6 +1211,7 @@ int pr_curriculum_order_by_curiosity(
     pr_curriculum_sample_t* temp = nimcp_calloc(count, sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
+        scores = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_curiosity: temp is NULL");
         return -1;
     }
@@ -1215,7 +1228,9 @@ int pr_curriculum_order_by_curiosity(
     }
 
     nimcp_free(temp);
+    temp = NULL;
     nimcp_free(scores);
+    scores = NULL;
 
     return 0;
 }
@@ -1380,6 +1395,7 @@ int pr_curriculum_select_next_batch(
     }
 
     nimcp_free(scores);
+    scores = NULL;
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
@@ -1607,6 +1623,7 @@ int pr_curriculum_select_most_curious(
     *selected_count = k;
 
     nimcp_free(scores);
+    scores = NULL;
     return 0;
 }
 
@@ -2102,7 +2119,7 @@ int pr_curriculum_get_events(
     uint32_t to_copy = (max_events < bridge->event_count) ? max_events : bridge->event_count;
 
     if (to_copy > 0 && bridge->events) {
-        uint32_t start_idx;
+        uint32_t start_idx = 0;
         if (bridge->event_count < bridge->event_capacity) {
             start_idx = 0;
         } else {

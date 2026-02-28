@@ -96,6 +96,7 @@ NIMCP_API void energy_thermo_bridge_destroy(energy_thermo_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "energy_consistency_thermo");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_API nimcp_error_t energy_thermo_bridge_track_reasoning_cost(

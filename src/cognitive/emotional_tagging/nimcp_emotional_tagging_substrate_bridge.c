@@ -93,6 +93,7 @@ void emotional_tagging_substrate_bridge_destroy(emotional_tagging_substrate_brid
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int emotional_tagging_substrate_bridge_update(emotional_tagging_substrate_bridge_t* bridge) {

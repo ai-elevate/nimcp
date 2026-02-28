@@ -378,6 +378,7 @@ mirror_visual_bridge_t* mirror_visual_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_VISUAL_BRIDGE, "mirror_visual_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_visual_bridge_create: validation failed");
         return NULL;
@@ -395,6 +396,7 @@ mirror_visual_bridge_t* mirror_visual_bridge_create(
     if (!bridge->visual_features_buffer) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate visual features buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_visual_bridge_create: bridge->visual_features_buffer is NULL");
         return NULL;
@@ -430,6 +432,7 @@ void mirror_visual_bridge_destroy(mirror_visual_bridge_t* bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mirror_visual_bridge_reset(mirror_visual_bridge_t* bridge) {

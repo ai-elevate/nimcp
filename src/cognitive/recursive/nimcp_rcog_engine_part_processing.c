@@ -221,6 +221,7 @@ int rcog_engine_process_ex(
                     nimcp_mutex_unlock(engine->mutex);
 
                     nimcp_free(batch_results);
+                    batch_results = NULL;
                 }
             }
         }

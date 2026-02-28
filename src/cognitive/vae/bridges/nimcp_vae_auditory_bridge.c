@@ -76,8 +76,11 @@ vae_audio_bridge_t* vae_audio_bridge_create(const vae_audio_bridge_config_t* con
     else vae_audio_bridge_default_config(&bridge->config);
 
     bridge->fft_buffer = (float*)nimcp_calloc(bridge->config.fft_size, sizeof(float));
+    if (!bridge->fft_buffer) return -1;
     bridge->mel_buffer = (float*)nimcp_calloc(bridge->config.mel_bins, sizeof(float));
+    if (!bridge->mel_buffer) return -1;
     bridge->mfcc_buffer = (float*)nimcp_calloc(bridge->config.mfcc_coeffs, sizeof(float));
+    if (!bridge->mfcc_buffer) return -1;
     bridge->window = (float*)nimcp_calloc(bridge->config.fft_size, sizeof(float));
 
     if (bridge->window) {
@@ -100,6 +103,7 @@ void vae_audio_bridge_destroy(vae_audio_bridge_t* bridge) {
     if (bridge->window) nimcp_free(bridge->window);
     if (bridge->novelty_baseline) nimcp_free(bridge->novelty_baseline);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_audio_bridge_connect_vae(vae_audio_bridge_t* bridge, vae_system_t* vae) {
@@ -172,6 +176,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
         if (mu_tensor) nimcp_tensor_destroy(mu_tensor);
         if (logvar_tensor) nimcp_tensor_destroy(logvar_tensor);
         nimcp_free(features);
+        features = NULL;
         bridge->state = VAE_AUDIO_STATE_ERROR;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_NO_MEMORY, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
@@ -186,6 +191,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
         nimcp_tensor_destroy(mu_tensor);
         nimcp_tensor_destroy(logvar_tensor);
         nimcp_free(features);
+        features = NULL;
         bridge->state = VAE_AUDIO_STATE_ERROR;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_AUDIO_ENCODE_FAILED, "vae_auditory_bridge: error condition");
         return NIMCP_ERROR_VAE_AUDIO_ENCODE_FAILED;
@@ -194,6 +200,7 @@ int vae_audio_encode(vae_audio_bridge_t* bridge,
     float* mu_data = (float*)nimcp_tensor_data(mu_tensor);
 
     result->latent = (float*)nimcp_calloc(latent_dim, sizeof(float));
+    if (!result->latent) return -1;
     result->features = features;
     result->feature_dim = feature_dim;
     result->latent_dim = latent_dim;
@@ -342,6 +349,7 @@ int vae_audio_generate(vae_audio_bridge_t* bridge,
 
     int ret = vae_audio_decode(bridge, latent, latent_dim, result);
     nimcp_free(latent);
+    latent = NULL;
     return ret;
 }
 
@@ -377,7 +385,7 @@ int vae_audio_compute_mfcc(vae_audio_bridge_t* bridge,
     float* mel = (float*)nimcp_calloc(bridge->config.mel_bins, sizeof(float));
     if (!mel) return NIMCP_ERROR_VAE_AUDIO_NO_MEMORY;
 
-    uint32_t mel_dim;
+    uint32_t mel_dim = 0;
     vae_audio_compute_mel(bridge, audio, num_samples, mel, &mel_dim);
 
     for (uint32_t k = 0; k < *mfcc_dim; k++) {
@@ -390,6 +398,7 @@ int vae_audio_compute_mfcc(vae_audio_bridge_t* bridge,
     }
 
     nimcp_free(mel);
+    mel = NULL;
     return 0;
 }
 

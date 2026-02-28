@@ -186,6 +186,7 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
     if (!eq->lock) {
         set_equation_error("Failed to create mutex");
         nimcp_free(eq);
+        eq = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "equation_engine_create_custom: eq->lock is NULL");
         return NULL;
     }
@@ -205,6 +206,7 @@ void equation_engine_destroy(equation_engine_t* eq) {
     }
 
     nimcp_free(eq);
+    eq = NULL;
 }
 
 /* ============================================================================
@@ -352,6 +354,7 @@ void equation_free_expr(expr_node_t* node) {
     equation_free_expr(node->left);
     equation_free_expr(node->right);
     nimcp_free(node);
+    node = NULL;
 }
 
 expr_node_t* equation_copy_expr(equation_engine_t* eq, const expr_node_t* node) {
@@ -712,6 +715,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                 expr_node_t* r = result->right;
                 equation_free_expr(result->left);
                 nimcp_free(result);
+                result = NULL;
                 result = r;
                 changed = true;
             } else if (result->right->type == EXPR_CONSTANT &&
@@ -720,6 +724,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                 expr_node_t* l = result->left;
                 equation_free_expr(result->right);
                 nimcp_free(result);
+                result = NULL;
                 result = l;
                 changed = true;
             }
@@ -740,6 +745,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                     expr_node_t* r = result->right;
                     equation_free_expr(result->left);
                     nimcp_free(result);
+                    result = NULL;
                     result = r;
                     changed = true;
                 }
@@ -757,6 +763,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                     expr_node_t* l = result->left;
                     equation_free_expr(result->right);
                     nimcp_free(result);
+                    result = NULL;
                     result = l;
                     changed = true;
                 }
@@ -778,6 +785,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
                     expr_node_t* l = result->left;
                     equation_free_expr(result->right);
                     nimcp_free(result);
+                    result = NULL;
                     result = l;
                     changed = true;
                 }

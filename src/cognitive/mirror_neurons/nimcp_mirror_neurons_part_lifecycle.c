@@ -107,6 +107,7 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
     mapping->num_neurons = 0;
     mapping->capacity = 10;  // Initial capacity
     mapping->neuron_indices = (uint32_t*)nimcp_calloc(mapping->capacity, sizeof(uint32_t));
+    if (!mapping->neuron_indices) return -1;
     mapping->total_observations = 0;
     mapping->total_executions = 0;
     mapping->avg_similarity = 0.0F;
@@ -203,6 +204,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     if (mirror->config.num_mirror_neurons == 0 || mirror->config.max_actions == 0) {
         MIRROR_LOG_ERROR("Mirror neurons: invalid configuration");
         nimcp_free(mirror);
+        mirror = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_create: mirror->config.num_mirror_neurons is zero");
         return NULL;
     }
@@ -215,6 +217,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     if (!mirror->neurons) {
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate neurons");
         nimcp_free(mirror);
+        mirror = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror->neurons is NULL");
         return NULL;
     }
@@ -230,6 +233,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate actions");
         nimcp_free(mirror->neurons);
         nimcp_free(mirror);
+        mirror = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror->actions is NULL");
         return NULL;
     }
@@ -245,6 +249,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         nimcp_free(mirror->actions);
         nimcp_free(mirror->neurons);
         nimcp_free(mirror);
+        mirror = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror->agents is NULL");
         return NULL;
     }
@@ -259,6 +264,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
             nimcp_free(mirror->actions);
             nimcp_free(mirror->neurons);
             nimcp_free(mirror);
+            mirror = NULL;
             return NULL;
         }
     }
@@ -406,4 +412,5 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
 
     MIRROR_LOG_INFO("Mirror neurons: system destroyed");
     nimcp_free(mirror);
+    mirror = NULL;
 }

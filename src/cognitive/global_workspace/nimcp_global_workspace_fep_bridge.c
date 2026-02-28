@@ -260,6 +260,7 @@ void global_workspace_fep_bridge_destroy(global_workspace_fep_bridge_t* bridge) 
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Global workspace FEP bridge destroyed");
 }
 
@@ -528,7 +529,7 @@ int global_workspace_fep_update_priors_from_broadcast(
 
 
     float broadcast_content[256];
-    uint32_t broadcast_dim;
+    uint32_t broadcast_dim = 0;
     cognitive_module_t source;
 
     bool has_broadcast = global_workspace_read_broadcast(

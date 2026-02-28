@@ -98,6 +98,7 @@ void civil_eng_destroy(civil_eng_t* ce) {
 
     if (ce) {
         nimcp_free(ce);
+        ce = NULL;
     }
 }
 

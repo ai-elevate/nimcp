@@ -218,6 +218,7 @@ introspection_snn_bridge_t* introspection_snn_create(const introspection_snn_con
         bridge->config.num_dimensions > INTROSPECTION_SNN_MAX_DIMENSIONS) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_create: invalid num_dimensions");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -225,6 +226,7 @@ introspection_snn_bridge_t* introspection_snn_create(const introspection_snn_con
     if (bridge_base_init(&bridge->base, 0, "introspection_snn") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_snn_create: bridge_base_init failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -243,14 +245,19 @@ introspection_snn_bridge_t* introspection_snn_create(const introspection_snn_con
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_snn_create: failed to create SNN");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    if (!bridge->encoding_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->insight_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->insight_buffer) return -1;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) return -1;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->insight_buffer || !bridge->prev_state) {
@@ -317,6 +324,7 @@ void introspection_snn_destroy(introspection_snn_bridge_t* bridge) {
     nimcp_free(bridge->insight_buffer);
     nimcp_free(bridge->prev_state);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int introspection_snn_reset(introspection_snn_bridge_t* bridge) {

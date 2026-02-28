@@ -338,6 +338,7 @@ recovery_consolidation_t* consolidation_create_custom(
     if (!cons->episodes) {
         LOG_ERROR("Failed to allocate episode buffer");
         nimcp_free(cons);
+        cons = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons->episodes is NULL");
         return NULL;
     }
@@ -351,6 +352,7 @@ recovery_consolidation_t* consolidation_create_custom(
         LOG_ERROR("Failed to allocate pattern storage");
         nimcp_free(cons->episodes);
         nimcp_free(cons);
+        cons = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons->patterns is NULL");
         return NULL;
     }
@@ -365,6 +367,7 @@ recovery_consolidation_t* consolidation_create_custom(
         nimcp_free(cons->patterns);
         nimcp_free(cons->episodes);
         nimcp_free(cons);
+        cons = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons->rules is NULL");
         return NULL;
     }
@@ -376,6 +379,7 @@ recovery_consolidation_t* consolidation_create_custom(
         nimcp_free(cons->patterns);
         nimcp_free(cons->episodes);
         nimcp_free(cons);
+        cons = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_create_custom: validation failed");
         return NULL;
     }
@@ -440,6 +444,7 @@ void recovery_consolidation_destroy(recovery_consolidation_t* consolidation) {
     }
 
     nimcp_free(consolidation);
+    consolidation = NULL;
 
     LOG_INFO("Consolidation destroyed");
 }

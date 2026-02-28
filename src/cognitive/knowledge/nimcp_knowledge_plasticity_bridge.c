@@ -171,6 +171,7 @@ knowledge_plasticity_bridge_t* knowledge_plasticity_create(
     if (bridge_base_init(&bridge->base, 0, "knowledge_plasticity") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_plasticity_create: bridge_base_init failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -181,6 +182,7 @@ knowledge_plasticity_bridge_t* knowledge_plasticity_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_plasticity_create: failed to allocate synapses");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -216,6 +218,7 @@ void knowledge_plasticity_destroy(knowledge_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int knowledge_plasticity_reset(knowledge_plasticity_bridge_t* bridge) {
@@ -925,6 +928,7 @@ int knowledge_plasticity_get_state(
             state->mean_weight = nimcp_stats_mean(weights, bridge->synapse_count);
             state->weight_variance = nimcp_stats_variance_population(weights, bridge->synapse_count);
             nimcp_free(weights);
+            weights = NULL;
         } else {
             state->mean_weight = 0.0f;
             state->weight_variance = 0.0f;

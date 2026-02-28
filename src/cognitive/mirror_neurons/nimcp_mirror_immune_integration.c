@@ -149,11 +149,13 @@ mirror_immune_integration_t* mirror_immune_create(
     integration->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!integration->mutex) {
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_immune_create: integration->mutex is NULL");
         return NULL;
     }
     if (nimcp_mutex_init(integration->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_immune_create: validation failed");
         return NULL;
     }
@@ -189,6 +191,7 @@ void mirror_immune_destroy(mirror_immune_integration_t* integration) {
     }
 
     nimcp_free(integration);
+    integration = NULL;
     NIMCP_LOGGING_INFO("Mirror-immune integration destroyed");
 }
 
@@ -458,7 +461,7 @@ int mirror_immune_trigger_isolation_response(
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_trigge", 0.0f);
 
 
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     int result = brain_immune_release_cytokine(
         integration->immune_system,
         CYTOKINE_IL6,
@@ -499,7 +502,7 @@ int mirror_immune_trigger_rejection_response(
 
     /* Release IL-6 for stress response */
     float stress_level = integration->config.rejection_inflammation_gain;
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     int result = brain_immune_release_cytokine(
         integration->immune_system,
         CYTOKINE_IL6,
@@ -537,7 +540,7 @@ int mirror_immune_release_social_success_il10(
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_releas", 0.0f);
 
 
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     int result = brain_immune_release_cytokine(
         integration->immune_system,
         CYTOKINE_IL10,

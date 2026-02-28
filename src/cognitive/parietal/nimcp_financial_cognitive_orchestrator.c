@@ -353,6 +353,7 @@ void financial_cognitive_orchestrator_destroy(
 
     orch->magic = 0;
     nimcp_free(orch);
+    orch = NULL;
 
     fin_orch_heartbeat_global("orchestrator_destroy", 1.0f);
 }

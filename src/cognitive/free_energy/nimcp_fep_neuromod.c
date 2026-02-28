@@ -116,6 +116,7 @@ fep_neuromod_system_t* fep_neuromod_create(const fep_neuromod_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_neuromod_create: sys->mutex is NULL");
         return NULL;
     }
@@ -144,6 +145,7 @@ void fep_neuromod_destroy(fep_neuromod_system_t* sys) {
     }
 
     nimcp_free(sys);
+    sys = NULL;
     NIMCP_LOGGING_INFO("Neuromod system destroyed");
 }
 

@@ -382,9 +382,13 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
     bridge->buffer_capacity = cfg.population_size;
 
     bridge->rate_buffer = (float*)nimcp_calloc(bridge->buffer_capacity, sizeof(float));
+    if (!bridge->rate_buffer) return -1;
     bridge->latency_buffer = (float*)nimcp_calloc(bridge->buffer_capacity, sizeof(float));
+    if (!bridge->latency_buffer) return -1;
     bridge->active_mask = (uint8_t*)nimcp_calloc(bridge->buffer_capacity, sizeof(uint8_t));
+    if (!bridge->active_mask) return -1;
     bridge->isi_buffer = (float*)nimcp_calloc(PR_SNN_MAX_SPIKES_PER_PATTERN, sizeof(float));
+    if (!bridge->isi_buffer) return -1;
 
     if (!bridge->rate_buffer || !bridge->latency_buffer ||
         !bridge->active_mask || !bridge->isi_buffer) {
@@ -428,6 +432,7 @@ NIMCP_EXPORT void pr_snn_bridge_destroy(pr_snn_bridge_t bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT pr_snn_error_t pr_snn_bridge_reset(pr_snn_bridge_t bridge) {
@@ -542,6 +547,7 @@ NIMCP_EXPORT void pr_spike_pattern_destroy(pr_spike_pattern_t* pattern) {
     nimcp_free(pattern->spike_times);
     nimcp_free(pattern->neuron_ids);
     nimcp_free(pattern);
+    pattern = NULL;
 }
 
 NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_copy(const pr_spike_pattern_t* pattern) {
@@ -716,6 +722,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_sort(pr_spike_pattern_t* pattern) {
     }
 
     nimcp_free(entries);
+    entries = NULL;
     return PR_SNN_SUCCESS;
 }
 
@@ -1774,6 +1781,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
 
     if (isi_count == 0) {
         nimcp_free(isis);
+        isis = NULL;
         return PR_SNN_SUCCESS;
     }
 
@@ -1813,6 +1821,7 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
                     stats->std_isi_ms / stats->mean_isi_ms : 0.0f;
 
     nimcp_free(isis);
+    isis = NULL;
     return PR_SNN_SUCCESS;
 }
 
@@ -2565,6 +2574,7 @@ NIMCP_EXPORT void pr_snn_component_patterns_destroy(pr_snn_component_patterns_t*
     pr_spike_pattern_destroy(patterns->combined);
 
     nimcp_free(patterns);
+    patterns = NULL;
 }
 
 NIMCP_EXPORT uint64_t pr_snn_current_time_us(void) {

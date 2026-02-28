@@ -448,6 +448,7 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
             cfg.history_buffer_size, sizeof(pr_hypo_history_entry_t));
         if (!bridge->history) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_hypo_bridge_create: bridge->history is NULL");
             return NULL;
         }
@@ -509,6 +510,7 @@ NIMCP_EXPORT void pr_hypo_bridge_destroy(pr_hypo_bridge_t bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_reset(pr_hypo_bridge_t bridge) {
@@ -576,7 +578,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_set_neuromod(
     concentration = nimcp_myelin_clamp(concentration, PR_HYPO_MIN_CONCENTRATION,
                             PR_HYPO_MAX_CONCENTRATION);
 
-    float old_level;
+    float old_level = 0.0f;
 
     PR_HYPO_MUTEX_LOCK(bridge->neuromod_mutex);
     old_level = bridge->neuromod_states[type].concentration;
@@ -1451,7 +1453,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_get_history(
 
     /* Copy from circular buffer in chronological order */
     if (to_copy > 0) {
-        size_t start_idx;
+        size_t start_idx = 0;
         if (bridge->history_size < bridge->history_capacity) {
             start_idx = 0;
         } else {

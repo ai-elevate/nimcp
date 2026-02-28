@@ -282,6 +282,7 @@ static scheduled_intention_t* scheduled_intention_create(prospective_intention_t
 static void scheduled_intention_destroy(scheduled_intention_t* scheduled) {
     if (scheduled) {
         nimcp_free(scheduled);
+        scheduled = NULL;
     }
 }
 
@@ -549,6 +550,7 @@ prospective_scheduler_t* prospective_scheduler_create(
         cfg.max_intentions, sizeof(priority_heap_node_t));
     if (!scheduler->heap) {
         nimcp_free(scheduler);
+        scheduler = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_scheduler_create: scheduler->heap is NULL");
         return NULL;
     }
@@ -560,6 +562,7 @@ prospective_scheduler_t* prospective_scheduler_create(
     if (!scheduler->time_ordered) {
         nimcp_free(scheduler->heap);
         nimcp_free(scheduler);
+        scheduler = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_scheduler_create: scheduler->time_ordered is NULL");
         return NULL;
     }
@@ -571,6 +574,7 @@ prospective_scheduler_t* prospective_scheduler_create(
         nimcp_free(scheduler->time_ordered);
         nimcp_free(scheduler->heap);
         nimcp_free(scheduler);
+        scheduler = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_create: scheduler->all_intentions is NULL");
         return NULL;
     }
@@ -583,6 +587,7 @@ prospective_scheduler_t* prospective_scheduler_create(
         nimcp_free(scheduler->time_ordered);
         nimcp_free(scheduler->heap);
         nimcp_free(scheduler);
+        scheduler = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_create: scheduler->conflict_groups is NULL");
         return NULL;
     }
@@ -664,6 +669,7 @@ void prospective_scheduler_destroy(prospective_scheduler_t* scheduler) {
     }
 
     nimcp_free(scheduler);
+    scheduler = NULL;
 }
 
 pr_sched_error_t prospective_scheduler_reset(prospective_scheduler_t* scheduler) {
@@ -789,6 +795,7 @@ void prospective_intention_destroy(prospective_intention_t* intention) {
 
 
     nimcp_free(intention);
+    intention = NULL;
 }
 
 pr_sched_error_t prospective_intention_set_time_window(

@@ -478,6 +478,7 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "imagination_reasoning") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imagination_reasoning_bridge_create: validation failed");
         return NULL;
     }
@@ -490,6 +491,7 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
     if (!bridge->active_scenarios) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_reasoning_bridge_create: bridge->active_scenarios is NULL");
         return NULL;
     }
@@ -547,6 +549,7 @@ void imagination_reasoning_bridge_destroy(imagination_reasoning_bridge_t* bridge
     bridge->initialized = false;
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

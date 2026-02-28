@@ -114,6 +114,7 @@ void salience_substrate_bridge_destroy(salience_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int salience_substrate_bridge_update(salience_substrate_bridge_t* bridge) {

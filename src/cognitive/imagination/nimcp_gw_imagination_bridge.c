@@ -170,11 +170,13 @@ gw_imagination_bridge_t* gw_imagination_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "gw_imagination") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "gw_imagination_bridge_create: failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "gw_imagination_bridge_create: mutex is NULL after init");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -184,6 +186,7 @@ gw_imagination_bridge_t* gw_imagination_bridge_create(
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_bridge_create: invalid configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             return NULL;
         }
         bridge->config = *config;
@@ -245,6 +248,7 @@ void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed GW-imagination bridge");
 }
 

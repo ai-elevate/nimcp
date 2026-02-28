@@ -462,7 +462,7 @@ int brain_immune_broadcast_inflammation_state(
 
     /* Also release pro-inflammatory cytokine */
     if (res == NIMCP_SUCCESS && system->config.enable_bio_async) {
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_cytokine_type_t type = (site->level >= INFLAMMATION_SYSTEMIC)
             ? CYTOKINE_TNFA : CYTOKINE_IL6;
 
@@ -609,7 +609,7 @@ int brain_immune_propagate_secondary_response(
     brain_immune_broadcast_alert(system, antigen_id, INFLAMMATION_REGIONAL);
 
     /* Release coordinating cytokines */
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     brain_immune_release_cytokine(
         system, BRAIN_CYTOKINE_IFN_GAMMA,
         memory_b_cell_id,
@@ -735,7 +735,7 @@ int brain_immune_present_bbb_threat(
     brain_immune_heartbeat("brain_immune_present_bbb_threat", 0.0f);
 
 
-    uint32_t immune_severity;
+    uint32_t immune_severity = 0;
     switch (severity) {
         case BBB_SEVERITY_LOW:      immune_severity = 3; break;
         case BBB_SEVERITY_MEDIUM:   immune_severity = 5; break;
@@ -829,7 +829,7 @@ int brain_immune_present_swarm_threat(
     brain_immune_heartbeat("brain_immune_present_swarm_threat", 0.0f);
 
 
-    uint32_t severity;
+    uint32_t severity = 0;
     switch (threat->severity) {
         case SWARM_SEVERITY_LOW:      severity = 3; break;
         case SWARM_SEVERITY_MEDIUM:   severity = 5; break;
@@ -1021,7 +1021,7 @@ int brain_immune_activate_helper_t(
     nimcp_mutex_unlock(system->mutex);
 
     /* Helper T cells release cytokines on activation */
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     brain_immune_release_cytokine(system, CYTOKINE_IL6, t_cell->id,
                                    t_cell->activation_level, 0, &cytokine_id);
 
@@ -1506,7 +1506,7 @@ int brain_immune_broadcast_alert(
     if (cont_level <= 0.0f) return 0;  /* NONE: nothing to broadcast */
 
     brain_cytokine_type_t type;
-    float concentration;
+    float concentration = 0.0f;
 
     /* Cytokine type transitions smoothly based on continuous level */
     if (cont_level < 0.30f) {
@@ -1520,7 +1520,7 @@ int brain_immune_broadcast_alert(
     /* Concentration scales linearly with continuous level */
     concentration = 0.2f + 0.7f * cont_level;  /* range [0.2, 0.9] */
 
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     return brain_immune_release_cytokine(system, type, 0, concentration, 0, &cytokine_id);
 }
 
@@ -1607,7 +1607,7 @@ int brain_immune_resolve_inflammation(brain_immune_system_t* system, uint32_t si
     nimcp_mutex_unlock(system->mutex);
 
     /* Release anti-inflammatory cytokine */
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     brain_immune_release_cytokine(system, CYTOKINE_IL10, 0, 0.5f,
                                    site->region_id, &cytokine_id);
 
@@ -1747,7 +1747,7 @@ int brain_immune_secondary_response(
     nimcp_mutex_unlock(system->mutex);
 
     /* Immediately produce antibodies */
-    uint32_t antibody_id;
+    uint32_t antibody_id = 0;
     brain_immune_produce_antibody(system, memory_b_cell_id, ANTIBODY_IGG, &antibody_id);
     brain_immune_execute_antibody(system, antibody_id);
 
@@ -2008,7 +2008,7 @@ int brain_immune_notify_recovery_result(
 
             /* Release anti-inflammatory cytokine on success */
             nimcp_mutex_unlock(system->mutex);
-            uint32_t cytokine_id;
+            uint32_t cytokine_id = 0;
             brain_immune_release_cytokine(system, BRAIN_CYTOKINE_IL10, 0, 0.5f, 0, &cytokine_id);
         } else {
             nimcp_mutex_unlock(system->mutex);

@@ -178,6 +178,7 @@ wm_transfer_system_t* wm_transfer_create(void) {
         LOG_ERROR("Failed to allocate attention weights");
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_transfer_create: validation failed");
         return NULL;
     }
@@ -292,6 +293,7 @@ void wm_transfer_destroy(wm_transfer_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /**

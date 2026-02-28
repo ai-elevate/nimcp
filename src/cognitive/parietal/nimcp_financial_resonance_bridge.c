@@ -352,6 +352,7 @@ financial_resonance_bridge_t* financial_resonance_bridge_create(
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate pattern storage");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     memset(bridge->patterns, 0, bridge->pattern_capacity * sizeof(fin_resonance_pattern_t));
@@ -379,6 +380,7 @@ void financial_resonance_bridge_destroy(financial_resonance_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_resonance_heartbeat("financial_resonance_bridge_destroy", 1.0f);
 }
@@ -823,6 +825,7 @@ int financial_resonance_bridge_find_similar(
     }
 
     nimcp_free(scores);
+    scores = NULL;
 
     bridge->stats.patterns_retrieved += *out_count;
     bridge->state = FIN_RESONANCE_STATE_IDLE;

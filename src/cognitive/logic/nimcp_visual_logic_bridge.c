@@ -192,6 +192,7 @@ void visual_logic_bridge_destroy(visual_logic_bridge_t* bridge) {
 
     if (bridge) {
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

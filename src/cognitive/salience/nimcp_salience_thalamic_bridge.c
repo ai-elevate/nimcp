@@ -78,6 +78,7 @@ salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thal
     if (bridge_base_init(&bridge->base, 0, "salience_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -101,6 +102,7 @@ void salience_thalamic_bridge_destroy(salience_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int salience_thalamic_bridge_reset(salience_thalamic_bridge_t* bridge) {

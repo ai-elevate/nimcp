@@ -466,6 +466,7 @@ cognitive_meta_controller_t* meta_controller_create(
     if (!controller->requests) {
         NIMCP_LOGGING_ERROR("Failed to allocate request queue");
         nimcp_free(controller);
+        controller = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_controller_default_config: controller->requests is NULL");
         return NULL;
     }
@@ -487,6 +488,7 @@ cognitive_meta_controller_t* meta_controller_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(controller->requests);
         nimcp_free(controller);
+        controller = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_controller_default_config: controller->mutex is NULL");
         return NULL;
     }
@@ -536,6 +538,7 @@ void meta_controller_destroy(cognitive_meta_controller_t* controller) {
 
     /* Free controller */
     nimcp_free(controller);
+    controller = NULL;
 }
 
 int meta_controller_start(cognitive_meta_controller_t* controller) {

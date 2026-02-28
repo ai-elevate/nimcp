@@ -435,6 +435,7 @@ numerical_language_t* numerical_language_create_custom(const numerical_language_
 void numerical_language_destroy(numerical_language_t* nl) {
     if (nl) {
         nimcp_free(nl);
+        nl = NULL;
     }
 }
 
@@ -460,7 +461,7 @@ int numerical_language_parse_word(
     const char* p = word;
     float total = 0.0f;
     float current_group = 0.0f;  /* Current magnitude group (e.g., 123 of "123 thousand") */
-    size_t len;
+    size_t len = 0;
 
     p = skip_separators(p);
 
@@ -989,7 +990,7 @@ int numerical_language_mesh_process(
     }
 
     numerical_semantics_t semantics;
-    int result;
+    int result = 0;
 
     if (request->type == LING_REQUEST_PARSE_NUMBER) {
         result = numerical_language_parse_word(nl, request->input_word, &semantics);

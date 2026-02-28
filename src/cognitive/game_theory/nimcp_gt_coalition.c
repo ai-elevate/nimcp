@@ -415,6 +415,7 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
             nimcp_free(game->value_cache);
             nimcp_free(game->cache_valid);
             nimcp_free(game);
+            game = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_coalition_create: required parameter is NULL (game->value_cache, game->cache_valid)");
             return NULL;
         }
@@ -436,6 +437,7 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
         nimcp_free(game->value_cache);
         nimcp_free(game->cache_valid);
         nimcp_free(game);
+        game = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_coalition_create: validation failed");
         return NULL;
     }
@@ -454,6 +456,7 @@ void nimcp_coalition_destroy(nimcp_coalition_game_t game) {
     nimcp_free(game->value_cache);
     nimcp_free(game->cache_valid);
     nimcp_free(game);
+    game = NULL;
 }
 
 //=============================================================================
@@ -721,7 +724,9 @@ nimcp_error_t nimcp_coalition_form_optimal(
 
     if (!opt_value || !opt_first_coal) {
         nimcp_free(opt_value);
+        opt_value = NULL;
         nimcp_free(opt_first_coal);
+        opt_first_coal = NULL;
         nimcp_platform_mutex_unlock(&game->mutex);
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
@@ -764,7 +769,9 @@ nimcp_error_t nimcp_coalition_form_optimal(
     }
 
     nimcp_free(opt_value);
+    opt_value = NULL;
     nimcp_free(opt_first_coal);
+    opt_first_coal = NULL;
 
     // Check stability (use unlocked versions since we already hold mutex)
     result->is_stable[NIMCP_STABILITY_INDIVIDUAL] = is_individually_rational_unlocked(game, &result->structure);
@@ -1350,7 +1357,7 @@ bool nimcp_coalition_player_would_deviate(
     uint32_t current_coal = structure->coalitions[current_idx].members;
     float current_payoff = compute_player_payoff(game, current_coal, player);
 
-    float new_payoff;
+    float new_payoff = 0.0f;
     if (target_coal_idx < 0) {
         // Deviation to singleton - check if already a singleton
         if (current_coal == player_bit) {

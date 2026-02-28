@@ -88,6 +88,7 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for consolidation substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -96,6 +97,7 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
         nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_substrate_bridge_create: validation failed");
         return NULL;
     }
@@ -124,6 +126,7 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* bridge) {

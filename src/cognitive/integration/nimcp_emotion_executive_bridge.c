@@ -213,6 +213,7 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     bridge->decisions = nimcp_calloc(DEFAULT_DECISION_CAPACITY, sizeof(decision_record_t));
     if (!bridge->decisions) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge->decisions is NULL");
         return NULL;
     }
@@ -233,6 +234,7 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->decisions);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -270,6 +272,7 @@ void emotion_executive_bridge_destroy(emotion_executive_bridge_t* bridge) {
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

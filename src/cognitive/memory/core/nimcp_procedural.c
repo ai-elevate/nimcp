@@ -667,6 +667,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
     if (!pm->skills) {
         set_error("Memory allocation failed for skills");
         nimcp_free(pm);
+        pm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "procedural_create: pm->skills is NULL");
         return NULL;
     }
@@ -691,6 +692,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
         set_error("Memory allocation failed for habits");
         nimcp_free(pm->skills);
         nimcp_free(pm);
+        pm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "procedural_create: pm->habits is NULL");
         return NULL;
     }
@@ -762,6 +764,7 @@ NIMCP_EXPORT void procedural_destroy(procedural_memory_t pm) {
     }
 
     nimcp_free(pm);
+    pm = NULL;
 }
 
 NIMCP_EXPORT procedural_error_t procedural_reset(procedural_memory_t pm) {
@@ -925,7 +928,7 @@ NIMCP_EXPORT procedural_error_t procedural_create_skill_with_steps(
     }
 
     // Create the skill first
-    uint64_t skill_id;
+    uint64_t skill_id = 0;
     procedural_error_t err = procedural_create_skill(pm, name, type, &skill_id);
     if (err != PROC_SUCCESS) {
         return err;
@@ -939,7 +942,7 @@ NIMCP_EXPORT procedural_error_t procedural_create_skill_with_steps(
                              (float)(i + 1) / (float)num_steps);
         }
 
-        uint64_t step_id;
+        uint64_t step_id = 0;
         err = procedural_add_step(pm, skill_id, step_descriptions[i],
                                   step_durations[i], 0.5f, &step_id);
         if (err != PROC_SUCCESS) {
@@ -2060,7 +2063,7 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
 
     // Create chunk skill (inherit type from first sub-skill)
     procedural_skill_t* first_sub = find_skill(pm, sub_skill_ids[0]);
-    uint64_t chunk_id;
+    uint64_t chunk_id = 0;
     procedural_error_t err = procedural_create_skill(pm, name, first_sub->type, &chunk_id);
     if (err != PROC_SUCCESS) {
         return err;
@@ -2523,6 +2526,7 @@ NIMCP_EXPORT procedural_error_t procedural_get_strongest_skills(
     }
 
     nimcp_free(entries);
+    entries = NULL;
 
     if (count_out) *count_out = count;
     return PROC_SUCCESS;

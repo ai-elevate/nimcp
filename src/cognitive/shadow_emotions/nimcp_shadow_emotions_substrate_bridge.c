@@ -126,6 +126,7 @@ void shadow_emotions_substrate_bridge_destroy(shadow_emotions_substrate_bridge_t
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int shadow_emotions_substrate_bridge_update(shadow_emotions_substrate_bridge_t* bridge) {

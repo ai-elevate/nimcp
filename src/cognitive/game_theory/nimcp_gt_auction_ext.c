@@ -231,6 +231,7 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
     ctx->bids = nimcp_calloc(ctx->max_bids, sizeof(nimcp_bundle_bid_t));
     if (!ctx->bids) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_combo_auction_create: ctx->bids is NULL");
         return NULL;
     }
@@ -238,6 +239,7 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx->bids);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_combo_auction_create: validation failed");
         return NULL;
     }
@@ -259,6 +261,7 @@ void nimcp_combo_auction_destroy(nimcp_combo_auction_t ctx) {
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx->bids);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 nimcp_error_t nimcp_combo_auction_submit_bundle_bid(
@@ -756,6 +759,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_double_auction_create: required parameter is NULL (ctx->buy_orders, ctx->sell_orders)");
         return NULL;
     }
@@ -767,6 +771,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_double_auction_create: ctx->trades is NULL");
         return NULL;
     }
@@ -776,6 +781,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_double_auction_create: validation failed");
         return NULL;
     }
@@ -800,6 +806,7 @@ void nimcp_double_auction_destroy(nimcp_double_auction_t ctx) {
     nimcp_free(ctx->buy_orders);
     nimcp_free(ctx->sell_orders);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 nimcp_error_t nimcp_double_auction_submit_buy(
@@ -1032,7 +1039,7 @@ nimcp_error_t nimcp_double_auction_clear(
         }
 
         // Determine trade price based on clearing rule
-        float trade_price;
+        float trade_price = 0.0f;
         switch (ctx->config.clearing_rule) {
             case NIMCP_CLEARING_UNIFORM:
                 // Use midpoint as preliminary; actual uniform price computed after all matches
@@ -1317,6 +1324,7 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
     ctx->bids = nimcp_calloc(ctx->max_bids, sizeof(nimcp_multi_bid_t));
     if (!ctx->bids) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_unit_create: ctx->bids is NULL");
         return NULL;
     }
@@ -1324,6 +1332,7 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx->bids);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_multi_unit_create: validation failed");
         return NULL;
     }
@@ -1344,6 +1353,7 @@ void nimcp_multi_unit_destroy(nimcp_multi_unit_auction_t ctx) {
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx->bids);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 nimcp_error_t nimcp_multi_unit_submit_bid(

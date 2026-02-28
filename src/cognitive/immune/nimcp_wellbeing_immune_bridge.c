@@ -277,6 +277,7 @@ void wellbeing_immune_bridge_destroy(wellbeing_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_MODULE_INFO("wellbeing_immune_bridge", "Bridge destroyed");
 }
 
@@ -532,7 +533,7 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
     /* If distress is high, trigger immune response */
     if (assessment.distress_score >= WELLBEING_DISTRESS_TRIGGER_THRESHOLD) {
         /* Release pro-inflammatory cytokines */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
 
         /* IL-1β for moderate distress */
         if (assessment.severity >= DISTRESS_SEVERITY_MODERATE) {
@@ -603,7 +604,7 @@ int wellbeing_immune_boost_from_positive_wellbeing(wellbeing_immune_bridge_t* br
     /* If flourishing, boost immune function */
     if (bridge->positive_boost.is_flourishing) {
         /* Release anti-inflammatory IL-10 */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
             BRAIN_CYTOKINE_IL10,

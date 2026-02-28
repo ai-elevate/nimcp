@@ -195,6 +195,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
     ctx->temp_profile = nimcp_calloc(config->num_players, sizeof(uint32_t));
     if (!ctx->temp_profile) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_equilibrium_create: ctx->temp_profile is NULL");
         return NULL;
     }
@@ -216,6 +217,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
     if (!ctx->temp_probs) {
         nimcp_free(ctx->temp_profile);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_equilibrium_create: ctx->temp_probs is NULL");
         return NULL;
     }
@@ -225,6 +227,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
         nimcp_free(ctx->temp_probs);
         nimcp_free(ctx->temp_profile);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_equilibrium_create: validation failed");
         return NULL;
     }
@@ -261,6 +264,7 @@ void nimcp_equilibrium_destroy(nimcp_equilibrium_t ctx) {
     nimcp_free(ctx->temp_probs);
     nimcp_free(ctx->temp_profile);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================
@@ -302,6 +306,7 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
         if (strategies_per_player[i] > 0 &&
             matrix->total_cells > UINT32_MAX / strategies_per_player[i]) {
             nimcp_free(matrix);
+            matrix = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "nimcp_game_matrix_create: total_cells overflow");
             return NULL;
@@ -320,6 +325,7 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
     matrix->data = nimcp_calloc(matrix->total_cells, sizeof(float));
     if (!matrix->data) {
         nimcp_free(matrix);
+        matrix = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_game_matrix_create: matrix->data is NULL");
         return NULL;
     }
@@ -335,6 +341,7 @@ void nimcp_game_matrix_destroy(nimcp_game_matrix_t* matrix) {
 
     nimcp_free(matrix->data);
     nimcp_free(matrix);
+    matrix = NULL;
 }
 
 float nimcp_game_matrix_get(
@@ -665,15 +672,21 @@ nimcp_error_t nimcp_equilibrium_find_mixed_nash(
 
         // Try all support combinations
         uint32_t* support_row = nimcp_calloc(m, sizeof(uint32_t));
+        if (!support_row) return -1;
         uint32_t* support_col = nimcp_calloc(n, sizeof(uint32_t));
+        if (!support_col) return -1;
         float* row_probs = nimcp_calloc(m, sizeof(float));
         float* col_probs = nimcp_calloc(n, sizeof(float));
 
         if (!support_row || !support_col || !row_probs || !col_probs) {
             nimcp_free(support_row);
+            support_row = NULL;
             nimcp_free(support_col);
+            support_col = NULL;
             nimcp_free(row_probs);
+            row_probs = NULL;
             nimcp_free(col_probs);
+            col_probs = NULL;
             nimcp_strategy_profile_cleanup(&result->strategies);
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NO_MEMORY;
@@ -718,9 +731,13 @@ nimcp_error_t nimcp_equilibrium_find_mixed_nash(
                     uint64_t elapsed = nimcp_time_get_ms() - start_time;
                     if (elapsed >= ctx->config.timeout_ms) {
                         nimcp_free(support_row);
+                        support_row = NULL;
                         nimcp_free(support_col);
+                        support_col = NULL;
                         nimcp_free(row_probs);
+                        row_probs = NULL;
                         nimcp_free(col_probs);
+                        col_probs = NULL;
                         nimcp_strategy_profile_cleanup(&result->strategies);
                         ctx->stats.status = NIMCP_CONVERGENCE_MAX_ITERATIONS;
                         ctx->stats.compute_time_ms = elapsed;
@@ -753,9 +770,13 @@ nimcp_error_t nimcp_equilibrium_find_mixed_nash(
         }
 
         nimcp_free(support_row);
+        support_row = NULL;
         nimcp_free(support_col);
+        support_col = NULL;
         nimcp_free(row_probs);
+        row_probs = NULL;
         nimcp_free(col_probs);
+        col_probs = NULL;
 
         if (found) {
             // Compute expected payoffs
@@ -845,8 +866,11 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
     if (!tableau || !basis || !in_basis) {
         nimcp_free(tableau);
+        tableau = NULL;
         nimcp_free(basis);
+        basis = NULL;
         nimcp_free(in_basis);
+        in_basis = NULL;
         ctx->stats.status = NIMCP_CONVERGENCE_FAILED;
         nimcp_platform_mutex_unlock(&ctx->mutex);
         return NIMCP_GT_ERROR_NO_MEMORY;
@@ -967,8 +991,11 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
             uint64_t elapsed = nimcp_time_get_ms() - start_time;
             if (elapsed >= ctx->config.timeout_ms) {
                 nimcp_free(tableau);
+                tableau = NULL;
                 nimcp_free(basis);
+                basis = NULL;
                 nimcp_free(in_basis);
+                in_basis = NULL;
                 ctx->stats.status = NIMCP_CONVERGENCE_MAX_ITERATIONS;
                 ctx->stats.compute_time_ms = elapsed;
                 nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1057,8 +1084,11 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
         if (err != NIMCP_SUCCESS) {
             nimcp_free(tableau);
+            tableau = NULL;
             nimcp_free(basis);
+            basis = NULL;
             nimcp_free(in_basis);
+            in_basis = NULL;
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return err;
         }
@@ -1147,8 +1177,11 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
     }
 
     nimcp_free(tableau);
+    tableau = NULL;
     nimcp_free(basis);
+    basis = NULL;
     nimcp_free(in_basis);
+    in_basis = NULL;
 
     ctx->stats.compute_time_ms = nimcp_time_get_ms() - start_time;
 
@@ -1329,7 +1362,7 @@ nimcp_error_t nimcp_equilibrium_best_response(
             full_profile.mixed_strategies[player][s] = 1.0f;
         }
 
-        float payoff;
+        float payoff = 0.0f;
         if (full_profile.type == NIMCP_STRATEGY_PURE) {
             payoff = compute_pure_payoff(ctx, player, full_profile.pure_strategies);
         } else {
@@ -1369,8 +1402,8 @@ nimcp_error_t nimcp_equilibrium_best_response_mixed(
     gt_equilibrium_heartbeat("gt_equilibri_equilibrium_best_res", 0.0f);
 
 
-    uint32_t best_s;
-    float max_payoff;
+    uint32_t best_s = 0;
+    float max_payoff = 0.0f;
     nimcp_error_t err = nimcp_equilibrium_best_response(ctx, player, opponent_strategies,
                                                          &best_s, &max_payoff);
     if (err != NIMCP_SUCCESS) {
@@ -1454,7 +1487,7 @@ nimcp_error_t nimcp_equilibrium_compute_regret(
         }
 
         // Current payoff
-        float current_payoff;
+        float current_payoff = 0.0f;
         if (strategies->type == NIMCP_STRATEGY_PURE) {
             current_payoff = compute_pure_payoff(ctx, player, strategies->pure_strategies);
         } else {
@@ -1462,8 +1495,8 @@ nimcp_error_t nimcp_equilibrium_compute_regret(
         }
 
         // Best response payoff
-        uint32_t best_s;
-        float best_payoff;
+        uint32_t best_s = 0;
+        float best_payoff = 0.0f;
         nimcp_platform_mutex_unlock(&ctx->mutex);
 
         nimcp_error_t err = nimcp_equilibrium_best_response(ctx, player, strategies,
@@ -1503,7 +1536,7 @@ float nimcp_equilibrium_expected_payoff(
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
-    float payoff;
+    float payoff = 0.0f;
     if (strategies->type == NIMCP_STRATEGY_PURE) {
         payoff = compute_pure_payoff(ctx, player, strategies->pure_strategies);
     } else {

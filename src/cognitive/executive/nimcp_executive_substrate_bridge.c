@@ -141,6 +141,7 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -149,6 +150,7 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_substrate_bridge_create: validation failed");
         return NULL;
     }
@@ -208,6 +210,7 @@ void executive_substrate_bridge_destroy(executive_substrate_bridge_t* bridge)
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("Destroyed executive substrate bridge");
 }
@@ -472,6 +475,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

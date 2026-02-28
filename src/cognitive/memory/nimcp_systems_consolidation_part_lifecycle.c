@@ -42,6 +42,7 @@ static cortical_memory_node_t* cortical_node_create(
     node->features = nimcp_calloc(feature_dim, sizeof(float));
     if (!node->features) {
         nimcp_free(node);
+        node = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_node_create: node->features is NULL");
         return NULL;
     }
@@ -57,6 +58,7 @@ static cortical_memory_node_t* cortical_node_create(
         nimcp_free(node->neighbors);
         nimcp_free(node->neighbor_strengths);
         nimcp_free(node);
+        node = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_node_create: required parameter is NULL (node->neighbors, node->neighbor_strengths)");
         return NULL;
     }
@@ -110,6 +112,7 @@ static void cortical_node_destroy(cortical_memory_node_t* node)
 
     // WHAT: Free node structure
     nimcp_free(node);
+    node = NULL;
 }
 
 
@@ -238,6 +241,7 @@ cleanup:
     nimcp_free(system->replay_queue);
     nimcp_free(system->cortical_nodes);
     nimcp_free(system);
+    system = NULL;
     return NULL;
 }
 
@@ -293,6 +297,7 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
 
     // WHAT: Free system structure
     nimcp_free(system);
+    system = NULL;
 }
 
 

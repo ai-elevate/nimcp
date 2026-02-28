@@ -189,10 +189,12 @@ static void gist_table_destroy(gist_hash_entry_t** table, size_t size) {
                 nimcp_free(entry->gist);
             }
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
     nimcp_free(table);
+    table = NULL;
 }
 
 /**
@@ -248,6 +250,7 @@ static gist_node_t* gist_table_remove(gist_hash_entry_t** table, size_t size,
             *prev_ptr = entry->next;
             gist_node_t* gist = entry->gist;
             nimcp_free(entry);
+            entry = NULL;
             return gist;
         }
         prev_ptr = &entry->next;
@@ -286,10 +289,12 @@ static void trace_table_destroy(trace_hash_entry_t** table, size_t size) {
             trace_hash_entry_t* next = entry->next;
             nimcp_free(entry->trace);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
     nimcp_free(table);
+    table = NULL;
 }
 
 /**
@@ -493,6 +498,7 @@ static gist_node_t* alloc_gist_node(gist_system_t system) {
     gist->source_memory_ids = nimcp_calloc(GIST_MAX_SOURCES, sizeof(uint64_t));
     if (!gist->source_memory_ids) {
         nimcp_free(gist);
+        gist = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alloc_gist_node: gist->source_memory_ids is NULL");
         return NULL;
     }
@@ -504,6 +510,7 @@ static gist_node_t* alloc_gist_node(gist_system_t system) {
     if (!gist->key_features) {
         nimcp_free(gist->source_memory_ids);
         nimcp_free(gist);
+        gist = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alloc_gist_node: gist->key_features is NULL");
         return NULL;
     }
@@ -676,6 +683,7 @@ gist_system_t gist_system_create(
     if (!system->gist_table) {
         gist_set_error("Failed to allocate gist hash table");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_system_create: system->gist_table is NULL");
         return NULL;
     }
@@ -687,6 +695,7 @@ gist_system_t gist_system_create(
         gist_set_error("Failed to allocate trace hash table");
         gist_table_destroy(system->gist_table, system->gist_table_size);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_system_create: system->trace_table is NULL");
         return NULL;
     }
@@ -717,6 +726,7 @@ void gist_system_destroy(gist_system_t system) {
     trace_table_destroy(system->trace_table, system->trace_table_size);
 
     nimcp_free(system);
+    system = NULL;
 }
 
 gist_error_t gist_system_clear(gist_system_t system) {
@@ -743,6 +753,7 @@ gist_error_t gist_system_clear(gist_system_t system) {
                 nimcp_free(entry->gist);
             }
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         system->gist_table[i] = NULL;
@@ -762,6 +773,7 @@ gist_error_t gist_system_clear(gist_system_t system) {
             trace_hash_entry_t* next = entry->next;
             nimcp_free(entry->trace);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         system->trace_table[i] = NULL;
@@ -885,6 +897,7 @@ gist_error_t gist_extract_custom(
         nimcp_free(gist->source_memory_ids);
         nimcp_free(gist->key_features);
         nimcp_free(gist);
+        gist = NULL;
         result->status = GIST_ERROR_LOW_COHERENCE;
         return GIST_ERROR_LOW_COHERENCE;
     }
@@ -902,6 +915,7 @@ gist_error_t gist_extract_custom(
         nimcp_free(gist->source_memory_ids);
         nimcp_free(gist->key_features);
         nimcp_free(gist);
+        gist = NULL;
         result->status = GIST_ERROR_NO_MEMORY;
         return GIST_ERROR_NO_MEMORY;
     }
@@ -920,9 +934,11 @@ gist_error_t gist_extract_custom(
     if (!gist_table_insert(system->gist_table, system->gist_table_size,
                            gist->gist_id, gist)) {
         nimcp_free(trace);
+        trace = NULL;
         nimcp_free(gist->source_memory_ids);
         nimcp_free(gist->key_features);
         nimcp_free(gist);
+        gist = NULL;
         result->status = GIST_ERROR_NO_MEMORY;
         return GIST_ERROR_NO_MEMORY;
     }
@@ -934,9 +950,11 @@ gist_error_t gist_extract_custom(
         gist_table_remove(system->gist_table, system->gist_table_size, gist->gist_id);
         system->num_gists--;
         nimcp_free(trace);
+        trace = NULL;
         nimcp_free(gist->source_memory_ids);
         nimcp_free(gist->key_features);
         nimcp_free(gist);
+        gist = NULL;
         result->status = GIST_ERROR_NO_MEMORY;
         return GIST_ERROR_NO_MEMORY;
     }
@@ -1046,6 +1064,7 @@ dual_trace_t* gist_create_dual_trace(
     if (!trace_table_insert(system->trace_table, system->trace_table_size,
                             trace->trace_id, trace)) {
         nimcp_free(trace);
+        trace = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_create_dual_trace: operation failed");
         return NULL;
     }
@@ -1436,6 +1455,7 @@ gist_error_t gist_match(
     *num_results = to_copy;
 
     nimcp_free(all_matches);
+    all_matches = NULL;
     return GIST_SUCCESS;
 }
 
@@ -1544,6 +1564,7 @@ gist_error_t gist_merge(
                                       gist_ids[i]);
         if (!gists[i]) {
             nimcp_free(gists);
+            gists = NULL;
             gist_set_error("Gist %llu not found", (unsigned long long)gist_ids[i]);
             return GIST_ERROR_NOT_FOUND;
         }
@@ -1553,6 +1574,7 @@ gist_error_t gist_merge(
     gist_node_t* merged = alloc_gist_node(system);
     if (!merged) {
         nimcp_free(gists);
+        gists = NULL;
         return GIST_ERROR_NO_MEMORY;
     }
 
@@ -1560,9 +1582,11 @@ gist_error_t gist_merge(
     prime_signature_t* intersection = prime_sig_copy(&gists[0]->gist_signature);
     if (!intersection) {
         nimcp_free(gists);
+        gists = NULL;
         nimcp_free(merged->source_memory_ids);
         nimcp_free(merged->key_features);
         nimcp_free(merged);
+        merged = NULL;
         return GIST_ERROR_NO_MEMORY;
     }
 
@@ -1572,9 +1596,11 @@ gist_error_t gist_merge(
         prime_sig_destroy(intersection);
         if (!new_intersection) {
             nimcp_free(gists);
+            gists = NULL;
             nimcp_free(merged->source_memory_ids);
             nimcp_free(merged->key_features);
             nimcp_free(merged);
+            merged = NULL;
             return GIST_ERROR_NO_MEMORY;
         }
         intersection = new_intersection;
@@ -1588,11 +1614,15 @@ gist_error_t gist_merge(
     float* weights = nimcp_calloc(count, sizeof(float));
     if (!quats || !weights) {
         nimcp_free(quats);
+        quats = NULL;
         nimcp_free(weights);
+        weights = NULL;
         nimcp_free(gists);
+        gists = NULL;
         nimcp_free(merged->source_memory_ids);
         nimcp_free(merged->key_features);
         nimcp_free(merged);
+        merged = NULL;
         return GIST_ERROR_NO_MEMORY;
     }
 
@@ -1609,7 +1639,9 @@ gist_error_t gist_merge(
 
     merged->gist_quaternion = quat_blend_memories(quats, weights, count);
     nimcp_free(quats);
+    quats = NULL;
     nimcp_free(weights);
+    weights = NULL;
 
     // Collect all source memories
     size_t total_sources = 0;
@@ -1629,9 +1661,11 @@ gist_error_t gist_merge(
                                         total_sources * sizeof(uint64_t));
         if (!new_sources) {
             nimcp_free(gists);
+            gists = NULL;
             nimcp_free(merged->source_memory_ids);
             nimcp_free(merged->key_features);
             nimcp_free(merged);
+            merged = NULL;
             return GIST_ERROR_NO_MEMORY;
         }
         merged->source_memory_ids = new_sources;
@@ -1677,9 +1711,11 @@ gist_error_t gist_merge(
     if (!gist_table_insert(system->gist_table, system->gist_table_size,
                            merged->gist_id, merged)) {
         nimcp_free(gists);
+        gists = NULL;
         nimcp_free(merged->source_memory_ids);
         nimcp_free(merged->key_features);
         nimcp_free(merged);
+        merged = NULL;
         return GIST_ERROR_NO_MEMORY;
     }
     system->num_gists++;
@@ -1688,6 +1724,7 @@ gist_error_t gist_merge(
 
     *merged_gist = merged;
     nimcp_free(gists);
+    gists = NULL;
 
     return GIST_SUCCESS;
 }
@@ -1735,6 +1772,7 @@ gist_error_t gist_generalize(
         nimcp_free(generalized->source_memory_ids);
         nimcp_free(generalized->key_features);
         nimcp_free(generalized);
+        generalized = NULL;
         return GIST_ERROR_NO_MEMORY;
     }
     system->num_gists++;
@@ -1882,12 +1920,14 @@ size_t gist_prune_weak(
             nimcp_free(gist->source_memory_ids);
             nimcp_free(gist->key_features);
             nimcp_free(gist);
+            gist = NULL;
             system->num_gists--;
             removed++;
         }
     }
 
     nimcp_free(to_remove);
+    to_remove = NULL;
     return removed;
 }
 

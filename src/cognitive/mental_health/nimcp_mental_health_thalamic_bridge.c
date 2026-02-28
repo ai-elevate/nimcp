@@ -108,6 +108,7 @@ mental_health_thalamic_bridge_t* mental_health_thalamic_bridge_create(void* ment
     if (bridge_base_init(&bridge->base, 0, "mental_health_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -131,6 +132,7 @@ void mental_health_thalamic_bridge_destroy(mental_health_thalamic_bridge_t* brid
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mental_health_thalamic_bridge_reset(mental_health_thalamic_bridge_t* bridge) {

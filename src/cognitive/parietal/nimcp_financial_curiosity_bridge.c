@@ -330,6 +330,7 @@ financial_curiosity_bridge_t* financial_curiosity_bridge_create(
         if (bridge->hypothesis_counts) nimcp_free(bridge->hypothesis_counts);
         if (bridge->hypothesis_success_rates) nimcp_free(bridge->hypothesis_success_rates);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_curiosity_bridge_create: validation failed");
         return NULL;
     }
@@ -363,6 +364,7 @@ void financial_curiosity_bridge_destroy(financial_curiosity_bridge_t* bridge) {
     if (bridge->hypothesis_counts) nimcp_free(bridge->hypothesis_counts);
     if (bridge->hypothesis_success_rates) nimcp_free(bridge->hypothesis_success_rates);
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_curiosity_heartbeat("destroy", 1.0f);
 }
@@ -1053,6 +1055,7 @@ int financial_curiosity_bridge_select_exploration(
                      "Softmax: prob=%.3f, temp=%.2f", probs[selected_idx], temperature);
 
             nimcp_free(probs);
+            probs = NULL;
             break;
         }
 
@@ -1319,6 +1322,7 @@ void financial_curiosity_market_state_destroy(fin_market_state_t* state) {
     if (state->prices) nimcp_free(state->prices);
     if (state->volumes) nimcp_free(state->volumes);
     nimcp_free(state);
+    state = NULL;
 }
 
 fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidates) {
@@ -1340,6 +1344,7 @@ fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidat
                                                             sizeof(fin_extended_candidate_t));
     if (!result->candidates) {
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_result_create: result->candidates is NULL");
         return NULL;
     }
@@ -1351,6 +1356,7 @@ void financial_curiosity_result_destroy(fin_hypothesis_result_t* result) {
     if (!result) return;
     if (result->candidates) nimcp_free(result->candidates);
     nimcp_free(result);
+    result = NULL;
 }
 
 int financial_curiosity_bridge_compute_information_gain(

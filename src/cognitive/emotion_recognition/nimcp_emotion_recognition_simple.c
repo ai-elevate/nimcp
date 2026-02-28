@@ -75,7 +75,7 @@ static const char* CONFUSION_KEYWORDS[] = {
  */
 static void to_lowercase(char* dest, const char* src, size_t max_len)
 {
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < max_len - 1 && src[i] != '\0'; i++) {
         dest[i] = tolower((unsigned char)src[i]);
     }

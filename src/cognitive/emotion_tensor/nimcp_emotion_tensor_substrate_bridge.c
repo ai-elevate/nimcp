@@ -133,6 +133,7 @@ emotion_tensor_substrate_bridge_t* emotion_tensor_substrate_bridge_create(void* 
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for emotion tensor substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_tensor_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -141,6 +142,7 @@ emotion_tensor_substrate_bridge_t* emotion_tensor_substrate_bridge_create(void* 
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for emotion tensor substrate bridge");
         nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_tensor_substrate_bridge_create: validation failed");
         return NULL;
     }
@@ -169,6 +171,7 @@ void emotion_tensor_substrate_bridge_destroy(emotion_tensor_substrate_bridge_t* 
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int emotion_tensor_substrate_bridge_update(emotion_tensor_substrate_bridge_t* bridge) {

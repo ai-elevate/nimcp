@@ -226,6 +226,7 @@ void wm_substrate_bridge_destroy(wm_substrate_bridge_t* bridge)
      * HOW: nimcp_free
      */
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_DEBUG("Destroyed WM-substrate bridge");
 }
@@ -364,7 +365,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
      * - 0.5: Reduced capacity (4 items)
      * - 0.3: Minimal capacity (2 items)
      * ======================================================================== */
-    float capacity_factor;
+    float capacity_factor = 0.0f;
 
     if (bridge->config.enable_capacity_modulation) {
         /* Start with metabolic capacity as base */
@@ -511,6 +512,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
 
     /* Notify coordinator of update cycle completion */
     bridge_base_notify_coordinator_tick(&bridge->base, 0);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -525,7 +527,7 @@ float wm_substrate_get_capacity_factor(wm_substrate_bridge_t* bridge)
         return -1.0f;
     }
 
-    float result;
+    float result = 0.0f;
     if ((bridge->base.mutex != NULL)) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.capacity_factor;
@@ -544,7 +546,7 @@ float wm_substrate_get_decay_mod(wm_substrate_bridge_t* bridge)
         return -1.0f;
     }
 
-    float result;
+    float result = 0.0f;
     if ((bridge->base.mutex != NULL)) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.decay_rate_mod;
@@ -563,7 +565,7 @@ float wm_substrate_get_refresh_efficiency(wm_substrate_bridge_t* bridge)
         return -1.0f;
     }
 
-    float result;
+    float result = 0.0f;
     if ((bridge->base.mutex != NULL)) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.refresh_efficiency;
@@ -582,7 +584,7 @@ float wm_substrate_get_encoding_strength(wm_substrate_bridge_t* bridge)
         return -1.0f;
     }
 
-    float result;
+    float result = 0.0f;
     if ((bridge->base.mutex != NULL)) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.encoding_strength;
@@ -627,7 +629,7 @@ bool wm_substrate_is_impaired(wm_substrate_bridge_t* bridge)
         return false;
     }
 
-    bool result;
+    bool result = false;
     if ((bridge->base.mutex != NULL)) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
         result = bridge->effects.is_impaired;

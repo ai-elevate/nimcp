@@ -176,6 +176,7 @@ static void exponential_map(const float* x, const float* v, float* result, uint3
 
     mobius_add(x, v_normalized, result, dim);
     nimcp_free(v_normalized);
+    v_normalized = NULL;
 }
 
 /* ============================================================================
@@ -285,6 +286,7 @@ void vae_imag_bridge_destroy(vae_imag_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_imag_bridge_connect_vae(vae_imag_bridge_t* bridge, vae_system_t* vae) {
@@ -298,6 +300,7 @@ int vae_imag_bridge_connect_vae(vae_imag_bridge_t* bridge, vae_system_t* vae) {
     /* Allocate working buffers */
     bridge->latent_buffer = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     bridge->decode_buffer = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
+    if (!bridge->decode_buffer) return -1;
     bridge->sample_buffer = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
 
     if (!bridge->latent_buffer || !bridge->decode_buffer || !bridge->sample_buffer) {
@@ -456,7 +459,7 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
     memset(result, 0, sizeof(*result));
 
     /* Determine temperature based on mode */
-    float temperature;
+    float temperature = 0.0f;
     switch (mode) {
         case VAE_IMAG_MODE_PASSIVE:
             temperature = bridge->config.passive_temperature;
@@ -483,7 +486,7 @@ int vae_imag_generate(vae_imag_bridge_t* bridge,
     }
 
     /* Sample latent based on mode and goal */
-    int ret;
+    int ret = 0;
     if (goal && goal->target_features && goal->target_dim > 0) {
         ret = sample_toward_target(bridge, goal->target_features, goal->target_dim,
                                    temperature, bridge->latent_buffer);
@@ -626,6 +629,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
 
     result->trajectory = (float**)nimcp_calloc(num_steps, sizeof(float*));
     result->decoded_trajectory = (float**)nimcp_calloc(num_steps, sizeof(float*));
+    if (!result->decoded_trajectory) return -1;
     result->coherence_scores = (float*)nimcp_calloc(num_steps, sizeof(float));
 
     if (!result->trajectory || !result->decoded_trajectory || !result->coherence_scores) {
@@ -666,6 +670,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
             nimcp_free(result->decoded_trajectory);
             nimcp_free(result->coherence_scores);
             nimcp_free(current_latent);
+            current_latent = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
             return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
         }
@@ -691,6 +696,7 @@ int vae_imag_simulate_future(vae_imag_bridge_t* bridge,
     }
 
     nimcp_free(current_latent);
+    current_latent = NULL;
 
     result->trajectory_length = num_steps;
     result->latent_dim = bridge->vae_latent_dim;
@@ -733,6 +739,7 @@ int vae_imag_counterfactual(vae_imag_bridge_t* bridge,
                                         num_steps, result);
 
     nimcp_free(modified_state);
+    modified_state = NULL;
     bridge->stats.counterfactual_generations++;
 
     return ret;
@@ -749,6 +756,7 @@ int vae_imag_interpolate(vae_imag_bridge_t* bridge,
 
     result->trajectory = (float**)nimcp_calloc(num_steps, sizeof(float*));
     result->decoded_trajectory = (float**)nimcp_calloc(num_steps, sizeof(float*));
+    if (!result->decoded_trajectory) return -1;
     result->coherence_scores = (float*)nimcp_calloc(num_steps, sizeof(float));
 
     if (!result->trajectory || !result->decoded_trajectory || !result->coherence_scores) {
@@ -791,6 +799,7 @@ int vae_imag_interpolate(vae_imag_bridge_t* bridge,
                 }
                 exponential_map(state_a, tangent, result->trajectory[step], dim);
                 nimcp_free(tangent);
+                tangent = NULL;
             }
         } else {
             /* Standard linear interpolation */
@@ -828,6 +837,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     /* Use importance sampling with QMC-like adaptive strategy */
     float* best_sample = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     float* current_sample = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    if (!current_sample) return -1;
     float* proposal = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
 
     if (!best_sample || !current_sample || !proposal) {
@@ -861,7 +871,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
         }
 
         /* Compute energy (distance to target or prior log-likelihood) */
-        float energy;
+        float energy = 0.0f;
         if (target_features) {
             energy = compute_mse(proposal, target_features,
                                 (target_dim < bridge->vae_latent_dim) ?
@@ -872,7 +882,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
         }
 
         /* Metropolis acceptance */
-        float current_energy;
+        float current_energy = 0.0f;
         if (target_features) {
             current_energy = compute_mse(current_sample, target_features,
                                         (target_dim < bridge->vae_latent_dim) ?
@@ -903,12 +913,15 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     }
 
     nimcp_free(current_sample);
+    current_sample = NULL;
     nimcp_free(proposal);
+    proposal = NULL;
 
     /* Decode best sample */
     result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->generated) {
         nimcp_free(best_sample);
+        best_sample = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
@@ -916,6 +929,7 @@ int vae_imag_generate_qmc(vae_imag_bridge_t* bridge,
     int ret = decode_latent(bridge, best_sample, result->generated);
     if (ret != 0) {
         nimcp_free(best_sample);
+        best_sample = NULL;
         nimcp_free(result->generated);
         result->generated = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_DECODE_FAILED, "vae_imagination_bridge: error condition");
@@ -983,6 +997,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
     result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->generated) {
         nimcp_free(position);
+        position = NULL;
         result->latent = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
@@ -991,6 +1006,7 @@ int vae_imag_quantum_walk(vae_imag_bridge_t* bridge,
     int ret = decode_latent(bridge, position, result->generated);
     if (ret != 0) {
         nimcp_free(position);
+        position = NULL;
         nimcp_free(result->generated);
         result->latent = NULL;
         result->generated = NULL;
@@ -1018,6 +1034,7 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
 
     float* state = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     float* best_state = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    if (!best_state) return -1;
     float* proposal = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
 
     if (!state || !best_state || !proposal) {
@@ -1103,7 +1120,9 @@ int vae_imag_quantum_anneal(vae_imag_bridge_t* bridge,
     }
 
     nimcp_free(state);
+    state = NULL;
     nimcp_free(proposal);
+    proposal = NULL;
 
     /* Fill result */
     result->best_latent = best_state;
@@ -1185,6 +1204,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     float* direction = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!direction) {
         nimcp_free(latent);
+        latent = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
@@ -1201,7 +1221,9 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     float* result_point = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
     if (!result_point) {
         nimcp_free(latent);
+        latent = NULL;
         nimcp_free(direction);
+        direction = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
     }
@@ -1209,7 +1231,9 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     exponential_map(latent, direction, result_point, bridge->vae_latent_dim);
 
     nimcp_free(latent);
+    latent = NULL;
     nimcp_free(direction);
+    direction = NULL;
 
     result->latent = result_point;
     result->latent_dim = bridge->vae_latent_dim;
@@ -1217,6 +1241,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     result->generated = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
     if (!result->generated) {
         nimcp_free(result_point);
+        result_point = NULL;
         result->latent = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_IMAG_NO_MEMORY, "vae_imagination_bridge: error condition");
         return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
@@ -1225,6 +1250,7 @@ int vae_imag_hyperbolic_generate(vae_imag_bridge_t* bridge,
     int ret = decode_latent(bridge, result_point, result->generated);
     if (ret != 0) {
         nimcp_free(result_point);
+        result_point = NULL;
         nimcp_free(result->generated);
         result->latent = NULL;
         result->generated = NULL;
@@ -1325,6 +1351,7 @@ int vae_imag_inject_element(vae_imag_bridge_t* bridge,
 
     memcpy(bridge->latent_buffer, modified, bridge->vae_latent_dim * sizeof(float));
     nimcp_free(modified);
+    modified = NULL;
 
     return vae_imag_generate(bridge, bridge->current_mode, NULL, result);
 }
@@ -1348,6 +1375,7 @@ int vae_imag_remove_element(vae_imag_bridge_t* bridge,
 
     memcpy(bridge->latent_buffer, modified, bridge->vae_latent_dim * sizeof(float));
     nimcp_free(modified);
+    modified = NULL;
 
     return vae_imag_generate(bridge, bridge->current_mode, NULL, result);
 }
@@ -1432,7 +1460,7 @@ int vae_imag_evaluate_novelty(vae_imag_bridge_t* bridge,
     if (!bridge || !generated || !novelty) return NIMCP_ERROR_VAE_IMAG_NULL;
 
     /* Novelty based on distance from training distribution */
-    float anomaly_score;
+    float anomaly_score = 0.0f;
     nimcp_tensor_t* input = nimcp_tensor_create_1d(dim, NIMCP_DTYPE_F32);
 
     if (!input) return NIMCP_ERROR_VAE_IMAG_NO_MEMORY;
@@ -1458,7 +1486,7 @@ int vae_imag_evaluate_reality(vae_imag_bridge_t* bridge,
     if (!bridge || !generated || !reality_distance) return NIMCP_ERROR_VAE_IMAG_NULL;
 
     /* Reality distance is inverse of coherence */
-    float coherence;
+    float coherence = 0.0f;
     int ret = vae_imag_evaluate_coherence(bridge, generated, dim, &coherence);
     if (ret != 0) return ret;
 

@@ -107,6 +107,7 @@ nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
 
     if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_gt_create: validation failed");
         return NULL;
     }
@@ -126,6 +127,7 @@ void nimcp_gt_destroy(nimcp_gt_system_t system) {
 
     nimcp_platform_mutex_destroy(&system->mutex);
     nimcp_free(system);
+    system = NULL;
 }
 
 bool nimcp_gt_is_initialized(const nimcp_gt_system_t system) {
@@ -535,6 +537,7 @@ int nimcp_gt_expected_utility_mc(
     }
 
     nimcp_free(actions);
+    actions = NULL;
     return 0;
 }
 
@@ -645,6 +648,7 @@ int nimcp_gt_fictitious_play_update_mc(
     }
 
     nimcp_free(expected_payoffs);
+    expected_payoffs = NULL;
     return 0;
 }
 

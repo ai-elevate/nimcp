@@ -242,6 +242,7 @@ fault_working_memory_t* fault_working_memory_create_custom(
     if (!wm->faults) {
         LOG_ERROR("Failed to allocate faults array");
         nimcp_free(wm);
+        wm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_working_memory_create_custom: wm->faults is NULL");
         return NULL;
     }
@@ -313,6 +314,7 @@ void fault_working_memory_destroy(fault_working_memory_t* wm) {
     }
 
     nimcp_free(wm);
+    wm = NULL;
 }
 
 //=============================================================================

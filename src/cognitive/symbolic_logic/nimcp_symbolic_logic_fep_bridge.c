@@ -115,6 +115,7 @@ void symbolic_logic_fep_bridge_destroy(symbolic_logic_fep_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int symbolic_logic_fep_bridge_connect_fep(symbolic_logic_fep_bridge_t* bridge, fep_system_t* fep) {

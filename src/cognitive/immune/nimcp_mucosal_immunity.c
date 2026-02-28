@@ -270,6 +270,7 @@ void mucosal_destroy(mucosal_system_t* system) {
     if (system->mutex) nimcp_free(system->mutex);
 
     nimcp_free(system);
+    system = NULL;
     NIMCP_LOGGING_INFO("Mucosal immunity system destroyed");
 }
 
@@ -483,7 +484,7 @@ int mucosal_process_m_cell_sample(
     }
 
     /* Check for existing tolerance */
-    uint32_t tolerance_id;
+    uint32_t tolerance_id = 0;
     int is_tolerized = mucosal_check_tolerance(
         system, sample->sampled_data, sample->data_len, &tolerance_id);
 
@@ -501,7 +502,7 @@ int mucosal_process_m_cell_sample(
 
     if (!is_pathogenic && system->config.enable_tolerance) {
         /* Induce oral tolerance */
-        uint32_t new_tolerance_id;
+        uint32_t new_tolerance_id = 0;
         mucosal_induce_oral_tolerance(
             system, sample->site_id,
             sample->sampled_data, sample->data_len,
@@ -510,7 +511,7 @@ int mucosal_process_m_cell_sample(
         sample->response_triggered = false;
     } else {
         /* Trigger immune response via brain immune system */
-        uint32_t antigen_id;
+        uint32_t antigen_id = 0;
         brain_immune_present_antigen(
             system->immune_system,
             ANTIGEN_SOURCE_MANUAL,
@@ -523,7 +524,7 @@ int mucosal_process_m_cell_sample(
 
         /* Produce sIgA locally */
         if (system->config.enable_siga_production) {
-            uint32_t siga_id;
+            uint32_t siga_id = 0;
             mucosal_produce_siga(system, sample->site_id, antigen_id, &siga_id);
         }
 

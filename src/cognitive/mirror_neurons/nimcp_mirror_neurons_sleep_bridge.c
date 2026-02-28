@@ -270,6 +270,7 @@ mirror_neurons_sleep_bridge_t mirror_neurons_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "mirror_neurons_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -329,6 +330,7 @@ void mirror_neurons_sleep_bridge_destroy(mirror_neurons_sleep_bridge_t bridge)
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mirror_neurons_sleep_update(mirror_neurons_sleep_bridge_t bridge)

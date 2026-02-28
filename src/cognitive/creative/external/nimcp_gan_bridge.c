@@ -162,6 +162,7 @@ void gan_bridge_destroy(gan_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int gan_bridge_load_model(gan_bridge_t* bridge)
@@ -234,7 +235,7 @@ int gan_sample_latent(gan_bridge_t* bridge,
 
     if (seed == 0) seed = (uint64_t)time(NULL);
 
-    uint32_t dim;
+    uint32_t dim = 0;
     uint32_t num_layers = 1;
 
     switch (space) {
@@ -638,7 +639,7 @@ int gan_encode(gan_bridge_t* bridge,
     /* In production: run encoder network */
     /* Placeholder: compute latent from image statistics */
 
-    uint32_t dim;
+    uint32_t dim = 0;
     switch (space) {
         case LATENT_SPACE_Z:
             dim = bridge->config.latent_dim;

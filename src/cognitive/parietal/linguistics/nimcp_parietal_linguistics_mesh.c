@@ -763,8 +763,11 @@ static void mesh_init_laplacian(linguistics_mesh_t* mesh) {
     /* Allocate if needed */
     if (!mesh->laplacian.laplacian) {
         mesh->laplacian.laplacian = nimcp_calloc(n * n, sizeof(float));
+        if (!mesh->laplacian.laplacian) return -1;
         mesh->laplacian.degree_matrix = nimcp_calloc(n, sizeof(float));
+        if (!mesh->laplacian.degree_matrix) return -1;
         mesh->laplacian.adjacency = nimcp_calloc(n * n, sizeof(float));
+        if (!mesh->laplacian.adjacency) return -1;
         mesh->laplacian.size = n;
     }
 
@@ -977,6 +980,7 @@ static int mesh_update_pagerank_internal(linguistics_mesh_t* mesh) {
     /* Allocate PageRank scores if needed */
     if (!mesh->pagerank_scores) {
         mesh->pagerank_scores = nimcp_calloc(n, sizeof(float));
+        if (!mesh->pagerank_scores) return -1;
     }
 
     /* Initialize uniform */
@@ -1780,6 +1784,7 @@ linguistics_mesh_t* linguistics_mesh_create(const linguistics_mesh_config_t* con
     if (!mesh->mutex) {
         mesh_set_error("Failed to create mesh mutex");
         nimcp_free(mesh);
+        mesh = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "linguistics_mesh_create: mesh->mutex is NULL");
         return NULL;
     }
@@ -1853,6 +1858,7 @@ void linguistics_mesh_destroy(linguistics_mesh_t* mesh) {
     }
 
     nimcp_free(mesh);
+    mesh = NULL;
 }
 
 /* ============================================================================

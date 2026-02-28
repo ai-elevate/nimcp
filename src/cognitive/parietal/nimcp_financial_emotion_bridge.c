@@ -451,6 +451,7 @@ financial_emotion_bridge_t* financial_emotion_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_EMOTION, "financial_emotion") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_emotion_bridge_create: validation failed");
         return NULL;
     }
@@ -484,6 +485,7 @@ void financial_emotion_bridge_destroy(financial_emotion_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_emotion_heartbeat("fin_emotion_destroy", 1.0f);
 }

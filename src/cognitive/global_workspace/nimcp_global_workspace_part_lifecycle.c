@@ -248,6 +248,7 @@ cleanup_broadcast:
 cleanup_mutex:
     nimcp_platform_mutex_destroy(&workspace->mutex);
     nimcp_free(workspace);
+    workspace = NULL;
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_create_custom: allocation failed");
     return NULL;
 }
@@ -332,6 +333,7 @@ void global_workspace_destroy(global_workspace_t* workspace) {
 
     // Free workspace structure
     nimcp_free(ws);
+    ws = NULL;
 }
 
 

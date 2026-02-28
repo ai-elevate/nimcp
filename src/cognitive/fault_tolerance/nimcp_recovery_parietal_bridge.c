@@ -291,6 +291,7 @@ void recovery_parietal_bridge_destroy(recovery_parietal_bridge_t* bridge) {
     bridge->executive = NULL;
 
     nimcp_free(bridge);
+    bridge = NULL;
     fprintf(stderr, "[RECOVERY-PARIETAL] Bridge destroyed\n");
 }
 
@@ -1225,7 +1226,7 @@ int recovery_parietal_generate_fix_candidates(
 
 
     char fix_code[NIMCP_PATH_BUFFER_SIZE];
-    float confidence;
+    float confidence = 0.0f;
     char explanation[NIMCP_ERROR_BUFFER_LARGE];
 
     if (recovery_parietal_generate_fix(bridge, diagnosis, analysis,

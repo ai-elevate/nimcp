@@ -813,6 +813,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
     if (engine->mutex == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create mutex");
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_heal_create: validation failed");
         return NULL;
     }
@@ -823,6 +824,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create pattern library");
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_heal_create: validation failed");
         return NULL;
     }
@@ -897,6 +899,7 @@ void self_heal_destroy(self_heal_engine_t* engine)
     nimcp_mutex_free(engine->mutex);
 
     nimcp_free(engine);
+    engine = NULL;
 
     LOG_MODULE_INFO(LOG_TAG, "Self-healing engine destroyed");
 }
@@ -937,7 +940,7 @@ fix_pattern_type_t self_heal_analyze_crash(
         crash_features_t features = {0};
         if (self_heal_extract_features(engine, antigen, &features) == 0) {
             fix_pattern_type_t predicted;
-            float confidence;
+            float confidence = 0.0f;
             if (lnn_predict_fix_type(engine, &features, &predicted, &confidence) == 0) {
                 if (confidence >= engine->config.confidence_threshold) {
                     return predicted;
@@ -1221,7 +1224,7 @@ int self_heal_generate_fix(
         crash_features_t features = {0};
         if (self_heal_extract_features(engine, antigen, &features) == 0) {
             fix_pattern_type_t predicted_type;
-            float confidence;
+            float confidence = 0.0f;
 
             if (lnn_predict_fix_type(engine, &features, &predicted_type, &confidence) == 0) {
                 if (confidence >= engine->config.confidence_threshold) {
@@ -1309,7 +1312,7 @@ int self_heal_generate_candidates(
         crash_features_t features = {0};
         if (self_heal_extract_features(engine, antigen, &features) == 0) {
             fix_pattern_type_t predicted_type;
-            float confidence;
+            float confidence = 0.0f;
 
             if (lnn_predict_fix_type(engine, &features, &predicted_type, &confidence) == 0 &&
                 confidence >= engine->config.confidence_threshold) {
@@ -1786,7 +1789,7 @@ int self_heal_register_pattern(
     self_heal_heartbeat("self_heal_register_pattern", 0.0f);
 
 
-    uint32_t id;
+    uint32_t id = 0;
     return heal_pattern_register(engine->pattern_library, pattern, &id);
 }
 
@@ -1936,6 +1939,7 @@ pattern_library_t* heal_pattern_library_create(void)
     lib->builtin_patterns = nimcp_calloc(lib->builtin_count, sizeof(fix_pattern_t));
     if (lib->builtin_patterns == NULL) {
         nimcp_free(lib);
+        lib = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_pattern_library_create: validation failed");
         return NULL;
     }
@@ -1958,6 +1962,7 @@ pattern_library_t* heal_pattern_library_create(void)
     if (lib->custom_patterns == NULL) {
         nimcp_free(lib->builtin_patterns);
         nimcp_free(lib);
+        lib = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_pattern_library_create: validation failed");
         return NULL;
     }
@@ -1969,6 +1974,7 @@ pattern_library_t* heal_pattern_library_create(void)
         nimcp_free(lib->custom_patterns);
         nimcp_free(lib->builtin_patterns);
         nimcp_free(lib);
+        lib = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_pattern_library_create: validation failed");
         return NULL;
     }
@@ -2000,6 +2006,7 @@ void heal_pattern_library_destroy(pattern_library_t* library)
 
 
     nimcp_free(library);
+    library = NULL;
 }
 
 const fix_pattern_t* heal_pattern_get_by_type(

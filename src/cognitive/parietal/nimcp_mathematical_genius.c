@@ -316,6 +316,7 @@ NIMCP_API mathematical_genius_t* genius_create(const genius_config_t* config) {
     genius->mutex = nimcp_mutex_create(&attr);
     if (!genius->mutex) {
         nimcp_free(genius);
+        genius = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "genius_create: genius->mutex is NULL");
         return NULL;
     }
@@ -361,6 +362,7 @@ NIMCP_API void genius_destroy(mathematical_genius_t* genius) {
     }
 
     nimcp_free(genius);
+    genius = NULL;
 
     NIMCP_LOG_DEBUG("Destroyed mathematical genius");
 }
@@ -722,6 +724,7 @@ NIMCP_API nimcp_error_t genius_collaborate(
     }
 
     nimcp_free(individual_results);
+    individual_results = NULL;
 
     return NIMCP_SUCCESS;
 }

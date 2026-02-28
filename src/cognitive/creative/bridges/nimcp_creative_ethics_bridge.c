@@ -159,6 +159,7 @@ static bool contains_keyword(const char* text, const char** keywords) {
     }
 
     nimcp_free(lower);
+    lower = NULL;
     return found;
 }
 
@@ -255,6 +256,7 @@ void creative_ethics_bridge_destroy(creative_ethics_bridge_t* bridge) {
     /* bridge->nsfw_detector etc. */
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 //=============================================================================
@@ -786,6 +788,7 @@ int creative_ethics_filter_prompt(creative_ethics_bridge_t* bridge,
     }
 
     nimcp_free(lower);
+    lower = NULL;
     return 0;
 }
 

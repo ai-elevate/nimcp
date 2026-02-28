@@ -276,6 +276,7 @@ void remorse_regret_system_destroy(remorse_regret_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void remorse_regret_system_reset(remorse_regret_system_t* system) {

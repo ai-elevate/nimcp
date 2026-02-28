@@ -278,6 +278,7 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     bridge->tags = nimcp_calloc(INITIAL_TAG_CAPACITY, sizeof(emotional_tag_t));
     if (!bridge->tags) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_bridge_create: bridge->tags is NULL");
         return NULL;
     }
@@ -289,6 +290,7 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->tags);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -328,6 +330,7 @@ void emotion_memory_bridge_destroy(emotion_memory_bridge_t* bridge) {
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

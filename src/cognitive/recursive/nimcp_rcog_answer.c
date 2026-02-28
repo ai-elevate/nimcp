@@ -261,6 +261,7 @@ static rcog_answer_history_t* create_history(size_t initial_capacity)
         history->entries = nimcp_calloc(initial_capacity, sizeof(rcog_answer_history_entry_t));
         if (!history->entries) {
             nimcp_free(history);
+            history = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_history: history->entries is NULL");
             return NULL;
         }
@@ -426,6 +427,7 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
     refiner->velocity = create_latent(refiner->config.latent_dim);
     if (!refiner->velocity) {
         nimcp_free(refiner);
+        refiner = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_answer_refiner_create: refiner->velocity is NULL");
         return NULL;
     }
@@ -437,6 +439,7 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
     if (!refiner->mutex) {
         nimcp_free(refiner->velocity);
         nimcp_free(refiner);
+        refiner = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_answer_refiner_create: refiner->mutex is NULL");
         return NULL;
     }
@@ -479,6 +482,7 @@ void rcog_answer_refiner_destroy(rcog_answer_refiner_t* refiner)
     }
 
     nimcp_free(refiner);
+    refiner = NULL;
 }
 
 rcog_error_t rcog_answer_init(
@@ -550,6 +554,7 @@ rcog_answer_state_t* rcog_answer_state_create(
     rcog_error_t err = rcog_answer_init(refiner, goal, state);
     if (err != RCOG_OK) {
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_state_create: validation failed");
         return NULL;
     }
@@ -575,6 +580,7 @@ void rcog_answer_state_destroy(rcog_answer_state_t* state)
 
     if (state->heap_allocated) {
         nimcp_free(state);
+        state = NULL;
     }
 }
 
@@ -649,6 +655,7 @@ rcog_error_t rcog_answer_step(
     float* direction = create_latent(state->latent_dim);
     if (!direction) {
         nimcp_free(prev_latent);
+        prev_latent = NULL;
         nimcp_mutex_unlock(refiner->mutex);
         return RCOG_ERROR_OUT_OF_MEMORY;
     }
@@ -676,6 +683,7 @@ rcog_error_t rcog_answer_step(
     }
 
     nimcp_free(direction);
+    direction = NULL;
 
     /* Compute delta (change from previous) */
     float delta_sum = 0.0f;
@@ -692,6 +700,7 @@ rcog_error_t rcog_answer_step(
     state->delta = sqrtf(delta_sum / (float)state->latent_dim);
 
     nimcp_free(prev_latent);
+    prev_latent = NULL;
 
     /* Update confidence */
     state->confidence = compute_confidence(state->latent, state->latent_dim);
@@ -1060,6 +1069,7 @@ void rcog_answer_history_free(rcog_answer_history_t* history)
         nimcp_free(history->entries);
     }
     nimcp_free(history);
+    history = NULL;
 }
 
 rcog_error_t rcog_answer_refiner_get_stats(

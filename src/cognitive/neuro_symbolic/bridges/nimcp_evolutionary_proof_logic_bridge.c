@@ -91,6 +91,7 @@ NIMCP_API void evoproof_logic_bridge_destroy(evoproof_logic_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "evolutionary_proof_logic");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

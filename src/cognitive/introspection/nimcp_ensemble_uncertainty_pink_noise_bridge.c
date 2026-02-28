@@ -163,6 +163,7 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
         int ret = ensemble_pink_default_config(&bridge->config);
         if (ret != NIMCP_SUCCESS) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_create: validation failed");
             return NULL;
         }
@@ -173,6 +174,7 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensemble_pink_create: bridge->base is NULL");
         return NULL;
     }
@@ -218,6 +220,7 @@ void ensemble_pink_destroy(ensemble_pink_bridge_t* bridge) {
 
     // Free bridge
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 //=============================================================================

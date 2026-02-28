@@ -168,6 +168,7 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
     btree_iterator_t* iter = btree_iterator_create(repo->confidence_btree);
     if (!iter) {
         nimcp_free(temp_results);
+        temp_results = NULL;
         *results_out = NULL;
         return 0;
     }
@@ -188,6 +189,7 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
 
     if (count == 0) {
         nimcp_free(temp_results);
+        temp_results = NULL;
         *results_out = NULL;
         return 0;
     }
@@ -206,6 +208,7 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
                 final_results[i] = temp_results[i];
             }
             nimcp_free(temp_results);
+            temp_results = NULL;
             *results_out = final_results;
         } else {
             // If trim fails, return oversized array

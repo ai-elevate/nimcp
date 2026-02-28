@@ -299,6 +299,7 @@ self_awareness_coordinator_t* sac_create(
     if (!coord->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(coord);
+        coord = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sac_create: coord->mutex is NULL");
         return NULL;
     }
@@ -338,6 +339,7 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
 
     /* Free coordinator */
     nimcp_free(coord);
+    coord = NULL;
 
     NIMCP_LOGGING_INFO("Self-awareness coordinator destroyed");
 }
@@ -394,13 +396,13 @@ int sac_update(self_awareness_coordinator_t* coord) {
         uint64_t coherence_elapsed = now - coord->last_coherence_check_ms;
         if (coherence_elapsed >= coord->config.coherence_check_interval_ms) {
             coord->state = SAC_STATE_COHERENCE_CHECK;
-            float score;
+            float score = 0.0f;
             sac_check_coherence(coord, &score);
             coord->last_coherence_check_ms = now;
 
             /* Auto-resolve minor conflicts if enabled */
             if (coord->config.auto_resolve_minor && coord->conflict_count > 0) {
-                uint32_t resolved;
+                uint32_t resolved = 0;
                 sac_auto_resolve_minor_conflicts(coord, &resolved);
             }
 

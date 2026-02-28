@@ -294,6 +294,7 @@ rcog_health_integration_t* rcog_health_create(
     integration->pending_goals = nimcp_calloc(integration->max_pending, sizeof(pending_health_goal_t));
     if (!integration->pending_goals) {
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_health_create: integration->pending_goals is NULL");
         return NULL;
     }
@@ -307,6 +308,7 @@ rcog_health_integration_t* rcog_health_create(
         if (!integration->cache) {
             nimcp_free(integration->pending_goals);
             nimcp_free(integration);
+            integration = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_health_create: integration->cache is NULL");
             return NULL;
         }
@@ -320,6 +322,7 @@ rcog_health_integration_t* rcog_health_create(
         nimcp_free(integration->cache);
         nimcp_free(integration->pending_goals);
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_health_create: integration->custom_tools is NULL");
         return NULL;
     }
@@ -350,6 +353,7 @@ void rcog_health_destroy(rcog_health_integration_t* integration) {
     nimcp_free(integration->cache);
     nimcp_free(integration->custom_tools);
     nimcp_free(integration);
+    integration = NULL;
 }
 
 /* ============================================================================

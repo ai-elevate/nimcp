@@ -194,6 +194,7 @@ void gt_neuromod_bridge_destroy(gt_neuromod_bridge_t bridge) {
 
     if (bridge) {
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

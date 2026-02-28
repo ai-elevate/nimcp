@@ -260,6 +260,7 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
         nimcp_free(memory->agent_ids);
         nimcp_free(memory->agent_versions);
         nimcp_free(memory);
+        memory = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "agent_has_memory: required parameter is NULL (memory->agent_ids, memory->agent_versions)");
         return NULL;
     }
@@ -284,6 +285,7 @@ static void destroy_collective_memory(collective_memory_t* memory) {
     // Note: memory_node is owned externally, don't free here
 
     nimcp_free(memory);
+    memory = NULL;
 }
 
 /**
@@ -306,6 +308,7 @@ static collective_error_t init_agent_state(agent_memory_state_t* state,
     state->memory_capacity = 16;
     state->memories = nimcp_calloc(state->memory_capacity, sizeof(prime_signature_t));
     state->memory_ids = nimcp_calloc(state->memory_capacity, sizeof(uint64_t));
+    if (!state->memory_ids) return -1;
     state->memory_versions = nimcp_calloc(state->memory_capacity, sizeof(float));
 
     if (!state->memories || !state->memory_ids || !state->memory_versions) {
@@ -424,6 +427,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     if (config) {
         if (!collective_memory_config_validate(config)) {
             nimcp_free(system);
+            system = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: collective_memory_config_validate is NULL");
             return NULL;
         }
@@ -440,6 +444,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     system->entanglement = entangle_graph_create(&entangle_cfg);
     if (!system->entanglement) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: system->entanglement is NULL");
         return NULL;
     }
@@ -450,6 +455,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     if (!system->memories) {
         entangle_graph_destroy(system->entanglement);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: system->memories is NULL");
         return NULL;
     }
@@ -462,6 +468,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
         nimcp_free(system->memories);
         entangle_graph_destroy(system->entanglement);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: system->agents is NULL");
         return NULL;
     }
@@ -507,6 +514,7 @@ NIMCP_EXPORT void collective_memory_destroy(collective_memory_system_t* system) 
     entangle_graph_destroy(system->entanglement);
 
     nimcp_free(system);
+    system = NULL;
 }
 
 NIMCP_EXPORT collective_error_t collective_memory_reset(

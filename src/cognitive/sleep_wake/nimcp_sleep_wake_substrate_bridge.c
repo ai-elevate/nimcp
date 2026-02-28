@@ -127,6 +127,7 @@ void sleep_wake_substrate_bridge_destroy(sleep_wake_substrate_bridge_t* bridge) 
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int sleep_wake_substrate_bridge_update(sleep_wake_substrate_bridge_t* bridge) {

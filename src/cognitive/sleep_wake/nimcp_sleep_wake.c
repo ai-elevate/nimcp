@@ -247,11 +247,13 @@ void sleep_system_destroy(sleep_system_t sleep)
     while (current != NULL) {
         sleep_callback_entry_t* next = current->next;
         nimcp_free(current);
+        current = NULL;
         current = next;
     }
 
     nimcp_mutex_destroy(&sleep->lock);
     nimcp_free(sleep);
+    sleep = NULL;
 }
 
 /* ========================================================================
@@ -964,6 +966,7 @@ bool sleep_unregister_state_callback(sleep_system_t sleep,
             /* Remove from list */
             *current = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             found = true;
             break;
         }

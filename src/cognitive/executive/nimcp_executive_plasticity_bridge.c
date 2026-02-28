@@ -148,6 +148,7 @@ executive_plasticity_bridge_t* executive_plasticity_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "executive_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_plasticity_create: validation failed");
         return NULL;
     }
@@ -158,6 +159,7 @@ executive_plasticity_bridge_t* executive_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -195,6 +197,7 @@ void executive_plasticity_destroy(executive_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int executive_plasticity_reset(executive_plasticity_bridge_t* bridge) {

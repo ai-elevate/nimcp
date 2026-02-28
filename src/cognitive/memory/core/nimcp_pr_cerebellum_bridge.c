@@ -407,6 +407,7 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
     bridge->sequences = (pr_sequence_t*)nimcp_calloc(initial_seq_capacity, sizeof(pr_sequence_t));
     if (!bridge->sequences) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_cerebellum_bridge_create: bridge->sequences is NULL");
         return NULL;
     }
@@ -421,6 +422,7 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
         if (!bridge->timing_history) {
             nimcp_free(bridge->sequences);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_cerebellum_bridge_create: bridge->timing_history is NULL");
             return NULL;
         }
@@ -483,6 +485,7 @@ NIMCP_EXPORT void pr_cerebellum_bridge_destroy(pr_cerebellum_bridge_t bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_set_entanglement(
@@ -1544,7 +1547,7 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_get_timing_history(
     size_t to_copy = available < max_entries ? available : max_entries;
 
     if (to_copy > 0) {
-        size_t start_idx;
+        size_t start_idx = 0;
         if (bridge->timing_history_size < bridge->timing_history_capacity) {
             start_idx = 0;
         } else {

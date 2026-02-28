@@ -238,6 +238,7 @@ vae_immune_bridge_t* vae_immune_bridge_create(const vae_immune_bridge_config_t* 
                                            sizeof(vae_anomaly_record_t));
     if (!bridge->anomaly_history) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_immune_bridge_create: bridge->anomaly_history is NULL");
         return NULL;
     }
@@ -249,6 +250,7 @@ vae_immune_bridge_t* vae_immune_bridge_create(const vae_immune_bridge_config_t* 
         NIMCP_LOG_ERROR("VAE-Immune Bridge: Failed to create mutex");
         nimcp_free(bridge->anomaly_history);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_immune_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
@@ -294,6 +296,7 @@ void vae_immune_bridge_destroy(vae_immune_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_immune_bridge_reset(vae_immune_bridge_t* bridge)
@@ -371,7 +374,9 @@ int vae_immune_bridge_connect_vae(vae_immune_bridge_t* bridge, vae_system_t* vae
         }
 
         bridge->baseline_latent_mean = nimcp_calloc(latent_dim, sizeof(float));
+        if (!bridge->baseline_latent_mean) return -1;
         bridge->baseline_latent_var = nimcp_calloc(latent_dim, sizeof(float));
+        if (!bridge->baseline_latent_var) return -1;
     }
 
     if (bridge->immune) {

@@ -300,6 +300,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     if (!bridge->base.mutex) {
         LOG_MODULE_ERROR(LOG_MODULE, "Mutex creation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -330,6 +331,7 @@ void curiosity_immune_bridge_destroy(curiosity_immune_bridge_t* bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

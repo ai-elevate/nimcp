@@ -167,6 +167,7 @@ predictive_immune_system_t* predictive_immune_create(
         sys->intero_network = predictive_create(&intero_cfg);
         if (!sys->intero_network) {
             nimcp_free(sys);
+            sys = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_immune_create: sys->intero_network is NULL");
             return NULL;
         }
@@ -179,6 +180,7 @@ predictive_immune_system_t* predictive_immune_create(
     if (!sys->region_precisions) {
         if (sys->intero_network) predictive_destroy(sys->intero_network);
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_create: validation failed");
         return NULL;
     }
@@ -191,6 +193,7 @@ predictive_immune_system_t* predictive_immune_create(
         nimcp_free(sys->region_precisions);
         if (sys->intero_network) predictive_destroy(sys->intero_network);
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_create: validation failed");
         return NULL;
     }
@@ -234,6 +237,7 @@ void predictive_immune_destroy(predictive_immune_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 
     NIMCP_LOGGING_INFO("Destroyed predictive-immune integration system");
 }
@@ -413,6 +417,7 @@ nimcp_result_t predictive_immune_apply_immune_modulation(
                 }
                 brain_region_set_precision(region, precisions, num_neurons);
                 nimcp_free(precisions);
+                precisions = NULL;
             }
         }
     }
@@ -732,6 +737,7 @@ nimcp_result_t predictive_immune_disconnect_region(
             }
             brain_region_set_precision(region, precisions, num_neurons);
             nimcp_free(precisions);
+            precisions = NULL;
         }
     }
 
@@ -853,7 +859,7 @@ static nimcp_result_t check_error_threshold(
         trigger->triggered = true;
 
         /* Trigger immune response */
-        uint32_t antigen_id;
+        uint32_t antigen_id = 0;
         predictive_immune_trigger_error_response(sys, NULL, error, &antigen_id);
     } else {
         trigger->triggered = false;

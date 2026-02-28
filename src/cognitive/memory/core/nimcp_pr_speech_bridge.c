@@ -276,6 +276,7 @@ pr_speech_bridge_t* pr_speech_bridge_create(const pr_speech_bridge_config_t* con
     pr_speech_error_t err = pr_speech_bridge_init_phoneme_primes(bridge);
     if (err != PR_SPEECH_SUCCESS) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_speech_bridge_create: validation failed");
         return NULL;
     }
@@ -289,6 +290,7 @@ pr_speech_bridge_t* pr_speech_bridge_create(const pr_speech_bridge_config_t* con
         bridge->word_capacity, sizeof(pr_word_signature_t));
     if (!bridge->word_signatures) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_speech_bridge_create: bridge->word_signatures is NULL");
         return NULL;
     }
@@ -332,6 +334,7 @@ void pr_speech_bridge_destroy(pr_speech_bridge_t* bridge) {
 
     bridge->initialized = false;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 pr_speech_error_t pr_speech_bridge_reset(pr_speech_bridge_t* bridge) {
@@ -1225,6 +1228,7 @@ pr_speech_error_t pr_speech_bridge_retrieve_similar_words(
     }
 
     nimcp_free(scored);
+    scored = NULL;
 
     *result_count = num_results;
     bridge->stats.words_retrieved += num_results;

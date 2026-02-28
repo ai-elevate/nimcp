@@ -539,6 +539,7 @@ emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* co
     if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         TENSOR_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_tensor_create: validation failed");
         return NULL;
     }
@@ -559,6 +560,7 @@ void emotion_tensor_destroy(emotion_tensor_system_t* system) {
 
     nimcp_rwlock_destroy(&system->lock);
     nimcp_free(system);
+    system = NULL;
     TENSOR_LOG_INFO("Emotion tensor system destroyed");
 }
 

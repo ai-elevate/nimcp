@@ -245,6 +245,7 @@ vae_plasticity_bridge_t* vae_plasticity_bridge_create(const vae_plasticity_bridg
     bridge->history_length = VAE_PLAST_HISTORY_SIZE;
     bridge->recon_error_history = nimcp_calloc(VAE_PLAST_HISTORY_SIZE, sizeof(float));
     bridge->kl_history = nimcp_calloc(VAE_PLAST_HISTORY_SIZE, sizeof(float));
+    if (!bridge->kl_history) return -1;
     bridge->precision_history = nimcp_calloc(VAE_PLAST_HISTORY_SIZE, sizeof(float));
 
     if (!bridge->recon_error_history || !bridge->kl_history || !bridge->precision_history) {
@@ -290,6 +291,7 @@ void vae_plasticity_bridge_destroy(vae_plasticity_bridge_t* bridge)
     nimcp_free(bridge->config.mappings);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_plasticity_bridge_connect_vae(vae_plasticity_bridge_t* bridge, vae_system_t* vae)
@@ -316,6 +318,7 @@ int vae_plasticity_bridge_connect_vae(vae_plasticity_bridge_t* bridge, vae_syste
         uint32_t input_dim = vae_get_input_dim(bridge->vae);
         bridge->replay_buffer_size = VAE_PLAST_REPLAY_BUFFER_SIZE * input_dim;
         bridge->replay_buffer = nimcp_calloc(bridge->replay_buffer_size, sizeof(float));
+        if (!bridge->replay_buffer) return -1;
     }
 
     if (bridge->plasticity_coordinator) {
@@ -676,6 +679,7 @@ int vae_plasticity_generate_replay(vae_plasticity_bridge_t* bridge,
         nimcp_tensor_destroy(z_tensor);
         nimcp_tensor_destroy(output_tensor);
         nimcp_free(z);
+        z = NULL;
     }
 
     result->avg_reconstruction_error = total_recon_error / (num_samples > 0 ? num_samples : 1);

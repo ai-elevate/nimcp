@@ -170,6 +170,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
     if (!pool->buffer) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: failed to allocate buffer");
         nimcp_free(pool);
+        pool = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_create: pool->buffer is NULL");
         return NULL;
     }
@@ -180,6 +181,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: failed to allocate bitmap");
         nimcp_free(pool->buffer);
         nimcp_free(pool);
+        pool = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_create: pool->bitmap is NULL");
         return NULL;
     }
@@ -219,6 +221,7 @@ void mirror_substrate_pool_destroy(mirror_substrate_pool_t* pool)
     if (pool->bitmap) nimcp_free(pool->bitmap);
 
     nimcp_free(pool);
+    pool = NULL;
 }
 
 mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t* pool)
@@ -424,6 +427,7 @@ void mirror_substrate_backing_destroy(mirror_substrate_backing_t* backing,
         mirror_substrate_pool_free(pool, backing);
     } else {
         nimcp_free(backing);
+        backing = NULL;
     }
 }
 

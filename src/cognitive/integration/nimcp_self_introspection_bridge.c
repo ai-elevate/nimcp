@@ -327,6 +327,7 @@ self_introspection_bridge_t* self_introspection_bridge_create(
         bridge->query_capacity, sizeof(introspection_query_t));
     if (!bridge->queries) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_introspection_bridge_create: bridge->queries is NULL");
         return NULL;
     }
@@ -336,6 +337,7 @@ self_introspection_bridge_t* self_introspection_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->queries);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_introspection_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -403,6 +405,7 @@ void self_introspection_bridge_destroy(self_introspection_bridge_t* bridge) {
     bridge->initialized = false;
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

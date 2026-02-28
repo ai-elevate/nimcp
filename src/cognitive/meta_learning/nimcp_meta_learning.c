@@ -275,6 +275,7 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
     if (!meta->task_history) {
         set_error("Failed to allocate task history");
         nimcp_free(meta);
+        meta = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learner_create: meta->task_history is NULL");
         return NULL;
     }
@@ -386,6 +387,7 @@ void meta_learner_destroy(meta_learner_t meta)
 
     // Free meta-learner structure
     nimcp_free(meta);
+    meta = NULL;
 
     NIMCP_LOGGING_DEBUG("Meta-learner destroyed");
 }
@@ -980,6 +982,7 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
     if (!task->class_prototypes) {
         set_error("Failed to allocate class prototypes");
         nimcp_free(task);
+        task = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_task_create: task->class_prototypes is NULL");
         return NULL;
     }
@@ -1010,6 +1013,7 @@ void meta_task_destroy(meta_task_t* task)
     }
 
     nimcp_free(task);
+    task = NULL;
 }
 
 /**
@@ -1185,6 +1189,7 @@ static float compute_loss(brain_t brain, const float** inputs,
                                      features_per_input, decisions);
     if (!success) {
         nimcp_free(decisions);
+        decisions = NULL;
         return INFINITY;
     }
 
@@ -1223,6 +1228,7 @@ static float compute_loss(brain_t brain, const float** inputs,
     }
 
     nimcp_free(decisions);
+    decisions = NULL;
     return total_loss / (fabsf(num_samples) > 1e-7f ? num_samples : 1e-7f);  // Average loss
 }
 
@@ -1305,6 +1311,7 @@ static bool apply_gradient_step(brain_t brain, const float** inputs,
     float loss = brain_learn_batch(brain, examples, num_samples);
 
     nimcp_free(examples);
+    examples = NULL;
 
     // Return success if loss is finite
     return (loss < INFINITY);

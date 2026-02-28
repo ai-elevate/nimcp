@@ -411,6 +411,7 @@ void meta_free_chain(meta_reasoning_chain_t* chain) {
 
     if (chain->steps) nimcp_free(chain->steps);
     nimcp_free(chain);
+    chain = NULL;
 }
 
 int meta_set_inflammation(meta_engine_t* engine, float level) {

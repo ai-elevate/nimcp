@@ -409,6 +409,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     if (!bridge->queue) {
         set_error("Failed to allocate message queue");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_bio_bridge_create: bridge->queue is NULL");
         return NULL;
     }
@@ -425,6 +426,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
         set_error("Failed to allocate subscriber array");
         nimcp_free(bridge->queue);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_bio_bridge_create: bridge->subscribers is NULL");
         return NULL;
     }
@@ -492,6 +494,7 @@ NIMCP_EXPORT void pr_bio_bridge_destroy(pr_bio_bridge_t bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 //=============================================================================
@@ -695,6 +698,7 @@ NIMCP_EXPORT size_t pr_bio_bridge_process_pending(pr_bio_bridge_t bridge) {
                 }
             }
             nimcp_free(subs_copy);
+            subs_copy = NULL;
         }
 
         uint64_t process_end = get_time_us();

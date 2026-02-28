@@ -223,6 +223,7 @@ surprise_pink_noise_bridge_t* surprise_pink_noise_bridge_create(
                            sizeof(nimcp_mutex_t),
                            "surprise_pink_noise_bridge mutex allocation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -273,6 +274,7 @@ void surprise_pink_noise_bridge_destroy(surprise_pink_noise_bridge_t* bridge) {
         nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int surprise_pink_noise_bridge_reset(surprise_pink_noise_bridge_t* bridge) {

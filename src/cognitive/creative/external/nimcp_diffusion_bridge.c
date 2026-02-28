@@ -169,6 +169,7 @@ diffusion_bridge_t* diffusion_bridge_create(const diffusion_bridge_config_t* con
 
         /* Pre-compute scheduler coefficients */
         scheduler->alphas_cumprod = nimcp_calloc(1000, sizeof(float));
+        if (!scheduler->alphas_cumprod) return -1;
         scheduler->sigmas = nimcp_calloc(1000, sizeof(float));
 
         if (scheduler->alphas_cumprod && scheduler->sigmas) {
@@ -210,6 +211,7 @@ void diffusion_bridge_destroy(diffusion_bridge_t* bridge)
         if (scheduler->alphas_cumprod) nimcp_free(scheduler->alphas_cumprod);
         if (scheduler->sigmas) nimcp_free(scheduler->sigmas);
         nimcp_free(scheduler);
+        scheduler = NULL;
     }
 
     if (bridge->onnx_runtime) {
@@ -217,6 +219,7 @@ void diffusion_bridge_destroy(diffusion_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int diffusion_bridge_load_model(diffusion_bridge_t* bridge)
@@ -418,7 +421,9 @@ int diffusion_text_to_image(diffusion_bridge_t* bridge,
 
     if (!latent || !noise_pred) {
         nimcp_free(latent);
+        latent = NULL;
         nimcp_free(noise_pred);
+        noise_pred = NULL;
         nimcp_free(output->pixels);
         output->pixels = NULL;
         set_diffusion_error("Failed to allocate latent");
@@ -492,7 +497,9 @@ int diffusion_text_to_image(diffusion_bridge_t* bridge,
     }
 
     nimcp_free(latent);
+    latent = NULL;
     nimcp_free(noise_pred);
+    noise_pred = NULL;
 
     /* Update statistics */
     float time_ms = (float)(clock() - start) * 1000.0f / CLOCKS_PER_SEC;

@@ -138,6 +138,7 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
 
     if (num_candidates == 0) {
         nimcp_free(candidates);
+        candidates = NULL;
         return UINT32_MAX;
     }
 
@@ -168,6 +169,7 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
     }
 
     nimcp_free(candidates);
+    candidates = NULL;
     return best_candidate;
 }
 

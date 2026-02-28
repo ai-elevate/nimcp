@@ -222,12 +222,14 @@ bool brain_add_logical_fact(
                 nimcp_free(clauses[j]);
             }
             nimcp_free(clauses);
+            clauses = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_logical_fact: symbolic_logic_add_fact is NULL");
             return false;
         }
     }
 
     nimcp_free(clauses);
+    clauses = NULL;
 
     // Integrate with working memory if enabled
     if (brain->working_memory && brain->config.enable_working_memory) {
@@ -339,6 +341,7 @@ bool brain_add_logical_rule(
     if (!symbolic_logic_add_rule(brain->symbolic_logic, rule)) {
         set_error("Failed to add rule to logic engine");
         nimcp_free(rule);
+        rule = NULL;
         if (premise_clauses) nimcp_free(premise_clauses);
         if (conclusion_clauses) nimcp_free(conclusion_clauses);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_logical_rule: validation failed");
@@ -346,6 +349,7 @@ bool brain_add_logical_rule(
     }
 
     nimcp_free(conclusion_clauses); // Only needed the first element
+    conclusion_clauses = NULL;
 
     NIMCP_LOGGING_INFO("Logical rule added: %s (priority=%.2f)", rule_str, priority);
     return true;
@@ -432,6 +436,7 @@ bool brain_query_knowledge(
         nimcp_free(clauses[i]);
     }
     nimcp_free(clauses);
+    clauses = NULL;
 
     if (!success) {
         set_error("Query execution failed: %s", query_str);
@@ -595,6 +600,7 @@ bool brain_forward_chain(
             }
         }
         nimcp_free(new_facts);
+        new_facts = NULL;
     }
 
     return true;
@@ -695,6 +701,7 @@ bool brain_backward_chain(
         nimcp_free(clauses[i]);
     }
     nimcp_free(clauses);
+    clauses = NULL;
 
     if (!success) {
         NIMCP_LOGGING_INFO("Goal not proven: %s", goal_str);

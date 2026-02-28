@@ -224,6 +224,7 @@ static query_cache_t* cache_create(uint32_t capacity) {
     cache->entries = nimcp_calloc(capacity, sizeof(cache_entry_t));
     if (!cache->entries) {
         nimcp_free(cache);
+        cache = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cache_create: cache->entries is NULL");
         return NULL;
     }
@@ -242,6 +243,7 @@ static void cache_destroy(query_cache_t* cache) {
         nimcp_free(cache->entries);
     }
     nimcp_free(cache);
+    cache = NULL;
 }
 
 //=============================================================================
@@ -311,6 +313,7 @@ void creative_knowledge_bridge_destroy(creative_knowledge_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 
     LOG_INFO(LOG_MODULE, "Creative knowledge bridge destroyed");
 }

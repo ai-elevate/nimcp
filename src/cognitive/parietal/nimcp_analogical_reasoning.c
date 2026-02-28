@@ -270,6 +270,7 @@ analogical_engine_t* analogical_engine_create_custom(const analog_config_t* conf
     if (!engine->cached_domains) {
         set_error("Failed to allocate domain cache");
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_engine_create_custom: engine->cached_domains is NULL");
         return NULL;
     }
@@ -281,6 +282,7 @@ analogical_engine_t* analogical_engine_create_custom(const analog_config_t* conf
         set_error("Failed to allocate analogy cache");
         nimcp_free(engine->cached_domains);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_engine_create_custom: engine->cached_analogies is NULL");
         return NULL;
     }
@@ -312,6 +314,7 @@ void analogical_engine_destroy(analogical_engine_t* engine) {
     }
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 /* ============================================================================
@@ -352,6 +355,7 @@ analog_domain_t* analogical_create_domain(
         if (domain->entities) nimcp_free(domain->entities);
         if (domain->relations) nimcp_free(domain->relations);
         nimcp_free(domain);
+        domain = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_create_domain: validation failed");
         return NULL;
     }
@@ -493,6 +497,7 @@ void analogical_free_domain(analog_domain_t* domain) {
     if (domain->domain_features) nimcp_free(domain->domain_features);
 
     nimcp_free(domain);
+    domain = NULL;
 }
 
 /* ============================================================================
@@ -533,6 +538,7 @@ analog_analogy_t* analogical_find_analogy(
     if (!analogy->mappings) {
         set_error("Failed to allocate mappings");
         nimcp_free(analogy);
+        analogy = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_find_analogy: analogy->mappings is NULL");
         return NULL;
     }
@@ -567,7 +573,9 @@ analog_analogy_t* analogical_find_analogy(
     }
 
     nimcp_free(entity_mappings);
+    entity_mappings = NULL;
     nimcp_free(relation_mappings);
+    relation_mappings = NULL;
 
     /* Compute analogy quality metrics */
     float total_strength = 0.0f;
@@ -772,6 +780,7 @@ void analogical_free_analogy(analog_analogy_t* analogy) {
     if (analogy->inference_potential) nimcp_free(analogy->inference_potential);
 
     nimcp_free(analogy);
+    analogy = NULL;
 }
 
 /* ============================================================================
@@ -905,6 +914,7 @@ int analogical_map_entities(
     }
 
     nimcp_free(target_used);
+    target_used = NULL;
     return 0;
 }
 
@@ -1164,6 +1174,7 @@ void analogical_free_solution(analog_solution_t* solution) {
     }
 
     nimcp_free(solution);
+    solution = NULL;
 }
 
 /* ============================================================================
@@ -1304,6 +1315,7 @@ void analogical_free_abstraction(analog_abstraction_t* abstraction) {
     }
 
     nimcp_free(abstraction);
+    abstraction = NULL;
 }
 
 /* ============================================================================

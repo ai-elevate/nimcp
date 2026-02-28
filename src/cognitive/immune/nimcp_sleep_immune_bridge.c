@@ -294,6 +294,7 @@ void sleep_immune_bridge_destroy(sleep_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_MODULE_INFO("sleep_immune_bridge", "Bridge destroyed");
 }
 
@@ -646,7 +647,7 @@ int sleep_immune_inflame_from_chronic_loss(sleep_immune_bridge_t* bridge) {
 
         /* Trigger pro-inflammatory cytokine release */
         /* Note: Would call brain_immune_release_cytokine(IL6, TNF) */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
             BRAIN_CYTOKINE_IL6,

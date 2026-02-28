@@ -243,6 +243,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
     if (!resonance->channels) {
         LOG_ERROR("Failed to allocate channel storage");
         nimcp_free(resonance);
+        resonance = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_resonance_get_default_config: resonance->channels is NULL");
         return NULL;
     }
@@ -256,6 +257,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
         LOG_ERROR("Failed to allocate action map");
         nimcp_free(resonance->channels);
         nimcp_free(resonance);
+        resonance = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_resonance_get_default_config: resonance->action_map is NULL");
         return NULL;
     }
@@ -277,6 +279,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
         nimcp_free(resonance->action_map);
         nimcp_free(resonance->channels);
         nimcp_free(resonance);
+        resonance = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_resonance_get_default_config: resonance->conflicts is NULL");
         return NULL;
     }
@@ -307,6 +310,7 @@ void motor_resonance_destroy(motor_resonance_t resonance) {
     if (resonance->action_map) nimcp_free(resonance->action_map);
     if (resonance->channels) nimcp_free(resonance->channels);
     nimcp_free(resonance);
+    resonance = NULL;
 }
 
 //=============================================================================

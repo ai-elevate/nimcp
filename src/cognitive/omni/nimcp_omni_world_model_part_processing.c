@@ -40,6 +40,7 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
     /* Concatenate input: [h, z, a] */
     uint32_t input_dim = state->h_dim + state->z_dim + action_dim;
     float* input = nimcp_calloc(input_dim, sizeof(float));
+    if (!input) return -1;
     NIMCP_CHECK_THROW(input, NIMCP_ERROR_NO_MEMORY, "failed to allocate RSSM input buffer");
 
     memcpy(input, state->h, state->h_dim * sizeof(float));
@@ -94,6 +95,7 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
     next_state->z_dim = dyn->z_dim;
 
     nimcp_free(input);
+    input = NULL;
 
     wm->stats.forward_predictions++;
     return NIMCP_SUCCESS;

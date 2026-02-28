@@ -472,6 +472,7 @@ pr_immune_bridge_t pr_immune_bridge_create(
     bridge->cleanup_queue = nimcp_calloc(bridge->cleanup_capacity, sizeof(pr_cleanup_tag_t));
     if (!bridge->cleanup_queue) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_immune_bridge_create: bridge->cleanup_queue is NULL");
         return NULL;
     }
@@ -481,6 +482,7 @@ pr_immune_bridge_t pr_immune_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "pr_immune") != 0) {
         nimcp_free(bridge->cleanup_queue);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_immune_bridge_create: validation failed");
         return NULL;
     }
@@ -514,6 +516,7 @@ void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_immune_bridge_reset(pr_immune_bridge_t bridge) {

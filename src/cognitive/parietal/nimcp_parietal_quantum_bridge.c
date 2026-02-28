@@ -102,6 +102,7 @@ parietal_quantum_bridge_t* parietal_quantum_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_PARIETAL_QUANTUM, "parietal_quantum") != 0) {
         set_error("Failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "parietal_quantum_bridge_create: validation failed");
         return NULL;
     }
@@ -119,6 +120,7 @@ void parietal_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
     if (bridge) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

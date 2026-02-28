@@ -347,6 +347,7 @@ rcog_tool_router_t* rcog_tool_router_create(
     router->mutex = nimcp_mutex_create(&attr);
     if (!router->mutex) {
         nimcp_free(router);
+        router = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_tool_router_create: router->mutex is NULL");
         return NULL;
     }
@@ -402,6 +403,7 @@ void rcog_tool_router_destroy(rcog_tool_router_t* router) {
     }
 
     nimcp_free(router);
+    router = NULL;
 }
 
 /*=============================================================================

@@ -256,6 +256,7 @@ vae_encoder_t* vae_encoder_create(const vae_encoder_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_NO_MEMORY,
                               "Failed to create encoder mutex");
         nimcp_free(encoder);
+        encoder = NULL;
         return NULL;
     }
 
@@ -268,6 +269,7 @@ vae_encoder_t* vae_encoder_create(const vae_encoder_config_t* config) {
                                   "Failed to allocate encoder layers array");
             nimcp_mutex_destroy(encoder->mutex);
             nimcp_free(encoder);
+            encoder = NULL;
             return NULL;
         }
     }
@@ -291,6 +293,7 @@ vae_encoder_t* vae_encoder_create(const vae_encoder_config_t* config) {
             nimcp_free(encoder->layers);
             nimcp_mutex_destroy(encoder->mutex);
             nimcp_free(encoder);
+            encoder = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_encoder_create: validation failed");
             return NULL;
         }
@@ -374,6 +377,7 @@ void vae_encoder_destroy(vae_encoder_t* encoder) {
     }
 
     nimcp_free(encoder);
+    encoder = NULL;
 
     vae_encoder_heartbeat("vae_encoder_destroy", 1.0f);
 }

@@ -236,6 +236,7 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     bridge->receivers = nimcp_calloc(bridge->receiver_capacity, sizeof(broadcast_receiver_t));
     if (!bridge->receivers) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_cognitive_bridge_create: bridge->receivers is NULL");
         return NULL;
     }
@@ -247,6 +248,7 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     if (!bridge->competitors) {
         nimcp_free(bridge->receivers);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_cognitive_bridge_create: bridge->competitors is NULL");
         return NULL;
     }
@@ -258,6 +260,7 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
         nimcp_free(bridge->competitors);
         nimcp_free(bridge->receivers);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -312,6 +315,7 @@ void gw_cognitive_bridge_destroy(gw_cognitive_bridge_t* bridge) {
     bridge->initialized = false;
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================
@@ -785,6 +789,7 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
     /* Free temporary broadcast data */
     if (broadcast_data) {
         nimcp_free(broadcast_data);
+        broadcast_data = NULL;
     }
 
     return 0;

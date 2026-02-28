@@ -94,6 +94,7 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
     if (!latent->embedding) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate embedding array");
         nimcp_free(latent);
+        latent = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_latent_create: latent->embedding is NULL");
         return NULL;
     }
@@ -106,6 +107,7 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
             NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate variance array");
             nimcp_free(latent->embedding);
             nimcp_free(latent);
+            latent = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_latent_create: latent->variance is NULL");
             return NULL;
         }
@@ -225,6 +227,7 @@ void jepa_latent_destroy(jepa_latent_t* latent) {
 
     /* Free structure */
     nimcp_free(latent);
+    latent = NULL;
 
     /* Update statistics - thread-safe atomic increment */
     __atomic_fetch_add(&g_latent_stats.latents_destroyed, 1, __ATOMIC_RELAXED);

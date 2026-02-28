@@ -141,6 +141,7 @@ NIMCP_API energy_consistency_checker_t* energy_consistency_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
             "Failed to create mutex for energy consistency checker");
         nimcp_free(checker);
+        checker = NULL;
         return NULL;
     }
 
@@ -155,6 +156,7 @@ NIMCP_API energy_consistency_checker_t* energy_consistency_create(
             checker->config.max_violations) != NIMCP_SUCCESS) {
         nimcp_mutex_free(checker->mutex);
         nimcp_free(checker);
+        checker = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_consistency_create: operation failed");
         return NULL;
     }
@@ -184,6 +186,7 @@ NIMCP_API void energy_consistency_destroy(
 
     /* Free checker */
     nimcp_free(checker);
+    checker = NULL;
 }
 
 NIMCP_API nimcp_error_t energy_consistency_reset(
@@ -460,7 +463,9 @@ NIMCP_API nimcp_error_t energy_consistency_check_proof(
     }
 
     nimcp_free(visited);
+    visited = NULL;
     nimcp_free(in_stack);
+    in_stack = NULL;
 
     /* Compute thermodynamic cost */
     if (checker->config.track_thermodynamic_cost) {

@@ -297,6 +297,7 @@ void social_context_destroy(social_context_t ctx) {
     nimcp_log(LOG_LEVEL_INFO, "Social context system destroyed (tracked %u agents)",
               ctx->agent_count);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 social_context_config_t social_context_get_default_config(void) {

@@ -592,6 +592,7 @@ void tom_destroy(theory_of_mind_t tom)
 
     // Free structure
     nimcp_free(tom);
+    tom = NULL;
 }
 
 //=============================================================================
@@ -1357,7 +1358,7 @@ bool tom_trigger_social_stress(theory_of_mind_t tom,
 
     // Determine cytokine type and concentration based on stress severity
     brain_cytokine_type_t cytokine_type;
-    float concentration;
+    float concentration = 0.0f;
 
     if (is_social_rejection) {
         // Social rejection triggers stronger inflammatory response
@@ -1370,7 +1371,7 @@ bool tom_trigger_social_stress(theory_of_mind_t tom,
     }
 
     // Release cytokine via immune system
-    uint32_t cytokine_id;
+    uint32_t cytokine_id = 0;
     int result = brain_immune_release_cytokine(
         tom->immune_system,
         cytokine_type,

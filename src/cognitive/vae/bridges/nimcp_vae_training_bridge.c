@@ -294,7 +294,9 @@ vae_training_bridge_t* vae_training_bridge_create(const vae_training_bridge_conf
     /* Allocate gradient buffers */
     bridge->vae_grad_buffer = nimcp_calloc(VAE_TRAIN_GRAD_BUFFER_SIZE, sizeof(float));
     bridge->snn_grad_buffer = nimcp_calloc(VAE_TRAIN_GRAD_BUFFER_SIZE, sizeof(float));
+    if (!bridge->snn_grad_buffer) return -1;
     bridge->combined_grad_buffer = nimcp_calloc(VAE_TRAIN_GRAD_BUFFER_SIZE, sizeof(float));
+    if (!bridge->combined_grad_buffer) return -1;
 
     if (!bridge->vae_grad_buffer || !bridge->snn_grad_buffer ||
         !bridge->combined_grad_buffer) {
@@ -345,6 +347,7 @@ void vae_training_bridge_destroy(vae_training_bridge_t* bridge)
     nimcp_free(bridge->snn_loss_history);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_training_bridge_connect_vae(vae_training_bridge_t* bridge, vae_system_t* vae)
@@ -375,6 +378,7 @@ int vae_training_bridge_connect_trainer(vae_training_bridge_t* bridge, void* snn
     if (bridge->config.algorithm == VAE_TRAIN_EPROP_VAE) {
         bridge->num_traces = 1024; /* Default trace count */
         bridge->eligibility_traces = nimcp_calloc(bridge->num_traces, sizeof(float));
+        if (!bridge->eligibility_traces) return -1;
     }
 
     if (bridge->vae) {
@@ -516,6 +520,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
     result->latent_dim = latent_dim;
     result->latent_mu = nimcp_calloc(latent_dim, sizeof(float));
     result->latent_log_var = nimcp_calloc(latent_dim, sizeof(float));
+    if (!result->latent_log_var) return -1;
     result->latent_sample = nimcp_calloc(latent_dim, sizeof(float));
 
     if (!result->latent_mu || !result->latent_log_var || !result->latent_sample) {
@@ -565,6 +570,7 @@ int vae_training_forward(vae_training_bridge_t* bridge,
         /* For now, just set placeholder */
         result->snn_output_dim = result->latent_dim;
         result->snn_output = nimcp_calloc(result->snn_output_dim, sizeof(float));
+        if (!result->snn_output) return -1;
     }
 
     nimcp_tensor_destroy(input_tensor);

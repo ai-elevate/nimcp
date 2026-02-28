@@ -227,6 +227,7 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
             "invalid num_dimensions: %u (max: %u)",
             bridge->config.num_dimensions, GENIUS_SNN_MAX_DIMENSIONS);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -235,6 +236,7 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
             "bridge_base_init failed for genius_snn");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -243,9 +245,13 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
     uint32_t output_dim = 8; /* insight, elegance, pattern, conjecture, gauss, newton, erdos, creativity */
 
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    if (!bridge->encoding_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->mode_buffer = nimcp_calloc(GENIUS_MODE_COUNT, sizeof(float));
+    if (!bridge->mode_buffer) return -1;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) return -1;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->mode_buffer || !bridge->prev_state) {
@@ -308,6 +314,7 @@ void genius_snn_destroy(genius_snn_bridge_t* bridge) {
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int genius_snn_reset(genius_snn_bridge_t* bridge) {

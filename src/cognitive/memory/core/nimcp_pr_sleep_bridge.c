@@ -319,6 +319,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
         bridge->replay_buffer_capacity, sizeof(pr_replay_candidate_t));
     if (!bridge->replay_buffer) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_sleep_bridge_create: bridge->replay_buffer is NULL");
         return NULL;
     }
@@ -332,6 +333,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
         if (!bridge->replay_history) {
             nimcp_free(bridge->replay_buffer);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_sleep_bridge_create: bridge->replay_history is NULL");
             return NULL;
         }
@@ -359,6 +361,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
         nimcp_free(bridge->replay_history);
         nimcp_free(bridge->replay_buffer);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -392,6 +395,7 @@ NIMCP_EXPORT void pr_sleep_bridge_destroy(pr_sleep_bridge_t bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_ladder(
@@ -817,7 +821,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_replay_candidates(
     // Iterate through Z0 and Z1 tiers (primary replay candidates)
     for (int tier = PR_MEMORY_TIER_Z0; tier <= PR_MEMORY_TIER_Z1; tier++) {
         pr_memory_node_t* nodes[256];
-        size_t node_count;
+        size_t node_count = 0;
 
         z_ladder_error_t err = z_ladder_get_nodes(
             bridge->ladder,
@@ -1076,6 +1080,7 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
         }
 
         nimcp_free(shuffled);
+        shuffled = NULL;
     }
 
     // Strengthen associations between co-replayed memories
@@ -1111,7 +1116,7 @@ NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
     // Check Z0 and Z1 for promotion candidates
     for (int tier = PR_MEMORY_TIER_Z0; tier <= PR_MEMORY_TIER_Z2; tier++) {
         pr_memory_node_t* nodes[256];
-        size_t node_count;
+        size_t node_count = 0;
 
         z_ladder_error_t err = z_ladder_get_nodes(
             bridge->ladder,
@@ -1248,7 +1253,7 @@ NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
     // Iterate through all tiers looking for emotional memories
     for (int tier = PR_MEMORY_TIER_Z0; tier < PR_MEMORY_TIER_COUNT; tier++) {
         pr_memory_node_t* nodes[256];
-        size_t node_count;
+        size_t node_count = 0;
 
         z_ladder_error_t err = z_ladder_get_nodes(
             bridge->ladder,
@@ -1356,7 +1361,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_emotional_memories(
     // Iterate through all tiers
     for (int tier = PR_MEMORY_TIER_Z0; tier < PR_MEMORY_TIER_COUNT && candidate_count < max_candidates; tier++) {
         pr_memory_node_t* nodes[256];
-        size_t node_count;
+        size_t node_count = 0;
 
         z_ladder_error_t err = z_ladder_get_nodes(
             bridge->ladder,
@@ -1903,7 +1908,7 @@ static int consolidate_n1(pr_sleep_bridge_t bridge) {
     // Minimal replay, mainly theta-driven stabilization
 
     pr_replay_candidate_t candidates[20];
-    size_t count;
+    size_t count = 0;
 
     pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
         bridge, candidates, 20, &count);
@@ -1937,7 +1942,7 @@ static int consolidate_n2(pr_sleep_bridge_t bridge) {
     // Moderate replay with spindle-gating simulation
 
     pr_replay_candidate_t candidates[50];
-    size_t count;
+    size_t count = 0;
 
     pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
         bridge, candidates, 50, &count);
@@ -1974,7 +1979,7 @@ static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
     // Maximum replay with hippocampal sharp-wave ripples
 
     pr_replay_candidate_t candidates[100];
-    size_t count;
+    size_t count = 0;
 
     pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
         bridge, candidates, 100, &count);
@@ -2015,6 +2020,7 @@ static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
     }
 
     nimcp_free(replay_ids);
+    replay_ids = NULL;
 
     // Promote eligible memories (main promotion happens in SWS)
     pr_sleep_bridge_promote_z_ladder(bridge);
@@ -2033,7 +2039,7 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
 
     // 2. Get replay candidates (emphasizing emotional/procedural)
     pr_replay_candidate_t candidates[50];
-    size_t count;
+    size_t count = 0;
 
     pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
         bridge, candidates, 50, &count);
@@ -2062,6 +2068,7 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
             total_processed += replayed;
 
             nimcp_free(replay_ids);
+            replay_ids = NULL;
         }
     }
 

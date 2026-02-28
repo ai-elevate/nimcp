@@ -181,6 +181,7 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
 
     if (count == 0) {
         nimcp_free(temp_results);
+        temp_results = NULL;
         nimcp_platform_mutex_unlock(&event_log_mutex);
         *events_out = NULL;
         return 0;
@@ -192,6 +193,7 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
         if (*events_out) {
             memcpy(*events_out, temp_results, count * sizeof(wellbeing_event_t));
             nimcp_free(temp_results);
+            temp_results = NULL;
         } else {
             // Allocation failed, just return the larger buffer
             *events_out = temp_results;

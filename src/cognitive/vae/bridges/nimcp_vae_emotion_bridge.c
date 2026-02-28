@@ -241,6 +241,7 @@ vae_emotion_bridge_t* vae_emotion_bridge_create(const vae_emotion_bridge_config_
                                                    sizeof(float));
         if (!bridge->emotion_embeddings) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_emotion_bridge_create: bridge->emotion_embeddings is NULL");
             return NULL;
         }
@@ -294,6 +295,7 @@ void vae_emotion_bridge_destroy(vae_emotion_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_emotion_bridge_connect_vae(vae_emotion_bridge_t* bridge, vae_system_t* vae) {

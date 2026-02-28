@@ -117,6 +117,7 @@ void multimodal_director_destroy(multimodal_director_t* dir)
     }
 
     nimcp_free(dir);
+    dir = NULL;
 }
 
 //=============================================================================
@@ -391,6 +392,7 @@ int director_generate_structure(multimodal_director_t* dir,
     if (strcmp(structure->structure_type, "3-act") == 0) {
         structure->num_beats = 8;
         structure->beats = nimcp_calloc(structure->num_beats, sizeof(story_beat_t));
+        if (!structure->beats) return -1;
 
         static const struct {
             const char* desc;
@@ -431,6 +433,7 @@ int director_generate_structure(multimodal_director_t* dir,
     } else if (strcmp(structure->structure_type, "hero's journey") == 0) {
         structure->num_beats = 12;
         structure->beats = nimcp_calloc(structure->num_beats, sizeof(story_beat_t));
+        if (!structure->beats) return -1;
 
         static const char* journey_beats[] = {
             "Ordinary World", "Call to Adventure", "Refusal of the Call",
@@ -728,6 +731,7 @@ int director_produce(multimodal_director_t* dir,
         video_generation_result_free(&scene_videos[s]);
     }
     nimcp_free(scene_videos);
+    scene_videos = NULL;
 
     if (rc == 0) {
         update_phase(dir, PHASE_DELIVERY, 1.0f, "Production complete");

@@ -227,6 +227,7 @@ biology_t* biology_create_custom(const biology_config_t* config) {
     if (!bio->lock) {
         set_biology_error("Failed to create mutex");
         nimcp_free(bio);
+        bio = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "biology_create_custom: bio->lock is NULL");
         return NULL;
     }
@@ -245,6 +246,7 @@ void biology_destroy(biology_t* bio) {
         nimcp_mutex_free(bio->lock);
     }
     nimcp_free(bio);
+    bio = NULL;
 }
 
 /* ============================================================================
@@ -760,6 +762,7 @@ phylo_tree_t* biology_create_phylo_tree(
 
     /* Create leaf nodes */
     phylo_node_t** nodes = nimcp_calloc(num_species, sizeof(phylo_node_t*));
+    if (!nodes) return -1;
     for (uint32_t i = 0; i < num_species; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && num_species > 256) {
@@ -803,6 +806,7 @@ phylo_tree_t* biology_create_phylo_tree(
 
         /* Create internal node */
         phylo_node_t* internal = nimcp_calloc(1, sizeof(phylo_node_t));
+        if (!internal) return -1;
         internal->id = next_id++;
         internal->left = nodes[min_i];
         internal->right = nodes[min_j];
@@ -839,6 +843,7 @@ phylo_tree_t* biology_create_phylo_tree(
     tree->num_internal = num_species - 1;
 
     nimcp_free(nodes);
+    nodes = NULL;
     bio->phylo_analyses++;
     nimcp_mutex_unlock(bio->lock);
 
@@ -850,6 +855,7 @@ static void destroy_phylo_node(phylo_node_t* node) {
     destroy_phylo_node(node->left);
     destroy_phylo_node(node->right);
     nimcp_free(node);
+    node = NULL;
 }
 
 void biology_destroy_phylo_tree(phylo_tree_t* tree) {
@@ -860,6 +866,7 @@ void biology_destroy_phylo_tree(phylo_tree_t* tree) {
 
     destroy_phylo_node(tree->root);
     nimcp_free(tree);
+    tree = NULL;
 }
 
 static phylo_node_t* find_node_by_name(phylo_node_t* node, const char* name) {

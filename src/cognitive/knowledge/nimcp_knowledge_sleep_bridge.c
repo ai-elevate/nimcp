@@ -190,11 +190,13 @@ knowledge_sleep_bridge_t knowledge_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "knowledge_sleep") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_sleep_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_sleep_bridge_create: mutex creation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -239,6 +241,7 @@ void knowledge_sleep_bridge_destroy(knowledge_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int knowledge_sleep_update(knowledge_sleep_bridge_t bridge) {

@@ -262,6 +262,7 @@ void financial_motivation_bridge_destroy(financial_motivation_bridge_t* bridge) 
         bridge->magic = 0;
         bridge->state = FIN_MOTIVATION_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

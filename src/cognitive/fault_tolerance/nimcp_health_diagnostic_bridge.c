@@ -346,6 +346,7 @@ static int capture_stack_trace(diagnostic_result_t* result) {
 
     if (symbols) {
         nimcp_free(symbols);
+        symbols = NULL;
     }
 
     return 0;
@@ -488,6 +489,7 @@ void health_diag_bridge_destroy(health_diag_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================
@@ -527,6 +529,7 @@ int health_diag_bridge_convert_anomaly(
     if (nimcp_mutex_lock(bridge->base.mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
                               "health_diag_bridge_convert_anomaly: mutex lock failed");
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -544,6 +547,7 @@ int health_diag_bridge_convert_anomaly(
         NIMCP_THROW(NIMCP_ERROR_NOT_FOUND,
                     "No mapping found for anomaly type %d", (int)anomaly->type);
         nimcp_free(diag);
+        diag = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.conversions_failed++;
         return -1;
@@ -685,6 +689,7 @@ int health_diag_bridge_convert_agent_message(
     if (nimcp_mutex_lock(bridge->base.mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
                               "health_diag_bridge_convert_agent_message: mutex lock failed");
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 

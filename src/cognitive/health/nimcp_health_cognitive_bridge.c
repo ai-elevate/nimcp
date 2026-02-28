@@ -255,6 +255,7 @@ health_cognitive_bridge_t* health_cognitive_bridge_create(
         rcog_health_destroy(bridge->rcog_health);
         meta_health_destroy(bridge->meta_reflector);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_cognitive_bridge_create: bridge->pending is NULL");
         return NULL;
     }
@@ -292,6 +293,7 @@ void health_cognitive_bridge_destroy(health_cognitive_bridge_t* bridge) {
 
     nimcp_free(bridge->pending);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int health_cognitive_bridge_start(health_cognitive_bridge_t* bridge) {

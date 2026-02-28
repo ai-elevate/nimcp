@@ -836,6 +836,7 @@ void hyperscanning_destroy(hyperscanning_t* hs) {
     }
 
     nimcp_free(hs);
+    hs = NULL;
 }
 
 int hyperscanning_reset(hyperscanning_t* hs) {

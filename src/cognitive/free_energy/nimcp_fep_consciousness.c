@@ -123,7 +123,9 @@ fep_consciousness_bridge_t* fep_consciousness_create(
 
     /* Allocate attention arrays */
     bridge->attention_targets = (uint32_t*)nimcp_calloc(32, sizeof(uint32_t));
+    if (!bridge->attention_targets) return -1;
     bridge->attention_priorities = (float*)nimcp_calloc(32, sizeof(float));
+    if (!bridge->attention_priorities) return -1;
 
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
@@ -160,6 +162,7 @@ void fep_consciousness_destroy(fep_consciousness_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Consciousness bridge destroyed");
 }
 

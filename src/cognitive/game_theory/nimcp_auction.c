@@ -108,6 +108,7 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
 
 
     nimcp_auction_t auction = nimcp_calloc(1, sizeof(struct nimcp_auction_struct));
+    if (!auction) return -1;
     NIMCP_API_CHECK_ALLOC(auction, "Failed to allocate auction");
 
     if (config) {
@@ -120,6 +121,7 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
     auction->bids = nimcp_calloc(auction->max_bids, sizeof(nimcp_bid_t));
     if (!auction->bids) {
         nimcp_free(auction);
+        auction = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_auction_create: auction->bids is NULL");
         return NULL;
     }
@@ -127,6 +129,7 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
     if (nimcp_platform_mutex_init(&auction->mutex, false) != 0) {
         nimcp_free(auction->bids);
         nimcp_free(auction);
+        auction = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_auction_create: validation failed");
         return NULL;
     }
@@ -152,6 +155,7 @@ void nimcp_auction_destroy(nimcp_auction_t auction) {
     nimcp_platform_mutex_destroy(&auction->mutex);
     nimcp_free(auction->bids);
     nimcp_free(auction);
+    auction = NULL;
 }
 
 //=============================================================================

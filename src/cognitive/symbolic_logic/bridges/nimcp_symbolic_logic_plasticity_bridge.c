@@ -560,6 +560,7 @@ safety_plasticity_bridge_t* safety_plasticity_bridge_create(
     if (bridge_base_init(&bridge->base, SAFETY_PLASTICITY_MODULE_ID,
                          SAFETY_PLASTICITY_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_bridge_create: bridge is NULL");
         return NULL;
     }
@@ -602,6 +603,7 @@ void safety_plasticity_bridge_destroy(safety_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("[SAFETY-PLASTICITY] Bridge destroyed");
 }

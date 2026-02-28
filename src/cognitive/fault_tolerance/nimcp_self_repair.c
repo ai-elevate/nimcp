@@ -171,6 +171,7 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     coord->mutex = nimcp_mutex_create(&attr);
     if (!coord->mutex) {
         nimcp_free(coord);
+        coord = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_create_with_deps: coord->mutex is NULL");
         return NULL;
     }
@@ -181,6 +182,7 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     if (!coord->records) {
         nimcp_mutex_free(coord->mutex);
         nimcp_free(coord);
+        coord = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_create_with_deps: coord->records is NULL");
         return NULL;
     }
@@ -268,6 +270,7 @@ void self_repair_destroy(self_repair_coordinator_t* coordinator) {
     }
 
     nimcp_free(coordinator);
+    coordinator = NULL;
 }
 
 bool self_repair_is_ready(const self_repair_coordinator_t* coordinator) {

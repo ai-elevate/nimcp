@@ -209,6 +209,7 @@ void fep_curiosity_destroy(fep_curiosity_system_t* sys) {
     }
 
     nimcp_free(sys);
+    sys = NULL;
     NIMCP_LOGGING_INFO("Curiosity system destroyed");
 }
 

@@ -148,6 +148,7 @@ void fep_immune_bridge_destroy(fep_immune_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("FEP-immune bridge destroyed");
 }
 
@@ -252,7 +253,7 @@ int fep_immune_report_prediction_failure(
         /* Critical: Severe immune response */
         if (bridge->immune_system) {
             uint8_t pattern[8] = {0xFE, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-            uint32_t antigen_id;
+            uint32_t antigen_id = 0;
             brain_immune_present_antigen(bridge->immune_system,
                 ANTIGEN_SOURCE_MANUAL, pattern, 8, 10, 0, &antigen_id);
             bridge->stats.immune_activations++;
@@ -294,7 +295,7 @@ int fep_immune_report_model_violation(
 
     /* Present pattern as antigen to immune system */
     if (bridge->immune_system) {
-        uint32_t antigen_id;
+        uint32_t antigen_id = 0;
         brain_immune_present_antigen(bridge->immune_system,
             ANTIGEN_SOURCE_MANUAL, pattern, len, 5, 0, &antigen_id);
     }
@@ -694,7 +695,7 @@ int fep_immune_bridge_update(
             if (scaled_magnitude >= FEP_IMMUNE_PE_THRESHOLD_CRITICAL) {
                 if (bridge->immune_system) {
                     uint8_t pattern[8] = {0xFE, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-                    uint32_t antigen_id;
+                    uint32_t antigen_id = 0;
                     brain_immune_present_antigen(bridge->immune_system,
                         ANTIGEN_SOURCE_MANUAL, pattern, 8, 10, 0, &antigen_id);
                 }

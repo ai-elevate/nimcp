@@ -467,6 +467,7 @@ visual_image_t* visual_image_create(uint32_t width, uint32_t height,
     image->pixels = nimcp_calloc(data_size, sizeof(float));
     if (!image->pixels) {
         nimcp_free(image);
+        image = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_image_create: pixels allocation failed");
         return NULL;
     }
@@ -486,6 +487,7 @@ void visual_image_destroy(visual_image_t* image) {
         nimcp_free(image->pixels);
     }
     nimcp_free(image);
+    image = NULL;
 }
 
 visual_image_t* visual_image_clone(const visual_image_t* src) {
@@ -528,6 +530,7 @@ music_track_t* music_track_create(uint32_t max_notes) {
     track->notes = nimcp_calloc(max_notes, sizeof(music_note_t));
     if (!track->notes) {
         nimcp_free(track);
+        track = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_track_create: track->notes is NULL");
         return NULL;
     }
@@ -548,6 +551,7 @@ void music_track_destroy(music_track_t* track) {
         nimcp_free(track->notes);
     }
     nimcp_free(track);
+    track = NULL;
 }
 
 int music_track_add_note(music_track_t* track, const music_note_t* note) {

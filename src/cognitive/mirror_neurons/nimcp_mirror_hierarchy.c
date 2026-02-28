@@ -189,6 +189,7 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
 
     LOG_DEBUG("Creating mirror hierarchy system");
     mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)nimcp_calloc(1, sizeof(struct mirror_hierarchy_system));
+    if (!hierarchy) return -1;
     NIMCP_API_CHECK_ALLOC(hierarchy, "Failed to allocate mirror hierarchy system");
 
     // Copy configuration
@@ -205,6 +206,7 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
     if (!hierarchy->goals) {
         LOG_ERROR("Failed to allocate goal storage");
         nimcp_free(hierarchy);
+        hierarchy = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hierarchy_create: hierarchy->goals is NULL");
         return NULL;
     }
@@ -217,6 +219,7 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
         LOG_ERROR("Failed to allocate motor storage");
         nimcp_free(hierarchy->goals);
         nimcp_free(hierarchy);
+        hierarchy = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hierarchy_create: hierarchy->motors is NULL");
         return NULL;
     }
@@ -244,6 +247,7 @@ void mirror_hierarchy_destroy(mirror_hierarchy_t hierarchy) {
     if (hierarchy->motors) nimcp_free(hierarchy->motors);
     if (hierarchy->goals) nimcp_free(hierarchy->goals);
     nimcp_free(hierarchy);
+    hierarchy = NULL;
 }
 
 //=============================================================================

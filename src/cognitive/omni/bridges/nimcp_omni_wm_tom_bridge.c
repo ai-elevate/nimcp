@@ -223,6 +223,7 @@ static nimcp_error_t allocate_agent_tracking(omni_wm_tom_bridge_t* bridge) {
     if (capacity == 0) capacity = DEFAULT_TRACKED_AGENT_CAPACITY;
 
     bridge->tracked_agents = nimcp_calloc(capacity, sizeof(tom_agent_mental_state_t));
+    if (!bridge->tracked_agents) return -1;
     NIMCP_CHECK_THROW(bridge->tracked_agents, NIMCP_ERROR_NO_MEMORY, "failed to allocate tracked_agents");
 
     bridge->tracked_agent_capacity = capacity;
@@ -253,6 +254,7 @@ static nimcp_error_t allocate_belief_gap_tracking(omni_wm_tom_bridge_t* bridge) 
     if (capacity == 0) capacity = DEFAULT_BELIEF_GAP_CAPACITY;
 
     bridge->belief_gaps = nimcp_calloc(capacity, sizeof(tom_belief_reality_gap_t));
+    if (!bridge->belief_gaps) return -1;
     NIMCP_CHECK_THROW(bridge->belief_gaps, NIMCP_ERROR_NO_MEMORY, "failed to allocate belief_gaps");
 
     bridge->belief_gap_capacity = capacity;
@@ -283,6 +285,7 @@ static nimcp_error_t allocate_interaction_buffer(omni_wm_tom_bridge_t* bridge) {
     if (capacity == 0) capacity = DEFAULT_INTERACTION_BUFFER_CAPACITY;
 
     bridge->interaction_buffer = nimcp_calloc(capacity, sizeof(tom_social_interaction_t));
+    if (!bridge->interaction_buffer) return -1;
     NIMCP_CHECK_THROW(bridge->interaction_buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate interaction_buffer");
 
     bridge->interaction_buffer_capacity = capacity;
@@ -315,6 +318,7 @@ static nimcp_error_t allocate_cf_cache(omni_wm_tom_bridge_t* bridge) {
     if (capacity == 0) capacity = DEFAULT_CF_CACHE_CAPACITY;
 
     bridge->cf_cache = nimcp_calloc(capacity, sizeof(tom_social_trajectory_t));
+    if (!bridge->cf_cache) return -1;
     NIMCP_CHECK_THROW(bridge->cf_cache, NIMCP_ERROR_NO_MEMORY, "failed to allocate cf_cache");
 
     bridge->cf_cache_capacity = capacity;
@@ -735,6 +739,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_TOM_BRIDGE,
                          "wm_tom_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
@@ -752,6 +757,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
     if (err != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate agent tracking");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -763,6 +769,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         free_agent_tracking(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate belief gap tracking");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -775,6 +782,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         free_agent_tracking(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate interaction buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -788,6 +796,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         free_agent_tracking(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate counterfactual cache");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -832,6 +841,7 @@ void omni_wm_tom_bridge_destroy(omni_wm_tom_bridge_t* bridge) {
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM ToM Bridge destroyed");
 }

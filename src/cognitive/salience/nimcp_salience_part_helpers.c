@@ -71,7 +71,7 @@ static inline float simd_dot_product(const float* a, const float* b, uint32_t n)
     sum128 = _mm_hadd_ps(sum128, sum128);  // Horizontal add: [a+b, c+d, a+b, c+d]
     sum128 = _mm_hadd_ps(sum128, sum128);  // Horizontal add: [a+b+c+d, ...]
 
-    float result;
+    float result = 0.0f;
     _mm_store_ss(&result, sum128);  // Store lowest float
 
     // Tail loop: handle remaining elements (scalar)
@@ -101,7 +101,7 @@ static inline float simd_dot_product(const float* a, const float* b, uint32_t n)
     sum = _mm_hadd_ps(sum, sum);  // [a+b, c+d, a+b, c+d]
     sum = _mm_hadd_ps(sum, sum);  // [a+b+c+d, ...]
 
-    float result;
+    float result = 0.0f;
     _mm_store_ss(&result, sum);  // Store lowest float
 
     // Tail loop: handle remaining elements (scalar)
@@ -147,7 +147,7 @@ static inline float simd_norm(const float* vec, uint32_t n)
     sum128 = _mm_hadd_ps(sum128, sum128);
     sum128 = _mm_hadd_ps(sum128, sum128);
 
-    float result;
+    float result = 0.0f;
     _mm_store_ss(&result, sum128);
 
     // Tail loop: handle remaining elements
@@ -175,7 +175,7 @@ static inline float simd_norm(const float* vec, uint32_t n)
     sum_sq = _mm_hadd_ps(sum_sq, sum_sq);
     sum_sq = _mm_hadd_ps(sum_sq, sum_sq);
 
-    float result;
+    float result = 0.0f;
     _mm_store_ss(&result, sum_sq);
 
     // Tail loop: handle remaining elements

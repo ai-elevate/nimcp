@@ -187,7 +187,7 @@ static pr_mh_retrieval_event_t* get_history_entry(
     }
 
     // Calculate actual position in circular buffer
-    size_t start;
+    size_t start = 0;
     if (bridge->history_count == bridge->history_capacity) {
         start = bridge->history_head;  // Buffer is full, head is oldest
     } else {
@@ -379,6 +379,7 @@ static int invoke_intervention_callbacks(
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -502,6 +503,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     if (!bridge->history) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: bridge->history is NULL");
         return NULL;
     }
@@ -514,6 +516,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: bridge->rumination_patterns is NULL");
         return NULL;
     }
@@ -527,6 +530,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: bridge->intrusion_records is NULL");
         return NULL;
     }
@@ -591,6 +595,7 @@ void pr_mental_health_bridge_destroy(pr_mental_health_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 pr_mh_error_t pr_mental_health_bridge_reset(pr_mental_health_bridge_t bridge) {
@@ -1064,7 +1069,7 @@ float pr_mental_health_bridge_get_valence_bias(pr_mental_health_bridge_t bridge)
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    float bias;
+    float bias = 0.0f;
     uint64_t now = get_current_time_ms();
 
     // Use cached value if recent (within 10 seconds)
@@ -1228,7 +1233,7 @@ float pr_mental_health_bridge_get_trauma_load(pr_mental_health_bridge_t bridge) 
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    float load;
+    float load = 0.0f;
     uint64_t now = get_current_time_ms();
 
     if (bridge->trauma_assessment_valid &&

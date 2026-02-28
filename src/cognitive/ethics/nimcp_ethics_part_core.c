@@ -78,7 +78,7 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
 
     // Step 4: Evaluate Other Policies (Third Priority)
     ethics_violation_type_t worst_violation;
-    float worst_severity;
+    float worst_severity = 0.0f;
     float policy_score = ethics_evaluate_all_policies(engine, action, &worst_violation, &worst_severity);
 
     // Step 5: Combine scores

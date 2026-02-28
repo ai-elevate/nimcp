@@ -364,7 +364,7 @@ static void update_recovery_progress(
     cell->recovery_progress = CLAMP(cell->recovery_progress, 0.0f, 1.0f);
 
     /* Gradually restore capacity */
-    float target_capacity;
+    float target_capacity = 0.0f;
     if (cell->recovery_strategy == RECOVERY_STRATEGY_CHECKPOINT) {
         target_capacity = system->config.checkpoint_blockade_efficacy;
     } else {
@@ -607,6 +607,7 @@ exhaustion_system_t* exhaustion_create(
     );
     if (!system->cells) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "exhaustion_create: system->cells is NULL");
         return NULL;
     }
@@ -617,6 +618,7 @@ exhaustion_system_t* exhaustion_create(
     if (!system->mutex) {
         nimcp_free(system->cells);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "exhaustion_create: system->mutex is NULL");
         return NULL;
     }
@@ -655,6 +657,7 @@ void exhaustion_destroy(exhaustion_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /* ============================================================================

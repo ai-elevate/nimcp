@@ -209,6 +209,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
         LOG_ERROR("Failed to subscribe to events");
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_create_custom: validation failed");
         return NULL;
     }
@@ -256,6 +257,7 @@ void reasoning_attention_destroy(reasoning_attention_t* integration) {
     }
 
     nimcp_free(integration);
+    integration = NULL;
 }
 
 //=============================================================================

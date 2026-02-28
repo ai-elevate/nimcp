@@ -131,6 +131,7 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "self_model_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -159,6 +160,7 @@ void self_model_fep_bridge_destroy(self_model_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO(LOG_MODULE_SELF_MODEL_FEP " Bridge destroyed");
 }
 

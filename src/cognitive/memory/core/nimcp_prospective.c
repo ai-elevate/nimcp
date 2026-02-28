@@ -586,6 +586,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
     if (!pm->intentions) {
         set_error("Memory allocation failed for intentions");
         nimcp_free(pm);
+        pm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_create: pm->intentions is NULL");
         return NULL;
     }
@@ -611,6 +612,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
         set_error("Memory allocation failed for active monitors");
         nimcp_free(pm->intentions);
         nimcp_free(pm);
+        pm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_create: pm->active_monitors is NULL");
         return NULL;
     }
@@ -656,6 +658,7 @@ NIMCP_EXPORT void prospective_destroy(prospective_memory_t pm) {
     }
 
     nimcp_free(pm);
+    pm = NULL;
 }
 
 NIMCP_EXPORT prospective_error_t prospective_reset(prospective_memory_t pm) {
@@ -1764,6 +1767,7 @@ NIMCP_EXPORT prospective_error_t prospective_get_urgent(
     }
 
     nimcp_free(entries);
+    entries = NULL;
 
     if (count_out) *count_out = count;
     return PROSP_SUCCESS;

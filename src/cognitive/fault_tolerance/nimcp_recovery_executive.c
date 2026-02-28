@@ -665,6 +665,7 @@ void recovery_executive_destroy(recovery_executive_t* exec) {
     }
 
     nimcp_free(exec);
+    exec = NULL;
 
     LOG_INFO("Recovery executive destroyed");
 }
@@ -855,6 +856,7 @@ void recovery_executive_free_plan(recovery_plan_t* plan) {
 
     if (plan) {
         nimcp_free(plan);
+        plan = NULL;
     }
 }
 

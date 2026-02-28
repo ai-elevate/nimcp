@@ -149,6 +149,7 @@ void social_bond_system_destroy(social_bond_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void social_bond_system_reset(social_bond_system_t* system) {

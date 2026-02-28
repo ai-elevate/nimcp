@@ -302,6 +302,7 @@ void introspection_immune_bridge_destroy(introspection_immune_bridge_t* bridge) 
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_MODULE_INFO("introspection_immune_bridge", "Bridge destroyed");
 }
 

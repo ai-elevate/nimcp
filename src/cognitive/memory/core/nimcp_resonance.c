@@ -600,6 +600,7 @@ int resonance_compute_top_k(
     memcpy(results, all_results, result_count * sizeof(resonance_batch_result_t));
 
     nimcp_free(all_results);
+    all_results = NULL;
     s_stats.batch_computations++;
     clear_error();
 

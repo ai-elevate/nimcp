@@ -165,6 +165,7 @@ void knowledge_substrate_bridge_destroy(knowledge_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int knowledge_substrate_bridge_update(knowledge_substrate_bridge_t* bridge) {

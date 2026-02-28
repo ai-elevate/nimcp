@@ -122,6 +122,7 @@ void visual_generator_destroy(visual_generator_t* gen)
     /* Model cleanup would happen here in production */
 
     nimcp_free(gen);
+    gen = NULL;
 }
 
 //=============================================================================
@@ -299,7 +300,9 @@ int visual_generate(visual_generator_t* gen,
 
     if (!latent || !noise) {
         nimcp_free(latent);
+        latent = NULL;
         nimcp_free(noise);
+        noise = NULL;
         nimcp_free(result->image.pixels);
         result->image.pixels = NULL;
         result->success = false;
@@ -317,9 +320,13 @@ int visual_generate(visual_generator_t* gen,
 
     if (!alphas || !sigmas) {
         nimcp_free(latent);
+        latent = NULL;
         nimcp_free(noise);
+        noise = NULL;
         nimcp_free(alphas);
+        alphas = NULL;
         nimcp_free(sigmas);
+        sigmas = NULL;
         nimcp_free(result->image.pixels);
         result->image.pixels = NULL;
         result->success = false;
@@ -372,9 +379,13 @@ int visual_generate(visual_generator_t* gen,
 
     /* Cleanup */
     nimcp_free(latent);
+    latent = NULL;
     nimcp_free(noise);
+    noise = NULL;
     nimcp_free(alphas);
+    alphas = NULL;
     nimcp_free(sigmas);
+    sigmas = NULL;
 
     /* Evaluate quality */
     result->evaluation.overall_quality = 0.75f;  /* Placeholder */

@@ -13,6 +13,7 @@ static history_buffer_t* history_buffer_create(uint32_t capacity)
     hist->entries = nimcp_calloc(capacity, sizeof(history_entry_t));
     if (!hist->entries) {
         nimcp_free(hist);
+        hist = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "history_buffer_create: hist->entries is NULL");
         return NULL;
     }
@@ -47,6 +48,7 @@ static void history_buffer_destroy(history_buffer_t* hist)
 
     nimcp_mutex_destroy(&hist->lock);
     nimcp_free(hist);
+    hist = NULL;
 }
 
 static predictor_t* predictor_create(uint32_t num_features)
@@ -60,6 +62,7 @@ static predictor_t* predictor_create(uint32_t num_features)
     pred->prediction = nimcp_calloc(num_features, sizeof(float));
     if (!pred->prediction) {
         nimcp_free(pred);
+        pred = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictor_create: pred->prediction is NULL");
         return NULL;
     }
@@ -87,6 +90,7 @@ static void predictor_destroy(predictor_t* pred)
 
     nimcp_mutex_destroy(&pred->lock);
     nimcp_free(pred);
+    pred = NULL;
 }
 
 
@@ -161,6 +165,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_evaluator_create: failed to create history");
             salience_set_error("Failed to create history buffer");
             nimcp_free(eval);
+            eval = NULL;
             return NULL;
         }
     }
@@ -176,6 +181,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
             if (eval->history)
                 history_buffer_destroy(eval->history);
             nimcp_free(eval);
+            eval = NULL;
             return NULL;
         }
     }
@@ -212,6 +218,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
             predictor_destroy(eval->predictor);
         nimcp_mutex_destroy(&eval->eval_lock);
         nimcp_free(eval);
+        eval = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_evaluator_create: validation failed");
         return NULL;
     }
@@ -319,6 +326,7 @@ void salience_evaluator_destroy(salience_evaluator_t eval)
     nimcp_mutex_destroy(&eval->eval_lock);
 
     nimcp_free(eval);
+    eval = NULL;
 }
 
 

@@ -138,6 +138,7 @@ void symbolic_logic_substrate_bridge_destroy(symbolic_logic_substrate_bridge_t* 
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int symbolic_logic_substrate_bridge_update(symbolic_logic_substrate_bridge_t* bridge) {

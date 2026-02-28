@@ -415,6 +415,7 @@ cleanup:
             nimcp_free(mirror->agents);
         }
         nimcp_free(mirror);
+        mirror = NULL;
     }
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_load: validation failed");
     return NULL;

@@ -251,6 +251,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bridge->bias_neurons = nimcp_calloc(bridge->num_types, sizeof(bias_neuron_t*));
     if (!bridge->bias_neurons) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_snn_create: bridge->bias_neurons is NULL");
         return NULL;
     }
@@ -275,6 +276,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
             }
             nimcp_free(bridge->bias_neurons);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_snn_create: validation failed");
             return NULL;
         }
@@ -363,6 +365,7 @@ void bias_snn_destroy(bias_snn_bridge_t* bridge) {
     nimcp_free(bridge->type_activations);
     nimcp_free(bridge->type_confidences);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int bias_snn_reset(bias_snn_bridge_t* bridge) {

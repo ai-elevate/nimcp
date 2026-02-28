@@ -294,6 +294,7 @@ cleanup:
         nimcp_free(bridge->synapses);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
     }
     return NULL;
 }
@@ -317,6 +318,7 @@ void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int wm_plasticity_reset(wm_plasticity_bridge_t* bridge) {

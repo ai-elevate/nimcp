@@ -204,6 +204,7 @@ epistemic_plasticity_bridge_t* epistemic_plasticity_create(
     if (!bridge->synapses) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate synapses");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -213,6 +214,7 @@ epistemic_plasticity_bridge_t* epistemic_plasticity_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate sources");
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -234,6 +236,7 @@ void epistemic_plasticity_destroy(epistemic_plasticity_bridge_t* bridge) {
     nimcp_free(bridge->synapses);
     nimcp_free(bridge->sources);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int epistemic_plasticity_reset(epistemic_plasticity_bridge_t* bridge) {
@@ -476,7 +479,7 @@ int epistemic_plasticity_source_feedback(
             bridge->synapses[i].type == EPISTEMIC_SYNAPSE_SOURCE_RELIABILITY) {
 
             float old_weight = bridge->synapses[i].weight;
-            float dw;
+            float dw = 0.0f;
 
             if (was_correct) {
                 dw = bridge->config.source_correct_ltp * bridge->global_learning_rate;
@@ -601,7 +604,7 @@ int epistemic_plasticity_belief_revision(
 
         if (bridge->synapses[i].type == EPISTEMIC_SYNAPSE_PRIOR_UPDATE) {
             float old_weight = bridge->synapses[i].weight;
-            float dw;
+            float dw = 0.0f;
 
             // Large revisions strengthen adaptability
             if (belief_change > 0.3f) {

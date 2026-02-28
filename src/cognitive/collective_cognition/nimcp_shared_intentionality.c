@@ -402,6 +402,7 @@ void shared_intentionality_destroy(shared_intentionality_t* si) {
 
 
     nimcp_free(si);
+    si = NULL;
 }
 
 int shared_intentionality_reset(shared_intentionality_t* si) {

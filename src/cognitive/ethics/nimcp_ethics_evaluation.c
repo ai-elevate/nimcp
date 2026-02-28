@@ -260,6 +260,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
     // Guard clause: Check network creation
     if (!network->perspective_network) {
         nimcp_free(network);
+        network = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathy_network_create: network->perspective_network is NULL");
         return NULL;
     }
@@ -267,6 +268,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
 
     network->num_agents = max_agents;
     network->states = nimcp_calloc(max_agents, sizeof(empathy_state_t));
+    if (!network->states) return -1;
     network->num_emotions = 10;
     network->emotional_states = nimcp_calloc(max_agents * network->num_emotions, sizeof(float));
 
@@ -276,6 +278,7 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
         nimcp_free(network->states);
         nimcp_free(network->emotional_states);
         nimcp_free(network);
+        network = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "empathy_network_create: required parameter is NULL (network->states, network->emotional_states)");
         return NULL;
     }
@@ -301,6 +304,7 @@ void empathy_network_destroy(empathy_network_t network)
     nimcp_free(network->states);
     nimcp_free(network->emotional_states);
     nimcp_free(network);
+    network = NULL;
 }
 
 /**

@@ -291,6 +291,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_HIPPOCAMPUS_BRIDGE,
                          "mirror_hippocampus_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_hippocampus_bridge_create: bridge is NULL");
         return NULL;
     }
@@ -309,6 +310,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
         LOG_ERROR("Failed to allocate episode storage");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hippocampus_bridge_create: bridge->episodes is NULL");
         return NULL;
     }
@@ -324,6 +326,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
         nimcp_free(bridge->episodes);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hippocampus_bridge_create: bridge->current_sequence is NULL");
         return NULL;
     }
@@ -382,6 +385,7 @@ void mirror_hippocampus_bridge_destroy(mirror_hippocampus_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

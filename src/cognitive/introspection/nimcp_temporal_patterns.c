@@ -205,6 +205,7 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
 
     if (patterns == NULL) {
         nimcp_free(history);
+        history = NULL;
         *num_patterns = 0;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_detect_patterns: validation failed");
         return NULL;
@@ -303,6 +304,7 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
 
     /* Cleanup */
     nimcp_free(history);
+    history = NULL;
     *num_patterns = pattern_count;
 
     LOG_INFO("Detected %u temporal patterns", pattern_count);
@@ -382,6 +384,7 @@ pattern_match_result_t introspection_match_pattern(introspection_context_t conte
     result.is_complete_match = (result.confidence >= cfg->similarity_threshold);
 
     nimcp_free(history);
+    history = NULL;
 
     LOG_DEBUG("Pattern match: distance=%.3f, confidence=%.3f", distance, result.confidence);
     return result;
@@ -536,6 +539,7 @@ temporal_trend_t introspection_get_trend(introspection_context_t context,
     float* values = (float*)nimcp_calloc(window, sizeof(float));
     if (values == NULL) {
         nimcp_free(history);
+        history = NULL;
         return trend;
     }
 
@@ -590,7 +594,9 @@ temporal_trend_t introspection_get_trend(introspection_context_t context,
               metric_name, trend.direction, slope, trend.r_squared);
 
     nimcp_free(values);
+    values = NULL;
     nimcp_free(history);
+    history = NULL;
     return trend;
 }
 
@@ -750,6 +756,7 @@ void introspection_clear_pattern_library(introspection_context_t context)
         }
 
         nimcp_free(entry);
+        entry = NULL;
         entry = next;
     }
 
@@ -1160,6 +1167,7 @@ void pattern_array_free(temporal_pattern_t* patterns, uint32_t num_patterns)
     }
 
     nimcp_free(patterns);
+    patterns = NULL;
 }
 
 /**
@@ -1238,7 +1246,9 @@ static float compute_dtw_distance(const float* seq1, uint32_t len1,
 
     if (prev_row == NULL || curr_row == NULL) {
         nimcp_free(prev_row);
+        prev_row = NULL;
         nimcp_free(curr_row);
+        curr_row = NULL;
         return FLT_MAX;
     }
 
@@ -1284,7 +1294,9 @@ static float compute_dtw_distance(const float* seq1, uint32_t len1,
     float distance = prev_row[len2];
 
     nimcp_free(prev_row);
+    prev_row = NULL;
     nimcp_free(curr_row);
+    curr_row = NULL;
 
     return distance;
 }

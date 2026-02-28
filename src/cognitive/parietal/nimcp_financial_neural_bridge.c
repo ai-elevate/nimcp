@@ -363,6 +363,7 @@ void financial_neural_bridge_destroy(financial_neural_bridge_t* bridge) {
     if (!bridge) return;
     fin_neural_heartbeat("financial_neural_bridge_destroy", 0.0f);
     nimcp_free(bridge);
+    bridge = NULL;
     fin_neural_heartbeat("financial_neural_bridge_destroy", 1.0f);
 }
 

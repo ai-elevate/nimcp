@@ -201,6 +201,7 @@ void collective_health_monitor_destroy(collective_health_monitor_t* monitor) {
     }
 
     nimcp_free(monitor);
+    monitor = NULL;
 }
 
 int collective_health_monitor_start(collective_health_monitor_t* monitor) {

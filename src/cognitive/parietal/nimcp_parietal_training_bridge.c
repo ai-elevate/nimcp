@@ -255,6 +255,7 @@ parietal_training_bridge_t* parietal_training_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, 0, "parietal_training") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_training_create: validation failed");
         return NULL;
     }
@@ -267,6 +268,7 @@ parietal_training_bridge_t* parietal_training_create(
         if (!bridge->pending_updates) {
             nimcp_mutex_destroy(bridge->base.mutex);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_training_create: bridge->pending_updates is NULL");
             return NULL;
         }
@@ -319,6 +321,7 @@ void parietal_training_destroy(parietal_training_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

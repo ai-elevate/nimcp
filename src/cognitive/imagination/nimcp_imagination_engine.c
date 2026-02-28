@@ -438,6 +438,7 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
                 if (scenario->elements) nimcp_darray_destroy(scenario->elements);
                 if (scenario->active_goal) nimcp_free(scenario->active_goal);
                 nimcp_free(scenario);
+                scenario = NULL;
             }
         }
         nimcp_darray_destroy(engine->active_scenarios);
@@ -454,6 +455,7 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
     }
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 int imagination_engine_reset(imagination_engine_t* engine) {
@@ -494,6 +496,7 @@ int imagination_engine_reset(imagination_engine_t* engine) {
                 if (scenario->elements) nimcp_darray_destroy(scenario->elements);
                 if (scenario->active_goal) nimcp_free(scenario->active_goal);
                 nimcp_free(scenario);
+                scenario = NULL;
             }
         }
         nimcp_darray_clear(engine->active_scenarios);
@@ -1310,6 +1313,7 @@ error:
     if (scenario->elements) nimcp_darray_destroy(scenario->elements);
     if (scenario->active_goal) nimcp_free(scenario->active_goal);
     nimcp_free(scenario);
+    scenario = NULL;
     imagination_workspace_release_scenario(engine->workspace, slot_id);
     nimcp_mutex_unlock(engine->mutex);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_begin_scenario: resource allocation failed");
@@ -1527,6 +1531,7 @@ int imagination_end_scenario(
                 if (elem->features) nimcp_tensor_destroy(elem->features);
                 if (elem->position) nimcp_free(elem->position);
                 nimcp_free(elem);
+                elem = NULL;
             }
         }
         nimcp_darray_destroy(scenario->elements);
@@ -1543,6 +1548,7 @@ int imagination_end_scenario(
     }
 
     nimcp_free(scenario);
+    scenario = NULL;
 
     nimcp_mutex_unlock(engine->mutex);
 
@@ -1887,6 +1893,7 @@ int imagination_remove_element(
             if (elem->features) nimcp_tensor_destroy(elem->features);
             if (elem->position) nimcp_free(elem->position);
             nimcp_free(elem);
+            elem = NULL;
 
             nimcp_darray_remove_at(scenario->elements, i, NULL);
             found = true;
@@ -3430,6 +3437,7 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
     new_state->latent_copy = nimcp_calloc(s->latent_size, sizeof(float));
     if (!new_state->latent_copy) {
         nimcp_free(new_state);
+        new_state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imag_mcts_apply_action: new_state->latent_copy is NULL");
         return NULL;
     }
@@ -3574,6 +3582,7 @@ static void imag_mcts_free_state(void* state, void* user_data) {
     imag_mcts_state_t* s = (imag_mcts_state_t*)state;
     if (s->latent_copy) nimcp_free(s->latent_copy);
     nimcp_free(s);
+    s = NULL;
 }
 
 static void* imag_mcts_clone_state(const void* state, void* user_data) {
@@ -3604,6 +3613,7 @@ static void* imag_mcts_clone_state(const void* state, void* user_data) {
     clone->latent_copy = nimcp_calloc(s->latent_size, sizeof(float));
     if (!clone->latent_copy) {
         nimcp_free(clone);
+        clone = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imag_mcts_clone_state: clone->latent_copy is NULL");
         return NULL;
     }

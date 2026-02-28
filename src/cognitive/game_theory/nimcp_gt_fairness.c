@@ -645,6 +645,7 @@ float nimcp_fairness_maximin_share(const float* const* valuations,
                         temp_assignment, 0, &unused, &best_min);
 
     nimcp_free(temp_assignment);
+    temp_assignment = NULL;
 
     return best_min;
 }
@@ -910,6 +911,7 @@ nimcp_error_t nimcp_fairness_analyze_allocation(const nimcp_allocation_t* alloca
     result->min_proportional_share = min_value;
 
     nimcp_free(bundle_values);
+    bundle_values = NULL;
 
     return NIMCP_SUCCESS;
 }
@@ -1063,6 +1065,7 @@ nimcp_error_t nimcp_fairness_pareto_improve(const nimcp_allocation_t* allocation
     }
 
     nimcp_free(current_values);
+    current_values = NULL;
 
     if (!improved) {
         return NIMCP_GT_ERROR_FAIRNESS_NO_IMPROVEMENT;
@@ -1156,6 +1159,7 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
             uint32_t* temp_assignment = nimcp_calloc(num_items, sizeof(uint32_t));
             if (!temp_assignment) {
                 nimcp_free(bundle_values);
+                bundle_values = NULL;
                 return NIMCP_GT_ERROR_FAIRNESS_NO_MEMORY;
             }
             memcpy(temp_assignment, allocation->assignment, num_items * sizeof(uint32_t));
@@ -1197,10 +1201,12 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
             }
 
             nimcp_free(temp_assignment);
+            temp_assignment = NULL;
         }
     }
 
     nimcp_free(bundle_values);
+    bundle_values = NULL;
 
     if (!improved || best_improvement < 1e-6f) {
         return NIMCP_GT_ERROR_FAIRNESS_NO_IMPROVEMENT;
@@ -1248,6 +1254,7 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
     alloc->assignment = nimcp_calloc(num_items, sizeof(uint32_t));
     if (!alloc->assignment) {
         nimcp_free(alloc);
+        alloc = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_allocation_create: alloc->assignment is NULL");
         return NULL;
     }
@@ -1257,6 +1264,7 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
     if (!alloc->valuations) {
         nimcp_free(alloc->assignment);
         nimcp_free(alloc);
+        alloc = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_allocation_create: alloc->valuations is NULL");
         return NULL;
     }
@@ -1283,6 +1291,7 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
             nimcp_free(alloc->valuations);
             nimcp_free(alloc->assignment);
             nimcp_free(alloc);
+            alloc = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_allocation_create: operation failed");
             return NULL;
         }
@@ -1303,6 +1312,7 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
         nimcp_free(alloc->valuations);
         nimcp_free(alloc->assignment);
         nimcp_free(alloc);
+        alloc = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_allocation_create: operation failed");
         return NULL;
     }
@@ -1343,6 +1353,7 @@ void nimcp_allocation_destroy(nimcp_allocation_t* allocation) {
     }
 
     nimcp_free(allocation);
+    allocation = NULL;
 }
 
 nimcp_error_t nimcp_allocation_set_valuations(nimcp_allocation_t* allocation,

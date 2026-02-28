@@ -114,6 +114,7 @@ epistemic_thalamic_bridge_t* epistemic_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "epistemic_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -137,6 +138,7 @@ void epistemic_thalamic_bridge_destroy(epistemic_thalamic_bridge_t* bridge) {
             bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

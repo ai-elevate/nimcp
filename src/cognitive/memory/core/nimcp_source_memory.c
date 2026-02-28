@@ -542,6 +542,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
     if (!sm->entries) {
         set_error("memory allocation failed for entry hash table");
         nimcp_free(sm);
+        sm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_create: sm->entries is NULL");
         return NULL;
     }
@@ -555,6 +556,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
             set_error("memory allocation failed for agent hash table");
             nimcp_free(sm->entries);
             nimcp_free(sm);
+            sm = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_create: sm->agents is NULL");
             return NULL;
         }
@@ -591,6 +593,7 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
                 nimcp_free(entry->entry.source.source_agent_name);
             }
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         // Free agent name in base slot
@@ -613,6 +616,7 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
             while (agent) {
                 agent_hash_entry_t* next = agent->next;
                 nimcp_free(agent);
+                agent = NULL;
                 agent = next;
             }
         }
@@ -620,6 +624,7 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
     }
 
     nimcp_free(sm);
+    sm = NULL;
 }
 
 NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
@@ -640,6 +645,7 @@ NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
                 nimcp_free(entry->entry.source.source_agent_name);
             }
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         if (sm->entries[i].entry.source.source_agent_name) {
@@ -662,6 +668,7 @@ NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
             while (agent) {
                 agent_hash_entry_t* next = agent->next;
                 nimcp_free(agent);
+                agent = NULL;
                 agent = next;
             }
             memset(&sm->agents[i], 0, sizeof(agent_hash_entry_t));
@@ -895,11 +902,13 @@ NIMCP_EXPORT source_error_t source_memory_unbind_source(
                 // Remove from chain
                 prev->next = entry->next;
                 nimcp_free(entry);
+                entry = NULL;
             } else if (entry->next) {
                 // Move next to base slot
                 source_hash_entry_t* next = entry->next;
                 *entry = *next;
                 nimcp_free(next);
+                next = NULL;
             } else {
                 // Clear base slot
                 memset(entry, 0, sizeof(*entry));

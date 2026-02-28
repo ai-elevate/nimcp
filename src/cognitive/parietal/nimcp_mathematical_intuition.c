@@ -390,6 +390,7 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
     if (!mi->lock) {
         set_math_error("Failed to create mutex");
         nimcp_free(mi);
+        mi = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "math_intuition_create_custom: mi->lock is NULL");
         return NULL;
     }
@@ -409,6 +410,7 @@ void math_intuition_destroy(math_intuition_t* mi) {
     }
 
     nimcp_free(mi);
+    mi = NULL;
 }
 
 /* ============================================================================
@@ -451,8 +453,11 @@ detected_pattern_t math_detect_pattern(
 
     if (!diffs || !ratios || !x_vals) {
         nimcp_free(diffs);
+        diffs = NULL;
         nimcp_free(ratios);
+        ratios = NULL;
         nimcp_free(x_vals);
+        x_vals = NULL;
         nimcp_mutex_unlock(mi->lock);
         return result;
     }
@@ -471,7 +476,7 @@ detected_pattern_t math_detect_pattern(
     float best_mse = INFINITY;
 
     /* Check for constant sequence */
-    float const_val;
+    float const_val = 0.0f;
     if (is_constant(sequence, length, tolerance, &const_val)) {
         result.type = PATTERN_CONSTANT;
         result.params.constant.value = const_val;
@@ -485,7 +490,7 @@ detected_pattern_t math_detect_pattern(
     bool has_ratios = compute_ratios(sequence, length, ratios);
 
     /* Check for arithmetic progression */
-    float common_diff;
+    float common_diff = 0.0f;
     if (is_constant(diffs, length - 1, tolerance, &common_diff)) {
         result.type = PATTERN_ARITHMETIC;
         result.params.arithmetic.first_term = sequence[0];
@@ -512,7 +517,7 @@ detected_pattern_t math_detect_pattern(
 
     /* Check for geometric progression */
     if (has_ratios) {
-        float common_ratio;
+        float common_ratio = 0.0f;
         if (is_constant(ratios, length - 1, tolerance, &common_ratio) &&
             fabsf(common_ratio) > EPSILON) {
             result.type = PATTERN_GEOMETRIC;
@@ -634,8 +639,11 @@ done:
     }
 
     nimcp_free(diffs);
+    diffs = NULL;
     nimcp_free(ratios);
+    ratios = NULL;
     nimcp_free(x_vals);
+    x_vals = NULL;
 
     nimcp_mutex_unlock(mi->lock);
 
@@ -860,7 +868,9 @@ geometric_result_t math_check_congruent(
 
     if (!edges1 || !edges2) {
         nimcp_free(edges1);
+        edges1 = NULL;
         nimcp_free(edges2);
+        edges2 = NULL;
         nimcp_mutex_unlock(mi->lock);
         return result;
     }
@@ -928,7 +938,9 @@ geometric_result_t math_check_congruent(
     }
 
     nimcp_free(edges1);
+    edges1 = NULL;
     nimcp_free(edges2);
+    edges2 = NULL;
 
     mi->geometric_analyses++;
 

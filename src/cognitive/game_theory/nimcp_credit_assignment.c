@@ -131,6 +131,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
     system->factorial = nimcp_calloc(config->num_players + 1, sizeof(double));
     if (!system->factorial) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_credit_create: system->factorial is NULL");
         return NULL;
     }
@@ -148,6 +149,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
             nimcp_free(system->coalition_cache);
             nimcp_free(system->cache_valid);
             nimcp_free(system);
+            system = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_credit_create: required parameter is NULL (system->coalition_cache, system->cache_valid)");
             return NULL;
         }
@@ -158,6 +160,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
         nimcp_free(system->coalition_cache);
         nimcp_free(system->cache_valid);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_credit_create: validation failed");
         return NULL;
     }
@@ -179,6 +182,7 @@ void nimcp_credit_destroy(nimcp_credit_system_t system) {
     nimcp_free(system->coalition_cache);
     nimcp_free(system->cache_valid);
     nimcp_free(system);
+    system = NULL;
 }
 
 //=============================================================================
@@ -484,6 +488,7 @@ nimcp_error_t nimcp_credit_approximate_shapley(
     result->is_in_core = nimcp_credit_is_in_core(system, result->credits, value_fn, user_data);
 
     nimcp_free(permutation);
+    permutation = NULL;
     nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }
@@ -608,6 +613,7 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
     result->is_in_core = nimcp_credit_is_in_core(system, result->credits, value_fn, user_data);
 
     nimcp_free(swing_counts);
+    swing_counts = NULL;
     nimcp_platform_mutex_unlock(&system->mutex);
     return NIMCP_SUCCESS;
 }

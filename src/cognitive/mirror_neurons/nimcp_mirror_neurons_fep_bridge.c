@@ -184,6 +184,7 @@ void mirror_neurons_fep_bridge_destroy(mirror_neurons_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Mirror neurons-FEP bridge destroyed");
 }
 

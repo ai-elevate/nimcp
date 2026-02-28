@@ -358,6 +358,7 @@ trained_immunity_t* trained_immunity_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trained_immunity_create: system->mutex is NULL");
         return NULL;
     }
@@ -416,6 +417,7 @@ void trained_immunity_destroy(trained_immunity_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /* ============================================================================

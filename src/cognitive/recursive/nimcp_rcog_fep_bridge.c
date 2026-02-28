@@ -399,6 +399,7 @@ rcog_fep_bridge_t* rcog_fep_bridge_create(const rcog_fep_config_t* config) {
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "rcog_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -445,6 +446,7 @@ void rcog_fep_bridge_destroy(rcog_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int rcog_fep_bridge_reset(rcog_fep_bridge_t* bridge) {

@@ -217,7 +217,7 @@ static const char* state_names[] = {
  */
 static uint32_t hash_investor_id(const char* id) {
     uint32_t hash = 5381;
-    int c;
+    int c = 0;
     while ((c = *id++)) {
         hash = ((hash << 5) + hash) + (uint32_t)c;
     }
@@ -584,6 +584,7 @@ financial_tom_bridge_t* financial_tom_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_TOM, "financial_tom") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_tom_bridge_create: validation failed");
         return NULL;
     }
@@ -615,6 +616,7 @@ void financial_tom_bridge_destroy(financial_tom_bridge_t* bridge) {
         while (node) {
             model_node_t* next = node->next;
             nimcp_free(node);
+            node = NULL;
             node = next;
         }
         bridge->model_buckets[i] = NULL;
@@ -627,6 +629,7 @@ void financial_tom_bridge_destroy(financial_tom_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int financial_tom_bridge_reset(financial_tom_bridge_t* bridge) {
@@ -646,6 +649,7 @@ int financial_tom_bridge_reset(financial_tom_bridge_t* bridge) {
         while (node) {
             model_node_t* next = node->next;
             nimcp_free(node);
+            node = NULL;
             node = next;
         }
         bridge->model_buckets[i] = NULL;
@@ -979,6 +983,7 @@ int financial_tom_bridge_remove_model(
                 bridge->model_buckets[bucket] = node->next;
             }
             nimcp_free(node);
+            node = NULL;
             bridge->model_count--;
             nimcp_mutex_unlock(bridge->base.mutex);
             return FIN_TOM_ERR_OK;

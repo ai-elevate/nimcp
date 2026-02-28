@@ -199,8 +199,10 @@ static pr_visual_bridge_error_t lock_bridge(pr_visual_bridge_t* bridge) {
         return PR_VISUAL_ERROR_NULL_PARAM;
     }
     if (nimcp_mutex_lock(bridge->base.mutex) != 0) {
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_VISUAL_ERROR_MUTEX;
     }
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PR_VISUAL_OK;
 }
 
@@ -312,6 +314,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
         bridge->config.max_memories > PR_VISUAL_MAX_MEMORIES * 4) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_create: invalid max_memories config");
         nimcp_free(bridge);
+        bridge = NULL;
         set_error(NULL, PR_VISUAL_ERROR_INVALID_CONFIG);
         return NULL;
     }
@@ -320,6 +323,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "pr_visual") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_visual_bridge_create: failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         set_error(NULL, PR_VISUAL_ERROR_MUTEX);
         return NULL;
     }
@@ -331,6 +335,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_visual_bridge_create: failed to allocate memory pool");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
     }
@@ -348,6 +353,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
         nimcp_free(bridge->memory_pool);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
     }
@@ -410,6 +416,7 @@ NIMCP_EXPORT void pr_visual_bridge_destroy(pr_visual_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOG_INFO("PR Visual Bridge destroyed");
 }
@@ -1128,6 +1135,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_retrieve_similar_visual(
     }
 
     nimcp_free(temp_results);
+    temp_results = NULL;
     unlock_bridge(bridge);
 
     return set_error(bridge, PR_VISUAL_OK);

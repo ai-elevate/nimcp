@@ -160,6 +160,7 @@ shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
     system->detected_in_others = (other_detection_t*)nimcp_calloc(max_others_tracked, sizeof(other_detection_t));
     if (!system->detected_in_others) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shadow_system_create: system->detected_in_others is NULL");
         return NULL;
     }
@@ -253,6 +254,7 @@ void shadow_system_destroy(shadow_emotion_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void shadow_system_reset(shadow_emotion_system_t* system) {

@@ -102,6 +102,7 @@ static void apply_sparsification(float* vec, uint32_t dim, float sparsity_target
     }
 
     nimcp_free(magnitudes);
+    magnitudes = NULL;
 }
 
 /* ============================================================================
@@ -191,6 +192,7 @@ void vae_hippo_bridge_destroy(vae_hippo_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_hippo_bridge_connect_vae(vae_hippo_bridge_t* bridge, vae_system_t* vae) {
@@ -202,11 +204,17 @@ int vae_hippo_bridge_connect_vae(vae_hippo_bridge_t* bridge, vae_system_t* vae) 
     bridge->vae_output_dim = vae_get_output_dim(vae);
 
     bridge->encode_buffer = (float*)nimcp_calloc(bridge->vae_input_dim, sizeof(float));
+    if (!bridge->encode_buffer) return -1;
     bridge->decode_buffer = (float*)nimcp_calloc(bridge->vae_output_dim, sizeof(float));
+    if (!bridge->decode_buffer) return -1;
     bridge->latent_buffer = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    if (!bridge->latent_buffer) return -1;
     bridge->variance_buffer = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    if (!bridge->variance_buffer) return -1;
     bridge->latent_mean_baseline = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    if (!bridge->latent_mean_baseline) return -1;
     bridge->latent_var_baseline = (float*)nimcp_calloc(bridge->vae_latent_dim, sizeof(float));
+    if (!bridge->latent_var_baseline) return -1;
 
     if (!bridge->encode_buffer || !bridge->decode_buffer ||
         !bridge->latent_buffer || !bridge->variance_buffer ||
@@ -934,7 +942,7 @@ int vae_hippo_pattern_complete(vae_hippo_bridge_t* bridge,
     memcpy(current, partial_cue, cue_dim * sizeof(float));
 
     float prev_error = FLT_MAX;
-    uint32_t iter;
+    uint32_t iter = 0;
 
     for (iter = 0; iter < bridge->config.pattern.max_iterations; iter++) {
         int ret = vae_reconstruct(bridge->vae, input_tensor, recon_tensor);
@@ -1253,7 +1261,7 @@ int vae_hippo_compute_familiarity(vae_hippo_bridge_t* bridge,
                                    float* familiarity_score) {
     if (!bridge || !input || !familiarity_score) return NIMCP_ERROR_VAE_HIPPO_NULL;
 
-    float novelty;
+    float novelty = 0.0f;
     int ret = vae_hippo_compute_novelty(bridge, input, input_dim, &novelty);
     if (ret != 0) return ret;
 

@@ -298,6 +298,7 @@ omni_active_inference_t* omni_ai_create(
     ai->policies = nimcp_calloc(ai->policy_capacity, sizeof(omni_ai_policy_t));
     if (!ai->policies) {
         nimcp_free(ai);
+        ai = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_create: ai->policies is NULL");
         return NULL;
     }
@@ -308,6 +309,7 @@ omni_active_inference_t* omni_ai_create(
     if (!ai->goals) {
         nimcp_free(ai->policies);
         nimcp_free(ai);
+        ai = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_create: ai->goals is NULL");
         return NULL;
     }
@@ -320,6 +322,7 @@ omni_active_inference_t* omni_ai_create(
             nimcp_free(ai->goals);
             nimcp_free(ai->policies);
             nimcp_free(ai);
+            ai = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_create: ai->current_obs is NULL");
             return NULL;
         }
@@ -332,6 +335,7 @@ omni_active_inference_t* omni_ai_create(
         nimcp_free(ai->goals);
         nimcp_free(ai->policies);
         nimcp_free(ai);
+        ai = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_create: validation failed");
         return NULL;
     }
@@ -389,6 +393,7 @@ void omni_ai_destroy(omni_active_inference_t* ai) {
     if (ai->mutex) nimcp_mutex_free(ai->mutex);
 
     nimcp_free(ai);
+    ai = NULL;
 }
 
 int omni_ai_reset(omni_active_inference_t* ai) {
@@ -529,6 +534,7 @@ int omni_ai_generate_random_policies(omni_active_inference_t* ai,
         nimcp_mutex_lock(ai->mutex);
 
         nimcp_free(actions);
+        actions = NULL;
 
         if (idx >= 0) generated++;
     }
@@ -898,7 +904,9 @@ int omni_ai_select_action_forward(omni_active_inference_t* ai,
     }
 
     nimcp_free(efe_vals);
+    efe_vals = NULL;
     nimcp_free(probs);
+    probs = NULL;
 
     nimcp_mutex_unlock(ai->mutex);
     return NIMCP_SUCCESS;
@@ -1418,6 +1426,7 @@ omni_ai_action_result_t* omni_ai_action_result_create(uint32_t action_dim) {
         result->action = nimcp_calloc(action_dim, sizeof(float));
         if (!result->action) {
             nimcp_free(result);
+            result = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_action_result_create: result->action is NULL");
             return NULL;
         }
@@ -1435,6 +1444,7 @@ void omni_ai_action_result_destroy(omni_ai_action_result_t* result) {
 
     if (result->action) nimcp_free(result->action);
     nimcp_free(result);
+    result = NULL;
 }
 
 /* ============================================================================

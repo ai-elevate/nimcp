@@ -249,6 +249,7 @@ void gt_wm_destroy(gt_wm_auction_ctx_t ctx) {
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================

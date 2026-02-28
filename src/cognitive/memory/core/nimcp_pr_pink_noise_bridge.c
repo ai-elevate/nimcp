@@ -422,7 +422,7 @@ static float generate_target_noise(pr_target_state_t* state) {
         return 0.0f;
     }
 
-    float sample;
+    float sample = 0.0f;
     if (!pink_noise_generate_sample(state->generator, &sample)) {
         return 0.0f;
     }
@@ -665,6 +665,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     mutex_attr_t attr = {.type = MUTEX_TYPE_RECURSIVE};
     if (nimcp_mutex_init(&bridge->base.mutex, &attr) != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         pr_pink_bridge_set_error("Failed to initialize mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_pink_bridge_create: validation failed");
         return NULL;
@@ -703,6 +704,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
             }
             nimcp_mutex_destroy(&bridge->base.mutex);
             nimcp_free(bridge);
+            bridge = NULL;
             pr_pink_bridge_set_error("Failed to initialize target %d generator", i);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_create: operation failed");
             return NULL;
@@ -732,6 +734,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         }
         nimcp_mutex_destroy(&bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         pr_pink_bridge_set_error("Failed to create quaternion generator");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: operation failed");
         return NULL;
@@ -755,6 +758,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         }
         nimcp_mutex_destroy(&bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         pr_pink_bridge_set_error("Failed to create consolidation timer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: operation failed");
         return NULL;
@@ -783,6 +787,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         }
         nimcp_mutex_destroy(&bridge->base.mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         pr_pink_bridge_set_error("Failed to create promotion timer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: operation failed");
         return NULL;
@@ -856,6 +861,7 @@ NIMCP_EXPORT void pr_pink_bridge_destroy(pr_pink_bridge_t bridge) {
     /* Clear magic and free */
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT bool pr_pink_bridge_reset(pr_pink_bridge_t bridge, uint32_t new_seed) {
@@ -972,7 +978,7 @@ NIMCP_EXPORT uint64_t pr_pink_consolidation_complete(
     atomic_fetch_add(&bridge->consolidation_events, 1);
 
     /* Generate next event time using fractal timing */
-    float interval;
+    float interval = 0.0f;
     if (bridge->consolidation_timer.timing != NULL &&
         bridge->targets[PR_PINK_TARGET_CONSOLIDATION].params.enabled) {
 
@@ -1109,6 +1115,7 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
         nimcp_free(noise_batch);
+        noise_batch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_modulate_resonance_batch: pink_noise_generate is NULL");
         return false;
     }
@@ -1130,6 +1137,7 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
     atomic_fetch_add(&bridge->total_modulations, count);
 
     nimcp_free(noise_batch);
+    noise_batch = NULL;
     return true;
 }
 
@@ -1210,6 +1218,7 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
         nimcp_free(noise_batch);
+        noise_batch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_decay_batch: pink_noise_generate is NULL");
         return false;
     }
@@ -1240,6 +1249,7 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
     atomic_fetch_add(&bridge->total_modulations, count);
 
     nimcp_free(noise_batch);
+    noise_batch = NULL;
     return true;
 }
 
@@ -1547,6 +1557,7 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
         nimcp_free(noise_batch);
+        noise_batch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_retrieval_order: pink_noise_generate is NULL");
         return false;
     }
@@ -1568,6 +1579,7 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
     atomic_fetch_add(&bridge->total_modulations, count);
 
     nimcp_free(noise_batch);
+    noise_batch = NULL;
     return true;
 }
 
@@ -2114,7 +2126,9 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
 
     history->intervals = nimcp_calloc(max_samples, sizeof(float));
     history->resonance_samples = nimcp_calloc(max_samples, sizeof(float));
+    if (!history->resonance_samples) return -1;
     history->decay_samples = nimcp_calloc(max_samples, sizeof(float));
+    if (!history->decay_samples) return -1;
 
     if (history->intervals == NULL ||
         history->resonance_samples == NULL ||
@@ -2124,6 +2138,7 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
         nimcp_free(history->resonance_samples);
         nimcp_free(history->decay_samples);
         nimcp_free(history);
+        history = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_history_create: operation failed");
         return NULL;
     }
@@ -2144,6 +2159,7 @@ NIMCP_EXPORT void pr_pink_history_destroy(pr_pink_history_t* history) {
     nimcp_free(history->resonance_samples);
     nimcp_free(history->decay_samples);
     nimcp_free(history);
+    history = NULL;
 }
 
 NIMCP_EXPORT const pr_pink_history_t* pr_pink_bridge_get_history(

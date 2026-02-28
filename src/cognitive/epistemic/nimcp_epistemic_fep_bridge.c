@@ -154,6 +154,7 @@ epistemic_fep_bridge_t* epistemic_fep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -183,6 +184,7 @@ void epistemic_fep_bridge_destroy(epistemic_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed epistemic FEP bridge");
 }
 

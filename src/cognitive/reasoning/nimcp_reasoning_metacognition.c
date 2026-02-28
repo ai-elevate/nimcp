@@ -496,6 +496,7 @@ reasoning_metacognition_t* reasoning_metacognition_create(
     if (!mc->history) {
         NIMCP_LOGGING_ERROR("reasoning_metacognition: failed to allocate history");
         nimcp_free(mc);
+        mc = NULL;
         return NULL;
     }
 
@@ -529,6 +530,7 @@ void reasoning_metacognition_destroy(reasoning_metacognition_t* mc)
                        mc->stats.accuracy);
 
     nimcp_free(mc);
+    mc = NULL;
 }
 
 /*=============================================================================

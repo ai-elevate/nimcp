@@ -230,6 +230,7 @@ void curiosity_sleep_bridge_destroy(curiosity_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int curiosity_sleep_update(curiosity_sleep_bridge_t bridge) {

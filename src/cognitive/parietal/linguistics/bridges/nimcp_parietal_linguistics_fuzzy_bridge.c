@@ -448,6 +448,7 @@ void ling_fuzzy_bridge_destroy(ling_fuzzy_bridge_t* bridge) {
 
     bridge->magic = 0;  /* Invalidate */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int ling_fuzzy_bridge_register_mesh(

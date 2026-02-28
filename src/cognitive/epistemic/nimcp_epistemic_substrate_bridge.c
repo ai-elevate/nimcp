@@ -139,6 +139,7 @@ void epistemic_substrate_bridge_destroy(epistemic_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int epistemic_substrate_bridge_update(epistemic_substrate_bridge_t* bridge) {

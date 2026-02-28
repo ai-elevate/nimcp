@@ -324,6 +324,7 @@ void financial_neuromod_bridge_destroy(financial_neuromod_bridge_t* bridge) {
         bridge->magic = 0;
         bridge->op_state = FIN_NEUROMOD_OP_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

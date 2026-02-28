@@ -231,6 +231,7 @@ void financial_bridge_destroy(financial_bridge_t* bridge) {
     fin_bridge_heartbeat("fin_bridge_destroy", 0.0f);
     if (bridge) {
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

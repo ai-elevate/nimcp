@@ -62,6 +62,7 @@ meta_learning_thalamic_bridge_t* meta_learning_thalamic_bridge_create(void* meta
     if (bridge_base_init(&bridge->base, 0, "meta_learning_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -85,6 +86,7 @@ void meta_learning_thalamic_bridge_destroy(meta_learning_thalamic_bridge_t* brid
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int meta_learning_thalamic_bridge_reset(meta_learning_thalamic_bridge_t* bridge) {

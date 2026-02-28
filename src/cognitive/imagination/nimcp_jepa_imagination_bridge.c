@@ -183,6 +183,7 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -193,6 +194,7 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
             NIMCP_LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_bridge_create: validation failed");
             return NULL;
         }
@@ -262,6 +264,7 @@ void jepa_imagination_bridge_destroy(jepa_imagination_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOG_INFO("Destroyed JEPA-imagination bridge");
 }
 
@@ -690,6 +693,7 @@ int jepa_imagination_get_jepa_effects(
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
 
 
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -707,6 +711,7 @@ int jepa_imagination_get_imagination_effects(
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
 
 
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

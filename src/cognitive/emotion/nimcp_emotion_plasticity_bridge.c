@@ -296,6 +296,7 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
     if (bridge_base_init(&bridge->base, 0, "emotion_plasticity") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in emotion_plasticity_create");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -341,6 +342,7 @@ void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int emotion_plasticity_reset(emotion_plasticity_bridge_t* bridge) {

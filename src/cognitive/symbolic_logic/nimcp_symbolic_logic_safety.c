@@ -247,6 +247,7 @@ safety_kb_t* symbolic_logic_safety_kb_create(uint32_t max_rules) {
     if (region == MAP_FAILED) {
         LOG_ERROR("Failed to mmap safety KB region: %zu bytes", mmap_size);
         nimcp_free(kb);
+        kb = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_kb_create: validation failed");
         return NULL;
     }
@@ -287,6 +288,7 @@ void symbolic_logic_safety_kb_destroy(safety_kb_t* kb) {
     }
 
     nimcp_free(kb);
+    kb = NULL;
     LOG_DEBUG("Destroyed safety KB");
 }
 
@@ -495,7 +497,7 @@ static void compile_rule_to_fol(safety_rule_t* rule) {
 
     char* pos = rule->fol_representation;
     size_t remaining = SAFETY_MAX_FOL_LEN;
-    int written;
+    int written = 0;
 
     // Start with opening
     written = snprintf(pos, remaining, "(");

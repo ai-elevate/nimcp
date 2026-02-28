@@ -172,6 +172,7 @@ void fep_sleep_destroy(fep_sleep_system_t* sys) {
     }
 
     nimcp_free(sys);
+    sys = NULL;
     NIMCP_LOGGING_INFO("Sleep system destroyed");
 }
 
@@ -369,9 +370,12 @@ int fep_sleep_add_experience(
     fep_experience_t* exp = &sys->experience_buffer[sys->buffer_count];
 
     exp->state = (float*)nimcp_calloc(dim, sizeof(float));
+    if (!exp->state) return -1;
     exp->next_state = (float*)nimcp_calloc(dim, sizeof(float));
+    if (!exp->next_state) return -1;
     if (observation && obs_dim > 0) {
         exp->observation = (float*)nimcp_calloc(obs_dim, sizeof(float));
+        if (!exp->observation) return -1;
     }
 
     if (!exp->state || !exp->next_state) {

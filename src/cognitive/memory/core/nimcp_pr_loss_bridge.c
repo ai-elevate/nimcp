@@ -353,6 +353,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     if (config) {
         if (!pr_loss_config_validate(config)) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_bridge_create: pr_loss_config_validate is NULL");
             return NULL;
         }
@@ -364,6 +365,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_loss") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_loss_bridge_create: validation failed");
         return NULL;
     }
@@ -377,6 +379,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     if (!bridge->loss_cache) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_loss_bridge_create: bridge->loss_cache is NULL");
         return NULL;
     }
@@ -405,6 +408,7 @@ void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_loss_bridge_reset(pr_loss_bridge_t bridge) {
@@ -569,7 +573,7 @@ float pr_loss_geodesic_batch(
         sum += loss;
     }
 
-    float result;
+    float result = 0.0f;
     switch (reduction) {
         case NIMCP_LOSS_REDUCE_MEAN:
             result = sum / (float)count;

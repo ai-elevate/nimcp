@@ -289,6 +289,7 @@ static float compute_introspection_entropy(const float* values, uint32_t count)
 
     if (count > 256) {
         nimcp_free(probs);
+        probs = NULL;
     }
 
     return entropy;

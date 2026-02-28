@@ -195,6 +195,7 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
         if (!directives->action_history) {
             NIMCP_LOGGING_ERROR("Failed to allocate action history");
             nimcp_free(directives);
+            directives = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "core_directives_create: directives->action_history is NULL");
             return NULL;
         }
@@ -205,6 +206,7 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
         NIMCP_LOGGING_ERROR("Failed to initialize directives mutex");
         nimcp_free(directives->action_history);
         nimcp_free(directives);
+        directives = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "core_directives_create: validation failed");
         return NULL;
     }
@@ -265,6 +267,7 @@ void core_directives_destroy(core_directives_system_t* directives)
 
     NIMCP_LOGGING_INFO("Destroyed core directives system");
     nimcp_free(directives);
+    directives = NULL;
 }
 
 //=============================================================================

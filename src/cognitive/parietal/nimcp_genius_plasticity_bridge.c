@@ -119,7 +119,7 @@ static genius_plasticity_synapse_t* find_synapse(genius_plasticity_bridge_t* bri
 static float compute_stdp_weight_change(const genius_plasticity_config_t* config,
                                         float pre_time, float post_time) {
     float dt = post_time - pre_time;
-    float dw;
+    float dw = 0.0f;
 
     if (dt > 0.0f) {
         /* LTP: post after pre */
@@ -212,6 +212,7 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
             "bridge_base_init failed for genius_plasticity");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -223,6 +224,7 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
             "synapse array allocation failed for genius_plasticity_bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -279,6 +281,7 @@ void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int genius_plasticity_reset(genius_plasticity_bridge_t* bridge) {

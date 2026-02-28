@@ -679,6 +679,7 @@ static pattern_memory_t* pattern_memory_create(void) {
 static void pattern_memory_destroy(pattern_memory_t* pm) {
     if (pm) {
         nimcp_free(pm);
+        pm = NULL;
     }
 }
 
@@ -1335,6 +1336,7 @@ int brain_immune_tick_init(brain_immune_system_t* immune,
     state->mutex = nimcp_mutex_create(NULL);
     if (!state->mutex) {
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create tick mutex");
         return -1;
     }
@@ -1459,6 +1461,7 @@ void brain_immune_tick_shutdown(brain_immune_system_t* immune) {
     state->magic = 0;
     state->initialized = false;
     nimcp_free(state);
+    state = NULL;
 }
 
 /* ============================================================================

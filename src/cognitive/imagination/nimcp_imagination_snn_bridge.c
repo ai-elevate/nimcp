@@ -221,6 +221,7 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > IMAGINATION_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_create: operation failed");
         return NULL;
     }
@@ -228,6 +229,7 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "imagination_snn") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imagination_snn_create: validation failed");
         return NULL;
     }
@@ -246,15 +248,20 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    if (!bridge->encoding_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->imagery_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->imagery_buffer) return -1;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) return -1;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->imagery_buffer || !bridge->prev_state) {
@@ -319,6 +326,7 @@ void imagination_snn_destroy(imagination_snn_bridge_t* bridge) {
     nimcp_free(bridge->imagery_buffer);
     nimcp_free(bridge->prev_state);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int imagination_snn_reset(imagination_snn_bridge_t* bridge) {

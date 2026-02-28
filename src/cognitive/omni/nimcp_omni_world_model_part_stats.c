@@ -56,6 +56,7 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
     }
 
     nimcp_free(log_probs);
+    log_probs = NULL;
     /* Guard against logf(0) when num_components is 0 */
     return max_log + logf(sum > 0.0f ? sum : 1e-10f);
 }
@@ -97,6 +98,7 @@ nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
 
         if (!action) {
             action = nimcp_calloc(wm->config.action_dim, sizeof(float));
+            if (!action) return -1;
             adim = wm->config.action_dim;
         }
 

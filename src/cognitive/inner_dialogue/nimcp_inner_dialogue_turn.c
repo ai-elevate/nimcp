@@ -76,6 +76,7 @@ inner_dialogue_turn_history_t* inner_dialogue_turn_history_create(void) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_INNER_DIALOGUE_TURN_ERROR_NO_MEMORY,
                               "inner_dialogue_turn: failed to allocate turn ring buffer");
         nimcp_free(history);
+        history = NULL;
         return NULL;
     }
     /* calloc zero-initializes */
@@ -102,6 +103,7 @@ void inner_dialogue_turn_history_destroy(inner_dialogue_turn_history_t* history)
         history->turns = NULL;
     }
     nimcp_free(history);
+    history = NULL;
 }
 
 int inner_dialogue_turn_history_reset(inner_dialogue_turn_history_t* history) {

@@ -234,6 +234,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
     sync->mutex = nimcp_mutex_create(NULL);
     if (!sync->mutex) {
         nimcp_free(sync);
+        sync = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_kg_sync_default_config: sync->mutex is NULL");
         return NULL;
     }
@@ -250,6 +251,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
         if (sync->node_ids) nimcp_free(sync->node_ids);
         nimcp_mutex_free(sync->mutex);
         nimcp_free(sync);
+        sync = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_kg_sync_default_config: validation failed");
         return NULL;
     }
@@ -274,6 +276,7 @@ void omni_kg_sync_destroy(omni_kg_sync_t* sync) {
     }
 
     nimcp_free(sync);
+    sync = NULL;
 }
 
 /* ============================================================================

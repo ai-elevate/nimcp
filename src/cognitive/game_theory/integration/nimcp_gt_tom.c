@@ -212,6 +212,7 @@ nimcp_gt_tom_t nimcp_gt_tom_create(const nimcp_gt_tom_config_t* config) {
         ctx->mutex = nimcp_mutex_create(&attr);
         if (!ctx->mutex) {
             nimcp_free(ctx);
+            ctx = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_tom_create: ctx->mutex is NULL");
             return NULL;
         }
@@ -239,6 +240,7 @@ void nimcp_gt_tom_destroy(nimcp_gt_tom_t ctx) {
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================

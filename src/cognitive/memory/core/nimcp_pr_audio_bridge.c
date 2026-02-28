@@ -303,6 +303,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     bridge->mfcc_history = (float*)nimcp_calloc(1, mfcc_buffer_size);
     if (!bridge->mfcc_history) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_audio_quat_config_default: bridge->mfcc_history is NULL");
         return NULL;
     }
@@ -314,6 +315,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     if (!bridge->onset_history) {
         nimcp_free(bridge->mfcc_history);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_audio_quat_config_default: bridge->onset_history is NULL");
         return NULL;
     }
@@ -326,6 +328,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
         nimcp_free(bridge->onset_history);
         nimcp_free(bridge->mfcc_history);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_audio_quat_config_default: bridge->current_signature is NULL");
         return NULL;
     }
@@ -392,6 +395,7 @@ NIMCP_EXPORT void pr_audio_bridge_destroy(pr_audio_bridge_t* bridge) {
     bridge->initialized = false;
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_reset(pr_audio_bridge_t* bridge) {

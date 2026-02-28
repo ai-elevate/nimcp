@@ -283,6 +283,7 @@ static void free_archetypes(archetype_info_t* archetypes, uint32_t count) {
         style_embedding_destroy(&archetypes[i].canonical);
     }
     nimcp_free(archetypes);
+    archetypes = NULL;
 }
 
 //=============================================================================
@@ -348,6 +349,7 @@ void style_representer_destroy(style_representer_t* repr) {
     free_archetypes(repr->cinema_archetypes, repr->num_cinema);
 
     nimcp_free(repr);
+    repr = NULL;
 
     LOG_INFO(LOG_MODULE, "Style representer destroyed");
 }
@@ -879,6 +881,7 @@ style_embedding_t* style_repr_alloc_embedding(uint32_t dim) {
 
     if (style_embedding_create(emb, dim) < 0) {
         nimcp_free(emb);
+        emb = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_repr_alloc_embedding: validation failed");
         return NULL;
     }
@@ -900,6 +903,7 @@ style_embedding_t* style_repr_clone_embedding(const style_embedding_t* src) {
 
     if (style_embedding_clone(src, clone) < 0) {
         nimcp_free(clone);
+        clone = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_repr_clone_embedding: validation failed");
         return NULL;
     }

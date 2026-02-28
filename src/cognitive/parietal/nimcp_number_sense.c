@@ -238,6 +238,7 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
     if (!ns->lock) {
         set_error("Failed to create mutex");
         nimcp_free(ns);
+        ns = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "number_sense_create_custom: ns->lock is NULL");
         return NULL;
     }
@@ -257,6 +258,7 @@ void number_sense_destroy(number_sense_t* ns) {
     }
 
     nimcp_free(ns);
+    ns = NULL;
 }
 
 /* ============================================================================
@@ -353,7 +355,7 @@ number_estimate_t number_sense_estimate_from_magnitude(
     actual_magnitude = clamp_magnitude(actual_magnitude);
 
     /* Apply logarithmic mental number line if enabled */
-    float internal_rep;
+    float internal_rep = 0.0f;
     if (ns->config.enable_logarithmic_scale) {
         internal_rep = logf(actual_magnitude);
     } else {

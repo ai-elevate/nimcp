@@ -251,6 +251,7 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
     bridge->fused_latent = nimcp_calloc(config->fused_latent_dim, sizeof(float));
     if (!bridge->fused_latent) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge->fused_latent is NULL");
         return NULL;
     }
@@ -261,6 +262,7 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
     if (!bridge->attention_weights) {
         nimcp_free(bridge->fused_latent);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge->attention_weights is NULL");
         return NULL;
     }
@@ -272,6 +274,7 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
             nimcp_free(bridge->attention_weights);
             nimcp_free(bridge->fused_latent);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge->entities is NULL");
             return NULL;
         }
@@ -331,6 +334,7 @@ void vae_world_bridge_destroy(vae_world_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_world_bridge_connect_vae(vae_world_bridge_t* bridge, vae_system_t* vae) {
@@ -357,6 +361,7 @@ int vae_world_bridge_connect_vae(vae_world_bridge_t* bridge, vae_system_t* vae) 
     }
 
     bridge->encode_buffer = nimcp_calloc(max_input, sizeof(float));
+    if (!bridge->encode_buffer) return -1;
     bridge->predict_buffer = nimcp_calloc(bridge->config.fused_latent_dim *
                                            VAE_WORLD_MAX_HORIZON, sizeof(float));
     bridge->fuse_buffer = nimcp_calloc(bridge->config.fused_latent_dim, sizeof(float));
@@ -592,7 +597,7 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
     }
 
     /* Allocate output based on fusion strategy */
-    uint32_t fused_dim;
+    uint32_t fused_dim = 0;
 
     switch (bridge->config.fusion_strategy) {
         case VAE_WORLD_FUSE_CONCATENATE: {
@@ -683,12 +688,15 @@ int vae_world_fuse(vae_world_bridge_t* bridge,
             }
 
             float* fused_var = nimcp_calloc(fused_dim, sizeof(float));
+            if (!fused_var) return -1;
             product_of_experts(valid_latents, (const float**)variances,
                               valid_weights, num_valid, fused_dim,
                               result->fused_latent, fused_var);
 
             nimcp_free(temp_vars);
+            temp_vars = NULL;
             nimcp_free(fused_var);
+            fused_var = NULL;
 
             result->fused_dim = fused_dim;
             break;
@@ -871,7 +879,9 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
 
     if (!current || !velocity) {
         nimcp_free(current);
+        current = NULL;
         nimcp_free(velocity);
+        velocity = NULL;
         bridge->state = VAE_WORLD_STATE_CONNECTED;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_VAE_WORLD_NO_MEMORY, "vae_world_model_bridge: error condition");
         return NIMCP_ERROR_VAE_WORLD_NO_MEMORY;
@@ -919,7 +929,9 @@ int vae_world_predict_from_latent(vae_world_bridge_t* bridge,
     }
 
     nimcp_free(current);
+    current = NULL;
     nimcp_free(velocity);
+    velocity = NULL;
 
     /* Confidence decreases with horizon */
     result->prediction_confidence = expf(-0.05f * (float)horizon);

@@ -211,6 +211,7 @@ void curiosity_fep_bridge_destroy(curiosity_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Curiosity-FEP bridge destroyed");
 }
 

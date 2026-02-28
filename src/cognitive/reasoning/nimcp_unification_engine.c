@@ -95,6 +95,7 @@ bool brain_unify_terms(
 
         // Don't destroy - caller owns the bindings now
         nimcp_free(unif_result);
+        unif_result = NULL;
     } else {
         result->success = false;
         result->bindings = NULL;

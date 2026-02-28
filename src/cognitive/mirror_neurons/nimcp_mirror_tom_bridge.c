@@ -359,6 +359,7 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     if (bridge_base_init(&bridge->base, 0, "mirror_tom") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_tom_create: validation failed");
         return NULL;
     }
@@ -396,6 +397,7 @@ void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
     /* Cleanup base bridge infrastructure */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 mirror_tom_config_t mirror_tom_get_default_config(void) {
@@ -500,7 +502,7 @@ int mirror_tom_process_observation(mirror_tom_bridge_t bridge,
         observation->action_dim > 0) {
 
         char intention_buf[NIMCP_LABEL_BUFFER_SIZE];
-        float intent_conf;
+        float intent_conf = 0.0f;
         if (mirror_tom_infer_intention(bridge, agent_id,
                                         observation->action_features,
                                         observation->action_dim,

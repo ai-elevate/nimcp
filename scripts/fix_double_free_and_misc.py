@@ -61,11 +61,33 @@ def fix_uninitialized_vars(lines):
     fixes = 0
     new_lines = []
 
+    # Pre-scan: find struct/union/enum definition regions to skip
+    in_struct = False
+    struct_depth = 0
+    struct_lines = set()
+    for idx, ln in enumerate(lines):
+        s = ln.strip()
+        if re.match(r'(typedef\s+)?(struct|union|enum)\s+\w*\s*\{', s):
+            in_struct = True
+            struct_depth = s.count('{') - s.count('}')
+            struct_lines.add(idx)
+            continue
+        if in_struct:
+            struct_depth += s.count('{') - s.count('}')
+            struct_lines.add(idx)
+            if struct_depth <= 0:
+                in_struct = False
+
     for i, line in enumerate(lines):
         stripped = line.strip()
 
         # Skip comments
         if stripped.startswith('//') or stripped.startswith('/*'):
+            new_lines.append(line)
+            continue
+
+        # Skip struct/union/enum member declarations
+        if i in struct_lines:
             new_lines.append(line)
             continue
 

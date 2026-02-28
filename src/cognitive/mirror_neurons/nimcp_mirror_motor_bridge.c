@@ -234,6 +234,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_MOTOR_BRIDGE,
                          "mirror_motor_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_bridge_create: bridge is NULL");
         return NULL;
     }
@@ -252,6 +253,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
         LOG_ERROR("Failed to allocate program storage");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_motor_bridge_create: bridge->programs is NULL");
         return NULL;
     }
@@ -265,6 +267,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
         nimcp_free(bridge->programs);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_motor_bridge_create: bridge->executions is NULL");
         return NULL;
     }
@@ -303,6 +306,7 @@ void mirror_motor_bridge_destroy(mirror_motor_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

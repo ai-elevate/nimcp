@@ -290,6 +290,7 @@ int financial_wm_bridge_create(financial_wm_bridge_t** bridge,
     if (!b->items) {
         set_error("Failed to allocate item storage");
         nimcp_free(b);
+        b = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate working memory item storage");
         return FIN_WM_ERR_MEMORY;
@@ -321,6 +322,7 @@ void financial_wm_bridge_destroy(financial_wm_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_wm_heartbeat("financial_wm_bridge_destroy", 1.0f);
 }
@@ -441,7 +443,7 @@ int financial_wm_bridge_add(financial_wm_bridge_t* bridge,
         wm_present_antigen(bridge, "zero_salience_item", 2);
     }
 
-    uint32_t insert_idx;
+    uint32_t insert_idx = 0;
 
     /* Check if we have capacity */
     if (bridge->item_count < bridge->capacity) {

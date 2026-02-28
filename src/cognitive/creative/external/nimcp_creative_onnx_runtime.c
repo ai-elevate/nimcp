@@ -133,6 +133,7 @@ creative_onnx_runtime_t* onnx_runtime_create(const onnx_runtime_config_t* config
     runtime->ort_allocator = NULL;
 
     runtime->sessions = nimcp_calloc(16, sizeof(onnx_session_t*));
+    if (!runtime->sessions) return -1;
     runtime->num_sessions = 0;
     runtime->sessions_capacity = 16;
 
@@ -163,6 +164,7 @@ void onnx_runtime_destroy(creative_onnx_runtime_t* runtime)
      */
 
     nimcp_free(runtime);
+    runtime = NULL;
 }
 
 bool onnx_device_available(onnx_device_t device)
@@ -260,6 +262,7 @@ onnx_session_t* onnx_load_model(creative_onnx_runtime_t* runtime,
             nimcp_free(session->inputs);
             nimcp_free(session->outputs);
             nimcp_free(session);
+            session = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_load_model: new_sessions is NULL");
             return NULL;
         }
@@ -302,6 +305,7 @@ onnx_session_t* onnx_load_model_from_memory(creative_onnx_runtime_t* runtime,
 
     session->num_inputs = 1;
     session->inputs = nimcp_calloc(1, sizeof(onnx_io_info_t));
+    if (!session->inputs) return -1;
     session->num_outputs = 1;
     session->outputs = nimcp_calloc(1, sizeof(onnx_io_info_t));
 
@@ -346,6 +350,7 @@ void onnx_unload_model(creative_onnx_runtime_t* runtime, onnx_session_t* session
      */
 
     nimcp_free(session);
+    session = NULL;
 }
 
 //=============================================================================
@@ -563,6 +568,7 @@ onnx_tensor_t* onnx_tensor_create(creative_onnx_runtime_t* runtime,
     if (!tensor->data) {
         onnx_shape_free(&tensor->shape);
         nimcp_free(tensor);
+        tensor = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_create: tensor->data is NULL");
         return NULL;
     }
@@ -596,6 +602,7 @@ onnx_tensor_t* onnx_tensor_from_data(const void* data,
     if (!tensor->data) {
         onnx_shape_free(&tensor->shape);
         nimcp_free(tensor);
+        tensor = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_from_data: tensor->data is NULL");
         return NULL;
     }
@@ -641,6 +648,7 @@ void onnx_tensor_destroy(onnx_tensor_t* tensor)
 
     onnx_shape_free(&tensor->shape);
     nimcp_free(tensor);
+    tensor = NULL;
 }
 
 int64_t onnx_tensor_numel(const onnx_tensor_t* tensor)

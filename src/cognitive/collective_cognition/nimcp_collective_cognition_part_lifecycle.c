@@ -89,6 +89,7 @@ collective_cognition_t* collective_cognition_create(
         if (cc->phi_system) collective_phi_destroy(cc->phi_system);
         if (cc->intentionality) shared_intentionality_destroy(cc->intentionality);
         nimcp_free(cc);
+        cc = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_create: validation failed");
         return NULL;
     }
@@ -119,6 +120,7 @@ void collective_cognition_destroy(collective_cognition_t* cc) {
     }
 
     nimcp_free(cc);
+    cc = NULL;
 }
 
 

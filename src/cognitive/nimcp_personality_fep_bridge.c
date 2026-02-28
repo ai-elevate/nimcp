@@ -83,6 +83,7 @@ personality_fep_bridge_t* personality_fep_bridge_create(const personality_fep_co
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "personality_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -103,6 +104,7 @@ void personality_fep_bridge_destroy(personality_fep_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed personality FEP bridge");
 }
 

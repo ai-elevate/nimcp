@@ -155,7 +155,7 @@ nimcp_immune_integration_t* nimcp_immune_integration_create(
 
     nimcp_immune_integration_t* integration = NULL;
     nimcp_immune_integration_config_t local_config;
-    int result;
+    int result = 0;
 
     /* Use defaults if no config provided */
     if (!config) {
@@ -385,6 +385,7 @@ void nimcp_immune_integration_destroy(nimcp_immune_integration_t* integration) {
 
     /* Free integration structure */
     nimcp_free(integration);
+    integration = NULL;
 }
 
 int nimcp_immune_integration_start(nimcp_immune_integration_t* integration) {
@@ -645,7 +646,7 @@ int nimcp_immune_integration_diagnose(
 
     int issues = 0;
     size_t offset = 0;
-    int written;
+    int written = 0;
 
     if (!integration) {
         written = snprintf(buffer, buffer_size, "ERROR: Integration is NULL\n");

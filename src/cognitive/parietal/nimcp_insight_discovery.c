@@ -121,6 +121,7 @@ insight_engine_t* insight_engine_create_custom(const insight_config_t* config) {
                                             sizeof(incubation_entry_t));
     if (!engine->incubation_queue) {
         nimcp_free(engine);
+        engine = NULL;
         set_error("Queue alloc failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insight_engine_create_custom: engine->incubation_queue is NULL");
         return NULL;
@@ -154,6 +155,7 @@ void insight_engine_destroy(insight_engine_t* engine) {
         nimcp_free(engine->incubation_queue);
     }
     nimcp_free(engine);
+    engine = NULL;
 }
 
 /* ============================================================================
@@ -264,6 +266,7 @@ void insight_free_problem(insight_problem_t* problem) {
     }
 
     nimcp_free(problem);
+    problem = NULL;
 }
 
 /* ============================================================================
@@ -678,6 +681,7 @@ void insight_free_eureka(insight_eureka_t* eureka) {
 
     if (eureka->solution) nimcp_free(eureka->solution);
     nimcp_free(eureka);
+    eureka = NULL;
 }
 
 /* ============================================================================

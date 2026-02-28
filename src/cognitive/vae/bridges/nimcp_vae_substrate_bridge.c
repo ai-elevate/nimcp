@@ -330,6 +330,7 @@ void vae_substrate_bridge_destroy(vae_substrate_bridge_t* bridge)
     nimcp_free(bridge->modulation_buffer);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_substrate_bridge_connect_vae(vae_substrate_bridge_t* bridge, vae_system_t* vae)

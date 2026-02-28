@@ -235,6 +235,7 @@ omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* confi
     ctx->edges = nimcp_calloc(ctx->edge_capacity, sizeof(omni_precision_edge_t));
     if (!ctx->edges) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_precision_create: ctx->edges is NULL");
         return NULL;
     }
@@ -244,6 +245,7 @@ omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* confi
     if (!ctx->mutex) {
         nimcp_free(ctx->edges);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_precision_create: ctx->mutex is NULL");
         return NULL;
     }
@@ -299,6 +301,7 @@ void omni_precision_destroy(omni_precision_ctx_t* ctx) {
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 int omni_precision_reset(omni_precision_ctx_t* ctx) {
@@ -480,7 +483,7 @@ int omni_precision_update(omni_precision_ctx_t* ctx,
     }
 
     float current = module->channels[channel].value;
-    float new_precision;
+    float new_precision = 0.0f;
 
     switch (ctx->config.update_mode) {
         case OMNI_PREC_UPDATE_BAYESIAN:

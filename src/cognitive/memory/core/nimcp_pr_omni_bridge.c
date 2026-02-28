@@ -405,6 +405,7 @@ pr_omni_bridge_t* pr_omni_bridge_create(const pr_omni_bridge_config_t* config) {
     if (!bridge->modal_oscillators) {
         set_error("Failed to create Kuramoto oscillator system");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_omni_bridge_create: bridge->modal_oscillators is NULL");
         return NULL;
     }
@@ -475,6 +476,7 @@ void pr_omni_bridge_destroy(pr_omni_bridge_t* bridge) {
 
     /* Free the bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 pr_omni_error_t pr_omni_bridge_reset(pr_omni_bridge_t* bridge) {

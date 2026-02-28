@@ -475,6 +475,7 @@ financial_ethics_bridge_t* financial_ethics_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_ETHICS, "financial_ethics") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_ethics_bridge_create: validation failed");
         return NULL;
     }
@@ -500,6 +501,7 @@ void financial_ethics_bridge_destroy(financial_ethics_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_ethics_heartbeat("fin_ethics_destroy", 1.0f);
 }

@@ -145,6 +145,7 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
     if (ensemble->models == NULL) {
         LOG_ERROR("Failed to allocate models array");
         nimcp_free(ensemble);
+        ensemble = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_create: validation failed");
         return NULL;
     }
@@ -195,6 +196,7 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
         nimcp_mutex_destroy(&ensemble->lock);
         nimcp_free(ensemble->models);
         nimcp_free(ensemble);
+        ensemble = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensemble_create: ensemble->num_models is zero");
         return NULL;
     }
@@ -250,6 +252,7 @@ void ensemble_destroy(ensemble_context_t ensemble)
 
     /* WHAT: Free context */
     nimcp_free(ensemble);
+    ensemble = NULL;
 }
 
 /**
@@ -617,6 +620,7 @@ void ensemble_predictions_free(ensemble_prediction_t* predictions,
     }
 
     nimcp_free(predictions);
+    predictions = NULL;
 }
 
 /* ========================================================================
@@ -742,6 +746,7 @@ float ensemble_compute_variance(const float** predictions,
     total_var /= (float) (num_predictions * dimension);
 
     nimcp_free(mean);
+    mean = NULL;
     return total_var;
 }
 

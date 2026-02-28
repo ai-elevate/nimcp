@@ -118,6 +118,7 @@ shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_r
     if (bridge_base_init(&bridge->base, 0, "shadow_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -137,6 +138,7 @@ void shadow_thalamic_bridge_destroy(shadow_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge) {

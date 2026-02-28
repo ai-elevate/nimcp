@@ -221,6 +221,7 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
     if (!wm->global_state) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate global state");
         nimcp_free(wm);
+        wm = NULL;
         return NULL;
     }
 
@@ -230,6 +231,7 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate context buffer");
         nimcp_free(wm->global_state);
         nimcp_free(wm);
+        wm = NULL;
         return NULL;
     }
     wm->context_pos = 0;
@@ -242,6 +244,7 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
         nimcp_free(wm->context_buffer);
         nimcp_free(wm->global_state);
         nimcp_free(wm);
+        wm = NULL;
         return NULL;
     }
     wm->num_entities = 0;
@@ -256,6 +259,7 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
         nimcp_free(wm->context_buffer);
         nimcp_free(wm->global_state);
         nimcp_free(wm);
+        wm = NULL;
         return NULL;
     }
 
@@ -345,6 +349,7 @@ void wm_destroy(nimcp_world_model_t* wm) {
     }
 
     nimcp_free(wm);
+    wm = NULL;
 }
 
 /*=============================================================================
@@ -570,6 +575,7 @@ wm_error_t wm_predict(
     if (!prediction->predicted_states) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate predicted states");
         nimcp_free(current);
+        current = NULL;
         wm->status = WM_STATUS_ERROR;
         wm->last_error = WM_ERR_MEMORY_ALLOC;
         return WM_ERR_MEMORY_ALLOC;
@@ -580,6 +586,7 @@ wm_error_t wm_predict(
         nimcp_free(prediction->predicted_states);
         prediction->predicted_states = NULL;
         nimcp_free(current);
+        current = NULL;
         wm->status = WM_STATUS_ERROR;
         wm->last_error = WM_ERR_MEMORY_ALLOC;
         return WM_ERR_MEMORY_ALLOC;
@@ -619,6 +626,7 @@ wm_error_t wm_predict(
     prediction->num_entities = wm->num_entities;
 
     nimcp_free(current);
+    current = NULL;
     wm->stats.predictions_made++;
     wm->status = WM_STATUS_IDLE;
 

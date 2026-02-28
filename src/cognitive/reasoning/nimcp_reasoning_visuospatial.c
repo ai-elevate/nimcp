@@ -288,7 +288,7 @@ int reasoning_visuospatial_query(reasoning_visuospatial_t* vs, const vs_query_t*
     if (!vs || !q || !r) return -1;
     memset(r, 0, sizeof(*r));
     uint64_t t0 = nimcp_time_now_us();
-    int rc;
+    int rc = 0;
     switch (q->type) {
         case VS_QUERY_RELATION: rc = qr_relation(vs, q, r); break;
         case VS_QUERY_DISTANCE: rc = qr_distance(vs, q, r); break;

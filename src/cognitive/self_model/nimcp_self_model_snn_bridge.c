@@ -222,6 +222,7 @@ self_model_snn_bridge_t* self_model_snn_create(const self_model_snn_config_t* co
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > SELF_MODEL_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_snn_create: operation failed");
         return NULL;
     }
@@ -229,6 +230,7 @@ self_model_snn_bridge_t* self_model_snn_create(const self_model_snn_config_t* co
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "self_model_snn") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_model_snn_create: validation failed");
         return NULL;
     }
@@ -247,15 +249,20 @@ self_model_snn_bridge_t* self_model_snn_create(const self_model_snn_config_t* co
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_model_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    if (!bridge->encoding_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->insight_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->insight_buffer) return -1;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) return -1;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->insight_buffer || !bridge->prev_state) {
@@ -320,6 +327,7 @@ void self_model_snn_destroy(self_model_snn_bridge_t* bridge) {
     nimcp_free(bridge->insight_buffer);
     nimcp_free(bridge->prev_state);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_model_snn_reset(self_model_snn_bridge_t* bridge) {

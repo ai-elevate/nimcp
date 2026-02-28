@@ -312,6 +312,7 @@ static bool allocate_workspace(struct theta_gamma_manager_internal* mgr, uint32_
 
         mgr->work_theta_phase = (float*)nimcp_calloc(size, sizeof(float));
         mgr->work_gamma_amplitude = (float*)nimcp_calloc(size, sizeof(float));
+        if (!mgr->work_gamma_amplitude) return -1;
         mgr->work_envelope = (float*)nimcp_calloc(size, sizeof(float));
 
         if (!mgr->work_theta_phase || !mgr->work_gamma_amplitude || !mgr->work_envelope) {
@@ -489,6 +490,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     /* Validate configuration */
     if (!theta_gamma_config_validate(&mgr->config)) {
         nimcp_free(mgr);
+        mgr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_create: theta_gamma_config_validate is NULL");
         return NULL;
     }
@@ -511,6 +513,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     /* Initialize PAC histogram */
     if (!init_pac_histogram(mgr)) {
         nimcp_free(mgr);
+        mgr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "theta_gamma_create: init_pac_histogram is NULL");
         return NULL;
     }
@@ -524,6 +527,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
         nimcp_free(mgr->pac_histogram);
         nimcp_free(mgr->pac_bin_counts);
         nimcp_free(mgr);
+        mgr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "theta_gamma_create: mgr->hilbert is NULL");
         return NULL;
     }
@@ -591,6 +595,7 @@ void theta_gamma_destroy(theta_gamma_manager_t manager) {
     memset(mgr, 0, sizeof(*mgr));
 
     nimcp_free(mgr);
+    mgr = NULL;
 }
 
 bool theta_gamma_reset(theta_gamma_manager_t manager) {

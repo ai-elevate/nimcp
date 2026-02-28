@@ -214,6 +214,7 @@ void vae_bio_async_destroy(vae_bio_async_bridge_t* bridge)
     /* nimcp_free(bridge->pending_responses); */
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_bio_async_connect_vae(vae_bio_async_bridge_t* bridge, vae_system_t* vae)

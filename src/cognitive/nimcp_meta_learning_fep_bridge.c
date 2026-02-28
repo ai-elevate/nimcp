@@ -59,6 +59,7 @@ meta_learning_fep_bridge_t* meta_learning_fep_bridge_create(const meta_learning_
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -79,6 +80,7 @@ void meta_learning_fep_bridge_destroy(meta_learning_fep_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed meta-learning FEP bridge");
 }
 

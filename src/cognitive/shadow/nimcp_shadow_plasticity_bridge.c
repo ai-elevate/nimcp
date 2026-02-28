@@ -155,6 +155,7 @@ shadow_plasticity_bridge_t* shadow_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "shadow_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shadow_plasticity_create: validation failed");
         return NULL;
     }
@@ -165,6 +166,7 @@ shadow_plasticity_bridge_t* shadow_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shadow_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -198,6 +200,7 @@ void shadow_plasticity_destroy(shadow_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int shadow_plasticity_reset(shadow_plasticity_bridge_t* bridge) {

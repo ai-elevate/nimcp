@@ -379,6 +379,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_prefrontal_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -416,6 +417,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
             NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate sequence memory");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_prefrontal_bridge_create: bridge->sequences is NULL");
             return NULL;
         }
@@ -457,6 +459,7 @@ void mirror_prefrontal_bridge_destroy(mirror_prefrontal_bridge_t bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Mirror-PFC bridge: Destroyed");
 }
 

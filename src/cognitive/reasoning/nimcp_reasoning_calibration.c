@@ -160,6 +160,7 @@ reasoning_calibration_t* reasoning_calibration_create(
     if (!cal->mutex) {
         NIMCP_LOGGING_ERROR("calibration: failed to create mutex");
         nimcp_free(cal);
+        cal = NULL;
         return NULL;
     }
 
@@ -189,6 +190,7 @@ void reasoning_calibration_destroy(reasoning_calibration_t* cal)
                        cal->num_contributors, cal->total_records);
 
     nimcp_free(cal);
+    cal = NULL;
 }
 
 /*=============================================================================

@@ -235,6 +235,7 @@ void introspection_sleep_bridge_destroy(introspection_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int introspection_sleep_update(introspection_sleep_bridge_t bridge) {

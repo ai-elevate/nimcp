@@ -299,6 +299,7 @@ void metamem_monitor_destroy(metamem_monitor_t monitor) {
     history_cleanup(monitor);
 
     nimcp_free(monitor);
+    monitor = NULL;
 }
 
 //=============================================================================
@@ -364,6 +365,7 @@ metamem_error_t metamem_monitor_update(
                     }
                 }
                 nimcp_free(nodes);
+                nodes = NULL;
             }
         }
 
@@ -545,6 +547,7 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
         }
 
         nimcp_free(nodes);
+        nodes = NULL;
     }
 
     // Finalize domain statistics
@@ -826,6 +829,7 @@ int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
         }
 
         nimcp_free(nodes);
+        nodes = NULL;
     }
 
     // Sort by risk score (highest first)
@@ -984,6 +988,7 @@ metamem_error_t metamem_monitor_get_health_report(
                 }
                 report->tier_avg_strength[tier] = total_strength / (float)actual;
                 nimcp_free(nodes);
+                nodes = NULL;
             }
         }
     }
@@ -1545,9 +1550,13 @@ static void history_init(metamem_monitor_t monitor) {
     monitor->history_index = 0;
 
     monitor->consolidation_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
+    if (!monitor->consolidation_history) return -1;
     monitor->accessibility_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
+    if (!monitor->accessibility_history) return -1;
     monitor->retrieval_history = (float*)nimcp_calloc(monitor->history_capacity, sizeof(float));
+    if (!monitor->retrieval_history) return -1;
     monitor->timestamp_history = (uint64_t*)nimcp_calloc(monitor->history_capacity, sizeof(uint64_t));
+    if (!monitor->timestamp_history) return -1;
 }
 
 static void history_cleanup(metamem_monitor_t monitor) {
@@ -1607,7 +1616,7 @@ static float compute_memory_risk(metamem_monitor_t monitor, const pr_memory_node
     float time_risk = 1.0f - expf(-time_factor);  // Approaches 1 as time increases
 
     // 3. Tier risk: lower tiers have faster decay
-    float tier_risk;
+    float tier_risk = 0.0f;
     switch (tier) {
         case PR_MEMORY_TIER_Z0: tier_risk = 1.0f; break;
         case PR_MEMORY_TIER_Z1: tier_risk = 0.7f; break;

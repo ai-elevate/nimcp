@@ -362,6 +362,7 @@ intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* con
     if (!engine->patterns) {
         set_error("Failed to allocate pattern memory");
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_engine_create_custom: engine->patterns is NULL");
         return NULL;
     }
@@ -375,6 +376,7 @@ intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* con
         set_error("Failed to allocate incubation queue");
         nimcp_free(engine->patterns);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_engine_create_custom: engine->incubation_queue is NULL");
         return NULL;
     }
@@ -445,6 +447,7 @@ void intuitive_engine_destroy(intuitive_engine_t* engine) {
     }
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 /* ============================================================================
@@ -501,16 +504,19 @@ hunch_t* intuitive_form_hunch(
     if (max_dim == 0) {
         set_error("No observation data");
         nimcp_free(hunch);
+        hunch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_form_hunch: max_dim is zero");
         return NULL;
     }
 
     /* Allocate pattern storage */
     hunch->predicted_pattern = nimcp_calloc(max_dim, sizeof(float));
+    if (!hunch->predicted_pattern) return -1;
     hunch->pattern_dim = max_dim;
 
     /* Compute weighted average pattern */
     float* weights = nimcp_calloc(num_observations, sizeof(float));
+    if (!weights) return -1;
     float weight_sum = 0.0f;
 
     for (uint32_t i = 0; i < num_observations; i++) {
@@ -540,6 +546,7 @@ hunch_t* intuitive_form_hunch(
     }
 
     nimcp_free(weights);
+    weights = NULL;
 
     /* Compute intuition scores */
     float pattern_entropy = compute_entropy(hunch->predicted_pattern, max_dim);
@@ -608,6 +615,7 @@ hunch_t* intuitive_form_hunch(
 
     /* Track supporting observations */
     hunch->supporting_obs = nimcp_calloc(num_observations, sizeof(uint32_t));
+    if (!hunch->supporting_obs) return -1;
     hunch->num_supporting = num_observations;
     for (uint32_t i = 0; i < num_observations; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -762,6 +770,7 @@ void intuitive_free_hunch(hunch_t* hunch) {
     }
 
     nimcp_free(hunch);
+    hunch = NULL;
 }
 
 /* ============================================================================
@@ -888,6 +897,7 @@ int intuitive_rank_hypotheses(
     }
 
     nimcp_free(scores);
+    scores = NULL;
     return 0;
 }
 
@@ -1143,6 +1153,7 @@ insight_t* intuitive_leap_with_strategy(
     /* Generate solution based on strategy */
     insight->solution_dim = problem->state_dim;
     insight->solution = nimcp_calloc(insight->solution_dim, sizeof(float));
+    if (!insight->solution) return -1;
 
     switch (strategy) {
         case INTUITIVE_STRATEGY_RECOGNITION:
@@ -1337,6 +1348,7 @@ void intuitive_free_insight(insight_t* insight) {
     }
 
     nimcp_free(insight);
+    insight = NULL;
 }
 
 /* ============================================================================

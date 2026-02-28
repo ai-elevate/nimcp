@@ -95,6 +95,7 @@ introspection_context_t introspection_context_create(brain_t brain,
         if (context->pattern_registry == NULL) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_context_create: failed to allocate pattern_registry");
             nimcp_free(context);
+            context = NULL;
             return NULL;
         }
         nimcp_mutex_init(&context->pattern_registry->lock, NULL);
@@ -119,6 +120,7 @@ introspection_context_t introspection_context_create(brain_t brain,
         }
         nimcp_mutex_destroy(&context->lock);
         nimcp_free(context);
+        context = NULL;
         return NULL;
     }
 
@@ -181,6 +183,7 @@ void introspection_context_destroy(introspection_context_t context)
                 pattern_entry_t* next = entry->next;
                 nimcp_free(entry->name);
                 nimcp_free(entry);
+                entry = NULL;
                 entry = next;
             }
         }
@@ -217,6 +220,7 @@ void introspection_context_destroy(introspection_context_t context)
     /* WHAT: Destroy mutex and free context */
     nimcp_mutex_destroy(&context->lock);
     nimcp_free(context);
+    context = NULL;
 }
 
 
@@ -299,6 +303,7 @@ void pattern_info_free(pattern_info_t* info)
 
     nimcp_free(info->pattern_name);
     nimcp_free(info);
+    info = NULL;
 }
 
 
@@ -327,6 +332,7 @@ void pattern_list_free(char** pattern_list, uint32_t num_patterns)
         nimcp_free(pattern_list[i]);
     }
     nimcp_free(pattern_list);
+    pattern_list = NULL;
 }
 
 

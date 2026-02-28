@@ -9,6 +9,7 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
 
 
     fep_orchestrator_t* orchestrator = (fep_orchestrator_t*)nimcp_calloc(1, sizeof(fep_orchestrator_t));
+    if (!orchestrator) return -1;
     NIMCP_API_CHECK_ALLOC(orchestrator, "Failed to allocate FEP orchestrator");
     
     /* Apply configuration */
@@ -24,6 +25,7 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
         orchestrator->bridge_capacity, sizeof(fep_bridge_entry_t));
     if (!orchestrator->bridges) {
         nimcp_free(orchestrator);
+        orchestrator = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_orchestrator_create: orchestrator->bridges is NULL");
         return NULL;
     }
@@ -33,6 +35,7 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
     if (!orchestrator->mutex) {
         nimcp_free(orchestrator->bridges);
         nimcp_free(orchestrator);
+        orchestrator = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_orchestrator_create: orchestrator->mutex is NULL");
         return NULL;
     }
@@ -109,6 +112,7 @@ void fep_orchestrator_destroy(fep_orchestrator_t* orchestrator) {
     }
     
     nimcp_free(orchestrator);
+    orchestrator = NULL;
 }
 
 

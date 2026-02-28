@@ -418,6 +418,7 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     if (!stdp->synapses) {
         LOG_ERROR("mirror_stdp_create: failed to allocate synapse storage");
         nimcp_free(stdp);
+        stdp = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_stdp_create: stdp->synapses is NULL");
         return NULL;
     }
@@ -431,6 +432,7 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
         LOG_ERROR("mirror_stdp_create: failed to allocate action map");
         nimcp_free(stdp->synapses);
         nimcp_free(stdp);
+        stdp = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_stdp_create: stdp->action_map is NULL");
         return NULL;
     }
@@ -524,6 +526,7 @@ void mirror_stdp_destroy(mirror_stdp_t stdp) {
         nimcp_free(stdp->synapses);
     }
     nimcp_free(stdp);
+    stdp = NULL;
 
     LOG_TRACE("mirror_stdp_destroy: completed");
 }

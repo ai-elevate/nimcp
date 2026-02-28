@@ -266,6 +266,7 @@ static char* generate_prose_text(const prose_request_t* request, uint32_t* seed)
     if (body) {
         pos += snprintf(prose + pos, target_chars - pos, "%s", body);
         nimcp_free(body);
+        body = NULL;
     }
 
     /* Closing */
@@ -358,6 +359,7 @@ void text_generator_destroy(text_generator_t* gen) {
     }
 
     nimcp_free(gen);
+    gen = NULL;
 
     LOG_INFO(LOG_MODULE, "Text generator destroyed");
 }
@@ -445,12 +447,14 @@ int text_generate_continue(text_generator_t* gen,
     result->text = nimcp_calloc(total_len, sizeof(char));
     if (!result->text) {
         nimcp_free(continuation);
+        continuation = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "text_generator_destroy: result->text is NULL");
         return -1;
     }
 
     snprintf(result->text, total_len, "%s %s", existing, continuation);
     nimcp_free(continuation);
+    continuation = NULL;
 
     result->text_len = strlen(result->text);
     result->tokens_generated = max_new_tokens;

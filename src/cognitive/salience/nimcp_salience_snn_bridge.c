@@ -203,6 +203,7 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
     bridge->channel_neurons = nimcp_calloc(bridge->num_channels, sizeof(salience_neuron_t*));
     if (!bridge->channel_neurons) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_snn_create: bridge->channel_neurons is NULL");
         return NULL;
     }
@@ -324,6 +325,7 @@ void salience_snn_destroy(salience_snn_bridge_t* bridge) {
 
     nimcp_free(bridge->prediction);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int salience_snn_reset(salience_snn_bridge_t* bridge) {

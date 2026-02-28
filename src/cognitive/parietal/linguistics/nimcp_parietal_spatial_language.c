@@ -528,6 +528,7 @@ spatial_language_t* spatial_language_create_custom(const spatial_language_config
 void spatial_language_destroy(spatial_language_t* sl) {
     if (sl) {
         nimcp_free(sl);
+        sl = NULL;
     }
 }
 

@@ -226,6 +226,7 @@ surprise_plasticity_bridge_t* surprise_plasticity_bridge_create(
                            sizeof(nimcp_mutex_t),
                            "surprise_plasticity_bridge mutex allocation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -238,6 +239,7 @@ surprise_plasticity_bridge_t* surprise_plasticity_bridge_create(
                            "surprise_plasticity_bridge sources allocation failed");
         nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -286,6 +288,7 @@ void surprise_plasticity_bridge_destroy(surprise_plasticity_bridge_t* bridge) {
         nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int surprise_plasticity_bridge_reset(surprise_plasticity_bridge_t* bridge) {

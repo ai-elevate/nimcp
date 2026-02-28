@@ -83,6 +83,7 @@ hierarchical_fep_bridge_t* hierarchical_fep_bridge_create(const hierarchical_fep
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hierarchical_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -118,6 +119,7 @@ void hierarchical_fep_bridge_destroy(hierarchical_fep_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed hierarchical FEP bridge");
 }
 

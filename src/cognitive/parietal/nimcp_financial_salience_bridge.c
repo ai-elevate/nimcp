@@ -498,6 +498,7 @@ financial_salience_bridge_t* financial_salience_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_SALIENCE, "financial_salience") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_salience_bridge_create: validation failed");
         return NULL;
     }
@@ -507,6 +508,7 @@ financial_salience_bridge_t* financial_salience_bridge_create(
     if (!bridge->symbol_relevance) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         set_error("Failed to allocate symbol_relevance array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_salience_bridge_create: bridge->symbol_relevance is NULL");
         return NULL;
@@ -521,6 +523,7 @@ financial_salience_bridge_t* financial_salience_bridge_create(
             nimcp_free(bridge->symbol_relevance);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             set_error("Failed to allocate event_history array");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_salience_bridge_create: bridge->event_history is NULL");
             return NULL;
@@ -569,6 +572,7 @@ void financial_salience_bridge_destroy(financial_salience_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_salience_heartbeat("fin_salience_destroy", 1.0f);
 }

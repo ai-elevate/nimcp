@@ -490,6 +490,7 @@ phonological_wm_t* phonological_wm_create_custom(const phonological_wm_config_t*
 void phonological_wm_destroy(phonological_wm_t* pwm) {
     if (pwm) {
         nimcp_free(pwm);
+        pwm = NULL;
     }
 }
 
@@ -509,7 +510,7 @@ int phonological_wm_encode(
 
     /* Convert word to phonemes */
     phoneme_t phonemes[LINGUISTICS_MAX_PHONEME_SEQUENCE];
-    uint32_t num_phonemes;
+    uint32_t num_phonemes = 0;
 
     simple_grapheme_to_phoneme(word, phonemes, LINGUISTICS_MAX_PHONEME_SEQUENCE, &num_phonemes);
 
@@ -531,7 +532,7 @@ int phonological_wm_encode_phonemes(
     uint64_t current_time = get_time_ms();
 
     /* Find slot for new trace */
-    uint32_t slot;
+    uint32_t slot = 0;
     if (pwm->count < pwm->effective_capacity) {
         slot = pwm->count++;
     } else {
@@ -838,7 +839,7 @@ int phonological_wm_retrieve(
 
     /* Convert cue to phonemes */
     phoneme_t cue_phonemes[LINGUISTICS_MAX_PHONEME_SEQUENCE];
-    uint32_t cue_length;
+    uint32_t cue_length = 0;
     simple_grapheme_to_phoneme(cue, cue_phonemes, LINGUISTICS_MAX_PHONEME_SEQUENCE, &cue_length);
 
     /* Find best matching trace */
@@ -931,7 +932,7 @@ bool phonological_wm_contains(
     const phonological_wm_t* pwm,
     const char* word
 ) {
-    uint32_t idx;
+    uint32_t idx = 0;
     return phonological_wm_find(pwm, word, &idx) == LING_ERR_OK;
 }
 

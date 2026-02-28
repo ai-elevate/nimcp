@@ -139,6 +139,7 @@ void curiosity_substrate_bridge_destroy(curiosity_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int curiosity_substrate_bridge_update(curiosity_substrate_bridge_t* bridge) {

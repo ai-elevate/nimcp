@@ -318,6 +318,7 @@ void style_perception_destroy(style_perception_t* perc) {
     }
 
     nimcp_free(perc);
+    perc = NULL;
 
     LOG_INFO(LOG_MODULE, "Style perception destroyed");
 }

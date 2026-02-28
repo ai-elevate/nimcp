@@ -342,6 +342,7 @@ reasoning_abduction_t* reasoning_abduction_create(const abduction_config_t* conf
     if (!abduction->mutex) {
         NIMCP_LOGGING_ERROR("reasoning_abduction: failed to create mutex");
         nimcp_free(abduction);
+        abduction = NULL;
         return NULL;
     }
 
@@ -369,6 +370,7 @@ void reasoning_abduction_destroy(reasoning_abduction_t* abduction)
                        abduction->stats.total_abductions);
 
     nimcp_free(abduction);
+    abduction = NULL;
 }
 
 /*=============================================================================

@@ -101,6 +101,7 @@ self_awareness_ext_thalamic_bridge_t* self_awareness_ext_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "self_awareness_extended_thalam") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -120,6 +121,7 @@ void self_awareness_ext_thalamic_bridge_destroy(self_awareness_ext_thalamic_brid
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_awareness_ext_thalamic_bridge_reset(self_awareness_ext_thalamic_bridge_t* bridge) {

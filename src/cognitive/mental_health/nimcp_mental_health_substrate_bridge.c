@@ -139,6 +139,7 @@ void mental_health_substrate_bridge_destroy(mental_health_substrate_bridge_t* br
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mental_health_substrate_bridge_update(mental_health_substrate_bridge_t* bridge) {

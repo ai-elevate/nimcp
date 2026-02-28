@@ -271,6 +271,7 @@ financial_regret_bridge_t* financial_regret_bridge_create(
     if (!bridge->history) {
         set_error("Failed to allocate trade history");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_regret_bridge_create: bridge->history is NULL");
         return NULL;
     }
@@ -283,6 +284,7 @@ financial_regret_bridge_t* financial_regret_bridge_create(
         set_error("Failed to allocate lesson storage");
         nimcp_free(bridge->history);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_regret_bridge_create: bridge->lessons is NULL");
         return NULL;
     }
@@ -312,6 +314,7 @@ void financial_regret_bridge_destroy(financial_regret_bridge_t* bridge) {
         bridge->magic = 0;
         bridge->op_state = FIN_REGRET_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 
@@ -764,7 +767,7 @@ int financial_regret_bridge_analyze(
     /* Compute regret magnitude as difference between actual and optimal */
     /* Optimal outcome approximation: direction * max(0, -outcome) for bad trades
      * or direction * 1.5 * outcome for good trades that could have been bigger */
-    float optimal_outcome;
+    float optimal_outcome = 0.0f;
     if (trade->outcome < 0.0f) {
         /* Bad trade: optimal was to not enter (0) or reverse */
         optimal_outcome = -trade->outcome;  /* What we would have made going other way */
@@ -1011,7 +1014,7 @@ int financial_regret_bridge_generate_counterfactuals(
         alt_action.type = alternatives[i];
         alt_action.magnitude = 0.5f;  /* Default magnitude */
 
-        float hypo;
+        float hypo = 0.0f;
         int rc = financial_regret_bridge_counterfactual(
             bridge, &trade->trade, &alt_action, &hypo);
         if (rc != FIN_REGRET_ERR_OK) {

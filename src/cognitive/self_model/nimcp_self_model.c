@@ -178,6 +178,7 @@ self_model_system_t self_model_create(const char* name,
     // Initialize mutex
     if (nimcp_mutex_init(&system->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_model_create: validation failed");
         return NULL;
     }
@@ -241,6 +242,7 @@ void self_model_destroy(self_model_system_t system)
 
     nimcp_mutex_destroy(&system->mutex);
     nimcp_free(system);
+    system = NULL;
 }
 
 bool self_model_get(self_model_system_t system, self_model_t* model)

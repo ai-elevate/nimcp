@@ -256,9 +256,13 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
     bridge->num_output_neurons = config->neurons_per_dim * 2;
 
     bridge->evidence_neurons = nimcp_calloc(bridge->num_evidence_neurons, sizeof(epistemic_neuron_t));
+    if (!bridge->evidence_neurons) return -1;
     bridge->reliability_neurons = nimcp_calloc(bridge->num_reliability_neurons, sizeof(epistemic_neuron_t));
+    if (!bridge->reliability_neurons) return -1;
     bridge->bias_neurons = nimcp_calloc(bridge->num_bias_neurons, sizeof(epistemic_neuron_t));
+    if (!bridge->bias_neurons) return -1;
     bridge->output_neurons = nimcp_calloc(bridge->num_output_neurons, sizeof(epistemic_neuron_t));
+    if (!bridge->output_neurons) return -1;
 
     if (!bridge->evidence_neurons || !bridge->reliability_neurons ||
         !bridge->bias_neurons || !bridge->output_neurons) {
@@ -342,6 +346,7 @@ void epistemic_snn_destroy(epistemic_snn_bridge_t* bridge) {
     nimcp_free(bridge->sources);
     nimcp_free(bridge->bias_magnitudes);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int epistemic_snn_reset(epistemic_snn_bridge_t* bridge) {
@@ -772,6 +777,7 @@ int epistemic_snn_decode_assessment(
             }
             variance = nimcp_stats_variance_population(potentials, bridge->num_output_neurons);
             nimcp_free(potentials);
+            potentials = NULL;
         }
     }
     // Higher variance means less certainty; also factor in evidence quality

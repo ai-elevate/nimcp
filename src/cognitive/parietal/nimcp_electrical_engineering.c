@@ -97,6 +97,7 @@ void electrical_eng_destroy(electrical_eng_t* ee) {
 
     if (ee) {
         nimcp_free(ee);
+        ee = NULL;
     }
 }
 
@@ -130,6 +131,7 @@ void electrical_eng_destroy_circuit(ee_circuit_t* circuit) {
     if (circuit) {
         nimcp_free(circuit->elements);
         nimcp_free(circuit);
+        circuit = NULL;
     }
 }
 

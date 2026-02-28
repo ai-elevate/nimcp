@@ -830,7 +830,7 @@ def phase0_orientation(brain, socratic: SocraticTrainer,
 def phase1_parallel_school(brain, socratic: SocraticTrainer,
                            cognitive: CognitiveOrchestrator,
                            logger: AthenaLogger, total_trained: int,
-                           max_concurrent_instructors: int = 1,
+                           max_concurrent_instructors: int = 4,
                            min_domain_accuracy: float = 0.0,
                            max_retry_passes: int = 5) -> tuple:
     """
@@ -1930,7 +1930,7 @@ def main() -> int:
 
     PHASE2_MAX_PER_DATASET = _parse_cli_arg("--examples-per-domain", PHASE2_MAX_PER_DATASET,
                                             min_val=100, max_val=10_000_000)
-    cli_max_concurrent = _parse_cli_arg("--max-concurrent", 1,
+    cli_max_concurrent = _parse_cli_arg("--max-concurrent", 4,
                                          min_val=1, max_val=32)
     cli_min_accuracy = _parse_cli_arg("--min-domain-accuracy", 0.0, float,
                                        min_val=0.0, max_val=1.0)

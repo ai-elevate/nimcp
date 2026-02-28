@@ -167,7 +167,7 @@ static int write_counter(
         return -1;
     }
 
-    int written;
+    int written = 0;
     if (labels != NULL && labels[0] != '\0') {
         written = snprintf(buffer + *offset, buffer_size - *offset,
             "%s{%s} %lu\n", name, labels, (unsigned long)value);
@@ -202,7 +202,7 @@ static int write_gauge(
         return -1;
     }
 
-    int written;
+    int written = 0;
     if (labels != NULL && labels[0] != '\0') {
         written = snprintf(buffer + *offset, buffer_size - *offset,
             "%s{%s} %.6f\n", name, labels, value);
@@ -236,7 +236,7 @@ static int write_histogram(
         return -1;
     }
 
-    int written;
+    int written = 0;
 
     /* Write buckets */
     for (size_t i = 0; i < hist->n_buckets; i++) {
@@ -356,6 +356,7 @@ immune_metrics_t* immune_metrics_create(const immune_metrics_config_t* config)
     if (metrics->mutex == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create mutex");
         nimcp_free(metrics);
+        metrics = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_metrics_create: validation failed");
         return NULL;
     }
@@ -392,6 +393,7 @@ void immune_metrics_destroy(immune_metrics_t* metrics)
 
     nimcp_mutex_free(metrics->mutex);
     nimcp_free(metrics);
+    metrics = NULL;
 
     LOG_MODULE_INFO(LOG_TAG, "Immune metrics collector destroyed");
 }

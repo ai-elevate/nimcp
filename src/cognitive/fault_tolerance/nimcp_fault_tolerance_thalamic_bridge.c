@@ -109,6 +109,7 @@ fault_tolerance_thalamic_bridge_t* fault_tolerance_thalamic_bridge_create(void* 
     if (bridge_base_init(&bridge->base, 0, "fault_tolerance_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_tolerance_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -132,6 +133,7 @@ void fault_tolerance_thalamic_bridge_destroy(fault_tolerance_thalamic_bridge_t* 
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int fault_tolerance_thalamic_bridge_reset(fault_tolerance_thalamic_bridge_t* bridge) {

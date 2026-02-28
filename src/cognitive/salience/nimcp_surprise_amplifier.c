@@ -536,6 +536,7 @@ surprise_amplifier_t* surprise_amplifier_create(
                               "Failed to create surprise amplifier mutex");
         NIMCP_LOGGING_ERROR("Failed to create surprise amplifier mutex");
         nimcp_free(amp);
+        amp = NULL;
         return NULL;
     }
 
@@ -575,6 +576,7 @@ void surprise_amplifier_destroy(surprise_amplifier_t* amp) {
                        amp->stats.max_magnitude);
 
     nimcp_free(amp);
+    amp = NULL;
 }
 
 int surprise_amplifier_reset(surprise_amplifier_t* amp) {
@@ -1049,7 +1051,7 @@ int surprise_amplifier_get_history(const surprise_amplifier_t* amp,
 
     /* Copy events in chronological order (oldest first) */
     if (to_copy > 0) {
-        uint32_t start;
+        uint32_t start = 0;
         if (amp->history_count >= SURPRISE_HISTORY_SIZE) {
             /* Ring buffer wrapped - oldest is at history_head */
             start = amp->history_head;

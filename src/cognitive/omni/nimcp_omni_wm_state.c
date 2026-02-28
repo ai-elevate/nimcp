@@ -41,6 +41,7 @@ omni_wm_state_t* omni_wm_state_create(uint32_t dim) {
     state->values = nimcp_calloc(dim, sizeof(float));
     if (!state->values) {
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_create: values allocation failed");
         return NULL;
     }
@@ -99,6 +100,7 @@ void omni_wm_state_destroy(omni_wm_state_t* state) {
 
     nimcp_free(state->values);
     nimcp_free(state);
+    state = NULL;
 }
 
 nimcp_error_t omni_wm_set_state(omni_world_model_t* wm,
@@ -141,8 +143,11 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
     }
 
     state->h = nimcp_calloc(h_dim, sizeof(float));
+    if (!state->h) return -1;
     state->z = nimcp_calloc(z_dim, sizeof(float));
+    if (!state->z) return -1;
     state->z_mean = nimcp_calloc(z_dim, sizeof(float));
+    if (!state->z_mean) return -1;
     state->z_std = nimcp_calloc(z_dim, sizeof(float));
 
     if (!state->h || !state->z || !state->z_mean || !state->z_std) {
@@ -197,6 +202,7 @@ void omni_wm_rssm_state_destroy(omni_wm_rssm_state_t* state) {
     nimcp_free(state->z_mean);
     nimcp_free(state->z_std);
     nimcp_free(state);
+    state = NULL;
 }
 
 const omni_wm_rssm_state_t* omni_wm_get_rssm_state(const omni_world_model_t* wm) {
@@ -241,6 +247,7 @@ omni_wm_latent_t* omni_wm_latent_create(uint32_t dim) {
     latent->embedding = nimcp_calloc(dim, sizeof(float));
     if (!latent->embedding) {
         nimcp_free(latent);
+        latent = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_latent_create: embedding allocation failed");
         return NULL;
     }
@@ -255,6 +262,7 @@ void omni_wm_latent_destroy(omni_wm_latent_t* latent) {
 
     nimcp_free(latent->embedding);
     nimcp_free(latent);
+    latent = NULL;
 }
 
 nimcp_error_t omni_wm_encode(omni_world_model_t* wm,

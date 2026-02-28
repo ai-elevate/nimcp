@@ -278,6 +278,7 @@ static lsh_table_t* lsh_table_create(uint32_t num_buckets)
     table->buckets = nimcp_calloc(buckets_pow2, sizeof(lsh_bucket_t));
     if (!table->buckets) {
         nimcp_free(table);
+        table = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lsh_table_create: table->buckets is NULL");
         return NULL;
     }
@@ -313,6 +314,7 @@ static void lsh_table_destroy(lsh_table_t* table)
     }
 
     nimcp_free(table);
+    table = NULL;
 }
 
 /**
@@ -477,6 +479,7 @@ episodic_memory_t* episodic_memory_create_custom(
     if (!memory->episodes) {
         LOG_ERROR("Failed to allocate episode buffer");
         nimcp_free(memory);
+        memory = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: memory->episodes is NULL");
         return NULL;
     }
@@ -490,6 +493,7 @@ episodic_memory_t* episodic_memory_create_custom(
         LOG_ERROR("Failed to allocate LSH table array");
         nimcp_free(memory->episodes);
         nimcp_free(memory);
+        memory = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: memory->lsh_tables is NULL");
         return NULL;
     }
@@ -522,6 +526,7 @@ episodic_memory_t* episodic_memory_create_custom(
             nimcp_free(memory->lsh_tables);
             nimcp_free(memory->episodes);
             nimcp_free(memory);
+            memory = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_create_custom: operation failed");
             return NULL;
         }
@@ -605,6 +610,7 @@ void episodic_memory_destroy(episodic_memory_t* memory)
 
     // Free main structure
     nimcp_free(memory);
+    memory = NULL;
 }
 
 //=============================================================================
@@ -733,7 +739,7 @@ bool episodic_memory_store(
     // Handle capacity limit
     if (memory->count >= memory->capacity) {
         // Evict based on strategy
-        uint32_t evict_idx;
+        uint32_t evict_idx = 0;
 
         if (memory->config.enable_emotional_eviction) {
             // Evict lowest-emotion episode
@@ -764,7 +770,7 @@ bool episodic_memory_store(
 
     // Encode in quantum bridge for temporal pattern matching
     if (memory->enable_quantum_episodic && memory->quantum_bridge) {
-        uint32_t pattern_id;
+        uint32_t pattern_id = 0;
         int qstatus = episodic_quantum_encode_episode(
             memory->quantum_bridge, &ep, &pattern_id);
         if (qstatus != 0) {
@@ -890,6 +896,7 @@ recovery_episode_t** episodic_memory_recall_similar(
     bool* seen = nimcp_calloc(memory->count, sizeof(bool));
     if (!seen) {
         nimcp_free(candidates);
+        candidates = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: seen is NULL");
         return NULL;
     }
@@ -910,9 +917,11 @@ recovery_episode_t** episodic_memory_recall_similar(
     }
 
     nimcp_free(seen);
+    seen = NULL;
 
     if (unique_count == 0) {
         nimcp_free(candidates);
+        candidates = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "episodic_memory_recall_similar: unique_count is zero");
         return NULL;
     }
@@ -923,6 +932,7 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     if (!scores) {
         nimcp_free(candidates);
+        candidates = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: scores is NULL");
         return NULL;
     }
@@ -952,7 +962,9 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     if (!results) {
         nimcp_free(scores);
+        scores = NULL;
         nimcp_free(candidates);
+        candidates = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_recall_similar: results is NULL");
         return NULL;
     }
@@ -975,7 +987,9 @@ recovery_episode_t** episodic_memory_recall_similar(
     memory->stats.total_query_time_us += (end_time - start_time) * 1000;
 
     nimcp_free(scores);
+    scores = NULL;
     nimcp_free(candidates);
+    candidates = NULL;
 
     return results;
 }

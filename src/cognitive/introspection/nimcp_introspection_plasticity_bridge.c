@@ -149,6 +149,7 @@ introspection_plasticity_bridge_t* introspection_plasticity_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "introspection_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "introspection_plasticity_create: validation failed");
         return NULL;
     }
@@ -159,6 +160,7 @@ introspection_plasticity_bridge_t* introspection_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -196,6 +198,7 @@ void introspection_plasticity_destroy(introspection_plasticity_bridge_t* bridge)
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int introspection_plasticity_reset(introspection_plasticity_bridge_t* bridge) {
@@ -892,6 +895,7 @@ int introspection_plasticity_get_state(
             state->mean_weight = nimcp_stats_mean(weights, bridge->num_synapses);
             state->weight_variance = nimcp_stats_variance_population(weights, bridge->num_synapses);
             nimcp_free(weights);
+            weights = NULL;
         } else {
             state->mean_weight = 0.0f;
             state->weight_variance = 0.0f;

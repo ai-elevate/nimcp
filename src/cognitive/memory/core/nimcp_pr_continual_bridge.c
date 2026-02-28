@@ -443,6 +443,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     if (config) {
         if (!pr_continual_config_validate(config)) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: pr_continual_config_validate is NULL");
             return NULL;
         }
@@ -454,6 +455,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_continual") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_continual_bridge_create: validation failed");
         return NULL;
     }
@@ -466,6 +468,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     if (!bridge->fisher_diag) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_continual_bridge_create: bridge->fisher_diag is NULL");
         return NULL;
     }
@@ -475,6 +478,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         nimcp_free(bridge->fisher_diag);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_continual_bridge_create: bridge->old_params is NULL");
         return NULL;
     }
@@ -488,6 +492,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
             nimcp_free(bridge->fisher_diag);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: bridge->fisher_accum is NULL");
             return NULL;
         }
@@ -504,6 +509,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         nimcp_free(bridge->fisher_diag);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: validation failed");
         return NULL;
     }
@@ -521,6 +527,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         nimcp_free(bridge->fisher_diag);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: validation failed");
         return NULL;
     }
@@ -574,6 +581,7 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_continual_bridge_reset(pr_continual_bridge_t bridge) {
@@ -1217,6 +1225,7 @@ int pr_continual_replay_sample(
         size_t actual_count = 0;
         if (z_ladder_get_nodes(ladder, z_tier, tier_nodes, tier_size, &actual_count) != Z_LADDER_SUCCESS) {
             nimcp_free(tier_nodes);
+            tier_nodes = NULL;
             continue;
         }
 
@@ -1247,6 +1256,7 @@ int pr_continual_replay_sample(
         }
 
         nimcp_free(tier_nodes);
+        tier_nodes = NULL;
     }
 
     *samples_returned = total_sampled;
@@ -1669,6 +1679,7 @@ int pr_continual_consolidate_task(
         size_t actual_count = 0;
         if (z_ladder_get_nodes(ladder, z_tier, tier_nodes, tier_size, &actual_count) != Z_LADDER_SUCCESS) {
             nimcp_free(tier_nodes);
+            tier_nodes = NULL;
             continue;
         }
 
@@ -1697,6 +1708,7 @@ int pr_continual_consolidate_task(
         }
 
         nimcp_free(tier_nodes);
+        tier_nodes = NULL;
     }
 
     /* Prune low-importance edges from entanglement graph */

@@ -353,8 +353,11 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
     uint32_t* temp_cap = nimcp_calloc(n, sizeof(uint32_t));
     if (!temp_adj || !temp_count || !temp_cap) {
         nimcp_free(temp_adj);
+        temp_adj = NULL;
         nimcp_free(temp_count);
+        temp_count = NULL;
         nimcp_free(temp_cap);
+        temp_cap = NULL;
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
 
@@ -374,8 +377,11 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
         if (!temp_adj[i]) {
             for (uint32_t k = 0; k < i; k++) nimcp_free(temp_adj[k]);
             nimcp_free(temp_adj);
+            temp_adj = NULL;
             nimcp_free(temp_count);
+            temp_count = NULL;
             nimcp_free(temp_cap);
+            temp_cap = NULL;
             return NIMCP_GT_ERROR_NO_MEMORY;
         }
     }
@@ -434,8 +440,11 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
     }
 
     nimcp_free(temp_adj);
+    temp_adj = NULL;
     nimcp_free(temp_count);
+    temp_count = NULL;
     nimcp_free(temp_cap);
+    temp_cap = NULL;
     return NIMCP_SUCCESS;
 
 cleanup_random:
@@ -449,8 +458,11 @@ cleanup_random:
         nimcp_free(temp_adj[i]);
     }
     nimcp_free(temp_adj);
+    temp_adj = NULL;
     nimcp_free(temp_count);
+    temp_count = NULL;
     nimcp_free(temp_cap);
+    temp_cap = NULL;
     return NIMCP_GT_ERROR_NO_MEMORY;
 }
 
@@ -468,15 +480,21 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
 
     // Temporary storage with dynamic sizing
     uint32_t** temp_adj = nimcp_calloc(n, sizeof(uint32_t*));
+    if (!temp_adj) return -1;
     uint32_t* temp_count = nimcp_calloc(n, sizeof(uint32_t));
+    if (!temp_count) return -1;
     uint32_t* temp_cap = nimcp_calloc(n, sizeof(uint32_t));
     uint32_t* degree_sum_arr = nimcp_calloc(n, sizeof(uint32_t));
 
     if (!temp_adj || !temp_count || !temp_cap || !degree_sum_arr) {
         nimcp_free(temp_adj);
+        temp_adj = NULL;
         nimcp_free(temp_count);
+        temp_count = NULL;
         nimcp_free(temp_cap);
+        temp_cap = NULL;
         nimcp_free(degree_sum_arr);
+        degree_sum_arr = NULL;
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
 
@@ -493,9 +511,13 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
         if (!temp_adj[i]) {
             for (uint32_t k = 0; k < i; k++) nimcp_free(temp_adj[k]);
             nimcp_free(temp_adj);
+            temp_adj = NULL;
             nimcp_free(temp_count);
+            temp_count = NULL;
             nimcp_free(temp_cap);
+            temp_cap = NULL;
             nimcp_free(degree_sum_arr);
+            degree_sum_arr = NULL;
             return NIMCP_GT_ERROR_NO_MEMORY;
         }
     }
@@ -638,9 +660,13 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
     }
 
     nimcp_free(temp_adj);
+    temp_adj = NULL;
     nimcp_free(temp_count);
+    temp_count = NULL;
     nimcp_free(temp_cap);
+    temp_cap = NULL;
     nimcp_free(degree_sum_arr);
+    degree_sum_arr = NULL;
     return NIMCP_SUCCESS;
 
 cleanup_sf:
@@ -654,9 +680,13 @@ cleanup_sf:
         nimcp_free(temp_adj[i]);
     }
     nimcp_free(temp_adj);
+    temp_adj = NULL;
     nimcp_free(temp_count);
+    temp_count = NULL;
     nimcp_free(temp_cap);
+    temp_cap = NULL;
     nimcp_free(degree_sum_arr);
+    degree_sum_arr = NULL;
     return NIMCP_GT_ERROR_NO_MEMORY;
 }
 
@@ -675,8 +705,11 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
 
     if (!temp_adj || !temp_count || !temp_cap) {
         nimcp_free(temp_adj);
+        temp_adj = NULL;
         nimcp_free(temp_count);
+        temp_count = NULL;
         nimcp_free(temp_cap);
+        temp_cap = NULL;
         return NIMCP_GT_ERROR_NO_MEMORY;
     }
 
@@ -692,8 +725,11 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
         if (!temp_adj[i]) {
             for (uint32_t j = 0; j < i; j++) nimcp_free(temp_adj[j]);
             nimcp_free(temp_adj);
+            temp_adj = NULL;
             nimcp_free(temp_count);
+            temp_count = NULL;
             nimcp_free(temp_cap);
+            temp_cap = NULL;
             return NIMCP_GT_ERROR_NO_MEMORY;
         }
     }
@@ -787,8 +823,11 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
     }
 
     nimcp_free(temp_adj);
+    temp_adj = NULL;
     nimcp_free(temp_count);
+    temp_count = NULL;
     nimcp_free(temp_cap);
+    temp_cap = NULL;
     return NIMCP_SUCCESS;
 
 cleanup_sw:
@@ -802,8 +841,11 @@ cleanup_sw:
         nimcp_free(temp_adj[i]);
     }
     nimcp_free(temp_adj);
+    temp_adj = NULL;
     nimcp_free(temp_count);
+    temp_count = NULL;
     nimcp_free(temp_cap);
+    temp_cap = NULL;
     return NIMCP_GT_ERROR_NO_MEMORY;
 }
 
@@ -948,6 +990,7 @@ static void compute_fitness_per_strategy(nimcp_spatial_game_t ctx) {
     }
 
     nimcp_free(count);
+    count = NULL;
 }
 
 //=============================================================================
@@ -1080,7 +1123,7 @@ static uint32_t apply_mutation(nimcp_spatial_game_t ctx, uint32_t strategy) {
  * @brief Get new strategy for node based on update rule
  */
 static uint32_t get_new_strategy(nimcp_spatial_game_t ctx, uint32_t node) {
-    uint32_t new_strategy;
+    uint32_t new_strategy = 0;
 
     switch (ctx->config.update_rule) {
         case NIMCP_UPDATE_IMITATION:
@@ -1175,6 +1218,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     }
 
     nimcp_spatial_game_t ctx = nimcp_calloc(1, sizeof(struct nimcp_spatial_game_struct));
+    if (!ctx) return -1;
     NIMCP_API_CHECK_ALLOC(ctx, "Failed to allocate spatial game context");
 
     ctx->config = *config;
@@ -1189,6 +1233,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     ctx->payoff_matrix = nimcp_malloc(matrix_size);
     if (!ctx->payoff_matrix) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_spatial_create: ctx->payoff_matrix is NULL");
         return NULL;
     }
@@ -1196,10 +1241,15 @@ nimcp_spatial_game_t nimcp_spatial_create(
 
     // Allocate node arrays
     ctx->node_strategy = nimcp_calloc(ctx->num_nodes, sizeof(uint32_t));
+    if (!ctx->node_strategy) return -1;
     ctx->node_strategy_next = nimcp_calloc(ctx->num_nodes, sizeof(uint32_t));
+    if (!ctx->node_strategy_next) return -1;
     ctx->node_fitness = nimcp_calloc(ctx->num_nodes, sizeof(float));
+    if (!ctx->node_fitness) return -1;
     ctx->frequencies = nimcp_calloc(config->num_strategies, sizeof(float));
+    if (!ctx->frequencies) return -1;
     ctx->fitness_per_strategy = nimcp_calloc(config->num_strategies, sizeof(float));
+    if (!ctx->fitness_per_strategy) return -1;
 
     if (!ctx->node_strategy || !ctx->node_strategy_next || !ctx->node_fitness ||
         !ctx->frequencies || !ctx->fitness_per_strategy) {
@@ -1290,6 +1340,7 @@ void nimcp_spatial_destroy(nimcp_spatial_game_t ctx) {
     nimcp_free(ctx->frequency_history);
 
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================
@@ -1459,6 +1510,7 @@ nimcp_error_t nimcp_spatial_set_custom_network(
 
         ctx->node_strategy = nimcp_calloc(num_nodes, sizeof(uint32_t));
         ctx->node_strategy_next = nimcp_calloc(num_nodes, sizeof(uint32_t));
+        if (!ctx->node_strategy_next) return -1;
         ctx->node_fitness = nimcp_calloc(num_nodes, sizeof(float));
 
         if (!ctx->node_strategy || !ctx->node_strategy_next || !ctx->node_fitness) {
@@ -1631,6 +1683,7 @@ nimcp_error_t nimcp_spatial_initialize_random(
     }
 
     nimcp_free(probs);
+    probs = NULL;
 
     // Update derived state
     update_all_fitness(ctx);
@@ -1700,8 +1753,11 @@ nimcp_error_t nimcp_spatial_initialize_cluster(
 
         if (!distance || !visited || !queue) {
             nimcp_free(distance);
+            distance = NULL;
             nimcp_free(visited);
+            visited = NULL;
             nimcp_free(queue);
+            queue = NULL;
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NO_MEMORY;
         }
@@ -1730,8 +1786,11 @@ nimcp_error_t nimcp_spatial_initialize_cluster(
         }
 
         nimcp_free(distance);
+        distance = NULL;
         nimcp_free(visited);
+        visited = NULL;
         nimcp_free(queue);
+        queue = NULL;
     }
 
     // Update derived state
@@ -1935,6 +1994,7 @@ nimcp_error_t nimcp_spatial_run(
         nimcp_error_t err = nimcp_spatial_step(ctx);
         if (err != NIMCP_SUCCESS) {
             nimcp_free(prev_freq);
+            prev_freq = NULL;
             return err;
         }
 
@@ -1971,6 +2031,7 @@ nimcp_error_t nimcp_spatial_run(
     }
 
     nimcp_free(prev_freq);
+    prev_freq = NULL;
 
     // Fill result if provided
     if (result) {

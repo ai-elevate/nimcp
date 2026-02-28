@@ -422,6 +422,7 @@ game_theory_executive_bridge_t* game_theory_executive_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "game_theory_executive") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "game_theory_executive_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -473,6 +474,7 @@ void game_theory_executive_bridge_destroy(game_theory_executive_bridge_t* bridge
     bridge->initialized = false;
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

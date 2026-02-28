@@ -1130,6 +1130,7 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     if (rc != 0) {
         NIMCP_LOGGING_ERROR("convergent: failed to initialize accumulator");
         nimcp_free(session);
+        session = NULL;
         return -1;
     }
 
@@ -1302,6 +1303,7 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     /* ── Cleanup ── */
     reasoning_accumulator_destroy(&session->accumulator);
     nimcp_free(session);
+    session = NULL;
 
     NIMCP_LOGGING_INFO("convergent: completed — %u steps, confidence=%.3f, "
                        "contributors=%u",

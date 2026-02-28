@@ -143,6 +143,7 @@ symbolic_logic_hub_bridge_t* symbolic_logic_hub_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "symbolic_logic_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_hub_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -180,6 +181,7 @@ void symbolic_logic_hub_bridge_destroy(symbolic_logic_hub_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Symbolic logic hub bridge destroyed");
 }
 

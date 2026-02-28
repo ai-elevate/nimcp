@@ -56,6 +56,7 @@ static nimcp_error_t remove_incidence(nimcp_hypergraph_t* hg, uint32_t vertex_id
             incidence_entry_t* to_free = *pp;
             *pp = (*pp)->next;
             nimcp_free(to_free);
+            to_free = NULL;
             return NIMCP_SUCCESS;
         }
         pp = &(*pp)->next;

@@ -439,6 +439,7 @@ void causal_dag_destroy(causal_dag_t* dag)
 {
     if (!dag) return;
     nimcp_free(dag);
+    dag = NULL;
 }
 
 /*=============================================================================
@@ -593,7 +594,7 @@ int causal_dag_query(causal_dag_t* dag, const causal_query_t* query,
 
     memset(result, 0, sizeof(causal_result_t));
 
-    int rc;
+    int rc = 0;
     switch (query->type) {
         case CAUSAL_QUERY_ASSOCIATION:
             rc = query_association(dag, query, result);

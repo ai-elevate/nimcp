@@ -796,6 +796,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_PARIETAL_BRIDGE,
                          "wm_parietal_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
@@ -813,6 +814,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
     if (err != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate tracked objects");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -824,6 +826,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         free_tracked_objects(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate constraints");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -836,6 +839,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         free_tracked_objects(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate attention map");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -849,6 +853,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         free_tracked_objects(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate trajectory cache");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -863,6 +868,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         free_tracked_objects(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to create physics engine");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: validation failed");
         return NULL;
@@ -914,6 +920,7 @@ void omni_wm_parietal_bridge_destroy(omni_wm_parietal_bridge_t* bridge) {
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM Parietal Bridge destroyed");
 }
@@ -2472,6 +2479,7 @@ wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length
     traj->states = nimcp_calloc(max_length, sizeof(wm_parietal_spatial_state_t));
     if (!traj->states) {
         nimcp_free(traj);
+        traj = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_parietal_trajectory_create: traj->states is NULL");
         return NULL;
     }
@@ -2495,6 +2503,7 @@ void omni_wm_parietal_trajectory_destroy(wm_parietal_trajectory_t* trajectory) {
 
     nimcp_free(trajectory->states);
     nimcp_free(trajectory);
+    trajectory = NULL;
 }
 
 float omni_wm_parietal_distance(

@@ -192,7 +192,7 @@ static int decompose_sequential(
     (void)context;  /* May use in full implementation */
 
     /* Estimate number of subtasks based on goal type */
-    size_t num_subtasks;
+    size_t num_subtasks = 0;
     switch (goal->type) {
         case RCOG_GOAL_QUESTION_ANSWERING:
             num_subtasks = 2;  /* Parse, Answer */

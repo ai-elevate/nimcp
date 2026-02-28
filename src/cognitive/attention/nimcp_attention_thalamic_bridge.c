@@ -114,6 +114,7 @@ attention_thalamic_bridge_t* attention_thalamic_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_thalamic_bridge_create: failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -137,6 +138,7 @@ void attention_thalamic_bridge_destroy(attention_thalamic_bridge_t* bridge) {
             bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

@@ -322,6 +322,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     if (bridge->config.num_heads == 0 || bridge->config.num_heads > ATTENTION_SNN_MAX_HEADS) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_snn_create: num_heads out of range");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -329,6 +330,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     if (bridge_base_init(&bridge->base, 0, "attention_snn") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -352,6 +354,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to create SNN network");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->owns_snn = true;
@@ -421,10 +424,15 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Allocate buffers */
     uint32_t head_buffer_size = bridge->config.num_heads * bridge->config.neurons_per_head;
     bridge->head_buffer = nimcp_calloc(head_buffer_size, sizeof(float));
+    if (!bridge->head_buffer) return -1;
     bridge->salience_buffer = nimcp_calloc(bridge->config.salience_dim, sizeof(float));
+    if (!bridge->salience_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(bridge->config.num_heads, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->competition_buffer = nimcp_calloc(bridge->config.num_heads, sizeof(float));
+    if (!bridge->competition_buffer) return -1;
     bridge->top_k_buffer = nimcp_calloc(bridge->config.top_k, sizeof(int32_t));
+    if (!bridge->top_k_buffer) return -1;
 
     if (!bridge->head_buffer || !bridge->salience_buffer ||
         !bridge->output_buffer || !bridge->competition_buffer || !bridge->top_k_buffer) {
@@ -436,7 +444,9 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Allocate attention state arrays */
     bridge->attention.attention_weights = nimcp_calloc(bridge->config.num_heads, sizeof(float));
     bridge->attention.salience_map = nimcp_calloc(bridge->config.sequence_length, sizeof(float));
+    if (!bridge->attention.salience_map) return -1;
     bridge->attention.top_k_indices = nimcp_calloc(bridge->config.top_k, sizeof(int32_t));
+    if (!bridge->attention.top_k_indices) return -1;
 
     if (!bridge->attention.attention_weights ||
         !bridge->attention.salience_map ||
@@ -503,6 +513,7 @@ void attention_snn_destroy(attention_snn_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int attention_snn_reset(attention_snn_bridge_t* bridge) {

@@ -177,6 +177,7 @@ void blending_free_space(blend_mental_space_t* space) {
     }
     if (space->frame_structure) nimcp_free(space->frame_structure);
     nimcp_free(space);
+    space = NULL;
 }
 
 conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
@@ -222,11 +223,13 @@ conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
 
     /* Find mappings */
     b->mappings = nimcp_calloc(BLEND_MAX_MAPPINGS, sizeof(blend_mapping_t));
+    if (!b->mappings) return -1;
     blending_find_mappings(engine, concept1, concept2, b->mappings, BLEND_MAX_MAPPINGS, &b->num_mappings);
 
     /* Find emergent properties */
     if (engine->config.enable_emergence_detection) {
         b->emergent_properties = nimcp_calloc(BLEND_MAX_PROPERTIES, sizeof(blend_property_t));
+        if (!b->emergent_properties) return -1;
         if (b->emergent_properties && b->num_mappings > 0) {
             b->emergent_properties[0].is_emergent = true;
             snprintf(b->emergent_properties[0].name, sizeof(b->emergent_properties[0].name),
@@ -359,6 +362,7 @@ void blending_free_blend(conceptual_blend_t* blend) {
     if (blend->mappings) nimcp_free(blend->mappings);
     if (blend->emergent_properties) nimcp_free(blend->emergent_properties);
     nimcp_free(blend);
+    blend = NULL;
 }
 
 int blending_set_inflammation(blending_engine_t* engine, float level) {

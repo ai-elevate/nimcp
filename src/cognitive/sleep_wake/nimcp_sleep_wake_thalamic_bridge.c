@@ -100,6 +100,7 @@ sleep_wake_thalamic_bridge_t* sleep_wake_thalamic_bridge_create(void* sleep_wake
     if (bridge_base_init(&bridge->base, 0, "sleep_wake_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -119,6 +120,7 @@ void sleep_wake_thalamic_bridge_destroy(sleep_wake_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int sleep_wake_thalamic_bridge_reset(sleep_wake_thalamic_bridge_t* bridge) {

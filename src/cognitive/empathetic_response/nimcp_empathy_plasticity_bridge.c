@@ -175,6 +175,7 @@ empathy_plasticity_bridge_t* empathy_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "empathy_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "empathy_plasticity_create: validation failed");
         return NULL;
     }
@@ -185,6 +186,7 @@ empathy_plasticity_bridge_t* empathy_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "empathy_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -222,6 +224,7 @@ void empathy_plasticity_destroy(empathy_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int empathy_plasticity_reset(empathy_plasticity_bridge_t* bridge) {

@@ -141,6 +141,7 @@ void free_energy_bridge_destroy(free_energy_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_DEBUG("Free energy bridge destroyed");
 }
 

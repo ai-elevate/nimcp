@@ -281,6 +281,7 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
     bridge->agents = nimcp_calloc(bridge->agent_capacity, sizeof(agent_model_t));
     if (!bridge->agents) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_social_bridge_create: bridge->agents is NULL");
         return NULL;
     }
@@ -290,6 +291,7 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
     if (!bridge->base.mutex) {
         nimcp_free(bridge->agents);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_social_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -317,6 +319,7 @@ void tom_social_bridge_destroy(tom_social_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

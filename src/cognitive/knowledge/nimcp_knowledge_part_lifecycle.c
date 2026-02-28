@@ -24,6 +24,7 @@ static knowledge_hash_table_t* knowledge_hash_table_create(void)
     table->entries = nimcp_calloc(HASH_TABLE_SIZE, sizeof(hash_entry_t*));
     if (!table->entries) {
         nimcp_free(table);
+        table = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_hash_table_create: table->entries is NULL");
         return NULL;
     }
@@ -61,6 +62,7 @@ static void knowledge_hash_table_destroy(knowledge_hash_table_t* table)
                 hash_entry_t* next = entry->next;
                 nimcp_free(entry->concept);
                 nimcp_free(entry);
+                entry = NULL;
                 entry = next;
             }
         }
@@ -68,6 +70,7 @@ static void knowledge_hash_table_destroy(knowledge_hash_table_t* table)
     }
 
     nimcp_free(table);
+    table = NULL;
 }
 
 
@@ -97,6 +100,7 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
     repo->items = nimcp_calloc(initial_capacity, sizeof(knowledge_item_t));
     if (!repo->items) {
         nimcp_free(repo);
+        repo = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo->items is NULL");
         return NULL;
     }
@@ -105,6 +109,7 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
     if (!repo->index) {
         nimcp_free(repo->items);
         nimcp_free(repo);
+        repo = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo->index is NULL");
         return NULL;
     }
@@ -115,6 +120,7 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
         knowledge_hash_table_destroy(repo->index);
         nimcp_free(repo->items);
         nimcp_free(repo);
+        repo = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo->confidence_btree is NULL");
         return NULL;
     }
@@ -171,6 +177,7 @@ static void repository_destroy(knowledge_repository_t* repo)
     }
 
     nimcp_free(repo);
+    repo = NULL;
 }
 
 
@@ -213,19 +220,24 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
     if (!system->repository) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_system_create: failed to create repository");
         nimcp_free(system);
+        system = NULL;
         return NULL;
     }
 
     system->narratives = nimcp_calloc(1000, sizeof(narrative_knowledge_t));
+    if (!system->narratives) return -1;
     system->narratives_capacity = 1000;
 
     system->artworks = nimcp_calloc(500, sizeof(aesthetic_knowledge_t));
+    if (!system->artworks) return -1;
     system->artworks_capacity = 500;
 
     system->history = nimcp_calloc(1000, sizeof(historical_knowledge_t));
+    if (!system->history) return -1;
     system->history_capacity = 1000;
 
     system->reading_list = nimcp_calloc(100, sizeof(reading_progress_t));
+    if (!system->reading_list) return -1;
     system->reading_capacity = 100;
 
     // Initialize domain statistics (no brains needed - they were never used!)
@@ -367,4 +379,5 @@ void knowledge_system_destroy(knowledge_system_t system)
     system->bridges_enabled = false;
 
     nimcp_free(system);
+    system = NULL;
 }

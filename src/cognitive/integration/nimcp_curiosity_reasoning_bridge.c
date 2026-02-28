@@ -203,6 +203,7 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
         bridge->topic_capacity, sizeof(exploration_topic_t));
     if (!bridge->topics) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_reasoning_bridge_create: bridge->topics is NULL");
         return NULL;
     }
@@ -213,6 +214,7 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->topics);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_reasoning_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -247,6 +249,7 @@ void curiosity_reasoning_bridge_destroy(curiosity_reasoning_bridge_t* bridge) {
 
     bridge->initialized = false;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

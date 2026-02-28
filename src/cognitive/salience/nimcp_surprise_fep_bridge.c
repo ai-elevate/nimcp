@@ -166,6 +166,7 @@ surprise_fep_bridge_t* surprise_fep_bridge_create(
                            "surprise_fep_bridge mutex allocation failed (%zu bytes)",
                            sizeof(nimcp_mutex_t));
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -193,6 +194,7 @@ void surprise_fep_bridge_destroy(surprise_fep_bridge_t* bridge) {
         nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int surprise_fep_bridge_reset(surprise_fep_bridge_t* bridge) {

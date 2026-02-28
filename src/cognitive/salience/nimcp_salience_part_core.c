@@ -299,6 +299,7 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
      * WHY: Cleanup temporary allocation
      */
     nimcp_free(tasks);
+    tasks = NULL;
 
     return num_samples;
 }

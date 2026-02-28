@@ -340,6 +340,7 @@ void extended_mind_destroy(extended_mind_t* em) {
 
 
     nimcp_free(em);
+    em = NULL;
 }
 
 int extended_mind_reset(extended_mind_t* em) {

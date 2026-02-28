@@ -337,6 +337,7 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
     }
 
     nimcp_free(scored);
+    scored = NULL;
     return count;
 }
 

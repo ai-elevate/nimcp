@@ -210,6 +210,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
     if (bridge_base_init(&bridge->base, 0, "emotion_snn") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in emotion_snn_create");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -229,6 +230,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create SNN network in emotion_snn_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->owns_snn = true;
@@ -263,9 +265,13 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     /* Allocate buffers */
     bridge->input_buffer = nimcp_calloc(bridge->config.input_dim, sizeof(float));
+    if (!bridge->input_buffer) return -1;
     bridge->hidden_buffer = nimcp_calloc(bridge->config.hidden_dim, sizeof(float));
+    if (!bridge->hidden_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(bridge->config.output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->va_buffer = nimcp_calloc(bridge->config.va_dim * 2, sizeof(float));
+    if (!bridge->va_buffer) return -1;
 
     if (!bridge->input_buffer || !bridge->hidden_buffer ||
         !bridge->output_buffer || !bridge->va_buffer) {
@@ -311,6 +317,7 @@ void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int emotion_snn_reset(emotion_snn_bridge_t* bridge) {

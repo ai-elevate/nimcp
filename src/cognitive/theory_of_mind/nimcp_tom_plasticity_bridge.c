@@ -147,6 +147,7 @@ tom_plasticity_bridge_t* tom_plasticity_create(
     if (bridge_base_init(&bridge->base, 0, "tom_plasticity") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in tom_plasticity_create");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -157,6 +158,7 @@ tom_plasticity_bridge_t* tom_plasticity_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate synapses in tom_plasticity_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -192,6 +194,7 @@ void tom_plasticity_destroy(tom_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int tom_plasticity_reset(tom_plasticity_bridge_t* bridge) {

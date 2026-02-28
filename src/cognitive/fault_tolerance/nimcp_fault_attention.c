@@ -373,6 +373,7 @@ void fault_attention_destroy(fault_attention_t* attention) {
     }
 
     nimcp_free(attention);
+    attention = NULL;
 }
 
 //=============================================================================

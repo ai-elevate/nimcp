@@ -342,6 +342,7 @@ NIMCP_EXPORT pr_logging_bridge_t pr_logging_bridge_create(
                                                sizeof(pr_log_entry_t));
     if (!bridge->entries) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_logging_bridge_create: bridge->entries is NULL");
         return NULL;
     }
@@ -402,6 +403,7 @@ NIMCP_EXPORT void pr_logging_bridge_destroy(pr_logging_bridge_t bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_EXPORT pr_log_error_t pr_logging_bridge_flush(pr_logging_bridge_t bridge) {
@@ -1229,7 +1231,7 @@ NIMCP_EXPORT size_t pr_logging_bridge_estimate_export_size(
 
     size_t count = pr_logging_bridge_count_entries(bridge, filter);
 
-    size_t per_entry;
+    size_t per_entry = 0;
     switch (format) {
         case PR_LOG_FORMAT_JSON:
             per_entry = 256;

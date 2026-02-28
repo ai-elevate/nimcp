@@ -328,12 +328,14 @@ nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
 
     /* Allocate buffer */
     uint8_t* buffer = nimcp_malloc(required_size);
+    if (!buffer) return -1;
     NIMCP_CHECK_THROW(buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate serialization buffer");
 
     /* Serialize */
     size_t written = omni_wm_serialize(wm, buffer, required_size);
     if (written == 0) {
         nimcp_free(buffer);
+        buffer = NULL;
         return NIMCP_ERROR_SERIALIZATION;
     }
 
@@ -341,12 +343,14 @@ nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
     FILE* fp = fopen(filepath, "wb");
     if (!fp) {
         nimcp_free(buffer);
+        buffer = NULL;
         return NIMCP_ERROR_FILE_OPEN;
     }
 
     size_t bytes_written = fwrite(buffer, 1, written, fp);
     fclose(fp);
     nimcp_free(buffer);
+    buffer = NULL;
 
     if (bytes_written != written) {
         return NIMCP_ERROR_FILE_WRITE;
@@ -398,6 +402,7 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
 
     if (bytes_read != (size_t)file_size) {
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wm_load: validation failed");
         return NULL;
     }
@@ -405,6 +410,7 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
     /* Deserialize */
     omni_world_model_t* wm = omni_wm_deserialize(buffer, (size_t)file_size);
     nimcp_free(buffer);
+    buffer = NULL;
 
     return wm;
 }

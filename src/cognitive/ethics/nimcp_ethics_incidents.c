@@ -662,6 +662,7 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
     FILE* file = fopen(filepath, "w");
     if (!file) {
         nimcp_free(incidents);
+        incidents = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_export_incidents: file is NULL");
         return false;
     }
@@ -717,12 +718,14 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
     } else {
         fclose(file);
         nimcp_free(incidents);
+        incidents = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_export_incidents: operation failed");
         return false;
     }
 
     fclose(file);
     nimcp_free(incidents);
+    incidents = NULL;
 
     LOG_INFO("Exported %u incidents to %s", count, filepath);
     return true;

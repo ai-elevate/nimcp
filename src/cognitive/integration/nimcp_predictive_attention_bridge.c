@@ -445,6 +445,7 @@ predictive_attention_bridge_t* predictive_attention_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "predictive_attention") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "predictive_attention_bridge_create: validation failed");
         return NULL;
     }
@@ -495,6 +496,7 @@ void predictive_attention_bridge_destroy(predictive_attention_bridge_t* bridge) 
     bridge->initialized = false;
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

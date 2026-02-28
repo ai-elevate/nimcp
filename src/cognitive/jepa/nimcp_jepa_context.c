@@ -140,7 +140,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
 
     jepa_context_encoder_t* encoder = NULL;
     jepa_context_config_t default_config;
-    int rc;
+    int rc = 0;
 
     /* Use defaults if not provided */
     if (!config) {
@@ -150,6 +150,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
 
     /* Allocate encoder */
     encoder = (jepa_context_encoder_t*)nimcp_calloc(1, sizeof(jepa_context_encoder_t));
+    if (!encoder) return -1;
     NIMCP_API_CHECK_ALLOC(encoder, "Failed to allocate context encoder");
 
     /* Initialize bridge base */
@@ -323,6 +324,7 @@ void jepa_context_encoder_destroy(jepa_context_encoder_t* encoder)
 
     /* Free encoder */
     nimcp_free(encoder);
+    encoder = NULL;
 }
 
 int jepa_context_encoder_reset(jepa_context_encoder_t* encoder)
@@ -376,6 +378,7 @@ void jepa_context_state_destroy(jepa_context_state_t* state)
     nimcp_free(state->temporal_context);
     nimcp_free(state->custom_context);
     nimcp_free(state);
+    state = NULL;
 }
 
 int jepa_context_set_task(
@@ -644,7 +647,7 @@ int jepa_context_encode(
     NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
     NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
 
-    int rc;
+    int rc = 0;
 
     /* Compose context from all sources */
     rc = compose_context(encoder);
@@ -941,14 +944,18 @@ int jepa_context_apply_film(
 
     if (!gamma || !beta) {
         nimcp_free(gamma);
+        gamma = NULL;
         nimcp_free(beta);
+        beta = NULL;
         return NIMCP_ERROR_NO_MEMORY;
     }
 
     int rc = film_layer_forward(encoder->conditioning.film, context, gamma, beta);
     if (rc != NIMCP_SUCCESS) {
         nimcp_free(gamma);
+        gamma = NULL;
         nimcp_free(beta);
+        beta = NULL;
         return rc;
     }
 
@@ -963,7 +970,9 @@ int jepa_context_apply_film(
     }
 
     nimcp_free(gamma);
+    gamma = NULL;
     nimcp_free(beta);
+    beta = NULL;
 
     return NIMCP_SUCCESS;
 }
@@ -1166,6 +1175,7 @@ static int compose_context(jepa_context_encoder_t* encoder)
                         }
 
                         nimcp_free(weighted_feats);
+                        weighted_feats = NULL;
                         source_data = NULL;  /* Already added */
                     }
                 } else if (ctx->attention.attended_features) {
@@ -1319,6 +1329,7 @@ static void film_layer_destroy(jepa_film_layer_t* film)
     nimcp_free(film->beta_weights);
     nimcp_free(film->beta_bias);
     nimcp_free(film);
+    film = NULL;
 }
 
 static int film_layer_forward(
@@ -1410,6 +1421,7 @@ static int film_layer_forward(
     }
 
     nimcp_free(hidden);
+    hidden = NULL;
     return NIMCP_SUCCESS;
 }
 
@@ -1442,9 +1454,12 @@ static int cross_attention_create(
 
     /* Q from input */
     a->q_weights = (float*)nimcp_calloc(input_dim * proj_dim, sizeof(float));
+    if (!a->q_weights) return -1;
     /* K, V from context */
     a->k_weights = (float*)nimcp_calloc(context_dim * proj_dim, sizeof(float));
+    if (!a->k_weights) return -1;
     a->v_weights = (float*)nimcp_calloc(context_dim * proj_dim, sizeof(float));
+    if (!a->v_weights) return -1;
     /* Output projection */
     a->o_weights = (float*)nimcp_calloc(proj_dim * input_dim, sizeof(float));
 
@@ -1482,6 +1497,7 @@ static void cross_attention_destroy(jepa_cross_attention_t* attn)
     nimcp_free(attn->v_weights);
     nimcp_free(attn->o_weights);
     nimcp_free(attn);
+    attn = NULL;
 }
 
 static int cross_attention_forward(
@@ -1499,15 +1515,21 @@ static int cross_attention_forward(
 
     /* Allocate projections */
     float* q_proj = (float*)nimcp_calloc(proj_dim, sizeof(float));
+    if (!q_proj) return -1;
     float* k_proj = (float*)nimcp_calloc(proj_dim, sizeof(float));
+    if (!k_proj) return -1;
     float* v_proj = (float*)nimcp_calloc(proj_dim, sizeof(float));
     float* attn_out = (float*)nimcp_calloc(proj_dim, sizeof(float));
 
     if (!q_proj || !k_proj || !v_proj || !attn_out) {
         nimcp_free(q_proj);
+        q_proj = NULL;
         nimcp_free(k_proj);
+        k_proj = NULL;
         nimcp_free(v_proj);
+        v_proj = NULL;
         nimcp_free(attn_out);
+        attn_out = NULL;
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -1620,9 +1642,13 @@ static int cross_attention_forward(
     }
 
     nimcp_free(q_proj);
+    q_proj = NULL;
     nimcp_free(k_proj);
+    k_proj = NULL;
     nimcp_free(v_proj);
+    v_proj = NULL;
     nimcp_free(attn_out);
+    attn_out = NULL;
 
     return NIMCP_SUCCESS;
 }

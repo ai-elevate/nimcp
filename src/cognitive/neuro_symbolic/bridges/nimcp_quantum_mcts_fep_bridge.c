@@ -91,6 +91,7 @@ NIMCP_API void qmcts_fep_bridge_destroy(qmcts_fep_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "quantum_mcts_fep");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 NIMCP_API float qmcts_fep_bridge_expected_value(

@@ -26,6 +26,7 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
     engine->mutex = nimcp_mutex_create(NULL);
     if (!engine->mutex) {
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_engine_create: engine->mutex is NULL");
         return NULL;
     }
@@ -35,6 +36,7 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
     if (!engine->request_cond) {
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_engine_create: engine->request_cond is NULL");
         return NULL;
     }
@@ -287,6 +289,7 @@ void rcog_engine_destroy(rcog_engine_t* engine) {
     }
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 
@@ -297,6 +300,7 @@ void rcog_engine_free_handle(rcog_request_handle_t* handle) {
 
     if (handle) {
         nimcp_free(handle);
+        handle = NULL;
     }
 }
 

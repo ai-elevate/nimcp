@@ -347,6 +347,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     if (!bridge->unified_attention_map) {
         set_last_error("Failed to allocate unified attention map");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->unified_attention_map is NULL");
         return NULL;
     }
@@ -357,6 +358,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         set_last_error("Failed to allocate bottom-up map");
         nimcp_free(bridge->unified_attention_map);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->bottom_up_map is NULL");
         return NULL;
     }
@@ -368,6 +370,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         nimcp_free(bridge->bottom_up_map);
         nimcp_free(bridge->unified_attention_map);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->top_down_map is NULL");
         return NULL;
     }
@@ -381,6 +384,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         nimcp_free(bridge->bottom_up_map);
         nimcp_free(bridge->unified_attention_map);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->attended_memories is NULL");
         return NULL;
     }
@@ -403,6 +407,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
             nimcp_free(bridge->bottom_up_map);
             nimcp_free(bridge->unified_attention_map);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_attention_bridge_create: validation failed");
             return NULL;
         }
@@ -465,6 +470,7 @@ void pr_attention_bridge_destroy(pr_attention_bridge_t* bridge) {
 
     // Free bridge structure
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 pr_attn_error_t pr_attention_bridge_reset(pr_attention_bridge_t* bridge) {

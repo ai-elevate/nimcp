@@ -134,7 +134,7 @@ static uint64_t get_time_ms(void) {
 static uint64_t hash_string(const char* str) {
     if (!str) return 0;
     uint64_t hash = 5381;
-    int c;
+    int c = 0;
     while ((c = *str++)) {
         hash = ((hash << 5) + hash) + c;
     }
@@ -939,6 +939,7 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys->mutex is NULL");
         return NULL;
     }
@@ -960,6 +961,7 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
         nimcp_free(sys->mutex);
         sys->mutex = NULL;
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys->interest_table is NULL");
         return NULL;
     }
@@ -1042,6 +1044,7 @@ void curiosity_enhanced_destroy(curiosity_enhanced_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
     NIMCP_LOGGING_INFO("Destroyed enhanced curiosity system");
 }
 
@@ -2240,6 +2243,7 @@ int curiosity_enhanced_estimate_uncertainty(
     result->effective_samples = num_samples;
 
     nimcp_free(samples);
+    samples = NULL;
 
     /* Update statistics */
     system->qmc_stats.uncertainty_estimations++;
@@ -2351,7 +2355,7 @@ int curiosity_enhanced_compute_empowerment(
         }
 
         uint32_t action = qmc_lcg_next(&system->qmc_seed) % num_actions;
-        uint32_t next_state;
+        uint32_t next_state = 0;
 
         /* Transition model: action has high probability of leading to corresponding state */
         float p = qmc_uniform(&system->qmc_seed);
@@ -2370,6 +2374,7 @@ int curiosity_enhanced_compute_empowerment(
 
     if (!p_a || !p_s) {
         nimcp_free(state_counts);
+        state_counts = NULL;
         nimcp_free(result->action_empowerment);
         result->action_empowerment = NULL;
         if (p_a) nimcp_free(p_a);
@@ -2495,8 +2500,11 @@ int curiosity_enhanced_compute_empowerment(
     }
 
     nimcp_free(state_counts);
+    state_counts = NULL;
     nimcp_free(p_a);
+    p_a = NULL;
     nimcp_free(p_s);
+    p_s = NULL;
 
     /* Update statistics */
     system->qmc_stats.empowerment_calculations++;
@@ -2584,6 +2592,7 @@ float curiosity_enhanced_sample_by_uncertainty(
         strncpy(selected_topic, topics[idx], 255);
         selected_topic[255] = '\0';
         nimcp_free(scores);
+        scores = NULL;
         nimcp_platform_mutex_unlock(system->mutex);
         return 0.5f;
     }
@@ -2611,6 +2620,7 @@ float curiosity_enhanced_sample_by_uncertainty(
 
     float selected_uncertainty = scores[selected_idx] / total_score;
     nimcp_free(scores);
+    scores = NULL;
 
     nimcp_platform_mutex_unlock(system->mutex);
 
@@ -2642,7 +2652,7 @@ float curiosity_enhanced_get_exploration_bonus(
     }
 
     /* UCB1: sqrt(2 * ln(N) / n) */
-    float bonus;
+    float bonus = 0.0f;
     if (visits == 0) {
         bonus = system->qmc_config.exploration_bonus;
     } else {
@@ -2825,6 +2835,7 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
                 if (available_topics[i]) nimcp_free(available_topics[i]);
             }
             nimcp_free(available_topics);
+            available_topics = NULL;
         }
         nimcp_platform_mutex_unlock(system->mutex);
         return 0;
@@ -2870,6 +2881,7 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
         }
 
         nimcp_free(scores);
+        scores = NULL;
 
         if (best_score <= 0.0f) break;
 
@@ -2896,6 +2908,7 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
             if (available_topics[i]) nimcp_free(available_topics[i]);
         }
         nimcp_free(available_topics);
+        available_topics = NULL;
     }
 
     nimcp_platform_mutex_unlock(system->mutex);

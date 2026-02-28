@@ -265,6 +265,7 @@ collective_immune_bridge_t* collective_immune_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "collective_immune") != 0) {
         LOG_ERROR("Failed to init collective immune bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_immune_bridge_create: validation failed");
         return NULL;
     }
@@ -295,6 +296,7 @@ void collective_immune_bridge_destroy(collective_immune_bridge_t* bridge)
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_DEBUG("Collective immune bridge destroyed");
 }
 
@@ -589,7 +591,7 @@ int collective_immune_bridge_present_antigen(
 
 
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-    size_t epitope_len;
+    size_t epitope_len = 0;
     threat_to_epitope(threat, epitope, &epitope_len);
 
     /* Map severity [0-1] to [1-10] */
@@ -756,14 +758,14 @@ int collective_immune_bridge_we_mode_response(
     uint64_t start_time_us = nimcp_time_monotonic_us();
 
     /* Present antigen */
-    uint32_t antigen_id;
+    uint32_t antigen_id = 0;
     if (collective_immune_bridge_present_antigen(bridge, threat, &antigen_id) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_immune_bridge_we_mode_response: validation failed");
         return -1;
     }
 
     /* Check for memory match (secondary response) */
-    uint32_t memory_b_cell_id;
+    uint32_t memory_b_cell_id = 0;
     if (brain_immune_check_memory(bridge->immune_system, antigen_id, &memory_b_cell_id) == 0) {
         /* Memory match found - trigger rapid secondary response */
         brain_immune_secondary_response(bridge->immune_system, antigen_id, memory_b_cell_id);
@@ -833,7 +835,7 @@ int collective_immune_bridge_update(collective_immune_bridge_t* bridge)
 
         /* Share threat if enabled */
         if (bridge->config.enable_threat_sharing && bridge->immune_system) {
-            uint32_t antigen_id;
+            uint32_t antigen_id = 0;
             if (collective_immune_bridge_present_antigen(bridge, threat, &antigen_id) == 0) {
                 bridge->stats.threats_shared++;
             }

@@ -309,6 +309,7 @@ vicarious_reward_system_t* vicarious_reward_create(
     if (!system->mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Vicarious Reward: Failed to create mutex");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vicarious_reward_create: system->mutex is NULL");
         return NULL;
     }
@@ -340,6 +341,7 @@ void vicarious_reward_destroy(vicarious_reward_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
     nimcp_log(LOG_LEVEL_DEBUG, "Vicarious Reward: Destroyed system");
 }
 

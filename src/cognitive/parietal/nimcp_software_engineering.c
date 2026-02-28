@@ -181,6 +181,7 @@ software_eng_t* software_eng_create_custom(const software_eng_config_t* config) 
     if (!se->lock) {
         set_sweng_error("Failed to create mutex");
         nimcp_free(se);
+        se = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_create_custom: se->lock is NULL");
         return NULL;
     }
@@ -199,6 +200,7 @@ void software_eng_destroy(software_eng_t* se) {
         nimcp_mutex_free(se->lock);
     }
     nimcp_free(se);
+    se = NULL;
 }
 
 /* ============================================================================
@@ -1235,6 +1237,7 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
     series->points = nimcp_calloc(initial_capacity, sizeof(se_metric_point_t));
     if (!series->points) {
         nimcp_free(series);
+        series = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_create_series: series->points is NULL");
         return NULL;
     }
@@ -1252,6 +1255,7 @@ void software_eng_destroy_series(se_metric_series_t* series) {
 
     nimcp_free(series->points);
     nimcp_free(series);
+    series = NULL;
 }
 
 int software_eng_add_data_point(

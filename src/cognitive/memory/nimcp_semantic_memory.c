@@ -254,6 +254,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
     if (!system->concepts) {
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_create: validation failed");
         return NULL;
     }
@@ -270,6 +271,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
         else nimcp_free(system->concepts);
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_create: validation failed");
         return NULL;
     }
@@ -298,6 +300,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
         else nimcp_free(system->concepts);
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_create: validation failed");
         return NULL;
     }
@@ -455,6 +458,7 @@ static void free_concept(semantic_concept_t* concept) {
 
     if (concept->source_memory_ids) nimcp_free(concept->source_memory_ids);
     nimcp_free(concept);
+    concept = NULL;
 }
 
 /**
@@ -553,6 +557,7 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /**
@@ -669,6 +674,7 @@ uint64_t semantic_memory_create_concept(
     concept->features = (float*)nimcp_calloc(feature_dim, sizeof(float));
     if (!concept->features) {
         nimcp_free(concept);
+        concept = NULL;
         return 0;
     }
     memcpy(concept->features, features, feature_dim * sizeof(float));
@@ -787,8 +793,11 @@ semantic_query_result_t* semantic_memory_find_similar(
 
     if (!temp_ids || !temp_sims) {
         nimcp_free(temp_ids);
+        temp_ids = NULL;
         nimcp_free(temp_sims);
+        temp_sims = NULL;
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_find_similar: required parameter is NULL (temp_ids, temp_sims)");
         return NULL;
     }
@@ -824,7 +833,9 @@ semantic_query_result_t* semantic_memory_find_similar(
 
     if (!result->concept_ids || !result->activation_levels) {
         nimcp_free(temp_ids);
+        temp_ids = NULL;
         nimcp_free(temp_sims);
+        temp_sims = NULL;
         semantic_memory_free_result(result);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_find_similar: required parameter is NULL (result->concept_ids, result->activation_levels)");
         return NULL;
@@ -834,7 +845,9 @@ semantic_query_result_t* semantic_memory_find_similar(
     memcpy(result->activation_levels, temp_sims, return_count * sizeof(float));
 
     nimcp_free(temp_ids);
+    temp_ids = NULL;
     nimcp_free(temp_sims);
+    temp_sims = NULL;
 
     return result;
 }
@@ -1058,6 +1071,7 @@ static void spread_activation_bfs(
     }
 
     nimcp_free(queue);
+    queue = NULL;
 }
 
 //=============================================================================
@@ -1245,6 +1259,7 @@ void semantic_memory_free_result(semantic_query_result_t* result) {
     if (result->concept_ids) nimcp_free(result->concept_ids);
     if (result->activation_levels) nimcp_free(result->activation_levels);
     nimcp_free(result);
+    result = NULL;
 }
 
 //=============================================================================

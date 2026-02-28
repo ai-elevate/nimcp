@@ -456,6 +456,7 @@ error:
     if (system->mac_pool) nimcp_free(system->mac_pool);
     if (system->anaphylatoxin_pool) nimcp_free(system->anaphylatoxin_pool);
     nimcp_free(system);
+    system = NULL;
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_default_config: validation failed");
     return NULL;
 }
@@ -483,6 +484,7 @@ void complement_destroy(complement_system_t* system) {
     if (system->anaphylatoxin_pool) nimcp_free(system->anaphylatoxin_pool);
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /* ============================================================================

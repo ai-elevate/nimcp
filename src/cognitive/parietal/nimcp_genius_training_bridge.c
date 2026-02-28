@@ -244,6 +244,7 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
             "bridge_base_init failed for genius_training");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -255,6 +256,7 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
             "task array allocation failed for genius_training_bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -317,6 +319,7 @@ void genius_training_destroy(genius_training_bridge_t* bridge) {
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int genius_training_reset(genius_training_bridge_t* bridge) {

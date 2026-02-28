@@ -664,6 +664,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
     if (!integration->active_inferences) {
         set_error("Failed to allocate active inferences array");
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_integration_create_custom: integration->active_inferences is NULL");
         return NULL;
     }
@@ -677,6 +678,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
         set_error("Failed to allocate tracked rules array");
         nimcp_free(integration->active_inferences);
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_integration_create_custom: integration->tracked_rules is NULL");
         return NULL;
     }
@@ -688,6 +690,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
         nimcp_free(integration->tracked_rules);
         nimcp_free(integration->active_inferences);
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reasoning_integration_create_custom: validation failed");
         return NULL;
     }
@@ -828,6 +831,7 @@ void reasoning_integration_destroy(reasoning_integration_t* integration)
 
     // Free structure
     nimcp_free(integration);
+    integration = NULL;
 }
 
 //=============================================================================

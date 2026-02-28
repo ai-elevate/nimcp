@@ -307,6 +307,7 @@ failure_predictor_t* failure_predictor_create_custom(
     if (!predictor->indicators) {
         LOG_ERROR("Failed to allocate indicators array");
         nimcp_free(predictor);
+        predictor = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: predictor->indicators is NULL");
         return NULL;
     }
@@ -322,6 +323,7 @@ failure_predictor_t* failure_predictor_create_custom(
         LOG_ERROR("Failed to allocate predictions array");
         nimcp_free(predictor->indicators);
         nimcp_free(predictor);
+        predictor = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: predictor->predictions is NULL");
         return NULL;
     }
@@ -382,6 +384,7 @@ void failure_predictor_destroy(failure_predictor_t* predictor) {
     }
 
     nimcp_free(predictor);
+    predictor = NULL;
 
     LOG_DEBUG("Destroyed failure predictor");
 }

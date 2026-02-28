@@ -243,6 +243,7 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for logic-sleep bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -307,6 +308,7 @@ void logic_sleep_bridge_destroy(logic_sleep_bridge_t* bridge)
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

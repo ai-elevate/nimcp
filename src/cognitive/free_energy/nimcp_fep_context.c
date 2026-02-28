@@ -233,6 +233,7 @@ void fep_context_destroy(fep_context_system_t* sys) {
     }
 
     nimcp_free(sys);
+    sys = NULL;
     NIMCP_LOGGING_INFO("Context system destroyed");
 }
 
@@ -593,6 +594,7 @@ int fep_context_infer(
     sys->active_confidence = best_prob;
 
     nimcp_free(free_energies);
+    free_energies = NULL;
     nimcp_platform_mutex_unlock(sys->mutex);
     return 0;
 }
@@ -612,8 +614,8 @@ int fep_context_auto_switch(
     fep_context_instance_heartbeat("fep_context_auto_switch", 0.0f);
 
 
-    uint32_t inferred_id;
-    float confidence;
+    uint32_t inferred_id = 0;
+    float confidence = 0.0f;
 
     int ret = fep_context_infer(sys, fep, observation, obs_dim, &inferred_id, &confidence);
     if (ret != 0) return ret;

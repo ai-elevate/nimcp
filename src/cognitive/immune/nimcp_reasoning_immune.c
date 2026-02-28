@@ -363,6 +363,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     if (!bridge->base.mutex) {
         LOG_MODULE_ERROR("reasoning_immune_bridge", "Mutex creation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -386,6 +387,7 @@ void reasoning_immune_bridge_destroy(reasoning_immune_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 
     LOG_MODULE_INFO("reasoning_immune_bridge", "Destroyed bridge");
 }

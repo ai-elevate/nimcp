@@ -171,6 +171,7 @@ autobio_plasticity_bridge_t* autobio_plasticity_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "autobio_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "autobio_plasticity_create: validation failed");
         return NULL;
     }
@@ -181,6 +182,7 @@ autobio_plasticity_bridge_t* autobio_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -220,6 +222,7 @@ void autobio_plasticity_destroy(autobio_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int autobio_plasticity_reset(autobio_plasticity_bridge_t* bridge) {

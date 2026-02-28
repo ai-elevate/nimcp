@@ -160,6 +160,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for mirror-omni bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_omni_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -171,6 +172,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     if (!bridge->agent_states) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_omni_bridge_create: bridge->agent_states is NULL");
         return NULL;
     }
@@ -184,6 +186,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         nimcp_free(bridge->agent_states);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_omni_bridge_create: bridge->action_priors allocation failed");
         return NULL;
     }
@@ -245,6 +248,7 @@ void mirror_omni_bridge_destroy(mirror_omni_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Mirror-omni bridge destroyed");
 }
 

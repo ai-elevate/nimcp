@@ -138,6 +138,7 @@ void vae_logging_bridge_destroy(vae_logging_bridge_t* bridge)
                    (unsigned long)bridge->stats.total_logs);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_logging_bridge_connect_vae(vae_logging_bridge_t* bridge, vae_system_t* vae)

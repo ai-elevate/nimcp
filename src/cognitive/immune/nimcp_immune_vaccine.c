@@ -386,6 +386,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
     if (!system->vaccines) {
         NIMCP_LOGGING_ERROR("Failed to allocate vaccine array");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system->vaccines is NULL");
         return NULL;
     }
@@ -399,6 +400,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
         NIMCP_LOGGING_ERROR("Failed to allocate schedule");
         nimcp_free(system->vaccines);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system->schedule is NULL");
         return NULL;
     }
@@ -414,6 +416,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
         nimcp_free(system->schedule);
         nimcp_free(system->vaccines);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system->mutex is NULL");
         return NULL;
     }
@@ -460,6 +463,7 @@ void vaccine_destroy(vaccine_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /**
@@ -663,7 +667,7 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
     }
 
     /* First present the vaccine epitope as an antigen (low severity for vaccine) */
-    uint32_t antigen_id;
+    uint32_t antigen_id = 0;
     int result = brain_immune_present_antigen(system->immune_system,
                                               ANTIGEN_SOURCE_MANUAL,
                                               vaccine->epitope,
@@ -680,7 +684,7 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
     }
 
     /* Create memory B cell directly (bypassing activation) */
-    uint32_t b_cell_id;
+    uint32_t b_cell_id = 0;
     result = brain_immune_activate_b_cell(system->immune_system,
                                           antigen_id,
                                           &b_cell_id);
@@ -755,7 +759,7 @@ int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
     if (attenuated_severity < 1) attenuated_severity = 1;
 
     /* Present attenuated antigen to immune system */
-    uint32_t antigen_id;
+    uint32_t antigen_id = 0;
     int result = brain_immune_present_antigen(
         system->immune_system,
         ANTIGEN_SOURCE_MANUAL,
@@ -858,7 +862,7 @@ int vaccine_import_passive_immunity(vaccine_system_t* system,
     immune_vaccine_heartbeat("immune_vacci_vaccine_import_passi", 0.0f);
 
 
-    uint32_t vid;
+    uint32_t vid = 0;
     int result = vaccine_create_entry(system, VACCINE_TYPE_PASSIVE,
                                      epitope, epitope_len,
                                      "passive_immunity", &vid);
@@ -953,7 +957,7 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
         }
 
         /* Create new vaccine from imported entry */
-        uint32_t vaccine_id;
+        uint32_t vaccine_id = 0;
         if (vaccine_create_entry(system, entry.type, entry.epitope,
                                 entry.epitope_len, entry.name, &vaccine_id) == 0) {
             /* Copy properties */

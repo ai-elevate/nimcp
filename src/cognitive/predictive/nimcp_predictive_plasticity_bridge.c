@@ -178,6 +178,7 @@ predictive_plasticity_bridge_t* predictive_plasticity_create(
     if (bridge_base_init(&bridge->base, 0, "predictive_plasticity") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in predictive_plasticity_create");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -188,6 +189,7 @@ predictive_plasticity_bridge_t* predictive_plasticity_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate synapses in predictive_plasticity_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -224,6 +226,7 @@ void predictive_plasticity_destroy(predictive_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int predictive_plasticity_reset(predictive_plasticity_bridge_t* bridge) {

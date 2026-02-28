@@ -107,6 +107,7 @@ llf_thalamic_bridge_t* llf_thalamic_bridge_create(void* llf, thalamic_router_t* 
     if (bridge_base_init(&bridge->base, 0, "llf_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "llf_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -130,6 +131,7 @@ void llf_thalamic_bridge_destroy(llf_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int llf_thalamic_bridge_reset(llf_thalamic_bridge_t* bridge) {

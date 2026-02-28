@@ -125,6 +125,7 @@ void counterfactual_free_state(cf_state_t* state) {
 
     if (state->values) nimcp_free(state->values);
     nimcp_free(state);
+    state = NULL;
 }
 
 cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
@@ -167,6 +168,7 @@ cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
 
     /* Trace consequences */
     cf->consequences = nimcp_calloc(CF_MAX_CONSEQUENCES, sizeof(cf_consequence_t));
+    if (!cf->consequences) return -1;
     counterfactual_trace_effects(engine, cf, cf->consequences, CF_MAX_CONSEQUENCES, &cf->num_consequences);
 
     /* Compute distance and plausibility */
@@ -374,6 +376,7 @@ void counterfactual_free(cf_counterfactual_t* cf) {
     if (cf->intervention) nimcp_free(cf->intervention);
     if (cf->consequences) nimcp_free(cf->consequences);
     nimcp_free(cf);
+    cf = NULL;
 }
 
 int counterfactual_set_inflammation(counterfactual_engine_t* engine, float level) {

@@ -131,6 +131,7 @@ void shadow_substrate_bridge_destroy(shadow_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int shadow_substrate_bridge_update(shadow_substrate_bridge_t* bridge) {

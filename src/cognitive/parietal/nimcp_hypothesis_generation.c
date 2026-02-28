@@ -403,6 +403,7 @@ void hypothesis_free_theory(hypogen_theory_t* theory) {
         nimcp_free(theory->assumptions);
     }
     nimcp_free(theory);
+    theory = NULL;
 }
 
 void hypothesis_free_prediction(hypogen_prediction_t* prediction) {
@@ -413,6 +414,7 @@ void hypothesis_free_prediction(hypogen_prediction_t* prediction) {
 
     if (prediction->predicted_values) nimcp_free(prediction->predicted_values);
     nimcp_free(prediction);
+    prediction = NULL;
 }
 
 int hypothesis_set_inflammation(hypothesis_engine_t* engine, float level) {
@@ -564,6 +566,7 @@ static bool hypogen_mcts_is_terminal(const void* state, void* user_data) {
 static void hypogen_mcts_free_state(void* state, void* user_data) {
     (void)user_data;
     nimcp_free(state);
+    state = NULL;
 }
 
 static void* hypogen_mcts_clone_state(const void* state, void* user_data) {
@@ -733,6 +736,7 @@ hypogen_theory_t* hypothesis_sample_mc(
     }
 
     nimcp_free(probs);
+    probs = NULL;
     return selected;
 }
 

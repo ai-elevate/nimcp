@@ -406,6 +406,7 @@ pr_quat_pink_state_t* pr_quat_pink_create(
     if (!cholesky_decompose_4x4(state->correlation_matrix, state->cholesky_L)) {
         set_error("Cholesky decomposition failed");
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_create: cholesky_decompose_4x4 is NULL");
         return NULL;
     }
@@ -443,6 +444,7 @@ pr_quat_pink_state_t* pr_quat_pink_create(
         if (state->gen_y) pink_noise_destroy(state->gen_y);
         if (state->gen_z) pink_noise_destroy(state->gen_z);
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_create: validation failed");
         return NULL;
     }
@@ -478,6 +480,7 @@ void pr_quat_pink_destroy(pr_quat_pink_state_t* state) {
 
     /* Free state */
     nimcp_free(state);
+    state = NULL;
 }
 
 bool pr_quat_pink_next(
@@ -777,6 +780,7 @@ pr_fractal_timing_t* pr_fractal_timing_create_ex(
     if (!timing->interval_gen) {
         set_error("Failed to create interval generator");
         nimcp_free(timing);
+        timing = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_fractal_timing_create_ex: timing->interval_gen is NULL");
         return NULL;
     }
@@ -802,6 +806,7 @@ void pr_fractal_timing_destroy(pr_fractal_timing_t* timing) {
 
     /* Free timing */
     nimcp_free(timing);
+    timing = NULL;
 }
 
 float pr_fractal_next_event_time(
@@ -818,7 +823,7 @@ float pr_fractal_next_event_time(
     pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_next_even", 0.0f);
 
 
-    float noise;
+    float noise = 0.0f;
     if (!pink_noise_generate_sample(timing->interval_gen, &noise)) {
         /* Fall back to base interval on error */
         noise = 0.0f;
@@ -993,6 +998,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
     if (!samples) {
         set_error("Failed to allocate sample buffer");
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate samples");
 
         return NULL;
@@ -1009,7 +1015,9 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
     if (!gen) {
         set_error("Failed to create temporary generator");
         nimcp_free(samples);
+        samples = NULL;
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
 
         return NULL;
@@ -1020,7 +1028,9 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
         set_error("Failed to generate samples");
         pink_noise_destroy(gen);
         nimcp_free(samples);
+        samples = NULL;
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_create_ex: pink_noise_generate is NULL");
         return NULL;
     }
@@ -1039,7 +1049,9 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
         if (!cow_mgr) {
             set_error("Failed to create COW manager");
             nimcp_free(samples);
+            samples = NULL;
             nimcp_free(buffer);
+            buffer = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_mgr is NULL");
 
             return NULL;
@@ -1054,7 +1066,9 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
             cow_manager_destroy(cow_mgr);
         }
         nimcp_free(samples);
+        samples = NULL;
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_create_ex: validation failed");
         return NULL;
     }
@@ -1068,7 +1082,9 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
             cow_manager_destroy(cow_mgr);
         }
         nimcp_free(samples);
+        samples = NULL;
         nimcp_free(buffer);
+        buffer = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_create_ex: validation failed");
         return NULL;
     }
@@ -1076,6 +1092,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
 
     /* Clean up temporary buffer */
     nimcp_free(samples);
+    samples = NULL;
 
     buffer->cow_manager = cow_mgr;
     buffer->owns_manager = owns_manager;
@@ -1120,6 +1137,7 @@ pr_pink_buffer_t* pr_pink_buffer_clone(const pr_pink_buffer_t* buffer) {
     if (!clone->noise_handle) {
         set_error("Failed to acquire COW handle for clone");
         nimcp_free(clone);
+        clone = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_buffer_clone: clone->noise_handle is NULL");
         return NULL;
     }
@@ -1153,6 +1171,7 @@ void pr_pink_buffer_destroy(pr_pink_buffer_t* buffer) {
 
     /* Free buffer structure */
     nimcp_free(buffer);
+    buffer = NULL;
 }
 
 bool pr_pink_buffer_next(
@@ -1310,7 +1329,7 @@ bool pr_pink_modulate_resonance(
     if (depth > 1.0f) depth = 1.0f;
 
     /* Get next noise sample */
-    float noise;
+    float noise = 0.0f;
     if (!pr_pink_buffer_next(buffer, &noise)) {
         *resonance_out = base_resonance;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_resonance: pr_pink_buffer_next is NULL");

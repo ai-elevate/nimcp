@@ -173,6 +173,7 @@ static int init_belief(fep_belief_t* belief, uint32_t dim, float initial_precisi
     belief->dim = dim;
     belief->mean = (float*)nimcp_calloc(dim, sizeof(float));
     belief->variance = (float*)nimcp_calloc(dim, sizeof(float));
+    if (!belief->variance) return -1;
     belief->precision = (float*)nimcp_calloc(dim, sizeof(float));
 
     if (!belief->mean || !belief->variance || !belief->precision) {
@@ -230,6 +231,7 @@ static int init_prediction_error(fep_prediction_error_t* error, uint32_t dim) {
     error->dim = dim;
     error->error = (float*)nimcp_calloc(dim, sizeof(float));
     error->weighted_error = (float*)nimcp_calloc(dim, sizeof(float));
+    if (!error->weighted_error) return -1;
     error->precision = (float*)nimcp_calloc(dim, sizeof(float));
 
     if (!error->error || !error->weighted_error || !error->precision) {
@@ -478,8 +480,8 @@ fep_system_t* fep_create(
                              (float)(i + 1) / (float)fep->num_levels);
         }
 
-        uint32_t state_dim;
-        uint32_t pred_dim;
+        uint32_t state_dim = 0;
+        uint32_t pred_dim = 0;
 
         if (config->level_dims && config->level_dims[i] > 0) {
             state_dim = config->level_dims[i];
@@ -602,6 +604,7 @@ void fep_destroy(fep_system_t* fep) {
     }
 
     nimcp_free(fep);
+    fep = NULL;
     NIMCP_LOGGING_INFO("FEP system destroyed");
 }
 
@@ -1134,6 +1137,7 @@ static int fep_evaluate_policies_unlocked(fep_system_t* fep) {
         }
 
         nimcp_free(neg_efe);
+        neg_efe = NULL;
     }
 
     return 0;

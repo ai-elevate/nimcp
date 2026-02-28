@@ -172,6 +172,7 @@ void personality_substrate_bridge_destroy(personality_substrate_bridge_t* bridge
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int personality_substrate_bridge_update(personality_substrate_bridge_t* bridge) {

@@ -112,6 +112,7 @@ vae_loss_ctx_t* vae_loss_ctx_create(const vae_loss_config_t* config)
     if (!ctx->mutex) {
         NIMCP_LOG_ERROR("VAE Loss: Failed to create mutex");
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_loss_ctx_create: ctx->mutex is NULL");
         return NULL;
     }
@@ -133,6 +134,7 @@ void vae_loss_ctx_destroy(vae_loss_ctx_t* ctx)
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
 
     NIMCP_LOG_DEBUG("VAE Loss: Context destroyed");
 }
@@ -999,6 +1001,7 @@ vae_loss_breakdown_t* vae_loss_breakdown_create(uint32_t latent_dim)
         breakdown->kl_per_dim = nimcp_calloc(latent_dim, sizeof(float));
         if (!breakdown->kl_per_dim) {
             nimcp_free(breakdown);
+            breakdown = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_loss_breakdown_create: breakdown->kl_per_dim is NULL");
             return NULL;
         }
@@ -1017,6 +1020,7 @@ void vae_loss_breakdown_free(vae_loss_breakdown_t* breakdown)
     }
 
     nimcp_free(breakdown);
+    breakdown = NULL;
 }
 
 bool vae_loss_is_invalid(float loss)

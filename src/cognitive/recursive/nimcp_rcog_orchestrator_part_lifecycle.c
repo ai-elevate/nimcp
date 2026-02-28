@@ -28,6 +28,7 @@ rcog_orchestrator_t* rcog_orchestrator_create(
     orch->mutex = nimcp_mutex_create(&attr);
     if (!orch->mutex) {
         nimcp_free(orch);
+        orch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_orchestrator_create: orch->mutex is NULL");
         return NULL;
     }
@@ -46,6 +47,7 @@ rcog_orchestrator_t* rcog_orchestrator_create(
     /* Initialize trace if enabled */
     if (orch->config.enable_trace) {
         orch->trace = nimcp_calloc(1, sizeof(rcog_trace_t));
+        if (!orch->trace) return -1;
         orch->trace_enabled = true;
     }
 
@@ -103,12 +105,14 @@ void rcog_orchestrator_destroy(rcog_orchestrator_t* orch) {
     }
 
     nimcp_free(orch);
+    orch = NULL;
 }
 
 
 static void rcog_mcts_free_state(void* state, void* user_data) {
     (void)user_data;
     nimcp_free(state);
+    state = NULL;
 }
 
 
@@ -172,4 +176,5 @@ void rcog_orchestrator_free_trace(rcog_trace_t* trace) {
         nimcp_free(trace->entries);
     }
     nimcp_free(trace);
+    trace = NULL;
 }

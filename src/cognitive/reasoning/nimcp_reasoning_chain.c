@@ -314,6 +314,7 @@ reasoning_engine_t* reasoning_engine_create(const reasoning_engine_config_t* con
         if (!engine->reason_mutex) {
             NIMCP_LOGGING_ERROR("reasoning_chain: failed to create engine mutex");
             nimcp_free(engine);
+            engine = NULL;
             return NULL;
         }
     }
@@ -420,6 +421,7 @@ void reasoning_engine_destroy(reasoning_engine_t* engine)
                        engine->stats.avg_confidence);
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 /*=============================================================================
@@ -1673,7 +1675,7 @@ static float phase_jepa_prediction(reasoning_engine_t* engine,
          * - similarity 0.5-0.8: neutral (ambiguous)
          * - similarity < 0.5: reduce confidence (inconsistent)
          */
-        float modifier;
+        float modifier = 0.0f;
         if (similarity > 0.8f) {
             modifier = 1.0f + (similarity - 0.8f) * 0.5f;  /* Up to 1.1x */
         } else if (similarity > JEPA_CONSISTENCY_THRESHOLD) {
@@ -1785,7 +1787,7 @@ static float phase_inference(reasoning_engine_t* engine, reasoning_chain_t* chai
         }
     }
 
-    float inference_confidence;
+    float inference_confidence = 0.0f;
     const char* inference_note;
 
     if (evidence_count == 0) {
@@ -2251,6 +2253,7 @@ static float phase_synthesis(reasoning_engine_t* engine, const char* query,
     /* FIX #8: Free heap-allocated confidences array */
     if (confidences_on_heap && confidences) {
         nimcp_free(confidences);
+        confidences = NULL;
     }
 
     return overall_confidence;

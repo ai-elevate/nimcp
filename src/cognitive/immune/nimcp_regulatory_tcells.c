@@ -207,6 +207,7 @@ treg_system_t* treg_create(
 
     /* Allocate system */
     treg_system_t* system = (treg_system_t*)nimcp_calloc(1, sizeof(treg_system_t));
+    if (!system) return -1;
     NIMCP_API_CHECK_ALLOC(system, "Failed to allocate Treg system");
 
     /* Set configuration */
@@ -227,6 +228,7 @@ treg_system_t* treg_create(
     if (!system->checkpoints) {
         NIMCP_LOGGING_ERROR("Failed to allocate checkpoint pool");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "treg_create: system->checkpoints is NULL");
         return NULL;
     }
@@ -239,6 +241,7 @@ treg_system_t* treg_create(
         NIMCP_LOGGING_ERROR("Failed to allocate cytokine pool");
         nimcp_free(system->checkpoints);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "treg_create: system->cytokines is NULL");
         return NULL;
     }
@@ -259,6 +262,7 @@ treg_system_t* treg_create(
         nimcp_free(system->cytokines);
         nimcp_free(system->checkpoints);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "treg_create: system->mutex is NULL");
         return NULL;
     }
@@ -304,6 +308,7 @@ void treg_destroy(treg_system_t* system)
 
     /* Free system */
     nimcp_free(system);
+    system = NULL;
 }
 
 /* ============================================================================
@@ -325,6 +330,7 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_update: validation failed");
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -442,6 +448,7 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_suppress_inflammation: validation failed");
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -462,7 +469,7 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 
     /* Release IL-10 if enabled */
     if (system->config.enable_il10_production) {
-        uint32_t cyt_id;
+        uint32_t cyt_id = 0;
         treg_release_cytokine(system, TREG_CYTOKINE_IL10,
             system->config.il10_production_rate,
             site->region_id, &cyt_id);
@@ -470,7 +477,7 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 
     /* Release TGF-β if enabled */
     if (system->config.enable_tgfb_production) {
-        uint32_t cyt_id;
+        uint32_t cyt_id = 0;
         treg_release_cytokine(system, TREG_CYTOKINE_TGFB,
             system->config.tgfb_production_rate,
             site->region_id, &cyt_id);
@@ -530,6 +537,7 @@ int treg_checkpoint_activate(
     /* Lock for thread safety */
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_checkpoint_activate: validation failed");
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -601,6 +609,7 @@ int treg_checkpoint_release(treg_system_t* system, uint32_t checkpoint_id)
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_checkpoint_release: validation failed");
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -691,6 +700,7 @@ int treg_release_cytokine(
     /* Lock for thread safety */
     if (nimcp_mutex_lock(system->mutex) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_release_cytokine: validation failed");
+        nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
@@ -712,7 +722,7 @@ int treg_release_cytokine(
     cyt->mapped_type = map_treg_cytokine(type);
 
     /* Release via brain immune system (IL-10 is anti-inflammatory) */
-    uint32_t brain_cyt_id;
+    uint32_t brain_cyt_id = 0;
     int ret = brain_immune_release_cytokine(
         system->immune_system,
         cyt->mapped_type,

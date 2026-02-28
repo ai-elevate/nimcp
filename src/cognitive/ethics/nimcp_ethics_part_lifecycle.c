@@ -30,6 +30,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     if (!engine->policy_table) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to create policy_table");
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
     ethics_init_strategy_table(&engine->strategy_table);
@@ -40,6 +41,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to create golden_rule_evaluator");
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
 
@@ -49,6 +51,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
 
@@ -59,6 +62,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
     if (!allocate_violation_storage(engine)) {
@@ -68,6 +72,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: allocate_violation_storage is NULL");
         return NULL;
     }
@@ -81,6 +86,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_engine_create: ethics_init_incident_logging is NULL");
         return NULL;
     }
@@ -201,4 +207,5 @@ void ethics_engine_destroy(ethics_engine_t engine)
     nimcp_free(engine->policies);
     nimcp_free(engine->violations);
     nimcp_free(engine);
+    engine = NULL;
 }

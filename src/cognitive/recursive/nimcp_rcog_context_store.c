@@ -163,7 +163,7 @@ static uint64_t get_current_time_ms(void)
 static uint32_t hash_string(const char* str)
 {
     uint32_t hash = 5381;
-    int c;
+    int c = 0;
     while ((c = *str++)) {
         hash = ((hash << 5) + hash) + (uint32_t)c;
     }
@@ -215,6 +215,7 @@ static rcog_variable_t* create_variable(
     var->data = nimcp_malloc(size);
     if (!var->data) {
         nimcp_free(var);
+        var = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_variable: var->data is NULL");
         return NULL;
     }
@@ -244,6 +245,7 @@ static void destroy_variable(rcog_variable_t* var)
             nimcp_free(var->data);
         }
         nimcp_free(var);
+        var = NULL;
     }
 }
 
@@ -360,6 +362,7 @@ static rcog_error_t search_text(
                 char* new_buffer = nimcp_realloc(buffer, buffer_size);
                 if (!new_buffer) {
                     nimcp_free(buffer);
+                    buffer = NULL;
                     return RCOG_ERROR_OUT_OF_MEMORY;
                 }
                 buffer = new_buffer;
@@ -456,6 +459,7 @@ rcog_context_store_t* rcog_context_store_create(
     store->mutex = nimcp_mutex_create(&attr);
     if (!store->mutex) {
         nimcp_free(store);
+        store = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_context_store_create: store->mutex is NULL");
         return NULL;
     }
@@ -505,6 +509,7 @@ void rcog_context_store_destroy(rcog_context_store_t* store)
     }
 
     nimcp_free(store);
+    store = NULL;
 }
 
 rcog_error_t rcog_context_store_clear(rcog_context_store_t* store)
@@ -805,7 +810,7 @@ rcog_error_t rcog_context_store_query(
     result->dtype = var->dtype;
 
     /* Use the more restrictive of params limit and store config limit */
-    size_t output_limit;
+    size_t output_limit = 0;
     if (params->output_limit > 0 && store->config.output_limit_per_query > 0) {
         output_limit = params->output_limit < store->config.output_limit_per_query ?
                        params->output_limit : store->config.output_limit_per_query;
@@ -1216,6 +1221,7 @@ rcog_error_t rcog_context_store_lock(rcog_context_store_t* store)
 
 
     nimcp_mutex_lock(store->mutex);
+    nimcp_mutex_unlock(store->mutex);
     return RCOG_OK;
 }
 

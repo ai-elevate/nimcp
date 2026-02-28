@@ -142,6 +142,7 @@ void jepa_thalamic_bridge_destroy(jepa_thalamic_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int jepa_thalamic_bridge_reset(jepa_thalamic_bridge_t* bridge) {

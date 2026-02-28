@@ -297,6 +297,7 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     bridge->items = nimcp_calloc(bridge->item_capacity, sizeof(wm_item_t));
     if (!bridge->items) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_wm_bridge_create: bridge->items is NULL");
         return NULL;
     }
@@ -317,6 +318,7 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->items);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_wm_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -358,6 +360,7 @@ void attention_wm_bridge_destroy(attention_wm_bridge_t* bridge) {
 
     // Free bridge
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 //=============================================================================

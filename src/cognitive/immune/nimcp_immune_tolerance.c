@@ -189,6 +189,7 @@ tolerance_system_t* tolerance_create(
     if (!sys->self_patterns) {
         NIMCP_LOGGING_ERROR("Failed to allocate self patterns");
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tolerance_create: sys->self_patterns is NULL");
         return NULL;
     }
@@ -203,6 +204,7 @@ tolerance_system_t* tolerance_create(
         NIMCP_LOGGING_ERROR("Failed to allocate anergic cells");
         nimcp_free(sys->self_patterns);
         nimcp_free(sys);
+        sys = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tolerance_create: sys->anergic_cells is NULL");
         return NULL;
     }
@@ -262,6 +264,7 @@ void tolerance_destroy(tolerance_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /* ============================================================================

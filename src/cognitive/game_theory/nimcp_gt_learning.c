@@ -285,6 +285,7 @@ static nimcp_gt_q_table_t q_table_create(uint32_t num_states, uint32_t num_actio
     table->entries = nimcp_calloc(num_entries, sizeof(nimcp_gt_q_entry_t));
     if (!table->entries) {
         nimcp_free(table);
+        table = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "q_table_create: table->entries is NULL");
         return NULL;
     }
@@ -296,6 +297,7 @@ static void q_table_destroy(nimcp_gt_q_table_t table) {
     if (!table) return;
     nimcp_free(table->entries);
     nimcp_free(table);
+    table = NULL;
 }
 
 static void q_table_reset(nimcp_gt_q_table_t table) {
@@ -327,6 +329,7 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
     table->entries = nimcp_calloc(num_info_sets, sizeof(nimcp_gt_regret_entry_t));
     if (!table->entries) {
         nimcp_free(table);
+        table = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "regret_table_create: table->entries is NULL");
         return NULL;
     }
@@ -351,6 +354,7 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
             }
             nimcp_free(table->entries);
             nimcp_free(table);
+            table = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "regret_table_create: required parameter is NULL (table->entries, table->entries)");
             return NULL;
         }
@@ -374,6 +378,7 @@ static void regret_table_destroy(nimcp_gt_regret_table_t table) {
     }
     nimcp_free(table->entries);
     nimcp_free(table);
+    table = NULL;
 }
 
 static void regret_table_reset(nimcp_gt_regret_table_t table) {
@@ -515,6 +520,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         learner->q_table = q_table_create(num_states, num_actions);
         if (!learner->q_table) {
             nimcp_free(learner);
+            learner = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: learner->q_table is NULL");
             return NULL;
         }
@@ -530,6 +536,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         if (!learner->regret_table) {
             q_table_destroy(learner->q_table);
             nimcp_free(learner);
+            learner = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: learner->regret_table is NULL");
             return NULL;
         }
@@ -541,6 +548,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        learner = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: learner->opponent_action_counts is NULL");
         return NULL;
     }
@@ -555,6 +563,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        learner = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: required parameter is NULL (learner->exp3_weights, learner->exp3_probabilities)");
         return NULL;
     }
@@ -584,6 +593,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        learner = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: required parameter is NULL (learner->action_history, learner->our_action_history)");
         return NULL;
     }
@@ -602,6 +612,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        learner = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: operation failed");
         return NULL;
     }
@@ -626,6 +637,7 @@ void nimcp_gt_learner_destroy(nimcp_gt_learner_t learner) {
     regret_table_destroy(learner->regret_table);
     q_table_destroy(learner->q_table);
     nimcp_free(learner);
+    learner = NULL;
 }
 
 nimcp_error_t nimcp_gt_learner_reset(nimcp_gt_learner_t learner) {
@@ -870,6 +882,7 @@ nimcp_error_t nimcp_gt_learner_select_action(
         case NIMCP_GT_EXPLORE_BOLTZMANN: {
             /* Softmax over Q-values */
             float* q_values = nimcp_calloc(num_actions, sizeof(float));
+            if (!q_values) return -1;
             float* probs = nimcp_calloc(num_actions, sizeof(float));
 
             if (q_values && probs) {
@@ -889,7 +902,9 @@ nimcp_error_t nimcp_gt_learner_select_action(
             }
 
             nimcp_free(probs);
+            probs = NULL;
             nimcp_free(q_values);
+            q_values = NULL;
             break;
         }
 
@@ -910,7 +925,7 @@ nimcp_error_t nimcp_gt_learner_select_action(
                 float q = entry ? entry->value : 0.0f;
                 uint32_t n = entry ? entry->visit_count : 0;
 
-                float ucb;
+                float ucb = 0.0f;
                 if (n == 0) {
                     ucb = FLT_MAX;  /* Unvisited actions have infinite UCB */
                 } else {
@@ -1111,6 +1126,7 @@ nimcp_error_t nimcp_gt_learner_get_strategy(
     softmax(q_values, strategy_out, num_actions, learner->config.temperature);
 
     nimcp_free(q_values);
+    q_values = NULL;
 
     nimcp_platform_mutex_unlock(&((nimcp_gt_learner_t)learner)->mutex);
     return NIMCP_SUCCESS;
@@ -1252,6 +1268,7 @@ nimcp_error_t nimcp_gt_cfr_update(
     learner->stats.updates++;
 
     nimcp_free(strategy);
+    strategy = NULL;
     nimcp_platform_mutex_unlock(&learner->mutex);
     return NIMCP_SUCCESS;
 }
@@ -1627,6 +1644,7 @@ nimcp_error_t nimcp_gt_fictitious_play_best_response(
     *best_action_out = best_action;
 
     nimcp_free(opp_dist);
+    opp_dist = NULL;
     nimcp_platform_mutex_unlock(&((nimcp_gt_learner_t)learner)->mutex);
     return NIMCP_SUCCESS;
 }
@@ -2039,7 +2057,9 @@ nimcp_error_t nimcp_gt_get_opponent_model(
 
     /* Allocate and copy arrays */
     model_out->action_predictions = nimcp_calloc(learner->config.num_actions, sizeof(float));
+    if (!model_out->action_predictions) return -1;
     model_out->action_counts = nimcp_calloc(learner->config.num_actions, sizeof(uint32_t));
+    if (!model_out->action_counts) return -1;
 
     if (model_out->action_predictions && learner->opponent_model.action_predictions) {
         memcpy(model_out->action_predictions, learner->opponent_model.action_predictions,
@@ -2412,6 +2432,7 @@ nimcp_error_t nimcp_gt_compute_exploitability(
     *exploitability_out = max_br_value;
 
     nimcp_free(strategy);
+    strategy = NULL;
     nimcp_platform_mutex_unlock(&((nimcp_gt_learner_t)learner)->mutex);
     return NIMCP_SUCCESS;
 }
@@ -2451,6 +2472,7 @@ void nimcp_gt_opponent_model_init(
     if (num_actions > 0) {
         model->action_predictions = nimcp_calloc(num_actions, sizeof(float));
         model->action_counts = nimcp_calloc(num_actions, sizeof(uint32_t));
+        if (!model->action_counts) return -1;
 
         /* Uniform action predictions initially */
         if (model->action_predictions) {

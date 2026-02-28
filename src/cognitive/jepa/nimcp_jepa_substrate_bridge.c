@@ -140,6 +140,7 @@ void jepa_substrate_bridge_destroy(jepa_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {

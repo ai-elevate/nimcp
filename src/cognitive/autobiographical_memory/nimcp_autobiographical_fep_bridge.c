@@ -159,6 +159,7 @@ autobiographical_fep_bridge_t* autobiographical_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "autobiographical_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobiographical_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -194,6 +195,7 @@ void autobiographical_fep_bridge_destroy(autobiographical_fep_bridge_t* bridge) 
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Autobiographical-FEP bridge destroyed");
 }
 

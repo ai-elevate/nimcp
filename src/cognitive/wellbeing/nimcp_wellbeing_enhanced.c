@@ -977,6 +977,7 @@ enhanced_wellbeing_system_t* enhanced_wellbeing_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "enhanced_wellbeing_create: system->mutex is NULL");
         return NULL;
     }
@@ -1060,6 +1061,7 @@ void enhanced_wellbeing_destroy(enhanced_wellbeing_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
     NIMCP_LOGGING_INFO("Enhanced wellbeing system destroyed");
 }
 

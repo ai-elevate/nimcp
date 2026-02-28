@@ -74,7 +74,9 @@ neuron_population_t brain_get_active_population(introspection_context_t context,
 
     if (temp_ids == NULL || temp_activations == NULL) {
         nimcp_free(temp_ids);
+        temp_ids = NULL;
         nimcp_free(temp_activations);
+        temp_activations = NULL;
         return population;
     }
 
@@ -91,7 +93,9 @@ neuron_population_t brain_get_active_population(introspection_context_t context,
 
     if (active_count == 0) {
         nimcp_free(temp_ids);
+        temp_ids = NULL;
         nimcp_free(temp_activations);
+        temp_activations = NULL;
         return population;
     }
 
@@ -103,7 +107,9 @@ neuron_population_t brain_get_active_population(introspection_context_t context,
         nimcp_free(population.neuron_ids);
         nimcp_free(population.activation_levels);
         nimcp_free(temp_ids);
+        temp_ids = NULL;
         nimcp_free(temp_activations);
+        temp_activations = NULL;
         memset(&population, 0, sizeof(neuron_population_t));
         return population;
     }
@@ -114,7 +120,9 @@ neuron_population_t brain_get_active_population(introspection_context_t context,
 
     /* WHAT: Free temporary arrays */
     nimcp_free(temp_ids);
+    temp_ids = NULL;
     nimcp_free(temp_activations);
+    temp_activations = NULL;
 
     return population;
 }
@@ -154,7 +162,7 @@ neuron_activity_t brain_get_neuron_activity(introspection_context_t context, uin
     activity.neuron_id = neuron_id;
 
     /* WHAT: Get real neuron activation from network */
-    float raw_activation;
+    float raw_activation = 0.0f;
     if (!adaptive_network_get_neuron_activation(network, neuron_id, &raw_activation)) {
         return activity; /* Neuron doesn't exist */
     }
@@ -220,7 +228,7 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
 
     /* WHAT: Determine sampling rate based on strategy */
     /* WHY: Trade-off between speed and accuracy */
-    float sampling_rate;
+    float sampling_rate = 0.0f;
     const char* strategy_name;
     switch (strategy) {
         case STATE_STRATEGY_FAST:
@@ -285,7 +293,7 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
         }
 
         /* WHAT: Get real neuron activation */
-        float raw_activation;
+        float raw_activation = 0.0f;
         if (adaptive_network_get_neuron_activation(network, neuron_id, &raw_activation)) {
             /* WHAT: Normalize biological potential to 0-1 range */
             state.state_vector[i] =
@@ -825,6 +833,7 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
             *num_entries = i;
             if (i == 0) {
                 nimcp_free(history);
+                history = NULL;
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_activity_history: i is zero");
                 return NULL;
             }

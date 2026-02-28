@@ -220,7 +220,7 @@ int rcog_orchestrator_decompose(
 
     add_trace_entry(orch, 0, "decompose_start", 0.0f);
 
-    int err;
+    int err = 0;
     switch (strategy) {
         case RCOG_DECOMP_SEQUENTIAL:
             err = decompose_sequential(orch, goal, context, result);
@@ -280,7 +280,7 @@ int rcog_orchestrator_decompose_with_strategy(
     result->metadata.strategy = strategy;
     result->metadata.created_ms = nimcp_platform_time_monotonic_ms();
 
-    int err;
+    int err = 0;
     switch (strategy) {
         case RCOG_DECOMP_SEQUENTIAL:
             err = decompose_sequential(orch, goal, context, result);
@@ -837,7 +837,9 @@ int rcog_orchestrator_validate_decomposition(const rcog_decomposition_t* decomp)
         }
 
         nimcp_free(visited);
+        visited = NULL;
         nimcp_free(in_stack);
+        in_stack = NULL;
 
         if (has_cycle) {
             return RCOG_ERROR_INVALID_CONFIG;

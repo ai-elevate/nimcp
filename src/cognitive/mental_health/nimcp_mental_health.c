@@ -498,6 +498,7 @@ void mental_health_destroy(mental_health_monitor_t* mon) {
     if (mon->lock) nimcp_mutex_free(mon->lock);
     mon->magic = 0;
     nimcp_free(mon);
+    mon = NULL;
 }
 
 void mental_health_update(mental_health_monitor_t* mon, brain_t brain, const void* output, uint64_t time) {

@@ -123,6 +123,7 @@ self_awareness_ext_substrate_bridge_t* self_awareness_ext_substrate_bridge_creat
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for self awareness ext substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_ext_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -130,6 +131,7 @@ self_awareness_ext_substrate_bridge_t* self_awareness_ext_substrate_bridge_creat
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for self awareness ext substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_ext_substrate_bridge_create: validation failed");
         return NULL;
     }
@@ -154,6 +156,7 @@ void self_awareness_ext_substrate_bridge_destroy(self_awareness_ext_substrate_br
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_awareness_ext_substrate_bridge_update(self_awareness_ext_substrate_bridge_t* bridge) {

@@ -284,6 +284,7 @@ financial_reasoning_bridge_t* financial_reasoning_bridge_create(
     if (!bridge->rules) {
         set_error("Failed to allocate rule base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate rule base");
         return NULL;
@@ -299,6 +300,7 @@ financial_reasoning_bridge_t* financial_reasoning_bridge_create(
         set_error("Failed to allocate working memory");
         nimcp_free(bridge->rules);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate working memory");
         return NULL;
@@ -329,6 +331,7 @@ void financial_reasoning_bridge_destroy(financial_reasoning_bridge_t* bridge) {
         bridge->magic = 0;
         bridge->op_state = FIN_REASONING_OP_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 
@@ -1179,7 +1182,7 @@ static bool evaluate_simple_condition(financial_reasoning_bridge_t* bridge,
         return false;
     }
 
-    float value;
+    float value = 0.0f;
     if (!get_fact_value(bridge, var, &value)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_simple_condition: get_fact_value is NULL");
         return false;  /* Unknown fact */
@@ -1463,7 +1466,7 @@ static fin_verify_result_t backward_chain_recursive(
     (*rules_checked)++;
 
     /* Check if goal is a fact in working memory */
-    float value;
+    float value = 0.0f;
     if (get_fact_value(bridge, goal, &value)) {
         /* Fact found - check if it satisfies the goal */
         int written = snprintf(explanation + *exp_len, exp_size - *exp_len,

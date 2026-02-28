@@ -205,6 +205,7 @@ mirror_hypo_bridge_t* mirror_hypo_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_HYPOTHALAMUS_BRIDGE, "mirror_hypothalamus") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_hypo_create: validation failed");
         return NULL;
     }
@@ -231,6 +232,7 @@ void mirror_hypo_destroy(mirror_hypo_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Mirror-hypothalamus bridge destroyed");
 }
 

@@ -239,6 +239,7 @@ void fep_transition_learner_destroy(fep_transition_learner_t* learner) {
     }
 
     nimcp_free(learner);
+    learner = NULL;
     NIMCP_LOGGING_INFO("Transition learner destroyed");
 }
 
@@ -377,6 +378,7 @@ void fep_likelihood_learner_destroy(fep_likelihood_learner_t* learner) {
     }
 
     nimcp_free(learner);
+    learner = NULL;
     NIMCP_LOGGING_INFO("Likelihood learner destroyed");
 }
 
@@ -477,6 +479,7 @@ int fep_learn_transition(
     }
 
     nimcp_free(prediction);
+    prediction = NULL;
 
     /* Update statistics */
     learner->stats.total_updates++;
@@ -599,6 +602,7 @@ int fep_learn_transition_batch(
     }
 
     nimcp_free(prediction);
+    prediction = NULL;
 
     /* Average and apply gradient */
     float lr = learner->config.learning_rate;
@@ -725,6 +729,7 @@ int fep_learn_likelihood(
     }
 
     nimcp_free(prediction);
+    prediction = NULL;
 
     /* Update statistics */
     learner->stats.total_updates++;
@@ -834,6 +839,7 @@ int fep_learn_likelihood_batch(
     }
 
     nimcp_free(prediction);
+    prediction = NULL;
 
     /* Average and apply */
     float lr = learner->config.learning_rate;

@@ -291,6 +291,7 @@ void tom_immune_bridge_destroy(tom_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_MODULE_INFO("tom_immune_bridge", "Bridge destroyed");
 }
 
@@ -528,7 +529,7 @@ int tom_immune_trigger_from_rejection(
         float il6_concentration = rejection_severity * REJECTION_INFLAMMATION_MULTIPLIER;
         il6_concentration = clamp_f(il6_concentration, 0.0f, 1.0f);
 
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
             BRAIN_CYTOKINE_IL6,
@@ -582,7 +583,7 @@ int tom_immune_trigger_from_prediction_error(
     if (prediction_error >= SOCIAL_STRESS_IMMUNE_THRESHOLD) {
         float il1_concentration = prediction_error * 0.8f;
 
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
             BRAIN_CYTOKINE_IL1,
@@ -641,7 +642,7 @@ int tom_immune_trigger_from_isolation(
         );
 
         /* Release multiple pro-inflammatory cytokines */
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
 
         /* IL-6 (chronic inflammation marker) */
         brain_immune_release_cytokine(
@@ -711,7 +712,7 @@ int tom_immune_boost_from_social_connection(
     if (connection_strength >= 0.6f) {
         float il10_concentration = connection_strength * 0.5f;
 
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             bridge->immune_system,
             BRAIN_CYTOKINE_IL10,

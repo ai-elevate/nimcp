@@ -163,7 +163,7 @@ bool introspection_sample_activity(introspection_context_t context)
                              (float)(i + 1) / (float)total_neurons);
         }
 
-        float raw_activation;
+        float raw_activation = 0.0f;
         if (adaptive_network_get_neuron_activation(network, i, &raw_activation)) {
             /* Normalize biological potential to [0,1] */
             float normalized = (raw_activation - REST_POTENTIAL) / (PEAK_POTENTIAL - REST_POTENTIAL);

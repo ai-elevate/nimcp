@@ -188,6 +188,7 @@ static float detect_conspiracy_patterns(const char* text) {
     }
 
     nimcp_free(lower_text);
+    lower_text = NULL;
 
     // Normalize by number of patterns found
     if (pattern_count > 0) {
@@ -389,6 +390,7 @@ void epistemic_filter_destroy(epistemic_filter_t filter) {
     filter->bridges_enabled = false;
 
     nimcp_free(filter);
+    filter = NULL;
 }
 
 void epistemic_evidence_init(claim_evidence_t* evidence) {

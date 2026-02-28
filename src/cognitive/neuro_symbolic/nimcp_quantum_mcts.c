@@ -135,6 +135,7 @@ NIMCP_API quantum_mcts_t* quantum_mcts_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate QMCTS nodes");
         nimcp_free(qmcts);
+        qmcts = NULL;
         return NULL;
     }
 
@@ -162,6 +163,7 @@ NIMCP_API quantum_mcts_t* quantum_mcts_create(
         if (qmcts->cache) nimcp_free(qmcts->cache);
         nimcp_free(qmcts->nodes);
         nimcp_free(qmcts);
+        qmcts = NULL;
         return NULL;
     }
 
@@ -229,6 +231,7 @@ NIMCP_API void quantum_mcts_destroy(quantum_mcts_t* qmcts)
     }
 
     nimcp_free(qmcts);
+    qmcts = NULL;
 }
 
 NIMCP_API nimcp_error_t quantum_mcts_reset(quantum_mcts_t* qmcts)
@@ -736,6 +739,7 @@ NIMCP_API float quantum_mcts_rollout(
 
         if (temp_state) {
             nimcp_free(temp_state);
+            temp_state = NULL;
         }
 
         value = cumulative;
@@ -835,6 +839,7 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
         amplitudes, num_states, target_state, &qmc_config, result);
 
     nimcp_free(amplitudes);
+    amplitudes = NULL;
 
     if (qmc_result != QMC_OK) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
@@ -1070,6 +1075,7 @@ NIMCP_API nimcp_error_t quantum_mcts_plan_init(
     }
 
     plan->step_values = (float*)nimcp_calloc(max_actions, sizeof(float));
+    if (!plan->step_values) return -1;
     plan->step_uncertainties = (float*)nimcp_calloc(max_actions, sizeof(float));
 
     plan->num_actions = max_actions;

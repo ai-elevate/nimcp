@@ -236,6 +236,7 @@ void mental_health_sleep_bridge_destroy(mental_health_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {

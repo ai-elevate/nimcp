@@ -172,6 +172,7 @@ void working_memory_sleep_bridge_destroy(working_memory_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int working_memory_sleep_update(working_memory_sleep_bridge_t bridge) {

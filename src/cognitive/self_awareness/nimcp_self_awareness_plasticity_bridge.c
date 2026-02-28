@@ -156,6 +156,7 @@ self_awareness_plasticity_bridge_t* self_awareness_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "self_awareness_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_plasticity_create: validation failed");
         return NULL;
     }
@@ -166,6 +167,7 @@ self_awareness_plasticity_bridge_t* self_awareness_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -199,6 +201,7 @@ void self_awareness_plasticity_destroy(self_awareness_plasticity_bridge_t* bridg
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_awareness_plasticity_reset(self_awareness_plasticity_bridge_t* bridge) {

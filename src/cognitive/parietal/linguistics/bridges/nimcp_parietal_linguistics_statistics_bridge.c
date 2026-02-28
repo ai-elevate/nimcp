@@ -350,6 +350,7 @@ void ling_stats_bridge_destroy(ling_stats_bridge_t* bridge) {
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int ling_stats_bridge_register_mesh(

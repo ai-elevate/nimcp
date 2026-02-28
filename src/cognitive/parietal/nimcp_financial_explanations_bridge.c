@@ -245,7 +245,7 @@ static char* generate_reasoning_steps(
     const char* decision_name = fin_expl_decision_name((fin_decision_type_t)decision->decision_type);
     char* ptr = steps;
     size_t remaining = buffer_size;
-    int written;
+    int written = 0;
 
     /* Step 1: Initial assessment */
     written = snprintf(ptr, remaining, "Step 1: Identified %s opportunity for asset '%s'\n",
@@ -482,6 +482,7 @@ financial_explanations_bridge_t* financial_explanations_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_EXPLANATIONS, "financial_explanations") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_explanations_bridge_create: validation failed");
         return NULL;
     }
@@ -494,6 +495,7 @@ financial_explanations_bridge_t* financial_explanations_bridge_create(
             set_error("Failed to allocate audit buffer");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_explanations_bridge_create: bridge->audit_buffer is NULL");
             return NULL;
         }
@@ -529,6 +531,7 @@ void financial_explanations_bridge_destroy(financial_explanations_bridge_t* brid
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_expl_heartbeat("fin_expl_destroy", 1.0f);
 }

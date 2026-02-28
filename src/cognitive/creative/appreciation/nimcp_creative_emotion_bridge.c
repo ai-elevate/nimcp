@@ -110,6 +110,7 @@ void creative_emotion_bridge_destroy(creative_emotion_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_INFO(LOG_MODULE, "Creative emotion bridge destroyed");
 }
 

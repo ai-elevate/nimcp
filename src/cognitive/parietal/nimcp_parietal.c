@@ -218,6 +218,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
     nn->layers = nimcp_calloc(nn->num_layers, sizeof(physics_nn_layer_t));
     if (!nn->layers) {
         nimcp_free(nn);
+        nn = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create: nn->layers allocation failed");
         return NULL;
     }
@@ -246,6 +247,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
             }
             nimcp_free(nn->layers);
             nimcp_free(nn);
+            nn = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create: layer weights/biases allocation failed");
             return NULL;
         }
@@ -278,6 +280,7 @@ static void physics_nn_destroy(physics_nn_t* nn) {
     nimcp_free(nn->layers);
     nimcp_free(nn->gradients);
     nimcp_free(nn);
+    nn = NULL;
 }
 
 static float physics_nn_activation(float x) {
@@ -307,7 +310,9 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
 
     if (!current || !next) {
         nimcp_free(current);
+        current = NULL;
         nimcp_free(next);
+        next = NULL;
         return 0.0f;
     }
 
@@ -378,7 +383,9 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
     }
 
     nimcp_free(current);
+    current = NULL;
     nimcp_free(next);
+    next = NULL;
 
     return hamiltonian;
 }
@@ -431,6 +438,7 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
     }
 
     nimcp_free(predicted);
+    predicted = NULL;
 
     nn->training_steps++;
     nn->total_loss += loss;
@@ -709,6 +717,7 @@ void parietal_destroy(parietal_lobe_t* parietal) {
     }
 
     nimcp_free(parietal);
+    parietal = NULL;
 }
 
 /* ============================================================================
@@ -1631,7 +1640,9 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
 
     if (!current || !derivative) {
         nimcp_free(current);
+        current = NULL;
         nimcp_free(derivative);
+        derivative = NULL;
         nimcp_mutex_unlock(parietal->lock);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (current, derivative)");
         return -1;
@@ -1667,7 +1678,9 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
     }
 
     nimcp_free(current);
+    current = NULL;
     nimcp_free(derivative);
+    derivative = NULL;
 
     nimcp_mutex_unlock(parietal->lock);
 
@@ -1690,6 +1703,7 @@ float parietal_compute_hamiltonian(parietal_lobe_t* parietal,
     float* output = nimcp_calloc(state_dim, sizeof(float));
     float hamiltonian = physics_nn_forward(parietal->physics_nn, state, output);
     nimcp_free(output);
+    output = NULL;
 
     nimcp_mutex_unlock(parietal->lock);
 

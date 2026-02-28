@@ -63,7 +63,7 @@ static void bio_broadcast_state_change(introspection_context_t ctx, float cognit
 static uint32_t hash_string(const char* str)
 {
     uint32_t hash = 5381;
-    int c;
+    int c = 0;
     while ((c = *str++) != 0) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }

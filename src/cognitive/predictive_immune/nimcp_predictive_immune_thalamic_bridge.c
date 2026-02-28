@@ -109,6 +109,7 @@ predictive_immune_thalamic_bridge_t* predictive_immune_thalamic_bridge_create(vo
     if (bridge_base_init(&bridge->base, 0, "predictive_immune_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -132,6 +133,7 @@ void predictive_immune_thalamic_bridge_destroy(predictive_immune_thalamic_bridge
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int predictive_immune_thalamic_bridge_reset(predictive_immune_thalamic_bridge_t* bridge) {

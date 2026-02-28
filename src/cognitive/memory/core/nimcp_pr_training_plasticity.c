@@ -436,6 +436,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     if (config) {
         if (!pr_training_plasticity_config_validate(config)) {
             nimcp_free(tp);
+            tp = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_create: pr_training_plasticity_config_validate is NULL");
             return NULL;
         }
@@ -449,6 +450,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     tp->mutex = nimcp_mutex_create(&mutex_attr);
     if (!tp->mutex) {
         nimcp_free(tp);
+        tp = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_plasticity_create: tp->mutex is NULL");
         return NULL;
     }
@@ -457,6 +459,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     if (allocate_buffers(tp) != 0) {
         nimcp_mutex_free(tp->mutex);
         nimcp_free(tp);
+        tp = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_plasticity_create: validation failed");
         return NULL;
     }
@@ -501,6 +504,7 @@ void pr_training_plasticity_destroy(pr_training_plasticity_t tp) {
     }
 
     nimcp_free(tp);
+    tp = NULL;
 }
 
 int pr_training_plasticity_reset(pr_training_plasticity_t tp) {
@@ -1224,6 +1228,7 @@ int pr_training_unified_step(
 
     /* Free gradient buffer */
     nimcp_free(gradients);
+    gradients = NULL;
 
     if (result) {
         *result = local_result;
@@ -1301,6 +1306,7 @@ int pr_training_alternating_step(
         local_result.plasticity_contribution = 0.0f;
 
         nimcp_free(gradients);
+        gradients = NULL;
 
     } else {
         /* Plasticity phase: STDP/BCM only */

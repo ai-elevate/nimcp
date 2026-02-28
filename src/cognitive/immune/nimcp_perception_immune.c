@@ -122,6 +122,7 @@ perception_immune_context_t* perception_immune_create(
         nimcp_calloc(ctx->anomaly_capacity, sizeof(perception_anomaly_t));
     if (!ctx->anomalies) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_immune_create: ctx->anomalies is NULL");
         return NULL;
     }
@@ -152,6 +153,7 @@ void perception_immune_destroy(perception_immune_context_t* ctx) {
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
     NIMCP_LOGGING_INFO("perception_immune", "Destroyed perception-immune integration");
 }
 

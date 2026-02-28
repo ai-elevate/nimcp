@@ -288,6 +288,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
     state->performance_history = (float*)nimcp_calloc(history_len, sizeof(float));
     if (!state->performance_history) {
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_power_law: state->performance_history is NULL");
         return NULL;
     }
@@ -300,6 +301,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
     if (!state->transfers) {
         nimcp_free(state->performance_history);
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_power_law: state->transfers is NULL");
         return NULL;
     }
@@ -312,6 +314,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
         nimcp_free(state->transfers);
         nimcp_free(state->performance_history);
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_power_law: state->plateaus is NULL");
         return NULL;
     }
@@ -322,6 +325,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
     if (skill && skill->num_steps > 0) {
         state->step_errors = (size_t*)nimcp_calloc(skill->num_steps, sizeof(size_t));
         state->step_practice_count = (size_t*)nimcp_calloc(skill->num_steps, sizeof(size_t));
+        if (!state->step_practice_count) return -1;
         state->step_difficulty = (float*)nimcp_calloc(skill->num_steps, sizeof(float));
 
         if (!state->step_errors || !state->step_practice_count || !state->step_difficulty) {
@@ -332,6 +336,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
             nimcp_free(state->transfers);
             nimcp_free(state->performance_history);
             nimcp_free(state);
+            state = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_power_law: required parameter is NULL (state->step_errors, state->step_practice_count, state->step_difficulty)");
             return NULL;
         }
@@ -388,6 +393,7 @@ static void destroy_state(skill_acquisition_state_t* state) {
     nimcp_free(state->step_practice_count);
     nimcp_free(state->step_difficulty);
     nimcp_free(state);
+    state = NULL;
 }
 
 /**
@@ -648,6 +654,7 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
         state->power_law.fit_r_squared = compute_r_squared(
             state->performance_history, predicted, state->history_count);
         nimcp_free(predicted);
+        predicted = NULL;
     }
 
     state->power_law.fit_valid = (state->power_law.fit_r_squared > 0.5f);
@@ -753,6 +760,7 @@ NIMCP_EXPORT skill_acquisition_t* skill_acquisition_create(
     if (!sa->states) {
         set_error("Memory allocation failed for states array");
         nimcp_free(sa);
+        sa = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "skill_acquisition_create: sa->states is NULL");
         return NULL;
     }
@@ -809,6 +817,7 @@ NIMCP_EXPORT void skill_acquisition_destroy(skill_acquisition_t* sa) {
     }
 
     nimcp_free(sa);
+    sa = NULL;
 }
 
 NIMCP_EXPORT skill_error_t skill_acquisition_reset(skill_acquisition_t* sa) {
@@ -958,6 +967,7 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
             prime_sig_destroy(skill->signature);
         }
         nimcp_free(skill);
+        skill = NULL;
         return SKILL_INVALID_ID;
     }
 
@@ -1858,6 +1868,7 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
         if (state->skill && state->skill->num_steps > 0) {
             plan->num_focus_steps = state->skill->num_steps;
             plan->focus_steps = (size_t*)nimcp_calloc(plan->num_focus_steps, sizeof(size_t));
+            if (!plan->focus_steps) return -1;
             plan->focus_durations = (float*)nimcp_calloc(plan->num_focus_steps, sizeof(float));
 
             if (plan->focus_steps && plan->focus_durations) {
@@ -2111,6 +2122,7 @@ NIMCP_EXPORT skill_error_t skill_acquisition_get_learning_curve(
     // Allocate arrays
     curve->trial_numbers = (float*)nimcp_calloc(state->history_count, sizeof(float));
     curve->performances = (float*)nimcp_calloc(state->history_count, sizeof(float));
+    if (!curve->performances) return -1;
     curve->predicted = (float*)nimcp_calloc(state->history_count, sizeof(float));
 
     if (!curve->trial_numbers || !curve->performances || !curve->predicted) {

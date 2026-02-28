@@ -122,6 +122,7 @@ personality_thalamic_bridge_t* personality_thalamic_bridge_create(void* personal
     if (bridge_base_init(&bridge->base, 0, "personality_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -145,6 +146,7 @@ void personality_thalamic_bridge_destroy(personality_thalamic_bridge_t* bridge) 
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int personality_thalamic_bridge_reset(personality_thalamic_bridge_t* bridge) {

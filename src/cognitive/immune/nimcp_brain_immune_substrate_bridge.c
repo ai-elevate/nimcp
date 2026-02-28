@@ -147,6 +147,7 @@ void brain_immune_substrate_bridge_destroy(brain_immune_substrate_bridge_t* brid
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int brain_immune_substrate_bridge_update(brain_immune_substrate_bridge_t* bridge) {

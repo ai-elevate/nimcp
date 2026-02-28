@@ -21,11 +21,17 @@ static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
     uint32_t input_dim = h_dim + z_dim + action_dim;
 
     dyn->W_h = nimcp_calloc(input_dim * h_dim, sizeof(float));
+    if (!dyn->W_h) return -1;
     dyn->W_z = nimcp_calloc(h_dim * z_dim * 2, sizeof(float)); /* mean + std */
+    if (!dyn->W_z) return -1;
     dyn->W_obs = nimcp_calloc((h_dim + z_dim) * obs_dim, sizeof(float));
+    if (!dyn->W_obs) return -1;
     dyn->b_h = nimcp_calloc(h_dim, sizeof(float));
+    if (!dyn->b_h) return -1;
     dyn->b_z = nimcp_calloc(z_dim * 2, sizeof(float));
+    if (!dyn->b_z) return -1;
     dyn->b_obs = nimcp_calloc(obs_dim, sizeof(float));
+    if (!dyn->b_obs) return -1;
 
     if (!dyn->W_h || !dyn->W_z || !dyn->W_obs ||
         !dyn->b_h || !dyn->b_z || !dyn->b_obs) {
@@ -36,6 +42,7 @@ static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
         nimcp_free(dyn->b_z);
         nimcp_free(dyn->b_obs);
         nimcp_free(dyn);
+        dyn = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynamics_create: weight allocation failed");
         return NULL;
     }
@@ -65,6 +72,7 @@ static void dynamics_destroy(omni_wm_dynamics_t* dyn) {
     nimcp_free(dyn->b_z);
     nimcp_free(dyn->b_obs);
     nimcp_free(dyn);
+    dyn = NULL;
 }
 
 
@@ -81,6 +89,7 @@ static omni_wm_replay_buffer_t* replay_buffer_create(uint32_t capacity) {
         nimcp_free(buf->experiences);
         nimcp_free(buf->priorities);
         nimcp_free(buf);
+        buf = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "replay_buffer_create: required parameter is NULL (buf->experiences, buf->priorities)");
         return NULL;
     }
@@ -107,6 +116,7 @@ static void replay_buffer_destroy(omni_wm_replay_buffer_t* buf) {
     nimcp_free(buf->experiences);
     nimcp_free(buf->priorities);
     nimcp_free(buf);
+    buf = NULL;
 }
 
 
@@ -157,6 +167,7 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
     if (!wm->forward_dynamics) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: failed to create forward dynamics");
         nimcp_free(wm);
+        wm = NULL;
         return NULL;
     }
 
@@ -170,6 +181,7 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: failed to create backward dynamics");
         dynamics_destroy(wm->forward_dynamics);
         nimcp_free(wm);
+        wm = NULL;
         return NULL;
     }
 
@@ -185,8 +197,11 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
     /* Create encoder/decoder weights */
     uint32_t enc_size = wm->config.obs_dim * wm->config.latent_dim;
     wm->encoder_W = nimcp_calloc(enc_size, sizeof(float));
+    if (!wm->encoder_W) return -1;
     wm->encoder_b = nimcp_calloc(wm->config.latent_dim, sizeof(float));
+    if (!wm->encoder_b) return -1;
     wm->decoder_W = nimcp_calloc(enc_size, sizeof(float));
+    if (!wm->decoder_W) return -1;
     wm->decoder_b = nimcp_calloc(wm->config.obs_dim, sizeof(float));
 
     if (!wm->encoder_W || !wm->encoder_b || !wm->decoder_W || !wm->decoder_b) {
@@ -280,6 +295,7 @@ void omni_wm_destroy(omni_world_model_t* wm) {
     }
 
     nimcp_free(wm);
+    wm = NULL;
 }
 
 
@@ -306,6 +322,7 @@ omni_wm_state_t* omni_wm_state_create(uint32_t dim) {
     state->values = nimcp_calloc(dim, sizeof(float));
     if (!state->values) {
         nimcp_free(state);
+        state = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_create: state->values is NULL");
         return NULL;
     }
@@ -327,6 +344,7 @@ void omni_wm_state_destroy(omni_wm_state_t* state) {
 
     nimcp_free(state->values);
     nimcp_free(state);
+    state = NULL;
 }
 
 
@@ -351,8 +369,11 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
     }
 
     state->h = nimcp_calloc(h_dim, sizeof(float));
+    if (!state->h) return -1;
     state->z = nimcp_calloc(z_dim, sizeof(float));
+    if (!state->z) return -1;
     state->z_mean = nimcp_calloc(z_dim, sizeof(float));
+    if (!state->z_mean) return -1;
     state->z_std = nimcp_calloc(z_dim, sizeof(float));
 
     if (!state->h || !state->z || !state->z_mean || !state->z_std) {
@@ -390,6 +411,7 @@ void omni_wm_rssm_state_destroy(omni_wm_rssm_state_t* state) {
     nimcp_free(state->z_mean);
     nimcp_free(state->z_std);
     nimcp_free(state);
+    state = NULL;
 }
 
 
@@ -416,6 +438,7 @@ omni_wm_latent_t* omni_wm_latent_create(uint32_t dim) {
     latent->embedding = nimcp_calloc(dim, sizeof(float));
     if (!latent->embedding) {
         nimcp_free(latent);
+        latent = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_latent_create: latent->embedding is NULL");
         return NULL;
     }
@@ -433,6 +456,7 @@ void omni_wm_latent_destroy(omni_wm_latent_t* latent) {
 
     nimcp_free(latent->embedding);
     nimcp_free(latent);
+    latent = NULL;
 }
 
 
@@ -463,6 +487,7 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
     pred->components = nimcp_calloc(num_components, sizeof(omni_wm_mdn_component_t));
     if (!pred->components) {
         nimcp_free(pred);
+        pred = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_mdn_create: pred->components is NULL");
         return NULL;
     }
@@ -522,6 +547,7 @@ void omni_wm_mdn_destroy(omni_wm_mdn_prediction_t* pred) {
     }
     nimcp_free(pred->components);
     nimcp_free(pred);
+    pred = NULL;
 }
 
 
@@ -550,6 +576,7 @@ omni_wm_experience_t* omni_wm_experience_create(uint32_t state_dim,
     exp->state = omni_wm_rssm_state_create(state_dim / 2, state_dim / 4);
     exp->next_state = omni_wm_rssm_state_create(state_dim / 2, state_dim / 4);
     exp->action = nimcp_calloc(action_dim, sizeof(float));
+    if (!exp->action) return -1;
     exp->observation = nimcp_calloc(obs_dim, sizeof(float));
 
     if (!exp->state || !exp->next_state || !exp->action || !exp->observation) {
@@ -576,6 +603,7 @@ void omni_wm_experience_destroy(omni_wm_experience_t* exp) {
     nimcp_free(exp->action);
     nimcp_free(exp->observation);
     nimcp_free(exp);
+    exp = NULL;
 }
 
 
@@ -637,6 +665,7 @@ void omni_wm_cf_query_destroy(omni_wm_counterfactual_query_t* query) {
     nimcp_free(query->hypothetical_action);
     nimcp_free(query->context);
     nimcp_free(query);
+    query = NULL;
 }
 
 
@@ -684,9 +713,13 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
     }
 
     rollout->states = nimcp_calloc(max_length, sizeof(omni_wm_state_t*));
+    if (!rollout->states) return -1;
     rollout->actions = nimcp_calloc(max_length, sizeof(float*));
+    if (!rollout->actions) return -1;
     rollout->observations = nimcp_calloc(max_length, sizeof(float*));
+    if (!rollout->observations) return -1;
     rollout->rewards = nimcp_calloc(max_length, sizeof(float));
+    if (!rollout->rewards) return -1;
 
     if (!rollout->states || !rollout->actions ||
         !rollout->observations || !rollout->rewards) {
@@ -723,6 +756,7 @@ void omni_wm_rollout_destroy(omni_wm_rollout_t* rollout) {
     nimcp_free(rollout->observations);
     nimcp_free(rollout->rewards);
     nimcp_free(rollout);
+    rollout = NULL;
 }
 
 
@@ -771,4 +805,5 @@ static void checkpoint_store_destroy_internal(omni_wm_checkpoint_store_t* store)
         nimcp_free(store->checkpoints[i].data);
     }
     nimcp_free(store);
+    store = NULL;
 }

@@ -119,6 +119,7 @@ void video_generator_destroy(video_generator_t* gen)
     }
 
     nimcp_free(gen);
+    gen = NULL;
 }
 
 //=============================================================================
@@ -530,6 +531,7 @@ int video_generate_from_keyframes(video_generator_t* gen,
         }
     }
     nimcp_free(keyframe_images);
+    keyframe_images = NULL;
 
     result->temporal_coherence = 0.85f;  /* Keyframe-based typically coherent */
     result->evaluation.overall_quality = 0.75f;

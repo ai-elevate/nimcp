@@ -184,6 +184,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     engine->mutex = nimcp_mutex_create(&attr);
     if (!engine->mutex) {
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->mutex is NULL");
         return NULL;
     }
@@ -194,6 +195,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     if (!engine->fix_history) {
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->fix_history is NULL");
         return NULL;
     }
@@ -205,6 +207,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->learning_history is NULL");
         return NULL;
     }
@@ -217,6 +220,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->custom_templates is NULL");
         return NULL;
     }
@@ -228,6 +232,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        engine = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "code_gen_create: validation failed");
         return NULL;
     }
@@ -290,6 +295,7 @@ void code_gen_destroy(code_gen_engine_t* engine) {
     }
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 bool code_gen_is_ready(const code_gen_engine_t* engine) {

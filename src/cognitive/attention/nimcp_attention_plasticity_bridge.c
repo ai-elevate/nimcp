@@ -239,6 +239,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     if (bridge_base_init(&bridge->base, 0, "attention_plasticity") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_plasticity_create: failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -249,6 +250,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate synapses");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->synapse_count = 0;
@@ -261,6 +263,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
         nimcp_free(bridge->synapses);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -311,6 +314,7 @@ void attention_plasticity_destroy(attention_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int attention_plasticity_reset(attention_plasticity_bridge_t* bridge) {

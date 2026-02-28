@@ -298,7 +298,9 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
 
     if (!A || !b) {
         nimcp_free(A);
+        A = NULL;
         nimcp_free(b);
+        b = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "polynomial_fit: required parameter is NULL (A, b)");
         return false;
     }
@@ -361,7 +363,9 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
 
         if (max_val < EPSILON) {
             nimcp_free(A);
+            A = NULL;
             nimcp_free(b);
+            b = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "polynomial_fit: validation failed");
             return false;  /* Singular */
         }
@@ -404,7 +408,9 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
     }
 
     nimcp_free(A);
+    A = NULL;
     nimcp_free(b);
+    b = NULL;
     return true;
 }
 
@@ -564,14 +570,18 @@ int fractal_hurst_rs(
     /* Allocate working arrays */
     size_t* scales = (size_t*)nimcp_calloc(cfg.num_scales, sizeof(size_t));
     float* log_scales = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    if (!log_scales) return -1;
     float* log_rs = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
 
     if (!scales || !log_scales || !log_rs) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_hurst_rs: allocation failure");
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_rs);
+        log_rs = NULL;
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -653,16 +663,22 @@ int fractal_hurst_rs(
     /* Fit line in log-log space */
     if (valid_scales < 4) {
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_rs);
+        log_rs = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
     linear_fit_t fit;
     if (!linear_regression(log_scales, log_rs, valid_scales, &fit)) {
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_rs);
+        log_rs = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -680,8 +696,11 @@ int fractal_hurst_rs(
     result->fractal_dimension = 2.0f - fit.slope;  /* D = 2 - H */
 
     nimcp_free(scales);
+    scales = NULL;
     nimcp_free(log_scales);
+    log_scales = NULL;
     nimcp_free(log_rs);
+    log_rs = NULL;
 
     return FRACTAL_OK;
 }
@@ -770,20 +789,30 @@ int fractal_dfa(
 
     /* Allocate working arrays */
     size_t* scales = (size_t*)nimcp_calloc(cfg.num_scales, sizeof(size_t));
+    if (!scales) return -1;
     float* log_scales = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    if (!log_scales) return -1;
     float* log_fluct = (float*)nimcp_calloc(cfg.num_scales, sizeof(float));
+    if (!log_fluct) return -1;
     float* coeffs = (float*)nimcp_calloc((size_t)(cfg.dfa_poly_order + 1), sizeof(float));
+    if (!coeffs) return -1;
     float* x_seg = (float*)nimcp_calloc(max_scale, sizeof(float));
 
     if (!scales || !log_scales || !log_fluct || !coeffs || !x_seg) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_dfa: allocation failure for working arrays");
         nimcp_free(y);
+        y = NULL;
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_fluct);
+        log_fluct = NULL;
         nimcp_free(coeffs);
+        coeffs = NULL;
         nimcp_free(x_seg);
+        x_seg = NULL;
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -887,22 +916,34 @@ int fractal_dfa(
     /* Fit line in log-log space */
     if (valid_scales < 4) {
         nimcp_free(y);
+        y = NULL;
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_fluct);
+        log_fluct = NULL;
         nimcp_free(coeffs);
+        coeffs = NULL;
         nimcp_free(x_seg);
+        x_seg = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
     linear_fit_t fit;
     if (!linear_regression(log_scales, log_fluct, valid_scales, &fit)) {
         nimcp_free(y);
+        y = NULL;
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_fluct);
+        log_fluct = NULL;
         nimcp_free(coeffs);
+        coeffs = NULL;
         nimcp_free(x_seg);
+        x_seg = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -920,11 +961,17 @@ int fractal_dfa(
     result->fractal_dimension = 2.0f - fit.slope;  /* D = 2 - alpha */
 
     nimcp_free(y);
+    y = NULL;
     nimcp_free(scales);
+    scales = NULL;
     nimcp_free(log_scales);
+    log_scales = NULL;
     nimcp_free(log_fluct);
+    log_fluct = NULL;
     nimcp_free(coeffs);
+    coeffs = NULL;
     nimcp_free(x_seg);
+    x_seg = NULL;
 
     return FRACTAL_OK;
 }
@@ -1007,6 +1054,7 @@ int fractal_spectral_exponent_config(
     /* Allocate arrays */
     float* windowed = (float*)nimcp_calloc(fft_size, sizeof(float));
     fft_complex_t* spectrum = (fft_complex_t*)nimcp_calloc((fft_size / 2 + 1), sizeof(fft_complex_t));
+    if (!spectrum) return -1;
     float* psd = (float*)nimcp_calloc((fft_size / 2 + 1), sizeof(float));
 
     if (!windowed || !spectrum || !psd) {
@@ -1014,8 +1062,11 @@ int fractal_spectral_exponent_config(
             "fractal_spectral_exponent: allocation failure for FFT arrays");
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -1042,8 +1093,11 @@ int fractal_spectral_exponent_config(
     if (!fft_execute_real(plan, windowed, spectrum)) {
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -1052,8 +1106,11 @@ int fractal_spectral_exponent_config(
     if (!fft_power_spectrum(spectrum, psd, psd_size)) {
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -1064,8 +1121,11 @@ int fractal_spectral_exponent_config(
     if (fit_end <= fit_start + 4) {
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         return FRACTAL_ERROR_INSUFFICIENT;
     }
 
@@ -1078,10 +1138,15 @@ int fractal_spectral_exponent_config(
             "fractal_spectral_exponent: allocation failure for log arrays");
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         nimcp_free(log_f);
+        log_f = NULL;
         nimcp_free(log_p);
+        log_p = NULL;
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -1097,10 +1162,15 @@ int fractal_spectral_exponent_config(
     if (valid_count < 4) {
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         nimcp_free(log_f);
+        log_f = NULL;
         nimcp_free(log_p);
+        log_p = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -1109,10 +1179,15 @@ int fractal_spectral_exponent_config(
     if (!linear_regression(log_f, log_p, valid_count, &fit)) {
         fft_plan_destroy(plan);
         nimcp_free(windowed);
+        windowed = NULL;
         nimcp_free(spectrum);
+        spectrum = NULL;
         nimcp_free(psd);
+        psd = NULL;
         nimcp_free(log_f);
+        log_f = NULL;
         nimcp_free(log_p);
+        log_p = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -1131,10 +1206,15 @@ int fractal_spectral_exponent_config(
 
     fft_plan_destroy(plan);
     nimcp_free(windowed);
+    windowed = NULL;
     nimcp_free(spectrum);
+    spectrum = NULL;
     nimcp_free(psd);
+    psd = NULL;
     nimcp_free(log_f);
+    log_f = NULL;
     nimcp_free(log_p);
+    log_p = NULL;
 
     return FRACTAL_OK;
 }
@@ -1215,14 +1295,18 @@ int fractal_box_dimension(
     size_t num_scales = cfg.num_scales;
     size_t* scales = (size_t*)nimcp_calloc(num_scales, sizeof(size_t));
     float* log_eps = (float*)nimcp_calloc(num_scales, sizeof(float));
+    if (!log_eps) return -1;
     float* log_n = (float*)nimcp_calloc(num_scales, sizeof(float));
 
     if (!scales || !log_eps || !log_n) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_box_dimension: allocation failure for scale arrays");
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_eps);
+        log_eps = NULL;
         nimcp_free(log_n);
+        log_n = NULL;
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -1265,8 +1349,11 @@ int fractal_box_dimension(
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                     "fractal_box_dimension: allocation failure for occupied array");
                 nimcp_free(scales);
+                scales = NULL;
                 nimcp_free(log_eps);
+                log_eps = NULL;
                 nimcp_free(log_n);
+                log_n = NULL;
                 return FRACTAL_ERROR_ALLOC;
             }
 
@@ -1289,6 +1376,7 @@ int fractal_box_dimension(
             }
 
             nimcp_free(occupied);
+            occupied = NULL;
         } else {
             /* Large grid: use hash set for O(n) memory instead of O(grid_size) */
             /* Hash set node for chained collision resolution */
@@ -1302,8 +1390,11 @@ int fractal_box_dimension(
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                     "fractal_box_dimension: allocation failure for hash set");
                 nimcp_free(scales);
+                scales = NULL;
                 nimcp_free(log_eps);
+                log_eps = NULL;
                 nimcp_free(log_n);
+                log_n = NULL;
                 return FRACTAL_ERROR_ALLOC;
             }
 
@@ -1313,9 +1404,13 @@ int fractal_box_dimension(
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                     "fractal_box_dimension: allocation failure for node pool");
                 nimcp_free(buckets);
+                buckets = NULL;
                 nimcp_free(scales);
+                scales = NULL;
                 nimcp_free(log_eps);
+                log_eps = NULL;
                 nimcp_free(log_n);
+                log_n = NULL;
                 return FRACTAL_ERROR_ALLOC;
             }
             size_t pool_idx = 0;
@@ -1362,7 +1457,9 @@ int fractal_box_dimension(
             }
 
             nimcp_free(node_pool);
+            node_pool = NULL;
             nimcp_free(buckets);
+            buckets = NULL;
         }
 
         #undef HASH_SET_THRESHOLD
@@ -1378,16 +1475,22 @@ int fractal_box_dimension(
     /* Fit line: log(N) = D * log(1/epsilon) + c */
     if (valid_scales < 4) {
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_eps);
+        log_eps = NULL;
         nimcp_free(log_n);
+        log_n = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
     linear_fit_t fit;
     if (!linear_regression(log_eps, log_n, valid_scales, &fit)) {
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_eps);
+        log_eps = NULL;
         nimcp_free(log_n);
+        log_n = NULL;
         return FRACTAL_ERROR_COMPUTE;
     }
 
@@ -1404,8 +1507,11 @@ int fractal_box_dimension(
     result->spectral_exponent = 2.0f * result->hurst_exponent - 1.0f;
 
     nimcp_free(scales);
+    scales = NULL;
     nimcp_free(log_eps);
+    log_eps = NULL;
     nimcp_free(log_n);
+    log_n = NULL;
 
     return FRACTAL_OK;
 }
@@ -1569,6 +1675,7 @@ int fractal_lacunarity_curve(
     }
 
     nimcp_free(scale_vals);
+    scale_vals = NULL;
     return FRACTAL_OK;
 }
 
@@ -1628,11 +1735,17 @@ int fractal_multifractal_spectrum(
 
     mf->spectrum_size = q_steps;
     mf->q_values = (float*)nimcp_calloc(q_steps, sizeof(float));
+    if (!mf->q_values) return -1;
     mf->tau_q = (float*)nimcp_calloc(q_steps, sizeof(float));
+    if (!mf->tau_q) return -1;
     mf->h_q = (float*)nimcp_calloc(q_steps, sizeof(float));
+    if (!mf->h_q) return -1;
     mf->D_q = (float*)nimcp_calloc(q_steps, sizeof(float));
+    if (!mf->D_q) return -1;
     mf->f_alpha = (float*)nimcp_calloc(q_steps, sizeof(float));
+    if (!mf->f_alpha) return -1;
     mf->alpha = (float*)nimcp_calloc(q_steps, sizeof(float));
+    if (!mf->alpha) return -1;
 
     if (!mf->q_values || !mf->tau_q || !mf->h_q || !mf->D_q ||
         !mf->f_alpha || !mf->alpha) {
@@ -1682,20 +1795,30 @@ int fractal_multifractal_spectrum(
     size_t num_scales = cfg.num_scales;
 
     size_t* scales = (size_t*)nimcp_calloc(num_scales, sizeof(size_t));
+    if (!scales) return -1;
     float* log_scales = (float*)nimcp_calloc(num_scales, sizeof(float));
+    if (!log_scales) return -1;
     float* log_fq = (float*)nimcp_calloc(num_scales, sizeof(float));
+    if (!log_fq) return -1;
     float* coeffs = (float*)nimcp_malloc(2 * sizeof(float));  /* Linear fit */
+    if (!coeffs) return -1;
     float* x_seg = (float*)nimcp_calloc(max_scale, sizeof(float));
 
     if (!scales || !log_scales || !log_fq || !coeffs || !x_seg) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "fractal_multifractal_spectrum: allocation failure for working arrays");
         nimcp_free(y);
+        y = NULL;
         nimcp_free(scales);
+        scales = NULL;
         nimcp_free(log_scales);
+        log_scales = NULL;
         nimcp_free(log_fq);
+        log_fq = NULL;
         nimcp_free(coeffs);
+        coeffs = NULL;
         nimcp_free(x_seg);
+        x_seg = NULL;
         multifractal_spectrum_destroy(mf);
         return FRACTAL_ERROR_ALLOC;
     }
@@ -1788,7 +1911,7 @@ int fractal_multifractal_spectrum(
             }
 
             if (seg_count > 0) {
-                double fq;
+                double fq = 0.0;
                 if (fabs(q) < 0.01f) {
                     fq = exp(fq_sum / (double)seg_count);
                 } else {
@@ -1912,11 +2035,17 @@ int fractal_multifractal_spectrum(
     mf->is_multifractal = (mf->width > MULTIFRACTAL_WIDTH_THRESHOLD);
 
     nimcp_free(y);
+    y = NULL;
     nimcp_free(scales);
+    scales = NULL;
     nimcp_free(log_scales);
+    log_scales = NULL;
     nimcp_free(log_fq);
+    log_fq = NULL;
     nimcp_free(coeffs);
+    coeffs = NULL;
     nimcp_free(x_seg);
+    x_seg = NULL;
 
     *spectrum = mf;
     return FRACTAL_OK;
@@ -1938,6 +2067,7 @@ void multifractal_spectrum_destroy(multifractal_spectrum_t* spectrum) {
     nimcp_free(spectrum->f_alpha);
     nimcp_free(spectrum->alpha);
     nimcp_free(spectrum);
+    spectrum = NULL;
 }
 
 //=============================================================================
@@ -2201,7 +2331,7 @@ size_t fractal_estimate_sample_requirement(
     }
 
     /* Base requirements */
-    size_t base;
+    size_t base = 0;
     switch (method) {
         case 0:  /* DFA */
             base = 256;

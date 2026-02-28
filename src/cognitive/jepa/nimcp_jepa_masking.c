@@ -230,6 +230,7 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
     /* Initialize bridge base */
     if (bridge_base_init(&gen->base, BIO_MODULE_JEPA_MASKING, "jepa_masking") != 0) {
         nimcp_free(gen);
+        gen = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_mask_generator_create: validation failed");
         return NULL;
     }
@@ -257,6 +258,7 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
     if (!gen->temp_buffer) {
         bridge_base_cleanup(&gen->base);
         nimcp_free(gen);
+        gen = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_generator_create: gen->temp_buffer is NULL");
         return NULL;
     }
@@ -278,6 +280,7 @@ void jepa_mask_generator_destroy(jepa_mask_generator_t* generator) {
     nimcp_free(generator->temp_buffer);
     bridge_base_cleanup(&generator->base);
     nimcp_free(generator);
+    generator = NULL;
 }
 
 int jepa_mask_generator_reset(jepa_mask_generator_t* generator, uint32_t new_seed) {
@@ -338,6 +341,7 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
     mask->data = nimcp_calloc(mask->total_size, sizeof(float));
     if (!mask->data) {
         nimcp_free(mask);
+        mask = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_create: mask->data is NULL");
         return NULL;
     }
@@ -359,6 +363,7 @@ void jepa_mask_destroy(jepa_mask_t* mask) {
 
     nimcp_free(mask->data);
     nimcp_free(mask);
+    mask = NULL;
 }
 
 jepa_mask_t* jepa_mask_clone(const jepa_mask_t* src) {
@@ -664,7 +669,7 @@ int jepa_mask_generate_2d(jepa_mask_generator_t* generator,
         generator->random_state = generator->config.seed;
     }
 
-    int result;
+    int result = 0;
 
     switch (generator->config.strategy) {
         case JEPA_MASK_RANDOM:
@@ -723,7 +728,7 @@ int jepa_mask_generate_3d(jepa_mask_generator_t* generator,
         generator->random_state = generator->config.seed;
     }
 
-    int result;
+    int result = 0;
 
     if (generator->config.strategy == JEPA_MASK_TUBE) {
         result = generate_tube_mask(generator, mask);

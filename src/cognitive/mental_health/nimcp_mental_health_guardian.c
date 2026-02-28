@@ -853,6 +853,7 @@ mental_health_guardian_t* mental_health_guardian_create(
     if (!guardian->lock) {
         GUARDIAN_LOG("ERROR: Failed to create mutex");
         nimcp_free(guardian);
+        guardian = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_guardian_create: guardian->lock is NULL");
         return NULL;
     }
@@ -942,6 +943,7 @@ void mental_health_guardian_destroy(mental_health_guardian_t* guardian) {
                 guardian->checks_performed, guardian->interventions_applied);
 
     nimcp_free(guardian);
+    guardian = NULL;
 }
 
 //=============================================================================

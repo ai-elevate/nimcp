@@ -256,6 +256,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sleep_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -266,6 +267,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
             NIMCP_LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_bridge_create: validation failed");
             return NULL;
         }
@@ -326,6 +328,7 @@ void sleep_imagination_bridge_destroy(sleep_imagination_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOG_INFO("Destroyed sleep-imagination bridge");
 }
 

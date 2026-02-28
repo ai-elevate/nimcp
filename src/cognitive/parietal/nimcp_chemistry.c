@@ -245,6 +245,7 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
     if (!chem->lock) {
         set_chemistry_error("Failed to create mutex");
         nimcp_free(chem);
+        chem = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "chemistry_create_custom: chem->lock is NULL");
         return NULL;
     }
@@ -263,6 +264,7 @@ void chemistry_destroy(chemistry_t* chem) {
         nimcp_mutex_free(chem->lock);
     }
     nimcp_free(chem);
+    chem = NULL;
 }
 
 /* ============================================================================

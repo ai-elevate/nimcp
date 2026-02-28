@@ -273,6 +273,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
         nimcp_calloc(bridge->sickness_landmark_capacity, sizeof(sickness_landmark_t));
     if (!bridge->sickness_landmarks) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_bridge_create: bridge->sickness_landmarks is NULL");
         return NULL;
     }
@@ -307,6 +308,7 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
 
     /* Free bridge (don't destroy linked systems - we don't own them) */
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_MODULE_INFO("autobio_immune_bridge", "Bridge destroyed");
 }
 
@@ -879,7 +881,7 @@ int autobio_immune_bridge_update(
         /* Create landmark if systemic+ and no active landmark */
         if (level >= INFLAMMATION_SYSTEMIC &&
             bridge->active_sickness_landmark_id == 0) {
-            uint64_t landmark_id;
+            uint64_t landmark_id = 0;
             autobio_immune_create_sickness_landmark_unlocked(bridge, level, &landmark_id);
         }
         /* Close landmark if inflammation resolved */

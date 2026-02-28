@@ -196,6 +196,7 @@ void fep_evidence_destroy(fep_evidence_system_t* sys) {
     }
 
     nimcp_free(sys);
+    sys = NULL;
     NIMCP_LOGGING_INFO("Evidence system destroyed");
 }
 
@@ -499,6 +500,7 @@ int fep_compare_models(
     }
 
     nimcp_free(log_evidences);
+    log_evidences = NULL;
 
     /* Update stats with lock */
     nimcp_platform_mutex_lock(sys->mutex);

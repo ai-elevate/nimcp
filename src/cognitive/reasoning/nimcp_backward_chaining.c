@@ -185,6 +185,7 @@ bool brain_backward_chain(
         nimcp_free(clauses[i]);
     }
     nimcp_free(clauses);
+    clauses = NULL;
 
     // Populate result
     result->proven = success;

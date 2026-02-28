@@ -308,6 +308,7 @@ void global_workspace_disconnect_immune(gw_immune_context_t* context) {
 
     // Free context
     nimcp_free(context);
+    context = NULL;
 
     NIMCP_LOGGING_INFO("Global workspace disconnected from immune system");
 }
@@ -470,7 +471,7 @@ int gw_immune_detect_anomalies(
 
     // Read broadcast content
     float content[GLOBAL_WORKSPACE_MAX_DIM];
-    uint32_t content_dim;
+    uint32_t content_dim = 0;
     global_workspace_read_broadcast(context->workspace, content, GLOBAL_WORKSPACE_MAX_DIM,
                                       &content_dim, NULL);
 
@@ -557,11 +558,11 @@ int gw_immune_trigger_response(
 
 
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
-    size_t epitope_len;
+    size_t epitope_len = 0;
     create_anomaly_epitope(anomaly, epitope, &epitope_len);
 
     // Map severity to immune severity (1-10)
-    uint32_t immune_severity;
+    uint32_t immune_severity = 0;
     switch (anomaly->severity) {
         case GW_ANOMALY_SEVERITY_MILD:
             immune_severity = 3;
@@ -581,7 +582,7 @@ int gw_immune_trigger_response(
     }
 
     // Present antigen to immune system
-    uint32_t antigen_id;
+    uint32_t antigen_id = 0;
     int result = brain_immune_present_antigen(
         context->immune,
         ANTIGEN_SOURCE_ANOMALY,
@@ -604,7 +605,7 @@ int gw_immune_trigger_response(
     // Release cytokines based on severity
     if (anomaly->severity >= GW_ANOMALY_SEVERITY_MODERATE) {
         // IL-1: Pro-inflammatory alert
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             context->immune,
             CYTOKINE_IL1B,
@@ -617,7 +618,7 @@ int gw_immune_trigger_response(
 
     if (anomaly->severity >= GW_ANOMALY_SEVERITY_SEVERE) {
         // IL-6: Acute phase response
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             context->immune,
             CYTOKINE_IL6,
@@ -630,7 +631,7 @@ int gw_immune_trigger_response(
 
     if (anomaly->severity >= GW_ANOMALY_SEVERITY_CRITICAL) {
         // TNF-α: Severe inflammation
-        uint32_t cytokine_id;
+        uint32_t cytokine_id = 0;
         brain_immune_release_cytokine(
             context->immune,
             CYTOKINE_TNFA,
@@ -664,7 +665,7 @@ uint32_t gw_immune_check_broadcast(gw_immune_context_t* context) {
 
     // Detect anomalies
     gw_broadcast_anomaly_t anomalies[5];
-    uint32_t count;
+    uint32_t count = 0;
 
     if (gw_immune_detect_anomalies(context, anomalies, 5, &count) != 0) {
         return 0;

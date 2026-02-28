@@ -281,6 +281,7 @@ void financial_uncertainty_bridge_destroy(financial_uncertainty_bridge_t* bridge
     fin_uncertainty_heartbeat("destroy", 0.0f);
 
     nimcp_free(bridge);
+    bridge = NULL;
     fin_uncertainty_heartbeat("destroy", 1.0f);
 }
 
@@ -694,7 +695,9 @@ int financial_uncertainty_bridge_decompose_ensemble(
     float epistemic_var = nimcp_stats_variance(member_means, M);
 
     nimcp_free(member_means);
+    member_means = NULL;
     nimcp_free(member_vars);
+    member_vars = NULL;
 
     /* Health modulation */
     float health_mod = 1.0f
@@ -1159,6 +1162,7 @@ void financial_uncertainty_prediction_destroy(fin_prediction_t* prediction) {
     if (prediction->values) nimcp_free(prediction->values);
     if (prediction->confidences) nimcp_free(prediction->confidences);
     nimcp_free(prediction);
+    prediction = NULL;
 }
 
 fin_uncertainty_analysis_t* financial_uncertainty_analysis_create(
@@ -1179,6 +1183,7 @@ fin_uncertainty_analysis_t* financial_uncertainty_analysis_create(
                                                 sizeof(fin_info_recommendation_t));
         if (!analysis->recommendations) {
             nimcp_free(analysis);
+            analysis = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_uncertainty_analysis_create: analysis->recommendations is NULL");
             return NULL;
         }
@@ -1193,6 +1198,7 @@ void financial_uncertainty_analysis_destroy(fin_uncertainty_analysis_t* analysis
 
     if (analysis->recommendations) nimcp_free(analysis->recommendations);
     nimcp_free(analysis);
+    analysis = NULL;
 }
 
 void financial_uncertainty_analysis_free_recommendations(

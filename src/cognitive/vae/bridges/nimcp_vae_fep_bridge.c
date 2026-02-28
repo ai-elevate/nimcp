@@ -139,9 +139,11 @@ static int init_mapping_state(vae_fep_bridge_t* bridge)
 
     if (!mapping->mapped_mean) {
         mapping->mapped_mean = nimcp_calloc(map_dim, sizeof(float));
+        if (!mapping->mapped_mean) return -1;
     }
     if (!mapping->mapped_precision) {
         mapping->mapped_precision = nimcp_calloc(map_dim, sizeof(float));
+        if (!mapping->mapped_precision) return -1;
         /* Initialize precision to 1.0 */
         for (uint32_t i = 0; i < map_dim; i++) {
             mapping->mapped_precision[i] = 1.0f;
@@ -276,6 +278,7 @@ vae_fep_bridge_t* vae_fep_bridge_create(const vae_fep_bridge_config_t* config)
     if (!bridge->mutex) {
         NIMCP_LOG_ERROR("VAE-FEP Bridge: Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_fep_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
@@ -318,6 +321,7 @@ void vae_fep_bridge_destroy(vae_fep_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_fep_bridge_reset(vae_fep_bridge_t* bridge)
@@ -701,7 +705,7 @@ int vae_fep_bridge_sync(vae_fep_bridge_t* bridge)
 
     /* Sync free energy */
     if (bridge->config.share_free_energy) {
-        float fe;
+        float fe = 0.0f;
         vae_fep_compute_free_energy(bridge, &fe);
     }
 
@@ -912,6 +916,7 @@ int vae_fep_sync_precision(vae_fep_bridge_t* bridge)
     }
 
     nimcp_free(precision);
+    precision = NULL;
     nimcp_mutex_unlock(bridge->mutex);
 
     return 0;

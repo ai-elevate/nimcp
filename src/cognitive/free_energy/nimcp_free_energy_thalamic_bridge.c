@@ -101,6 +101,7 @@ free_energy_thalamic_bridge_t* free_energy_thalamic_bridge_create(void* free_ene
     if (bridge_base_init(&bridge->base, 0, "free_energy_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -122,6 +123,7 @@ void free_energy_thalamic_bridge_destroy(free_energy_thalamic_bridge_t* bridge) 
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int free_energy_thalamic_bridge_reset(free_energy_thalamic_bridge_t* bridge) {

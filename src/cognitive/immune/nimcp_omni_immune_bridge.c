@@ -224,6 +224,7 @@ omni_immune_bridge_t* omni_immune_bridge_create(const omni_immune_config_t* conf
     if (bridge_base_init(&bridge->base, 0, "omni_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -247,6 +248,7 @@ void omni_immune_bridge_destroy(omni_immune_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

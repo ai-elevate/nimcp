@@ -301,6 +301,7 @@ engram_system_t* engram_system_create(void) {
         if (!system->engrams) {
             if (system->mem_manager) unified_mem_destroy(system->mem_manager);
             nimcp_free(system);
+            system = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engram_system_create: validation failed");
             return NULL;
         }
@@ -461,6 +462,7 @@ void engram_system_destroy(engram_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void engram_system_reset(engram_system_t* system) {

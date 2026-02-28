@@ -96,11 +96,13 @@ knowledge_fep_bridge_t* knowledge_fep_bridge_create(const knowledge_fep_config_t
     if (bridge_base_init(&bridge->base, 0, "knowledge_fep") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_fep_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_fep_bridge_create: mutex creation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->state.current_semantic_prior = 0.5f;
@@ -119,6 +121,7 @@ void knowledge_fep_bridge_destroy(knowledge_fep_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int knowledge_fep_bridge_connect_fep(knowledge_fep_bridge_t* bridge, fep_system_t* fep) {

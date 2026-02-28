@@ -140,6 +140,7 @@ attention_fep_bridge_t* attention_fep_bridge_create(const attention_fep_config_t
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_fep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -165,6 +166,7 @@ void attention_fep_bridge_destroy(attention_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed attention FEP bridge");
 }
 

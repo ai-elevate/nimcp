@@ -226,6 +226,7 @@ void executive_sleep_bridge_destroy(executive_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int executive_sleep_update(executive_sleep_bridge_t bridge) {

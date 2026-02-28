@@ -157,6 +157,7 @@ void creative_neural_bridge_destroy(creative_neural_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int creative_neural_bridge_load_backend(creative_neural_bridge_t* bridge,

@@ -404,6 +404,7 @@ mirror_attention_bridge_t* mirror_attention_create(
     if (bridge_base_init(&bridge->base, 0, "mirror_attention") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Attention: Failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_attention_create: validation failed");
         return NULL;
     }
@@ -435,6 +436,7 @@ void mirror_attention_destroy(mirror_attention_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Attention: Destroyed bridge");
 }
 
@@ -585,7 +587,7 @@ float mirror_attention_compute_gaze_target(
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_com", 0.0f);
 
 
-    float t;
+    float t = 0.0f;
     if (fabsf(gaze_direction->y) < 1e-6f) {
         /* Horizontal gaze - use default distance of 3.0m */
         t = 3.0f;

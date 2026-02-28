@@ -314,6 +314,7 @@ vae_system_t* vae_create(const vae_config_t* config)
     if (!vae->mutex) {
         NIMCP_LOG_ERROR("VAE: Failed to create mutex");
         nimcp_free(vae);
+        vae = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_create: vae->mutex is NULL");
         return NULL;
     }
@@ -326,6 +327,7 @@ vae_system_t* vae_create(const vae_config_t* config)
                              "Failed to create encoder");
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
+        vae = NULL;
         return NULL;
     }
 
@@ -338,6 +340,7 @@ vae_system_t* vae_create(const vae_config_t* config)
         vae_encoder_destroy(vae->encoder);
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
+        vae = NULL;
         return NULL;
     }
 
@@ -374,6 +377,7 @@ vae_system_t* vae_create(const vae_config_t* config)
         vae_encoder_destroy(vae->encoder);
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
+        vae = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_create: vae->loss_ctx is NULL");
         return NULL;
     }
@@ -386,6 +390,7 @@ vae_system_t* vae_create(const vae_config_t* config)
         vae_encoder_destroy(vae->encoder);
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
+        vae = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "vae_create: validation failed");
         return NULL;
     }
@@ -442,6 +447,7 @@ void vae_destroy(vae_system_t* vae)
     if (vae->mutex) nimcp_mutex_destroy(vae->mutex);
 
     nimcp_free(vae);
+    vae = NULL;
 }
 
 int vae_reset(vae_system_t* vae)
@@ -1370,7 +1376,7 @@ int vae_is_anomaly(vae_system_t* vae,
         return -1;
     }
 
-    float score;
+    float score = 0.0f;
     int result = vae_compute_anomaly_score(vae, input, &score);
     if (result != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_is_anomaly: validation failed");

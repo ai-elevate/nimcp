@@ -108,6 +108,7 @@ fractal_cognitive_thalamic_bridge_t* fractal_cognitive_thalamic_bridge_create(vo
     if (bridge_base_init(&bridge->base, 0, "fractal_cognitive_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fractal_cognitive_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -131,6 +132,7 @@ void fractal_cognitive_thalamic_bridge_destroy(fractal_cognitive_thalamic_bridge
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int fractal_cognitive_thalamic_bridge_reset(fractal_cognitive_thalamic_bridge_t* bridge) {

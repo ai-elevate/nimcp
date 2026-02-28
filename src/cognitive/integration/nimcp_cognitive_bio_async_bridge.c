@@ -351,6 +351,7 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, 0, "cognitive_bio_async") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_bio_bridge_create: validation failed");
         return NULL;
     }
@@ -411,6 +412,7 @@ void cognitive_bio_bridge_destroy(cognitive_bio_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /*=============================================================================

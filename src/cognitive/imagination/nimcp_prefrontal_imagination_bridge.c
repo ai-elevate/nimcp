@@ -191,6 +191,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
     if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -201,6 +202,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
             LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_bridge_create: validation failed");
             return NULL;
         }
@@ -271,6 +273,7 @@ void prefrontal_imagination_bridge_destroy(prefrontal_imagination_bridge_t* brid
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     LOG_INFO("Destroyed prefrontal-imagination bridge");
 }
 

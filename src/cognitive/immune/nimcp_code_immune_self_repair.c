@@ -368,6 +368,7 @@ void code_immune_self_repair_bridge_destroy(
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================
@@ -697,6 +698,7 @@ uint32_t code_immune_process_auto_repairs(
     }
 
     nimcp_free(snapshot_ids);
+    snapshot_ids = NULL;
 
     return repairs_triggered;
 }

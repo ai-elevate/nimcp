@@ -224,6 +224,7 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     ctx->self_model = (omni_self_model_t*)nimcp_malloc(sizeof(omni_self_model_t));
     if (!ctx->self_model) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_metacog_create: ctx->self_model is NULL");
         return NULL;
     }
@@ -232,6 +233,7 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     if (omni_metacog_init_self_model(ctx) != NIMCP_SUCCESS) {
         nimcp_free(ctx->self_model);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "omni_metacog_create: validation failed");
         return NULL;
     }
@@ -241,6 +243,7 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     if (!ctx->mutex) {
         nimcp_free(ctx->self_model);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_metacog_create: ctx->mutex is NULL");
         return NULL;
     }
@@ -272,6 +275,7 @@ void omni_metacog_destroy(omni_metacog_ctx_t* ctx) {
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 nimcp_error_t omni_metacog_reset(omni_metacog_ctx_t* ctx) {
@@ -1465,7 +1469,7 @@ nimcp_error_t omni_metacog_step(omni_metacog_ctx_t* ctx) {
     nimcp_mutex_lock(ctx->mutex);
 
     /* 2. Detect anomalies */
-    float anomaly_score;
+    float anomaly_score = 0.0f;
     char anomaly_desc[NIMCP_ERROR_BUFFER_SIZE];
     nimcp_mutex_unlock(ctx->mutex);
     omni_metacog_detect_anomaly(ctx, &snapshot, &anomaly_score, anomaly_desc);

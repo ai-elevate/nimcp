@@ -280,6 +280,7 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
         sizeof(action_record_t));
     if (!detector->history.records) {
         nimcp_free(detector);
+        detector = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_detector_create: detector->history is NULL");
         return NULL;
     }
@@ -294,6 +295,7 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
     if (!detector->patterns.patterns) {
         nimcp_free(detector->history.records);
         nimcp_free(detector);
+        detector = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_detector_create: detector->patterns is NULL");
         return NULL;
     }
@@ -309,6 +311,7 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
         nimcp_free(detector->patterns.patterns);
         nimcp_free(detector->history.records);
         nimcp_free(detector);
+        detector = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "combinatorial_detector_create: validation failed");
         return NULL;
     }
@@ -380,6 +383,7 @@ NIMCP_EXPORT void combinatorial_detector_destroy(
 
     // Free detector
     nimcp_free(detector);
+    detector = NULL;
 }
 
 //=============================================================================

@@ -204,6 +204,7 @@ social_snn_bridge_t* social_snn_create(const social_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > SOCIAL_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_snn_create: operation failed");
         return NULL;
     }
@@ -211,6 +212,7 @@ social_snn_bridge_t* social_snn_create(const social_snn_config_t* config) {
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "social_snn") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "social_snn_create: validation failed");
         return NULL;
     }
@@ -229,15 +231,20 @@ social_snn_bridge_t* social_snn_create(const social_snn_config_t* config) {
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    if (!bridge->encoding_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->relationship_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->relationship_buffer) return -1;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) return -1;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->relationship_buffer || !bridge->prev_state) {
@@ -292,6 +299,7 @@ void social_snn_destroy(social_snn_bridge_t* bridge) {
     nimcp_free(bridge->relationship_buffer);
     nimcp_free(bridge->prev_state);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int social_snn_reset(social_snn_bridge_t* bridge) {

@@ -149,8 +149,8 @@ bool global_workspace_compete(
     cognitive_module_t winner = MODULE_NONE;
 
     uint64_t current_time = get_time_ms();
-    uint32_t winner_idx;
-    float winner_strength;
+    uint32_t winner_idx = 0;
+    float winner_strength = 0.0f;
     bool found_winner = false;
 
     switch (ws->config.strategy) {
@@ -390,8 +390,8 @@ bool global_workspace_resolve(
     uint64_t current_time = get_time_ms();
 
     // Run competition resolution based on strategy
-    uint32_t winner_idx;
-    float winner_strength;
+    uint32_t winner_idx = 0;
+    float winner_strength = 0.0f;
     bool found_winner = false;
 
     uint64_t competition_start = get_time_ms();

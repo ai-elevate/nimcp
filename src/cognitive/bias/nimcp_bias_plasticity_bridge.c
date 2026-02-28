@@ -199,6 +199,7 @@ bias_plasticity_bridge_t* bias_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(bias_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -208,6 +209,7 @@ bias_plasticity_bridge_t* bias_plasticity_create(
     if (!bridge->type_learning) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_plasticity_create: bridge->type_learning is NULL");
         return NULL;
     }
@@ -230,6 +232,7 @@ void bias_plasticity_destroy(bias_plasticity_bridge_t* bridge) {
     nimcp_free(bridge->synapses);
     nimcp_free(bridge->type_learning);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int bias_plasticity_reset(bias_plasticity_bridge_t* bridge) {
@@ -471,7 +474,7 @@ int bias_plasticity_detection_feedback(
             bridge->synapses[i].type == BIAS_SYNAPSE_DETECTION) {
 
             float old_weight = bridge->synapses[i].weight;
-            float dw;
+            float dw = 0.0f;
 
             if (was_correct) {
                 dw = bridge->config.detection_correct_ltp * bridge->global_learning_rate;
@@ -539,7 +542,7 @@ int bias_plasticity_conflict_resolved(
 
         if (bridge->synapses[i].type == BIAS_SYNAPSE_CONFLICT_MONITOR) {
             float old_weight = bridge->synapses[i].weight;
-            float dw;
+            float dw = 0.0f;
 
             if (resolution_correct) {
                 dw = bridge->config.conflict_resolution_ltp * conflict_level * bridge->global_learning_rate;

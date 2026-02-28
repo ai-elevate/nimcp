@@ -430,6 +430,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     if (config) {
         if (!pr_meta_config_validate(config)) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_bridge_create: pr_meta_config_validate is NULL");
             return NULL;
         }
@@ -441,6 +442,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_meta") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_meta_bridge_create: validation failed");
         return NULL;
     }
@@ -451,6 +453,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     if (!bridge->task_memory) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_meta_bridge_create: bridge->task_memory is NULL");
         return NULL;
     }
@@ -466,6 +469,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_memory);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_meta_bridge_create: validation failed");
         return NULL;
     }
@@ -479,6 +483,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_memory);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_meta_bridge_create: bridge->recall_cache is NULL");
         return NULL;
     }
@@ -537,6 +542,7 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_meta_bridge_reset(pr_meta_bridge_t bridge) {
@@ -911,6 +917,7 @@ int pr_meta_memory_init(
     }
 
     nimcp_free(weighted_sum);
+    weighted_sum = NULL;
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return tasks_used;
@@ -1136,6 +1143,7 @@ int pr_meta_recall_similar_tasks(
     memcpy(bridge->recall_cache, all_recalls, to_cache * sizeof(pr_meta_recall_t));
 
     nimcp_free(all_recalls);
+    all_recalls = NULL;
 
     /* Update statistics */
     bridge->stats.tasks_recalled += to_return;
@@ -1404,7 +1412,7 @@ uint32_t pr_meta_transfer_entanglement(
 
     /* Get source task's outgoing edges */
     entangle_edge_t edges[256];
-    size_t edge_count;
+    size_t edge_count = 0;
     if (!entangle_get_outgoing(graph, source_task->task_id, edges, 256, &edge_count)) {
         return 0;
     }
@@ -1563,7 +1571,7 @@ uint32_t pr_meta_merge_entanglement(
         float task_weight = weights ? weights[t] : equal_weight;
 
         entangle_edge_t edges[256];
-        size_t count;
+        size_t count = 0;
         if (!entangle_get_outgoing(graph, tasks[t].task_id, edges, 256, &count)) {
             continue;
         }
@@ -2044,6 +2052,7 @@ uint32_t pr_meta_evict_tasks(
     }
 
     nimcp_free(candidates);
+    candidates = NULL;
 
     /* Invalidate recall cache */
     bridge->recall_cache_task_id = 0;

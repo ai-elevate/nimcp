@@ -528,6 +528,7 @@ void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int health_self_repair_bridge_connect_health_agent(

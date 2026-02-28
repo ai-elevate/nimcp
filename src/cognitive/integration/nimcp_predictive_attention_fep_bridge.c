@@ -365,6 +365,7 @@ pa_fep_bridge_t* pa_fep_bridge_create(const pa_fep_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "predictive_attention_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pa_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -414,6 +415,7 @@ void pa_fep_bridge_destroy(pa_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pa_fep_bridge_reset(pa_fep_bridge_t* bridge) {

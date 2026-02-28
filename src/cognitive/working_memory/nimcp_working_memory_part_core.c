@@ -90,6 +90,7 @@ bool working_memory_add(
         if (wm->current_size >= wm->capacity) {
             nimcp_platform_mutex_unlock(&wm->mutex);
             nimcp_free(item_copy);
+            item_copy = NULL;
             set_error("Working memory full and eviction failed");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "working_memory_add: capacity exceeded");
             return false;

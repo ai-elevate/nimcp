@@ -236,6 +236,7 @@ void emotional_sleep_bridge_destroy(emotional_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int emotional_sleep_update(emotional_sleep_bridge_t bridge) {

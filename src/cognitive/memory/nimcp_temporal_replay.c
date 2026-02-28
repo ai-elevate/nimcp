@@ -235,6 +235,7 @@ temporal_replay_t* temporal_replay_create(const replay_config_t* config) {
     if (!replay->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(replay);
+        replay = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_replay_create: replay->mutex is NULL");
         return NULL;
     }
@@ -394,6 +395,7 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
     }
 
     nimcp_free(replay);
+    replay = NULL;
 }
 
 int temporal_replay_clear(temporal_replay_t* replay) {
@@ -646,7 +648,7 @@ int temporal_replay_sample(temporal_replay_t* replay,
                              (float)(i + 1) / (float)actual_batch);
         }
 
-        uint32_t idx;
+        uint32_t idx = 0;
 
         if (mode == REPLAY_MODE_PRIORITY && replay->config.use_priority_tree && total_p > 0.0f) {
             float segment = total_p / actual_batch;
@@ -1115,8 +1117,11 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
     }
 
     batch->states = nimcp_calloc(batch_size * state_dim, sizeof(float));
+    if (!batch->states) return -1;
     batch->rewards = nimcp_calloc(batch_size, sizeof(float));
+    if (!batch->rewards) return -1;
     batch->is_weights = nimcp_calloc(batch_size, sizeof(float));
+    if (!batch->is_weights) return -1;
     batch->indices = nimcp_calloc(batch_size, sizeof(uint32_t));
 
     if (!batch->states || !batch->rewards || !batch->is_weights || !batch->indices) {
@@ -1127,6 +1132,7 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
 
     if (action_dim > 0) {
         batch->actions = nimcp_calloc(batch_size * action_dim, sizeof(float));
+        if (!batch->actions) return -1;
         batch->next_states = nimcp_calloc(batch_size * state_dim, sizeof(float));
     }
 
@@ -1149,6 +1155,7 @@ void replay_batch_destroy(replay_batch_t* batch) {
     if (batch->is_weights) nimcp_free(batch->is_weights);
     if (batch->indices) nimcp_free(batch->indices);
     nimcp_free(batch);
+    batch = NULL;
 }
 
 replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
@@ -1171,6 +1178,7 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
 
     result->states = nimcp_calloc(max_length, sizeof(float*));
     result->timestamps = nimcp_calloc(max_length, sizeof(uint64_t));
+    if (!result->timestamps) return -1;
     result->rewards = nimcp_calloc(max_length, sizeof(float));
 
     if (!result->states || !result->timestamps || !result->rewards) {
@@ -1224,6 +1232,7 @@ void replay_sweep_result_destroy(replay_sweep_result_t* result) {
     if (result->timestamps) nimcp_free(result->timestamps);
     if (result->rewards) nimcp_free(result->rewards);
     nimcp_free(result);
+    result = NULL;
 }
 
 /* ============================================================================

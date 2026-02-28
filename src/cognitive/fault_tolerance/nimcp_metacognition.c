@@ -155,6 +155,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
     LOG_DEBUG("Creating module");
     // GUARD: Allocate main structure
     metacognition_t* meta = (metacognition_t*)nimcp_malloc(sizeof(metacognition_t));
+    if (!meta) return -1;
     NIMCP_API_CHECK_ALLOC(meta, "Failed to allocate metacognition structure");
 
     // Initialize to zero
@@ -174,6 +175,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
     if (!meta->baseline_window) {
         LOG_ERROR("Failed to create baseline window");
         nimcp_free(meta);
+        meta = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metacognition_create: meta->baseline_window is NULL");
         return NULL;
     }
@@ -185,6 +187,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
         LOG_ERROR("Failed to create anomaly detector");
         baseline_window_destroy(meta->baseline_window);
         nimcp_free(meta);
+        meta = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metacognition_create: meta->detector is NULL");
         return NULL;
     }
@@ -252,6 +255,7 @@ void metacognition_destroy(metacognition_t* meta) {
     }
 
     nimcp_free(meta);
+    meta = NULL;
 }
 
 //=============================================================================
@@ -444,7 +448,7 @@ float metacognition_calibrate_confidence(
     initial_confidence = fmaxf(0.0F, fminf(1.0F, initial_confidence));
 
     float learning_rate = meta->config.confidence_learning_rate;
-    float new_confidence;
+    float new_confidence = 0.0f;
 
     if (success) {
         // WHAT: Increase confidence on success
@@ -577,6 +581,7 @@ void diagnosis_destroy(diagnosis_t* diagnosis) {
     LOG_DEBUG("Destroying module");
     if (diagnosis) {
         nimcp_free(diagnosis);
+        diagnosis = NULL;
     }
 }
 
@@ -694,6 +699,7 @@ static baseline_window_t* baseline_window_create(uint32_t capacity) {
     window->samples = (cognitive_state_t*)nimcp_calloc(capacity, sizeof(cognitive_state_t));
     if (!window->samples) {
         nimcp_free(window);
+        window = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "baseline_window_create: window->samples is NULL");
         return NULL;
     }
@@ -712,6 +718,7 @@ static void baseline_window_destroy(baseline_window_t* window) {
             nimcp_free(window->samples);
         }
         nimcp_free(window);
+        window = NULL;
     }
 }
 
@@ -788,6 +795,7 @@ static void anomaly_detector_destroy(anomaly_detector_t* detector) {
     LOG_DEBUG("Destroying module");
     if (detector) {
         nimcp_free(detector);
+        detector = NULL;
     }
 }
 

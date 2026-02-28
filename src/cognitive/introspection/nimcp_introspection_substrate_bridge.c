@@ -311,6 +311,7 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for introspection substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -347,6 +348,7 @@ void introspection_substrate_bridge_destroy(introspection_substrate_bridge_t* br
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_DEBUG("Destroyed introspection substrate bridge");
 }

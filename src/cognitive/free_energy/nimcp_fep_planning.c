@@ -77,6 +77,7 @@ static void free_node(mcts_node_t* node) {
     if (node->state) nimcp_free(node->state);
 
     nimcp_free(node);
+    node = NULL;
 }
 
 /* ============================================================================
@@ -188,6 +189,7 @@ void fep_planning_destroy(fep_planning_system_t* sys) {
     }
 
     nimcp_free(sys);
+    sys = NULL;
     NIMCP_LOGGING_INFO("Planning system destroyed");
 }
 
@@ -559,7 +561,7 @@ int fep_planning_generate_plan(
 
         /* Selection: traverse to leaf */
         uint32_t node_id = sys->root_id;
-        uint32_t action;
+        uint32_t action = 0;
 
         while (sys->tree_nodes[node_id]->state_type == MCTS_NODE_EXPANDED &&
                sys->tree_nodes[node_id]->num_children > 0) {
@@ -578,7 +580,7 @@ int fep_planning_generate_plan(
         }
 
         /* Simulation: rollout to horizon */
-        float value;
+        float value = 0.0f;
         fep_mcts_simulate(sys, fep, node_id, &value);
 
         /* Backpropagation */
@@ -685,6 +687,7 @@ int fep_plan_create(fep_plan_t* plan, size_t max_length) {
 
     plan->action_sequence = (uint32_t*)nimcp_calloc(max_length, sizeof(uint32_t));
     plan->step_values = (float*)nimcp_calloc(max_length, sizeof(float));
+    if (!plan->step_values) return -1;
     plan->step_efe = (float*)nimcp_calloc(max_length, sizeof(float));
 
     if (!plan->action_sequence || !plan->step_values || !plan->step_efe) {
@@ -749,7 +752,9 @@ int fep_plan_copy(fep_plan_t* dest, const fep_plan_t* src) {
     if (src->sequence_length > 0) {
         dest->action_sequence = (uint32_t*)nimcp_calloc(src->sequence_length, sizeof(uint32_t));
         dest->step_values = (float*)nimcp_calloc(src->sequence_length, sizeof(float));
+        if (!dest->step_values) return -1;
         dest->step_efe = (float*)nimcp_calloc(src->sequence_length, sizeof(float));
+        if (!dest->step_efe) return -1;
 
         if (dest->action_sequence) {
             memcpy(dest->action_sequence, src->action_sequence,

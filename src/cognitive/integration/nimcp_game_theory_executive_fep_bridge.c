@@ -369,6 +369,7 @@ gt_exec_fep_bridge_t* gt_exec_fep_bridge_create(const gt_exec_fep_config_t* conf
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "game_theory_executive_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "gt_exec_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -418,6 +419,7 @@ void gt_exec_fep_bridge_destroy(gt_exec_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int gt_exec_fep_bridge_reset(gt_exec_fep_bridge_t* bridge) {

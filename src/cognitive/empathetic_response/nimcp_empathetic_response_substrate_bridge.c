@@ -133,6 +133,7 @@ empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_cre
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for empathetic response substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "empathetic_response_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -140,6 +141,7 @@ empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_cre
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for empathetic response substrate bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "empathetic_response_substrate_bridge_create: validation failed");
         return NULL;
     }
@@ -168,6 +170,7 @@ void empathetic_response_substrate_bridge_destroy(empathetic_response_substrate_
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int empathetic_response_substrate_bridge_update(empathetic_response_substrate_bridge_t* bridge) {

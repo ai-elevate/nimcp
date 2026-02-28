@@ -186,6 +186,7 @@ static json_value_t* json_parse_bool(json_ctx_t* ctx) {
         val->bool_val = false;
     } else {
         nimcp_free(val);
+        val = NULL;
         snprintf(ctx->error, sizeof(ctx->error), "Invalid boolean at line %d", ctx->line);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_bool: operation failed");
         return NULL;
@@ -259,6 +260,7 @@ static json_value_t* json_parse_string(json_ctx_t* ctx) {
     val->str_val = (char*)nimcp_malloc(str_len + 1);
     if (!val->str_val) {
         nimcp_free(val);
+        val = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_string: val->str_val is NULL");
         return NULL;
     }
@@ -311,6 +313,7 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
     val->array.items = (json_value_t**)nimcp_calloc(capacity, sizeof(json_value_t*));
     if (!val->array.items) {
         nimcp_free(val);
+        val = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_array: val->array is NULL");
         return NULL;
     }
@@ -490,6 +493,7 @@ static void json_free_value(json_value_t* val) {
                 if (pair->key) nimcp_free(pair->key);
                 json_free_value(pair->value);
                 nimcp_free(pair);
+                pair = NULL;
                 pair = next;
             }
             break;
@@ -498,6 +502,7 @@ static void json_free_value(json_value_t* val) {
             break;
     }
     nimcp_free(val);
+    val = NULL;
 }
 
 static json_value_t* json_parse(const char* json, size_t len, char* error, size_t error_size) {
@@ -1224,6 +1229,7 @@ int symbolic_logic_lgss_load_file(
 
     if (bytes_read != (size_t)file_size) {
         nimcp_free(json_buffer);
+        json_buffer = NULL;
         result->error_code = LGSS_ERROR_FILE_READ;
         snprintf(result->error_message, sizeof(result->error_message), "File read error");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
@@ -1235,6 +1241,7 @@ int symbolic_logic_lgss_load_file(
     int loaded = symbolic_logic_lgss_load_string(json_buffer, (size_t)file_size, kb, result);
 
     nimcp_free(json_buffer);
+    json_buffer = NULL;
     return loaded;
 }
 
@@ -1417,7 +1424,7 @@ int symbolic_logic_lgss_export(
 
     char* pos = output_buffer;
     size_t remaining = buffer_size;
-    int written;
+    int written = 0;
 
     // Start JSON
     written = snprintf(pos, remaining, "{\n  \"version\": \"%s\",\n  \"name\": \"Exported Safety Rules\",\n  \"rules\": [\n",

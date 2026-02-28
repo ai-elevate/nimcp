@@ -276,6 +276,7 @@ nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config)
     // Initialize mutex
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_mechanism_create: validation failed");
         return NULL;
     }
@@ -301,6 +302,7 @@ void nimcp_mechanism_destroy(nimcp_mechanism_t ctx) {
 
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================
@@ -651,7 +653,7 @@ nimcp_error_t nimcp_mechanism_is_incentive_compatible(
                 }
 
                 uint32_t profile[NIMCP_GT_MAX_PLAYERS];
-                float prob;
+                float prob = 0.0f;
 
                 if (!enumerate_type_profile(ctx, profile_idx, profile, &prob)) {
                     break;
@@ -701,7 +703,7 @@ nimcp_error_t nimcp_mechanism_is_incentive_compatible(
                     }
 
                     uint32_t profile[NIMCP_GT_MAX_PLAYERS];
-                    float prob;
+                    float prob = 0.0f;
 
                     if (!enumerate_type_profile(ctx, profile_idx, profile, &prob)) {
                         break;
@@ -820,7 +822,7 @@ nimcp_error_t nimcp_mechanism_is_individually_rational(
                 }
 
                 uint32_t profile[NIMCP_GT_MAX_PLAYERS];
-                float prob;
+                float prob = 0.0f;
 
                 if (!enumerate_type_profile(ctx, profile_idx, profile, &prob)) {
                     break;
@@ -958,7 +960,7 @@ nimcp_error_t nimcp_mechanism_compute_bayesian_equilibrium(
             }
 
             uint32_t profile[NIMCP_GT_MAX_PLAYERS];
-            float prob;
+            float prob = 0.0f;
 
             if (!enumerate_type_profile(ctx, profile_idx, profile, &prob)) {
                 break;
@@ -1487,7 +1489,7 @@ float nimcp_mechanism_expected_utility(
         }
 
         uint32_t profile[NIMCP_GT_MAX_PLAYERS];
-        float prob;
+        float prob = 0.0f;
 
         if (!enumerate_type_profile(ctx, profile_idx, profile, &prob)) {
             break;

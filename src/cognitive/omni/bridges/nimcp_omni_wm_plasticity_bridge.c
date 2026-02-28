@@ -304,7 +304,9 @@ static nimcp_error_t allocate_snn_prediction(omni_wm_plasticity_bridge_t* bridge
     uint32_t max_neurons = WM_PLASTICITY_MAX_SNN_NEURONS;
     bridge->snn_prediction->target_neuron_ids = nimcp_calloc(max_neurons, sizeof(uint32_t));
     bridge->snn_prediction->predicted_activations = nimcp_calloc(max_neurons, sizeof(float));
+    if (!bridge->snn_prediction->predicted_activations) return -1;
     bridge->snn_prediction->prediction_uncertainty = nimcp_calloc(max_neurons, sizeof(float));
+    if (!bridge->snn_prediction->prediction_uncertainty) return -1;
 
     if (!bridge->snn_prediction->target_neuron_ids ||
         !bridge->snn_prediction->predicted_activations ||
@@ -837,6 +839,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_PLASTICITY_BRIDGE,
                          "wm_plasticity_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_plasticity_bridge_create: bridge is NULL");
         return NULL;
     }
@@ -847,6 +850,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
             NIMCP_LOGGING_ERROR("Invalid WM plasticity bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_plasticity_bridge_create: validation failed");
             return NULL;
         }
@@ -860,6 +864,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex for WM plasticity bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -870,6 +875,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     if (allocate_stdp_event_buffer(bridge) != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
@@ -878,6 +884,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
@@ -887,6 +894,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
@@ -897,6 +905,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
@@ -942,6 +951,7 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_DEBUG("WM plasticity bridge destroyed");
 }

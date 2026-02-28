@@ -89,6 +89,7 @@ logical_term_t* logic_term_create(term_type_t type, const char* name)
     NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in logic_term_create");
 
     logical_term_t* term = (logical_term_t*)nimcp_calloc(1, sizeof(logical_term_t));
+    if (!term) return -1;
     NIMCP_API_CHECK_ALLOC(term, "Failed to allocate logical term");
 
     term->type = type;
@@ -117,6 +118,7 @@ void logic_term_destroy(logical_term_t* term)
     }
 
     nimcp_free(term);
+    term = NULL;
 }
 
 static logical_term_t* logic_term_copy(const logical_term_t* term)
@@ -137,6 +139,7 @@ static logical_term_t* logic_term_copy(const logical_term_t* term)
         copy->args = (logical_term_t**)nimcp_calloc(term->arity, sizeof(logical_term_t*));
         if (!copy->args) {
             nimcp_free(copy);
+            copy = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_term_copy: copy->args is NULL");
             return NULL;
         }
@@ -203,6 +206,7 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
     }
 
     atomic_formula_t* atom = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
+    if (!atom) return -1;
     NIMCP_API_CHECK_ALLOC(atom, "Failed to allocate atomic formula");
 
     strncpy(atom->name, name, LOGIC_MAX_NAME_LENGTH - 1);
@@ -214,6 +218,7 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
         atom->terms = (logical_term_t**)nimcp_calloc(arity, sizeof(logical_term_t*));
         if (!atom->terms) {
             nimcp_free(atom);
+            atom = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_atom_create: atom->terms is NULL");
             return NULL;
         }
@@ -248,6 +253,7 @@ void logic_atom_destroy(atomic_formula_t* atom)
     }
 
     nimcp_free(atom);
+    atom = NULL;
 }
 
 //=============================================================================
@@ -302,6 +308,7 @@ void logic_formula_destroy(logical_formula_t* formula)
     }
 
     nimcp_free(formula);
+    formula = NULL;
 }
 
 logical_formula_t* symbolic_logic_parse(const char* str)
@@ -347,6 +354,7 @@ logical_formula_t* symbolic_logic_parse(const char* str)
     atomic_formula_t* atom = logic_atom_create(pred_name, NULL, 0);
     if (!atom) {
         nimcp_free(formula);
+        formula = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_parse: atom is NULL");
         return NULL;
     }
@@ -623,6 +631,7 @@ static logic_clause_t* logic_clause_create(uint32_t num_literals)
         clause->literals = (atomic_formula_t**)nimcp_calloc(num_literals, sizeof(atomic_formula_t*));
         if (!clause->literals) {
             nimcp_free(clause);
+            clause = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_clause_create: clause->literals is NULL");
             return NULL;
         }
@@ -653,6 +662,7 @@ static void logic_clause_destroy(logic_clause_t* clause)
     }
 
     nimcp_free(clause);
+    clause = NULL;
 }
 
 static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
@@ -708,6 +718,7 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
     }
 
     symbolic_logic_t* logic = (symbolic_logic_t*)nimcp_calloc(1, sizeof(symbolic_logic_t));
+    if (!logic) return -1;
     NIMCP_API_CHECK_ALLOC(logic, "Failed to allocate symbolic logic engine");
 
     logic->config = *config;
@@ -858,6 +869,7 @@ void symbolic_logic_destroy(symbolic_logic_t* logic)
     }
 
     nimcp_free(logic);
+    logic = NULL;
 }
 
 bool symbolic_logic_get_stats(const symbolic_logic_t* logic, logic_stats_t* stats)
@@ -911,6 +923,7 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
     entry->clause = logic_clause_copy(clause);
     if (!entry->clause) {
         nimcp_free(entry);
+        entry = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_add_fact: entry->clause is NULL");
         return false;
     }
@@ -1057,6 +1070,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
         unif->bindings = (substitution_t**)nimcp_calloc(1, sizeof(substitution_t*));
         if (!unif->bindings) {
             nimcp_free(binding);
+            binding = NULL;
             unification_destroy(unif);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_unify: unif->bindings is NULL");
             return NULL;
@@ -1082,6 +1096,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
         unif->bindings = (substitution_t**)nimcp_calloc(1, sizeof(substitution_t*));
         if (!unif->bindings) {
             nimcp_free(binding);
+            binding = NULL;
             unification_destroy(unif);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_unify: unif->bindings is NULL");
             return NULL;
@@ -1189,6 +1204,7 @@ void unification_destroy(unification_t* unif)
     }
 
     nimcp_free(unif);
+    unif = NULL;
 }
 
 //=============================================================================

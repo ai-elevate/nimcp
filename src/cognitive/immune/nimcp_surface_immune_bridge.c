@@ -177,6 +177,7 @@ surface_immune_bridge_t* surface_immune_bridge_create(
     if (!bridge->active_antigens) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_immune_bridge_create: bridge->active_antigens is NULL");
         return NULL;
     }
@@ -192,6 +193,7 @@ surface_immune_bridge_t* surface_immune_bridge_create(
         nimcp_free(bridge->active_antigens);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_immune_bridge_create: bridge->antibodies is NULL");
         return NULL;
     }
@@ -980,7 +982,7 @@ static int activate_b_cell_unlocked(
     bridge->stats.b_cells_activated++;
 
     /* Automatically produce antibody - use unlocked version since we hold lock */
-    uint32_t ab_id;
+    uint32_t ab_id = 0;
     produce_antibody_unlocked(bridge, ag->type, &ab_id);
 
     return 0;

@@ -538,7 +538,7 @@ bool global_workspace_compete_with_info(
     shannon_workspace_state_t* state = get_shannon_state(workspace);
 
     /* Compute competition strength */
-    float competition_strength;
+    float competition_strength = 0.0f;
 
     if (state && state->is_enabled && state->config.enable_info_weighted_competition) {
         /* Check information threshold */

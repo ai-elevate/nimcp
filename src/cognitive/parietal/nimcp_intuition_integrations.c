@@ -280,6 +280,7 @@ void intuition_system_destroy(intuition_system_t* system) {
     /* Note: External systems are NOT destroyed - they're owned elsewhere */
 
     nimcp_free(system);
+    system = NULL;
 }
 
 /* ============================================================================
@@ -627,6 +628,7 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
     }
 
     ext->extrapolated = nimcp_calloc(num_samples, sizeof(intuition_data_point_t*));
+    if (!ext->extrapolated) return -1;
     if (ext->extrapolated && ext->detected_trend) {
         float step = (target_range->end - target_range->start) / (float)num_samples;
         float last_known_t = known[count - 1]->timestamp;
@@ -721,6 +723,7 @@ extrapolation_t* intuition_extrapolate_incremental(intuition_system_t* system,
                                                     total_count, &range);
 
     nimcp_free(combined);
+    combined = NULL;
     return result;
 }
 
@@ -812,6 +815,7 @@ void extrapolation_free(extrapolation_t* ext) {
     if (ext->validity_bounds) nimcp_free(ext->validity_bounds);
 
     nimcp_free(ext);
+    ext = NULL;
 }
 
 /* ============================================================================
@@ -888,6 +892,7 @@ void novel_prediction_free(novel_prediction_t* pred) {
 
     if (pred->prediction) nimcp_free(pred->prediction);
     nimcp_free(pred);
+    pred = NULL;
 }
 
 /* ============================================================================
@@ -1008,6 +1013,7 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
 
     /* Identify gaps */
     synth->identified_gaps = nimcp_calloc(INTUITION_MAX_GAPS, sizeof(intuition_gap_t*));
+    if (!synth->identified_gaps) return -1;
     synth->num_gaps = 0;
 
     /* Check for low-confidence regions as gaps */
@@ -1028,6 +1034,7 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
 
     /* Identify contradictions (fragments with opposite high confidence) */
     synth->conflicts = nimcp_calloc(INTUITION_MAX_GAPS, sizeof(knowledge_contradiction_t*));
+    if (!synth->conflicts) return -1;
     synth->num_conflicts = 0;
 
     for (uint32_t i = 0; i < count && synth->num_conflicts < INTUITION_MAX_GAPS; i++) {
@@ -1202,6 +1209,7 @@ void synthesis_free(synthesis_t* synth) {
     }
 
     nimcp_free(synth);
+    synth = NULL;
 }
 
 void intuition_gap_free(intuition_gap_t* gap) {
@@ -1212,6 +1220,7 @@ void intuition_gap_free(intuition_gap_t* gap) {
 
     if (gap->related_fragments) nimcp_free(gap->related_fragments);
     nimcp_free(gap);
+    gap = NULL;
 }
 
 void intuition_question_free(intuition_question_t* question) {
@@ -1263,6 +1272,7 @@ void intuition_data_point_free(intuition_data_point_t* point) {
 
     if (point->values) nimcp_free(point->values);
     nimcp_free(point);
+    point = NULL;
 }
 
 knowledge_fragment_t* knowledge_fragment_create(const char* description,
@@ -1306,6 +1316,7 @@ void knowledge_fragment_free(knowledge_fragment_t* fragment) {
 
     if (fragment->content) nimcp_free(fragment->content);
     nimcp_free(fragment);
+    fragment = NULL;
 }
 
 /* ============================================================================

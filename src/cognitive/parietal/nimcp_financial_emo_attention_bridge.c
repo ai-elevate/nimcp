@@ -392,6 +392,7 @@ financial_emo_attention_bridge_t* financial_emo_attention_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_EMO_ATTENTION, "financial_emo_attention") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_emo_attention_bridge_create: validation failed");
         return NULL;
     }
@@ -429,6 +430,7 @@ void financial_emo_attention_bridge_destroy(financial_emo_attention_bridge_t* br
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 
     fin_emo_attn_heartbeat("fin_emo_attn_destroy", 1.0f);
 }

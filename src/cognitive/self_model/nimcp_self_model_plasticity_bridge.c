@@ -148,6 +148,7 @@ self_model_plasticity_bridge_t* self_model_plasticity_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "self_model_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_model_plasticity_create: validation failed");
         return NULL;
     }
@@ -158,6 +159,7 @@ self_model_plasticity_bridge_t* self_model_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_model_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -193,6 +195,7 @@ void self_model_plasticity_destroy(self_model_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_model_plasticity_reset(self_model_plasticity_bridge_t* bridge) {

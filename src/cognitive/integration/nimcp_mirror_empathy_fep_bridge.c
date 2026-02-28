@@ -369,6 +369,7 @@ me_fep_bridge_t* me_fep_bridge_create(const me_fep_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "mirror_empathy_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "me_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -418,6 +419,7 @@ void me_fep_bridge_destroy(me_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int me_fep_bridge_reset(me_fep_bridge_t* bridge) {

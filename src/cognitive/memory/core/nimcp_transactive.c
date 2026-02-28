@@ -483,6 +483,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
     if (!tm->agent_table) {
         set_error("Failed to allocate agent table");
         nimcp_free(tm);
+        tm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm->agent_table is NULL");
         return NULL;
     }
@@ -497,6 +498,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
         set_error("Failed to allocate domain table");
         nimcp_free(tm->agent_table);
         nimcp_free(tm);
+        tm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm->domain_table is NULL");
         return NULL;
     }
@@ -512,6 +514,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
         nimcp_free(tm->domain_table);
         nimcp_free(tm->agent_table);
         nimcp_free(tm);
+        tm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm->delegations is NULL");
         return NULL;
     }
@@ -543,6 +546,7 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
             agent_entry_t* next = entry->next;
             free_agent(&entry->agent);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -563,6 +567,7 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
                 nimcp_free(entry->name);
             }
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -572,6 +577,7 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
     nimcp_free(tm->delegations);
 
     nimcp_free(tm);
+    tm = NULL;
 }
 
 //=============================================================================
@@ -632,6 +638,7 @@ NIMCP_EXPORT transactive_error_t transactive_register_agent_with_expertise(
         entry->agent.agent_name = strdup(agent_name);
         if (!entry->agent.agent_name) {
             nimcp_free(entry);
+            entry = NULL;
             set_error("Failed to allocate agent name");
             return TRANSACTIVE_ERROR_NO_MEMORY;
         }
@@ -647,6 +654,7 @@ NIMCP_EXPORT transactive_error_t transactive_register_agent_with_expertise(
     if (!entry->agent.expertise) {
         if (entry->agent.agent_name) nimcp_free(entry->agent.agent_name);
         nimcp_free(entry);
+        entry = NULL;
         set_error("Failed to allocate expertise array");
         return TRANSACTIVE_ERROR_NO_MEMORY;
     }
@@ -699,6 +707,7 @@ NIMCP_EXPORT transactive_error_t transactive_unregister_agent(
 
             free_agent(&entry->agent);
             nimcp_free(entry);
+            entry = NULL;
 
             tm->num_agents--;
             tm->stats.num_agents = tm->num_agents;
@@ -1160,6 +1169,7 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
             nimcp_free(result->recommended_agents);
             nimcp_free(result->agent_scores);
             nimcp_free(scores);
+            scores = NULL;
             result->recommended_agents = NULL;
             result->agent_scores = NULL;
             set_error("Failed to allocate result arrays");
@@ -1195,6 +1205,7 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
     result->coverage = fminf(1.0f, total_coverage);
 
     nimcp_free(scores);
+    scores = NULL;
     tm->stats.total_lookups++;
 
     set_error(NULL);

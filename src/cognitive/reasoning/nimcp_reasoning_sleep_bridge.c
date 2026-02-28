@@ -245,6 +245,7 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for reasoning-sleep bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -304,6 +305,7 @@ void reasoning_sleep_bridge_destroy(reasoning_sleep_bridge_t bridge)
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_DEBUG("Reasoning-sleep bridge destroyed");
 }
 

@@ -207,6 +207,7 @@ immune_bridge_coordinator_t* immune_bridge_coordinator_create(
     if (!coordinator->bridges) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge registry");
         nimcp_free(coordinator);
+        coordinator = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_bridge_coordinator_create: coordinator->bridges is NULL");
         return NULL;
     }
@@ -220,6 +221,7 @@ immune_bridge_coordinator_t* immune_bridge_coordinator_create(
         NIMCP_LOGGING_ERROR("Failed to create coordinator mutex");
         nimcp_free(coordinator->bridges);
         nimcp_free(coordinator);
+        coordinator = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_bridge_coordinator_create: coordinator->mutex is NULL");
         return NULL;
     }
@@ -282,6 +284,7 @@ void immune_bridge_coordinator_destroy(immune_bridge_coordinator_t* coordinator)
     }
 
     nimcp_free(coordinator);
+    coordinator = NULL;
 }
 
 int immune_bridge_coordinator_start(immune_bridge_coordinator_t* coordinator) {

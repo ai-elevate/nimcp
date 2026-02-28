@@ -80,7 +80,7 @@ static void free_knowledge_item(void* data)
 static uint32_t hash_concept(const char* concept_str)
 {
     uint32_t hash = 5381;
-    int c;
+    int c = 0;
 
     while ((c = *concept_str++)) {
         hash = ((hash << 5) + hash) + tolower(c);
@@ -123,6 +123,7 @@ static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const cha
     entry->concept = nimcp_malloc(concept_len + 1);
     if (!entry->concept) {
         nimcp_free(entry);
+        entry = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_hash_table_insert: entry->concept is NULL");
         return false;
     }
@@ -327,6 +328,7 @@ static uint32_t extract_concepts_optimized(const char* text, char concepts[][256
     }
 
     nimcp_free(text_copy);
+    text_copy = NULL;
     return num_concepts;
 }
 
@@ -376,7 +378,7 @@ static void normalize_concept_case(const char* concept_str, char* output, uint32
     if (!concept_str || !output || max_length == 0)
         return;
 
-    uint32_t i;
+    uint32_t i = 0;
     for (i = 0; i < max_length - 1 && concept_str[i] != '\0'; i++) {
         output[i] = (char)tolower((unsigned char)concept_str[i]);
     }
@@ -729,6 +731,7 @@ static void free_narratives(narrative_knowledge_t* narratives, uint32_t num_narr
         }
     }
     nimcp_free(narratives);
+    narratives = NULL;
 }
 
 
@@ -760,6 +763,7 @@ static void free_artworks(aesthetic_knowledge_t* artworks, uint32_t num_artworks
         }
     }
     nimcp_free(artworks);
+    artworks = NULL;
 }
 
 
@@ -797,6 +801,7 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history)
         }
     }
     nimcp_free(history);
+    history = NULL;
 }
 
 
@@ -933,6 +938,7 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
     atom->terms = (logical_term_t**)nimcp_calloc(arity, sizeof(logical_term_t*));
     if (!atom->terms) {
         nimcp_free(atom);
+        atom = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom->terms is NULL");
         return NULL;
     }
@@ -942,6 +948,7 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
     if (!atom->terms[0]) {
         nimcp_free(atom->terms);
         nimcp_free(atom);
+        atom = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom->terms is NULL");
         return NULL;
     }
@@ -957,6 +964,7 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
             nimcp_free(atom->terms[0]);
             nimcp_free(atom->terms);
             nimcp_free(atom);
+            atom = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom->terms is NULL");
             return NULL;
         }
@@ -992,6 +1000,7 @@ static logic_clause_t* create_clause_from_atomic(atomic_formula_t* atom, float c
     clause->literals = (atomic_formula_t**)nimcp_calloc(1, sizeof(atomic_formula_t*));
     if (!clause->literals) {
         nimcp_free(clause);
+        clause = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_clause_from_atomic: clause->literals is NULL");
         return NULL;
     }

@@ -318,6 +318,7 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
     /* Initialize bridge base */
     if (bridge_base_init(&pred->base, BIO_MODULE_JEPA_PREDICTOR, "jepa_predictor") != 0) {
         nimcp_free(pred);
+        pred = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_predictor_create: validation failed");
         return NULL;
     }
@@ -343,6 +344,7 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
         if (!mlp->layers) {
             bridge_base_cleanup(&pred->base);
             nimcp_free(pred);
+            pred = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_predictor_create: mlp->layers is NULL");
             return NULL;
         }
@@ -357,6 +359,7 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
             nimcp_free(mlp->pre_activations);
             bridge_base_cleanup(&pred->base);
             nimcp_free(pred);
+            pred = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_predictor_create: required parameter is NULL (mlp->activations, mlp->pre_activations)");
             return NULL;
         }
@@ -410,6 +413,7 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
                 nimcp_free(mlp->pre_activations);
                 bridge_base_cleanup(&pred->base);
                 nimcp_free(pred);
+                pred = NULL;
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_predictor_create: operation failed");
                 return NULL;
             }
@@ -429,6 +433,7 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
                 nimcp_free(mlp->pre_activations);
                 bridge_base_cleanup(&pred->base);
                 nimcp_free(pred);
+                pred = NULL;
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_predictor_create: operation failed");
                 return NULL;
             }
@@ -502,6 +507,7 @@ void jepa_predictor_destroy(jepa_predictor_t* predictor) {
     bridge_base_cleanup(&predictor->base);
 
     nimcp_free(predictor);
+    predictor = NULL;
 }
 
 int jepa_predictor_reset(jepa_predictor_t* predictor) {
@@ -771,6 +777,7 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
     /* Start with output error gradient */
     float* grad_out = nimcp_calloc(predictor->config.output_dim, sizeof(float));
+    if (!grad_out) return -1;
     NIMCP_CHECK_THROW(grad_out, NIMCP_ERROR_MEMORY, "failed to allocate grad_out");
 
     /* For MSE: dL/dout = 2 * (pred - target) / dim = 2 * error / dim */
@@ -849,6 +856,7 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
             grad_next = nimcp_calloc(layer->in_dim, sizeof(float));
             if (!grad_next) {
                 nimcp_free(grad_out);
+                grad_out = NULL;
                 return NIMCP_ERROR_MEMORY;
             }
             /* calloc zero-initializes */
@@ -874,14 +882,17 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
             if (grad_curr != grad_out) {
                 nimcp_free(grad_curr);
+                grad_curr = NULL;
             }
             grad_curr = grad_next;
         }
     }
 
     nimcp_free(grad_out);
+    grad_out = NULL;
     if (grad_curr != grad_out) {
         nimcp_free(grad_curr);
+        grad_curr = NULL;
     }
 
     return NIMCP_SUCCESS;
@@ -1248,6 +1259,7 @@ jepa_prediction_error_t* jepa_prediction_error_create(uint32_t dim) {
         nimcp_free(error->error);
         nimcp_free(error->weighted_error);
         nimcp_free(error);
+        error = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_prediction_error_create: required parameter is NULL (error->error, error->weighted_error)");
         return NULL;
     }
@@ -1269,6 +1281,7 @@ void jepa_prediction_error_destroy(jepa_prediction_error_t* error) {
     nimcp_free(error->error);
     nimcp_free(error->weighted_error);
     nimcp_free(error);
+    error = NULL;
 }
 
 /* ============================================================================
@@ -1352,7 +1365,9 @@ int jepa_predictor_predict_with_uncertainty_mc(
     float* var = nimcp_calloc(dim, sizeof(float));
     if (!mean || !var) {
         nimcp_free(mean);
+        mean = NULL;
         nimcp_free(var);
+        var = NULL;
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -1360,7 +1375,9 @@ int jepa_predictor_predict_with_uncertainty_mc(
     jepa_latent_t* temp = jepa_latent_create_dim(dim);
     if (!temp) {
         nimcp_free(mean);
+        mean = NULL;
         nimcp_free(var);
+        var = NULL;
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -1420,7 +1437,9 @@ int jepa_predictor_predict_with_uncertainty_mc(
 
     jepa_latent_destroy(temp);
     nimcp_free(mean);
+    mean = NULL;
     nimcp_free(var);
+    var = NULL;
 
     return NIMCP_SUCCESS;
 }
@@ -1470,6 +1489,7 @@ void jepa_predictor_apply_dropout_mc(float* activations, uint32_t size, float dr
                     }
                 }
                 nimcp_free(h_samples);
+                h_samples = NULL;
                 nimcp_gpu_tensor_destroy(samples);
                 return;
             }
@@ -1533,7 +1553,9 @@ float jepa_predictor_estimate_confidence_mc(
     float* m2 = nimcp_calloc(dim, sizeof(float));  /* For Welford's online variance */
     if (!mean || !m2) {
         nimcp_free(mean);
+        mean = NULL;
         nimcp_free(m2);
+        m2 = NULL;
         jepa_latent_destroy(temp);
         return 0.0f;
     }
@@ -1584,7 +1606,9 @@ float jepa_predictor_estimate_confidence_mc(
     float confidence = 1.0f / (1.0f + avg_variance);
 
     nimcp_free(mean);
+    mean = NULL;
     nimcp_free(m2);
+    m2 = NULL;
     jepa_latent_destroy(temp);
 
     return confidence;
@@ -1706,6 +1730,7 @@ static float jepa_qmc_energy_fn(const float* state, uint32_t dim, void* user_dat
     if (!pred) {
         memcpy(layer->weights, original_weights, dim * sizeof(float));
         nimcp_free(original_weights);
+        original_weights = NULL;
         return FLT_MAX;
     }
 
@@ -1724,6 +1749,7 @@ static float jepa_qmc_energy_fn(const float* state, uint32_t dim, void* user_dat
     /* Restore original weights */
     memcpy(layer->weights, original_weights, dim * sizeof(float));
     nimcp_free(original_weights);
+    original_weights = NULL;
     jepa_latent_destroy(pred);
 
     return (float)(total_loss / ctx->num_samples);
@@ -1761,11 +1787,13 @@ int jepa_predictor_qmc_amplitude_estimate(
     /* Make multiple predictions to build amplitude distribution */
     uint32_t dim = predictor->config.output_dim;
     float* amplitudes = nimcp_calloc(config->num_samples, sizeof(float));
+    if (!amplitudes) return -1;
     NIMCP_CHECK_THROW(amplitudes, NIMCP_ERROR_MEMORY, "failed to allocate amplitudes");
 
     jepa_latent_t* pred = jepa_latent_create_dim(dim);
     if (!pred) {
         nimcp_free(amplitudes);
+        amplitudes = NULL;
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -1821,6 +1849,7 @@ int jepa_predictor_qmc_amplitude_estimate(
     }
 
     nimcp_free(amplitudes);
+    amplitudes = NULL;
     jepa_latent_destroy(pred);
 
     return NIMCP_SUCCESS;
@@ -2043,6 +2072,7 @@ int jepa_predictor_qmc_entropy(
     }
 
     nimcp_free(probs);
+    probs = NULL;
     jepa_latent_destroy(pred);
 
     return NIMCP_SUCCESS;
@@ -2071,7 +2101,9 @@ float jepa_predictor_qmc_fidelity(
     float* amp2 = nimcp_calloc(dim, sizeof(float));
     if (!amp1 || !amp2) {
         nimcp_free(amp1);
+        amp1 = NULL;
         nimcp_free(amp2);
+        amp2 = NULL;
         return 0.0f;
     }
 
@@ -2106,7 +2138,9 @@ float jepa_predictor_qmc_fidelity(
     float fidelity = qmc_fidelity(amp1, amp2, dim);
 
     nimcp_free(amp1);
+    amp1 = NULL;
     nimcp_free(amp2);
+    amp2 = NULL;
 
     return fidelity;
 }
@@ -2200,6 +2234,7 @@ int jepa_predictor_qmc_sample_latent(
 
     if (qmc_ret != QMC_OK) {
         nimcp_free(probs);
+        probs = NULL;
         jepa_latent_destroy(base);
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -2225,6 +2260,7 @@ int jepa_predictor_qmc_sample_latent(
             }
             qmc_measurement_result_free(&meas_result);
             nimcp_free(probs);
+            probs = NULL;
             jepa_latent_destroy(base);
             return NIMCP_ERROR_MEMORY;
         }
@@ -2247,6 +2283,7 @@ int jepa_predictor_qmc_sample_latent(
 
     qmc_measurement_result_free(&meas_result);
     nimcp_free(probs);
+    probs = NULL;
     jepa_latent_destroy(base);
 
     return NIMCP_SUCCESS;
@@ -2416,6 +2453,7 @@ static jepa_mcts_node_t* jepa_mcts_node_create(uint32_t dim) {
     node->embedding = nimcp_calloc(dim, sizeof(float));
     if (!node->embedding) {
         nimcp_free(node);
+        node = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mcts_node_create: node->embedding is NULL");
         return NULL;
     }
@@ -2450,6 +2488,7 @@ static void jepa_mcts_node_destroy(jepa_mcts_node_t* node) {
     nimcp_free(node->children);
     nimcp_free(node->embedding);
     nimcp_free(node);
+    node = NULL;
 }
 
 /**
@@ -2607,6 +2646,7 @@ int jepa_predictor_qmc_mcts_explore(
             temp.is_normalized = false;
             rollout_value = jepa_predictor_qmc_fidelity(predictor, context, &temp);
             nimcp_free(rollout_state);
+            rollout_state = NULL;
         }
 
         /* Backpropagation */

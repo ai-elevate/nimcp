@@ -470,6 +470,7 @@ schema_system_t schema_system_create(
     if (!system->schemas) {
         set_error("Failed to allocate schema array");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: system->schemas is NULL");
         return NULL;
     }
@@ -484,6 +485,7 @@ schema_system_t schema_system_create(
         nimcp_free(system->id_table_keys);
         nimcp_free(system->id_table_values);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: required parameter is NULL (system->id_table_keys, system->id_table_values)");
         return NULL;
     }
@@ -498,6 +500,7 @@ schema_system_t schema_system_create(
         nimcp_free(system->id_table_keys);
         nimcp_free(system->id_table_values);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: system->active is NULL");
         return NULL;
     }
@@ -507,6 +510,7 @@ schema_system_t schema_system_create(
         system->cooc_dim = 128;  // Fixed size for simplicity
         size_t cooc_size = system->cooc_dim * system->cooc_dim;
         system->slot_cooccurrence = (float*)nimcp_calloc(cooc_size, sizeof(float));
+        if (!system->slot_cooccurrence) return -1;
         // OK if this fails, just disables cooccurrence
     }
 
@@ -563,6 +567,7 @@ void schema_system_destroy(schema_system_t system) {
 
     // Free system
     nimcp_free(system);
+    system = NULL;
 }
 
 bool schema_system_clear(schema_system_t system) {
@@ -669,6 +674,7 @@ schema_t* schema_create(
     if (!schema->schema_name) {
         set_error("Failed to duplicate schema name");
         nimcp_free(schema);
+        schema = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_create: schema->schema_name is NULL");
         return NULL;
     }
@@ -684,6 +690,7 @@ schema_t* schema_create(
         set_error("Failed to allocate slots");
         nimcp_free(schema->schema_name);
         nimcp_free(schema);
+        schema = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_create: schema->slots is NULL");
         return NULL;
     }
@@ -696,6 +703,7 @@ schema_t* schema_create(
         nimcp_free(schema->slots);
         nimcp_free(schema->schema_name);
         nimcp_free(schema);
+        schema = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_create: schema->child_schemas is NULL");
         return NULL;
     }
@@ -720,7 +728,7 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
     schemas_heartbeat("schemas_schema_destroy", 0.0f);
 
 
-    size_t idx;
+    size_t idx = 0;
     if (!id_table_lookup(system, schema->schema_id, &idx)) {
         set_error("Schema not in system");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_destroy: id_table_lookup is NULL");
@@ -780,6 +788,7 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
     // Free schema
     free_schema_contents(schema);
     nimcp_free(schema);
+    schema = NULL;
 
     // Update stats
     system->stats.num_schemas = system->num_schemas;
@@ -828,7 +837,9 @@ bool schema_add(schema_system_t system, schema_t* schema) {
         size_t* new_values = (size_t*)nimcp_calloc(new_table_cap, sizeof(size_t));
         if (!new_keys || !new_values) {
             nimcp_free(new_keys);
+            new_keys = NULL;
             nimcp_free(new_values);
+            new_values = NULL;
             set_error("Failed to grow hash table");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_add: required parameter is NULL (new_keys, new_values)");
             return false;
@@ -856,7 +867,9 @@ bool schema_add(schema_system_t system, schema_t* schema) {
         }
 
         nimcp_free(old_keys);
+        old_keys = NULL;
         nimcp_free(old_values);
+        old_values = NULL;
     }
 
     // Add schema
@@ -892,7 +905,7 @@ schema_t* schema_find_by_id(schema_system_t system, uint64_t schema_id) {
     schemas_heartbeat("schemas_schema_find_by_id", 0.0f);
 
 
-    size_t idx;
+    size_t idx = 0;
     if (id_table_lookup(system, schema_id, &idx)) {
         if (idx < system->num_schemas) {
             return system->schemas[idx];
@@ -1234,6 +1247,7 @@ schema_instantiation_t* schema_instantiate(
         nimcp_free(inst->filled_slots);
         nimcp_free(inst->inferred_slots);
         nimcp_free(inst);
+        inst = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate: required parameter is NULL (inst->filled_slots, inst->inferred_slots)");
         return NULL;
     }
@@ -1397,6 +1411,7 @@ void schema_instantiation_destroy(schema_instantiation_t* instantiation) {
     nimcp_free(instantiation->source_memory_ids);
 
     nimcp_free(instantiation);
+    instantiation = NULL;
 }
 
 schema_instantiation_t* schema_get_instantiation(
@@ -1752,6 +1767,7 @@ bool schema_match_top_k(
     }
 
     nimcp_free(entries);
+    entries = NULL;
     clear_error();
     return true;
 }
@@ -2072,6 +2088,7 @@ schema_t* schema_abstract(
     if (!schema_add(system, abstract)) {
         free_schema_contents(abstract);
         nimcp_free(abstract);
+        abstract = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_abstract: schema_add is NULL");
         return NULL;
     }
@@ -2161,6 +2178,7 @@ schema_t* schema_specialize(
     if (!schema_add(system, child)) {
         free_schema_contents(child);
         nimcp_free(child);
+        child = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_specialize: schema_add is NULL");
         return NULL;
     }
@@ -2237,6 +2255,7 @@ schema_t* schema_merge(
     if (!schema_add(system, merged)) {
         free_schema_contents(merged);
         nimcp_free(merged);
+        merged = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_merge: schema_add is NULL");
         return NULL;
     }

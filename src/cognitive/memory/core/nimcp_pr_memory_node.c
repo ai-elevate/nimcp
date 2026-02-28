@@ -231,6 +231,7 @@ pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config)
             cfg.max_tracked_nodes, sizeof(pr_memory_node_t*));
         if (!manager->tracked_nodes) {
             nimcp_free(manager);
+            manager = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_node_manager_create: manager->tracked_nodes is NULL");
             return NULL;
         }
@@ -255,6 +256,7 @@ void pr_node_manager_destroy(pr_node_manager_t manager) {
     }
 
     nimcp_free(manager);
+    manager = NULL;
 }
 
 unified_mem_manager_t pr_node_manager_get_mem_manager(pr_node_manager_t manager) {
@@ -365,6 +367,7 @@ pr_memory_node_t* pr_memory_node_create(
         node->data_handle = unified_mem_alloc(manager->mem_manager, &req);
         if (!node->data_handle) {
             nimcp_free(node);
+            node = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_memory_node_create: node->data_handle is NULL");
             return NULL;
         }
@@ -461,6 +464,7 @@ void pr_memory_node_destroy(pr_memory_node_t* node) {
 
     // Free node structure
     nimcp_free(node);
+    node = NULL;
 }
 
 pr_memory_node_t* pr_memory_node_clone(
@@ -495,6 +499,7 @@ pr_memory_node_t* pr_memory_node_clone(
         clone->data_handle = unified_mem_clone(node->data_handle);
         if (!clone->data_handle) {
             nimcp_free(clone);
+            clone = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_clone: clone->data_handle is NULL");
             return NULL;
         }
@@ -1495,31 +1500,31 @@ pr_memory_node_t* pr_memory_node_deserialize(
     memcpy(&tier, ptr + offset, sizeof(pr_memory_tier_t));
     offset += sizeof(pr_memory_tier_t);
 
-    uint64_t created_time_ms;
+    uint64_t created_time_ms = 0;
     memcpy(&created_time_ms, ptr + offset, sizeof(uint64_t));
     offset += sizeof(uint64_t);
 
-    uint64_t last_accessed_ms;
+    uint64_t last_accessed_ms = 0;
     memcpy(&last_accessed_ms, ptr + offset, sizeof(uint64_t));
     offset += sizeof(uint64_t);
 
-    uint64_t access_count;
+    uint64_t access_count = 0;
     memcpy(&access_count, ptr + offset, sizeof(uint64_t));
     offset += sizeof(uint64_t);
 
-    float decay_rate;
+    float decay_rate = 0.0f;
     memcpy(&decay_rate, ptr + offset, sizeof(float));
     offset += sizeof(float);
 
-    float promotion_eligibility;
+    float promotion_eligibility = 0.0f;
     memcpy(&promotion_eligibility, ptr + offset, sizeof(float));
     offset += sizeof(float);
 
-    float current_strength;
+    float current_strength = 0.0f;
     memcpy(&current_strength, ptr + offset, sizeof(float));
     offset += sizeof(float);
 
-    uint32_t entanglement_count;
+    uint32_t entanglement_count = 0;
     memcpy(&entanglement_count, ptr + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 

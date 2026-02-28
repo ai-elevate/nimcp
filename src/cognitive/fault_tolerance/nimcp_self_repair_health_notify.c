@@ -421,6 +421,7 @@ void self_repair_health_notify_destroy(
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_repair_health_notify_connect(

@@ -163,6 +163,7 @@ static void kd_destroy(kd_node_t* root) {
     kd_destroy(root->right);
     /* Note: objects are stored in the objects array, don't free here */
     nimcp_free(root);
+    root = NULL;
 }
 
 typedef struct {
@@ -319,6 +320,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     }
 
     spatial_reasoning_t* sr = nimcp_calloc(1, sizeof(spatial_reasoning_t));
+    if (!sr) return -1;
     NIMCP_API_CHECK_ALLOC(sr, "Failed to allocate spatial reasoning");
 
     sr->config = cfg;
@@ -330,6 +332,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     if (!sr->objects) {
         set_spatial_error("Failed to allocate object array");
         nimcp_free(sr);
+        sr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_reasoning_create_custom: sr->objects is NULL");
         return NULL;
     }
@@ -341,6 +344,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
         set_spatial_error("Failed to create mutex");
         nimcp_free(sr->objects);
         nimcp_free(sr);
+        sr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_reasoning_create_custom: sr->lock is NULL");
         return NULL;
     }
@@ -380,6 +384,7 @@ void spatial_reasoning_destroy(spatial_reasoning_t* sr) {
     }
 
     nimcp_free(sr);
+    sr = NULL;
 }
 
 /* ============================================================================
@@ -962,7 +967,9 @@ uint32_t spatial_find_k_nearest(
 
     if (!all_dists || !indices) {
         nimcp_free(all_dists);
+        all_dists = NULL;
         nimcp_free(indices);
+        indices = NULL;
         nimcp_mutex_unlock(sr->lock);
         return 0;
     }
@@ -1011,7 +1018,9 @@ uint32_t spatial_find_k_nearest(
     result->count = count;
 
     nimcp_free(all_dists);
+    all_dists = NULL;
     nimcp_free(indices);
+    indices = NULL;
 
     sr->spatial_queries++;
 
@@ -1059,6 +1068,7 @@ spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
 
 
     spatial_query_result_t* result = nimcp_calloc(1, sizeof(spatial_query_result_t));
+    if (!result) return -1;
     NIMCP_API_CHECK_ALLOC(result, "Failed to allocate spatial query result");
 
     result->objects = nimcp_calloc(capacity, sizeof(spatial_object_t*));
@@ -1071,6 +1081,7 @@ spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
         nimcp_free(result->objects);
         nimcp_free(result->distances);
         nimcp_free(result);
+        result = NULL;
         return NULL;
     }
 
@@ -1087,6 +1098,7 @@ void spatial_query_result_destroy(spatial_query_result_t* result) {
     nimcp_free(result->objects);
     nimcp_free(result->distances);
     nimcp_free(result);
+    result = NULL;
 }
 
 /* ============================================================================
@@ -1119,6 +1131,7 @@ spatial_attention_t* spatial_attention_create(
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, grid_width * grid_height * sizeof(float),
                           "Failed to allocate attention weights");
         nimcp_free(attn);
+        attn = NULL;
         return NULL;
     }
 
@@ -1137,6 +1150,7 @@ void spatial_attention_destroy(spatial_attention_t* attention) {
 
     nimcp_free(attention->weights);
     nimcp_free(attention);
+    attention = NULL;
 }
 
 int spatial_attention_set_focus(spatial_attention_t* attention, vec3_t focus, float spread) {

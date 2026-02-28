@@ -206,6 +206,7 @@ gt_gw_auction_ctx_t gt_gw_create(
     ctx->auction = nimcp_auction_create(&auction_config);
     if (!ctx->auction) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gt_gw_create: ctx->auction is NULL");
         return NULL;
     }
@@ -251,6 +252,7 @@ void gt_gw_destroy(gt_gw_auction_ctx_t ctx) {
     }
 
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================

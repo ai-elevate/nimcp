@@ -124,6 +124,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate hypergraph vertices");
         nimcp_free(hg);
+        hg = NULL;
         return NULL;
     }
 
@@ -136,6 +137,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
             "Failed to allocate hypergraph edges");
         nimcp_free(hg->vertices);
         nimcp_free(hg);
+        hg = NULL;
         return NULL;
     }
 
@@ -150,6 +152,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
             nimcp_free(hg->edges);
             nimcp_free(hg->vertices);
             nimcp_free(hg);
+            hg = NULL;
             return NULL;
         }
         hg->incidence_enabled = true;
@@ -168,6 +171,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
             nimcp_free(hg->edges);
             nimcp_free(hg->vertices);
             nimcp_free(hg);
+            hg = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_create_with_config: validation failed");
             return NULL;
         }
@@ -215,6 +219,7 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
             while (entry) {
                 incidence_entry_t* next = entry->next;
                 nimcp_free(entry);
+                entry = NULL;
                 entry = next;
             }
         }
@@ -265,6 +270,7 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
 
     /* Free hypergraph */
     nimcp_free(hg);
+    hg = NULL;
 }
 
 NIMCP_API nimcp_error_t nimcp_hypergraph_clear(nimcp_hypergraph_t* hg)
@@ -292,6 +298,7 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_clear(nimcp_hypergraph_t* hg)
             while (entry) {
                 incidence_entry_t* next = entry->next;
                 nimcp_free(entry);
+                entry = NULL;
                 entry = next;
             }
             hg->incidence_table[i] = NULL;
@@ -1300,6 +1307,7 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
     dual_result->dual = nimcp_hypergraph_create();
     if (!dual_result->dual) {
         nimcp_free(dual_result);
+        dual_result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_compute_dual: dual_result->dual is NULL");
         return NULL;
     }
@@ -1384,6 +1392,7 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
             }
 
             nimcp_free(dual_vertices);
+            dual_vertices = NULL;
         }
     }
 
@@ -1407,6 +1416,7 @@ NIMCP_API void nimcp_hypergraph_dual_destroy(nimcp_hypergraph_dual_t* dual)
     }
 
     nimcp_free(dual);
+    dual = NULL;
 }
 
 /* ============================================================================
@@ -1501,7 +1511,9 @@ NIMCP_API uint32_t nimcp_hypergraph_transversal(
     }
 
     nimcp_free(covered_edges);
+    covered_edges = NULL;
     nimcp_free(used_vertices);
+    used_vertices = NULL;
 
     return transversal_size;
 }
@@ -1638,6 +1650,7 @@ NIMCP_API uint32_t nimcp_hypergraph_get_neighbors(
     }
 
     nimcp_free(seen);
+    seen = NULL;
 
     return count;
 }
@@ -1974,6 +1987,7 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
     }
 
     nimcp_free(stack);
+    stack = NULL;
 
     *num_components = current_component;
     return NIMCP_SUCCESS;
@@ -1991,11 +2005,12 @@ NIMCP_API bool nimcp_hypergraph_is_connected(const nimcp_hypergraph_t* hg)
         return false;
     }
 
-    uint32_t num_components;
+    uint32_t num_components = 0;
     nimcp_error_t result = nimcp_hypergraph_connected_components(
         hg, components, &num_components);
 
     nimcp_free(components);
+    components = NULL;
 
     return (result == NIMCP_SUCCESS && num_components <= 1);
 }

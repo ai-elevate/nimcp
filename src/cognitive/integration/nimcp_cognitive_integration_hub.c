@@ -369,6 +369,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     hub->modules = nimcp_calloc(cfg.max_modules, sizeof(module_entry_t));
     if (!hub->modules) {
         nimcp_free(hub);
+        hub = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_hub_create: hub->modules is NULL");
         return NULL;
     }
@@ -378,6 +379,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     if (!hub->subscriptions) {
         nimcp_free(hub->modules);
         nimcp_free(hub);
+        hub = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_hub_create: hub->subscriptions is NULL");
         return NULL;
     }
@@ -404,6 +406,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
             nimcp_free(hub->subscriptions);
             nimcp_free(hub->modules);
             nimcp_free(hub);
+            hub = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_create: operation failed");
             return NULL;
         }
@@ -424,6 +427,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
         nimcp_free(hub->subscriptions);
         nimcp_free(hub->modules);
         nimcp_free(hub);
+        hub = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_create: operation failed");
         return NULL;
     }
@@ -445,6 +449,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
         nimcp_free(hub->subscriptions);
         nimcp_free(hub->modules);
         nimcp_free(hub);
+        hub = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_create: operation failed");
         return NULL;
     }
@@ -503,6 +508,7 @@ void cognitive_hub_destroy(cognitive_integration_hub_t hub) {
 
     /* Free hub structure */
     nimcp_free(hub);
+    hub = NULL;
 }
 
 /* ========================================================================

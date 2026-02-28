@@ -300,6 +300,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
                                     sizeof(proof_strategy_t));
     if (!eps->population) {
         nimcp_free(eps);
+        eps = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_gene: eps->population is NULL");
         return NULL;
     }
@@ -311,6 +312,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
     if (!eps->q_table) {
         nimcp_free(eps->population);
         nimcp_free(eps);
+        eps = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_gene: eps->q_table is NULL");
         return NULL;
     }
@@ -322,6 +324,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
         nimcp_free(eps->q_table);
         nimcp_free(eps->population);
         nimcp_free(eps);
+        eps = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_gene: eps->experience_buffer is NULL");
         return NULL;
     }
@@ -335,6 +338,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
         nimcp_free(eps->q_table);
         nimcp_free(eps->population);
         nimcp_free(eps);
+        eps = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_gene: eps->mutex is NULL");
         return NULL;
     }
@@ -374,6 +378,7 @@ NIMCP_API void evolutionary_proof_destroy(evolutionary_proof_search_t* eps) {
     nimcp_free(eps->q_table);
     nimcp_free(eps->population);
     nimcp_free(eps);
+    eps = NULL;
 
     NIMCP_LOG_DEBUG("Destroyed evolutionary proof search");
 }
@@ -557,6 +562,7 @@ NIMCP_API uint32_t evolutionary_proof_evolve_generation(
         /* Replace population */
         memcpy(eps->population, new_pop, eps->population_count * sizeof(proof_strategy_t));
         nimcp_free(new_pop);
+        new_pop = NULL;
 
         eps->current_generation++;
         eps->stats.generations++;
@@ -1227,12 +1233,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_import_knowledge(
     const uint8_t* ptr = (const uint8_t*)buffer;
 
     /* Read population count */
-    uint32_t pop_count;
+    uint32_t pop_count = 0;
     memcpy(&pop_count, ptr, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
 
     /* Read Q-table count */
-    uint32_t q_count;
+    uint32_t q_count = 0;
     memcpy(&q_count, ptr, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
 

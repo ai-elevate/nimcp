@@ -322,6 +322,7 @@ financial_world_model_bridge_t* financial_world_model_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_WORLD_MODEL, "financial_world_model") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_world_model_bridge_create: validation failed");
         return NULL;
     }
@@ -330,6 +331,7 @@ financial_world_model_bridge_t* financial_world_model_bridge_create(
     if (fin_world_state_alloc(&bridge->current_state, bridge->config.max_assets) != 0) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         set_error("Failed to allocate world state");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_world_model_bridge_create: validation failed");
         return NULL;
@@ -367,6 +369,7 @@ void financial_world_model_bridge_destroy(financial_world_model_bridge_t* bridge
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int financial_world_model_bridge_reset(financial_world_model_bridge_t* bridge) {
@@ -752,6 +755,7 @@ int financial_world_model_bridge_predict_forward(
     }
 
     nimcp_free(prev_prices);
+    prev_prices = NULL;
     fin_world_state_free(&work_state);
 
     bridge->stats.predictions++;
@@ -1139,6 +1143,7 @@ int financial_world_model_bridge_rollout_policy(
     }
 
     nimcp_free(positions);
+    positions = NULL;
 
     result->final_pnl = result->portfolio_values[horizon - 1] - initial_capital;
     result->max_drawdown = max_drawdown;

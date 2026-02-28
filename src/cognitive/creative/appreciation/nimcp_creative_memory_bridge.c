@@ -161,6 +161,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
     if (!bridge->episodic_memories) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate episodic memories");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge->episodic_memories is NULL");
         return NULL;
     }
@@ -173,6 +174,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
         LOG_ERROR(LOG_MODULE, "Failed to allocate semantic memories");
         nimcp_free(bridge->episodic_memories);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge->semantic_memories is NULL");
         return NULL;
     }
@@ -186,6 +188,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
         nimcp_free(bridge->semantic_memories);
         nimcp_free(bridge->episodic_memories);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge->preferences is NULL");
         return NULL;
     }
@@ -208,6 +211,7 @@ void creative_memory_bridge_destroy(creative_memory_bridge_t* bridge) {
     nimcp_free(bridge->semantic_memories);
     nimcp_free(bridge->episodic_memories);
     nimcp_free(bridge);
+    bridge = NULL;
 
     LOG_INFO(LOG_MODULE, "Creative memory bridge destroyed");
 }
@@ -460,6 +464,7 @@ uint32_t creative_memory_recall_by_emotion(creative_memory_bridge_t* bridge,
     }
 
     nimcp_free(scores);
+    scores = NULL;
     bridge->total_retrievals++;
 
     return count;

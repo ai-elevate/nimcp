@@ -283,6 +283,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
     if (!ft->events) {
         set_error("Failed to allocate event storage");
         nimcp_free(ft);
+        ft = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_thinking_create: ft->events is NULL");
         return NULL;
     }
@@ -295,6 +296,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
         set_error("Failed to allocate goal storage");
         nimcp_free(ft->events);
         nimcp_free(ft);
+        ft = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_thinking_create: ft->goals is NULL");
         return NULL;
     }
@@ -311,6 +313,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
         nimcp_free(ft->fragment_pool);
         nimcp_free(ft->fragment_weights);
         nimcp_free(ft);
+        ft = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_thinking_create: required parameter is NULL (ft->fragment_pool, ft->fragment_weights)");
         return NULL;
     }
@@ -358,6 +361,7 @@ NIMCP_EXPORT void future_thinking_destroy(future_thinking_t ft) {
     nimcp_free(ft->fragment_weights);
 
     nimcp_free(ft);
+    ft = NULL;
 }
 
 NIMCP_EXPORT future_error_t future_thinking_reset(future_thinking_t ft) {
@@ -506,7 +510,9 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     float* blend_weights = nimcp_calloc(num_fragments, sizeof(float));
     if (!quats || !blend_weights) {
         nimcp_free(quats);
+        quats = NULL;
         nimcp_free(blend_weights);
+        blend_weights = NULL;
         set_error("Failed to allocate blend arrays");
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -580,7 +586,9 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     prime_sig_recount_factors(combined_signature);
 
     nimcp_free(quats);
+    quats = NULL;
     nimcp_free(blend_weights);
+    blend_weights = NULL;
 
     return FUTURE_SUCCESS;
 }
@@ -662,11 +670,15 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
                                                             element_weights,
                                                             scene_out->num_elements);
             nimcp_free(element_states);
+            element_states = NULL;
             nimcp_free(element_weights);
+            element_weights = NULL;
         } else {
             scene_out->emotional_tone = quat_identity();
             nimcp_free(element_states);
+            element_states = NULL;
             nimcp_free(element_weights);
+            element_weights = NULL;
         }
     }
 
@@ -1102,7 +1114,9 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     if (!fragments || !weights) {
         prime_sig_destroy(context_sig);
         nimcp_free(fragments);
+        fragments = NULL;
         nimcp_free(weights);
+        weights = NULL;
         ft->status = FUTURE_SIM_FAILED;
         set_error("Failed to allocate fragment arrays");
         return FUTURE_ERROR_NO_MEMORY;
@@ -1129,7 +1143,9 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     if (err != FUTURE_SUCCESS) {
         prime_sig_destroy(context_sig);
         nimcp_free(fragments);
+        fragments = NULL;
         nimcp_free(weights);
+        weights = NULL;
         ft->status = FUTURE_SIM_FAILED;
         return err;
     }
@@ -1141,7 +1157,9 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     if (!elements) {
         prime_sig_destroy(context_sig);
         nimcp_free(fragments);
+        fragments = NULL;
         nimcp_free(weights);
+        weights = NULL;
         ft->status = FUTURE_SIM_FAILED;
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -1164,11 +1182,14 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     // Construct scene
     err = future_thinking_construct_scene(ft, elements, num_fragments, &event_out->scene);
     nimcp_free(elements);
+    elements = NULL;
 
     if (err != FUTURE_SUCCESS) {
         prime_sig_destroy(context_sig);
         nimcp_free(fragments);
+        fragments = NULL;
         nimcp_free(weights);
+        weights = NULL;
         ft->status = FUTURE_SIM_FAILED;
         return err;
     }
@@ -1229,7 +1250,9 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     // Clean up
     prime_sig_destroy(context_sig);
     nimcp_free(fragments);
+    fragments = NULL;
     nimcp_free(weights);
+    weights = NULL;
 
     // Update statistics
     uint64_t elapsed = get_current_time_ms() - start_time;
@@ -1712,7 +1735,9 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
 
     if (!relevant_events || !relevances) {
         nimcp_free(relevant_events);
+        relevant_events = NULL;
         nimcp_free(relevances);
+        relevances = NULL;
         set_error("Failed to allocate path arrays");
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -1743,7 +1768,9 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     result_out->step_event_ids = nimcp_calloc(path_length, sizeof(uint64_t));
     if (!result_out->step_event_ids) {
         nimcp_free(relevant_events);
+        relevant_events = NULL;
         nimcp_free(relevances);
+        relevances = NULL;
         set_error("Failed to allocate path result");
         return FUTURE_ERROR_NO_MEMORY;
     }
@@ -1784,7 +1811,9 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     result_out->alternative_values = NULL;
 
     nimcp_free(relevant_events);
+    relevant_events = NULL;
     nimcp_free(relevances);
+    relevances = NULL;
 
     return FUTURE_SUCCESS;
 }

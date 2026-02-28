@@ -177,6 +177,7 @@ jepa_plasticity_bridge_t* jepa_plasticity_create(
     /* Initialize base (includes mutex creation) */
     if (bridge_base_init(&bridge->base, 0, "jepa_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_plasticity_create: validation failed");
         return NULL;
     }
@@ -187,6 +188,7 @@ jepa_plasticity_bridge_t* jepa_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -224,6 +226,7 @@ void jepa_plasticity_destroy(jepa_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int jepa_plasticity_reset(jepa_plasticity_bridge_t* bridge) {

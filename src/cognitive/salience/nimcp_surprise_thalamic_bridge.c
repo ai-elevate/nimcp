@@ -239,6 +239,7 @@ surprise_thalamic_bridge_t* surprise_thalamic_bridge_create(
                            sizeof(nimcp_mutex_t),
                            "surprise_thalamic_bridge mutex allocation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -281,6 +282,7 @@ void surprise_thalamic_bridge_destroy(surprise_thalamic_bridge_t* bridge) {
         nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int surprise_thalamic_bridge_reset(surprise_thalamic_bridge_t* bridge) {

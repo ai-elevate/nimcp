@@ -199,6 +199,7 @@ salience_plasticity_bridge_t* salience_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(salience_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -208,6 +209,7 @@ salience_plasticity_bridge_t* salience_plasticity_create(
     if (!bridge->features) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_plasticity_create: bridge->features is NULL");
         return NULL;
     }
@@ -230,6 +232,7 @@ void salience_plasticity_destroy(salience_plasticity_bridge_t* bridge) {
     nimcp_free(bridge->synapses);
     nimcp_free(bridge->features);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int salience_plasticity_reset(salience_plasticity_bridge_t* bridge) {
@@ -472,7 +475,7 @@ int salience_plasticity_attention_feedback(
 
         if (bridge->synapses[i].feature_index == feature_index) {
             float old_weight = bridge->synapses[i].weight;
-            float dw;
+            float dw = 0.0f;
 
             if (was_correct) {
                 dw = bridge->config.stdp_a_plus * bridge->global_learning_rate;
@@ -621,7 +624,7 @@ int salience_plasticity_novelty_response(
 
         if (bridge->synapses[i].type == SALIENCE_SYNAPSE_NOVELTY) {
             float old_weight = bridge->synapses[i].weight;
-            float dw;
+            float dw = 0.0f;
 
             if (rewarded) {
                 dw = bridge->config.novelty_bonus * novelty_level * bridge->global_learning_rate;

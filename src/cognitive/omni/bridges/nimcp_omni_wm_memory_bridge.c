@@ -584,6 +584,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_MEMORY_BRIDGE,
                          "wm_memory_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
@@ -601,6 +602,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
     if (err != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate replay buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -612,6 +614,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
         free_replay_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate context cache");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -682,6 +685,7 @@ void omni_wm_memory_bridge_destroy(omni_wm_memory_bridge_t* bridge) {
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM Memory Bridge destroyed");
 }

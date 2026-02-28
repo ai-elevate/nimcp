@@ -895,6 +895,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     if (!engine->concept_hash_table) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to create hash_table");
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
     engine->total_concepts = 0;
@@ -905,6 +906,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     if (!engine->questions) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate questions");
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
 
@@ -915,6 +917,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate sources");
         nimcp_free(engine->questions);
         nimcp_free(engine);
+        engine = NULL;
         return NULL;
     }
 
@@ -1050,6 +1053,7 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
     }
 
     nimcp_free(engine);
+    engine = NULL;
 }
 
 //=============================================================================
@@ -1746,6 +1750,7 @@ static uint32_t query_knowledge_source(const knowledge_source_t* source, const c
 
     // Free the source_results array itself
     nimcp_free(source_results);
+    source_results = NULL;
 
     return copied;
 }
@@ -2394,6 +2399,7 @@ uint32_t curiosity_sample_exploration_target_mc(
     }
 
     nimcp_free(weights);
+    weights = NULL;
     return selected;
 }
 
@@ -2444,6 +2450,7 @@ float curiosity_estimate_info_gain_mc(
             if (ok) {
                 /* Copy results to host and compute gain */
                 float* h_uniform = nimcp_calloc(num_simulations, sizeof(float));
+                if (!h_uniform) return -1;
                 float* h_normal = nimcp_calloc(num_simulations, sizeof(float));
 
                 if (h_uniform && h_normal) {
@@ -2467,14 +2474,18 @@ float curiosity_estimate_info_gain_mc(
                     }
 
                     nimcp_free(h_uniform);
+                    h_uniform = NULL;
                     nimcp_free(h_normal);
+                    h_normal = NULL;
                     nimcp_gpu_tensor_destroy(uniform_samples);
                     nimcp_gpu_tensor_destroy(normal_samples);
 
                     return total_gain / (float)num_simulations;
                 }
                 nimcp_free(h_uniform);
+                h_uniform = NULL;
                 nimcp_free(h_normal);
+                h_normal = NULL;
             }
         }
 
@@ -2583,6 +2594,7 @@ uint32_t curiosity_sample_question_mc(
     }
 
     nimcp_free(probs);
+    probs = NULL;
     return selected;
 }
 
@@ -2732,7 +2744,7 @@ int curiosity_compute_empowerment(
         }
 
         uint32_t action = mc_random_int(seed, num_actions);
-        uint32_t next_state;
+        uint32_t next_state = 0;
 
         /* Transition: action leads to corresponding state with 70% prob */
         float p = mc_random_uniform(seed);
@@ -2751,6 +2763,7 @@ int curiosity_compute_empowerment(
 
     if (!p_a || !p_s) {
         nimcp_free(state_counts);
+        state_counts = NULL;
         if (p_a) nimcp_free(p_a);
         if (p_s) nimcp_free(p_s);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_query_self_knowledge: validation failed");
@@ -2855,8 +2868,11 @@ int curiosity_compute_empowerment(
     }
 
     nimcp_free(state_counts);
+    state_counts = NULL;
     nimcp_free(p_a);
+    p_a = NULL;
     nimcp_free(p_s);
+    p_s = NULL;
 
     /* Free related concepts */
     for (uint32_t i = 0; i < num_related; i++) {
@@ -2942,6 +2958,7 @@ uint32_t curiosity_sample_by_empowerment(
     }
 
     nimcp_free(scores);
+    scores = NULL;
     return selected;
 }
 

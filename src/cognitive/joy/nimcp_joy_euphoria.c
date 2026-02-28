@@ -248,6 +248,7 @@ void joy_system_destroy(joy_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void joy_system_reset(joy_system_t* system) {

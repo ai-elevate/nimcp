@@ -149,6 +149,7 @@ reasoning_plasticity_bridge_t* reasoning_plasticity_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "reasoning_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reasoning_plasticity_create: validation failed");
         return NULL;
     }
@@ -159,6 +160,7 @@ reasoning_plasticity_bridge_t* reasoning_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -195,6 +197,7 @@ void reasoning_plasticity_destroy(reasoning_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int reasoning_plasticity_reset(reasoning_plasticity_bridge_t* bridge) {

@@ -116,6 +116,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
     }
 
     nimcp_bargaining_t bargaining = nimcp_calloc(1, sizeof(struct nimcp_bargaining_struct));
+    if (!bargaining) return -1;
     NIMCP_API_CHECK_ALLOC(bargaining, "Failed to allocate bargaining structure");
 
     bargaining->config = *config;
@@ -126,6 +127,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
     bargaining->feasible_set = nimcp_calloc(bargaining->max_feasible, sizeof(nimcp_feasible_point_t));
     if (!bargaining->feasible_set) {
         nimcp_free(bargaining);
+        bargaining = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bargaining_create: bargaining->feasible_set is NULL");
         return NULL;
     }
@@ -135,6 +137,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
     if (!bargaining->offer_history) {
         nimcp_free(bargaining->feasible_set);
         nimcp_free(bargaining);
+        bargaining = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bargaining_create: bargaining->offer_history is NULL");
         return NULL;
     }
@@ -143,6 +146,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
         nimcp_free(bargaining->offer_history);
         nimcp_free(bargaining->feasible_set);
         nimcp_free(bargaining);
+        bargaining = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_bargaining_create: validation failed");
         return NULL;
     }
@@ -166,6 +170,7 @@ void nimcp_bargaining_destroy(nimcp_bargaining_t bargaining) {
     nimcp_free(bargaining->offer_history);
     nimcp_free(bargaining->feasible_set);
     nimcp_free(bargaining);
+    bargaining = NULL;
 }
 
 //=============================================================================

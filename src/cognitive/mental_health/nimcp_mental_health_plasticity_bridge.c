@@ -172,6 +172,7 @@ mental_health_plasticity_bridge_t* mental_health_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "mental_health_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mental_health_plasticity_create: validation failed");
         return NULL;
     }
@@ -182,6 +183,7 @@ mental_health_plasticity_bridge_t* mental_health_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -218,6 +220,7 @@ void mental_health_plasticity_destroy(mental_health_plasticity_bridge_t* bridge)
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mental_health_plasticity_reset(mental_health_plasticity_bridge_t* bridge) {

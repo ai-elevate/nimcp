@@ -253,6 +253,7 @@ static bool hash_remove(z_ladder_t ladder, uint64_t node_id) {
         if (entry->node_id == node_id) {
             *prev_ptr = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             return true;
         }
         prev_ptr = &entry->next;
@@ -294,6 +295,7 @@ static void hash_clear(z_ladder_t ladder) {
         while (entry) {
             z_hash_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         ladder->hash_buckets[i] = NULL;
@@ -1069,6 +1071,7 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
     // Initialize mutex
     if (nimcp_mutex_init(&ladder->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(ladder);
+        ladder = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "z_ladder_create: validation failed");
         return NULL;
     }
@@ -1095,6 +1098,7 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
             }
             nimcp_mutex_destroy(&ladder->mutex);
             nimcp_free(ladder);
+            ladder = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "z_ladder_create: validation failed");
             return NULL;
         }
@@ -1179,6 +1183,7 @@ void z_ladder_destroy(z_ladder_t ladder) {
     }
 
     nimcp_free(ladder);
+    ladder = NULL;
 }
 
 z_ladder_error_t z_ladder_clear(z_ladder_t ladder) {
@@ -1538,6 +1543,7 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
         }
 
         nimcp_free(eligible_ids);
+        eligible_ids = NULL;
     }
 
     nimcp_mutex_unlock(&ladder->mutex);
@@ -1595,6 +1601,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
         }
 
         nimcp_free(demote_ids);
+        demote_ids = NULL;
     }
 
     // Handle Z0 evictions (nodes below threshold get evicted)
@@ -1626,6 +1633,7 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
         }
 
         nimcp_free(evict_indices);
+        evict_indices = NULL;
     }
 
     nimcp_mutex_unlock(&ladder->mutex);
@@ -2016,6 +2024,7 @@ z_ladder_error_t z_ladder_get_strongest(z_ladder_t ladder, pr_memory_tier_t tier
     *count = result_count;
 
     nimcp_free(temp);
+    temp = NULL;
 
     nimcp_mutex_unlock(&ladder->mutex);
 
@@ -2068,6 +2077,7 @@ z_ladder_error_t z_ladder_get_weakest(z_ladder_t ladder, pr_memory_tier_t tier,
     *count = result_count;
 
     nimcp_free(temp);
+    temp = NULL;
 
     nimcp_mutex_unlock(&ladder->mutex);
 
@@ -2152,6 +2162,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
             }
 
             nimcp_free(demote_ids);
+            demote_ids = NULL;
         }
     }
 
@@ -2199,6 +2210,7 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
             }
 
             nimcp_free(promote_ids);
+            promote_ids = NULL;
         }
     }
 
@@ -2295,6 +2307,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
             }
 
             nimcp_free(demote_ids);
+            demote_ids = NULL;
         }
     }
 
@@ -2326,6 +2339,7 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
             }
 
             nimcp_free(promote_ids);
+            promote_ids = NULL;
         }
     }
 
@@ -2411,6 +2425,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
             }
 
             nimcp_free(sorted);
+            sorted = NULL;
         }
 
         // Restore threshold
@@ -2459,6 +2474,7 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
             }
 
             nimcp_free(promote_ids);
+            promote_ids = NULL;
         }
     }
 

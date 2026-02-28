@@ -209,6 +209,7 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
     if (!sr->hypotheses) {
         set_scientific_error("Failed to allocate hypothesis array");
         nimcp_free(sr);
+        sr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_reasoning_create_custom: sr->hypotheses is NULL");
         return NULL;
     }
@@ -220,6 +221,7 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
         set_scientific_error("Failed to create mutex");
         nimcp_free(sr->hypotheses);
         nimcp_free(sr);
+        sr = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_reasoning_create_custom: sr->lock is NULL");
         return NULL;
     }
@@ -254,6 +256,7 @@ void scientific_reasoning_destroy(scientific_reasoning_t* sr) {
     }
 
     nimcp_free(sr);
+    sr = NULL;
 }
 
 /* ============================================================================
@@ -409,16 +412,16 @@ const char* scientific_dimension_to_string(
 
         if (exps[i] != 0) {
             if (!first) {
-                strcat(p, "*");
+                strncat(p, "*", sizeof(p) - strlen(p) - 1);
             }
             first = false;
 
             if (exps[i] == 1) {
-                strcat(p, units[i]);
+                strncat(p, units[i], sizeof(p) - strlen(p) - 1);
             } else {
                 char tmp[16];
                 snprintf(tmp, sizeof(tmp), "%s^%d", units[i], exps[i]);
-                strcat(p, tmp);
+                strncat(p, tmp, sizeof(p) - strlen(p) - 1);
             }
         }
     }
@@ -858,6 +861,7 @@ void scientific_destroy_causal_graph(causal_graph_t* graph) {
     nimcp_free(graph->adjacency);
     nimcp_free(graph->relations);
     nimcp_free(graph);
+    graph = NULL;
 }
 
 int scientific_learn_causal_structure(
@@ -898,6 +902,7 @@ int scientific_learn_causal_structure(
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: corr[i] alloc failed");
             for (uint32_t k = 0; k < i; k++) nimcp_free(corr[k]);
             nimcp_free(corr);
+            corr = NULL;
             nimcp_mutex_unlock(sr->lock);
             return -1;
         }
@@ -916,6 +921,7 @@ int scientific_learn_causal_structure(
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: col_i alloc failed");
             for (uint32_t k = 0; k < n; k++) nimcp_free(corr[k]);
             nimcp_free(corr);
+            corr = NULL;
             nimcp_mutex_unlock(sr->lock);
             return -1;
         }
@@ -934,8 +940,10 @@ int scientific_learn_causal_structure(
             if (!col_j) {
                 NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_learn_causal_structure: col_j alloc failed");
                 nimcp_free(col_i);
+                col_i = NULL;
                 for (uint32_t k = 0; k < n; k++) nimcp_free(corr[k]);
                 nimcp_free(corr);
+                corr = NULL;
                 nimcp_mutex_unlock(sr->lock);
                 return -1;
             }
@@ -960,8 +968,10 @@ int scientific_learn_causal_structure(
             }
 
             nimcp_free(col_j);
+            col_j = NULL;
         }
         nimcp_free(col_i);
+        col_i = NULL;
     }
 
     /* Phase 2: Orient edges (simplified - use temporal ordering or domain knowledge) */
@@ -992,6 +1002,7 @@ int scientific_learn_causal_structure(
         nimcp_free(corr[i]);
     }
     nimcp_free(corr);
+    corr = NULL;
 
     sr->causal_inferences++;
 
@@ -1121,8 +1132,11 @@ int scientific_suggest_experiment(
 
     /* Find causes of target */
     design->treatment_vars = nimcp_calloc(graph->num_variables, sizeof(uint32_t));
+    if (!design->treatment_vars) return -1;
     design->control_vars = nimcp_calloc(graph->num_variables, sizeof(uint32_t));
+    if (!design->control_vars) return -1;
     design->outcome_vars = nimcp_malloc(sizeof(uint32_t));
+    if (!design->outcome_vars) return -1;
 
     design->outcome_vars[0] = target_effect_id;
     design->num_outcomes = 1;

@@ -877,6 +877,7 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
             );
             if (!next_dream) {
                 nimcp_free(action);
+                action = NULL;
                 break;
             }
 
@@ -885,6 +886,7 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
             omni_wm_rssm_state_destroy(dream_state);
             dream_state = next_dream;
             nimcp_free(action);
+            action = NULL;
         }
 
         omni_wm_rssm_state_destroy(dream_state);
@@ -1393,6 +1395,7 @@ uint64_t omni_wm_checkpoint(omni_world_model_t* wm) {
     size_t written = omni_wm_serialize(wm, data, required_size);
     if (written == 0) {
         nimcp_free(data);
+        data = NULL;
         return 0;
     }
 

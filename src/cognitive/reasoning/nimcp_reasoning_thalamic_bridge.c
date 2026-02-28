@@ -64,6 +64,7 @@ reasoning_thalamic_bridge_t* reasoning_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "reasoning_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -87,6 +88,7 @@ void reasoning_thalamic_bridge_destroy(reasoning_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int reasoning_thalamic_bridge_reset(reasoning_thalamic_bridge_t* bridge) {

@@ -107,22 +107,22 @@ static int fin_market_validate_subsystems(const char* operation) {
 struct financial_market_eng {
     fin_market_config_t config;
     fin_market_stats_t  stats;
-    float               inflammation;
-    float               fatigue;
+    float inflammation;
+    float fatigue;
     void*               fuzzy_bridge;
     kg_wiring_t*        kg_wiring;
     /* Per-engine security integration */
     brain_immune_system_t* immune;
     bbb_system_t           bbb;
-    bool                   enable_immune_validation;
-    bool                   enable_bbb_validation;
+    bool enable_immune_validation;
+    bool enable_bbb_validation;
     /* Health agent and logger (Phase 8: Change Set 2/3) */
     nimcp_health_agent_t*  health_agent;
     void*                  logger;
     /* Bio-async integration (Change Set 4) */
     bio_async_context_t*   bio_async;
     bio_router_t*          bio_router;
-    bool                   async_enabled;
+    bool async_enabled;
 };
 
 //=============================================================================
@@ -354,6 +354,7 @@ void financial_market_destroy(financial_market_eng_t* mkt) {
     if (!mkt) return;
     fin_mkt_heartbeat("financial_market_destroy", 1.0f);
     nimcp_free(mkt);
+    mkt = NULL;
 }
 
 //=============================================================================
@@ -547,6 +548,7 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
     out_result->current_variance = cv;
 
     nimcp_free(sigma2);
+    sigma2 = NULL;
     mkt->stats.garch_fits++;
     fin_mkt_heartbeat("garch_fit_done", 1.0f);
     market_heartbeat_instance(mkt, "garch_fit", 1.0f);  /* Phase 8: Change Set 2/3 */
@@ -705,7 +707,9 @@ int financial_market_compute_macd(const float* prices, uint32_t length,
     float* ema_slow = (float*)nimcp_calloc(ema_slow_len, sizeof(float));
     if (!ema_fast || !ema_slow) {
         nimcp_free(ema_fast);
+        ema_fast = NULL;
         nimcp_free(ema_slow);
+        ema_slow = NULL;
         set_error("compute_macd: allocation failed");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_compute_macd: allocation failed");
         return -1;
@@ -742,7 +746,9 @@ int financial_market_compute_macd(const float* prices, uint32_t length,
     }
 
     nimcp_free(ema_fast);
+    ema_fast = NULL;
     nimcp_free(ema_slow);
+    ema_slow = NULL;
     return (int)macd_len;
 }
 
@@ -1567,6 +1573,7 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
     float* path_returns = (float*)nimcp_calloc(effective_paths, sizeof(float));
     if (!terminal_values || !path_returns) {
         nimcp_free(terminal_values);
+        terminal_values = NULL;
         nimcp_free(path_returns);
         set_error("monte_carlo: allocation failed");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_market_monte_carlo: allocation failed");
@@ -1643,6 +1650,7 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
     avg_volatility = 0.95f * avg_volatility + 0.05f * adj_vol;
 
     nimcp_free(terminal_values);
+    terminal_values = NULL;
     nimcp_free(path_returns);
 
     mkt->stats.monte_carlo_simulations++;

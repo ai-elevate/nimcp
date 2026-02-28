@@ -345,6 +345,7 @@ imagination_fep_bridge_t* imagination_fep_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "imagination_fep") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imagination_fep_bridge_create: validation failed");
         return NULL;
     }
@@ -388,6 +389,7 @@ void imagination_fep_bridge_destroy(imagination_fep_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int imagination_fep_bridge_reset(imagination_fep_bridge_t* bridge) {

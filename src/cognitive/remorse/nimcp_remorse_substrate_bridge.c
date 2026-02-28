@@ -138,6 +138,7 @@ void remorse_substrate_bridge_destroy(remorse_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int remorse_substrate_bridge_update(remorse_substrate_bridge_t* bridge) {

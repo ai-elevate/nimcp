@@ -471,6 +471,7 @@ NIMCP_EXPORT metamemory_t metamemory_create(
     if (!meta->confidence_history) {
         set_error("memory allocation failed for history buffer");
         nimcp_free(meta);
+        meta = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metamemory_create: meta->confidence_history is NULL");
         return NULL;
     }
@@ -516,6 +517,7 @@ NIMCP_EXPORT void metamemory_destroy(metamemory_t meta) {
 
     // Free main structure
     nimcp_free(meta);
+    meta = NULL;
 }
 
 //=============================================================================
@@ -701,7 +703,7 @@ NIMCP_EXPORT bool metamemory_compute_fok(
     }
 
     // Compute familiarity signal
-    float familiarity;
+    float familiarity = 0.0f;
     metamemory_check_familiarity(meta, query_signature, &familiarity);
 
     // FOK strength is familiarity when above threshold but below definite recall
@@ -754,7 +756,7 @@ NIMCP_EXPORT bool metamemory_detect_tot(
     memset(partial_info, 0, sizeof(*partial_info));
 
     // Compute familiarity and check for partial match indicators
-    float familiarity;
+    float familiarity = 0.0f;
     metamemory_check_familiarity(meta, query_signature, &familiarity);
 
     // TOT requires moderate familiarity (not too high, not too low)
@@ -927,7 +929,7 @@ NIMCP_EXPORT float metamemory_predict_recall(
     if (!meta) return -1.0f;
     if (hours_from_now < 0) return -1.0f;
 
-    float jol;
+    float jol = 0.0f;
     if (!metamemory_judge_learning(meta, memory, hours_from_now, &jol)) {
         return -1.0f;
     }
@@ -943,7 +945,7 @@ NIMCP_EXPORT float metamemory_estimate_decay_time(
     if (!meta) return -1.0f;
     if (threshold <= 0.0f || threshold >= 1.0f) return -1.0f;
 
-    float current_jol;
+    float current_jol = 0.0f;
     if (!metamemory_judge_learning(meta, memory, 0.0f, &current_jol)) {
         return -1.0f;
     }

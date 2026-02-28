@@ -452,6 +452,7 @@ void collective_phi_destroy(collective_phi_system_t* cps) {
 
 
     nimcp_free(cps);
+    cps = NULL;
 }
 
 int collective_phi_reset(collective_phi_system_t* cps) {

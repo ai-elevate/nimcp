@@ -44,6 +44,7 @@ NIMCP_API void hypergraph_kg_bridge_destroy(hypergraph_kg_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypergraph_kg");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 

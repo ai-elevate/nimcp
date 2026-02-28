@@ -194,7 +194,7 @@ static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
 
     uint32_t hash = 2166136261U;  /* FNV offset basis */
     uint8_t buffer[4096];
-    size_t bytes_read;
+    size_t bytes_read = 0;
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
         for (size_t i = 0; i < bytes_read; i++) {
@@ -574,6 +574,7 @@ void code_immune_destroy(code_immune_system_t* system) {
     nimcp_free(system->b_cells);
     nimcp_free(system->antibodies);
     nimcp_free(system);
+    system = NULL;
 }
 
 /**
@@ -2478,7 +2479,7 @@ int code_immune_create_backup(const char* filepath, const char* backup_suffix) {
 
     /* Copy data */
     char buffer[8192];
-    size_t bytes;
+    size_t bytes = 0;
     while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
         if (fwrite(buffer, 1, bytes, dst) != bytes) {
             fclose(src);
@@ -3449,7 +3450,7 @@ int code_immune_trigger_repair(
     }
 
     /* Initiate repair */
-    int result;
+    int result = 0;
     if (request.async) {
         uint64_t rid = 0;
         result = self_repair_initiate_async(system->self_repair, &request, &rid);

@@ -258,6 +258,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
     if (!net->layers) {
         set_error("Failed to allocate layers array");
         nimcp_free(net);
+        net = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_create: net->layers is NULL");
         return NULL;
     }
@@ -290,14 +291,19 @@ predictive_network_t predictive_create(const predictive_config_t* config)
 
         // Allocate layer vectors
         layer->state = (float*)nimcp_calloc(size, sizeof(float));
+        if (!layer->state) return -1;
         layer->prediction = (float*)nimcp_calloc(size, sizeof(float));
+        if (!layer->prediction) return -1;
         layer->prediction_error = (float*)nimcp_calloc(size, sizeof(float));
+        if (!layer->prediction_error) return -1;
         layer->precision = (float*)nimcp_calloc(size, sizeof(float));
+        if (!layer->precision) return -1;
 
         if (!layer->state || !layer->prediction ||
             !layer->prediction_error || !layer->precision) {
             set_error("Failed to allocate layer %u vectors", i);
             nimcp_free(layer);
+            layer = NULL;
             predictive_destroy(net);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_create: operation failed");
             return NULL;
@@ -370,6 +376,7 @@ void predictive_destroy(predictive_network_t net)
     }
 
     nimcp_free(net);
+    net = NULL;
 }
 
 //=============================================================================

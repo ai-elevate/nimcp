@@ -257,6 +257,7 @@ vae_snn_bridge_t* vae_snn_bridge_create(const vae_snn_bridge_config_t* config)
                                         sizeof(vae_snn_population_config_t));
     if (!bridge->populations) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_snn_bridge_create: bridge->populations is NULL");
         return NULL;
     }
@@ -266,6 +267,7 @@ vae_snn_bridge_t* vae_snn_bridge_create(const vae_snn_bridge_config_t* config)
     uint32_t default_dim = VAE_SNN_DEFAULT_NEURONS;
     bridge->encode_buffer = nimcp_calloc(default_dim, sizeof(float));
     bridge->decode_buffer = nimcp_calloc(default_dim, sizeof(float));
+    if (!bridge->decode_buffer) return -1;
     bridge->spike_buffer = nimcp_calloc(default_dim * 100, sizeof(uint32_t));
 
     if (!bridge->encode_buffer || !bridge->decode_buffer || !bridge->spike_buffer) {
@@ -308,6 +310,7 @@ void vae_snn_bridge_destroy(vae_snn_bridge_t* bridge)
     nimcp_free(bridge->adaptation_state);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_snn_bridge_connect_vae(vae_snn_bridge_t* bridge, vae_system_t* vae)
@@ -909,6 +912,7 @@ int vae_snn_update_precision_from_vae(vae_snn_bridge_t* bridge)
 
     ret = vae_snn_set_precision(bridge, precision, dim);
     nimcp_free(precision);
+    precision = NULL;
 
     return ret;
 }

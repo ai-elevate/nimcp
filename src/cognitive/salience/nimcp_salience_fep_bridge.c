@@ -192,6 +192,7 @@ salience_fep_bridge_t* salience_fep_bridge_create(const salience_fep_config_t* c
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -229,6 +230,7 @@ void salience_fep_bridge_destroy(salience_fep_bridge_t* bridge) {
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed salience-FEP bridge");
 }
 

@@ -681,6 +681,7 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
                 nimcp_free(monitor->score_history[j]);
             }
             nimcp_free(monitor);
+            monitor = NULL;
             set_error("mental_health_create: Failed to allocate history buffers");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_create: validation failed");
             return NULL;
@@ -712,6 +713,7 @@ void mental_health_destroy(mental_health_monitor_t* monitor) {
     }
 
     nimcp_free(monitor);
+    monitor = NULL;
 }
 
 //=============================================================================

@@ -445,6 +445,7 @@ mirror_emotion_bridge_t* mirror_emotion_create(const mirror_emotion_config_t* co
     if (bridge_base_init(&bridge->base, 0, "mirror_emotion") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Emotion: Failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_emotion_create: validation failed");
         return NULL;
     }
@@ -479,6 +480,7 @@ void mirror_emotion_destroy(mirror_emotion_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Emotion: Destroyed bridge");
 }
 
@@ -526,8 +528,8 @@ bool mirror_emotion_process_observation(
     }
 
     /* Fuse results */
-    float combined_confidence;
-    uint32_t final_emotion;
+    float combined_confidence = 0.0f;
+    uint32_t final_emotion = 0;
 
     if (observation->modality == MIRROR_EMOTION_MODALITY_FACIAL) {
         combined_confidence = au_confidence;

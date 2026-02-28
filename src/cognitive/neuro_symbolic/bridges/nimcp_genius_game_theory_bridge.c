@@ -91,6 +91,7 @@ NIMCP_API void genius_gt_bridge_destroy(genius_gt_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "genius_game_theory");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

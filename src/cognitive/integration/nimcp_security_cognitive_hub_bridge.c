@@ -267,7 +267,7 @@ static int security_query_handler(
         case COG_QUERY_STATE: {
             /* Return security threat state */
             if (bridge->security_orch) {
-                float threat_level;
+                float threat_level = 0.0f;
                 security_orch_get_threat_level(bridge->security_orch, &threat_level);
                 result->status = 0;
                 state_result.threat_level = threat_level;
@@ -371,6 +371,7 @@ security_cognitive_bridge_t security_cognitive_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "security_cognitive") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "security_cognitive_bridge_create: validation failed");
         return NULL;
     }
@@ -399,6 +400,7 @@ void security_cognitive_bridge_destroy(security_cognitive_bridge_t bridge)
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int security_cognitive_bridge_reset(security_cognitive_bridge_t bridge)

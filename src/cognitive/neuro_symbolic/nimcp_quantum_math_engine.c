@@ -262,6 +262,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
     sim->sample_buffer = nimcp_calloc(sim->sample_buffer_size * 16, sizeof(float));
     if (!sim->sample_buffer) {
         nimcp_free(sim);
+        sim = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim->sample_buffer is NULL");
         return NULL;
     }
@@ -271,6 +272,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
     if (!sim->work_buffer) {
         nimcp_free(sim->sample_buffer);
         nimcp_free(sim);
+        sim = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim->work_buffer is NULL");
         return NULL;
     }
@@ -283,6 +285,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
         nimcp_free(sim->work_buffer);
         nimcp_free(sim->sample_buffer);
         nimcp_free(sim);
+        sim = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim->mutex is NULL");
         return NULL;
     }
@@ -322,6 +325,7 @@ NIMCP_API void qme_math_destroy(qme_math_simulation_t* sim) {
     nimcp_free(sim->sample_buffer);
     nimcp_free(sim->work_buffer);
     nimcp_free(sim);
+    sim = NULL;
 
     NIMCP_LOG_DEBUG("Destroyed quantum math engine");
 }
@@ -857,7 +861,9 @@ NIMCP_API nimcp_error_t qme_path_integral(
 
         if (!current_path || !proposed_path) {
             nimcp_free(current_path);
+            current_path = NULL;
             nimcp_free(proposed_path);
+            proposed_path = NULL;
             nimcp_mutex_unlock(sim->mutex);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
                 "qme_path_integral: failed to allocate path buffers");
@@ -948,7 +954,9 @@ NIMCP_API nimcp_error_t qme_path_integral(
         sim->stats.path_integrals_computed++;
 
         nimcp_free(current_path);
+        current_path = NULL;
         nimcp_free(proposed_path);
+        proposed_path = NULL;
 
         nimcp_mutex_unlock(sim->mutex);
 
@@ -1058,6 +1066,7 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
     }
 
     nimcp_free(gradient);
+    gradient = NULL;
     return NIMCP_SUCCESS;
 }
 
@@ -1094,6 +1103,7 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
         nimcp_free(domain->lower_bounds);
         nimcp_free(domain->upper_bounds);
         nimcp_free(domain);
+        domain = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qme_domain_create_box: bounds allocation failed");
         return NULL;
     }
@@ -1137,6 +1147,7 @@ NIMCP_API void qme_domain_destroy(qme_domain_t* domain) {
     nimcp_free(domain->lower_bounds);
     nimcp_free(domain->upper_bounds);
     nimcp_free(domain);
+    domain = NULL;
 }
 
 NIMCP_API float qme_domain_volume(const qme_domain_t* domain) {

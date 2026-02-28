@@ -353,6 +353,7 @@ pr_optimizer_bridge_t pr_optimizer_bridge_create(
     if (bridge_base_init(&bridge->base, PR_OPT_MODULE_ID, PR_OPT_MODULE_NAME) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize base bridge");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_optimizer_bridge_create: validation failed");
         return NULL;
     }
@@ -429,6 +430,7 @@ void pr_optimizer_bridge_destroy(pr_optimizer_bridge_t bridge) {
 
     // Free bridge structure
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("PR optimizer bridge destroyed");
 }

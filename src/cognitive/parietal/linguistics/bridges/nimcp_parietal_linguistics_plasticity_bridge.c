@@ -239,6 +239,7 @@ void ling_plasticity_destroy(ling_plasticity_bridge_t* bridge) {
         while (entry) {
             word_synapse_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -249,6 +250,7 @@ void ling_plasticity_destroy(ling_plasticity_bridge_t* bridge) {
         while (entry) {
             sequence_synapse_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -259,12 +261,14 @@ void ling_plasticity_destroy(ling_plasticity_bridge_t* bridge) {
         while (entry) {
             bcm_synapse_entry_t* next = entry->next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
 
     bridge->magic = 0;
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int ling_plasticity_reset(ling_plasticity_bridge_t* bridge) {
@@ -781,6 +785,7 @@ int ling_plasticity_create_sequence_synapse(
     triplet_stdp_synapse_t* triplet = triplet_stdp_synapse_create(&triplet_config, initial_weight);
     if (!triplet) {
         nimcp_free(entry);
+        entry = NULL;
         set_error("Failed to create triplet STDP synapse");
         return LING_PLASTICITY_ERR_STDP;
     }
@@ -818,7 +823,7 @@ float ling_plasticity_sequence_spike(
     sequence_synapse_entry_t* entry = find_sequence_synapse(bridge, word_a, word_b);
     if (!entry) return 0.0f;
 
-    float dw;
+    float dw = 0.0f;
     if (is_post) {
         dw = triplet_stdp_post_spike(&entry->synapse.triplet, time_ms);
     } else {

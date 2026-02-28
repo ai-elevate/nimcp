@@ -169,6 +169,7 @@ creative_bridge_t* creative_bridge_create(const creative_bridge_config_t* config
     if (db) {
         db->capacity = 1000;
         db->entries = nimcp_calloc(db->capacity, sizeof(copyright_entry_t));
+        if (!db->entries) return -1;
         db->num_entries = 0;
     }
     bridge->copyright_db = db;
@@ -213,6 +214,7 @@ void creative_bridge_destroy(creative_bridge_t* bridge)
             nimcp_free(db->entries);
         }
         nimcp_free(db);
+        db = NULL;
     }
 
     /* Free config strings */
@@ -221,6 +223,7 @@ void creative_bridge_destroy(creative_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 //=============================================================================
@@ -844,6 +847,7 @@ uint32_t creative_bridge_find_similar_works(creative_bridge_t* bridge,
     }
 
     nimcp_free(results);
+    results = NULL;
     return return_count;
 }
 

@@ -139,6 +139,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     if (bridge->config.max_slots == 0 ||
         bridge->config.max_slots > WM_SNN_MAX_SLOTS) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_create: operation failed");
         return NULL;
     }
@@ -146,6 +147,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "wm_snn") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "wm_snn_create: validation failed");
         return NULL;
     }
@@ -168,6 +170,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create SNN network");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_snn_create: bridge->snn is NULL");
         return NULL;
     }
@@ -326,6 +329,7 @@ void wm_snn_destroy(wm_snn_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int wm_snn_reset(wm_snn_bridge_t* bridge) {

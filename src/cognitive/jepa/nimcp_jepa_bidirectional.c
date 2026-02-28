@@ -193,12 +193,13 @@ jepa_bidirectional_t* jepa_bidirectional_create(const jepa_bidir_config_t* confi
     if (!bidir->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(bidir);
+        bidir = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidirectional_create: bidir->mutex is NULL");
         return NULL;
     }
 
     uint32_t dir_count = 0;
-    int result;
+    int result = 0;
 
     if (config->enable_forward) {
         result = create_direction_predictor(&bidir->directions[JEPA_DIR_FORWARD],
@@ -328,6 +329,7 @@ void jepa_bidirectional_destroy(jepa_bidirectional_t* bidir) {
     }
 
     nimcp_free(bidir);
+    bidir = NULL;
 }
 
 int jepa_bidirectional_reset(jepa_bidirectional_t* bidir) {
@@ -901,6 +903,7 @@ jepa_bidir_result_t* jepa_bidir_result_create(uint32_t dim) {
     result->prediction = jepa_latent_create_dim(dim);
     if (!result->prediction) {
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidir_result_create: result->prediction is NULL");
         return NULL;
     }
@@ -920,6 +923,7 @@ void jepa_bidir_result_destroy(jepa_bidir_result_t* result) {
         jepa_latent_destroy(result->prediction);
     }
     nimcp_free(result);
+    result = NULL;
 }
 
 jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_directions,
@@ -938,6 +942,7 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
     result->results = nimcp_calloc(num_directions, sizeof(jepa_bidir_result_t));
     if (!result->results) {
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidir_result_destroy: result->results is NULL");
         return NULL;
     }
@@ -962,6 +967,7 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
             }
             nimcp_free(result->results);
             nimcp_free(result);
+            result = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_bidir_result_destroy: validation failed");
             return NULL;
         }
@@ -994,6 +1000,7 @@ void jepa_bidir_multi_result_destroy(jepa_bidir_multi_result_t* result) {
         nimcp_free(result->results);
     }
     nimcp_free(result);
+    result = NULL;
 }
 
 /* ============================================================================

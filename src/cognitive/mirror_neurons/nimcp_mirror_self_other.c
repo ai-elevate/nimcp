@@ -225,6 +225,7 @@ self_other_system_t* self_other_create(const self_other_config_t* config) {
     if (!system->mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Self-Other: Failed to create mutex");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_other_create: system->mutex is NULL");
         return NULL;
     }
@@ -256,6 +257,7 @@ void self_other_destroy(self_other_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
     nimcp_log(LOG_LEVEL_DEBUG, "Self-Other: Destroyed system");
 }
 

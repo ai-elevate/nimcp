@@ -356,9 +356,13 @@ financial_predictive_bridge_t* financial_predictive_bridge_create(
     bridge->belief_dim = belief_size;
 
     bridge->belief_mean = (float*)nimcp_calloc(belief_size, sizeof(float));
+    if (!bridge->belief_mean) return -1;
     bridge->belief_precision = (float*)nimcp_calloc(belief_size, sizeof(float));
+    if (!bridge->belief_precision) return -1;
     bridge->prior_mean = (float*)nimcp_calloc(belief_size, sizeof(float));
+    if (!bridge->prior_mean) return -1;
     bridge->prior_precision = (float*)nimcp_calloc(belief_size, sizeof(float));
+    if (!bridge->prior_precision) return -1;
 
     if (!bridge->belief_mean || !bridge->belief_precision ||
         !bridge->prior_mean || !bridge->prior_precision) {
@@ -406,6 +410,7 @@ void financial_predictive_bridge_destroy(financial_predictive_bridge_t* bridge) 
     if (bridge->prior_precision) nimcp_free(bridge->prior_precision);
 
     nimcp_free(bridge);
+    bridge = NULL;
     fin_predictive_heartbeat("destroy", 1.0f);
 }
 
@@ -1204,6 +1209,7 @@ fin_predictive_state_t* financial_predictive_state_create(
     uint32_t size = num_assets * horizon;
     state->predictions = (float*)nimcp_calloc(size, sizeof(float));
     state->precisions = (float*)nimcp_calloc(size, sizeof(float));
+    if (!state->precisions) return -1;
     state->prediction_errors = (float*)nimcp_calloc(size, sizeof(float));
 
     if (!state->predictions || !state->precisions || !state->prediction_errors) {
@@ -1227,6 +1233,7 @@ void financial_predictive_state_destroy(fin_predictive_state_t* state) {
     if (state->precisions) nimcp_free(state->precisions);
     if (state->prediction_errors) nimcp_free(state->prediction_errors);
     nimcp_free(state);
+    state = NULL;
 }
 
 fin_active_inference_result_t* financial_predictive_result_create(
@@ -1267,6 +1274,7 @@ void financial_predictive_result_destroy(fin_active_inference_result_t* result) 
     if (result->action_weights) nimcp_free(result->action_weights);
     if (result->all_actions) nimcp_free(result->all_actions);
     nimcp_free(result);
+    result = NULL;
 }
 
 //=============================================================================

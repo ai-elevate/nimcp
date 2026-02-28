@@ -175,7 +175,7 @@ static float compute_exceptionality(const pr_memory_node_t* memory) {
  * Uses emotional valence as partial indicator.
  */
 static float compute_controllability(mutation_type_t type, const pr_memory_node_t* memory) {
-    float base;
+    float base = 0.0f;
 
     switch (type) {
         case MUTATE_ACTION:
@@ -462,6 +462,7 @@ counterfactual_system_t counterfactual_create(
     if (!system->causal_matrix) {
         set_error("Failed to allocate causal matrix");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_create: system->causal_matrix is NULL");
         return NULL;
     }
@@ -490,6 +491,7 @@ counterfactual_system_t counterfactual_create(
             nimcp_free(system->analysis_cache);
             nimcp_free(system->cache_memory_ids);
             nimcp_free(system);
+            system = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_create: required parameter is NULL (system->analysis_cache, system->cache_memory_ids)");
             return NULL;
         }
@@ -530,6 +532,7 @@ void counterfactual_destroy(counterfactual_system_t system) {
     nimcp_free(system->cache_memory_ids);
     nimcp_free(system->causal_matrix);
     nimcp_free(system);
+    system = NULL;
 }
 
 bool counterfactual_clear_cache(counterfactual_system_t system) {
@@ -1370,8 +1373,8 @@ float counterfactual_compute_mutability(
     float recency = compute_recency_mutability(memory->created_time_ms, current_time);
     float exceptionality = compute_exceptionality(memory);
 
-    float base;
-    float weight;
+    float base = 0.0f;
+    float weight = 0.0f;
 
     switch (type) {
         case MUTATE_ACTION:

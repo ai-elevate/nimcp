@@ -356,6 +356,7 @@ heal_bridge_t* heal_bridge_create(
     if (bridge->candidates == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate candidates");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->candidate_count = 0;
@@ -369,6 +370,7 @@ heal_bridge_t* heal_bridge_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate fix chains");
         nimcp_free(bridge->candidates);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->chain_count = 0;
@@ -387,6 +389,7 @@ heal_bridge_t* heal_bridge_create(
             nimcp_free(bridge->active_chains);
             nimcp_free(bridge->candidates);
             nimcp_free(bridge);
+            bridge = NULL;
             return NULL;
         }
     }
@@ -403,6 +406,7 @@ heal_bridge_t* heal_bridge_create(
         nimcp_free(bridge->active_chains);
         nimcp_free(bridge->candidates);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -441,6 +445,7 @@ void heal_bridge_destroy(heal_bridge_t* bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================
@@ -604,7 +609,7 @@ int heal_bridge_process_crash(
             self_heal_extract_features(bridge->self_heal, &brain_ag, &features);
         }
 
-        uint64_t candidate_id;
+        uint64_t candidate_id = 0;
         heal_bridge_register_candidate(bridge, &features, &fix, &candidate_id);
 
         /* Record initial success */
@@ -648,7 +653,7 @@ int heal_bridge_process_crash_chain(
     heal_bridge_heartbeat("heal_bridge_process_crash_chain", 0.0f);
 
 
-    uint64_t chain_id;
+    uint64_t chain_id = 0;
     int ret = heal_bridge_create_chain(bridge, antigen_id, source_code, &chain_id);
     if (ret != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_process_crash_chain: validation failed");
@@ -757,7 +762,7 @@ int heal_bridge_validate_fix(
     close(pipefd[1]);  /* Close write end */
 
     /* Wait for child with timeout */
-    int status;
+    int status = 0;
     uint64_t timeout_ms = bridge->config.sandbox_timeout_ms;
     uint64_t elapsed = 0;
 
@@ -992,7 +997,7 @@ int heal_bridge_record_candidate_outcome(
 
     /* Promote if threshold reached */
     if (should_promote) {
-        uint32_t pattern_id;
+        uint32_t pattern_id = 0;
         if (heal_bridge_promote_candidate(bridge, candidate_id, &pattern_id) == 0) {
             return 1;  /* Indicate promotion */
         }

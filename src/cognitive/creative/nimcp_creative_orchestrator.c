@@ -76,6 +76,7 @@ void creative_orchestrator_destroy(creative_orchestrator_t* orch) {
     /* P3-COG-03: Log before free to avoid use-after-free */
     LOG_INFO(LOG_MODULE, "Creative orchestrator destroyed");
     nimcp_free(orch);
+    orch = NULL;
 }
 
 int creative_orchestrator_init_subsystems(creative_orchestrator_t* orch) {

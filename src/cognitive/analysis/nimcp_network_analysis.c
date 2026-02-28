@@ -245,6 +245,7 @@ void network_analyzer_destroy(network_analyzer_t* analyzer)
     }
 
     nimcp_free(analyzer);
+    analyzer = NULL;
 }
 
 //=============================================================================

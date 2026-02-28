@@ -250,6 +250,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
     if (!mem->person_buckets) {
         set_error("Failed to allocate person buckets");
         nimcp_free(mem);
+        mem = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_memory_create: mem->person_buckets is NULL");
         return NULL;
     }
@@ -263,6 +264,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
         set_error("Failed to allocate episode buckets");
         nimcp_free(mem->person_buckets);
         nimcp_free(mem);
+        mem = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_memory_create: mem->episode_buckets is NULL");
         return NULL;
     }
@@ -280,6 +282,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
     size_t matrix_elements = initial_matrix * initial_matrix;
     mem->relationship_matrix = (float*)nimcp_calloc(matrix_elements, sizeof(float));
     mem->relationship_types = (relationship_type_t*)nimcp_calloc(matrix_elements, sizeof(relationship_type_t));
+    if (!mem->relationship_types) return -1;
     mem->matrix_person_ids = (uint64_t*)nimcp_calloc(initial_matrix, sizeof(uint64_t));
 
     if (!mem->relationship_matrix || !mem->relationship_types || !mem->matrix_person_ids) {
@@ -290,6 +293,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
         nimcp_free(mem->episode_buckets);
         nimcp_free(mem->person_buckets);
         nimcp_free(mem);
+        mem = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_create: required parameter is NULL (mem->relationship_matrix, mem->relationship_types, mem->matrix_person_ids)");
         return NULL;
     }
@@ -340,6 +344,7 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
             person_entry_t* next = entry->next;
             free_person_node(entry->person);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -358,6 +363,7 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
             episode_entry_t* next = entry->next;
             free_episode(entry->episode);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -370,6 +376,7 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
 
     mem->magic = 0;
     nimcp_free(mem);
+    mem = NULL;
 }
 
 NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) {
@@ -395,6 +402,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
             person_entry_t* next = entry->next;
             free_person_node(entry->person);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         mem->person_buckets[i] = NULL;
@@ -415,6 +423,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
             episode_entry_t* next = entry->next;
             free_episode(entry->episode);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         mem->episode_buckets[i] = NULL;
@@ -1017,6 +1026,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_identify_top_k(
 
     *count = result_count;
     nimcp_free(all_results);
+    all_results = NULL;
     return SOCIAL_MEM_SUCCESS;
 }
 
@@ -2068,8 +2078,11 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
 
     if (!distance || !visited || !queue) {
         nimcp_free(distance);
+        distance = NULL;
         nimcp_free(visited);
+        visited = NULL;
         nimcp_free(queue);
+        queue = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_degrees_of_separation: required parameter is NULL (distance, visited, queue)");
         return -1;
     }
@@ -2109,8 +2122,11 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
     }
 
     nimcp_free(distance);
+    distance = NULL;
     nimcp_free(visited);
+    visited = NULL;
     nimcp_free(queue);
+    queue = NULL;
 
     return result;
 }
@@ -2164,6 +2180,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
         int* queue = (int*)nimcp_calloc(mem->matrix_size, sizeof(int));
         if (!queue) {
             nimcp_free(component);
+            component = NULL;
             return SOCIAL_MEM_ERROR_NO_MEMORY;
         }
 
@@ -2194,6 +2211,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
         }
 
         nimcp_free(queue);
+        queue = NULL;
         current_cluster++;
     }
 
@@ -2211,6 +2229,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
     }
 
     nimcp_free(component);
+    component = NULL;
     return SOCIAL_MEM_SUCCESS;
 }
 
@@ -2394,6 +2413,7 @@ NIMCP_EXPORT social_mem_error_t social_memory_get_entangled(
     }
 
     nimcp_free(neighbors);
+    neighbors = NULL;
     return SOCIAL_MEM_SUCCESS;
 }
 
@@ -2784,6 +2804,7 @@ static bool remove_person_entry(social_memory_internal_t* mem, uint64_t person_i
             *prev = entry->next;
             free_person_node(entry->person);
             nimcp_free(entry);
+            entry = NULL;
             mem->num_persons--;
             return true;
         }
@@ -2879,8 +2900,11 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
 
     if (!new_matrix || !new_types || !new_ids) {
         nimcp_free(new_matrix);
+        new_matrix = NULL;
         nimcp_free(new_types);
+        new_types = NULL;
         nimcp_free(new_ids);
+        new_ids = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grow_relationship_matrix: required parameter is NULL (new_matrix, new_types, new_ids)");
         return false;
     }
@@ -2987,6 +3011,7 @@ static void free_person_node(person_node_t* person) {
     nimcp_free(person->name);
     nimcp_free(person->facts);
     nimcp_free(person);
+    person = NULL;
 }
 
 static void free_episode(social_episode_t* episode) {
@@ -2998,6 +3023,7 @@ static void free_episode(social_episode_t* episode) {
     nimcp_free(episode->location);
     nimcp_free(episode->description);
     nimcp_free(episode);
+    episode = NULL;
 }
 
 static person_node_t* create_person_node(const char* name) {
@@ -3013,6 +3039,7 @@ static person_node_t* create_person_node(const char* name) {
         person->name = (char*)nimcp_malloc(name_len);
         if (!person->name) {
             nimcp_free(person);
+            person = NULL;
             set_error("Failed to allocate person name");
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_person_node: person->name is NULL");
             return NULL;

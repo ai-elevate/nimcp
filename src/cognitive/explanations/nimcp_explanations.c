@@ -230,6 +230,7 @@ void explanation_generator_destroy(explanation_generator_t gen)
     // =========================================================================
 
     nimcp_free(gen);
+    gen = NULL;
 
     NIMCP_LOGGING_DEBUG("Explanation generator destroyed");
 }

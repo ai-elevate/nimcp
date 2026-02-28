@@ -186,6 +186,7 @@ attention_sleep_bridge_t attention_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_sleep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -230,6 +231,7 @@ void attention_sleep_bridge_destroy(attention_sleep_bridge_t bridge) {
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int attention_sleep_update(attention_sleep_bridge_t bridge) {

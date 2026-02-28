@@ -286,6 +286,7 @@ financial_metacognition_bridge_t* financial_metacognition_bridge_create(
     if (!bridge->history) {
         set_error("Failed to allocate decision history");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_metacognition_bridge_create: bridge->history is NULL");
         return NULL;
     }
@@ -312,6 +313,7 @@ void financial_metacognition_bridge_destroy(financial_metacognition_bridge_t* br
         bridge->magic = 0;
         bridge->op_state = FIN_METACOG_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 
@@ -1199,7 +1201,7 @@ int financial_metacognition_bridge_check_bias(
 
     /* Detect all biases and find the requested one */
     fin_bias_detection_t all_biases[FIN_METACOG_MAX_BIASES];
-    uint32_t count;
+    uint32_t count = 0;
 
     int rc = financial_metacognition_bridge_detect_biases(bridge, all_biases, &count);
     if (rc != FIN_METACOG_ERR_OK && rc != FIN_METACOG_ERR_INSUFFICIENT_DATA) {

@@ -531,6 +531,7 @@ creative_pattern_extractor_t* creative_pattern_extractor_create(
     if (!ext->known_patterns) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate known patterns");
         nimcp_free(ext);
+        ext = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: ext->known_patterns is NULL");
         return NULL;
     }
@@ -552,6 +553,7 @@ void creative_pattern_extractor_destroy(creative_pattern_extractor_t* ext) {
     nimcp_free(ext->known_patterns);
 
     nimcp_free(ext);
+    ext = NULL;
 
     LOG_INFO(LOG_MODULE, "Creative pattern extractor destroyed");
 }
@@ -784,6 +786,7 @@ uint32_t creative_pattern_db_find_similar(const creative_pattern_extractor_t* ex
     }
 
     nimcp_free(scores);
+    scores = NULL;
 
     return count;
 }
@@ -874,6 +877,7 @@ uint32_t creative_pattern_top_n(const pattern_extraction_result_t* result,
     }
 
     nimcp_free(scores);
+    scores = NULL;
 
     return count;
 }

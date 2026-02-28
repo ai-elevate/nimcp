@@ -116,6 +116,7 @@ mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_r
     if (bridge_base_init(&bridge->base, 0, "mirror_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -151,6 +152,7 @@ void mirror_thalamic_bridge_destroy(mirror_thalamic_bridge_t* bridge) {
     }
     NIMCP_LOGGING_INFO("Mirror thalamic bridge: destroyed");
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int mirror_thalamic_bridge_reset(mirror_thalamic_bridge_t* bridge) {

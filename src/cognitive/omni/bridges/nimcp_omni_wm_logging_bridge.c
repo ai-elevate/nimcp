@@ -276,6 +276,7 @@ static nimcp_error_t allocate_buffers(omni_wm_logging_bridge_t* bridge) {
     if (log_capacity == 0) log_capacity = DEFAULT_LOG_BUFFER_CAPACITY;
 
     bridge->log_buffer = nimcp_calloc(log_capacity, sizeof(wm_general_log_entry_t));
+    if (!bridge->log_buffer) return -1;
     NIMCP_CHECK_THROW(bridge->log_buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate log_buffer");
     bridge->buffer_capacity = log_capacity;
     bridge->buffer_head = 0;
@@ -655,6 +656,7 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
                          "wm_logging_bridge") != 0) {
         LOG_ERROR("Failed to initialize bridge base");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_effects: operation failed");
         return NULL;
     }
@@ -671,6 +673,7 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
         LOG_ERROR("Failed to allocate logging buffers");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_effects: validation failed");
         return NULL;
     }
@@ -712,6 +715,7 @@ void omni_wm_logging_bridge_destroy(omni_wm_logging_bridge_t* bridge) {
 
     /* Free bridge */
     nimcp_free(bridge);
+    bridge = NULL;
 
     LOG_DEBUG("WM logging bridge destroyed");
 }

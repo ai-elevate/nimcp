@@ -206,6 +206,7 @@ flashbulb_system_t* flashbulb_create(
     system->memories = (flashbulb_memory_t*)nimcp_calloc(initial_capacity, sizeof(flashbulb_memory_t));
     if (!system->memories) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "flashbulb_create: system->memories is NULL");
         return NULL;
     }
@@ -221,6 +222,7 @@ flashbulb_system_t* flashbulb_create(
         if (!system->trauma_memories) {
             nimcp_free(system->memories);
             nimcp_free(system);
+            system = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "flashbulb_create: system->trauma_memories is NULL");
             return NULL;
         }
@@ -269,6 +271,7 @@ void flashbulb_destroy(flashbulb_system_t* system) {
     // Clear and free system
     memset(system, 0, sizeof(flashbulb_system_t));
     nimcp_free(system);
+    system = NULL;
 }
 
 flashbulb_error_t flashbulb_reset(flashbulb_system_t* system) {
@@ -868,6 +871,7 @@ flashbulb_error_t flashbulb_retrieve_most_vivid(
     }
 
     nimcp_free(heap);
+    heap = NULL;
     *count = heap_size;
 
     return FLASHBULB_SUCCESS;

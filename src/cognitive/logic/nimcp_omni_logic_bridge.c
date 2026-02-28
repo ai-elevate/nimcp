@@ -185,6 +185,7 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
     if (bridge_base_init(&bridge->base, 0, "omni_logic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_logic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -195,6 +196,7 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
     if (!bridge->rules) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_logic_bridge_create: bridge->rules is NULL");
         return NULL;
     }
@@ -238,6 +240,7 @@ void omni_logic_bridge_destroy(omni_logic_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

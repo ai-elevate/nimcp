@@ -362,6 +362,7 @@ fin_bg_action_value_t* financial_bg_alloc_actions(uint32_t num_actions) {
 void financial_bg_free_actions(fin_bg_action_value_t* actions) {
     if (actions) {
         nimcp_free(actions);
+        actions = NULL;
     }
 }
 
@@ -507,6 +508,7 @@ void financial_bg_bridge_destroy(financial_bg_bridge_t* bridge) {
         bridge->magic = 0;
         bridge->op_state = FIN_BG_OP_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 
@@ -836,7 +838,7 @@ int financial_bg_bridge_select_action(
 
     fin_bg_heartbeat_global("fin_bg_select", 0.0f);
 
-    uint32_t selected_idx;
+    uint32_t selected_idx = 0;
 
     if (bridge->config.use_softmax) {
         /* Softmax selection */

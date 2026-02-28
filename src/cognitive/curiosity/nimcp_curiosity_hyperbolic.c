@@ -178,7 +178,9 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "curiosity_find_interesting_hyperbolic: allocation failed");
         nimcp_free(neighbors);
+        neighbors = NULL;
         nimcp_free(distances);
+        distances = NULL;
         return 0;
     }
 
@@ -188,7 +190,9 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
 
     if (num_neighbors == 0) {
         nimcp_free(neighbors);
+        neighbors = NULL;
         nimcp_free(distances);
+        distances = NULL;
         return 0;
     }
 
@@ -203,7 +207,9 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "curiosity_find_interesting_hyperbolic: scored allocation failed");
         nimcp_free(neighbors);
+        neighbors = NULL;
         nimcp_free(distances);
+        distances = NULL;
         return 0;
     }
 
@@ -244,8 +250,11 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
 
     // Cleanup
     nimcp_free(scored);
+    scored = NULL;
     nimcp_free(neighbors);
+    neighbors = NULL;
     nimcp_free(distances);
+    distances = NULL;
 
     return num_interesting;
 }

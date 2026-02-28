@@ -590,6 +590,7 @@ self_awareness_system_t self_awareness_create(const char* name,
     system->self_model = self_model_create(name, role, purpose);
     if (!system->self_model) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_create: system->self_model is NULL");
         return NULL;
     }
@@ -598,6 +599,7 @@ self_awareness_system_t self_awareness_create(const char* name,
     if (!system->autobio) {
         self_model_destroy(system->self_model);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_create: system->autobio is NULL");
         return NULL;
     }
@@ -611,6 +613,7 @@ self_awareness_system_t self_awareness_create(const char* name,
         autobio_destroy(system->autobio);
         self_model_destroy(system->self_model);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_create: validation failed");
         return NULL;
     }
@@ -652,6 +655,7 @@ void self_awareness_destroy(self_awareness_system_t system)
 
     nimcp_mutex_destroy(&system->mutex);
     nimcp_free(system);
+    system = NULL;
 }
 
 bool self_awareness_reflect(self_awareness_system_t system,

@@ -163,6 +163,7 @@ meta_health_reflector_t* meta_health_create(
     reflector->applied_adjustments = nimcp_calloc(reflector->max_applied, sizeof(applied_adjustment_t));
     if (!reflector->applied_adjustments) {
         nimcp_free(reflector);
+        reflector = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_health_create: reflector->applied_adjustments is NULL");
         return NULL;
     }
@@ -174,6 +175,7 @@ meta_health_reflector_t* meta_health_create(
     if (!reflector->pending) {
         nimcp_free(reflector->applied_adjustments);
         nimcp_free(reflector);
+        reflector = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_health_create: reflector->pending is NULL");
         return NULL;
     }
@@ -187,6 +189,7 @@ meta_health_reflector_t* meta_health_create(
         nimcp_free(reflector->pending);
         nimcp_free(reflector->applied_adjustments);
         nimcp_free(reflector);
+        reflector = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_health_create: reflector->patterns is NULL");
         return NULL;
     }
@@ -215,6 +218,7 @@ void meta_health_destroy(meta_health_reflector_t* reflector) {
     nimcp_free(reflector->pending);
     nimcp_free(reflector->applied_adjustments);
     nimcp_free(reflector);
+    reflector = NULL;
 }
 
 int meta_health_start(meta_health_reflector_t* reflector) {

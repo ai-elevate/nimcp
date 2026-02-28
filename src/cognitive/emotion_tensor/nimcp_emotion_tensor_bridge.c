@@ -297,6 +297,7 @@ void emotion_tensor_bridge_destroy(emotion_tensor_bridge_t* bridge) {
 
     BRIDGE_LOG_INFO("Destroying emotion tensor bridge");
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /*=============================================================================
@@ -661,7 +662,7 @@ nimcp_result_t emotion_tensor_to_swarm(
 
 
     emotion_primary_t primary, secondary;
-    float blend_ratio;
+    float blend_ratio = 0.0f;
     if (!emotion_tensor_get_dominant(tensor, &primary, &secondary, &blend_ratio)) {
         return NIMCP_ERROR_INVALID;
     }

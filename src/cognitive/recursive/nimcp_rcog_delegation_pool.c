@@ -306,6 +306,7 @@ static void free_task_node(rcog_task_node_t* node) {
     if (!node) return;
     /* Note: subtask ownership transferred to executor */
     nimcp_free(node);
+    node = NULL;
 }
 
 static void enqueue_task(rcog_worker_queue_t* queue, rcog_task_node_t* node) {
@@ -494,6 +495,7 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     pool->mutex = nimcp_mutex_create(&attr);
     if (!pool->mutex) {
         nimcp_free(pool);
+        pool = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_delegation_pool_create: pool->mutex is NULL");
         return NULL;
     }
@@ -503,6 +505,7 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     if (!pool->workers) {
         nimcp_mutex_free(pool->mutex);
         nimcp_free(pool);
+        pool = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_delegation_pool_create: pool->workers is NULL");
         return NULL;
     }
@@ -528,12 +531,14 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     /* Initialize completed results storage */
     pool->completed_capacity = POOL_INITIAL_RESULT_CAPACITY;
     pool->completed = nimcp_calloc(pool->completed_capacity, sizeof(rcog_completed_task_t));
+    if (!pool->completed) return -1;
     pool->completed_count = 0;
     pool->completed_mutex = nimcp_mutex_create(&attr);
 
     /* Initialize batch tracking */
     pool->batches_capacity = 16;
     pool->batches = nimcp_calloc(pool->batches_capacity, sizeof(rcog_batch_handle_t*));
+    if (!pool->batches) return -1;
     pool->num_batches = 0;
     pool->next_batch_id = 1;
     pool->batches_mutex = nimcp_mutex_create(&attr);
@@ -622,6 +627,7 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
     }
 
     nimcp_free(pool);
+    pool = NULL;
 }
 
 int rcog_delegation_pool_start(rcog_delegation_pool_t* pool) {
@@ -974,6 +980,7 @@ int rcog_delegation_pool_submit_batch(
         if (batch->task_ids) nimcp_free(batch->task_ids);
         if (batch->statuses) nimcp_free(batch->statuses);
         nimcp_free(batch);
+        batch = NULL;
         return RCOG_ERROR_OUT_OF_MEMORY;
     }
 
@@ -1189,6 +1196,7 @@ void rcog_delegation_pool_free_batch_handle(rcog_batch_handle_t* handle) {
     }
 
     nimcp_free(handle);
+    handle = NULL;
 }
 
 /*=============================================================================

@@ -156,7 +156,9 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
 
     if (!neighbors || !distances) {
         nimcp_free(neighbors);
+        neighbors = NULL;
         nimcp_free(distances);
+        distances = NULL;
         return 0;
     }
 
@@ -165,7 +167,9 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
 
     if (num_neighbors == 0) {
         nimcp_free(neighbors);
+        neighbors = NULL;
         nimcp_free(distances);
+        distances = NULL;
         return 0;
     }
 
@@ -193,7 +197,9 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
     }
 
     nimcp_free(neighbors);
+    neighbors = NULL;
     nimcp_free(distances);
+    distances = NULL;
 
     return num_neighbors;
 }

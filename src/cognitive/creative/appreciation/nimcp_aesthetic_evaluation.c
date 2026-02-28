@@ -93,6 +93,7 @@ void aesthetic_evaluator_destroy(aesthetic_evaluator_t* eval) {
     /* Free any allocated models - currently stubs */
 
     nimcp_free(eval);
+    eval = NULL;
     LOG_INFO(LOG_MODULE, "Aesthetic evaluator destroyed");
 }
 

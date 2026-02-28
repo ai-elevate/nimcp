@@ -328,6 +328,7 @@ emotion_attention_system_t* emotion_attention_create(
     if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         EA_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_attention_create: validation failed");
         return NULL;
     }
@@ -416,6 +417,7 @@ void emotion_attention_destroy(emotion_attention_system_t* system) {
 
     nimcp_rwlock_destroy(&system->lock);
     nimcp_free(system);
+    system = NULL;
 
     EA_LOG_INFO("Emotion-attention system destroyed");
 }

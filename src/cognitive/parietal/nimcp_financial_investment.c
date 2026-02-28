@@ -381,6 +381,7 @@ void financial_investment_destroy(financial_investment_eng_t* fin) {
     financial_investment_heartbeat("fin_destroy", 0.0f);
     if (fin) {
         nimcp_free(fin);
+        fin = NULL;
     }
 }
 
@@ -671,6 +672,7 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
         }
         out_metrics->max_drawdown = financial_investment_max_drawdown(cum_values, history_length);
         nimcp_free(cum_values);
+        cum_values = NULL;
     }
 
     /* Present antigen for extreme drawdown (Phase 9) */
@@ -801,6 +803,7 @@ float financial_investment_compute_var(financial_investment_eng_t* fin,
     }
 
     nimcp_free(sorted);
+    sorted = NULL;
     return var;
 }
 
@@ -843,6 +846,7 @@ float financial_investment_compute_cvar(financial_investment_eng_t* fin,
     float cvar = -cvar_sum / (float)var_idx;
 
     nimcp_free(sorted);
+    sorted = NULL;
     return cvar;
 }
 
@@ -881,7 +885,7 @@ float financial_investment_black_scholes(float spot, float strike,
                / (vol * sqrt_t);
     float d2 = d1 - vol * sqrt_t;
 
-    float price;
+    float price = 0.0f;
     if (type == FIN_OPT_CALL) {
         price = spot * norm_cdf(d1) - strike * expf(-rate * time) * norm_cdf(d2);
     } else {
@@ -982,7 +986,7 @@ int financial_investment_price_option(financial_investment_eng_t* fin,
 
             float st = spot * expf(drift + diffusion * z);
 
-            float payoff;
+            float payoff = 0.0f;
             if (type == FIN_OPT_CALL) {
                 payoff = fmaxf(st - strike, 0.0f);
             } else {
@@ -1121,7 +1125,7 @@ int financial_investment_binomial_tree(financial_investment_eng_t* fin,
             /* For American options, check early exercise */
             if (style == FIN_OPT_STYLE_AMERICAN) {
                 float st = spot * powf(u, (float)(step - i)) * powf(d, (float)i);
-                float exercise;
+                float exercise = 0.0f;
                 if (type == FIN_OPT_CALL) {
                     exercise = fmaxf(st - strike, 0.0f);
                 } else {
@@ -1168,6 +1172,7 @@ int financial_investment_binomial_tree(financial_investment_eng_t* fin,
     out_result->vanna = 0.0f;
 
     nimcp_free(prices);
+    prices = NULL;
     fin->stats.option_pricings++;
     return FIN_ERR_OK;
 }
@@ -1326,7 +1331,7 @@ int financial_investment_comparables(financial_investment_eng_t* fin,
     memcpy(sorted, peer_multiples, peer_count * sizeof(float));
     qsort(sorted, peer_count, sizeof(float), float_compare_asc);
 
-    float median;
+    float median = 0.0f;
     if (peer_count % 2 == 0) {
         median = (sorted[peer_count / 2 - 1] + sorted[peer_count / 2]) * 0.5f;
     } else {
@@ -1355,6 +1360,7 @@ int financial_investment_comparables(financial_investment_eng_t* fin,
     out_result->upside_potential = 0.0f;
 
     nimcp_free(sorted);
+    sorted = NULL;
     fin->stats.valuations++;
     return FIN_ERR_OK;
 }
@@ -1840,7 +1846,9 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
     float* xty = (float*)nimcp_calloc(K, sizeof(float));
     if (!xtx || !xty) {
         nimcp_free(xtx);
+        xtx = NULL;
         nimcp_free(xty);
+        xty = NULL;
         set_error("Allocation failed in factor_analysis");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_factor_analysis: Allocation failed");
         return FIN_ERR_ALLOC;
@@ -1851,6 +1859,7 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
     float asset_mean = 0.0f;
     if (!factor_means) {
         nimcp_free(xtx); nimcp_free(xty);
+        xtx = NULL;
         set_error("Allocation failed in factor_analysis");
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_factor_analysis: Allocation failed for factor_means");
         return FIN_ERR_ALLOC;
@@ -1903,6 +1912,7 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
         float* aug = (float*)nimcp_calloc(K * (K + 1), sizeof(float));
         if (!aug) {
             nimcp_free(xtx); nimcp_free(xty); nimcp_free(factor_means);
+            xtx = NULL;
             set_error("Allocation failed in factor_analysis");
             NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY, "financial_investment_factor_analysis: Allocation failed for augmented matrix");
             return FIN_ERR_ALLOC;
@@ -1960,6 +1970,7 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
         }
 
         nimcp_free(aug);
+        aug = NULL;
     }
 
     /* Compute residual return (alpha) */
@@ -1990,8 +2001,11 @@ int financial_investment_factor_analysis(financial_investment_eng_t* fin,
     }
 
     nimcp_free(xtx);
+    xtx = NULL;
     nimcp_free(xty);
+    xty = NULL;
     nimcp_free(factor_means);
+    factor_means = NULL;
     fin->stats.factor_analyses++;
     return FIN_ERR_OK;
 }

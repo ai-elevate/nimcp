@@ -197,6 +197,7 @@ void empathetic_response_destroy(empathetic_response_engine_t engine)
 
     if (engine) {
         nimcp_free(engine);
+        engine = NULL;
     }
 }
 
@@ -205,7 +206,7 @@ void empathetic_response_destroy(empathetic_response_engine_t engine)
  */
 static void to_lowercase(char* dest, const char* src, size_t max_len)
 {
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < max_len - 1 && src[i] != '\0'; i++) {
         dest[i] = tolower((unsigned char)src[i]);
     }

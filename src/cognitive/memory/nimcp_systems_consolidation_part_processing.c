@@ -66,7 +66,7 @@ uint32_t systems_consolidation_execute_replays(
 
     // WHAT: Determine replay rate based on sleep state
     // WHY: SWS has highest replay rate (Born & Wilhelm, 2012)
-    float replay_rate_hz;
+    float replay_rate_hz = 0.0f;
     if (is_sws) {
         replay_rate_hz = CONSOLIDATION_REPLAY_FREQUENCY_SWS;  // 10 Hz in SWS
     } else if (is_rem) {

@@ -278,6 +278,7 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
     if (!bridge->trades) {
         set_error("Failed to allocate trade history");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate trade history");
         return NULL;
@@ -292,6 +293,7 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
         set_error("Failed to allocate pattern memory");
         nimcp_free(bridge->trades);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate pattern memory");
         return NULL;
@@ -310,6 +312,7 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
         nimcp_free(bridge->patterns);
         nimcp_free(bridge->trades);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_consolidation_bridge_create: validation failed");
         return NULL;
     }
@@ -348,6 +351,7 @@ void financial_consolidation_bridge_destroy(financial_consolidation_bridge_t* br
         bridge->magic = 0;
         bridge->op_state = FIN_CONSOLIDATION_OP_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

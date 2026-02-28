@@ -51,8 +51,11 @@ static pred_level_t* create_level(const pred_level_config_t* config,
     level->gen_hidden_dim = config->gen_hidden_dim;
 
     level->state = nimcp_calloc(config->dim, sizeof(float));
+    if (!level->state) return -1;
     level->prediction = nimcp_calloc(config->dim, sizeof(float));
+    if (!level->prediction) return -1;
     level->prediction_error = nimcp_calloc(config->dim, sizeof(float));
+    if (!level->prediction_error) return -1;
     level->precision = nimcp_calloc(config->dim, sizeof(float));
 
     if (!level->state || !level->prediction ||
@@ -72,8 +75,11 @@ static pred_level_t* create_level(const pred_level_config_t* config,
 
     if (config->gen_type == PRED_HIER_GEN_LINEAR && level_index > 0) {
         level->gen_weights = nimcp_calloc(config->dim * config->dim, sizeof(float));
+        if (!level->gen_weights) return -1;
         level->gen_bias = nimcp_calloc(config->dim, sizeof(float));
+        if (!level->gen_bias) return -1;
         level->grad_gen_weights = nimcp_calloc(config->dim * config->dim, sizeof(float));
+        if (!level->grad_gen_weights) return -1;
         level->grad_gen_bias = nimcp_calloc(config->dim, sizeof(float));
 
         if (!level->gen_weights || !level->gen_bias ||
@@ -110,6 +116,7 @@ error:
     if (level->grad_gen_weights) nimcp_free(level->grad_gen_weights);
     if (level->grad_gen_bias) nimcp_free(level->grad_gen_bias);
     nimcp_free(level);
+    level = NULL;
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_hierarchy_heartbeat_instance: validation failed");
     return NULL;
 }
@@ -134,6 +141,7 @@ static void destroy_level(pred_level_t* level) {
     if (level->grad_gen_bias) nimcp_free(level->grad_gen_bias);
 
     nimcp_free(level);
+    level = NULL;
 }
 
 /**
@@ -337,6 +345,7 @@ predictive_hierarchy_t* pred_hier_create(const pred_hier_config_t* config) {
     if (!hier->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(hier);
+        hier = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_create: hier->mutex is NULL");
         return NULL;
     }
@@ -456,6 +465,7 @@ void pred_hier_destroy(predictive_hierarchy_t* hier) {
     }
 
     nimcp_free(hier);
+    hier = NULL;
 }
 
 int pred_hier_reset(predictive_hierarchy_t* hier) {
@@ -1151,6 +1161,7 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
     result->level_results = nimcp_calloc(num_levels, sizeof(pred_level_result_t));
     if (!result->level_results) {
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pred_hier_result_create: result->level_results is NULL");
         return NULL;
     }
@@ -1204,6 +1215,7 @@ void pred_hier_result_destroy(pred_hier_result_t* result) {
     }
 
     nimcp_free(result);
+    result = NULL;
 }
 
 /* ============================================================================

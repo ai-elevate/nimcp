@@ -170,6 +170,7 @@ game_theory_plasticity_bridge_t* game_theory_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "game_theory_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "game_theory_plasticity_create: validation failed");
         return NULL;
     }
@@ -180,6 +181,7 @@ game_theory_plasticity_bridge_t* game_theory_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "game_theory_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -217,6 +219,7 @@ void game_theory_plasticity_destroy(game_theory_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int game_theory_plasticity_reset(game_theory_plasticity_bridge_t* bridge) {

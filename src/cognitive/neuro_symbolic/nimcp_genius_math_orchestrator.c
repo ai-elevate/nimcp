@@ -116,6 +116,7 @@ NIMCP_API genius_math_orchestrator_t* genius_orchestrator_create(
     orch->mutex = nimcp_mutex_create(&attr);
     if (!orch->mutex) {
         nimcp_free(orch);
+        orch = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "genius_math_orchestrator_heartbeat_instance: orch->mutex is NULL");
         return NULL;
     }
@@ -204,6 +205,7 @@ NIMCP_API void genius_orchestrator_destroy(genius_math_orchestrator_t* orch) {
     if (orch->mutex) nimcp_mutex_free(orch->mutex);
 
     nimcp_free(orch);
+    orch = NULL;
 
     NIMCP_LOG_DEBUG("Destroyed genius math orchestrator");
 }

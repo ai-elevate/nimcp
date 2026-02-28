@@ -100,6 +100,7 @@ void mechanical_eng_destroy(mechanical_eng_t* me) {
 
     if (me) {
         nimcp_free(me);
+        me = NULL;
     }
 }
 

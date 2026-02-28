@@ -453,6 +453,7 @@ void prime_sig_destroy(prime_signature_t* sig) {
 
     if (sig) {
         nimcp_free(sig);
+        sig = NULL;
     }
 }
 

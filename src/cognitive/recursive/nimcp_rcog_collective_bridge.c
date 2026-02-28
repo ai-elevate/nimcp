@@ -207,6 +207,7 @@ rcog_collective_bridge_t* rcog_collective_bridge_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "rcog_collective") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_collective_bridge_create: validation failed");
         return NULL;
     }
@@ -249,6 +250,7 @@ void rcog_collective_bridge_destroy(rcog_collective_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /*=============================================================================

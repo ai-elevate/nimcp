@@ -204,6 +204,7 @@ void creative_training_bridge_destroy(creative_training_bridge_t* bridge) {
     /* In production, would clean up model/optimizer handles */
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 //=============================================================================
@@ -389,6 +390,7 @@ void training_dataset_free(training_dataset_t* dataset) {
     }
 
     nimcp_free(dataset);
+    dataset = NULL;
 }
 
 //=============================================================================
@@ -886,6 +888,7 @@ int creative_training_submit_feedback(creative_training_bridge_t* bridge,
         if (g_feedback_buffer && g_feedback_count > 0) {
             memcpy(new_buffer, g_feedback_buffer, g_feedback_count * sizeof(feedback_entry_t));
             nimcp_free(g_feedback_buffer);
+            g_feedback_buffer = NULL;
         }
         g_feedback_buffer = new_buffer;
         g_feedback_capacity = new_capacity;

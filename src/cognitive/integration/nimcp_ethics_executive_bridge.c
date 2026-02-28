@@ -255,6 +255,7 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     bridge->evaluations = nimcp_calloc(DEFAULT_EVAL_CAPACITY, sizeof(action_evaluation_t));
     if (!bridge->evaluations) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_executive_bridge_create: bridge->evaluations is NULL");
         return NULL;
     }
@@ -270,6 +271,7 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->evaluations);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_executive_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -304,6 +306,7 @@ void ethics_executive_bridge_destroy(ethics_executive_bridge_t* bridge) {
 
     /* Free bridge structure */
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /* ============================================================================

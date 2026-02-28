@@ -403,6 +403,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
     ctx->history = nimcp_calloc(ctx->history_capacity, sizeof(nimcp_round_record_t));
     if (!ctx->history) {
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_repeated_create: ctx->history is NULL");
         return NULL;
     }
@@ -427,6 +428,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
     if (!ctx->stage_game.payoff_matrix) {
         nimcp_free(ctx->history);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_repeated_create: ctx->stage_game is NULL");
         return NULL;
     }
@@ -452,6 +454,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
         nimcp_free(ctx->stage_game.payoff_matrix);
         nimcp_free(ctx->history);
         nimcp_free(ctx);
+        ctx = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_repeated_create: validation failed");
         return NULL;
     }
@@ -474,6 +477,7 @@ void nimcp_repeated_destroy(nimcp_repeated_game_t ctx) {
     nimcp_free(ctx->stage_game.payoff_matrix);
     nimcp_free(ctx->history);
     nimcp_free(ctx);
+    ctx = NULL;
 }
 
 //=============================================================================
@@ -678,7 +682,7 @@ float nimcp_repeated_compute_avg_payoff(
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
-    float avg;
+    float avg = 0.0f;
     if (ctx->rounds_played == 0) {
         avg = NAN;
     } else {
@@ -703,7 +707,7 @@ float nimcp_repeated_compute_discounted_payoff(
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
-    float result;
+    float result = 0.0f;
     if (ctx->rounds_played == 0) {
         result = NAN;
     } else {
@@ -1021,7 +1025,7 @@ uint32_t nimcp_repeated_get_strategy_action(
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
-    uint32_t action;
+    uint32_t action = 0;
     if (ctx->config.num_players == 2) {
         action = compute_strategy_action_2p(ctx, player);
     } else {

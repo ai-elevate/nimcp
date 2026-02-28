@@ -107,6 +107,7 @@ void brain_immune_destroy(brain_immune_system_t* system) {
     nimcp_free(system->cytokines);
     nimcp_free(system->inflammation_sites);
     nimcp_free(system);
+    system = NULL;
 }
 
 

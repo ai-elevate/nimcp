@@ -261,6 +261,7 @@ memory_sleep_bridge_t memory_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "memory_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -329,6 +330,7 @@ void memory_sleep_bridge_destroy(memory_sleep_bridge_t bridge)
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 /**

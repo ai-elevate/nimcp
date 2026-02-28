@@ -403,6 +403,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     if (config) {
         if (!pr_plasticity_config_validate(config)) {
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_bridge_create: pr_plasticity_config_validate is NULL");
             return NULL;
         }
@@ -414,6 +415,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_plasticity_bridge_create: validation failed");
         return NULL;
     }
@@ -424,6 +426,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     if (!bridge->bcm_nodes) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_plasticity_bridge_create: bridge->bcm_nodes is NULL");
         return NULL;
     }
@@ -437,6 +440,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
             nimcp_free(bridge->bcm_nodes);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            bridge = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_plasticity_bridge_create: bridge->events is NULL");
             return NULL;
         }
@@ -487,6 +491,7 @@ void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int pr_plasticity_bridge_reset(pr_plasticity_bridge_t bridge) {
@@ -819,7 +824,7 @@ int pr_bcm_apply_to_node(
 
     /* Get outgoing edges */
     entangle_edge_t edges[256];
-    size_t edge_count;
+    size_t edge_count = 0;
     if (!entangle_get_outgoing(graph, node_id, edges, 256, &edge_count)) {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_bcm_apply_to_node: entangle_get_outgoing is NULL");
@@ -1005,7 +1010,7 @@ uint32_t pr_homeostatic_scale_tier(
         }
 
         entangle_edge_t edges[256];
-        size_t edge_count;
+        size_t edge_count = 0;
 
         if (entangle_get_outgoing(graph, node_ids[n], edges, 256, &edge_count)) {
             for (size_t e = 0; e < edge_count; e++) {
@@ -1268,7 +1273,7 @@ int pr_structural_remodel(
     /* Phase 1: Prune weak edges */
     for (uint32_t n = 0; n < node_count && pruned < bridge->config.structural.max_prune_edges; n++) {
         entangle_edge_t edges[256];
-        size_t edge_count;
+        size_t edge_count = 0;
 
         if (entangle_get_outgoing(graph, node_ids[n], edges, 256, &edge_count)) {
             for (size_t e = 0; e < edge_count && pruned < bridge->config.structural.max_prune_edges; e++) {
@@ -1615,7 +1620,7 @@ int pr_plasticity_get_events(
 
     /* Copy from circular buffer */
     if (to_copy > 0) {
-        uint32_t start_idx;
+        uint32_t start_idx = 0;
         if (bridge->event_count < bridge->event_capacity) {
             start_idx = 0;
         } else {

@@ -420,6 +420,7 @@ void imagination_workspace_destroy(imagination_workspace_t* workspace) {
     if (workspace->mutex) nimcp_mutex_free(workspace->mutex);
 
     nimcp_free(workspace);
+    workspace = NULL;
 }
 
 int imagination_workspace_reset(imagination_workspace_t* workspace) {

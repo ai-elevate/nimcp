@@ -320,6 +320,7 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
     if (!bridge->signal_buffer) {
         set_error("Failed to allocate signal buffer");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate signal buffer");
         return NULL;
@@ -335,6 +336,7 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
         set_error("Failed to allocate outcome buffer");
         nimcp_free(bridge->signal_buffer);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate outcome buffer");
         return NULL;
@@ -351,6 +353,7 @@ financial_stdp_bridge_t* financial_stdp_bridge_create(
         nimcp_free(bridge->outcome_buffer);
         nimcp_free(bridge->signal_buffer);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate correlations");
         return NULL;
@@ -385,6 +388,7 @@ void financial_stdp_bridge_destroy(financial_stdp_bridge_t* bridge) {
         bridge->magic = 0;
         bridge->op_state = FIN_STDP_OP_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 
@@ -1262,6 +1266,7 @@ int financial_stdp_bridge_get_top_predictive(
     int total = financial_stdp_bridge_get_all_correlations(bridge, all, bridge->correlation_count);
     if (total <= 0) {
         nimcp_free(all);
+        all = NULL;
         return total;
     }
 
@@ -1273,6 +1278,7 @@ int financial_stdp_bridge_get_top_predictive(
     memcpy(correlations, all, to_copy * sizeof(fin_stdp_correlation_t));
 
     nimcp_free(all);
+    all = NULL;
     return (int)to_copy;
 }
 

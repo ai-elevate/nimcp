@@ -345,6 +345,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
     if (!system->items_table) {
         sr_set_error("Failed to allocate hash table");
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sr_system_create_integrated: system->items_table is NULL");
         return NULL;
     }
@@ -356,6 +357,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
         sr_set_error("Failed to allocate heap");
         nimcp_free(system->items_table);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sr_system_create_integrated: system->heap is NULL");
         return NULL;
     }
@@ -371,6 +373,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
         nimcp_free(system->heap);
         nimcp_free(system->items_table);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_create_integrated: required parameter is NULL (system->daily_review_counts, system->daily_retention_rates)");
         return NULL;
     }
@@ -401,6 +404,7 @@ NIMCP_EXPORT void sr_system_destroy(sr_system_t system) {
             sr_hash_entry_t* next = entry->next;
             item_destroy(entry->item);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
     }
@@ -421,6 +425,7 @@ NIMCP_EXPORT void sr_system_destroy(sr_system_t system) {
     nimcp_free(system->daily_review_counts);
     nimcp_free(system->daily_retention_rates);
     nimcp_free(system);
+    system = NULL;
 }
 
 NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
@@ -441,6 +446,7 @@ NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
             sr_hash_entry_t* next = entry->next;
             item_destroy(entry->item);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         system->items_table[i] = NULL;
@@ -825,8 +831,8 @@ NIMCP_EXPORT sr_error_t sr_system_review_at_time(
     sr_item_state_t old_state = item->state;
 
     // Process based on response
-    float new_stability;
-    float new_interval;
+    float new_stability = 0.0f;
+    float new_interval = 0.0f;
     sr_item_state_t new_state;
 
     if (response == SR_RESPONSE_AGAIN) {
@@ -1146,8 +1152,8 @@ NIMCP_EXPORT sr_error_t sr_compute_interval(
     }
 
     float current_time = sr_current_time_days();
-    float new_stability;
-    float new_interval;
+    float new_stability = 0.0f;
+    float new_interval = 0.0f;
     sr_item_state_t new_state;
 
     if (response == SR_RESPONSE_AGAIN) {
@@ -1458,6 +1464,7 @@ NIMCP_EXPORT sr_error_t sr_optimize_schedule(
     }
 
     nimcp_free(items);
+    items = NULL;
     return SR_SUCCESS;
 }
 
@@ -1917,7 +1924,7 @@ NIMCP_EXPORT sr_error_t sr_generate_cues(
         return SR_ERROR_NO_MEMORY;
     }
 
-    size_t neighbor_count;
+    size_t neighbor_count = 0;
     if (entangle_get_strongest(system->entanglement, memory_id, max_cues,
                                 neighbors, &neighbor_count)) {
         for (size_t i = 0; i < neighbor_count && *count < max_cues; i++) {
@@ -1927,6 +1934,7 @@ NIMCP_EXPORT sr_error_t sr_generate_cues(
     }
 
     nimcp_free(neighbors);
+    neighbors = NULL;
     return SR_SUCCESS;
 }
 
@@ -2002,6 +2010,7 @@ NIMCP_EXPORT sr_error_t sr_find_similar_items(
     }
 
     nimcp_free(candidates);
+    candidates = NULL;
     return SR_SUCCESS;
 }
 
@@ -2538,6 +2547,7 @@ static void hash_insert(sr_system_t system, sr_spaced_item_t* item) {
     uint64_t idx = hash_id(item->item_id, system->table_size);
 
     sr_hash_entry_t* entry = (sr_hash_entry_t*)nimcp_malloc(sizeof(sr_hash_entry_t));
+    if (!entry) return -1;
     entry->item_id = item->item_id;
     entry->item = item;
     entry->next = system->items_table[idx];
@@ -2554,6 +2564,7 @@ static void hash_remove(sr_system_t system, uint64_t item_id) {
             sr_hash_entry_t* to_remove = *entry_ptr;
             *entry_ptr = to_remove->next;
             nimcp_free(to_remove);
+            to_remove = NULL;
             system->num_items--;
             return;
         }
@@ -2617,6 +2628,7 @@ static void item_destroy(sr_spaced_item_t* item) {
     }
     nimcp_free(item->response_history);
     nimcp_free(item);
+    item = NULL;
 }
 
 static void item_add_history(sr_spaced_item_t* item, const sr_review_record_t* record) {
@@ -2624,7 +2636,7 @@ static void item_add_history(sr_spaced_item_t* item, const sr_review_record_t* r
         return;
     }
 
-    size_t write_idx;
+    size_t write_idx = 0;
     if (item->history_len < item->history_capacity) {
         write_idx = item->history_len;
         item->history_len++;
@@ -2849,6 +2861,7 @@ static sr_spaced_item_t* heap_extract_min(sr_system_t system) {
     system->heap_size--;
 
     nimcp_free(min_node);
+    min_node = NULL;
 
     if (system->heap_size > 0) {
         heap_sift_down(system, 0);
@@ -2931,6 +2944,7 @@ static void heap_remove(sr_system_t system, sr_spaced_item_t* item) {
     system->heap_size--;
 
     nimcp_free(node);
+    node = NULL;
 
     if (index < system->heap_size) {
         heap_sift_up(system, index);

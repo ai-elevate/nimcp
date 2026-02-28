@@ -343,6 +343,7 @@ void vae_thalamic_bridge_destroy(vae_thalamic_bridge_t* bridge)
     nimcp_free(bridge->gate_buffer);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int vae_thalamic_bridge_connect_vae(vae_thalamic_bridge_t* bridge, vae_system_t* vae)
@@ -409,6 +410,7 @@ int vae_thalamic_bridge_connect_thalamus(vae_thalamic_bridge_t* bridge, void* th
     bridge->trn_dim = VAE_THALAMIC_MAX_CHANNELS;
     nimcp_free(bridge->trn_inhibition);
     bridge->trn_inhibition = nimcp_calloc(bridge->trn_dim, sizeof(float));
+    if (!bridge->trn_inhibition) return -1;
 
     if (bridge->vae) {
         bridge->state = VAE_THAL_STATE_CONNECTED;
@@ -465,6 +467,7 @@ int vae_thalamic_relay(vae_thalamic_bridge_t* bridge,
     result->latent_dim = latent_dim;
     result->relayed_latent = nimcp_calloc(latent_dim, sizeof(float));
     result->attention_weights = nimcp_calloc(latent_dim, sizeof(float));
+    if (!result->attention_weights) return -1;
     result->gate_values = nimcp_calloc(latent_dim, sizeof(float));
 
     if (!result->relayed_latent || !result->attention_weights || !result->gate_values) {

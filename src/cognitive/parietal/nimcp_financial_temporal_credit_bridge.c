@@ -293,6 +293,7 @@ financial_temporal_credit_bridge_t* financial_temporal_credit_bridge_create(
     if (!bridge->decisions) {
         set_error("Failed to allocate decision history");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate decision history");
         return NULL;
@@ -307,6 +308,7 @@ financial_temporal_credit_bridge_t* financial_temporal_credit_bridge_create(
         set_error("Failed to allocate eligibility traces");
         nimcp_free(bridge->decisions);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NO_MEMORY,
             "Failed to allocate eligibility traces");
         return NULL;
@@ -343,6 +345,7 @@ void financial_temporal_credit_bridge_destroy(financial_temporal_credit_bridge_t
         bridge->magic = 0;
         bridge->op_state = FIN_TEMPORAL_CREDIT_OP_STATE_UNINITIALIZED;
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

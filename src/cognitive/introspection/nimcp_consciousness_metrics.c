@@ -193,6 +193,7 @@ static transition_probability_matrix_t* build_tpm(
     tpm->probabilities = (float*)nimcp_calloc(tpm_size, sizeof(float));
     if (!tpm->probabilities) {
         nimcp_free(tpm);
+        tpm = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_tpm: tpm->probabilities is NULL");
         return NULL;
     }
@@ -226,6 +227,7 @@ static void tpm_free(transition_probability_matrix_t* tpm) {
 
     nimcp_free(tpm->probabilities);
     nimcp_free(tpm);
+    tpm = NULL;
 }
 
 /**
@@ -285,6 +287,13 @@ static uint32_t generate_partitions(
         partitions[p].subset_b_size = count_b;
         partitions[p].subset_a = (uint32_t*)nimcp_calloc(count_a, sizeof(uint32_t));
         partitions[p].subset_b = (uint32_t*)nimcp_calloc(count_b, sizeof(uint32_t));
+        if (!partitions[p].subset_a || !partitions[p].subset_b) {
+            nimcp_free(partitions[p].subset_a);
+            nimcp_free(partitions[p].subset_b);
+            partitions[p].subset_a = NULL;
+            partitions[p].subset_b = NULL;
+            continue;
+        }
 
         /* Fill subsets */
         uint32_t idx_a = 0, idx_b = 0;
@@ -521,6 +530,7 @@ consciousness_phi_result_t* introspection_compute_phi(
     if (!tpm) {
         LOG_ERROR("Failed to build TPM");
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_compute_phi: tpm is NULL");
         return NULL;
     }
@@ -537,6 +547,7 @@ consciousness_phi_result_t* introspection_compute_phi(
         LOG_ERROR("Failed to generate partitions");
         tpm_free(tpm);
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_compute_phi: num_partitions is zero");
         return NULL;
     }
@@ -647,6 +658,7 @@ consciousness_phi_result_t* introspection_compute_phi(
         nimcp_free(partitions[i].subset_b);
     }
     nimcp_free(partitions);
+    partitions = NULL;
     tpm_free(tpm);
 
     return result;
@@ -934,6 +946,7 @@ bool brain_enable_consciousness_monitoring(
         }
         nimcp_mutex_destroy(&monitor->lock);
         nimcp_free(monitor);
+        monitor = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_consciousness_monitoring: validation failed");
         return false;
     }
@@ -1045,6 +1058,7 @@ void consciousness_phi_result_free(consciousness_phi_result_t* result) {
     conceptual_structure_free(result->constellation);
     nimcp_free(result->interpretation);
     nimcp_free(result);
+    result = NULL;
 }
 
 /**
@@ -1064,6 +1078,7 @@ void phi_partition_free(phi_partition_t* partition) {
     nimcp_free(partition->subset_a);
     nimcp_free(partition->subset_b);
     nimcp_free(partition);
+    partition = NULL;
 }
 
 /**
@@ -1091,6 +1106,7 @@ void conceptual_structure_free(conceptual_structure_t* structure) {
     }
     nimcp_free(structure->concepts);
     nimcp_free(structure);
+    structure = NULL;
 }
 
 /**

@@ -323,6 +323,7 @@ mirror_plasticity_bridge_t* mirror_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(mirror_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -337,6 +338,7 @@ mirror_plasticity_bridge_t* mirror_plasticity_create(
     if (!bridge->orchestrator) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_plasticity_create: bridge->orchestrator is NULL");
         return NULL;
     }
@@ -361,6 +363,7 @@ mirror_plasticity_bridge_t* mirror_plasticity_create(
         plasticity_orchestrator_destroy(bridge->orchestrator);
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_plasticity_create: validation failed");
         return NULL;
     }
@@ -406,6 +409,7 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(mirror_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_plasticity_create_with_orchestrator: bridge->synapses is NULL");
         return NULL;
     }
@@ -427,6 +431,7 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
     if (bridge_base_init(&bridge->base, 0, "mirror_plasticity") != 0) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_plasticity_create_with_orchestrator: validation failed");
         return NULL;
     }
@@ -456,6 +461,7 @@ void mirror_plasticity_destroy(mirror_plasticity_bridge_t* bridge) {
     bridge_base_cleanup(&bridge->base);
     if (bridge->synapses) nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOG_INFO(LOG_MODULE, "Destroyed mirror-plasticity bridge");
 }

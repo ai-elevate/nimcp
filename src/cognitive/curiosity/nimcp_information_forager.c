@@ -624,6 +624,7 @@ static int tick_evaluating(information_forager_t f)
 
         /* Callback failed — leave target in queue, go idle */
         free(result_text);
+        result_text = NULL;
         transition_state(f, FORAGER_STATE_IDLE);
         return 0;
     }
@@ -815,6 +816,7 @@ information_forager_t forager_create(
     f->queue = calloc(f->queue_capacity, sizeof(forager_target_t));
     if (!f->queue) {
         free(f);
+        f = NULL;
         return NULL;
     }
 
@@ -826,6 +828,7 @@ information_forager_t forager_create(
     if (!f->mutex) {
         free(f->queue);
         free(f);
+        f = NULL;
         return NULL;
     }
 
@@ -852,6 +855,7 @@ void forager_destroy(information_forager_t forager)
     }
 
     free(forager);
+    forager = NULL;
 }
 
 //=============================================================================

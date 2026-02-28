@@ -176,6 +176,7 @@ void creative_api_client_destroy(creative_api_client_t* client)
     }
 
     nimcp_free(client);
+    client = NULL;
 }
 
 int creative_api_client_test(creative_api_client_t* client)
@@ -398,6 +399,7 @@ int api_generate_image(creative_api_client_t* client,
     response->generation_time_ms = (float)(clock() - start) * 1000.0f / CLOCKS_PER_SEC;
 
     nimcp_free(http_response);
+    http_response = NULL;
 
     /* Update statistics */
     client->successful_requests++;
@@ -595,6 +597,7 @@ int api_generate_text(creative_api_client_t* client,
     response->generation_time_ms = (float)(clock() - start) * 1000.0f / CLOCKS_PER_SEC;
 
     nimcp_free(http_response);
+    http_response = NULL;
     client->successful_requests++;
 
     return 0;

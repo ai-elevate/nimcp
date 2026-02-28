@@ -348,6 +348,7 @@ surprise_snn_bridge_t* surprise_snn_bridge_create(
                            sizeof(nimcp_mutex_t),
                            "surprise_snn_bridge mutex allocation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -361,6 +362,7 @@ surprise_snn_bridge_t* surprise_snn_bridge_create(
                            "surprise_snn_bridge neurons allocation failed");
         nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -396,6 +398,7 @@ void surprise_snn_bridge_destroy(surprise_snn_bridge_t* bridge) {
         nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int surprise_snn_bridge_reset(surprise_snn_bridge_t* bridge) {

@@ -93,6 +93,7 @@ void meta_learning_substrate_bridge_destroy(meta_learning_substrate_bridge_t* br
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int meta_learning_substrate_bridge_update(meta_learning_substrate_bridge_t* bridge) {

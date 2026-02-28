@@ -220,6 +220,7 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > TOM_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_snn_create: operation failed");
         return NULL;
     }
@@ -228,6 +229,7 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
     if (bridge_base_init(&bridge->base, 0, "tom_snn") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in tom_snn_create");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -246,14 +248,19 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create SNN network in tom_snn_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
     /* Allocate buffers */
     bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    if (!bridge->encoding_buffer) return -1;
     bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    if (!bridge->output_buffer) return -1;
     bridge->inference_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->inference_buffer) return -1;
     bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    if (!bridge->prev_state) return -1;
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->inference_buffer || !bridge->prev_state) {
@@ -320,6 +327,7 @@ void tom_snn_destroy(tom_snn_bridge_t* bridge) {
     nimcp_free(bridge->inference_buffer);
     nimcp_free(bridge->prev_state);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int tom_snn_reset(tom_snn_bridge_t* bridge) {

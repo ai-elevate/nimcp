@@ -215,6 +215,7 @@ void somato_logic_bridge_destroy(somato_logic_bridge_t* bridge) {
 
     if (bridge) {
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

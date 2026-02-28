@@ -120,6 +120,7 @@ joy_thalamic_bridge_t* joy_thalamic_bridge_create(void* joy, thalamic_router_t* 
     if (bridge_base_init(&bridge->base, 0, "joy_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -143,6 +144,7 @@ void joy_thalamic_bridge_destroy(joy_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int joy_thalamic_bridge_reset(joy_thalamic_bridge_t* bridge) {

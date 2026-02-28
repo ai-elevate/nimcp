@@ -151,6 +151,7 @@ static nimcp_error_t handle_wm_retrieve_request(
 
         nimcp_bio_promise_complete_sized(response_promise, response_buf, response_size);
         nimcp_free(response_buf);
+        response_buf = NULL;
 
         LOG_DEBUG("Retrieved %u floats from slot %u", item_size, retrieve_msg->slot_id);
     }

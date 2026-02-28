@@ -68,6 +68,7 @@ emotional_tagging_thalamic_bridge_t* emotional_tagging_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "emotional_tagging_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
@@ -91,6 +92,7 @@ void emotional_tagging_thalamic_bridge_destroy(emotional_tagging_thalamic_bridge
             bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
+        bridge = NULL;
     }
 }
 

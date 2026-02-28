@@ -210,6 +210,7 @@ void bias_system_destroy(bias_detection_system_t* system) {
     system->bridges_enabled = false;
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void bias_system_reset(bias_detection_system_t* system) {

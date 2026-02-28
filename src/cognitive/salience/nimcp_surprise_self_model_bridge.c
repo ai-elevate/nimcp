@@ -261,6 +261,7 @@ surprise_self_model_bridge_t* surprise_self_model_bridge_create(
                            sizeof(nimcp_mutex_t),
                            "surprise_self_model_bridge mutex allocation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -273,6 +274,7 @@ surprise_self_model_bridge_t* surprise_self_model_bridge_create(
                            "surprise_self_model_bridge capabilities allocation failed");
         nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
 
@@ -315,6 +317,7 @@ void surprise_self_model_bridge_destroy(surprise_self_model_bridge_t* bridge) {
         nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int surprise_self_model_bridge_reset(surprise_self_model_bridge_t* bridge) {

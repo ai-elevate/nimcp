@@ -107,6 +107,7 @@ void self_awareness_extended_fep_bridge_destroy(self_awareness_extended_fep_brid
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int self_awareness_extended_fep_bridge_connect_fep(self_awareness_extended_fep_bridge_t* bridge, fep_system_t* fep) {

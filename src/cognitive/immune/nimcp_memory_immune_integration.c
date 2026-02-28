@@ -297,6 +297,7 @@ memory_immune_integration_t* memory_immune_integration_create(
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME,
                        "Failed to allocate memory links array");
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_integration_create: integration->memory_links is NULL");
         return NULL;
     }
@@ -309,6 +310,7 @@ memory_immune_integration_t* memory_immune_integration_create(
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME, "Failed to create mutex");
         nimcp_free(integration->memory_links);
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_integration_create: integration->mutex is NULL");
         return NULL;
     }
@@ -355,6 +357,7 @@ void memory_immune_integration_destroy(memory_immune_integration_t* integration)
 
     /* Free integration structure */
     nimcp_free(integration);
+    integration = NULL;
 }
 
 int memory_immune_integration_start(memory_immune_integration_t* integration) {

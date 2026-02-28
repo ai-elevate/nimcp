@@ -280,6 +280,7 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
     if (!system->memories) {
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_create: validation failed");
         return NULL;
     }
@@ -294,6 +295,7 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
         else nimcp_free(system->memories);
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_create: validation failed");
         return NULL;
     }
@@ -443,6 +445,7 @@ void autobio_destroy(autobiographical_memory_t system)
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 uint64_t autobio_store(autobiographical_memory_t system,
@@ -884,7 +887,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
     query.max_results = 100;  // Limit to 100 memories
 
     autobiographical_memory_entry_t results[100];
-    uint32_t found;
+    uint32_t found = 0;
 
     if (!autobio_query(system, &query, results, 100, &found)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_generate_timeline_summary: autobio_query is NULL");

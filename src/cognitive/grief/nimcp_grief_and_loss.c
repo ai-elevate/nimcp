@@ -225,6 +225,7 @@ void grief_system_destroy(grief_system_t* system) {
     }
 
     nimcp_free(system);
+    system = NULL;
 }
 
 void grief_system_reset(grief_system_t* system) {

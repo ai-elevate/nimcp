@@ -118,11 +118,13 @@ knowledge_thalamic_bridge_t* knowledge_thalamic_bridge_create(void* knowledge, t
     if (bridge_base_init(&bridge->base, 0, "knowledge_thalamic") != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_thalamic_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_thalamic_bridge_create: mutex creation failed");
         nimcp_free(bridge);
+        bridge = NULL;
         return NULL;
     }
     bridge->knowledge = knowledge;
@@ -145,6 +147,7 @@ void knowledge_thalamic_bridge_destroy(knowledge_thalamic_bridge_t* bridge) {
         bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int knowledge_thalamic_bridge_reset(knowledge_thalamic_bridge_t* bridge) {

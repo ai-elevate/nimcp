@@ -206,6 +206,7 @@ static nimcp_error_t allocate_buffers(omni_wm_thalamic_bridge_t* bridge) {
     /* Allocate input buffer */
     bridge->input_buffer_size = DEFAULT_INPUT_BUFFER_SIZE;
     bridge->input_buffer = nimcp_calloc(bridge->input_buffer_size, sizeof(float));
+    if (!bridge->input_buffer) return -1;
     NIMCP_CHECK_THROW(bridge->input_buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate input_buffer");
 
     /* Allocate attention buffer */
@@ -675,6 +676,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_THALAMIC_BRIDGE,
                          "wm_thalamic_bridge") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_wm_to_thalamus_effects: operation failed");
         return NULL;
@@ -692,6 +694,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
     if (err != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate buffers");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -703,6 +706,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
         free_buffers(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_LOGGING_ERROR("Failed to allocate effects arrays");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
@@ -738,6 +742,7 @@ void omni_wm_thalamic_bridge_destroy(omni_wm_thalamic_bridge_t* bridge) {
     /* Cleanup base and free */
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+    bridge = NULL;
 
     NIMCP_LOGGING_INFO("WM Thalamic Bridge destroyed");
 }

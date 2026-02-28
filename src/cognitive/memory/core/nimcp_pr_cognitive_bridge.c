@@ -379,6 +379,7 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
     // Initialize base bridge infrastructure
     if (bridge_base_init(&bridge->base, 0, "pr_cognitive") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_cognitive_bridge_create: validation failed");
         return NULL;
     }
@@ -432,6 +433,7 @@ void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 pr_cognitive_error_t pr_cognitive_bridge_reset(pr_cognitive_bridge_t bridge) {

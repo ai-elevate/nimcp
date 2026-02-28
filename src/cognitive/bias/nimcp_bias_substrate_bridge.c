@@ -139,6 +139,7 @@ void bias_substrate_bridge_destroy(bias_substrate_bridge_t* bridge) {
         bio_router_unregister_module(bridge->ctx);
     }
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int bias_substrate_bridge_update(bias_substrate_bridge_t* bridge) {

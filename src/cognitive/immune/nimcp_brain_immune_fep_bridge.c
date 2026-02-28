@@ -167,7 +167,7 @@ static float compute_inflammation_error(const brain_immune_system_t* immune,
         }
 
         const brain_inflammation_site_t* site = &immune->inflammation_sites[i];
-        float error;
+        float error = 0.0f;
 
         switch (site->level) {
             case INFLAMMATION_NONE:
@@ -265,6 +265,7 @@ brain_immune_fep_bridge_t* brain_immune_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_fep_create: bridge->base is NULL");
         return NULL;
     }
@@ -294,6 +295,7 @@ void brain_immune_fep_destroy(brain_immune_fep_bridge_t* bridge) {
     }
 
     nimcp_free(bridge);
+    bridge = NULL;
     NIMCP_LOGGING_INFO("Destroyed brain immune FEP bridge");
 }
 

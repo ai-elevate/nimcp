@@ -146,6 +146,7 @@ gw_plasticity_bridge_t* gw_plasticity_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "gw_plasticity") != 0) {
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "gw_plasticity_create: validation failed");
         return NULL;
     }
@@ -156,6 +157,7 @@ gw_plasticity_bridge_t* gw_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        bridge = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
@@ -192,6 +194,7 @@ void gw_plasticity_destroy(gw_plasticity_bridge_t* bridge) {
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
+    bridge = NULL;
 }
 
 int gw_plasticity_reset(gw_plasticity_bridge_t* bridge) {

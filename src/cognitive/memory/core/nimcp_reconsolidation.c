@@ -274,6 +274,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         cfg.max_windows, sizeof(reconsolidation_window_t));
     if (system->windows == NULL) {
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
@@ -283,6 +284,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     if (system->free_indices == NULL) {
         nimcp_free(system->windows);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
@@ -306,6 +308,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         nimcp_free(system->free_indices);
         nimcp_free(system->windows);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
@@ -319,6 +322,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         nimcp_free(system->free_indices);
         nimcp_free(system->windows);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
@@ -362,6 +366,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         nimcp_free(system->free_indices);
         nimcp_free(system->windows);
         nimcp_free(system);
+        system = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
@@ -422,6 +427,7 @@ NIMCP_EXPORT void reconsolidation_destroy(reconsolidation_system_t* system) {
     nimcp_free(system->free_indices);
     nimcp_free(system->windows);
     nimcp_free(system);
+    system = NULL;
 }
 
 //=============================================================================

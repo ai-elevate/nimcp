@@ -125,6 +125,7 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
     
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
         nimcp_free(integration);
+        integration = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_create_custom: validation failed");
         return NULL;
     }
@@ -167,6 +168,7 @@ void reasoning_curiosity_destroy(reasoning_curiosity_t* integration) {
     }
 
     nimcp_free(integration);
+    integration = NULL;
 }
 
 void reasoning_curiosity_callback(const brain_event_t* event, void* context) {

@@ -114,6 +114,7 @@ NIMCP_EXPORT knowledge_cow_base_t knowledge_cow_base_create(
     base->region = page_cow_region_create(&page_config, initial_data);
     if (!base->region) {
         nimcp_free(base);
+        base = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_base_create: base->region is NULL");
         return NULL;
     }
@@ -132,6 +133,7 @@ NIMCP_EXPORT void knowledge_cow_base_destroy(knowledge_cow_base_t base) {
 
     base->magic = 0;
     nimcp_free(base);
+    base = NULL;
 }
 
 NIMCP_EXPORT bool knowledge_cow_base_get_stats(
@@ -219,6 +221,7 @@ NIMCP_EXPORT bool knowledge_cow_base_update(
 
     base->region = page_cow_region_create(&page_config, merged);
     nimcp_free(merged);
+    merged = NULL;
 
     if (!base->region) {
         base->initialized = false;
@@ -263,6 +266,7 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_create(knowledge_cow_base_t
     view->page_view = page_cow_view_create(base->region);
     if (!view->page_view) {
         nimcp_free(view);
+        view = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_view_create: view->page_view is NULL");
         return NULL;
     }
@@ -292,6 +296,7 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_clone(knowledge_cow_view_t 
     clone->page_view = page_cow_view_clone(source->page_view);
     if (!clone->page_view) {
         nimcp_free(clone);
+        clone = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_view_clone: clone->page_view is NULL");
         return NULL;
     }
@@ -308,6 +313,7 @@ NIMCP_EXPORT void knowledge_cow_view_destroy(knowledge_cow_view_t view) {
 
     view->magic = 0;
     nimcp_free(view);
+    view = NULL;
 }
 
 NIMCP_EXPORT const void* knowledge_cow_view_read(knowledge_cow_view_t view) {
@@ -393,6 +399,7 @@ NIMCP_EXPORT knowledge_cow_snapshot_t knowledge_cow_snapshot_create(knowledge_co
     snap->page_snapshot = page_cow_snapshot_create(view->page_view);
     if (!snap->page_snapshot) {
         nimcp_free(snap);
+        snap = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_snapshot_create: snap->page_snapshot is NULL");
         return NULL;
     }
@@ -429,6 +436,7 @@ NIMCP_EXPORT void knowledge_cow_snapshot_destroy(knowledge_cow_snapshot_t snapsh
 
     snapshot->magic = 0;
     nimcp_free(snapshot);
+    snapshot = NULL;
 }
 
 /* ============================================================================

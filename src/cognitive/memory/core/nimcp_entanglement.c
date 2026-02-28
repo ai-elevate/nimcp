@@ -362,6 +362,7 @@ static bool remove_edge_from_list(edge_list_node_t** list_head, uint64_t other_i
                 *list_head = curr->next;
             }
             nimcp_free(curr);
+            curr = NULL;
             return true;
         }
         prev = curr;
@@ -379,6 +380,7 @@ static void free_edge_list(edge_list_node_t* head) {
     while (head) {
         edge_list_node_t* next = head->next;
         nimcp_free(head);
+        head = NULL;
         head = next;
     }
 }
@@ -566,6 +568,7 @@ entangle_graph_t entangle_graph_create(const entangle_config_t* config) {
     if (!graph->node_table) {
         set_error("Failed to allocate node hash table");
         nimcp_free(graph);
+        graph = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_graph_create: graph->node_table is NULL");
         return NULL;
     }
@@ -577,6 +580,7 @@ entangle_graph_t entangle_graph_create(const entangle_config_t* config) {
         set_error("Failed to allocate edge hash table");
         nimcp_free(graph->node_table);
         nimcp_free(graph);
+        graph = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_graph_create: graph->edge_table is NULL");
         return NULL;
     }
@@ -587,6 +591,7 @@ entangle_graph_t entangle_graph_create(const entangle_config_t* config) {
         nimcp_free(graph->edge_table);
         nimcp_free(graph->node_table);
         nimcp_free(graph);
+        graph = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "entangle_graph_create: validation failed");
         return NULL;
     }
@@ -625,6 +630,7 @@ void entangle_graph_destroy(entangle_graph_t graph) {
             while (entry) {
                 edge_entry_t* next = entry->hash_next;
                 nimcp_free(entry);
+                entry = NULL;
                 entry = next;
             }
         }
@@ -646,6 +652,7 @@ void entangle_graph_destroy(entangle_graph_t graph) {
                 free_edge_list(entry->out_edges);
                 free_edge_list(entry->in_edges);
                 nimcp_free(entry);
+                entry = NULL;
                 entry = next;
             }
         }
@@ -658,6 +665,7 @@ void entangle_graph_destroy(entangle_graph_t graph) {
     }
 
     nimcp_free(graph);
+    graph = NULL;
 }
 
 bool entangle_graph_clear(entangle_graph_t graph) {
@@ -685,6 +693,7 @@ bool entangle_graph_clear(entangle_graph_t graph) {
         while (entry) {
             edge_entry_t* next = entry->hash_next;
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         graph->edge_table[i] = NULL;
@@ -704,6 +713,7 @@ bool entangle_graph_clear(entangle_graph_t graph) {
             free_edge_list(entry->out_edges);
             free_edge_list(entry->in_edges);
             nimcp_free(entry);
+            entry = NULL;
             entry = next;
         }
         graph->node_table[i] = NULL;
@@ -811,6 +821,7 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
         /* Rollback edge creation */
         graph->edge_table[edge_idx] = new_edge->hash_next;
         nimcp_free(new_edge);
+        new_edge = NULL;
         graph->edge_count--;
         write_unlock(graph);
         set_error("Failed to create node entries");
@@ -822,6 +833,7 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
     if (!add_edge_to_list(&from_node->out_edges, edge->to_id, new_edge)) {
         graph->edge_table[edge_idx] = new_edge->hash_next;
         nimcp_free(new_edge);
+        new_edge = NULL;
         graph->edge_count--;
         write_unlock(graph);
         set_error("Failed to add to outgoing list");
@@ -835,6 +847,7 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
         from_node->out_degree--;
         graph->edge_table[edge_idx] = new_edge->hash_next;
         nimcp_free(new_edge);
+        new_edge = NULL;
         graph->edge_count--;
         write_unlock(graph);
         set_error("Failed to add to incoming list");
@@ -935,6 +948,7 @@ bool entangle_remove_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to_
             }
 
             nimcp_free(curr);
+            curr = NULL;
             graph->edge_count--;
             graph->stats.num_edges = graph->edge_count;
             graph->stats.memory_bytes -= sizeof(edge_entry_t) + 2 * sizeof(edge_list_node_t);
@@ -1335,17 +1349,19 @@ bool entangle_get_strongest(
         return false;
     }
 
-    size_t total;
+    size_t total = 0;
     bool result = entangle_get_neighbors(graph, node_id, temp, max_temp, &total);
 
     if (!result) {
         nimcp_free(temp);
+        temp = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entangle_get_strongest: result is NULL");
         return false;
     }
 
     if (total == 0) {
         nimcp_free(temp);
+        temp = NULL;
         clear_error();
         return true;
     }
@@ -1358,6 +1374,7 @@ bool entangle_get_strongest(
     memcpy(neighbors, temp, *count * sizeof(entangle_neighbor_t));
 
     nimcp_free(temp);
+    temp = NULL;
     clear_error();
     return true;
 }
@@ -1618,6 +1635,7 @@ size_t entangle_prune_weak(entangle_graph_t graph, float threshold) {
                     if (!new_list) {
                         read_unlock(graph);
                         nimcp_free(to_remove);
+                        to_remove = NULL;
                         set_error("Failed to expand removal list");
                         return 0;
                     }
@@ -1648,6 +1666,7 @@ size_t entangle_prune_weak(entangle_graph_t graph, float threshold) {
     }
 
     nimcp_free(to_remove);
+    to_remove = NULL;
     clear_error();
     return removed;
 }
@@ -1739,6 +1758,7 @@ quantum_walk_state_t* quantum_walk_init(
     if (num_nodes == 0) {
         read_unlock(graph);
         nimcp_free(node_ids);
+        node_ids = NULL;
         set_error("Graph is empty");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_init: num_nodes is zero");
         return NULL;
@@ -1749,6 +1769,7 @@ quantum_walk_state_t* quantum_walk_init(
     if (start_idx < 0) {
         read_unlock(graph);
         nimcp_free(node_ids);
+        node_ids = NULL;
         set_error("Start node not found in graph");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_init: validation failed");
         return NULL;
@@ -1760,6 +1781,7 @@ quantum_walk_state_t* quantum_walk_init(
     quantum_walk_state_t* state = (quantum_walk_state_t*)nimcp_malloc(sizeof(quantum_walk_state_t));
     if (!state) {
         nimcp_free(node_ids);
+        node_ids = NULL;
         set_error("Failed to allocate walk state");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate state");
 
@@ -1769,7 +1791,9 @@ quantum_walk_state_t* quantum_walk_init(
     state->amplitudes = (float*)nimcp_calloc(num_nodes, sizeof(float));
     if (!state->amplitudes) {
         nimcp_free(node_ids);
+        node_ids = NULL;
         nimcp_free(state);
+        state = NULL;
         set_error("Failed to allocate amplitude array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_init: state->amplitudes is NULL");
         return NULL;
@@ -2041,6 +2065,7 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
     result->steps_taken = state->current_step;
 
     nimcp_free(probs);
+    probs = NULL;
 
     /* Mark as collapsed */
     state->is_collapsed = true;
@@ -2100,6 +2125,7 @@ bool quantum_walk_get_top_k(
     memcpy(results, all, *count * sizeof(quantum_walk_result_t));
 
     nimcp_free(all);
+    all = NULL;
     clear_error();
     return true;
 }
@@ -2132,6 +2158,7 @@ void entangle_quantum_walk_destroy(quantum_walk_state_t* state) {
     nimcp_free(state->amplitudes);
     nimcp_free(state->node_ids);
     nimcp_free(state);
+    state = NULL;
 }
 
 //=============================================================================
@@ -2188,6 +2215,7 @@ bool entangle_spread_activation(
     if (num_nodes == 0) {
         read_unlock(graph);
         nimcp_free(node_ids);
+        node_ids = NULL;
         clear_error();
         return true;
     }
@@ -2199,8 +2227,11 @@ bool entangle_spread_activation(
     if (!activations || !new_activations) {
         read_unlock(graph);
         nimcp_free(node_ids);
+        node_ids = NULL;
         nimcp_free(activations);
+        activations = NULL;
         nimcp_free(new_activations);
+        new_activations = NULL;
         set_error("Failed to allocate activation arrays");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_spread_activation: required parameter is NULL (activations, new_activations)");
         return false;
@@ -2275,8 +2306,11 @@ bool entangle_spread_activation(
     if (!entries) {
         read_unlock(graph);
         nimcp_free(node_ids);
+        node_ids = NULL;
         nimcp_free(activations);
+        activations = NULL;
         nimcp_free(new_activations);
+        new_activations = NULL;
         set_error("Failed to allocate entry array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_spread_activation: entries is NULL");
         return false;
@@ -2330,9 +2364,13 @@ bool entangle_spread_activation(
     write_unlock((entangle_graph_t)graph);
 
     nimcp_free(entries);
+    entries = NULL;
     nimcp_free(node_ids);
+    node_ids = NULL;
     nimcp_free(activations);
+    activations = NULL;
     nimcp_free(new_activations);
+    new_activations = NULL;
 
     clear_error();
     return true;
@@ -2372,7 +2410,9 @@ bool entangle_cascade(
 
     if (!current_nodes || !current_activations) {
         nimcp_free(current_nodes);
+        current_nodes = NULL;
         nimcp_free(current_activations);
+        current_activations = NULL;
         set_error("Failed to allocate cascade buffers");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_cascade: required parameter is NULL (current_nodes, current_activations)");
         return false;
@@ -2386,7 +2426,9 @@ bool entangle_cascade(
     entangle_neighbor_t* temp_results = (entangle_neighbor_t*)nimcp_calloc(temp_max, sizeof(entangle_neighbor_t));
     if (!temp_results) {
         nimcp_free(current_nodes);
+        current_nodes = NULL;
         nimcp_free(current_activations);
+        current_activations = NULL;
         set_error("Failed to allocate temp buffer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "entangle_cascade: temp_results is NULL");
         return false;
@@ -2406,8 +2448,11 @@ bool entangle_cascade(
                                         current_count, decay, 1, 0.01f,
                                         temp_results, temp_max, &spread_count)) {
             nimcp_free(current_nodes);
+            current_nodes = NULL;
             nimcp_free(current_activations);
+            current_activations = NULL;
             nimcp_free(temp_results);
+            temp_results = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entangle_cascade: operation failed");
             return false;
         }
@@ -2433,15 +2478,21 @@ bool entangle_cascade(
                                     current_count, decay, 1, 0.01f,
                                     results, max_results, result_count)) {
         nimcp_free(current_nodes);
+        current_nodes = NULL;
         nimcp_free(current_activations);
+        current_activations = NULL;
         nimcp_free(temp_results);
+        temp_results = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entangle_cascade: operation failed");
         return false;
     }
 
     nimcp_free(current_nodes);
+    current_nodes = NULL;
     nimcp_free(current_activations);
+    current_activations = NULL;
     nimcp_free(temp_results);
+    temp_results = NULL;
 
     clear_error();
     return true;

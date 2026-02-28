@@ -275,6 +275,7 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
     if (!memory->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(memory);
+        memory = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_memory_create: memory->mutex is NULL");
         return NULL;
     }
@@ -296,6 +297,7 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
 
     memory->query_buffer = nimcp_calloc(config->pattern_dim, sizeof(float));
     memory->similarity_buffer = nimcp_calloc(config->capacity, sizeof(float));
+    if (!memory->similarity_buffer) return -1;
     memory->attention_buffer = nimcp_calloc(config->capacity, sizeof(float));
 
     if (!memory->query_buffer || !memory->similarity_buffer || !memory->attention_buffer) {
@@ -379,6 +381,7 @@ void hopfield_memory_destroy(hopfield_memory_t* memory) {
     }
 
     nimcp_free(memory);
+    memory = NULL;
 }
 
 int hopfield_memory_clear(hopfield_memory_t* memory) {
@@ -438,7 +441,7 @@ int hopfield_memory_store_with_meta(hopfield_memory_t* memory,
 
     nimcp_mutex_lock(memory->mutex);
 
-    uint32_t store_idx;
+    uint32_t store_idx = 0;
     if (memory->pattern_count < memory->config.capacity) {
         store_idx = memory->pattern_count;
         memory->pattern_count++;
@@ -651,7 +654,7 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
 
     bool converged = false;
     float prev_energy = FLT_MAX;
-    uint32_t iter;
+    uint32_t iter = 0;
 
     for (iter = 0; iter < max_iterations; iter++) {
         for (uint32_t i = 0; i < memory->pattern_count; i++) {
@@ -1106,6 +1109,7 @@ hopfield_retrieval_result_t* hopfield_result_create(uint32_t dim) {
     result->pattern = nimcp_calloc(dim, sizeof(float));
     if (!result->pattern) {
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_result_create: result->pattern is NULL");
         return NULL;
     }
@@ -1125,6 +1129,7 @@ void hopfield_result_destroy(hopfield_retrieval_result_t* result) {
         nimcp_free(result->pattern);
     }
     nimcp_free(result);
+    result = NULL;
 }
 
 hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
@@ -1143,6 +1148,7 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
     result->results = nimcp_calloc(num_queries, sizeof(hopfield_retrieval_result_t));
     if (!result->results) {
         nimcp_free(result);
+        result = NULL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_result_destroy: result->results is NULL");
         return NULL;
     }
@@ -1167,6 +1173,7 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
             }
             nimcp_free(result->results);
             nimcp_free(result);
+            result = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hopfield_result_destroy: validation failed");
             return NULL;
         }
@@ -1199,6 +1206,7 @@ void hopfield_batch_result_destroy(hopfield_batch_result_t* result) {
         nimcp_free(result->results);
     }
     nimcp_free(result);
+    result = NULL;
 }
 
 /* ============================================================================
